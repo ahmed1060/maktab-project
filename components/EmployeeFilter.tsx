@@ -142,6 +142,7 @@ export default function EmployeeFilter({ onFilterChange, selectedEmployeeId, dat
                     <input
                         type="date"
                         value={dateFrom}
+                        max={dateTo}
                         onChange={(e) => handleDateFromChange(e.target.value)}
                         style={{
                             padding: '0.5rem 1rem',
@@ -160,6 +161,7 @@ export default function EmployeeFilter({ onFilterChange, selectedEmployeeId, dat
                     <input
                         type="date"
                         value={dateTo}
+                        min={dateFrom}
                         onChange={(e) => handleDateToChange(e.target.value)}
                         style={{
                             padding: '0.5rem 1rem',
