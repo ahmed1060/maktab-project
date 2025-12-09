@@ -1,0 +1,61 @@
+import { NextResponse } from "next/server"
+import { prisma } from "@/lib/prisma"
+import { getServerSession } from "next-auth"
+import { authOptions } from "@/lib/auth"
+
+export async function PUT(req: Request, { params }: { params: { id: string } }) {
+    const session = await getServerSession(authOptions)
+    if (!session || !['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes((session.user as any).role)) {
+        return new NextResponse("Unauthorized", { status: 401 })
+    }
+
+    try {
+        const json = await req.json()
+        console.log("Received update payload:", json) // Debug log
+        const { title, description, assigneeId, deadline, difficulty } = json
+
+        const updateData: any = {
+            title,
+            description,
+            assignee: { connect: { id: assigneeId } },
+            deadline: new Date(deadline),
+            difficulty,
+            isEdited: true
+        }
+
+        const task = await prisma.task.update({
+            where: { id: params.id },
+            data: updateData
+        })
+
+        // Log audit
+        await prisma.auditLog.create({
+            data: {
+                action: 'UPDATE_TASK_DETAILS',
+                entityType: 'TASK',
+                entityId: task.id,
+                userId: (session.user as any).id,
+                details: JSON.stringify(updateData)
+            }
+        })
+
+        // Create notification for assignee
+        await prisma.notification.create({
+            data: {
+                userId: assigneeId, // Notify the (potentially new) assignee
+                type: 'TASK_UPDATED',
+                message: `Task "${title}" details have been updated. Please review.`,
+                relatedId: task.id
+            }
+        })
+
+        return NextResponse.json(task)
+    } catch (error: any) {
+        console.error("Update details failed", error)
+        return new NextResponse(JSON.stringify({
+            name: error.name,
+            message: error.message,
+            stack: error.stack
+        }), { status: 500 })
+    }
+}

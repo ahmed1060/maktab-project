@@ -1,0 +1,212 @@
+'use client'
+import { useEffect, useState } from 'react'
+
+interface EmployeeFilterProps {
+    onFilterChange: (filters: { employeeId: string; dateFrom: string; dateTo: string; status: string }) => void
+    selectedEmployeeId: string
+    dateFrom: string
+    dateTo: string
+    totalCount: number
+    totalCost?: number
+    selectedStatus?: string
+}
+
+// Define interface for Employee data locally since it's just for display
+interface EmployeeType {
+    id: string
+    firstName: string
+    lastName: string
+    role: string
+}
+
+export default function EmployeeFilter({ onFilterChange, selectedEmployeeId, dateFrom, dateTo, totalCount, totalCost, selectedStatus = '' }: EmployeeFilterProps) {
+    const [employees, setEmployees] = useState<EmployeeType[]>([])
+    const [loading, setLoading] = useState(true)
+
+    useEffect(() => {
+        fetch('/api/users')
+            .then(res => res.json())
+            .then(data => {
+                // Sort by role: EMPLOYEE -> TEAM_LEADER -> ADMIN -> SUPER_ADMIN
+                const sortedData = data.sort((a: EmployeeType, b: EmployeeType) => {
+                    const rolePriority: { [key: string]: number } = {
+                        'EMPLOYEE': 1,
+                        'TEAM_LEADER': 2,
+                        'ADMIN': 3,
+                        'SUPER_ADMIN': 4
+                    }
+                    const priorityA = rolePriority[a.role] || 99
+                    const priorityB = rolePriority[b.role] || 99
+
+                    if (priorityA !== priorityB) {
+                        return priorityA - priorityB
+                    }
+                    // Secondary sort by name if same role
+                    return a.firstName.localeCompare(b.firstName)
+                })
+                setEmployees(sortedData)
+                setLoading(false)
+            })
+            .catch(err => {
+                console.error('Failed to load employees:', err)
+                setLoading(false)
+            })
+    }, [])
+
+    const handleEmployeeChange = (employeeId: string) => {
+        onFilterChange({ employeeId, dateFrom, dateTo, status: selectedStatus })
+    }
+
+    const handleDateFromChange = (newDateFrom: string) => {
+        onFilterChange({ employeeId: selectedEmployeeId, dateFrom: newDateFrom, dateTo, status: selectedStatus })
+    }
+
+    const handleDateToChange = (newDateTo: string) => {
+        onFilterChange({ employeeId: selectedEmployeeId, dateFrom, dateTo: newDateTo, status: selectedStatus })
+    }
+
+    const handleStatusChange = (status: string) => {
+        onFilterChange({ employeeId: selectedEmployeeId, dateFrom, dateTo, status })
+    }
+
+    if (loading) {
+        return <div style={{ fontSize: '0.875rem', color: '#64748b' }}>Loading filters...</div>
+    }
+
+    return (
+        <div style={{
+            marginBottom: '1.5rem',
+            display: 'flex',
+            gap: '1rem',
+            alignItems: 'flex-end',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap'
+        }}>
+            <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-end', flex: 1, flexWrap: 'wrap' }}>
+                <div>
+                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600', fontSize: '0.875rem' }}>
+                        Filter by Employee
+                    </label>
+                    <select
+                        value={selectedEmployeeId}
+                        onChange={(e) => handleEmployeeChange(e.target.value)}
+                        style={{
+                            padding: '0.5rem 1rem',
+                            borderRadius: '0.5rem',
+                            border: '1px solid #cbd5e1',
+                            fontSize: '0.875rem',
+                            minWidth: '200px',
+                            cursor: 'pointer',
+                            background: 'white'
+                        }}
+                    >
+                        <option value="">All Employees</option>
+                        {employees.map(emp => (
+                            <option key={emp.id} value={emp.id}>
+                                {emp.firstName} {emp.lastName} - {emp.role}
+                            </option>
+                        ))}
+                    </select>
+                </div>
+
+                <div>
+                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600', fontSize: '0.875rem' }}>
+                        Filter by Status
+                    </label>
+                    <select
+                        value={selectedStatus}
+                        onChange={(e) => handleStatusChange(e.target.value)}
+                        style={{
+                            padding: '0.5rem 1rem',
+                            borderRadius: '0.5rem',
+                            border: '1px solid #cbd5e1',
+                            fontSize: '0.875rem',
+                            minWidth: '180px',
+                            cursor: 'pointer',
+                            background: 'white'
+                        }}
+                    >
+                        <option value="">All Statuses</option>
+                        <option value="COMPLETED">Completed</option>
+                        <option value="APPROVED">Approved</option>
+                        <option value="REJECTED">Rejected</option>
+                        <option value="PENDING_CONFIRMATION">Pending Approval</option>
+                        <option value="IN_PROGRESS">Pending</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600', fontSize: '0.875rem' }}>
+                        From Date
+                    </label>
+                    <input
+                        type="date"
+                        value={dateFrom}
+                        onChange={(e) => handleDateFromChange(e.target.value)}
+                        style={{
+                            padding: '0.5rem 1rem',
+                            borderRadius: '0.5rem',
+                            border: '1px solid #cbd5e1',
+                            fontSize: '0.875rem',
+                            cursor: 'pointer'
+                        }}
+                    />
+                </div>
+
+                <div>
+                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600', fontSize: '0.875rem' }}>
+                        To Date
+                    </label>
+                    <input
+                        type="date"
+                        value={dateTo}
+                        onChange={(e) => handleDateToChange(e.target.value)}
+                        style={{
+                            padding: '0.5rem 1rem',
+                            borderRadius: '0.5rem',
+                            border: '1px solid #cbd5e1',
+                            fontSize: '0.875rem',
+                            cursor: 'pointer'
+                        }}
+                    />
+                </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '0.75rem' }}>
+                <div style={{
+                    background: '#3b82f6',
+                    color: 'white',
+                    padding: '0.5rem 1rem',
+                    borderRadius: '0.5rem',
+                    textAlign: 'center',
+                    minWidth: '90px'
+                }}>
+                    <div style={{ fontSize: '0.7rem', fontWeight: '600', marginBottom: '0.15rem', opacity: 0.9 }}>
+                        Total
+                    </div>
+                    <div style={{ fontSize: '1.25rem', fontWeight: 'bold' }}>
+                        {totalCount}
+                    </div>
+                </div>
+
+                {totalCost !== undefined && (
+                    <div style={{
+                        background: '#f59e0b',
+                        color: 'white',
+                        padding: '0.5rem 1rem',
+                        borderRadius: '0.5rem',
+                        textAlign: 'center',
+                        minWidth: '120px'
+                    }}>
+                        <div style={{ fontSize: '0.7rem', fontWeight: '600', marginBottom: '0.15rem', opacity: 0.9 }}>
+                            Total Cost
+                        </div>
+                        <div style={{ fontSize: '1.25rem', fontWeight: 'bold' }}>
+                            {totalCost.toFixed(2)} EGP
+                        </div>
+                    </div>
+                )}
+            </div>
+        </div>
+    )
+}

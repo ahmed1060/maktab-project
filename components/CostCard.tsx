@@ -1,0 +1,86 @@
+'use client'
+import Link from 'next/link'
+import { useState } from 'react'
+import { formatTaskStatus } from '@/lib/formatStatus'
+
+interface CostCardProps {
+    task: {
+        id: string
+        title: string
+        totalCost: number
+        status: string
+        assignee: {
+            firstName: string
+            lastName: string
+        }
+    }
+}
+
+export default function CostCard({ task }: CostCardProps) {
+    const [isHovered, setIsHovered] = useState(false)
+
+    return (
+        <Link
+            href={`/dashboard/tasks/${task.id}`}
+            style={{ textDecoration: 'none', color: 'inherit' }}
+        >
+            <div
+                className="card"
+                style={{
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                    border: '2px solid #e2e8f0',
+                    height: '100%',
+                    transform: isHovered ? 'translateY(-2px)' : 'translateY(0)',
+                    boxShadow: isHovered ? '0 4px 12px rgba(0,0,0,0.1)' : 'none',
+                    borderColor: isHovered ? '#3b82f6' : '#e2e8f0'
+                }}
+                onMouseEnter={() => setIsHovered(true)}
+                onMouseLeave={() => setIsHovered(false)}
+            >
+                <div style={{ marginBottom: '1rem' }}>
+                    <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1.1rem' }}>{task.title}</h3>
+                    <div style={{ fontSize: '0.85rem', color: '#64748b' }}>
+                        Assignee: {task.assignee.firstName} {task.assignee.lastName}
+                    </div>
+                </div>
+
+                <div style={{
+                    background: '#fef3c7',
+                    border: '2px solid #f59e0b',
+                    borderRadius: '0.5rem',
+                    padding: '1rem',
+                    textAlign: 'center'
+                }}>
+                    <div style={{ fontSize: '0.75rem', color: '#92400e', fontWeight: '600', marginBottom: '0.25rem' }}>
+                        Total Cost
+                    </div>
+                    <div style={{ fontSize: '1.75rem', fontWeight: 'bold', color: '#92400e' }}>
+                        {task.totalCost.toFixed(2)} EGP
+                    </div>
+                </div>
+
+                <div style={{
+                    marginTop: '1rem',
+                    padding: '0.5rem',
+                    borderRadius: '0.25rem',
+                    background: task.status === 'APPROVED'
+                        ? '#dcfce7'
+                        : task.status === 'COMPLETED'
+                            ? '#e0f2fe'
+                            : '#fee2e2', // REJECTED
+                    color: task.status === 'APPROVED'
+                        ? '#166534'
+                        : task.status === 'COMPLETED'
+                            ? '#0369a1'
+                            : '#991b1b', // REJECTED
+                    fontSize: '0.75rem',
+                    fontWeight: '600',
+                    textAlign: 'center'
+                }}>
+                    {formatTaskStatus(task.status)}
+                </div>
+            </div>
+        </Link>
+    )
+}

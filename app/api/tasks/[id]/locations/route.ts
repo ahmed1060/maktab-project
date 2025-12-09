@@ -1,0 +1,66 @@
+import { NextResponse } from 'next/server'
+import { prisma } from '@/lib/prisma'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
+
+export async function PUT(
+    request: Request,
+    { params }: { params: { id: string } }
+) {
+    const session = await getServerSession(authOptions)
+    if (!session) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    try {
+        const { timestamp, action, verificationStatus } = await request.json()
+        const taskId = params.id
+
+        const task = await prisma.task.findUnique({
+            where: { id: taskId }
+        })
+
+        if (!task) {
+            return NextResponse.json({ error: 'Task not found' }, { status: 404 })
+        }
+
+        let comments = task.comments ? JSON.parse(task.comments) : []
+        const locationIndex = comments.findIndex((c: any) => c.type === 'LOCATION_ADDED' && c.date === timestamp)
+
+        if (locationIndex === -1) {
+            return NextResponse.json({ error: 'Location entry not found' }, { status: 404 })
+        }
+
+        if (action === 'VERIFY') {
+            comments[locationIndex].verificationStatus = verificationStatus
+        } else if (action === 'DELETE') {
+            // Check permissions for delete
+            // User can delete if they are the author AND task is editable (PENDING/REJECTED)
+            // OR if they are ADMIN/SUPER_ADMIN/TEAM_LEADER
+            const isAuthor = comments[locationIndex].author === session.user.name || comments[locationIndex].authorId === session.user.id
+            const canEditTask = task.status === 'PENDING' || task.status === 'REJECTED' || task.status === 'IN_PROGRESS' // Assuming IN_PROGRESS maps to active work state
+
+            // Allow if admin or (author and editable)
+            const isAdmin = ['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(session.user.role)
+
+            if (isAdmin || (isAuthor && canEditTask)) {
+                comments.splice(locationIndex, 1)
+            } else {
+                return NextResponse.json({ error: 'Not authorized to delete this location' }, { status: 403 })
+            }
+        }
+
+        await prisma.task.update({
+            where: { id: taskId },
+            data: {
+                comments: JSON.stringify(comments)
+            }
+        })
+
+        return NextResponse.json({ success: true })
+
+    } catch (error) {
+        console.error('Location update failed:', error)
+        return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
+    }
+}
