@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
+import SearchableSelect from './SearchableSelect'
 
 interface EmployeeFilterProps {
     onFilterChange: (filters: { employeeId: string; dateFrom: string; dateTo: string; status: string }) => void
@@ -87,26 +88,16 @@ export default function EmployeeFilter({ onFilterChange, selectedEmployeeId, dat
                     <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600', fontSize: '0.875rem' }}>
                         Filter by Employee
                     </label>
-                    <select
+                    <SearchableSelect
+                        options={employees.map(emp => ({
+                            label: `${emp.firstName} ${emp.lastName}`,
+                            value: emp.id,
+                            subLabel: emp.role
+                        }))}
                         value={selectedEmployeeId}
-                        onChange={(e) => handleEmployeeChange(e.target.value)}
-                        style={{
-                            padding: '0.5rem 1rem',
-                            borderRadius: '0.5rem',
-                            border: '1px solid #cbd5e1',
-                            fontSize: '0.875rem',
-                            minWidth: '200px',
-                            cursor: 'pointer',
-                            background: 'white'
-                        }}
-                    >
-                        <option value="">All Employees</option>
-                        {employees.map(emp => (
-                            <option key={emp.id} value={emp.id}>
-                                {emp.firstName} {emp.lastName} - {emp.role}
-                            </option>
-                        ))}
-                    </select>
+                        onChange={handleEmployeeChange}
+                        placeholder="All Employees"
+                    />
                 </div>
 
                 <div>

@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useSession } from 'next-auth/react'
+import SortControl from '@/components/SortControl'
 
 
 interface Employee {
@@ -33,6 +34,46 @@ export default function EmployeesPage() {
         setEmployees(filteredData)
         setLoading(false)
     }
+
+    const [sortBy, setSortBy] = useState('name')
+    const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc')
+    const [searchQuery, setSearchQuery] = useState('')
+    const [roleFilter, setRoleFilter] = useState('')
+
+    const filteredEmployees = employees.filter(emp => {
+        if (roleFilter && emp.role !== roleFilter) return false
+        if (searchQuery) {
+            const query = searchQuery.toLowerCase()
+            return (
+                emp.firstName.toLowerCase().includes(query) ||
+                emp.lastName.toLowerCase().includes(query) ||
+                emp.email.toLowerCase().includes(query)
+            )
+        }
+        return true
+    })
+
+    const sortedEmployees = [...filteredEmployees].sort((a, b) => {
+        let comparison = 0
+        switch (sortBy) {
+            case 'name':
+                comparison = a.firstName.localeCompare(b.firstName)
+                break
+            case 'role':
+                // Sort by role: EMPLOYEE -> TEAM_LEADER -> ADMIN -> SUPER_ADMIN
+                const rolePriority: { [key: string]: number } = {
+                    'EMPLOYEE': 1, 'TEAM_LEADER': 2, 'ADMIN': 3, 'SUPER_ADMIN': 4
+                }
+                comparison = (rolePriority[a.role] || 99) - (rolePriority[b.role] || 99)
+                break
+            case 'points':
+                comparison = (a.totalDifficultyPoints || 0) - (b.totalDifficultyPoints || 0)
+                break
+            default:
+                comparison = 0
+        }
+        return sortOrder === 'asc' ? comparison : -comparison
+    })
 
     useEffect(() => {
         if (session?.user) {
@@ -115,11 +156,106 @@ export default function EmployeesPage() {
                 )}
             </div>
 
+            {/* Filters Row */}
+            <div style={{
+                marginBottom: '2rem',
+                display: 'flex',
+                gap: '1rem',
+                flexWrap: 'wrap',
+                alignItems: 'center'
+            }}>
+                <div style={{
+                    background: 'white',
+                    padding: '0.5rem',
+                    borderRadius: '1rem',
+                    border: '1px solid #e2e8f0',
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+                    width: '300px',
+                    position: 'relative'
+                }}>
+                    <div style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }}>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <circle cx="11" cy="11" r="8"></circle>
+                            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                        </svg>
+                    </div>
+                    <input
+                        type="text"
+                        placeholder="Search employees..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        style={{
+                            width: '100%',
+                            padding: '0.75rem 1rem 0.75rem 3rem',
+                            borderRadius: '0.75rem',
+                            border: 'none',
+                            fontSize: '1rem',
+                            outline: 'none',
+                            background: 'transparent'
+                        }}
+                    />
+                </div>
+
+                <div style={{
+                    background: 'white',
+                    padding: '0.5rem',
+                    borderRadius: '1rem',
+                    border: '1px solid #e2e8f0',
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+                    position: 'relative',
+                    minWidth: '200px'
+                }}>
+                    <div style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: '#64748b' }}>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                            <circle cx="12" cy="7" r="4"></circle>
+                        </svg>
+                    </div>
+                    <select
+                        value={roleFilter}
+                        onChange={(e) => setRoleFilter(e.target.value)}
+                        style={{
+                            width: '100%',
+                            padding: '0.75rem 2.5rem 0.75rem 3rem', // Right padding for arrow, left for icon
+                            borderRadius: '0.75rem',
+                            border: 'none',
+                            fontSize: '0.875rem',
+                            outline: 'none',
+                            backgroundColor: 'transparent',
+                            cursor: 'pointer',
+                            appearance: 'none',
+                            backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2364748b'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`,
+                            backgroundRepeat: 'no-repeat',
+                            backgroundPosition: 'right 1rem center',
+                            backgroundSize: '1.25rem'
+                        }}
+                    >
+                        <option value="">All Roles</option>
+                        <option value="EMPLOYEE">Employee</option>
+                        <option value="TEAM_LEADER">Team Leader</option>
+                        <option value="ADMIN">Admin</option>
+                    </select>
+                </div>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '1.5rem' }}>
+                <SortControl
+                    options={[
+                        { label: 'Name', value: 'name' },
+                        { label: 'Role', value: 'role' },
+                        { label: 'Points', value: 'points' },
+                    ]}
+                    sortBy={sortBy}
+                    sortOrder={sortOrder}
+                    onSortChange={(field, order) => { setSortBy(field); setSortOrder(order) }}
+                />
+            </div>
+
             <div style={{ display: 'grid', gap: '1rem' }}>
-                {employees.length === 0 ? (
+                {sortedEmployees.length === 0 ? (
                     <p>No employees found.</p>
                 ) : (
-                    employees.map(emp => (
+                    sortedEmployees.map(emp => (
                         <div key={emp.id} className="card">
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                 <div style={{ flex: 1 }}>

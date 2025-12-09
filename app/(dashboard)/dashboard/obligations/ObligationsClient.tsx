@@ -3,6 +3,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import ObligationListItem from '@/components/ObligationListItem'
 import EmployeeFilter from '@/components/EmployeeFilter'
+import SortControl from '@/components/SortControl'
 
 interface ObligationsClientProps {
     obligations: any[]
@@ -49,30 +50,35 @@ export default function ObligationsClient({ obligations, role }: ObligationsClie
         return true
     })
 
-    // Custom sorting: PENDING_CONFIRMATION first, then IN_PROGRESS, then others by updatedAt DESC
-    const sortedObligations = filteredObligations.sort((a, b) => {
-        // Priority order
-        const getPriority = (status: string) => {
-            if (status === 'PENDING_CONFIRMATION') return 1
-            if (status === 'IN_PROGRESS') return 2
-            return 3 // APPROVED, COMPLETED, REJECTED
+    const [sortBy, setSortBy] = useState('smart')
+    const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc')
+
+    // Sorting Logic
+    const sortedObligations = [...filteredObligations].sort((a, b) => {
+        let comparison = 0
+
+        switch (sortBy) {
+            case 'smart':
+                const getPriority = (status: string) => {
+                    if (status === 'PENDING_CONFIRMATION') return 1
+                    if (status === 'IN_PROGRESS') return 2
+                    return 3
+                }
+                comparison = getPriority(a.status) - getPriority(b.status)
+                if (comparison === 0) {
+                    return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+                }
+                return comparison
+
+            case 'createdAt':
+                comparison = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+                break
+
+            default:
+                comparison = 0
         }
 
-        const priorityA = getPriority(a.status)
-        const priorityB = getPriority(b.status)
-
-        // If different priorities, sort by priority
-        if (priorityA !== priorityB) {
-            return priorityA - priorityB
-        }
-
-        // If same priority and both are completed statuses, sort by updatedAt DESC
-        if (priorityA === 3) {
-            return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
-        }
-
-        // Otherwise maintain original order
-        return 0
+        return sortOrder === 'asc' ? comparison : -comparison
     })
 
     return (
@@ -96,6 +102,18 @@ export default function ObligationsClient({ obligations, role }: ObligationsClie
                     selectedStatus={filters.status}
                 />
             )}
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '1rem' }}>
+                <SortControl
+                    options={[
+                        { label: 'Smart Sort (Status)', value: 'smart' },
+                        { label: 'Date Created', value: 'createdAt' },
+                    ]}
+                    sortBy={sortBy}
+                    sortOrder={sortOrder}
+                    onSortChange={(field, order) => { setSortBy(field); setSortOrder(order) }}
+                />
+            </div>
 
             <div style={{ display: 'grid', gap: '1rem' }}>
                 {sortedObligations.length > 0 ? (

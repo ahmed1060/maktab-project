@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import CostCard from '@/components/CostCard'
 import EmployeeFilter from '@/components/EmployeeFilter'
+import SortControl from '@/components/SortControl'
 
 interface CostsClientProps {
     tasksWithCosts: any[]
@@ -47,14 +48,27 @@ export default function CostsClient({ tasksWithCosts, userRole }: CostsClientPro
         return true
     })
 
-    const totalCost = filteredTasks.reduce((sum, task) => sum + task.totalCost, 0)
+    const [sortBy, setSortBy] = useState('date')
+    const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
+
+    const sortedTasks = [...filteredTasks].sort((a, b) => {
+        let comparison = 0
+        if (sortBy === 'date') {
+            comparison = new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime()
+        } else if (sortBy === 'amount') {
+            comparison = a.totalCost - b.totalCost
+        }
+        return sortOrder === 'asc' ? comparison : -comparison
+    })
+
+    const totalCost = sortedTasks.reduce((sum, task) => sum + task.totalCost, 0)
 
     const handleMarkAllAsPaid = async () => {
-        if (filteredTasks.length === 0) return
+        if (sortedTasks.length === 0) return
 
         setIsUpdating(true)
         try {
-            const taskIds = filteredTasks.map(task => task.id)
+            const taskIds = sortedTasks.map(task => task.id)
             const res = await fetch('/api/tasks/payment/bulk', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -104,16 +118,8 @@ export default function CostsClient({ tasksWithCosts, userRole }: CostsClientPro
 
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
                 <h1>Costs</h1>
-                {(() => {
-                    console.log('=== BUTTON DEBUG ===')
-                    console.log('userRole:', userRole)
-                    console.log('filteredTasks.length:', filteredTasks.length)
-                    console.log('Is ADMIN/SUPER_ADMIN?', ['ADMIN', 'SUPER_ADMIN'].includes(userRole))
-                    console.log('Has tasks?', filteredTasks.length > 0)
-                    console.log('Should show button?', ['ADMIN', 'SUPER_ADMIN'].includes(userRole) && filteredTasks.length > 0)
-                    return null
-                })()}
-                {['ADMIN', 'SUPER_ADMIN'].includes(userRole) && filteredTasks.length > 0 && (
+
+                {['ADMIN', 'SUPER_ADMIN'].includes(userRole) && sortedTasks.length > 0 && (
                     <button
                         onClick={handleMarkAllAsPaid}
                         disabled={isUpdating}
@@ -129,7 +135,7 @@ export default function CostsClient({ tasksWithCosts, userRole }: CostsClientPro
                             opacity: isUpdating ? 0.6 : 1
                         }}
                     >
-                        {isUpdating ? 'Updating...' : `Mark All as Paid (${filteredTasks.length})`}
+                        {isUpdating ? 'Updating...' : `Mark All as Paid (${sortedTasks.length})`}
                     </button>
                 )}
             </div>
@@ -143,7 +149,19 @@ export default function CostsClient({ tasksWithCosts, userRole }: CostsClientPro
                 totalCost={totalCost}
             />
 
-            {filteredTasks.length === 0 ? (
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '1rem' }}>
+                <SortControl
+                    options={[
+                        { label: 'Date', value: 'date' },
+                        { label: 'Amount', value: 'amount' },
+                    ]}
+                    sortBy={sortBy}
+                    sortOrder={sortOrder}
+                    onSortChange={(field, order) => { setSortBy(field); setSortOrder(order) }}
+                />
+            </div>
+
+            {sortedTasks.length === 0 ? (
                 <div className="card" style={{ textAlign: 'center', padding: '3rem', color: '#64748b' }}>
                     <p style={{ fontSize: '1.1rem', marginBottom: '0.5rem' }}>
                         {filters.employeeId || filters.dateFrom || filters.dateTo
@@ -158,7 +176,7 @@ export default function CostsClient({ tasksWithCosts, userRole }: CostsClientPro
                     gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
                     gap: '1.5rem'
                 }}>
-                    {filteredTasks.map(task => (
+                    {sortedTasks.map(task => (
                         <CostCard key={task.id} task={task} />
                     ))}
                 </div>
