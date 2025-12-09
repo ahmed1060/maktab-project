@@ -37,11 +37,27 @@ export default function ObligationDetailClient({ obligation, userRole }: { oblig
 
     const [inputKey, setInputKey] = useState(0)
 
-    const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (e.target.files && e.target.files.length > 0) {
-            setPendingFiles(prev => [...prev, ...Array.from(e.target.files || [])])
-            setInputKey(prev => prev + 1)
+    const [isDragging, setIsDragging] = useState(false)
+
+    const handleFiles = (files: File[]) => {
+        const validFiles: File[] = []
+        let hasError = false
+
+        files.forEach(file => {
+            if (file.size > 10 * 1024 * 1024) {
+                hasError = true
+            } else {
+                validFiles.push(file)
+            }
+        })
+
+        if (hasError) {
+            setFeedbackMessage('Some files were rejected because they exceed 10MB.')
+            setShowFeedback(true)
         }
+
+        setPendingFiles(prev => [...prev, ...validFiles])
+        setInputKey(prev => prev + 1)
     }
 
     const removePendingFile = (index: number) => {
@@ -179,25 +195,92 @@ export default function ObligationDetailClient({ obligation, userRole }: { oblig
             {userRole === 'EMPLOYEE' && obligation.status !== 'COMPLETED' && (
                 <div style={{ marginTop: '2rem', borderTop: '1px solid #e2e8f0', paddingTop: '1rem' }}>
                     <h3>Upload Evidence</h3>
-                    <input
-                        key={inputKey}
-                        type="file"
-                        multiple
-                        onChange={handleFileSelect}
-                        disabled={uploading}
-                        style={{ marginTop: '0.5rem', display: 'block' }}
-                    />
+                    <div
+                        onDragOver={(e) => { e.preventDefault(); setIsDragging(true) }}
+                        onDragLeave={(e) => { e.preventDefault(); setIsDragging(false) }}
+                        onDrop={(e) => {
+                            e.preventDefault()
+                            setIsDragging(false)
+                            if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                                handleFiles(Array.from(e.dataTransfer.files))
+                            }
+                        }}
+                        style={{
+                            marginTop: '0.5rem',
+                            border: `2px dashed ${isDragging ? '#3b82f6' : '#cbd5e1'}`,
+                            borderRadius: '0.5rem',
+                            padding: '2rem',
+                            textAlign: 'center',
+                            background: isDragging ? '#eff6ff' : '#f8fafc',
+                            transition: 'all 0.2s ease',
+                            cursor: 'pointer',
+                            position: 'relative'
+                        }}
+                    >
+                        <input
+                            key={inputKey}
+                            type="file"
+                            multiple
+                            accept=".jpg,.jpeg,.png,.gif,.webp,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx"
+                            onChange={(e) => {
+                                if (e.target.files) handleFiles(Array.from(e.target.files))
+                            }}
+                            disabled={uploading}
+                            style={{
+                                opacity: 0,
+                                position: 'absolute',
+                                top: 0,
+                                left: 0,
+                                width: '100%',
+                                height: '100%',
+                                cursor: 'pointer'
+                            }}
+                        />
+                        <div style={{ pointerEvents: 'none' }}>
+                            <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>☁️</div>
+                            <p style={{ margin: 0, fontWeight: '600', color: '#475569' }}>
+                                Click or drag files here to upload
+                            </p>
+                            <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.8rem', color: '#94a3b8' }}>
+                                Images, PDF, Office (Max 10MB)
+                            </p>
+                        </div>
+                    </div>
 
                     {/* Pending Files List */}
                     {pendingFiles.length > 0 && (
-                        <div style={{ marginTop: '0.5rem', border: '1px solid #e2e8f0', borderRadius: '0.25rem', padding: '0.5rem' }}>
-                            <p style={{ margin: '0 0 0.5rem 0', fontWeight: 'bold', fontSize: '0.875rem' }}>Pending Uploads:</p>
+                        <div style={{ marginTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                             {pendingFiles.map((file, i) => (
-                                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.875rem', marginBottom: '0.25rem' }}>
-                                    <span>{file.name}</span>
+                                <div key={i} style={{
+                                    display: 'flex',
+                                    justifyContent: 'space-between',
+                                    alignItems: 'center',
+                                    padding: '0.75rem',
+                                    background: 'white',
+                                    border: '1px solid #e2e8f0',
+                                    borderRadius: '0.5rem',
+                                    boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)'
+                                }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                        <span style={{ fontSize: '1.2rem' }}>📄</span>
+                                        <div>
+                                            <div style={{ fontSize: '0.9rem', fontWeight: '500', color: '#334155' }}>{file.name}</div>
+                                            <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>{(file.size / 1024 / 1024).toFixed(2)} MB</div>
+                                        </div>
+                                    </div>
                                     <button
                                         onClick={() => removePendingFile(i)}
-                                        style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer' }}
+                                        style={{
+                                            color: '#ef4444',
+                                            background: '#fef2f2',
+                                            border: 'none',
+                                            borderRadius: '0.25rem',
+                                            padding: '0.25rem 0.5rem',
+                                            cursor: 'pointer',
+                                            fontSize: '0.875rem',
+                                            fontWeight: '500',
+                                            transition: 'background 0.2s'
+                                        }}
                                         disabled={uploading}
                                     >
                                         Remove
