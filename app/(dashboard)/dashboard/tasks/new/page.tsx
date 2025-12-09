@@ -14,6 +14,10 @@ export default function NewTaskPage() {
 
     const { data: session } = useSession()
 
+    // Get today's date in local time YYYY-MM-DD
+    const today = new Date()
+    const todayStr = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0')
+
     useEffect(() => {
         fetch('/api/users')
             .then(res => res.json())
@@ -103,7 +107,7 @@ export default function NewTaskPage() {
                 </div>
                 <div>
                     <label style={{ display: 'block', marginBottom: '0.5rem' }}>Deadline</label>
-                    <input type="date" className="input" value={deadline} onChange={e => setDeadline(e.target.value)} max="9999-12-31" required />
+                    <input type="date" className="input" value={deadline} onChange={e => setDeadline(e.target.value)} min={todayStr} max="9999-12-31" required />
                 </div>
                 <div>
                     <label style={{ display: 'block', marginBottom: '0.5rem' }}>Difficulty</label>

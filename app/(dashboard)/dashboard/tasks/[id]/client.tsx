@@ -10,6 +10,10 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
         setTask(initialTask)
     }, [initialTask])
 
+    // Get today's date in local time YYYY-MM-DD
+    const today = new Date()
+    const todayStr = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0')
+
     const [pendingFiles, setPendingFiles] = useState<File[]>([])
     const [note, setNote] = useState('')
     const [cost, setCost] = useState('')
@@ -913,6 +917,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                                     className="input"
                                     value={editForm.deadline}
                                     onChange={e => setEditForm({ ...editForm, deadline: e.target.value })}
+                                    min={todayStr}
                                     max="9999-12-31"
                                     required
                                 />

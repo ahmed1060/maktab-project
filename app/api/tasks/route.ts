@@ -40,6 +40,15 @@ export async function POST(req: Request) {
     const { title, description, assigneeId, deadline, difficulty = 0 } = json
     const creatorId = (session.user as any).id
 
+    // Server-side Deadline Validation
+    const deadlineDate = new Date(deadline)
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    // We allow "today" so we check strict less than
+    if (deadlineDate < today) {
+        return new NextResponse(JSON.stringify({ message: "Deadline cannot be in the past" }), { status: 400 })
+    }
+
     try {
         const result = await prisma.$transaction(async (tx) => {
             const task = await tx.task.create({

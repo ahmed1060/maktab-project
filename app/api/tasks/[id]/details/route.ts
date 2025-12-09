@@ -14,6 +14,15 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
         console.log("Received update payload:", json) // Debug log
         const { title, description, assigneeId, deadline, difficulty } = json
 
+        // Server-side Deadline Validation
+        const deadlineDate = new Date(deadline)
+        const today = new Date()
+        today.setHours(0, 0, 0, 0)
+
+        if (deadlineDate < today) {
+            return new NextResponse("Deadline cannot be in the past", { status: 400 })
+        }
+
         const updateData: any = {
             title,
             description,
