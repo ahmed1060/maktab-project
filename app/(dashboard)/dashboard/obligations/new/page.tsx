@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { useSession } from 'next-auth/react'
 
 export default function NewObligationPage() {
     const [title, setTitle] = useState('')
@@ -11,12 +12,17 @@ export default function NewObligationPage() {
     const [users, setUsers] = useState<any[]>([])
     const router = useRouter()
 
+    const { data: session } = useSession()
+
     useEffect(() => {
         fetch('/api/users')
             .then(res => res.json())
             .then(data => {
+                // Filter out current user first
+                const otherUsers = data.filter((u: any) => u.email !== session?.user?.email)
+
                 // Sort by role: EMPLOYEE -> TEAM_LEADER -> ADMIN -> SUPER_ADMIN
-                const sortedData = data.sort((a: any, b: any) => {
+                const sortedData = otherUsers.sort((a: any, b: any) => {
                     const rolePriority: { [key: string]: number } = {
                         'EMPLOYEE': 1,
                         'TEAM_LEADER': 2,
@@ -34,7 +40,7 @@ export default function NewObligationPage() {
                 })
                 setUsers(sortedData)
             })
-    }, [])
+    }, [session])
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -69,7 +75,7 @@ export default function NewObligationPage() {
                     <label style={{ display: 'block', marginBottom: '0.5rem' }}>Assignee</label>
                     <select className="input" value={assigneeId} onChange={e => setAssigneeId(e.target.value)} required>
                         <option value="">Select Employee</option>
-                        {users.map(u => <option key={u.id} value={u.id}>{u.firstName} {u.lastName}</option>)}
+                        {users.map(u => <option key={u.id} value={u.id}>{u.firstName} {u.lastName} - {u.role}</option>)}
                     </select>
                 </div>
                 <div>
