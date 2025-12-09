@@ -33,7 +33,9 @@ export default function TaskListItem({ task, currentUserId }: TaskListItemProps)
     return (
         <div className="card">
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <h3 style={{ margin: 0 }}>{task.title}</h3>
+                <h3 style={{ margin: 0 }} title={task.title}>
+                    {task.title.length > 50 ? task.title.substring(0, 50) + '...' : task.title}
+                </h3>
                 <span style={{
                     fontSize: '0.75rem',
                     fontWeight: '600',

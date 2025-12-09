@@ -732,7 +732,11 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                             placeholder="Add a note about your work..."
                             id="submission-note"
                             style={{ width: '100%', padding: '0.5rem', borderRadius: '0.25rem', border: '1px solid #cbd5e1' }}
+                            maxLength={500}
                         />
+                        <div style={{ fontSize: '0.75rem', color: note.length >= 500 ? '#ef4444' : '#94a3b8', textAlign: 'right', marginTop: '0.25rem' }}>
+                            {note.length}/500
+                        </div>
                     </div>
                     <div style={{ marginBottom: '1rem' }}>
                         <label style={{ display: 'block', marginBottom: '0.5rem' }}>Current Location</label>
@@ -886,7 +890,11 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                                     value={editForm.title}
                                     onChange={e => setEditForm({ ...editForm, title: e.target.value })}
                                     required
+                                    maxLength={100}
                                 />
+                                <div style={{ fontSize: '0.75rem', color: editForm.title.length >= 100 ? '#ef4444' : '#94a3b8', textAlign: 'right', marginTop: '0.25rem' }}>
+                                    {editForm.title.length}/100
+                                </div>
                             </div>
                             <div style={{ marginBottom: '1rem' }}>
                                 <label style={{ display: 'block', marginBottom: '0.5rem' }}>Description</label>
@@ -896,7 +904,11 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                                     onChange={e => setEditForm({ ...editForm, description: e.target.value })}
                                     rows={4}
                                     required
+                                    maxLength={500}
                                 />
+                                <div style={{ fontSize: '0.75rem', color: editForm.description.length >= 500 ? '#ef4444' : '#94a3b8', textAlign: 'right', marginTop: '0.25rem' }}>
+                                    {editForm.description.length}/500
+                                </div>
                             </div>
                             <div style={{ marginBottom: '1rem' }}>
                                 <label style={{ display: 'block', marginBottom: '0.5rem' }}>Assignee</label>

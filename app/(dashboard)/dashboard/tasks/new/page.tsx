@@ -92,11 +92,30 @@ export default function NewTaskPage() {
             <form onSubmit={handleSubmit}>
                 <div>
                     <label style={{ display: 'block', marginBottom: '0.5rem' }}>Title</label>
-                    <input className="input" value={title} onChange={e => setTitle(e.target.value)} required />
+                    <input
+                        className="input"
+                        value={title}
+                        onChange={e => setTitle(e.target.value)}
+                        required
+                        maxLength={100}
+                    />
+                    <div style={{ fontSize: '0.75rem', color: title.length >= 100 ? '#ef4444' : '#94a3b8', textAlign: 'right', marginTop: '0.25rem' }}>
+                        {title.length}/100
+                    </div>
                 </div>
                 <div>
                     <label style={{ display: 'block', marginBottom: '0.5rem' }}>Description</label>
-                    <textarea className="input" value={description} onChange={e => setDescription(e.target.value)} rows={4} required />
+                    <textarea
+                        className="input"
+                        value={description}
+                        onChange={e => setDescription(e.target.value)}
+                        rows={4}
+                        required
+                        maxLength={500}
+                    />
+                    <div style={{ fontSize: '0.75rem', color: description.length >= 500 ? '#ef4444' : '#94a3b8', textAlign: 'right', marginTop: '0.25rem' }}>
+                        {description.length}/500
+                    </div>
                 </div>
                 <div>
                     <label style={{ display: 'block', marginBottom: '0.5rem' }}>Assignee</label>

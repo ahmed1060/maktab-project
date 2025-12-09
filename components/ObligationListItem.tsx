@@ -29,7 +29,9 @@ export default function ObligationListItem({ obligation }: ObligationListItemPro
     return (
         <div className="card">
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <h3 style={{ margin: 0 }}>{obligation.title}</h3>
+                <h3 style={{ margin: 0 }} title={obligation.title}>
+                    {obligation.title.length > 50 ? obligation.title.substring(0, 50) + '...' : obligation.title}
+                </h3>
                 <span style={{
                     fontSize: '0.75rem',
                     fontWeight: '600',
