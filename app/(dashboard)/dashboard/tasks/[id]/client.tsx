@@ -20,6 +20,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
     const [note, setNote] = useState('')
     const [cost, setCost] = useState('')
     const [costDescription, setCostDescription] = useState('')
+    const [costEntries, setCostEntries] = useState<{ amount: string, description: string }[]>([])
     const [location, setLocation] = useState('')
     const [locationStatus, setLocationStatus] = useState('')
     const [capturingLocation, setCapturingLocation] = useState(false)
@@ -238,8 +239,26 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
         )
     }
 
+    const handleAddCost = () => {
+        if (!cost) return
+        const val = parseFloat(cost)
+        if (val < 0) {
+            setFeedbackMessage('Cost cannot be negative.')
+            setShowFeedback(true)
+            setTimeout(() => setShowFeedback(false), 3000)
+            return
+        }
+        setCostEntries(prev => [...prev, { amount: cost, description: costDescription }])
+        setCost('')
+        setCostDescription('')
+    }
+
+    const removeCostEntry = (index: number) => {
+        setCostEntries(prev => prev.filter((_, i) => i !== index))
+    }
+
     const handleUpload = async (isDraft: boolean = false) => {
-        // Validate negative cost
+        // Validate negative cost (current input)
         if (cost && parseFloat(cost) < 0) {
             setFeedbackMessage('Cost cannot be negative. Please enter a valid amount.')
             setShowFeedback(true)
@@ -269,15 +288,21 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
             await fetch(`/api/tasks/${task.id}/submit`, {
                 method: 'PUT',
                 body: JSON.stringify({
-                    newAttachments: uploadedAttachments, note, cost: cost ? parseFloat(cost) : 0, costDescription, location, isDraft
+                    newAttachments: uploadedAttachments, note,
+                    // If there is a pending input in the boxes, send it as single 'cost' (legacy/fallback)
+                    cost: cost ? parseFloat(cost) : 0,
+                    costDescription,
+                    // Send the list of added entries
+                    costs: costEntries,
+                    location, isDraft
                 }),
                 headers: { 'Content-Type': 'application/json' }
             })
             setFeedbackMessage(isDraft ? 'Draft saved successfully!' : 'Task submitted successfully!')
             setShowFeedback(true)
             setTimeout(() => setShowFeedback(false), 5000)
-            if (!isDraft) { setNote(''); setCost(''); setCostDescription(''); setLocation(''); setLocationStatus(''); setPendingFiles([]) }
-            else { setNote(''); setCost(''); setCostDescription(''); setLocation(''); setLocationStatus(''); setPendingFiles([]) }
+            if (!isDraft) { setNote(''); setCost(''); setCostDescription(''); setLocation(''); setLocationStatus(''); setPendingFiles([]); setCostEntries([]) }
+            else { setNote(''); setCost(''); setCostDescription(''); setLocation(''); setLocationStatus(''); setPendingFiles([]); setCostEntries([]) }
             router.refresh()
         } catch (error) {
             setFeedbackMessage('Failed to save.')
@@ -898,34 +923,61 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                             )}
                         </div>
                         <div style={{ marginBottom: '1rem' }}>
-                            <label style={{ display: 'block', marginBottom: '0.5rem' }}>Cost Description (Optional)</label>
-                            <input
-                                type="text"
-                                className="form-control"
-                                value={costDescription}
-                                onChange={e => setCostDescription(e.target.value)}
-                                placeholder="e.g., Transportation, Materials, etc."
-                                style={{ width: '100%', padding: '0.5rem', borderRadius: '0.25rem', border: '1px solid #cbd5e1' }}
-                            />
-                        </div>
-                        <div style={{ marginBottom: '1rem' }}>
-                            <label style={{ display: 'block', marginBottom: '0.5rem' }}>Cost Amount (EGP) (Optional)</label>
-                            <input
-                                type="number"
-                                className="form-control"
-                                value={cost}
-                                onChange={e => setCost(e.target.value)}
-                                placeholder="Enter cost in EGP..."
-                                min="0"
-                                step="0.01"
-                                style={{ width: '100%', padding: '0.5rem', borderRadius: '0.25rem', border: '1px solid #cbd5e1' }}
-                            />
+                            <label style={{ display: 'block', marginBottom: '0.5rem' }}>Add Costs</label>
+                            <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                                <input
+                                    type="text"
+                                    className="form-control"
+                                    value={costDescription}
+                                    onChange={e => setCostDescription(e.target.value)}
+                                    placeholder="Description (e.g. Transportation)"
+                                    style={{ flex: 1, padding: '0.5rem', borderRadius: '0.25rem', border: '1px solid #cbd5e1' }}
+                                />
+                                <input
+                                    type="number"
+                                    className="form-control"
+                                    value={cost}
+                                    onChange={e => setCost(e.target.value)}
+                                    placeholder="Amount"
+                                    min="0"
+                                    step="0.01"
+                                    style={{ width: '120px', padding: '0.5rem', borderRadius: '0.25rem', border: '1px solid #cbd5e1' }}
+                                />
+                                <button
+                                    type="button"
+                                    onClick={handleAddCost}
+                                    className="btn"
+                                    style={{ background: '#e0f2fe', color: '#0369a1', border: '1px solid #0ea5e9', fontWeight: 'bold' }}
+                                    disabled={!cost}
+                                >
+                                    Add
+                                </button>
+                            </div>
+                            {/* List of added costs */}
+                            {costEntries.length > 0 && (
+                                <div style={{ background: '#f8fafc', padding: '0.5rem', borderRadius: '0.5rem', border: '1px solid #e2e8f0' }}>
+                                    {costEntries.map((entry, i) => (
+                                        <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.25rem 0', borderBottom: i < costEntries.length - 1 ? '1px solid #e2e8f0' : 'none' }}>
+                                            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                                                <span style={{ fontWeight: '500', color: '#334155' }}>{entry.description || 'No description'}</span>
+                                                <span style={{ color: '#64748b' }}>-</span>
+                                                <span style={{ fontWeight: '600', color: '#9a3412' }}>{entry.amount} EGP</span>
+                                            </div>
+                                            <button
+                                                onClick={() => removeCostEntry(i)}
+                                                style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 'bold' }}
+                                            >
+                                                &times;
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
                         </div>
                         <div style={{ marginBottom: '1rem' }}>
                             <label style={{ display: 'block', marginBottom: '0.5rem' }}>Note (Optional)</label>
                             <textarea
                                 className="form-control"
-                                rows={3}
                                 value={note}
                                 onChange={e => setNote(e.target.value)}
                                 placeholder="Add a note about your work..."

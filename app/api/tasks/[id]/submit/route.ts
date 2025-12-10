@@ -59,7 +59,8 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
             })
         }
 
-        // Add cost to note if provided
+        // Add cost to note if provided (Legacy single cost)
+        let totalAdded = 0
         if (costValue > 0) {
             comments.push({
                 text: `Added cost: ${costValue.toFixed(2)} EGP`,
@@ -69,6 +70,25 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
                 date: new Date().toISOString(),
                 type: 'COST_ADDITION'
             })
+            totalAdded += costValue
+        }
+
+        // Handle multiple costs array
+        if (json.costs && Array.isArray(json.costs)) {
+            for (const c of json.costs) {
+                const cVal = Number(c.amount)
+                if (cVal > 0) {
+                    comments.push({
+                        text: `Added cost: ${cVal.toFixed(2)} EGP`,
+                        description: c.description || `Added cost: ${cVal.toFixed(2)} EGP`,
+                        amount: cVal,
+                        author: (session.user as any).name || 'Employee',
+                        date: new Date().toISOString(),
+                        type: 'COST_ADDITION'
+                    })
+                    totalAdded += cVal
+                }
+            }
         }
 
         // Add location to comments if provided
@@ -90,9 +110,9 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
         }
 
         // Add cost to totalCost if cost > 0 (even for drafts)
-        if (costValue > 0) {
+        if (totalAdded > 0) {
             updateData.totalCost = {
-                increment: costValue
+                increment: totalAdded
             }
         }
 
