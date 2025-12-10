@@ -6,9 +6,10 @@ interface ModalProps {
     onClose: () => void
     title: string
     children: React.ReactNode
+    hideFooter?: boolean
 }
 
-export default function Modal({ isOpen, onClose, title, children }: ModalProps) {
+export default function Modal({ isOpen, onClose, title, children, hideFooter = false }: ModalProps) {
     const modalRef = useRef<HTMLDivElement>(null)
 
     useEffect(() => {
@@ -70,9 +71,11 @@ export default function Modal({ isOpen, onClose, title, children }: ModalProps) 
                     </button>
                 </div>
                 <div>{children}</div>
-                <div style={{ marginTop: '2rem', display: 'flex', justifyContent: 'flex-end' }}>
-                    <button className="btn" onClick={onClose} style={{ background: '#e2e8f0' }}>Close</button>
-                </div>
+                {!hideFooter && (
+                    <div style={{ marginTop: '2rem', display: 'flex', justifyContent: 'flex-end' }}>
+                        <button className="btn" onClick={onClose} style={{ background: '#e2e8f0' }}>Close</button>
+                    </div>
+                )}
             </div>
         </div>
     )

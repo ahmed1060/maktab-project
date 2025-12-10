@@ -44,6 +44,7 @@ model Task {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   isEdited    Boolean  @default(false)
+  isTransfer  Boolean  @default(false)
   paymentStatus String @default("PENDING_PAYMENT") // "PENDING_PAYMENT", "PAID"
   location    String?  // GPS coordinates or address where task was worked on
   lastStatusUpdateBy String? // "Team Leader Ahmed", "Employee Sarah", etc.

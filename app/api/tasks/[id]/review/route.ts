@@ -8,16 +8,23 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
     if (!session) return new NextResponse("Unauthorized", { status: 401 })
 
     const json = await req.json()
-    const { status } = json // APPROVED or REJECTED
+    const { status, difficulty } = json // APPROVED or REJECTED, optional difficulty
     const userId = (session.user as any).id
 
     const result = await prisma.$transaction(async (tx) => {
+        // If difficulty is provided, update it first
+        let taskData: any = {
+            status: status === 'APPROVED' ? 'APPROVED' : 'REJECTED',
+            lastStatusUpdateBy: `${(session.user as any).role} ${(session.user as any).name}`
+        }
+
+        if (typeof difficulty === 'number') {
+            taskData.difficulty = difficulty
+        }
+
         const task = await tx.task.update({
             where: { id: params.id },
-            data: {
-                status: status === 'APPROVED' ? 'COMPLETED' : 'REJECTED',
-                lastStatusUpdateBy: `${(session.user as any).role} ${(session.user as any).name}`
-            },
+            data: taskData,
             include: { assignee: true }
         })
 
@@ -38,7 +45,7 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
             data: {
                 userId: task.assigneeId,
                 type: status === 'APPROVED' ? 'TASK_APPROVED' : 'TASK_REJECTED',
-                message: `Your task "${task.title}" has been ${status === 'APPROVED' ? 'completed' : 'rejected'}`,
+                message: `Your task "${task.title}" has been ${status === 'APPROVED' ? 'approved' : 'rejected'}`,
                 relatedId: task.id
             }
         })
@@ -50,7 +57,7 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
                 entityType: 'TASK',
                 entityId: task.id,
                 userId: userId,
-                details: JSON.stringify({ status })
+                details: JSON.stringify({ status, difficulty })
             }
         })
 

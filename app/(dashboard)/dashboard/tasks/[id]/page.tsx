@@ -33,5 +33,5 @@ export default async function TaskDetailPage({ params }: { params: { id: string 
         }
     }
 
-    return <TaskDetailClient task={task} userRole={(session?.user as any)?.role} userId={(session?.user as any)?.id} creatorName={creatorName} />
+    return <TaskDetailClient task={task} userRole={(session?.user as any)?.role} userId={(session?.user as any)?.id} creatorName={creatorName} currentUserName={(session?.user as any)?.name} />
 }

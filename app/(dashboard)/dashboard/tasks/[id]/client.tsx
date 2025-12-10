@@ -2,8 +2,9 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { formatTaskStatus } from '@/lib/formatStatus'
+import Modal from '@/components/Modal'
 
-export default function TaskDetailClient({ task: initialTask, userRole, userId, creatorName }: { task: any, userRole: string, userId: string, creatorName: string }) {
+export default function TaskDetailClient({ task: initialTask, userRole, userId, creatorName, currentUserName }: { task: any, userRole: string, userId: string, creatorName: string, currentUserName: string }) {
     const [task, setTask] = useState(initialTask)
 
     useEffect(() => {
@@ -27,6 +28,17 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
     const [locationToDelete, setLocationToDelete] = useState<{ date: string } | null>(null)
     const [isEditing, setIsEditing] = useState(false)
+    // Add Transfer State
+    const [isTransferModalOpen, setIsTransferModalOpen] = useState(false)
+    const [transferAssigneeId, setTransferAssigneeId] = useState('')
+    const [transferring, setTransferring] = useState(false)
+
+    // Add Review Modal State (Existing prompt was simple, now we need a custom modal for Difficulty)
+    const [isReviewModalOpen, setIsReviewModalOpen] = useState(false)
+    const [reviewAction, setReviewAction] = useState<'APPROVED' | 'REJECTED' | null>(null)
+    const [reviewDifficulty, setReviewDifficulty] = useState(task.difficulty)
+    const [submittingReview, setSubmittingReview] = useState(false)
+
     const [editForm, setEditForm] = useState({
         title: task.title,
         description: task.description,
@@ -215,7 +227,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                     const res = await fetch('/api/upload', { method: 'POST', body: formData })
                     const data = await res.json()
                     if (data.success) {
-                        uploadedAttachments.push({ name: file.name, url: data.url, type: file.type, uploadedAt: new Date().toISOString() })
+                        uploadedAttachments.push({ name: file.name, url: data.url, type: file.type, uploadedAt: new Date().toISOString(), uploadedBy: currentUserName })
                     } else { throw new Error(`Failed to upload ${file.name}`) }
                 } catch (err) {
                     setFeedbackMessage(`Failed to upload one or more files.`)
@@ -243,14 +255,95 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
         } finally { setUploading(false) }
     }
 
-    const handleApprove = async () => {
-        await fetch(`/api/tasks/${task.id}/review`, { method: 'PUT', body: JSON.stringify({ status: 'APPROVED' }), headers: { 'Content-Type': 'application/json' } })
-        router.refresh()
+    const validateLocations = (): boolean => {
+        if (!task.comments) return true
+        try {
+            const locations = JSON.parse(task.comments).filter((c: any) => c.type === 'LOCATION_ADDED')
+            const unverified = locations.filter((l: any) => !l.verificationStatus)
+            if (unverified.length > 0) {
+                setFeedbackMessage(`Please verify all ${unverified.length} location(s) before proceeding.`)
+                setShowFeedback(true)
+                setTimeout(() => setShowFeedback(false), 4000)
+                return false
+            }
+        } catch (e) { console.error('Error parsing locations', e) }
+        return true
     }
 
-    const handleReject = async () => {
-        await fetch(`/api/tasks/${task.id}/review`, { method: 'PUT', body: JSON.stringify({ status: 'REJECTED' }), headers: { 'Content-Type': 'application/json' } })
-        router.refresh()
+    const isTransferredTask = () => {
+        // Use the new isTransfer database flag (or fallback to comment check for old data)
+        if (task.isTransfer) return true
+        if (!task.comments) return false
+        return task.comments.includes('Task transferred to new employee') || task.comments.includes('Transferred from task')
+    }
+
+    const handleApprove = () => {
+        if (!validateLocations()) return
+        if (isTransferredTask()) {
+            setReviewAction('APPROVED')
+            setReviewDifficulty(task.difficulty)
+            setIsReviewModalOpen(true)
+        } else {
+            submitReview('APPROVED', task.difficulty)
+        }
+    }
+
+    const handleReject = () => {
+        if (!validateLocations()) return
+        if (isTransferredTask()) {
+            setReviewAction('REJECTED')
+            setReviewDifficulty(task.difficulty)
+            setIsReviewModalOpen(true)
+        } else {
+            submitReview('REJECTED', task.difficulty)
+        }
+    }
+
+    const submitReview = async (action: 'APPROVED' | 'REJECTED' | null = reviewAction, difficulty: number = reviewDifficulty) => {
+        if (!action) return
+        setSubmittingReview(true)
+        try {
+            await fetch(`/api/tasks/${task.id}/review`, {
+                method: 'PUT',
+                body: JSON.stringify({ status: action, difficulty: difficulty }),
+                headers: { 'Content-Type': 'application/json' }
+            })
+            setIsReviewModalOpen(false)
+            router.refresh()
+            router.push('/dashboard/tasks')
+        } catch (error) {
+            console.error('Review failed', error)
+        } finally {
+            setSubmittingReview(false)
+        }
+    }
+
+    const handleTransfer = async () => {
+        if (!transferAssigneeId) return
+        setTransferring(true)
+        try {
+            const res = await fetch(`/api/tasks/${task.id}/transfer`, {
+                method: 'POST',
+                body: JSON.stringify({ newAssigneeId: transferAssigneeId }),
+                headers: { 'Content-Type': 'application/json' }
+            })
+            if (res.ok) {
+                setFeedbackMessage('Task transferred successfully!')
+                setShowFeedback(true)
+                setTimeout(() => {
+                    router.push('/dashboard/tasks')
+                    router.refresh()
+                }, 1500)
+            } else {
+                setFeedbackMessage('Transfer failed.')
+                setShowFeedback(true)
+            }
+        } catch (error) {
+            console.error('Transfer error', error)
+        } finally {
+            setTransferring(false)
+            setIsTransferModalOpen(false)
+        }
     }
 
     const handleDelete = async () => {
@@ -374,7 +467,10 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                         <div key={index} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                             <span style={{ fontSize: '1.2rem' }}>📎</span>
                             <a href={att.url} target="_blank" style={{ color: 'blue', textDecoration: 'underline' }}>{att.name || 'Attachment'}</a>
-                            <span style={{ fontSize: '0.8rem', color: '#64748b' }}>({new Date(att.uploadedAt || Date.now()).toLocaleTimeString(undefined, { timeStyle: 'short' }) + ' ' + new Date(att.uploadedAt || Date.now()).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })})</span>
+                            <span style={{ fontSize: '0.8rem', color: '#64748b' }}>
+                                {att.uploadedBy ? `- ${att.uploadedBy} ` : ''}
+                                ({new Date(att.uploadedAt || Date.now()).toLocaleTimeString(undefined, { timeStyle: 'short' }) + ' ' + new Date(att.uploadedAt || Date.now()).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })})
+                            </span>
                         </div>
                     ))) : (<span style={{ color: '#64748b', fontStyle: 'italic' }}>No attachments</span>)}
                 </div>
@@ -803,9 +899,25 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                             </button>
                         </div>
                     </div>
-                )
-            }
+                )}
 
+            {/* Transfer Button (Admins/Team Leaders Only) */}
+            {['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole) && (task.status === 'IN_PROGRESS' || task.status === 'PENDING') && (
+                <div style={{ marginTop: '1rem', textAlign: 'right' }}>
+                    <button
+                        onClick={() => {
+                            // Fetch users if not loaded
+                            if (allUsers.length === 0) {
+                                fetch('/api/users').then(r => r.json()).then(setAllUsers)
+                            }
+                            setIsTransferModalOpen(true)
+                        }}
+                        style={{ background: 'none', border: 'none', color: '#64748b', textDecoration: 'underline', cursor: 'pointer', fontSize: '0.9rem' }}
+                    >
+                        Transfer to another employee
+                    </button>
+                </div>
+            )}
             {/* Feedback Modal */}
             {
                 showFeedback && (
@@ -928,9 +1040,10 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                                         className="input"
                                         value={editForm.assigneeId}
                                         onChange={e => setEditForm({ ...editForm, assigneeId: e.target.value })}
+                                        style={{ width: '100%' }}
                                         required
-                                    >
-                                        <option value="">Select Employee</option>
+                                        disabled
+                                    >    <option value="">Select Employee</option>
                                         {allUsers.map(u => <option key={u.id} value={u.id}>{u.firstName} {u.lastName}</option>)}
                                     </select>
                                 </div>
@@ -974,6 +1087,62 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                     </div>
                 )
             }
+
+            {/* Transfer Modal */}
+            <Modal isOpen={isTransferModalOpen} onClose={() => setIsTransferModalOpen(false)} title="Transfer Task" hideFooter={true}>
+                <div style={{ padding: '0.5rem' }}>
+                    <p style={{ marginBottom: '1rem' }}>Select the employee you want to transfer this task to. The current task will be submitted, and a copy will be created for the new employee.</p>
+                    <select
+                        className="input"
+                        value={transferAssigneeId}
+                        onChange={(e) => setTransferAssigneeId(e.target.value)}
+                        style={{ width: '100%', marginBottom: '1rem' }}
+                    >
+                        <option value="">Select Employee...</option>
+                        {allUsers.filter(u => u.id !== task.assigneeId && u.id !== userId).map(u => (
+                            <option key={u.id} value={u.id}>{u.firstName} {u.lastName} ({u.role})</option>
+                        ))}
+                    </select>
+
+                    <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
+                        <button className="btn" onClick={() => setIsTransferModalOpen(false)}>Cancel</button>
+                        <button className="btn btn-primary" onClick={handleTransfer} disabled={transferring || !transferAssigneeId}>
+                            {transferring ? 'Transferring...' : 'Confirm Transfer'}
+                        </button>
+                    </div>
+                </div>
+            </Modal>
+
+            {/* Review Modal (Difficulty Adjustment) */}
+            <Modal isOpen={isReviewModalOpen} onClose={() => setIsReviewModalOpen(false)} title={`Confirm ${reviewAction === 'APPROVED' ? 'Approval' : 'Rejection'}`} hideFooter={true}>
+                <div style={{ padding: '0.5rem' }}>
+                    <p style={{ marginBottom: '1rem' }}>
+                        You are about to {reviewAction?.toLowerCase()} this task.
+                        Please review and adjust the difficulty points if necessary (e.g., if the task was transferred or split).
+                    </p>
+                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>Difficulty Points</label>
+                    <input
+                        type="number"
+                        className="input"
+                        value={reviewDifficulty}
+                        onChange={(e) => setReviewDifficulty(parseInt(e.target.value) || 0)}
+                        min="0"
+                        max="100"
+                        style={{ width: '100%', marginBottom: '1.5rem' }}
+                    />
+                    <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
+                        <button className="btn" onClick={() => setIsReviewModalOpen(false)}>Cancel</button>
+                        <button
+                            className="btn"
+                            style={{ background: reviewAction === 'APPROVED' ? '#16a34a' : '#dc2626', color: 'white' }}
+                            onClick={() => submitReview()}
+                            disabled={submittingReview}
+                        >
+                            {submittingReview ? 'Processing...' : `Confirm ${reviewAction}`}
+                        </button>
+                    </div>
+                </div>
+            </Modal>
 
             {/* Delete Location Modal */}
             {
