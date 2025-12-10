@@ -23,12 +23,19 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
             return new NextResponse("Deadline cannot be in the past", { status: 400 })
         }
 
-        // Fetch existing comments first
+        // Fetch existing comments and details first
         const existingTask = await prisma.task.findUnique({
             where: { id: params.id },
-            select: { comments: true }
+            select: { comments: true, title: true, description: true }
         })
         const existingComments = existingTask?.comments ? JSON.parse(existingTask.comments) : []
+
+        // Detect changes
+        const changes: any = {}
+        if (existingTask) {
+            if (existingTask.title !== title) changes.title = { from: existingTask.title, to: title }
+            if (existingTask.description !== description) changes.description = { from: existingTask.description, to: description }
+        }
 
         const updateData: any = {
             title,
@@ -41,6 +48,7 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
                 text: "Task details updated",
                 type: "TASK_EDITED",
                 author: `${(session.user as any).role} ${(session.user as any).name}`,
+                changes: changes,
                 date: new Date().toISOString()
             }])
         }

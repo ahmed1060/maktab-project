@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { formatTaskStatus } from '@/lib/formatStatus'
 import Modal from '@/components/Modal'
+import DiffViewer from '@/components/DiffViewer'
 
 export default function TaskDetailClient({ task: initialTask, userRole, userId, creatorName, currentUserName }: { task: any, userRole: string, userId: string, creatorName: string, currentUserName: string }) {
     const [task, setTask] = useState(initialTask)
@@ -28,10 +29,31 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
     const [locationToDelete, setLocationToDelete] = useState<{ date: string } | null>(null)
     const [isEditing, setIsEditing] = useState(false)
-    // Add Transfer State
     const [isTransferModalOpen, setIsTransferModalOpen] = useState(false)
     const [transferAssigneeId, setTransferAssigneeId] = useState('')
     const [transferring, setTransferring] = useState(false)
+
+    // Extract latest changes
+    const latestChanges = (() => {
+        try {
+            const locs = JSON.parse(task.comments || '[]')
+            const lastEdit = [...locs].reverse().find((c: any) => c.type === 'TASK_EDITED')
+            return lastEdit ? lastEdit.changes : null
+        } catch { return null }
+    })()
+
+    const [diffField, setDiffField] = useState<'title' | 'description' | null>(null)
+    const [viewedTitleChange, setViewedTitleChange] = useState(false)
+    const [viewedDescriptionChange, setViewedDescriptionChange] = useState(false)
+    // Persist isEdited state so buttons don't disappear when "I Understand" is clicked
+    const [isEditedPersistent] = useState(initialTask.isEdited)
+
+    // ... (rest of the code)
+
+
+    // ... (rest of the code)
+
+
 
     // Add Review Modal State (Existing prompt was simple, now we need a custom modal for Difficulty)
     const [isReviewModalOpen, setIsReviewModalOpen] = useState(false)
@@ -413,13 +435,9 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                             <p style={{ margin: 0, fontSize: '0.9rem' }}>
                                 The details of this task have been changed by <strong>{(() => {
                                     try {
-                                        // Try to find the latest "Task Edited" system comment
                                         const locs = JSON.parse(task.comments || '[]')
-                                        // Sort by date or just find the last one. Assuming appended chronological.
                                         const lastEdit = [...locs].reverse().find((c: any) => c.type === 'TASK_EDITED')
                                         if (lastEdit && lastEdit.author) return lastEdit.author
-
-                                        // Fallback to "an admin" if no specific record found
                                         return 'an admin'
                                     } catch { return 'an admin' }
                                 })()}</strong>. Please review the new requirements.
@@ -430,9 +448,42 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                 </div>
             )}
 
+            {/* Diff Modal */}
+            <Modal isOpen={!!diffField} onClose={() => setDiffField(null)} title={`${diffField === 'title' ? 'Title' : 'Description'} Changes`}>
+                {diffField && latestChanges && latestChanges[diffField] && (
+                    <div>
+                        <DiffViewer oldText={latestChanges[diffField].from} newText={latestChanges[diffField].to} />
+                    </div>
+                )}
+            </Modal>
+
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                    <h1>{task.title}</h1>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <h1>{task.title}</h1>
+                        {/* Title Diff Button */}
+                        {(task.isEdited || isEditedPersistent) && userId === task.assigneeId && latestChanges?.title && !viewedTitleChange && (
+                            <button
+                                onClick={() => {
+                                    setDiffField('title')
+                                    setViewedTitleChange(true)
+                                }}
+                                style={{
+                                    background: '#ffedd5',
+                                    color: '#9a3412',
+                                    border: '1px solid #fdba74',
+                                    borderRadius: '0.25rem',
+                                    padding: '0.25rem 0.5rem',
+                                    fontSize: '0.75rem',
+                                    cursor: 'pointer',
+                                    fontWeight: 'bold'
+                                }}
+                                title="View Title Changes"
+                            >
+                                Changed
+                            </button>
+                        )}
+                    </div>
                     <span style={{ padding: '0.25rem 0.75rem', borderRadius: '9999px', background: '#3b82f6', color: 'white', fontWeight: 'bold', fontSize: '0.9rem' }}>{task.difficulty} Points</span>
                     <span style={{ padding: '0.5rem', borderRadius: '0.5rem', background: task.status === 'COMPLETED' ? '#e0f2fe' : task.status === 'APPROVED' ? '#dcfce7' : task.status === 'PENDING_CONFIRMATION' ? '#fef9c3' : task.status === 'REJECTED' ? '#fee2e2' : '#e2e8f0', color: task.status === 'COMPLETED' ? '#0369a1' : task.status === 'APPROVED' ? '#166534' : task.status === 'PENDING_CONFIRMATION' ? '#854d0e' : task.status === 'REJECTED' ? '#991b1b' : '#0f172a' }}>{formatTaskStatus(task.status)}</span>
                     {task.totalCost > 0 && (task.status === 'APPROVED' || task.status === 'COMPLETED') && (
@@ -448,7 +499,34 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                     {['ADMIN', 'SUPER_ADMIN'].includes(userRole) && (<button onClick={() => setShowDeleteConfirm(true)} style={{ background: '#fee2e2', color: '#991b1b', border: 'none', borderRadius: '0.25rem', padding: '0.5rem 1rem', cursor: 'pointer' }}>Delete Task</button>)}
                 </div>
             </div>
-            <p style={{ fontSize: '1.1rem', margin: '1rem 0' }}>{task.description}</p>
+
+            <div style={{ marginTop: '1rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                    {/* Description Diff Button */}
+                    {(task.isEdited || isEditedPersistent) && userId === task.assigneeId && latestChanges?.description && !viewedDescriptionChange && (
+                        <button
+                            onClick={() => {
+                                setDiffField('description')
+                                setViewedDescriptionChange(true)
+                            }}
+                            style={{
+                                background: '#ffedd5',
+                                color: '#9a3412',
+                                border: '1px solid #fdba74',
+                                borderRadius: '0.25rem',
+                                padding: '0.1rem 0.5rem',
+                                fontSize: '0.7rem',
+                                cursor: 'pointer',
+                                fontWeight: 'bold'
+                            }}
+                            title="View Description Changes"
+                        >
+                            Changed
+                        </button>
+                    )}
+                </div>
+                <p style={{ fontSize: '1.1rem', margin: 0, whiteSpace: 'pre-wrap' }}>{task.description}</p>
+            </div>
             <div style={{ marginTop: '1rem', color: '#64748b' }}>Assigned by: {creatorName} | Deadline: {new Date(task.deadline).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} {new Date(task.deadline).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })}</div>
 
             {/* Comments Section */}
