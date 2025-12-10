@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import Modal from './Modal'
 
@@ -14,11 +14,18 @@ interface ObligationListItemProps {
             firstName: string
             lastName: string
         }
+        createdAt: Date | string
+        lastStatusUpdateBy?: string
     }
 }
 
 export default function ObligationListItem({ obligation }: ObligationListItemProps) {
     const [isModalOpen, setIsModalOpen] = useState(false)
+    const [mounted, setMounted] = useState(false)
+
+    useEffect(() => {
+        setMounted(true)
+    }, [])
 
     const getButtonLabel = () => {
         if (obligation.status === 'PENDING') return 'Start Obligation'
@@ -43,6 +50,11 @@ export default function ObligationListItem({ obligation }: ObligationListItemPro
                     alignItems: 'center'
                 }}>
                     {obligation.status}
+                    {obligation.lastStatusUpdateBy && obligation.status === 'COMPLETED' && (
+                        <span style={{ marginLeft: '0.25rem', fontSize: '0.65rem', opacity: 0.8 }}>
+                            by {obligation.lastStatusUpdateBy}
+                        </span>
+                    )}
                 </span>
             </div>
 
@@ -65,7 +77,14 @@ export default function ObligationListItem({ obligation }: ObligationListItemPro
 
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1rem' }}>
                 <div style={{ fontSize: '0.875rem', color: '#64748b' }}>
-                    Assignee: {obligation.assignee.firstName} {obligation.assignee.lastName} | Deadline: {new Date(obligation.deadline).toLocaleDateString()}
+                    <div>Assignee: {obligation.assignee.firstName} {obligation.assignee.lastName}</div>
+                    <div style={{ marginTop: '0.25rem' }}>
+                        {mounted && (
+                            <>
+                                Created: {new Date(obligation.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} {new Date(obligation.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })} | Deadline: {new Date(obligation.deadline).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} {new Date(obligation.deadline).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                            </>
+                        )}
+                    </div>
                 </div>
                 <Link href={`/dashboard/obligations/${obligation.id}`} className="btn btn-primary" style={{ textDecoration: 'none', fontSize: '0.875rem' }}>
                     {getButtonLabel()}

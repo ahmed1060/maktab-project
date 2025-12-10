@@ -167,7 +167,7 @@ export default function ObligationDetailClient({ obligation, userRole }: { oblig
             <p style={{ fontSize: '1.1rem', margin: '1rem 0' }}>{obligation.description}</p>
 
             <div style={{ marginTop: '1rem', color: '#64748b' }}>
-                Deadline: {new Date(obligation.deadline).toLocaleDateString()}
+                Deadline: {new Date(obligation.deadline).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} {new Date(obligation.deadline).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })}
             </div>
 
             {/* Existing Attachments */}

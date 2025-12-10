@@ -14,7 +14,10 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
     const result = await prisma.$transaction(async (tx) => {
         const task = await tx.task.update({
             where: { id: params.id },
-            data: { status: status === 'APPROVED' ? 'COMPLETED' : 'REJECTED' },
+            data: {
+                status: status === 'APPROVED' ? 'COMPLETED' : 'REJECTED',
+                lastStatusUpdateBy: `${(session.user as any).role} ${(session.user as any).name}`
+            },
             include: { assignee: true }
         })
 

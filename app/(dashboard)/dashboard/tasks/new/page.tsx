@@ -126,7 +126,15 @@ export default function NewTaskPage() {
                 </div>
                 <div>
                     <label style={{ display: 'block', marginBottom: '0.5rem' }}>Deadline</label>
-                    <input type="date" className="input" value={deadline} onChange={e => setDeadline(e.target.value)} min={todayStr} max="9999-12-31" required />
+                    <input
+                        type="datetime-local"
+                        className="input"
+                        value={deadline}
+                        onChange={e => setDeadline(e.target.value)}
+                        min={new Date().toISOString().slice(0, 16)}
+                        max="9999-12-31T23:59"
+                        required
+                    />
                 </div>
                 <div>
                     <label style={{ display: 'block', marginBottom: '0.5rem' }}>Difficulty</label>

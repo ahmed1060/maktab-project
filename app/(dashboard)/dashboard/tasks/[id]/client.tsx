@@ -343,7 +343,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                 </div>
             </div>
             <p style={{ fontSize: '1.1rem', margin: '1rem 0' }}>{task.description}</p>
-            <div style={{ marginTop: '1rem', color: '#64748b' }}>Assigned by: {creatorName} | Deadline: {new Date(task.deadline).toLocaleDateString()}</div>
+            <div style={{ marginTop: '1rem', color: '#64748b' }}>Assigned by: {creatorName} | Deadline: {new Date(task.deadline).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} {new Date(task.deadline).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })}</div>
 
             {/* Comments Section */}
             {task.comments && (() => {
@@ -925,12 +925,12 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                             <div style={{ marginBottom: '1rem' }}>
                                 <label style={{ display: 'block', marginBottom: '0.5rem' }}>Deadline</label>
                                 <input
-                                    type="date"
+                                    type="datetime-local"
                                     className="input"
-                                    value={editForm.deadline}
+                                    value={editForm.deadline ? new Date(editForm.deadline).toISOString().slice(0, 16) : ''}
                                     onChange={e => setEditForm({ ...editForm, deadline: e.target.value })}
-                                    min={todayStr}
-                                    max="9999-12-31"
+                                    min={new Date().toISOString().slice(0, 16)}
+                                    max="9999-12-31T23:59"
                                     required
                                 />
                             </div>

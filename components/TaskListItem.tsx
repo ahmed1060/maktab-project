@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { formatTaskStatus } from '@/lib/formatStatus'
 import Modal from './Modal'
@@ -16,12 +16,23 @@ interface TaskListItemProps {
             firstName: string
             lastName: string
         }
+        creator?: {
+            firstName: string
+            lastName: string
+        }
+        createdAt: Date | string
+        lastStatusUpdateBy?: string
     }
     currentUserId: string
 }
 
 export default function TaskListItem({ task, currentUserId }: TaskListItemProps) {
     const [isModalOpen, setIsModalOpen] = useState(false)
+    const [mounted, setMounted] = useState(false)
+
+    useEffect(() => {
+        setMounted(true)
+    }, [])
 
     const getButtonLabel = () => {
         if (currentUserId !== task.assigneeId) return 'View Task'
@@ -47,6 +58,11 @@ export default function TaskListItem({ task, currentUserId }: TaskListItemProps)
                     alignItems: 'center'
                 }}>
                     {formatTaskStatus(task.status)}
+                    {task.lastStatusUpdateBy && (task.status === 'APPROVED' || task.status === 'COMPLETED' || task.status === 'REJECTED') && (
+                        <span style={{ marginLeft: '0.25rem', fontSize: '0.65rem', opacity: 0.8 }}>
+                            by {task.lastStatusUpdateBy}
+                        </span>
+                    )}
                 </span>
             </div>
 
@@ -69,7 +85,20 @@ export default function TaskListItem({ task, currentUserId }: TaskListItemProps)
 
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1rem' }}>
                 <div style={{ fontSize: '0.875rem', color: '#64748b' }}>
-                    Assignee: {task.assignee.firstName} {task.assignee.lastName} | Deadline: {new Date(task.deadline).toLocaleDateString()}
+                    <div style={{ marginBottom: '0.25rem' }}>
+                        {currentUserId === task.assigneeId && task.creator ? (
+                            <span>Assigned by: <strong>{task.creator.firstName} {task.creator.lastName}</strong></span>
+                        ) : (
+                            <span>Assignee: {task.assignee.firstName} {task.assignee.lastName}</span>
+                        )}
+                    </div>
+                    <div>
+                        {mounted && (
+                            <>
+                                Created: {new Date(task.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} {new Date(task.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })} | Deadline: {new Date(task.deadline).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} {new Date(task.deadline).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                            </>
+                        )}
+                    </div>
                 </div>
                 <Link href={`/dashboard/tasks/${task.id}`} className="btn btn-primary" style={{ textDecoration: 'none', fontSize: '0.875rem' }}>
                     {getButtonLabel()}

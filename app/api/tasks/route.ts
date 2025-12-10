@@ -20,6 +20,9 @@ export async function GET() {
         include: {
             assignee: {
                 select: { firstName: true, lastName: true, email: true }
+            },
+            creator: {
+                select: { firstName: true, lastName: true }
             }
         },
         orderBy: { deadline: 'asc' }

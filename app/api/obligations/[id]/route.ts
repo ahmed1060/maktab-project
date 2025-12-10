@@ -40,7 +40,8 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
             where: { id: params.id },
             data: {
                 status,
-                attachments: JSON.stringify(finalAttachments)
+                attachments: JSON.stringify(finalAttachments),
+                lastStatusUpdateBy: status === 'COMPLETED' ? `${(session.user as any).role} ${(session.user as any).name}` : currentObligation.lastStatusUpdateBy
             },
             include: { assignee: true }
         })

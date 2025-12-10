@@ -25,6 +25,7 @@ model User {
   notifications Notification[]
   auditLogs     AuditLog[]
   salaryRecords SalaryRecord[]
+  createdTasks Task[]   @relation("CreatedTasks")
 }
 
 model Task {
@@ -37,7 +38,7 @@ model Task {
   totalCost   Float    @default(0) // Total accumulated cost in EGP
   assigneeId  String
   assignee    User     @relation("AssignedTasks", fields: [assigneeId], references: [id])
-  createdBy   String
+  createdBy   String?
   attachments String?  // JSON string
   comments    String?  // JSON string
   createdAt   DateTime @default(now())
@@ -45,6 +46,8 @@ model Task {
   isEdited    Boolean  @default(false)
   paymentStatus String @default("PENDING_PAYMENT") // "PENDING_PAYMENT", "PAID"
   location    String?  // GPS coordinates or address where task was worked on
+  lastStatusUpdateBy String? // "Team Leader Ahmed", "Employee Sarah", etc.
+  creator     User?    @relation("CreatedTasks", fields: [createdBy], references: [id])
 }
 
 
@@ -84,6 +87,7 @@ model Obligation {
   attachments String?  // JSON string for evidence
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  lastStatusUpdateBy String?
 }
 
 model SalaryRecord {
