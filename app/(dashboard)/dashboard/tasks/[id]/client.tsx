@@ -28,6 +28,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
     const [showFeedback, setShowFeedback] = useState(false)
     const [feedbackMessage, setFeedbackMessage] = useState('')
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+    const [showSubmitConfirm, setShowSubmitConfirm] = useState(false)
     const [locationToDelete, setLocationToDelete] = useState<{ date: string } | null>(null)
     const [isEditing, setIsEditing] = useState(false)
     const [isTransferModalOpen, setIsTransferModalOpen] = useState(false)
@@ -96,7 +97,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
         const handleSuspendSave = () => {
             console.log('Suspension detected, auto-saving task draft...')
             // Only auto-save if employee interaction is expected & possible (or if user is the assignee)
-            if ((userRole === 'EMPLOYEE' || userId === task.assigneeId) && task.status !== 'APPROVED' && task.status !== 'COMPLETED' && task.status !== 'PENDING_CONFIRMATION') {
+            if ((userRole === 'EMPLOYEE' || userId === task.assigneeId) && task.status !== 'APPROVED' && task.status !== 'COMPLETED' && task.status !== 'PENDING_CONFIRMATION' && task.status !== 'REJECTED') {
                 handleUpload(true)
             }
         }
@@ -257,14 +258,24 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
         setCostEntries(prev => prev.filter((_, i) => i !== index))
     }
 
-    const handleUpload = async (isDraft: boolean = false) => {
-        // Validate negative cost (current input)
+    const handleUploadRequest = () => {
+        // Validation before showing confirmation
         if (cost && parseFloat(cost) < 0) {
             setFeedbackMessage('Cost cannot be negative. Please enter a valid amount.')
             setShowFeedback(true)
             setTimeout(() => setShowFeedback(false), 3000)
             return
         }
+        setShowSubmitConfirm(true)
+    }
+
+    const handleUpload = async (isDraft: boolean = false) => {
+        // If it's a draft, skip confirmation modal (or reuse it if desired, but user asked for "submit" confirmation mainly)
+        // If it's a submission (isDraft=false) and we haven't confirmed yet (called directly via buttons), we should divert to handleUploadRequest.
+        // However, we will make the Submit button call handleUploadRequest instead.
+
+        // Validation (redundant check for safety)
+        if (cost && parseFloat(cost) < 0) return
 
         setUploading(true)
         const uploadedAttachments: any[] = []
@@ -334,24 +345,16 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
 
     const handleApprove = () => {
         if (!validateLocations()) return
-        if (isTransferredTask()) {
-            setReviewAction('APPROVED')
-            setReviewDifficulty(task.difficulty)
-            setIsReviewModalOpen(true)
-        } else {
-            submitReview('APPROVED', task.difficulty)
-        }
+        setReviewAction('APPROVED')
+        setReviewDifficulty(task.difficulty)
+        setIsReviewModalOpen(true)
     }
 
     const handleReject = () => {
         if (!validateLocations()) return
-        if (isTransferredTask()) {
-            setReviewAction('REJECTED')
-            setReviewDifficulty(task.difficulty)
-            setIsReviewModalOpen(true)
-        } else {
-            submitReview('REJECTED', task.difficulty)
-        }
+        setReviewAction('REJECTED')
+        setReviewDifficulty(task.difficulty)
+        setIsReviewModalOpen(true)
     }
 
     const submitReview = async (action: 'APPROVED' | 'REJECTED' | null = reviewAction, difficulty: number = reviewDifficulty) => {
@@ -427,8 +430,8 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
     }
 
     const handleEditClick = () => {
-        if (['PENDING_CONFIRMATION', 'APPROVED', 'COMPLETED'].includes(task.status)) {
-            setFeedbackMessage('Cannot edit a task that has been submitted or completed.')
+        if (['PENDING_CONFIRMATION', 'APPROVED', 'COMPLETED', 'REJECTED'].includes(task.status)) {
+            setFeedbackMessage('Cannot edit a task that has been submitted, completed or rejected.')
             setShowFeedback(true)
             setTimeout(() => setShowFeedback(false), 3000)
             return
@@ -823,7 +826,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
 
             {/* Submission Form */}
             {
-                (userRole === 'EMPLOYEE' || userId === task.assigneeId) && task.status !== 'APPROVED' && task.status !== 'COMPLETED' && task.status !== 'PENDING_CONFIRMATION' && (
+                (userRole === 'EMPLOYEE' || userId === task.assigneeId) && task.status !== 'APPROVED' && task.status !== 'COMPLETED' && task.status !== 'PENDING_CONFIRMATION' && task.status !== 'REJECTED' && (
                     <div style={{ marginTop: '2rem', borderTop: '1px solid #e2e8f0', paddingTop: '1rem' }}>
                         <h3>Submit Task</h3>
                         <div style={{ marginBottom: '1rem' }}>
@@ -1043,32 +1046,35 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                             </button>
                             <button
                                 className="btn btn-primary"
-                                onClick={() => handleUpload(false)}
+                                onClick={handleUploadRequest}
                                 disabled={uploading}
                             >
                                 {uploading ? 'Uploading...' : 'Submit Task'}
                             </button>
                         </div>
                     </div>
-                )}
+                )
+            }
 
             {/* Transfer Button (Admins/Team Leaders Only) */}
-            {['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole) && (task.status === 'IN_PROGRESS' || task.status === 'PENDING') && (
-                <div style={{ marginTop: '1rem', textAlign: 'right' }}>
-                    <button
-                        onClick={() => {
-                            // Fetch users if not loaded
-                            if (allUsers.length === 0) {
-                                fetch('/api/users').then(r => r.json()).then(setAllUsers)
-                            }
-                            setIsTransferModalOpen(true)
-                        }}
-                        style={{ background: 'none', border: 'none', color: '#64748b', textDecoration: 'underline', cursor: 'pointer', fontSize: '0.9rem' }}
-                    >
-                        Transfer to another employee
-                    </button>
-                </div>
-            )}
+            {
+                ['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole) && (task.status === 'IN_PROGRESS' || task.status === 'PENDING') && (
+                    <div style={{ marginTop: '1rem', textAlign: 'right' }}>
+                        <button
+                            onClick={() => {
+                                // Fetch users if not loaded
+                                if (allUsers.length === 0) {
+                                    fetch('/api/users').then(r => r.json()).then(setAllUsers)
+                                }
+                                setIsTransferModalOpen(true)
+                            }}
+                            style={{ background: 'none', border: 'none', color: '#64748b', textDecoration: 'underline', cursor: 'pointer', fontSize: '0.9rem' }}
+                        >
+                            Transfer to another employee
+                        </button>
+                    </div>
+                )
+            }
             {/* Feedback Modal */}
             {
                 showFeedback && (
@@ -1269,18 +1275,22 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                 <div style={{ padding: '0.5rem' }}>
                     <p style={{ marginBottom: '1rem' }}>
                         You are about to {reviewAction?.toLowerCase()} this task.
-                        Please review and adjust the difficulty points if necessary (e.g., if the task was transferred or split).
+                        {isTransferredTask() ? ' Please confirm the difficulty points.' : ' Are you sure?'}
                     </p>
-                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>Difficulty Points</label>
-                    <input
-                        type="number"
-                        className="input"
-                        value={reviewDifficulty}
-                        onChange={(e) => setReviewDifficulty(parseInt(e.target.value) || 0)}
-                        min="0"
-                        max="100"
-                        style={{ width: '100%', marginBottom: '1.5rem' }}
-                    />
+                    {isTransferredTask() && (
+                        <>
+                            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>Difficulty Points</label>
+                            <input
+                                type="number"
+                                className="input"
+                                value={reviewDifficulty}
+                                onChange={(e) => setReviewDifficulty(parseInt(e.target.value) || 0)}
+                                min="0"
+                                max="100"
+                                style={{ width: '100%', marginBottom: '1.5rem' }}
+                            />
+                        </>
+                    )}
                     <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
                         <button className="btn" onClick={() => setIsReviewModalOpen(false)}>Cancel</button>
                         <button
@@ -1294,6 +1304,35 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                     </div>
                 </div>
             </Modal>
+
+            {/* Submit Confirmation Modal */}
+            {showSubmitConfirm && (
+                <div style={{
+                    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                    background: 'rgba(0, 0, 0, 0.5)', display: 'flex',
+                    alignItems: 'center', justifyContent: 'center', zIndex: 3000
+                }}>
+                    <div className="card" style={{ maxWidth: '400px', width: '90%', padding: '1.5rem', background: 'white', borderRadius: '0.5rem' }}>
+                        <h3>Confirm Submission</h3>
+                        <p>Are you sure you want to submit this task? You won't be able to edit it afterwards.</p>
+                        <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem', justifyContent: 'flex-end' }}>
+                            <button
+                                onClick={() => setShowSubmitConfirm(false)}
+                                className="btn"
+                                style={{ background: '#e2e8f0', color: '#0f172a' }}
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={() => { setShowSubmitConfirm(false); handleUpload(false); }}
+                                className="btn btn-primary"
+                            >
+                                Confirm Submit
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Delete Location Modal */}
             {

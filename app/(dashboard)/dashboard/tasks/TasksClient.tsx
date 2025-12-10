@@ -62,6 +62,7 @@ export default function TasksClient({ tasks, role, currentUserId }: TasksClientP
             case 'smart':
                 // Priority: PENDING_CONFIRMATION (1) -> IN_PROGRESS (2) -> Others (3)
                 const getPriority = (status: string) => {
+                    if (status === 'REJECTED') return 0 // Highest priority: Needs immediate fix
                     if (status === 'PENDING_CONFIRMATION') return 1
                     if (status === 'IN_PROGRESS') return 2
                     return 3
