@@ -17,6 +17,12 @@ export default function AddDeductionPage() {
         setError('')
         setSuccess('')
 
+        if (parseFloat(amount) > 1000) {
+            setError('Deduction cannot exceed 1000 days')
+            setLoading(false)
+            return
+        }
+
         try {
             const res = await fetch(`/api/users/${params.id}/deduction`, {
                 method: 'POST',
@@ -68,6 +74,7 @@ export default function AddDeductionPage() {
                         onChange={e => setAmount(e.target.value)}
                         required
                         min="0"
+                        max="1000"
                         step="0.01"
                         placeholder="e.g. 1"
                         autoFocus
