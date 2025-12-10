@@ -66,7 +66,7 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
             data: {
                 userId: assigneeId, // Notify the (potentially new) assignee
                 type: 'TASK_UPDATED',
-                message: `Task "${title}" details have been updated. Please review.`,
+                message: `Task "${title}" details have been updated by ${(session.user as any).role} ${(session.user as any).name}. Please review.`,
                 relatedId: task.id
             }
         })
