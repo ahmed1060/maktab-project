@@ -410,7 +410,20 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                         <span style={{ fontSize: '1.5rem' }}>⚠️</span>
                         <div>
                             <strong>Task Updated</strong>
-                            <p style={{ margin: 0, fontSize: '0.9rem' }}>The details of this task have been changed by an admin. Please review the new requirements.</p>
+                            <p style={{ margin: 0, fontSize: '0.9rem' }}>
+                                The details of this task have been changed by <strong>{(() => {
+                                    try {
+                                        // Try to find the latest "Task Edited" system comment
+                                        const locs = JSON.parse(task.comments || '[]')
+                                        // Sort by date or just find the last one. Assuming appended chronological.
+                                        const lastEdit = [...locs].reverse().find((c: any) => c.type === 'TASK_EDITED')
+                                        if (lastEdit && lastEdit.author) return lastEdit.author
+
+                                        // Fallback to "an admin" if no specific record found
+                                        return 'an admin'
+                                    } catch { return 'an admin' }
+                                })()}</strong>. Please review the new requirements.
+                            </p>
                         </div>
                     </div>
                     <button onClick={handleDismiss} className="btn" style={{ background: '#ffedd5', color: '#9a3412', border: '1px solid #fdba74' }}>I Understand</button>

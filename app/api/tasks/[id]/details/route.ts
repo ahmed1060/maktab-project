@@ -23,13 +23,26 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
             return new NextResponse("Deadline cannot be in the past", { status: 400 })
         }
 
+        // Fetch existing comments first
+        const existingTask = await prisma.task.findUnique({
+            where: { id: params.id },
+            select: { comments: true }
+        })
+        const existingComments = existingTask?.comments ? JSON.parse(existingTask.comments) : []
+
         const updateData: any = {
             title,
             description,
             assignee: { connect: { id: assigneeId } },
             deadline: new Date(deadline),
             difficulty,
-            isEdited: true
+            isEdited: true,
+            comments: JSON.stringify([...existingComments, {
+                text: "Task details updated",
+                type: "TASK_EDITED",
+                author: `${(session.user as any).role} ${(session.user as any).name}`,
+                date: new Date().toISOString()
+            }])
         }
 
         const task = await prisma.task.update({

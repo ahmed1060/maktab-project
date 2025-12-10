@@ -48,6 +48,7 @@ model Task {
   paymentStatus String @default("PENDING_PAYMENT") // "PENDING_PAYMENT", "PAID"
   location    String?  // GPS coordinates or address where task was worked on
   lastStatusUpdateBy String? // "Team Leader Ahmed", "Employee Sarah", etc.
+  lastEditBy String? // "ADMIN Ahmed", etc.
   creator     User?    @relation("CreatedTasks", fields: [createdBy], references: [id])
 }
 
