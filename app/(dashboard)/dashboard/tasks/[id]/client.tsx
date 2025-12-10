@@ -60,8 +60,8 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
     useEffect(() => {
         const handleSuspendSave = () => {
             console.log('Suspension detected, auto-saving task draft...')
-            // Only auto-save if employee interaction is expected & possible
-            if (userRole === 'EMPLOYEE' && task.status !== 'APPROVED' && task.status !== 'COMPLETED' && task.status !== 'PENDING_CONFIRMATION') {
+            // Only auto-save if employee interaction is expected & possible (or if user is the assignee)
+            if ((userRole === 'EMPLOYEE' || userId === task.assigneeId) && task.status !== 'APPROVED' && task.status !== 'COMPLETED' && task.status !== 'PENDING_CONFIRMATION') {
                 handleUpload(true)
             }
         }
@@ -338,7 +338,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                         <button onClick={() => handlePaymentStatusChange(task.paymentStatus === 'PAID' ? 'PENDING_PAYMENT' : 'PAID')} style={{ background: task.paymentStatus === 'PAID' ? '#fed7aa' : '#d1fae5', color: task.paymentStatus === 'PAID' ? '#9a3412' : '#065f46', border: 'none', borderRadius: '0.25rem', padding: '0.5rem 1rem', cursor: 'pointer', fontSize: '0.875rem', fontWeight: '600' }}>{task.paymentStatus === 'PAID' ? 'Mark as Pending' : 'Mark as Paid'}</button>
                     )}
                     <button onClick={() => router.back()} style={{ background: 'none', border: '1px solid #cbd5e1', borderRadius: '0.25rem', padding: '0.5rem 1rem', cursor: 'pointer', color: '#64748b' }}>Close</button>
-                    {['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole) && (<button onClick={handleEditClick} style={{ background: '#e0f2fe', color: '#0369a1', border: 'none', borderRadius: '0.25rem', padding: '0.5rem 1rem', cursor: 'pointer' }}>Edit Task</button>)}
+                    {['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole) && userId !== task.assigneeId && (<button onClick={handleEditClick} style={{ background: '#e0f2fe', color: '#0369a1', border: 'none', borderRadius: '0.25rem', padding: '0.5rem 1rem', cursor: 'pointer' }}>Edit Task</button>)}
                     {['ADMIN', 'SUPER_ADMIN'].includes(userRole) && (<button onClick={() => setShowDeleteConfirm(true)} style={{ background: '#fee2e2', color: '#991b1b', border: 'none', borderRadius: '0.25rem', padding: '0.5rem 1rem', cursor: 'pointer' }}>Delete Task</button>)}
                 </div>
             </div>
@@ -403,6 +403,24 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                                         <span style={{ fontSize: '0.75rem', color: '#78350f', marginTop: '0.5rem', display: 'block' }}>- {entry.author} ({new Date(entry.date).toLocaleTimeString(undefined, { timeStyle: 'short' }) + ' ' + new Date(entry.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })})</span>
                                     </div>
                                 ))}
+                                {task.totalCost > 0 && (
+                                    <div style={{
+                                        background: '#fef3c7',
+                                        border: '2px solid #f59e0b',
+                                        borderRadius: '0.5rem',
+                                        padding: '1rem',
+                                        marginTop: '2rem',
+                                        marginBottom: '1rem',
+                                        textAlign: 'center'
+                                    }}>
+                                        <div style={{ fontSize: '0.875rem', color: '#92400e', fontWeight: '600', marginBottom: '0.25rem' }}>
+                                            Total Cost
+                                        </div>
+                                        <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#92400e' }}>
+                                            {task.totalCost.toFixed(2)} EGP
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         )
                     }
@@ -411,575 +429,572 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
             })()}
 
             {/* Location History Section (Enhanced) */}
-            {task.comments && (() => {
-                try {
-                    const locationEntries = JSON.parse(task.comments).filter((c: any) => c.type === 'LOCATION_ADDED')
-                    if (locationEntries.length > 0) {
-                        return (
-                            <div style={{ marginTop: '2rem', borderTop: '1px solid #e2e8f0', paddingTop: '1rem' }}>
-                                <h3>Location History</h3>
-                                {locationEntries.map((entry: any, i: number) => {
-                                    // Parse location
-                                    let displayLocation = entry.location
-                                    let googleMapsLink = null
+            {
+                task.comments && (() => {
+                    try {
+                        const locationEntries = JSON.parse(task.comments).filter((c: any) => c.type === 'LOCATION_ADDED')
+                        if (locationEntries.length > 0) {
+                            return (
+                                <div style={{ marginTop: '2rem', borderTop: '1px solid #e2e8f0', paddingTop: '1rem' }}>
+                                    <h3>Location History</h3>
+                                    {locationEntries.map((entry: any, i: number) => {
+                                        // Parse location
+                                        let displayLocation = entry.location
+                                        let googleMapsLink = null
 
-                                    try {
-                                        if (entry.location.startsWith('{')) {
-                                            const locData = JSON.parse(entry.location)
-                                            displayLocation = locData.address || locData.coords
-                                            if (locData.latitude && locData.longitude) {
-                                                googleMapsLink = `https://www.google.com/maps?q=${locData.latitude},${locData.longitude}`
+                                        try {
+                                            if (entry.location.startsWith('{')) {
+                                                const locData = JSON.parse(entry.location)
+                                                displayLocation = locData.address || locData.coords
+                                                if (locData.latitude && locData.longitude) {
+                                                    googleMapsLink = `https://www.google.com/maps?q=${locData.latitude},${locData.longitude}`
+                                                }
                                             }
+                                        } catch (e) {
+                                            displayLocation = entry.location
                                         }
-                                    } catch (e) {
-                                        displayLocation = entry.location
+
+                                        const handleVerify = async (status: 'CORRECT' | 'WRONG') => {
+                                            await fetch(`/api/tasks/${task.id}/locations`, {
+                                                method: 'PUT',
+                                                body: JSON.stringify({ timestamp: entry.date, action: 'VERIFY', verificationStatus: status }),
+                                                headers: { 'Content-Type': 'application/json' }
+                                            })
+                                            router.refresh()
+                                        }
+
+                                        const handleDeleteLocation = () => {
+                                            setLocationToDelete({ date: entry.date })
+                                        }
+
+                                        // Permission Checks
+                                        const canDelete = (userRole === 'EMPLOYEE' || userId === task.assigneeId) && (task.status === 'PENDING' || task.status === 'REJECTED' || task.status === 'IN_PROGRESS')
+                                        const canVerify = ['SUPER_ADMIN', 'ADMIN', 'TEAM_LEADER'].includes(userRole) && task.status === 'PENDING_CONFIRMATION' && userId !== task.assigneeId
+
+                                        return (
+                                            <div key={i} style={{
+                                                marginTop: '0.5rem',
+                                                padding: '0.75rem',
+                                                background: '#f0f9ff',
+                                                borderRadius: '0.5rem',
+                                                border: '1px solid #bae6fd',
+                                                display: 'flex',
+                                                justifyContent: 'space-between',
+                                                alignItems: 'center',
+                                                gap: '1rem'
+                                            }}>
+                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', flex: 1 }}>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                        <span style={{ fontSize: '1.2rem' }}>📍</span>
+                                                        {googleMapsLink ? (
+                                                            <a
+                                                                href={googleMapsLink}
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                                style={{ margin: 0, fontWeight: '500', color: '#0369a1', textDecoration: 'underline' }}
+                                                            >
+                                                                {displayLocation}
+                                                            </a>
+                                                        ) : (
+                                                            <p style={{ margin: 0, fontWeight: '500', color: '#0c4a6e' }}>
+                                                                {displayLocation}
+                                                            </p>
+                                                        )}
+                                                    </div>
+                                                    <div style={{ paddingLeft: '1.7rem' }}>
+                                                        <span style={{ fontSize: '0.75rem', color: '#0369a1' }}>
+                                                            - {entry.author} ({new Date(entry.date).toLocaleTimeString(undefined, { timeStyle: 'short' }) + ' ' + new Date(entry.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })})
+                                                        </span>
+                                                    </div>
+                                                </div>
+
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                    {/* Verification Buttons */}
+                                                    {(canVerify || entry.verificationStatus) && (
+                                                        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                                                            {(canVerify || entry.verificationStatus === 'CORRECT') && (
+                                                                <button
+                                                                    onClick={() => canVerify && handleVerify('CORRECT')}
+                                                                    disabled={!canVerify}
+                                                                    style={{
+                                                                        border: entry.verificationStatus === 'CORRECT' ? '2px solid #16a34a' : '1px solid #cbd5e1',
+                                                                        background: entry.verificationStatus === 'CORRECT' ? '#dcfce7' : 'white',
+                                                                        borderRadius: '50%',
+                                                                        width: '32px',
+                                                                        height: '32px',
+                                                                        cursor: canVerify ? 'pointer' : 'default',
+                                                                        display: (entry.verificationStatus === 'WRONG' && !canVerify) ? 'none' : 'flex',
+                                                                        alignItems: 'center', justifyContent: 'center',
+                                                                        color: '#166534',
+                                                                        transition: 'all 0.2s',
+                                                                    }}
+                                                                    title={canVerify ? "Mark Correct" : "Verified Correct"}
+                                                                >
+                                                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                                                        <polyline points="20 6 9 17 4 12" />
+                                                                    </svg>
+                                                                </button>
+                                                            )}
+
+                                                            {(canVerify || entry.verificationStatus === 'WRONG') && (
+                                                                <button
+                                                                    onClick={() => canVerify && handleVerify('WRONG')}
+                                                                    disabled={!canVerify}
+                                                                    style={{
+                                                                        border: entry.verificationStatus === 'WRONG' ? '2px solid #dc2626' : '1px solid #cbd5e1',
+                                                                        background: entry.verificationStatus === 'WRONG' ? '#fee2e2' : 'white',
+                                                                        borderRadius: '50%',
+                                                                        width: '32px',
+                                                                        height: '32px',
+                                                                        cursor: canVerify ? 'pointer' : 'default',
+                                                                        display: (entry.verificationStatus === 'CORRECT' && !canVerify) ? 'none' : 'flex',
+                                                                        alignItems: 'center', justifyContent: 'center',
+                                                                        color: '#991b1b',
+                                                                        transition: 'all 0.2s',
+                                                                    }}
+                                                                    title={canVerify ? "Mark Wrong" : "Verified Wrong"}
+                                                                >
+                                                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                                                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                                                                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                                                                    </svg>
+                                                                </button>
+                                                            )}
+                                                        </div>
+                                                    )}
+
+                                                    {/* Delete Button */}
+                                                    {canDelete && (
+                                                        <button
+                                                            onClick={handleDeleteLocation}
+                                                            style={{
+                                                                border: 'none',
+                                                                background: 'none',
+                                                                cursor: 'pointer',
+                                                                padding: '4px',
+                                                                borderRadius: '4px',
+                                                                color: '#dc2626',
+                                                                display: 'flex', alignItems: 'center', justifyContent: 'center'
+                                                            }}
+                                                            title="Delete Location"
+                                                        >
+                                                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                                <polyline points="3 6 5 6 21 6"></polyline>
+                                                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                                                            </svg>
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        )
+                                    })}
+                                </div>
+                            )
+                        }
+                    } catch (e) {
+                        return null
+                    }
+                    return null
+                })()
+            }
+
+            {/* Total Cost Box */}
+
+
+            {/* Submission Form */}
+            {
+                (userRole === 'EMPLOYEE' || userId === task.assigneeId) && task.status !== 'APPROVED' && task.status !== 'COMPLETED' && task.status !== 'PENDING_CONFIRMATION' && (
+                    <div style={{ marginTop: '2rem', borderTop: '1px solid #e2e8f0', paddingTop: '1rem' }}>
+                        <h3>Submit Task</h3>
+                        <div style={{ marginBottom: '1rem' }}>
+                            <label style={{ display: 'block', marginBottom: '0.5rem' }}>Attachments (Optional)</label>
+                            <div
+                                onDragOver={(e) => { e.preventDefault(); setIsDragging(true) }}
+                                onDragLeave={(e) => { e.preventDefault(); setIsDragging(false) }}
+                                onDrop={(e) => {
+                                    e.preventDefault()
+                                    setIsDragging(false)
+                                    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                                        handleFiles(Array.from(e.dataTransfer.files))
                                     }
+                                }}
+                                style={{
+                                    border: `2px dashed ${isDragging ? '#3b82f6' : '#cbd5e1'}`,
+                                    borderRadius: '0.5rem',
+                                    padding: '2rem',
+                                    textAlign: 'center',
+                                    background: isDragging ? '#eff6ff' : '#f8fafc',
+                                    transition: 'all 0.2s ease',
+                                    cursor: 'pointer',
+                                    position: 'relative'
+                                }}
+                            >
+                                <input
+                                    key={inputKey}
+                                    type="file"
+                                    multiple
+                                    accept=".jpg,.jpeg,.png,.gif,.webp,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx"
+                                    onChange={(e) => {
+                                        if (e.target.files) handleFiles(Array.from(e.target.files))
+                                    }}
+                                    disabled={uploading}
+                                    style={{
+                                        opacity: 0,
+                                        position: 'absolute',
+                                        top: 0,
+                                        left: 0,
+                                        width: '100%',
+                                        height: '100%',
+                                        cursor: 'pointer'
+                                    }}
+                                />
+                                <div style={{ pointerEvents: 'none' }}>
+                                    <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>☁️</div>
+                                    <p style={{ margin: 0, fontWeight: '600', color: '#475569' }}>
+                                        Click or drag files here to upload
+                                    </p>
+                                    <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.8rem', color: '#94a3b8' }}>
+                                        Images, PDF, Office (Max 10MB)
+                                    </p>
+                                </div>
+                            </div>
 
-                                    const handleVerify = async (status: 'CORRECT' | 'WRONG') => {
-                                        await fetch(`/api/tasks/${task.id}/locations`, {
-                                            method: 'PUT',
-                                            body: JSON.stringify({ timestamp: entry.date, action: 'VERIFY', verificationStatus: status }),
-                                            headers: { 'Content-Type': 'application/json' }
-                                        })
-                                        router.refresh()
-                                    }
-
-                                    const handleDeleteLocation = () => {
-                                        setLocationToDelete({ date: entry.date })
-                                    }
-
-                                    // Permission Checks
-                                    const canDelete = userRole === 'EMPLOYEE' && (task.status === 'PENDING' || task.status === 'REJECTED' || task.status === 'IN_PROGRESS')
-                                    const canVerify = ['SUPER_ADMIN', 'ADMIN', 'TEAM_LEADER'].includes(userRole) && task.status === 'PENDING_CONFIRMATION'
-
-                                    return (
+                            {/* List of pending files */}
+                            {pendingFiles.length > 0 && (
+                                <div style={{ marginTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                    {pendingFiles.map((file, i) => (
                                         <div key={i} style={{
-                                            marginTop: '0.5rem',
-                                            padding: '0.75rem',
-                                            background: '#f0f9ff',
-                                            borderRadius: '0.5rem',
-                                            border: '1px solid #bae6fd',
                                             display: 'flex',
                                             justifyContent: 'space-between',
                                             alignItems: 'center',
-                                            gap: '1rem'
+                                            padding: '0.75rem',
+                                            background: 'white',
+                                            border: '1px solid #e2e8f0',
+                                            borderRadius: '0.5rem',
+                                            boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)'
                                         }}>
-                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', flex: 1 }}>
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                                    <span style={{ fontSize: '1.2rem' }}>📍</span>
-                                                    {googleMapsLink ? (
-                                                        <a
-                                                            href={googleMapsLink}
-                                                            target="_blank"
-                                                            rel="noopener noreferrer"
-                                                            style={{ margin: 0, fontWeight: '500', color: '#0369a1', textDecoration: 'underline' }}
-                                                        >
-                                                            {displayLocation}
-                                                        </a>
-                                                    ) : (
-                                                        <p style={{ margin: 0, fontWeight: '500', color: '#0c4a6e' }}>
-                                                            {displayLocation}
-                                                        </p>
-                                                    )}
-                                                </div>
-                                                <div style={{ paddingLeft: '1.7rem' }}>
-                                                    <span style={{ fontSize: '0.75rem', color: '#0369a1' }}>
-                                                        - {entry.author} ({new Date(entry.date).toLocaleTimeString(undefined, { timeStyle: 'short' }) + ' ' + new Date(entry.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })})
-                                                    </span>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                                <span style={{ fontSize: '1.2rem' }}>📄</span>
+                                                <div>
+                                                    <div style={{ fontSize: '0.9rem', fontWeight: '500', color: '#334155' }}>{file.name}</div>
+                                                    <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>{(file.size / 1024 / 1024).toFixed(2)} MB</div>
                                                 </div>
                                             </div>
-
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                                {/* Verification Buttons */}
-                                                {(canVerify || entry.verificationStatus) && (
-                                                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                                                        {(canVerify || entry.verificationStatus === 'CORRECT') && (
-                                                            <button
-                                                                onClick={() => canVerify && handleVerify('CORRECT')}
-                                                                disabled={!canVerify}
-                                                                style={{
-                                                                    border: entry.verificationStatus === 'CORRECT' ? '2px solid #16a34a' : '1px solid #cbd5e1',
-                                                                    background: entry.verificationStatus === 'CORRECT' ? '#dcfce7' : 'white',
-                                                                    borderRadius: '50%',
-                                                                    width: '32px',
-                                                                    height: '32px',
-                                                                    cursor: canVerify ? 'pointer' : 'default',
-                                                                    display: (entry.verificationStatus === 'WRONG' && !canVerify) ? 'none' : 'flex',
-                                                                    alignItems: 'center', justifyContent: 'center',
-                                                                    color: '#166534',
-                                                                    transition: 'all 0.2s',
-                                                                }}
-                                                                title={canVerify ? "Mark Correct" : "Verified Correct"}
-                                                            >
-                                                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                                                    <polyline points="20 6 9 17 4 12" />
-                                                                </svg>
-                                                            </button>
-                                                        )}
-
-                                                        {(canVerify || entry.verificationStatus === 'WRONG') && (
-                                                            <button
-                                                                onClick={() => canVerify && handleVerify('WRONG')}
-                                                                disabled={!canVerify}
-                                                                style={{
-                                                                    border: entry.verificationStatus === 'WRONG' ? '2px solid #dc2626' : '1px solid #cbd5e1',
-                                                                    background: entry.verificationStatus === 'WRONG' ? '#fee2e2' : 'white',
-                                                                    borderRadius: '50%',
-                                                                    width: '32px',
-                                                                    height: '32px',
-                                                                    cursor: canVerify ? 'pointer' : 'default',
-                                                                    display: (entry.verificationStatus === 'CORRECT' && !canVerify) ? 'none' : 'flex',
-                                                                    alignItems: 'center', justifyContent: 'center',
-                                                                    color: '#991b1b',
-                                                                    transition: 'all 0.2s',
-                                                                }}
-                                                                title={canVerify ? "Mark Wrong" : "Verified Wrong"}
-                                                            >
-                                                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                                                    <line x1="18" y1="6" x2="6" y2="18"></line>
-                                                                    <line x1="6" y1="6" x2="18" y2="18"></line>
-                                                                </svg>
-                                                            </button>
-                                                        )}
-                                                    </div>
-                                                )}
-
-                                                {/* Delete Button */}
-                                                {canDelete && (
-                                                    <button
-                                                        onClick={handleDeleteLocation}
-                                                        style={{
-                                                            border: 'none',
-                                                            background: 'none',
-                                                            cursor: 'pointer',
-                                                            padding: '4px',
-                                                            borderRadius: '4px',
-                                                            color: '#dc2626',
-                                                            display: 'flex', alignItems: 'center', justifyContent: 'center'
-                                                        }}
-                                                        title="Delete Location"
-                                                    >
-                                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                                            <polyline points="3 6 5 6 21 6"></polyline>
-                                                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                                                        </svg>
-                                                    </button>
-                                                )}
-                                            </div>
+                                            <button
+                                                onClick={() => removePendingFile(i)}
+                                                style={{
+                                                    color: '#ef4444',
+                                                    background: '#fef2f2',
+                                                    border: 'none',
+                                                    borderRadius: '0.25rem',
+                                                    padding: '0.25rem 0.5rem',
+                                                    cursor: 'pointer',
+                                                    fontSize: '0.875rem',
+                                                    fontWeight: '500',
+                                                    transition: 'background 0.2s'
+                                                }}
+                                                disabled={uploading}
+                                            >
+                                                Remove
+                                            </button>
                                         </div>
-                                    )
-                                })}
-                            </div>
-                        )
-                    }
-                } catch (e) {
-                    return null
-                }
-                return null
-            })()}
-
-            {/* Total Cost Box */}
-            {task.totalCost > 0 && (
-                <div style={{
-                    background: '#fef3c7',
-                    border: '2px solid #f59e0b',
-                    borderRadius: '0.5rem',
-                    padding: '1rem',
-                    marginTop: '2rem',
-                    marginBottom: '1rem',
-                    textAlign: 'center'
-                }}>
-                    <div style={{ fontSize: '0.875rem', color: '#92400e', fontWeight: '600', marginBottom: '0.25rem' }}>
-                        Total Cost
-                    </div>
-                    <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#92400e' }}>
-                        {task.totalCost.toFixed(2)} EGP
-                    </div>
-                </div>
-            )}
-
-            {/* Submission Form */}
-            {userRole === 'EMPLOYEE' && task.status !== 'APPROVED' && task.status !== 'COMPLETED' && task.status !== 'PENDING_CONFIRMATION' && (
-                <div style={{ marginTop: '2rem', borderTop: '1px solid #e2e8f0', paddingTop: '1rem' }}>
-                    <h3>Submit Task</h3>
-                    <div style={{ marginBottom: '1rem' }}>
-                        <label style={{ display: 'block', marginBottom: '0.5rem' }}>Attachments (Optional)</label>
-                        <div
-                            onDragOver={(e) => { e.preventDefault(); setIsDragging(true) }}
-                            onDragLeave={(e) => { e.preventDefault(); setIsDragging(false) }}
-                            onDrop={(e) => {
-                                e.preventDefault()
-                                setIsDragging(false)
-                                if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-                                    handleFiles(Array.from(e.dataTransfer.files))
-                                }
-                            }}
-                            style={{
-                                border: `2px dashed ${isDragging ? '#3b82f6' : '#cbd5e1'}`,
-                                borderRadius: '0.5rem',
-                                padding: '2rem',
-                                textAlign: 'center',
-                                background: isDragging ? '#eff6ff' : '#f8fafc',
-                                transition: 'all 0.2s ease',
-                                cursor: 'pointer',
-                                position: 'relative'
-                            }}
-                        >
-                            <input
-                                key={inputKey}
-                                type="file"
-                                multiple
-                                accept=".jpg,.jpeg,.png,.gif,.webp,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx"
-                                onChange={(e) => {
-                                    if (e.target.files) handleFiles(Array.from(e.target.files))
-                                }}
-                                disabled={uploading}
-                                style={{
-                                    opacity: 0,
-                                    position: 'absolute',
-                                    top: 0,
-                                    left: 0,
-                                    width: '100%',
-                                    height: '100%',
-                                    cursor: 'pointer'
-                                }}
-                            />
-                            <div style={{ pointerEvents: 'none' }}>
-                                <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>☁️</div>
-                                <p style={{ margin: 0, fontWeight: '600', color: '#475569' }}>
-                                    Click or drag files here to upload
-                                </p>
-                                <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.8rem', color: '#94a3b8' }}>
-                                    Images, PDF, Office (Max 10MB)
-                                </p>
-                            </div>
-                        </div>
-
-                        {/* List of pending files */}
-                        {pendingFiles.length > 0 && (
-                            <div style={{ marginTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                                {pendingFiles.map((file, i) => (
-                                    <div key={i} style={{
-                                        display: 'flex',
-                                        justifyContent: 'space-between',
-                                        alignItems: 'center',
-                                        padding: '0.75rem',
-                                        background: 'white',
-                                        border: '1px solid #e2e8f0',
-                                        borderRadius: '0.5rem',
-                                        boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)'
-                                    }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                                            <span style={{ fontSize: '1.2rem' }}>📄</span>
-                                            <div>
-                                                <div style={{ fontSize: '0.9rem', fontWeight: '500', color: '#334155' }}>{file.name}</div>
-                                                <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>{(file.size / 1024 / 1024).toFixed(2)} MB</div>
-                                            </div>
-                                        </div>
-                                        <button
-                                            onClick={() => removePendingFile(i)}
-                                            style={{
-                                                color: '#ef4444',
-                                                background: '#fef2f2',
-                                                border: 'none',
-                                                borderRadius: '0.25rem',
-                                                padding: '0.25rem 0.5rem',
-                                                cursor: 'pointer',
-                                                fontSize: '0.875rem',
-                                                fontWeight: '500',
-                                                transition: 'background 0.2s'
-                                            }}
-                                            disabled={uploading}
-                                        >
-                                            Remove
-                                        </button>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-                    </div>
-                    <div style={{ marginBottom: '1rem' }}>
-                        <label style={{ display: 'block', marginBottom: '0.5rem' }}>Cost Description (Optional)</label>
-                        <input
-                            type="text"
-                            className="form-control"
-                            value={costDescription}
-                            onChange={e => setCostDescription(e.target.value)}
-                            placeholder="e.g., Transportation, Materials, etc."
-                            style={{ width: '100%', padding: '0.5rem', borderRadius: '0.25rem', border: '1px solid #cbd5e1' }}
-                        />
-                    </div>
-                    <div style={{ marginBottom: '1rem' }}>
-                        <label style={{ display: 'block', marginBottom: '0.5rem' }}>Cost Amount (EGP) (Optional)</label>
-                        <input
-                            type="number"
-                            className="form-control"
-                            value={cost}
-                            onChange={e => setCost(e.target.value)}
-                            placeholder="Enter cost in EGP..."
-                            min="0"
-                            step="0.01"
-                            style={{ width: '100%', padding: '0.5rem', borderRadius: '0.25rem', border: '1px solid #cbd5e1' }}
-                        />
-                    </div>
-                    <div style={{ marginBottom: '1rem' }}>
-                        <label style={{ display: 'block', marginBottom: '0.5rem' }}>Note (Optional)</label>
-                        <textarea
-                            className="form-control"
-                            rows={3}
-                            value={note}
-                            onChange={e => setNote(e.target.value)}
-                            placeholder="Add a note about your work..."
-                            id="submission-note"
-                            style={{ width: '100%', padding: '0.5rem', borderRadius: '0.25rem', border: '1px solid #cbd5e1' }}
-                            maxLength={500}
-                        />
-                        <div style={{ fontSize: '0.75rem', color: note.length >= 500 ? '#ef4444' : '#94a3b8', textAlign: 'right', marginTop: '0.25rem' }}>
-                            {note.length}/500
-                        </div>
-                    </div>
-                    <div style={{ marginBottom: '1rem' }}>
-                        <label style={{ display: 'block', marginBottom: '0.5rem' }}>Current Location</label>
-                        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-start' }}>
-                            <button
-                                type="button"
-                                onClick={handleCaptureLocation}
-                                disabled={uploading || capturingLocation}
-                                style={{
-                                    padding: '0.5rem 1rem',
-                                    borderRadius: '0.25rem',
-                                    border: '1px solid #cbd5e1',
-                                    background: capturingLocation ? '#e2e8f0' : '#3b82f6',
-                                    color: capturingLocation ? '#64748b' : 'white',
-                                    cursor: capturingLocation || uploading ? 'not-allowed' : 'pointer',
-                                    fontSize: '0.875rem',
-                                    fontWeight: '600'
-                                }}
-                            >
-                                {capturingLocation ? '📍 Capturing...' : '📍 Capture Location'}
-                            </button>
-                            {locationStatus && (
-                                <span style={{
-                                    fontSize: '0.875rem',
-                                    color: locationStatus.includes('✓') ? '#16a34a' : locationStatus.includes('Failed') ? '#dc2626' : '#64748b',
-                                    alignSelf: 'center'
-                                }}>
-                                    {locationStatus}
-                                </span>
+                                    ))}
+                                </div>
                             )}
                         </div>
-                        {location && (
-                            <div style={{
-                                marginTop: '0.5rem',
-                                padding: '0.5rem',
-                                background: '#f1f5f9',
-                                borderRadius: '0.25rem',
-                                fontSize: '0.875rem',
-                                color: '#475569'
-                            }}>
-                                📍 {location}
+                        <div style={{ marginBottom: '1rem' }}>
+                            <label style={{ display: 'block', marginBottom: '0.5rem' }}>Cost Description (Optional)</label>
+                            <input
+                                type="text"
+                                className="form-control"
+                                value={costDescription}
+                                onChange={e => setCostDescription(e.target.value)}
+                                placeholder="e.g., Transportation, Materials, etc."
+                                style={{ width: '100%', padding: '0.5rem', borderRadius: '0.25rem', border: '1px solid #cbd5e1' }}
+                            />
+                        </div>
+                        <div style={{ marginBottom: '1rem' }}>
+                            <label style={{ display: 'block', marginBottom: '0.5rem' }}>Cost Amount (EGP) (Optional)</label>
+                            <input
+                                type="number"
+                                className="form-control"
+                                value={cost}
+                                onChange={e => setCost(e.target.value)}
+                                placeholder="Enter cost in EGP..."
+                                min="0"
+                                step="0.01"
+                                style={{ width: '100%', padding: '0.5rem', borderRadius: '0.25rem', border: '1px solid #cbd5e1' }}
+                            />
+                        </div>
+                        <div style={{ marginBottom: '1rem' }}>
+                            <label style={{ display: 'block', marginBottom: '0.5rem' }}>Note (Optional)</label>
+                            <textarea
+                                className="form-control"
+                                rows={3}
+                                value={note}
+                                onChange={e => setNote(e.target.value)}
+                                placeholder="Add a note about your work..."
+                                id="submission-note"
+                                style={{ width: '100%', padding: '0.5rem', borderRadius: '0.25rem', border: '1px solid #cbd5e1' }}
+                                maxLength={500}
+                            />
+                            <div style={{ fontSize: '0.75rem', color: note.length >= 500 ? '#ef4444' : '#94a3b8', textAlign: 'right', marginTop: '0.25rem' }}>
+                                {note.length}/500
                             </div>
-                        )}
-                    </div>
-                    <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
-                        <button
-                            className="btn"
-                            style={{ background: '#e2e8f0', color: '#0f172a' }}
-                            onClick={() => handleUpload(true)}
-                            disabled={uploading}
-                        >
-                            {uploading ? 'Saving...' : 'Save Draft'}
-                        </button>
-                        <button
-                            className="btn btn-primary"
-                            onClick={() => handleUpload(false)}
-                            disabled={uploading}
-                        >
-                            {uploading ? 'Uploading...' : 'Submit Task'}
-                        </button>
-                    </div>
-                </div>
-            )}
-
-            {/* Feedback Modal */}
-            {showFeedback && (
-                <div style={{
-                    position: 'fixed',
-                    top: '20px',
-                    right: '20px',
-                    background: 'white',
-                    padding: '1rem',
-                    borderRadius: '0.5rem',
-                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
-                    zIndex: 2000,
-                    borderLeft: '4px solid #22c55e',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '1rem'
-                }}>
-                    <span>{feedbackMessage}</span>
-                    <button onClick={() => setShowFeedback(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.2rem' }}>&times;</button>
-                </div>
-            )}
-
-            {['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole) && task.status === 'PENDING_CONFIRMATION' && (
-                <div style={{ marginTop: '2rem', display: 'flex', gap: '1rem' }}>
-                    <button className="btn btn-primary" onClick={handleApprove}>Approve</button>
-                    <button className="btn" style={{ background: 'red', color: 'white' }} onClick={handleReject}>Reject</button>
-                </div>
-            )}
-
-            {/* Delete Confirmation Modal (Task) */}
-            {showDeleteConfirm && (
-                <div style={{
-                    position: 'fixed',
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    background: 'rgba(0, 0, 0, 0.5)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    zIndex: 3000
-                }}>
-                    <div className="card" style={{ maxWidth: '400px', width: '100%', padding: '1.5rem' }}>
-                        <h3>Delete Task</h3>
-                        <p>Are you sure you want to delete this task? This action cannot be undone.</p>
-                        <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem' }}>
+                        </div>
+                        <div style={{ marginBottom: '1rem' }}>
+                            <label style={{ display: 'block', marginBottom: '0.5rem' }}>Current Location</label>
+                            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-start' }}>
+                                <button
+                                    type="button"
+                                    onClick={handleCaptureLocation}
+                                    disabled={uploading || capturingLocation}
+                                    style={{
+                                        padding: '0.5rem 1rem',
+                                        borderRadius: '0.25rem',
+                                        border: '1px solid #cbd5e1',
+                                        background: capturingLocation ? '#e2e8f0' : '#3b82f6',
+                                        color: capturingLocation ? '#64748b' : 'white',
+                                        cursor: capturingLocation || uploading ? 'not-allowed' : 'pointer',
+                                        fontSize: '0.875rem',
+                                        fontWeight: '600'
+                                    }}
+                                >
+                                    {capturingLocation ? '📍 Capturing...' : '📍 Capture Location'}
+                                </button>
+                                {locationStatus && (
+                                    <span style={{
+                                        fontSize: '0.875rem',
+                                        color: locationStatus.includes('✓') ? '#16a34a' : locationStatus.includes('Failed') ? '#dc2626' : '#64748b',
+                                        alignSelf: 'center'
+                                    }}>
+                                        {locationStatus}
+                                    </span>
+                                )}
+                            </div>
+                            {location && (
+                                <div style={{
+                                    marginTop: '0.5rem',
+                                    padding: '0.5rem',
+                                    background: '#f1f5f9',
+                                    borderRadius: '0.25rem',
+                                    fontSize: '0.875rem',
+                                    color: '#475569'
+                                }}>
+                                    📍 {location}
+                                </div>
+                            )}
+                        </div>
+                        <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
                             <button
-                                onClick={handleDelete}
                                 className="btn"
-                                style={{ background: '#991b1b', color: 'white', flex: 1 }}
+                                style={{ background: '#e2e8f0', color: '#0f172a' }}
+                                onClick={() => handleUpload(true)}
+                                disabled={uploading}
                             >
-                                Delete
+                                {uploading ? 'Saving...' : 'Save Draft'}
                             </button>
                             <button
-                                onClick={() => setShowDeleteConfirm(false)}
-                                className="btn"
-                                style={{ background: '#e2e8f0', color: '#0f172a', flex: 1 }}
+                                className="btn btn-primary"
+                                onClick={() => handleUpload(false)}
+                                disabled={uploading}
                             >
-                                Cancel
+                                {uploading ? 'Uploading...' : 'Submit Task'}
                             </button>
                         </div>
                     </div>
-                </div>
-            )}
+                )
+            }
 
-            {/* Edit Modal */}
-            {isEditing && (
-                <div style={{
-                    position: 'fixed',
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    background: 'rgba(0, 0, 0, 0.5)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    zIndex: 3000
-                }}>
-                    <div className="card" style={{ width: '100%', maxWidth: '600px', padding: '1.5rem', maxHeight: '90vh', overflowY: 'auto' }}>
-                        <h2 style={{ marginTop: 0, marginBottom: '1.5rem' }}>Edit Task Details</h2>
-                        <form onSubmit={handleSaveDetails}>
-                            <div style={{ marginBottom: '1rem' }}>
-                                <label style={{ display: 'block', marginBottom: '0.5rem' }}>Title</label>
-                                <input
-                                    className="input"
-                                    value={editForm.title}
-                                    onChange={e => setEditForm({ ...editForm, title: e.target.value })}
-                                    required
-                                    maxLength={100}
-                                />
-                                <div style={{ fontSize: '0.75rem', color: editForm.title.length >= 100 ? '#ef4444' : '#94a3b8', textAlign: 'right', marginTop: '0.25rem' }}>
-                                    {editForm.title.length}/100
-                                </div>
-                            </div>
-                            <div style={{ marginBottom: '1rem' }}>
-                                <label style={{ display: 'block', marginBottom: '0.5rem' }}>Description</label>
-                                <textarea
-                                    className="input"
-                                    value={editForm.description}
-                                    onChange={e => setEditForm({ ...editForm, description: e.target.value })}
-                                    rows={4}
-                                    required
-                                    maxLength={500}
-                                />
-                                <div style={{ fontSize: '0.75rem', color: editForm.description.length >= 500 ? '#ef4444' : '#94a3b8', textAlign: 'right', marginTop: '0.25rem' }}>
-                                    {editForm.description.length}/500
-                                </div>
-                            </div>
-                            <div style={{ marginBottom: '1rem' }}>
-                                <label style={{ display: 'block', marginBottom: '0.5rem' }}>Assignee</label>
-                                <select
-                                    className="input"
-                                    value={editForm.assigneeId}
-                                    onChange={e => setEditForm({ ...editForm, assigneeId: e.target.value })}
-                                    required
-                                >
-                                    <option value="">Select Employee</option>
-                                    {allUsers.map(u => <option key={u.id} value={u.id}>{u.firstName} {u.lastName}</option>)}
-                                </select>
-                            </div>
-                            <div style={{ marginBottom: '1rem' }}>
-                                <label style={{ display: 'block', marginBottom: '0.5rem' }}>Deadline</label>
-                                <input
-                                    type="datetime-local"
-                                    className="input"
-                                    value={editForm.deadline ? new Date(editForm.deadline).toISOString().slice(0, 16) : ''}
-                                    onChange={e => setEditForm({ ...editForm, deadline: e.target.value })}
-                                    min={new Date().toISOString().slice(0, 16)}
-                                    max="9999-12-31T23:59"
-                                    required
-                                />
-                            </div>
-                            <div style={{ marginBottom: '1rem' }}>
-                                <label style={{ display: 'block', marginBottom: '0.5rem' }}>Difficulty</label>
-                                <input
-                                    type="number"
-                                    className="input"
-                                    value={editForm.difficulty}
-                                    onChange={e => setEditForm({ ...editForm, difficulty: parseInt(e.target.value) || 0 })}
-                                    min="0"
-                                    max="10"
-                                    required
-                                />
-                            </div>
-                            <div style={{ display: 'flex', gap: '1rem' }}>
-                                <button type="submit" className="btn btn-primary">Save Changes</button>
+            {/* Feedback Modal */}
+            {
+                showFeedback && (
+                    <div style={{
+                        position: 'fixed',
+                        top: '20px',
+                        right: '20px',
+                        background: 'white',
+                        padding: '1rem',
+                        borderRadius: '0.5rem',
+                        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+                        zIndex: 2000,
+                        borderLeft: '4px solid #22c55e',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '1rem'
+                    }}>
+                        <span>{feedbackMessage}</span>
+                        <button onClick={() => setShowFeedback(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.2rem' }}>&times;</button>
+                    </div>
+                )
+            }
+
+            {
+                ['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole) && task.status === 'PENDING_CONFIRMATION' && userId !== task.assigneeId && (
+                    <div style={{ marginTop: '2rem', display: 'flex', gap: '1rem' }}>
+                        <button className="btn btn-primary" onClick={handleApprove}>Approve</button>
+                        <button className="btn" style={{ background: 'red', color: 'white' }} onClick={handleReject}>Reject</button>
+                    </div>
+                )
+            }
+
+            {/* Delete Confirmation Modal (Task) */}
+            {
+                showDeleteConfirm && (
+                    <div style={{
+                        position: 'fixed',
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        background: 'rgba(0, 0, 0, 0.5)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        zIndex: 3000
+                    }}>
+                        <div className="card" style={{ maxWidth: '400px', width: '100%', padding: '1.5rem' }}>
+                            <h3>Delete Task</h3>
+                            <p>Are you sure you want to delete this task? This action cannot be undone.</p>
+                            <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem' }}>
                                 <button
-                                    type="button"
+                                    onClick={handleDelete}
                                     className="btn"
-                                    style={{ background: '#e2e8f0', color: '#0f172a' }}
-                                    onClick={() => setIsEditing(false)}
+                                    style={{ background: '#991b1b', color: 'white', flex: 1 }}
+                                >
+                                    Delete
+                                </button>
+                                <button
+                                    onClick={() => setShowDeleteConfirm(false)}
+                                    className="btn"
+                                    style={{ background: '#e2e8f0', color: '#0f172a', flex: 1 }}
                                 >
                                     Cancel
                                 </button>
                             </div>
-                        </form>
-                    </div>
-                </div>
-            )}
-
-            {/* Delete Location Modal */}
-            {locationToDelete && (
-                <div style={{
-                    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-                    background: 'rgba(0, 0, 0, 0.5)', display: 'flex',
-                    alignItems: 'center', justifyContent: 'center', zIndex: 3000
-                }}>
-                    <div className="card" style={{ maxWidth: '400px', padding: '1.5rem', background: 'white', borderRadius: '0.5rem' }}>
-                        <h3 style={{ marginTop: 0 }}>Delete Location</h3>
-                        <p>Are you sure you want to delete this location?</p>
-                        <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem' }}>
-                            <button onClick={confirmDeleteLocation} className="btn" style={{ background: '#991b1b', color: 'white', flex: 1 }}>Delete</button>
-                            <button onClick={() => setLocationToDelete(null)} className="btn" style={{ background: '#e2e8f0', color: '#0f172a', flex: 1 }}>Cancel</button>
                         </div>
                     </div>
-                </div>
-            )}
+                )
+            }
 
-        </div>
+            {/* Edit Modal */}
+            {
+                isEditing && (
+                    <div style={{
+                        position: 'fixed',
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        background: 'rgba(0, 0, 0, 0.5)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        zIndex: 3000
+                    }}>
+                        <div className="card" style={{ width: '100%', maxWidth: '600px', padding: '1.5rem', maxHeight: '90vh', overflowY: 'auto' }}>
+                            <h2 style={{ marginTop: 0, marginBottom: '1.5rem' }}>Edit Task Details</h2>
+                            <form onSubmit={handleSaveDetails}>
+                                <div style={{ marginBottom: '1rem' }}>
+                                    <label style={{ display: 'block', marginBottom: '0.5rem' }}>Title</label>
+                                    <input
+                                        className="input"
+                                        value={editForm.title}
+                                        onChange={e => setEditForm({ ...editForm, title: e.target.value })}
+                                        required
+                                        maxLength={100}
+                                    />
+                                    <div style={{ fontSize: '0.75rem', color: editForm.title.length >= 100 ? '#ef4444' : '#94a3b8', textAlign: 'right', marginTop: '0.25rem' }}>
+                                        {editForm.title.length}/100
+                                    </div>
+                                </div>
+                                <div style={{ marginBottom: '1rem' }}>
+                                    <label style={{ display: 'block', marginBottom: '0.5rem' }}>Description</label>
+                                    <textarea
+                                        className="input"
+                                        value={editForm.description}
+                                        onChange={e => setEditForm({ ...editForm, description: e.target.value })}
+                                        rows={4}
+                                        required
+                                        maxLength={500}
+                                    />
+                                    <div style={{ fontSize: '0.75rem', color: editForm.description.length >= 500 ? '#ef4444' : '#94a3b8', textAlign: 'right', marginTop: '0.25rem' }}>
+                                        {editForm.description.length}/500
+                                    </div>
+                                </div>
+                                <div style={{ marginBottom: '1rem' }}>
+                                    <label style={{ display: 'block', marginBottom: '0.5rem' }}>Assignee</label>
+                                    <select
+                                        className="input"
+                                        value={editForm.assigneeId}
+                                        onChange={e => setEditForm({ ...editForm, assigneeId: e.target.value })}
+                                        required
+                                    >
+                                        <option value="">Select Employee</option>
+                                        {allUsers.map(u => <option key={u.id} value={u.id}>{u.firstName} {u.lastName}</option>)}
+                                    </select>
+                                </div>
+                                <div style={{ marginBottom: '1rem' }}>
+                                    <label style={{ display: 'block', marginBottom: '0.5rem' }}>Deadline</label>
+                                    <input
+                                        type="datetime-local"
+                                        className="input"
+                                        value={editForm.deadline ? new Date(editForm.deadline).toISOString().slice(0, 16) : ''}
+                                        onChange={e => setEditForm({ ...editForm, deadline: e.target.value })}
+                                        min={new Date().toISOString().slice(0, 16)}
+                                        max="9999-12-31T23:59"
+                                        required
+                                    />
+                                </div>
+                                <div style={{ marginBottom: '1rem' }}>
+                                    <label style={{ display: 'block', marginBottom: '0.5rem' }}>Difficulty</label>
+                                    <input
+                                        type="number"
+                                        className="input"
+                                        value={editForm.difficulty}
+                                        onChange={e => setEditForm({ ...editForm, difficulty: parseInt(e.target.value) || 0 })}
+                                        min="0"
+                                        max="10"
+                                        required
+                                    />
+                                </div>
+                                <div style={{ display: 'flex', gap: '1rem' }}>
+                                    <button type="submit" className="btn btn-primary">Save Changes</button>
+                                    <button
+                                        type="button"
+                                        className="btn"
+                                        style={{ background: '#e2e8f0', color: '#0f172a' }}
+                                        onClick={() => setIsEditing(false)}
+                                    >
+                                        Cancel
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                )
+            }
+
+            {/* Delete Location Modal */}
+            {
+                locationToDelete && (
+                    <div style={{
+                        position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                        background: 'rgba(0, 0, 0, 0.5)', display: 'flex',
+                        alignItems: 'center', justifyContent: 'center', zIndex: 3000
+                    }}>
+                        <div className="card" style={{ maxWidth: '400px', padding: '1.5rem', background: 'white', borderRadius: '0.5rem' }}>
+                            <h3 style={{ marginTop: 0 }}>Delete Location</h3>
+                            <p>Are you sure you want to delete this location?</p>
+                            <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem' }}>
+                                <button onClick={confirmDeleteLocation} className="btn" style={{ background: '#991b1b', color: 'white', flex: 1 }}>Delete</button>
+                                <button onClick={() => setLocationToDelete(null)} className="btn" style={{ background: '#e2e8f0', color: '#0f172a', flex: 1 }}>Cancel</button>
+                            </div>
+                        </div>
+                    </div>
+                )
+            }
+
+        </div >
     )
 }
