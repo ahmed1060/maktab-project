@@ -239,6 +239,14 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
     }
 
     const handleUpload = async (isDraft: boolean = false) => {
+        // Validate negative cost
+        if (cost && parseFloat(cost) < 0) {
+            setFeedbackMessage('Cost cannot be negative. Please enter a valid amount.')
+            setShowFeedback(true)
+            setTimeout(() => setShowFeedback(false), 3000)
+            return
+        }
+
         setUploading(true)
         const uploadedAttachments: any[] = []
         try {
