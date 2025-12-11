@@ -114,6 +114,70 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
                 date: new Date().toISOString(),
                 type: 'LOCATION_ADDED'
             })
+
+            // AUTOMATIC LATENESS DEDUCTION
+            // Check if this is the FIRST location being added
+            const previousLocations = comments.filter((c: any) => c.type === 'LOCATION_ADDED')
+            if (previousLocations.length === 1) { // 1 because we just pushed it
+                const now = new Date()
+                const deadline = new Date(currentTask.deadline)
+                
+                // Check if today is the deadline day (ignoring time)
+                const isDeadlineDay = now.toDateString() === deadline.toDateString()
+
+                if (isDeadlineDay) {
+                    const currentHour = now.getHours()
+                    let penaltyDays = 0
+
+                    if (currentHour >= 11) {
+                        penaltyDays = 1.0
+                    } else if (currentHour >= 10) {
+                        penaltyDays = 0.5
+                    } else if (currentHour >= 9) {
+                        penaltyDays = 0.25
+                    }
+
+                    if (penaltyDays > 0) {
+                        // Apply Deduction to Salary Record
+                        const currentMonth = now.getMonth() + 1
+                        const currentYear = now.getFullYear()
+
+                        // Find or Create Salary Record
+                        const salaryRecord = await tx.salaryRecord.findUnique({
+                            where: { userId_month_year: { userId: userId, month: currentMonth, year: currentYear } }
+                        })
+
+                        if (salaryRecord) {
+                            await tx.salaryRecord.update({
+                                where: { id: salaryRecord.id },
+                                data: { deductions: { increment: penaltyDays } }
+                            })
+                        } else {
+                            const daysInMonth = new Date(currentYear, currentMonth, 0).getDate()
+                            // Get user's base salary to initialize record correctly
+                            const user = await tx.user.findUnique({ where: { id: userId } })
+                            await tx.salaryRecord.create({
+                                data: {
+                                    userId: userId,
+                                    month: currentMonth,
+                                    year: currentYear,
+                                    totalDays: daysInMonth,
+                                    deductions: penaltyDays,
+                                    baseSalary: user?.salary || 0
+                                }
+                            })
+                        }
+
+                        // Add System Comment about Penalty
+                        comments.push({
+                            text: `⚠️ Automatic Lateness Penalty: ${penaltyDays} day(s) deducted for late check-in on deadline day (Time: ${now.toLocaleTimeString()}).`,
+                            author: 'System',
+                            date: new Date().toISOString(),
+                            type: 'SYSTEM_DEDUCTION'
+                        })
+                    }
+                }
+            }
         }
 
         // Prepare update data
