@@ -358,18 +358,30 @@ export async function DELETE(req: Request) {
     }
 
     try {
-        // Delete related records first (cascade delete)
-        await prisma.task.deleteMany({
-            where: { assigneeId: userId }
-        })
+        await prisma.$transaction(async (tx) => {
+            // 1. Delete Assigned Tasks
+            await tx.task.deleteMany({ where: { assigneeId: userId } })
 
-        await prisma.obligation.deleteMany({
-            where: { assigneeId: userId }
-        })
+            // 2. Delete Obligations
+            await tx.obligation.deleteMany({ where: { assigneeId: userId } })
 
-        // Now delete the user
-        await prisma.user.delete({
-            where: { id: userId }
+            // 3. Delete Notifications
+            await tx.notification.deleteMany({ where: { userId: userId } })
+
+            // 4. Delete Salary Records
+            await tx.salaryRecord.deleteMany({ where: { userId: userId } })
+
+            // 5. Delete Audit Logs
+            await tx.auditLog.deleteMany({ where: { userId: userId } })
+
+            // 6. Unlink Created Tasks (Set createdBy to null)
+            await tx.task.updateMany({
+                where: { createdBy: userId },
+                data: { createdBy: null }
+            })
+
+            // 7. Finally delete the user
+            await tx.user.delete({ where: { id: userId } })
         })
 
         return NextResponse.json({ success: true })
