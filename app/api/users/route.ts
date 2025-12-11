@@ -252,7 +252,18 @@ export async function PUT(req: Request) {
         if (password.length > 20) return new NextResponse("Password max 20 chars", { status: 400 })
         updateData.password = await bcrypt.hash(password, 10)
     }
-    if (role) updateData.role = role
+    if (role) {
+        // Validation: Only Admin/SuperAdmin can change roles
+        if (!['ADMIN', 'SUPER_ADMIN'].includes(userRole)) {
+            // Employees cannot change roles
+        } else {
+            // Check hierarchy: Admin cannot promote to Admin/SuperAdmin
+            if ((role === 'ADMIN' || role === 'SUPER_ADMIN') && userRole !== 'SUPER_ADMIN') {
+                return new NextResponse("Only Super Admin can assign Admin/SuperAdmin roles", { status: 403 })
+            }
+            updateData.role = role
+        }
+    }
     if (gender) updateData.gender = gender
 
     // Salary Update Permission: Only Admin/SuperAdmin

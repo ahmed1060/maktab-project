@@ -16,6 +16,15 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
         const currentObligation = await tx.obligation.findUnique({ where: { id: params.id } })
         if (!currentObligation) throw new Error("Obligation not found")
 
+        // Authorization Check
+        // Allow if Admin/SuperAdmin/TeamLeader OR if Assignee
+        const isManager = ['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes((session.user as any).role)
+        const isAssignee = currentObligation.assigneeId === userId
+
+        if (!isManager && !isAssignee) {
+            throw new Error("Unauthorized to update this obligation")
+        }
+
         // Parse existing attachments
         let finalAttachments: any[] = []
         if (currentObligation.attachments) {
