@@ -262,14 +262,14 @@ export default function EmployeesPage() {
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                                         {/* Status Dot Indicator */}
                                         <div
-                                            onClick={() => ['ADMIN', 'SUPER_ADMIN'].includes(userRole) && handleStatusToggle(emp.id, emp.status || 'OFFLINE')}
-                                            title={['ADMIN', 'SUPER_ADMIN'].includes(userRole) ? (emp.status === 'SUSPENDED' ? 'Suspended - Click to unsuspend' : emp.status === 'ACTIVE' ? 'Online' : 'Offline - Click to suspend') : (emp.status === 'SUSPENDED' ? 'Suspended' : emp.status === 'ACTIVE' ? 'Online' : 'Offline')}
+                                            onClick={() => userRole === 'SUPER_ADMIN' && handleStatusToggle(emp.id, emp.status || 'OFFLINE')}
+                                            title={userRole === 'SUPER_ADMIN' ? (emp.status === 'SUSPENDED' ? 'Suspended - Click to unsuspend' : emp.status === 'ACTIVE' ? 'Online' : 'Offline - Click to suspend') : (emp.status === 'SUSPENDED' ? 'Suspended' : emp.status === 'ACTIVE' ? 'Online' : 'Offline')}
                                             style={{
                                                 width: '12px',
                                                 height: '12px',
                                                 borderRadius: '50%',
                                                 background: emp.status === 'SUSPENDED' ? '#ef4444' : emp.status === 'ACTIVE' ? '#22c55e' : '#f97316',
-                                                cursor: ['ADMIN', 'SUPER_ADMIN'].includes(userRole) ? 'pointer' : 'default',
+                                                cursor: userRole === 'SUPER_ADMIN' ? 'pointer' : 'default',
                                                 flexShrink: 0,
                                                 boxShadow: `0 0 0 2px ${emp.status === 'SUSPENDED' ? '#fecaca' : emp.status === 'ACTIVE' ? '#bbf7d0' : '#fed7aa'}`
                                             }}

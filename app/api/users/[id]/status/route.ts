@@ -10,9 +10,9 @@ export async function POST(
     const session = await getServerSession(authOptions)
     const userRole = (session?.user as any)?.role
 
-    // Only ADMIN and SUPER_ADMIN can change status
-    if (!['ADMIN', 'SUPER_ADMIN'].includes(userRole)) {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 403 })
+    // Only SUPER_ADMIN can change status (suspend/unsuspend)
+    if (userRole !== 'SUPER_ADMIN') {
+        return NextResponse.json({ error: "Only Super Admin can suspend/unsuspend users" }, { status: 403 })
     }
 
     try {

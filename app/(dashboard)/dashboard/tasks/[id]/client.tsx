@@ -259,23 +259,29 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
     }
 
     const handleUploadRequest = () => {
+        console.log('handleUploadRequest called')
         // Validation before showing confirmation
-        if (cost && parseFloat(cost) < 0) {
+        if (cost && !isNaN(parseFloat(cost)) && parseFloat(cost) < 0) {
             setFeedbackMessage('Cost cannot be negative. Please enter a valid amount.')
             setShowFeedback(true)
             setTimeout(() => setShowFeedback(false), 3000)
             return
         }
+        console.log('Opening confirmation modal')
         setShowSubmitConfirm(true)
     }
 
     const handleUpload = async (isDraft: boolean = false) => {
+        console.log('handleUpload called', { isDraft, cost, pendingFiles: pendingFiles.length })
         // If it's a draft, skip confirmation modal (or reuse it if desired, but user asked for "submit" confirmation mainly)
         // If it's a submission (isDraft=false) and we haven't confirmed yet (called directly via buttons), we should divert to handleUploadRequest.
         // However, we will make the Submit button call handleUploadRequest instead.
 
         // Validation (redundant check for safety)
-        if (cost && parseFloat(cost) < 0) return
+        if (cost && !isNaN(parseFloat(cost)) && parseFloat(cost) < 0) {
+            console.log('Cost validation failed in handleUpload')
+            return
+        }
 
         setUploading(true)
         const uploadedAttachments: any[] = []
@@ -316,9 +322,14 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
             else { setNote(''); setCost(''); setCostDescription(''); setLocation(''); setLocationStatus(''); setPendingFiles([]); setCostEntries([]) }
             router.refresh()
         } catch (error) {
-            setFeedbackMessage('Failed to save.')
+            console.error('handleUpload error detected:', error)
+            setFeedbackMessage('Failed to save. Check console for details.')
             setShowFeedback(true)
-        } finally { setUploading(false) }
+            // alert('Error saving task: ' + String(error)) // Optional: Uncomment if console is hard to reach
+        } finally {
+            console.log('handleUpload finished, setting uploading=false')
+            setUploading(false)
+        }
     }
 
     const validateLocations = (): boolean => {
