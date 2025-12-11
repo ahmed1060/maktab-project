@@ -156,6 +156,16 @@ export async function POST(req: Request) {
     const json = await req.json()
     const { firstName, lastName, email, password, role, gender } = json
 
+    // Validation
+    if (firstName.length > 15) return new NextResponse("First name must be max 15 characters", { status: 400 })
+    if (lastName.length > 15) return new NextResponse("Last name must be max 15 characters", { status: 400 })
+    if (password.length > 20) return new NextResponse("Password must be max 20 characters", { status: 400 })
+
+    const emailRegex = /^[^@]{1,20}@[^@]{1,10}\.com$/
+    if (!emailRegex.test(email)) {
+        return new NextResponse("Email format invalid (user<=20, domain<=10, .com only)", { status: 400 })
+    }
+
     // Validate role
     const newUserRole = role || 'EMPLOYEE'
 
@@ -222,10 +232,26 @@ export async function PUT(req: Request) {
 
     // Build update data
     const updateData: any = {}
-    if (firstName) updateData.firstName = firstName
-    if (lastName) updateData.lastName = lastName
-    if (email) updateData.email = email
-    if (password) updateData.password = await bcrypt.hash(password, 10)
+
+    if (firstName) {
+        if (firstName.length > 15) return new NextResponse("First name max 15 chars", { status: 400 })
+        updateData.firstName = firstName
+    }
+    if (lastName) {
+        if (lastName.length > 15) return new NextResponse("Last name max 15 chars", { status: 400 })
+        updateData.lastName = lastName
+    }
+    if (email) {
+        const emailRegex = /^[^@]{1,20}@[^@]{1,10}\.com$/
+        if (!emailRegex.test(email)) {
+            return new NextResponse("Email format invalid", { status: 400 })
+        }
+        updateData.email = email
+    }
+    if (password) {
+        if (password.length > 20) return new NextResponse("Password max 20 chars", { status: 400 })
+        updateData.password = await bcrypt.hash(password, 10)
+    }
     if (role) updateData.role = role
     if (gender) updateData.gender = gender
 
@@ -236,6 +262,9 @@ export async function PUT(req: Request) {
             // Safer to ignore/forbid. 
             // If they are self-updating profile, we just exclude salary from updateData.
         } else {
+            if (salary > 1000000000) {
+                return new NextResponse("Salary cannot exceed 1 billion", { status: 400 })
+            }
             updateData.salary = salary
         }
     }

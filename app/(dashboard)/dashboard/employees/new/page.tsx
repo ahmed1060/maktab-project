@@ -20,6 +20,14 @@ export default function NewEmployeePage() {
         setError('')
         setLoading(true)
 
+        // Regex: ^ (start) [^@]{1,20} (1-20 chars user) @ [^@]{1,10} (1-10 chars domain) \.com$
+        const emailRegex = /^[^@]{1,20}@[^@]{1,10}\.com$/
+        if (!emailRegex.test(email)) {
+            setError('Email must be in format: user(max 20)@domain(max 10).com')
+            setLoading(false)
+            return
+        }
+
         try {
             const res = await fetch('/api/users', {
                 method: 'POST',
@@ -67,6 +75,7 @@ export default function NewEmployeePage() {
                             value={firstName}
                             onChange={e => setFirstName(e.target.value)}
                             required
+                            maxLength={15}
                             placeholder="John"
                         />
                     </div>
@@ -77,6 +86,7 @@ export default function NewEmployeePage() {
                             value={lastName}
                             onChange={e => setLastName(e.target.value)}
                             required
+                            maxLength={15}
                             placeholder="Doe"
                         />
                     </div>
@@ -101,6 +111,7 @@ export default function NewEmployeePage() {
                         onChange={e => setPassword(e.target.value)}
                         required
                         minLength={6}
+                        maxLength={20}
                         placeholder="Minimum 6 characters"
                     />
                 </div>

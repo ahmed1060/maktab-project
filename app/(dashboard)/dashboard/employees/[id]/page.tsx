@@ -54,6 +54,20 @@ export default function EditEmployeePage({ params, searchParams }: { params: { i
         setError('')
         setSuccess(false)
 
+        // Validation
+        const emailRegex = /^[^@]{1,20}@[^@]{1,10}\.com$/
+        if (!emailRegex.test(email)) {
+            setError('Email must be in format: user(max 20)@domain(max 10).com')
+            setSaving(false)
+            return
+        }
+
+        if (salary && parseFloat(salary) > 1000000000) {
+            setError('Salary cannot exceed 1 billion EGP')
+            setSaving(false)
+            return
+        }
+
         try {
             const res = await fetch('/api/users', {
                 method: 'PUT',
@@ -240,6 +254,7 @@ export default function EditEmployeePage({ params, searchParams }: { params: { i
                             // 2. User is viewing their own profile
                             // 3. User is NOT an Admin (Employee viewing self).
                             disabled={isViewMode || params.id === session?.user?.id || !['ADMIN', 'SUPER_ADMIN'].includes(userRole)}
+                            max={1000000000}
                             style={(isViewMode || params.id === session?.user?.id || !['ADMIN', 'SUPER_ADMIN'].includes(userRole)) ? { background: '#f1f5f9', cursor: 'not-allowed' } : {}}
                             placeholder={params.id === session?.user?.id && !salary ? 'Not set' : ''}
                         />
@@ -255,6 +270,7 @@ export default function EditEmployeePage({ params, searchParams }: { params: { i
                             value={password}
                             onChange={e => setPassword(e.target.value)}
                             minLength={6}
+                            maxLength={20}
                             placeholder="Leave empty to keep current password"
                         />
                     </div>
