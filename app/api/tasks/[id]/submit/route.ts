@@ -9,6 +9,16 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
 
     const json = await req.json()
     const { newAttachments, note, cost, costDescription, isDraft, location } = json
+
+    if (note && note.length > 500) {
+        return new NextResponse("Note cannot exceed 500 characters", { status: 400 })
+    }
+    if (costDescription && costDescription.length > 200) {
+        return new NextResponse("Cost description cannot exceed 200 characters", { status: 400 })
+    }
+    if (location && location.length > 200) {
+        return new NextResponse("Location cannot exceed 200 characters", { status: 400 })
+    }
     // Force parse cost to number
     const costValue = cost ? Number(cost) : 0
     console.log(`[API] Submit Task ${params.id}: cost=${costValue}, attachments=${newAttachments?.length || 0}, isDraft=${isDraft}, location=${location}`)
@@ -78,6 +88,10 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
             for (const c of json.costs) {
                 const cVal = Number(c.amount)
                 if (cVal > 0) {
+                    if (c.description && c.description.length > 200) {
+                        // Skip invalid or throw error? Better to fail fast for security.
+                        throw new Error("Cost description cannot exceed 200 characters")
+                    }
                     comments.push({
                         text: `Added cost: ${cVal.toFixed(2)} EGP`,
                         description: c.description || `Added cost: ${cVal.toFixed(2)} EGP`,

@@ -41,9 +41,20 @@ export async function POST(req: Request) {
 
     const json = await req.json()
     const { title, description, assigneeId, deadline, difficulty = 0 } = json
+
+    if (!title || title.length < 3 || title.length > 100) {
+        return new NextResponse("Title must be between 3 and 100 characters", { status: 400 })
+    }
+    if (!description || description.length < 10 || description.length > 1000) {
+        return new NextResponse("Description must be between 10 and 1000 characters", { status: 400 })
+    }
     const creatorId = (session.user as any).id
 
     // Server-side Deadline Validation
+    if (difficulty < 0 || difficulty > 10) {
+        return new NextResponse("Difficulty must be between 0 and 10", { status: 400 })
+    }
+    // ...
     const deadlineDate = new Date(deadline)
     const today = new Date()
     today.setHours(0, 0, 0, 0)

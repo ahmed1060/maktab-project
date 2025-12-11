@@ -14,6 +14,13 @@ export async function POST(req: Request) {
     const json = await req.json()
     const { title, description, assigneeId, deadline, recurrence, attachments, difficulty = 0 } = json
 
+    if (!title || title.length < 3 || title.length > 100) {
+        return new NextResponse("Title must be between 3 and 100 characters", { status: 400 })
+    }
+    if (!description || description.length < 10 || description.length > 1000) {
+        return new NextResponse("Description must be between 10 and 1000 characters", { status: 400 })
+    }
+
     const obligation = await prisma.obligation.create({
         data: {
             title,

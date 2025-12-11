@@ -17,8 +17,8 @@ export async function POST(req: Request, { params }: { params: { id: string } })
         const json = await req.json()
         const { amount } = json
 
-        if (!amount || typeof amount !== 'number') {
-            return new NextResponse("Invalid amount", { status: 400 })
+        if (!amount || typeof amount !== 'number' || amount <= 0 || amount > 1000) {
+            return new NextResponse("Invalid amount (must be positive and <= 1000)", { status: 400 })
         }
 
         const now = new Date()

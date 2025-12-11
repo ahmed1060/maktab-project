@@ -14,6 +14,13 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
         console.log("Received update payload:", json) // Debug log
         const { title, description, assigneeId, deadline, difficulty } = json
 
+        if (title && (title.length < 3 || title.length > 100)) {
+            return new NextResponse("Title must be between 3 and 100 characters", { status: 400 })
+        }
+        if (description && (description.length < 10 || description.length > 1000)) {
+            return new NextResponse("Description must be between 10 and 1000 characters", { status: 400 })
+        }
+
         // Server-side Deadline Validation
         const deadlineDate = new Date(deadline)
         const today = new Date()
