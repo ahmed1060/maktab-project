@@ -60,15 +60,19 @@ export default function ObligationsClient({ obligations, role }: ObligationsClie
         switch (sortBy) {
             case 'smart':
                 const getPriority = (status: string) => {
-                    if (status === 'PENDING_CONFIRMATION') return 1
-                    if (status === 'IN_PROGRESS') return 2
-                    return 3
+                    if (status === 'IN_PROGRESS') return 1
+                    if (status === 'PENDING_CONFIRMATION') return 2
+                    if (status === 'PENDING') return 3
+                    if (status === 'APPROVED') return 4
+                    if (status === 'REJECTED') return 5
+                    if (status === 'COMPLETED') return 6
+                    return 99
                 }
                 comparison = getPriority(a.status) - getPriority(b.status)
                 if (comparison === 0) {
-                    return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+                    comparison = new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
                 }
-                return comparison
+                break
 
             case 'createdAt':
                 comparison = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()

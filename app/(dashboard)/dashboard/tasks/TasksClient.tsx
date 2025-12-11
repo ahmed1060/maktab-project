@@ -60,19 +60,22 @@ export default function TasksClient({ tasks, role, currentUserId }: TasksClientP
 
         switch (sortBy) {
             case 'smart':
-                // Priority: PENDING_CONFIRMATION (1) -> IN_PROGRESS (2) -> Others (3)
+                // Priority: IN_PROGRESS (1) -> PENDING_CONFIRMATION (2) -> PENDING (3) -> APPROVED (4) -> REJECTED (5) -> COMPLETED (6)
                 const getPriority = (status: string) => {
-                    if (status === 'REJECTED') return 0 // Highest priority: Needs immediate fix
-                    if (status === 'PENDING_CONFIRMATION') return 1
-                    if (status === 'IN_PROGRESS') return 2
-                    return 3
+                    if (status === 'IN_PROGRESS') return 1
+                    if (status === 'PENDING_CONFIRMATION') return 2
+                    if (status === 'PENDING') return 3
+                    if (status === 'APPROVED') return 4
+                    if (status === 'REJECTED') return 5
+                    if (status === 'COMPLETED') return 6
+                    return 99
                 }
                 comparison = getPriority(a.status) - getPriority(b.status)
                 // Secondary sort by updatedAt desc for smart sort
                 if (comparison === 0) {
-                    return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+                    comparison = new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
                 }
-                return comparison
+                break
 
             case 'deadline':
                 comparison = new Date(a.deadline).getTime() - new Date(b.deadline).getTime()
