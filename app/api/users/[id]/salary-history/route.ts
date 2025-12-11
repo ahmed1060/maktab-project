@@ -63,6 +63,26 @@ export async function GET(request: Request, { params }: { params: { id: string }
                 })
 
                 if (!exists) {
+                    let carryOverDeduction = 0
+                    // Check previous month for negative balance
+                    let prevM = iterMonth - 1
+                    let prevY = iterYear
+                    if (prevM === 0) {
+                        prevM = 12
+                        prevY--
+                    }
+
+                    const prevRecord = await prisma.salaryRecord.findUnique({
+                        where: { userId_month_year: { userId, month: prevM, year: prevY } }
+                    })
+
+                    if (prevRecord) {
+                        const netDays = prevRecord.totalDays - prevRecord.deductions + prevRecord.bonusDays
+                        if (netDays < 0) {
+                            carryOverDeduction = Math.abs(netDays)
+                        }
+                    }
+
                     const daysInIterMonth = new Date(iterYear, iterMonth, 0).getDate()
                     await prisma.salaryRecord.create({
                         data: {
@@ -70,7 +90,7 @@ export async function GET(request: Request, { params }: { params: { id: string }
                             month: iterMonth,
                             year: iterYear,
                             totalDays: daysInIterMonth,
-                            deductions: 0,
+                            deductions: carryOverDeduction,
                             baseSalary: currentBaseSalary
                         }
                     })
