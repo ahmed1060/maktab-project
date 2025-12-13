@@ -2,15 +2,18 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import Link from "next/link"
-export default async function DashboardPage() {
+export default async function DashboardPage({ searchParams }: { searchParams: { companyId?: string } }) {
     const session = await getServerSession(authOptions)
     const userRole = (session?.user as any)?.role
+    const companyId = searchParams.companyId
 
     if (['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole)) {
-        const totalTasks = await prisma.task.count()
-        const pendingTasks = await prisma.task.count({ where: { status: 'PENDING' } })
-        const submittedTasks = await prisma.task.count({ where: { status: 'PENDING_CONFIRMATION' } }) // Assuming PENDING_CONFIRMATION is submitted
-        const completedTasks = await prisma.task.count({ where: { status: 'COMPLETED' } })
+        const baseWhere = companyId ? { assignee: { companyId } } : {}
+
+        const totalTasks = await prisma.task.count({ where: baseWhere })
+        const pendingTasks = await prisma.task.count({ where: { ...baseWhere, status: 'PENDING' } })
+        const submittedTasks = await prisma.task.count({ where: { ...baseWhere, status: 'PENDING_CONFIRMATION' } })
+        const completedTasks = await prisma.task.count({ where: { ...baseWhere, status: 'COMPLETED' } })
 
         return (
             <div>

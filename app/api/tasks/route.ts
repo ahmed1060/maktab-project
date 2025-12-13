@@ -3,20 +3,31 @@ import { prisma } from "@/lib/prisma"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 
-export async function GET() {
+export async function GET(req: Request) {
     const session = await getServerSession(authOptions)
     const userRole = (session?.user as any)?.role
-    const userId = (session?.user as any)?.id
+    const userId = (session?.user as any)?.id // Explicitly cast to string if needed, assuming auth returns id
+    const { searchParams } = new URL(req.url)
+    const companyId = searchParams.get('companyId')
 
     if (!session) {
         return new NextResponse("Unauthorized", { status: 401 })
     }
 
+    let whereClause: any = {}
+
     // ADMIN, SUPER_ADMIN, and TEAM_LEADER see all tasks; EMPLOYEE sees only assigned tasks
+    if (['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole)) {
+        // Apply Company Filter if provided (mostly for Super Admins)
+        if (companyId) {
+            whereClause.assignee = { companyId }
+        }
+    } else {
+        whereClause.assigneeId = userId
+    }
+
     const tasks = await prisma.task.findMany({
-        where: ['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole)
-            ? {}
-            : { assigneeId: userId },
+        where: whereClause,
         include: {
             assignee: {
                 select: { firstName: true, lastName: true, email: true }

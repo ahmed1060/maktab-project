@@ -27,7 +27,7 @@ export async function GET(req: Request) {
     }
 
     if (userId) {
-        // Fetch single user with approved/completed and rejected tasks
+        // 1. Try finding in regular User table
         const user = await prisma.user.findUnique({
             where: { id: userId },
             select: {
@@ -48,33 +48,59 @@ export async function GET(req: Request) {
             }
         })
 
-        if (!user) {
-            return new NextResponse("User not found", { status: 404 })
+        if (user) {
+            // Calculate total difficulty points
+            const approvedPoints = user.tasks
+                .filter(t => t.status === 'APPROVED' || t.status === 'COMPLETED')
+                .reduce((sum, task) => sum + task.difficulty, 0)
+            const rejectedPoints = user.tasks
+                .filter(t => t.status === 'REJECTED')
+                .reduce((sum, task) => sum + task.difficulty, 0)
+            const totalDifficultyPoints = approvedPoints - rejectedPoints
+
+            // Filter Salary
+            const canViewSalary = ['ADMIN', 'SUPER_ADMIN'].includes(userRole || '') || session.user.id === userId
+
+            return NextResponse.json({
+                id: user.id,
+                firstName: user.firstName,
+                lastName: user.lastName,
+                email: user.email,
+                status: user.status,
+                role: user.role,
+                gender: user.gender,
+                salary: canViewSalary ? user.salary : undefined,
+                totalDifficultyPoints
+            })
         }
 
-        // Calculate total difficulty points: approved/completed - rejected
-        const approvedPoints = user.tasks
-            .filter(t => t.status === 'APPROVED' || t.status === 'COMPLETED')
-            .reduce((sum, task) => sum + task.difficulty, 0)
-        const rejectedPoints = user.tasks
-            .filter(t => t.status === 'REJECTED')
-            .reduce((sum, task) => sum + task.difficulty, 0)
-        const totalDifficultyPoints = approvedPoints - rejectedPoints
-
-        // Filter Salary: Only show if Admin/SuperAdmin/Self
-        const canViewSalary = ['ADMIN', 'SUPER_ADMIN'].includes(userRole || '') || session.user.id === userId
-
-        return NextResponse.json({
-            id: user.id,
-            firstName: user.firstName,
-            lastName: user.lastName,
-            email: user.email,
-            status: user.status,
-            role: user.role,
-            gender: user.gender,
-            salary: canViewSalary ? user.salary : undefined,
-            totalDifficultyPoints
+        // 2. If not found, try SuperAdmin table
+        const superAdmin = await prisma.superAdmin.findUnique({
+            where: { id: userId },
+            select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                email: true,
+                gender: true
+            }
         })
+
+        if (superAdmin) {
+            return NextResponse.json({
+                id: superAdmin.id,
+                firstName: superAdmin.firstName,
+                lastName: superAdmin.lastName,
+                email: superAdmin.email,
+                status: 'ACTIVE',
+                role: 'SUPER_ADMIN', // Injected role
+                gender: superAdmin.gender,
+                salary: 0, // No salary for Super Admins
+                totalDifficultyPoints: 0 // Super Admins don't play the points game
+            })
+        }
+
+        return new NextResponse("User not found", { status: 404 })
     }
 
     // Fetch list of users
@@ -95,6 +121,12 @@ export async function GET(req: Request) {
             lastActivity: true,
             role: true,
             gender: true,
+            company: {
+                select: {
+                    id: true,
+                    name: true
+                }
+            },
             salary: false, // Salary NOT needed in list view generally, keeps payload small/secure
             tasks: {
                 select: {
@@ -137,6 +169,7 @@ export async function GET(req: Request) {
             status: effectiveStatus,
             role: user.role,
             gender: user.gender,
+            company: (user as any).company,
             totalDifficultyPoints: approvedPoints - rejectedPoints
         }
     })
@@ -154,7 +187,7 @@ export async function POST(req: Request) {
     }
 
     const json = await req.json()
-    const { firstName, lastName, email, password, role, gender } = json
+    const { firstName, lastName, email, password, role, gender, companyId, salary } = json
 
     // Validation
     if (firstName.length > 15) return new NextResponse("First name must be max 15 characters", { status: 400 })
@@ -174,6 +207,12 @@ export async function POST(req: Request) {
         return new NextResponse("Only Super Admin can create Admin users", { status: 403 })
     }
 
+    // Determine Company ID
+    let targetCompanyId = (session.user as any).companyId
+    if (userRole === 'SUPER_ADMIN' && companyId) {
+        targetCompanyId = companyId
+    }
+
     // Check if user already exists
     const existingUser = await prisma.user.findUnique({ where: { email } })
     if (existingUser) {
@@ -189,7 +228,9 @@ export async function POST(req: Request) {
             password: hashedPassword,
             role: newUserRole,
             status: 'OFFLINE',
-            gender: gender || 'MALE'
+            gender: gender || 'MALE',
+            companyId: targetCompanyId,
+            salary: salary ? parseFloat(salary) : 0
         },
         select: { id: true, firstName: true, lastName: true, email: true, role: true, status: true, gender: true }
     })
@@ -212,22 +253,40 @@ export async function PUT(req: Request) {
         return new NextResponse("User ID required", { status: 400 })
     }
 
-    // Allow if self or admin
+    // Allow if self or admin/super_admin
+    // Note: Super Admins can edit anyone? Or just themselves and Admins?
+    // "Only proper changes" -> standard ACL.
     if (id !== session.user.id && !['ADMIN', 'SUPER_ADMIN'].includes(userRole || '')) {
         return new NextResponse("Unauthorized", { status: 401 })
     }
 
-    // Check if email is taken by another user
+    // 1. Determine User Type & Existence
+    const regularUser = await prisma.user.findUnique({ where: { id } })
+    const superAdminUser = !regularUser ? await prisma.superAdmin.findUnique({ where: { id } }) : null
+
+    if (!regularUser && !superAdminUser) {
+        return new NextResponse("User not found", { status: 404 })
+    }
+
+    // 2. Email Uniqueness Check (Global)
     if (email) {
-        const existingUser = await prisma.user.findFirst({
+        // Check User Table
+        const conflictUser = await prisma.user.findFirst({
             where: {
                 email,
                 NOT: { id }
             }
         })
-        if (existingUser) {
-            return new NextResponse("Email already in use", { status: 400 })
-        }
+        if (conflictUser) return new NextResponse("Email already in use", { status: 400 })
+
+        // Check SuperAdmin Table
+        const conflictAdmin = await prisma.superAdmin.findFirst({
+            where: {
+                email,
+                NOT: { id }
+            }
+        })
+        if (conflictAdmin) return new NextResponse("Email already in use", { status: 400 })
     }
 
     // Build update data
@@ -252,72 +311,84 @@ export async function PUT(req: Request) {
         if (password.length > 20) return new NextResponse("Password max 20 chars", { status: 400 })
         updateData.password = await bcrypt.hash(password, 10)
     }
-    if (role) {
-        // Validation: Only Admin/SuperAdmin can change roles
-        if (!['ADMIN', 'SUPER_ADMIN'].includes(userRole)) {
-            // Employees cannot change roles
-        } else {
-            // Check hierarchy: Admin cannot promote to Admin/SuperAdmin
-            if ((role === 'ADMIN' || role === 'SUPER_ADMIN') && userRole !== 'SUPER_ADMIN') {
-                return new NextResponse("Only Super Admin can assign Admin/SuperAdmin roles", { status: 403 })
-            }
-            updateData.role = role
-        }
-    }
     if (gender) updateData.gender = gender
 
-    // Salary Update Permission: Only Admin/SuperAdmin
-    if (salary !== undefined) {
-        if (!['ADMIN', 'SUPER_ADMIN'].includes(userRole)) {
-            // If employee tries to update salary, ignore it or error?
-            // Safer to ignore/forbid. 
-            // If they are self-updating profile, we just exclude salary from updateData.
-        } else {
-            if (salary > 1000000000) {
-                return new NextResponse("Salary cannot exceed 1 billion", { status: 400 })
+    // --- CASE A: Regular User Update ---
+    if (regularUser) {
+        if (role) {
+            // Role validation
+            if (!['ADMIN', 'SUPER_ADMIN'].includes(userRole || '')) {
+                // Ignore
+            } else {
+                if ((role === 'ADMIN' || role === 'SUPER_ADMIN') && userRole !== 'SUPER_ADMIN') {
+                    return new NextResponse("Only Super Admin can assign Admin/SuperAdmin roles", { status: 403 })
+                }
+                updateData.role = role
             }
-            updateData.salary = salary
         }
-    }
 
-    const user = await prisma.user.update({
-        where: { id },
-        data: updateData,
-        select: { id: true, firstName: true, lastName: true, email: true, role: true, gender: true, salary: true }
-    })
+        if (salary !== undefined) {
+            if (['ADMIN', 'SUPER_ADMIN'].includes(userRole || '')) {
+                if (salary > 1000000000) return new NextResponse("Salary cannot exceed 1 billion", { status: 400 })
+                updateData.salary = salary
+            }
+        }
 
-    // Sync Salary to Current Month History
-    if (updateData.salary !== undefined) {
-        const now = new Date()
-        const currentMonth = now.getMonth() + 1
-        const currentYear = now.getFullYear()
-
-        // Check if record exists
-        const existingRecord = await prisma.salaryRecord.findUnique({
-            where: { userId_month_year: { userId: id, month: currentMonth, year: currentYear } }
+        const updatedUser = await prisma.user.update({
+            where: { id },
+            data: updateData,
+            select: { id: true, firstName: true, lastName: true, email: true, role: true, gender: true, salary: true }
         })
 
-        if (existingRecord) {
-            await prisma.salaryRecord.update({
-                where: { id: existingRecord.id },
-                data: { baseSalary: updateData.salary }
+        // Sync Salary Record
+        if (updateData.salary !== undefined) {
+            const now = new Date()
+            const currentMonth = now.getMonth() + 1
+            const currentYear = now.getFullYear()
+
+            const existingRecord = await prisma.salaryRecord.findUnique({
+                where: { userId_month_year: { userId: id, month: currentMonth, year: currentYear } }
             })
-        } else {
-            const daysInMonth = new Date(currentYear, currentMonth, 0).getDate()
-            await prisma.salaryRecord.create({
-                data: {
-                    userId: id,
-                    month: currentMonth,
-                    year: currentYear,
-                    totalDays: daysInMonth,
-                    deductions: 0,
-                    baseSalary: updateData.salary
-                }
-            })
+
+            if (existingRecord) {
+                await prisma.salaryRecord.update({
+                    where: { id: existingRecord.id },
+                    data: { baseSalary: updateData.salary }
+                })
+            } else {
+                const daysInMonth = new Date(currentYear, currentMonth, 0).getDate()
+                await prisma.salaryRecord.create({
+                    data: {
+                        userId: id,
+                        month: currentMonth,
+                        year: currentYear,
+                        totalDays: daysInMonth,
+                        baseSalary: updateData.salary
+                    }
+                })
+            }
         }
+        return NextResponse.json(updatedUser)
     }
 
-    return NextResponse.json(user)
+    // --- CASE B: SuperAdmin Update ---
+    if (superAdminUser) {
+        // Super Admins: No Role Update (Fixed), No Salary Update (Not in DB)
+        // Allow updates to basic info (already in updateData)
+
+        const updatedAdmin = await prisma.superAdmin.update({
+            where: { id },
+            data: updateData,
+            select: { id: true, firstName: true, lastName: true, email: true, gender: true }
+        })
+
+        return NextResponse.json({
+            ...updatedAdmin,
+            role: 'SUPER_ADMIN',
+            status: 'ACTIVE',
+            salary: 0
+        })
+    }
 }
 
 export async function DELETE(req: Request) {

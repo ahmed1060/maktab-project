@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useSession } from 'next-auth/react'
 import SortControl from '@/components/SortControl'
+import { useCompany } from '@/context/CompanyContext'
 
 
 interface Employee {
@@ -18,6 +19,8 @@ interface Employee {
     avatar?: string | null
 }
 
+
+
 export default function EmployeesPage() {
     const [employees, setEmployees] = useState<Employee[]>([])
     const [loading, setLoading] = useState(true)
@@ -25,15 +28,18 @@ export default function EmployeesPage() {
     const router = useRouter()
     const { data: session } = useSession()
     const userRole = session?.user?.role || ''
+    const { selectedCompanyId } = useCompany()
 
     const fetchEmployees = async () => {
-        const res = await fetch('/api/users')
+        const query = selectedCompanyId ? `?companyId=${selectedCompanyId}` : ''
+        const res = await fetch(`/api/users${query}`)
         const data = await res.json()
-        // Filter out current user
-        const filteredData = data.filter((u: Employee) => u.id !== (session?.user?.id || ''))
+        // Filter out current user AND Super Admins
+        const filteredData = data.filter((u: Employee) => u.id !== (session?.user?.id || '') && u.role !== 'SUPER_ADMIN')
         setEmployees(filteredData)
         setLoading(false)
     }
+
 
     const [sortBy, setSortBy] = useState('name')
     const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc')
@@ -79,7 +85,7 @@ export default function EmployeesPage() {
         if (session?.user) {
             fetchEmployees()
         }
-    }, [session])
+    }, [session, selectedCompanyId])
 
     const handleDelete = async (id: string, name: string) => {
         setDeleteConfirm({ id, name })

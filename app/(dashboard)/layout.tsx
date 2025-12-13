@@ -89,6 +89,55 @@ export default async function DashboardLayout({
                             ))}
                         </>
                     )}
+
+                    {/* SUPER ADMIN ONLY */}
+                    {session.user?.role === 'SUPER_ADMIN' && (
+                        <>
+                            <p style={{ fontSize: '0.75rem', fontWeight: 'bold', textTransform: 'uppercase', color: '#94a3b8', paddingLeft: '0.75rem', marginTop: '1.5rem', marginBottom: '0.25rem' }}>System</p>
+                            <Link href="/dashboard/super-admins" className="nav-link" style={{
+                                color: '#e2e8f0',
+                                textDecoration: 'none',
+                                padding: '0.75rem 1rem',
+                                borderRadius: '0.5rem',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '0.75rem',
+                                transition: 'all 0.2s',
+                                fontSize: '0.95rem',
+                                fontWeight: '500'
+                            }}>
+                                <span>🛡️</span> Super Admins
+                            </Link>
+                            <Link href="/dashboard/companies" className="nav-link" style={{
+                                color: '#e2e8f0',
+                                textDecoration: 'none',
+                                padding: '0.75rem 1rem',
+                                borderRadius: '0.5rem',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '0.75rem',
+                                transition: 'all 0.2s',
+                                fontSize: '0.95rem',
+                                fontWeight: '500'
+                            }}>
+                                <span>🏢</span> Companies
+                            </Link>
+                            <Link href="/dashboard/all-users" className="nav-link" style={{
+                                color: '#e2e8f0',
+                                textDecoration: 'none',
+                                padding: '0.75rem 1rem',
+                                borderRadius: '0.5rem',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '0.75rem',
+                                transition: 'all 0.2s',
+                                fontSize: '0.95rem',
+                                fontWeight: '500'
+                            }}>
+                                <span>👥</span> All Users
+                            </Link>
+                        </>
+                    )}
                 </nav>
 
                 <div style={{ marginTop: 'auto', padding: '1.5rem', borderTop: '1px solid #334155' }}>

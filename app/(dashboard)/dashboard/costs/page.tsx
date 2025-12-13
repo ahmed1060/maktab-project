@@ -4,13 +4,14 @@ import { authOptions } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 import CostsClient from './CostsClient'
 
-export default async function CostsPage() {
+export default async function CostsPage({ searchParams }: { searchParams: { companyId?: string } }) {
     const session = await getServerSession(authOptions)
     if (!session) {
         redirect('/login')
     }
 
     const userRole = (session.user as any)?.role
+    const companyId = searchParams.companyId
 
     // Only allow ADMIN, SUPER_ADMIN, TEAM_LEADER
     if (!['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole)) {
@@ -35,7 +36,8 @@ export default async function CostsPage() {
                 },
                 {
                     paymentStatus: 'PENDING_PAYMENT'
-                }
+                },
+                ...(companyId ? [{ assignee: { companyId } }] : [])
             ]
         },
         select: {

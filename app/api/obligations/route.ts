@@ -43,18 +43,23 @@ export async function GET(req: Request) {
 
     const role = (session.user as any).role
     const userId = (session.user as any).id
+    const { searchParams } = new URL(req.url)
+    const companyId = searchParams.get('companyId')
 
-    if (role === 'ADMIN') {
-        const obligations = await prisma.obligation.findMany({
-            include: { assignee: { select: { firstName: true, lastName: true } } },
-            orderBy: { deadline: 'asc' }
-        })
-        return NextResponse.json(obligations)
+    let whereClause: any = {}
+
+    if (['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(role)) {
+        if (companyId) {
+            whereClause.assignee = { companyId }
+        }
     } else {
-        const obligations = await prisma.obligation.findMany({
-            where: { assigneeId: userId },
-            orderBy: { deadline: 'asc' }
-        })
-        return NextResponse.json(obligations)
+        whereClause.assigneeId = userId
     }
+
+    const obligations = await prisma.obligation.findMany({
+        where: whereClause,
+        include: { assignee: { select: { firstName: true, lastName: true } } },
+        orderBy: { deadline: 'asc' }
+    })
+    return NextResponse.json(obligations)
 }

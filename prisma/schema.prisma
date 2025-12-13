@@ -7,19 +7,47 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model Company {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  users     User[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model SuperAdmin {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  firstName String
+  lastName  String
+  avatar    String?
+  gender    String   @default("MALE") // "MALE" | "FEMALE"
+  
+  auditLogs     AuditLog[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
 model User {
   id        String   @id @default(uuid())
   email     String   @unique
   password  String
   firstName String
   lastName  String
-  role      String   // "SUPER_ADMIN" | "ADMIN" | "TEAM_LEADER" | "EMPLOYEE"
+  role      String   // "ADMIN" | "TEAM_LEADER" | "EMPLOYEE" (SUPER_ADMIN moved to separate model)
   avatar    String?
   gender    String   @default("MALE") // "MALE" | "FEMALE"
-  status    String   @default("OFFLINE") // "ACTIVE" (green - logged in), "OFFLINE" (orange - logged out), "SUSPENDED" (red - cannot login)
-  lastActivity DateTime @default(now()) // Track last activity for auto-offline
-  totalDifficultyPoints Int @default(0) // Accumulated difficulty points from completed tasks/obligations
-  salary                Float?  @default(0) // Monthly Base Salary
+  
+  companyId String?  
+  company   Company? @relation(fields: [companyId], references: [id])
+
+  status    String   @default("OFFLINE") // "ACTIVE", "OFFLINE", "SUSPENDED"
+  lastActivity DateTime @default(now())
+  totalDifficultyPoints Int @default(0)
+  salary                Float?  @default(0)
+  
   tasks     Task[]   @relation("AssignedTasks")
   obligations Obligation[]
   notifications Notification[]
@@ -32,47 +60,52 @@ model Task {
   id          String   @id @default(uuid())
   title       String
   description String
-  status      String   // "PENDING", "IN_PROGRESS", "SUBMITTED", "APPROVED", "REJECTED"
+  status      String   
   deadline    DateTime
-  difficulty  Int      @default(0) // 0-10 difficulty score
-  totalCost   Float    @default(0) // Total accumulated cost in EGP
+  difficulty  Int      @default(0) 
+  totalCost   Float    @default(0) 
   assigneeId  String
   assignee    User     @relation("AssignedTasks", fields: [assigneeId], references: [id])
+  
   createdBy   String?
-  attachments String?  // JSON string
-  comments    String?  // JSON string
+  creator     User?    @relation("CreatedTasks", fields: [createdBy], references: [id])
+
+  attachments String?  
+  comments    String?  
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   isEdited    Boolean  @default(false)
   isTransfer  Boolean  @default(false)
-  paymentStatus String @default("PENDING_PAYMENT") // "PENDING_PAYMENT", "PAID"
-  location    String?  // GPS coordinates or address where task was worked on
-  lastStatusUpdateBy String? // "Team Leader Ahmed", "Employee Sarah", etc.
-  lastEditBy String? // "ADMIN Ahmed", etc.
-  creator     User?    @relation("CreatedTasks", fields: [createdBy], references: [id])
+  paymentStatus String @default("PENDING_PAYMENT") 
+  location    String?  
+  lastStatusUpdateBy String? 
+  lastEditBy String? 
 }
-
-
 
 model Notification {
   id        String   @id @default(uuid())
   userId    String
   user      User     @relation(fields: [userId], references: [id])
-  type      String   // "TASK_ASSIGNED", "TASK_SUBMITTED", "TASK_APPROVED", "TASK_REJECTED", "OBLIGATION_DUE"
+  type      String   
   message   String
   read      Boolean  @default(false)
-  relatedId String?  // ID of the related task or obligation
+  relatedId String?  
   createdAt DateTime @default(now())
 }
 
 model AuditLog {
   id         String   @id @default(uuid())
-  action     String   // "CREATE_TASK", "SUBMIT_TASK", "APPROVE_TASK", "DELETE_OBLIGATION", etc.
-  entityType String   // "TASK", "OBLIGATION", "USER"
+  action     String   
+  entityType String   
   entityId   String
-  userId     String
-  user       User     @relation(fields: [userId], references: [id])
-  details    String?  // JSON string for extra details
+  
+  userId     String? // Made optional
+  user       User?     @relation(fields: [userId], references: [id])
+
+  superAdminId String?
+  superAdmin   SuperAdmin? @relation(fields: [superAdminId], references: [id])
+
+  details    String?  
   createdAt  DateTime @default(now())
 }
 
@@ -82,11 +115,11 @@ model Obligation {
   description String
   assigneeId  String
   assignee    User     @relation(fields: [assigneeId], references: [id])
-  recurrence  String   @default("ONE_TIME") // "ONE_TIME", "MONTHLY"
+  recurrence  String   @default("ONE_TIME") 
   deadline    DateTime
-  difficulty  Int      @default(0) // 0-10 difficulty score
-  status      String   // "PENDING", "COMPLETED"
-  attachments String?  // JSON string for evidence
+  difficulty  Int      @default(0) 
+  status      String   
+  attachments String?  
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   lastStatusUpdateBy String?
@@ -96,11 +129,11 @@ model SalaryRecord {
   id        String   @id @default(uuid())
   userId    String
   user      User     @relation(fields: [userId], references: [id])
-  month     Int      // 1-12
+  month     Int      
   year      Int
-  totalDays Int      // Days in the month (28-31)
-  deductions Float    @default(0) // Accumulated fractions (0.25, 0.5, etc.) in DAYS
-  bonusDays  Float    @default(0) // Accumulated DAYS
+  totalDays Int      
+  deductions Float    @default(0) 
+  bonusDays  Float    @default(0) 
   baseSalary Float    @default(0)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

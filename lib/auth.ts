@@ -10,7 +10,8 @@ export const authOptions: NextAuthOptions = {
             name: "Credentials",
             credentials: {
                 email: { label: "Email", type: "email" },
-                password: { label: "Password", type: "password" }
+                password: { label: "Password", type: "password" },
+                companyId: { label: "Company", type: "text" }
             },
             async authorize(credentials) {
                 try {
@@ -18,54 +19,63 @@ export const authOptions: NextAuthOptions = {
                     console.log('1. Authorize called with email:', credentials?.email)
 
                     if (!credentials?.email || !credentials?.password) {
-                        console.log('2. Missing credentials')
                         return null
                     }
 
-                    console.log('3. Finding user in DB...')
-                    const user = await prisma.user.findUnique({ where: { email: credentials.email } })
-                    console.log('4. User found result:', user ? 'User exists' : 'User not found')
+                    // 1. Check SuperAdmin Table first
+                    const superAdmin = await prisma.superAdmin.findUnique({
+                        where: { email: credentials.email }
+                    })
 
-                    if (user) {
-                        console.log('4.1 User details:', JSON.stringify({
-                            id: user.id,
-                            email: user.email,
-                            role: user.role,
-                            hasPassword: !!user.password,
-                            status: user.status
-                        }))
+                    if (superAdmin) {
+                        console.log('User found in SuperAdmin table')
+                        const isValid = await bcrypt.compare(credentials.password, superAdmin.password)
+                        if (!isValid) return null
+
+                        return {
+                            id: superAdmin.id,
+                            name: `${superAdmin.firstName} ${superAdmin.lastName}`,
+                            email: superAdmin.email,
+                            role: 'SUPER_ADMIN',
+                            firstName: superAdmin.firstName,
+                            lastName: superAdmin.lastName,
+                            gender: superAdmin.gender || 'MALE',
+                            avatar: superAdmin.avatar || null,
+                            companyId: null, // Super Admins might not have a company
+                            companyName: 'System'
+                        }
                     }
+
+                    // 2. Check Regular User Table
+                    console.log('Checking User table...')
+                    const user = await prisma.user.findUnique({
+                        where: { email: credentials.email },
+                        include: { company: true }
+                    })
 
                     if (!user) return null
 
-                    // Check if user is suspended
-                    if (user.status === 'SUSPENDED') {
-                        console.log('5. User is suspended')
-                        throw new Error('Your account has been suspended. Please contact an administrator.')
+                    // Verify Company (If selected)
+                    if (credentials.companyId && credentials.companyId !== user.companyId) {
+                        throw new Error('This user does not belong to the selected company.')
                     }
 
-                    console.log('6. Comparing password...')
-                    const isValid = await bcrypt.compare(credentials.password, user.password)
-                    console.log('7. Password valid:', isValid)
+                    if (user.status === 'SUSPENDED') {
+                        throw new Error('Your account has been suspended.')
+                    }
 
+                    const isValid = await bcrypt.compare(credentials.password, user.password)
                     if (!isValid) return null
 
-                    console.log('8. Updating user status...')
-                    // Update user status to ACTIVE and lastActivity on successful login
+                    // Update generic user status
                     try {
                         await prisma.user.update({
                             where: { id: user.id },
-                            data: {
-                                status: 'ACTIVE',
-                                lastActivity: new Date()
-                            }
+                            data: { status: 'ACTIVE', lastActivity: new Date() }
                         })
-                        console.log('9. User status updated')
-                    } catch (updateError) {
-                        console.error('9.1 Error updating user status (non-fatal):', updateError)
-                    }
+                    } catch (e) { }
 
-                    const returnUser = {
+                    return {
                         id: user.id,
                         name: `${user.firstName} ${user.lastName}`,
                         email: user.email,
@@ -73,19 +83,13 @@ export const authOptions: NextAuthOptions = {
                         firstName: user.firstName,
                         lastName: user.lastName,
                         gender: user.gender || 'MALE',
-                        avatar: user.avatar || null
+                        avatar: user.avatar || null,
+                        companyId: user.companyId,
+                        companyName: user.company?.name || null
                     }
-                    console.log('10. Returning user object:', JSON.stringify(returnUser))
-                    console.log('--- LOGIN ATTEMPT SUCCESS ---')
-                    return returnUser
 
                 } catch (error) {
-                    console.error('--- LOGIN ATTEMPT ERROR ---')
-                    console.error('Auth error details:', error)
-                    if (error instanceof Error) {
-                        console.error('Error message:', error.message)
-                        console.error('Error stack:', error.stack)
-                    }
+                    console.error('Auth error:', error)
                     throw error
                 }
             }
@@ -100,9 +104,8 @@ export const authOptions: NextAuthOptions = {
                 session.user.lastName = token.lastName
                 session.user.gender = token.gender
                 session.user.avatar = token.avatar
-                // We don't necessarily need to expose jti to the client session unless needed, 
-                // but it's good for debugging if the user wants to see it.
-                // (session.user as any).jti = token.jti 
+                session.user.companyId = token.companyId
+                session.user.companyName = token.companyName
             }
             return session
         },
@@ -113,7 +116,8 @@ export const authOptions: NextAuthOptions = {
                 token.lastName = user.lastName
                 token.gender = user.gender
                 token.avatar = user.avatar
-                // Add unique session ID
+                token.companyId = user.companyId
+                token.companyName = user.companyName
                 token.jti = uuidv4()
             }
             return token

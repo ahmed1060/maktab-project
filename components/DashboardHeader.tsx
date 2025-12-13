@@ -1,9 +1,10 @@
 'use client'
-import { useState } from 'react'
-import { usePathname, useRouter } from 'next/navigation'
+import { useState, useEffect } from 'react'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { signOut } from 'next-auth/react'
 import NotificationBell from './NotificationBell'
+import { useCompany } from '@/context/CompanyContext'
 
 interface DashboardHeaderProps {
     user: {
@@ -19,7 +20,40 @@ interface DashboardHeaderProps {
 export default function DashboardHeader({ user }: DashboardHeaderProps) {
     const pathname = usePathname()
     const router = useRouter()
+    const searchParams = useSearchParams()
     const [isMenuOpen, setIsMenuOpen] = useState(false)
+    const { selectedCompanyId, setSelectedCompanyId } = useCompany()
+    const [companies, setCompanies] = useState<{ id: string, name: string }[]>([])
+
+    useEffect(() => {
+        if (user.role === 'SUPER_ADMIN') {
+            fetch('/api/companies')
+                .then(res => res.json())
+                .then(data => setCompanies(data))
+                .catch(err => console.error('Failed to fetch companies', err))
+        }
+    }, [user.role])
+
+    // Sync URL -> Context
+    useEffect(() => {
+        const companyIdFromUrl = searchParams.get('companyId')
+        if (companyIdFromUrl !== selectedCompanyId) {
+            setSelectedCompanyId(companyIdFromUrl)
+        }
+    }, [searchParams])
+
+    const handleCompanyChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+        const val = e.target.value
+        setSelectedCompanyId(val || null)
+
+        const params = new URLSearchParams(searchParams ? searchParams.toString() : '')
+        if (val) {
+            params.set('companyId', val)
+        } else {
+            params.delete('companyId')
+        }
+        router.push(`${pathname}?${params.toString()}`)
+    }
 
     // Map path to title
     const getPageTitle = (path: string) => {
@@ -31,6 +65,7 @@ export default function DashboardHeader({ user }: DashboardHeaderProps) {
         if (path === '/dashboard/employees') return 'Employees'
         if (path.startsWith('/dashboard/employees/')) return 'Employee Profile'
         if (path === '/dashboard/costs') return 'Costs'
+        if (path === '/dashboard/all-users') return 'All Users'
         return 'Task Manager'
     }
 
@@ -58,6 +93,28 @@ export default function DashboardHeader({ user }: DashboardHeaderProps) {
 
             {/* Right: Actions & Profile */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
+                {user.role === 'SUPER_ADMIN' && (
+                    <select
+                        value={selectedCompanyId || ''}
+                        onChange={handleCompanyChange}
+                        style={{
+                            padding: '0.5rem',
+                            borderRadius: '0.5rem',
+                            border: '1px solid #e2e8f0',
+                            marginRight: '0.5rem',
+                            fontSize: '0.9rem',
+                            outline: 'none',
+                            background: '#f8fafc',
+                            cursor: 'pointer'
+                        }}
+                    >
+                        <option value="">All Companies</option>
+                        {companies.map(c => (
+                            <option key={c.id} value={c.id}>{c.name}</option>
+                        ))}
+                    </select>
+                )}
+
                 <NotificationBell />
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
@@ -135,23 +192,25 @@ export default function DashboardHeader({ user }: DashboardHeaderProps) {
                                     >
                                         My Profile
                                     </Link>
-                                    <Link
-                                        href={`/dashboard/employees/${user.id}/history`}
-                                        onClick={() => setIsMenuOpen(false)}
-                                        style={{
-                                            display: 'block',
-                                            padding: '0.5rem 1rem',
-                                            textDecoration: 'none',
-                                            color: '#1e293b',
-                                            fontSize: '0.9rem',
-                                            borderRadius: '0.25rem',
-                                            transition: 'background 0.2s'
-                                        }}
-                                        onMouseEnter={(e) => e.currentTarget.style.background = '#f8fafc'}
-                                        onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-                                    >
-                                        Salary History
-                                    </Link>
+                                    {user.role !== 'SUPER_ADMIN' && (
+                                        <Link
+                                            href={`/dashboard/employees/${user.id}/history`}
+                                            onClick={() => setIsMenuOpen(false)}
+                                            style={{
+                                                display: 'block',
+                                                padding: '0.5rem 1rem',
+                                                textDecoration: 'none',
+                                                color: '#1e293b',
+                                                fontSize: '0.9rem',
+                                                borderRadius: '0.25rem',
+                                                transition: 'background 0.2s'
+                                            }}
+                                            onMouseEnter={(e) => e.currentTarget.style.background = '#f8fafc'}
+                                            onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                                        >
+                                            Salary History
+                                        </Link>
+                                    )}
                                     <button
                                         onClick={handleLogout}
                                         style={{

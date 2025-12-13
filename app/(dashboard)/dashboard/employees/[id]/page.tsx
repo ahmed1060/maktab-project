@@ -241,7 +241,8 @@ export default function EditEmployeePage({ params, searchParams }: { params: { i
                 </div>
 
                 {/* Salary Field - Visible to Admins and Self, Editable only by Admins (not self) */}
-                {(['ADMIN', 'SUPER_ADMIN'].includes(userRole) || params.id === session?.user?.id) && (
+                {/* Salary Field - Visible to Admins and Self, Editable only by Admins (not self) - HIDDEN for Super Admins */}
+                {(['ADMIN', 'SUPER_ADMIN'].includes(userRole) || params.id === session?.user?.id) && role !== 'SUPER_ADMIN' && (
                     <div>
                         <label style={{ display: 'block', marginBottom: '0.5rem' }}>Monthly Base Salary (EGP)</label>
                         <input

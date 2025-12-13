@@ -1,7 +1,12 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
+
+type Company = {
+    id: string
+    name: string
+}
 
 export default function NewEmployeePage() {
     const [firstName, setFirstName] = useState('')
@@ -9,11 +14,23 @@ export default function NewEmployeePage() {
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
     const [role, setRole] = useState('EMPLOYEE')
+    const [companyId, setCompanyId] = useState('')
+    const [salary, setSalary] = useState('')
+    const [companies, setCompanies] = useState<Company[]>([])
     const [error, setError] = useState('')
     const [loading, setLoading] = useState(false)
     const router = useRouter()
     const { data: session } = useSession()
     const userRole = session?.user?.role || ''
+
+    useEffect(() => {
+        if (userRole === 'SUPER_ADMIN') {
+            fetch('/api/companies')
+                .then(res => res.json())
+                .then(data => setCompanies(data))
+                .catch(err => console.error('Failed to fetch companies', err))
+        }
+    }, [userRole])
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -28,10 +45,24 @@ export default function NewEmployeePage() {
             return
         }
 
+        if (userRole === 'SUPER_ADMIN' && !companyId) {
+            setError('Company is required for Super Admin')
+            setLoading(false)
+            return
+        }
+
         try {
+            const body: any = { firstName, lastName, email, password, role }
+            if (userRole === 'SUPER_ADMIN' && companyId) {
+                body.companyId = companyId
+            }
+            if (salary) {
+                body.salary = parseFloat(salary)
+            }
+
             const res = await fetch('/api/users', {
                 method: 'POST',
-                body: JSON.stringify({ firstName, lastName, email, password, role }),
+                body: JSON.stringify(body),
                 headers: { 'Content-Type': 'application/json' }
             })
 
@@ -115,6 +146,38 @@ export default function NewEmployeePage() {
                         placeholder="Minimum 6 characters"
                     />
                 </div>
+
+                {/* Salary Input */}
+                <div>
+                    <label style={{ display: 'block', marginBottom: '0.5rem' }}>Monthly Salary ($)</label>
+                    <input
+                        type="number"
+                        className="input"
+                        value={salary}
+                        onChange={e => setSalary(e.target.value)}
+                        min="0"
+                        placeholder="0.00"
+                    />
+                </div>
+
+                {/* Company Selection for Super Admin */}
+                {userRole === 'SUPER_ADMIN' && (
+                    <div>
+                        <label style={{ display: 'block', marginBottom: '0.5rem' }}>Company</label>
+                        <select
+                            className="input"
+                            value={companyId}
+                            onChange={e => setCompanyId(e.target.value)}
+                            required
+                        >
+                            <option value="">Select a Company</option>
+                            {companies.map(c => (
+                                <option key={c.id} value={c.id}>{c.name}</option>
+                            ))}
+                        </select>
+                    </div>
+                )}
+
                 {(userRole === 'SUPER_ADMIN' || userRole === 'ADMIN') && (
                     <div>
                         <label style={{ display: 'block', marginBottom: '0.5rem' }}>Role</label>
