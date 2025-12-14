@@ -5,6 +5,15 @@ import { authOptions } from "@/lib/auth"
 
 export async function GET() {
     try {
+        const session = await getServerSession(authOptions)
+        if (!session?.user || session.user.role !== 'SUPER_ADMIN') {
+            // Exception: Employees/Admins might need to fetch their own company name? 
+            // Actually, the frontend often has companyName in session.
+            // If this endpoint is used for the "Company Select" list (Super Admin only), then it's fine.
+            // If used for "My Company" profile, existing users use `api/users?id=me`.
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+        }
+
         const companies = await prisma.company.findMany({
             select: {
                 id: true,
@@ -87,6 +96,80 @@ export async function PUT(req: Request) {
         }
         return NextResponse.json(
             { error: "Failed to update company" },
+            { status: 500 }
+        )
+    }
+}
+
+export async function DELETE(req: Request) {
+    try {
+        const session = await getServerSession(authOptions)
+
+        if (!session?.user || session.user.role !== 'SUPER_ADMIN') {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+        }
+
+        const { searchParams } = new URL(req.url)
+        const id = searchParams.get('id')
+
+        if (!id) {
+            return NextResponse.json({ error: "Company ID is required" }, { status: 400 })
+        }
+
+        // 1. Get Company & Verify
+        const company = await prisma.company.findUnique({
+            where: { id },
+            include: { users: { select: { id: true } } }
+        })
+
+        if (!company) {
+            return NextResponse.json({ error: "Company not found" }, { status: 404 })
+        }
+
+        // 2. Prevent Deleting SHSD
+        if (company.name === 'SHSD') {
+            return NextResponse.json({ error: "Cannot delete the default system company (SHSD)" }, { status: 403 })
+        }
+
+        const userIds = company.users.map(u => u.id)
+
+        // 3. Transactional Cascading Delete
+        await prisma.$transaction(async (tx) => {
+            if (userIds.length > 0) {
+                // Delete Assigned Tasks
+                await tx.task.deleteMany({ where: { assigneeId: { in: userIds } } })
+
+                // Delete Obligations
+                await tx.obligation.deleteMany({ where: { assigneeId: { in: userIds } } })
+
+                // Delete Notifications
+                await tx.notification.deleteMany({ where: { userId: { in: userIds } } })
+
+                // Delete Salary Records
+                await tx.salaryRecord.deleteMany({ where: { userId: { in: userIds } } })
+
+                // Delete Audit Logs
+                await tx.auditLog.deleteMany({ where: { userId: { in: userIds } } })
+
+                // Unlink Created Tasks
+                await tx.task.updateMany({
+                    where: { createdBy: { in: userIds } },
+                    data: { createdBy: null }
+                })
+
+                // Delete Users
+                await tx.user.deleteMany({ where: { id: { in: userIds } } })
+            }
+
+            // Delete Company
+            await tx.company.delete({ where: { id } })
+        })
+
+        return NextResponse.json({ success: true })
+    } catch (error) {
+        console.error('Delete company error:', error)
+        return NextResponse.json(
+            { error: "Failed to delete company" },
             { status: 500 }
         )
     }

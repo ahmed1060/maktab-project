@@ -11,6 +11,7 @@ export async function POST(req: Request) {
         return new NextResponse("Unauthorized", { status: 401 })
     }
 
+    const creatorCompanyId = (session.user as any).companyId
     const json = await req.json()
     const { title, description, assigneeId, deadline, recurrence, attachments, difficulty = 0 } = json
 
@@ -19,6 +20,22 @@ export async function POST(req: Request) {
     }
     if (!description || description.length < 10 || description.length > 1000) {
         return new NextResponse("Description must be between 10 and 1000 characters", { status: 400 })
+    }
+
+    // Security: Verify Cross-Company Assignment
+    if (userRole !== 'SUPER_ADMIN') {
+        if (!creatorCompanyId) {
+            return new NextResponse("You are not part of a company", { status: 403 })
+        }
+
+        const assigneeUser = await prisma.user.findUnique({
+            where: { id: assigneeId },
+            select: { companyId: true }
+        })
+
+        if (!assigneeUser || assigneeUser.companyId !== creatorCompanyId) {
+            return new NextResponse("Cannot assign obligation to user in a different company", { status: 403 })
+        }
     }
 
     const obligation = await prisma.obligation.create({
@@ -48,10 +65,17 @@ export async function GET(req: Request) {
 
     let whereClause: any = {}
 
-    if (['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(role)) {
+    if (role === 'SUPER_ADMIN') {
         if (companyId) {
             whereClause.assignee = { companyId }
         }
+    } else if (['ADMIN', 'TEAM_LEADER'].includes(role)) {
+        // Strict Company Isolation
+        const userCompanyId = (session.user as any).companyId
+        if (!userCompanyId) {
+            return NextResponse.json([]) // Unassigned Admins see nothing
+        }
+        whereClause.assignee = { companyId: userCompanyId }
     } else {
         whereClause.assigneeId = userId
     }

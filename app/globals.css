@@ -2,29 +2,42 @@
 
 :root {
   /* Modern Indigo & Slate Theme */
-  --primary: #4f46e5;       /* Indigo 600 */
-  --primary-hover: #4338ca; /* Indigo 700 */
+  --primary: #4f46e5;
+  /* Indigo 600 */
+  --primary-hover: #4338ca;
+  /* Indigo 700 */
   --primary-foreground: #ffffff;
 
-  --secondary: #f8fafc;     /* Slate 50 */
-  --secondary-foreground: #1e293b; /* Slate 800 */
+  --secondary: #f8fafc;
+  /* Slate 50 */
+  --secondary-foreground: #1e293b;
+  /* Slate 800 */
 
-  --background: #f1f5f9;    /* Slate 100 for main background */
-  --surface: #ffffff;       /* Pure white for cards */
+  --background: #f1f5f9;
+  /* Slate 100 for main background */
+  --surface: #ffffff;
+  /* Pure white for cards */
 
-  --foreground: #0f172a;    /* Slate 900 */
-  --muted: #e2e8f0;         /* Slate 200 */
-  --muted-foreground: #64748b; /* Slate 500 */
+  --foreground: #0f172a;
+  /* Slate 900 */
+  --muted: #e2e8f0;
+  /* Slate 200 */
+  --muted-foreground: #64748b;
+  /* Slate 500 */
 
-  --accent: #0ea5e9;        /* Sky 500 */
+  --accent: #0ea5e9;
+  /* Sky 500 */
   --accent-foreground: #ffffff;
 
-  --border: #e2e8f0;        /* Slate 200 */
-  --radius: 1rem;           /* Softer rounded corners */
-  
+  --border: #e2e8f0;
+  /* Slate 200 */
+  --radius: 1rem;
+  /* Softer rounded corners */
+
   --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-  --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05);
+  /* Softer shadow */
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.08), 0 4px 6px -4px rgb(0 0 0 / 0.08);
 }
 
 body {
@@ -41,6 +54,35 @@ body {
   max-width: 1200px;
   margin: 0 auto;
   padding: 2rem;
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.4s ease-out forwards;
+}
+
+.animate-delay-100 {
+  animation-delay: 100ms;
+}
+
+.animate-delay-200 {
+  animation-delay: 200ms;
+}
+
+.animate-delay-300 {
+  animation-delay: 300ms;
 }
 
 /* Modern Button */
@@ -66,12 +108,12 @@ body {
 .btn-primary {
   background-color: var(--primary);
   color: var(--primary-foreground);
-  box-shadow: 0 1px 2px 0 rgba(79, 70, 229, 0.4);
+  box-shadow: 0 1px 2px 0 rgba(79, 70, 229, 0.3);
 }
 
 .btn-primary:hover {
   background-color: var(--primary-hover);
-  box-shadow: 0 4px 6px -1px rgba(79, 70, 229, 0.5);
+  box-shadow: 0 4px 6px -1px rgba(79, 70, 229, 0.4);
 }
 
 /* Modern Card */
@@ -89,6 +131,18 @@ body {
   transform: translateY(-2px);
 }
 
+/* Dashboard Stats Card Specifics */
+.stats-card-gradient {
+  background: linear-gradient(135deg, #4f46e5 0%, #4338ca 100%);
+  color: white;
+  border: none;
+}
+
+.stats-card-white {
+  background: white;
+  color: var(--foreground);
+}
+
 /* Inputs */
 .input {
   width: 100%;
@@ -99,7 +153,8 @@ body {
   font-size: 0.95rem;
   transition: border-color 0.2s, box-shadow 0.2s;
   background-color: #ffffff;
-  box-sizing: border-box; /* Fix width issues */
+  box-sizing: border-box;
+  /* Fix width issues */
 }
 
 .input:focus {
@@ -120,7 +175,12 @@ body {
 }
 
 /* Typography Enhancements */
-h1, h2, h3, h4, h5, h6 {
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
   color: var(--foreground);
   letter-spacing: -0.025em;
   margin-top: 0;
@@ -140,13 +200,16 @@ a:hover {
 ::-webkit-scrollbar {
   width: 8px;
 }
+
 ::-webkit-scrollbar-track {
   background: transparent;
 }
+
 ::-webkit-scrollbar-thumb {
   background: #cbd5e1;
   border-radius: 4px;
 }
+
 ::-webkit-scrollbar-thumb:hover {
   background: #94a3b8;
 }

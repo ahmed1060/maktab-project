@@ -3,10 +3,15 @@ import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import ObligationsClient from "./ObligationsClient"
 
-export default async function ObligationsPage({ searchParams }: { searchParams: { companyId?: string } }) {
+export default async function ObligationsPage({ searchParams }: { searchParams: { company?: string } }) {
     const session = await getServerSession(authOptions)
     const role = (session?.user as any)?.role
-    const companyId = searchParams.companyId
+
+    let companyId: string | undefined = undefined
+    if (searchParams.company) {
+        const comp = await prisma.company.findUnique({ where: { name: searchParams.company } })
+        if (comp) companyId = comp.id
+    }
 
     let whereClause: any = {}
 

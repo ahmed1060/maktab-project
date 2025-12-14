@@ -44,7 +44,13 @@ export default function TaskListItem({ task, currentUserId }: TaskListItemProps)
     return (
         <div className="card">
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <h3 style={{ margin: 0 }} title={task.title}>
+                <h3
+                    style={{ margin: 0, cursor: 'pointer', transition: 'color 0.2s', color: 'inherit' }}
+                    title={task.title}
+                    onClick={() => setIsModalOpen(true)}
+                    onMouseEnter={(e) => e.currentTarget.style.color = '#2563eb'}
+                    onMouseLeave={(e) => e.currentTarget.style.color = 'inherit'}
+                >
                     {task.title.length > 50 ? task.title.substring(0, 50) + '...' : task.title}
                 </h3>
                 <span style={{
@@ -64,23 +70,6 @@ export default function TaskListItem({ task, currentUserId }: TaskListItemProps)
                         </span>
                     )}
                 </span>
-            </div>
-
-            <div style={{ margin: '1rem 0' }}>
-                <button
-                    onClick={() => setIsModalOpen(true)}
-                    style={{
-                        background: 'none',
-                        border: 'none',
-                        color: 'blue',
-                        textDecoration: 'underline',
-                        cursor: 'pointer',
-                        padding: 0,
-                        fontSize: '0.9rem'
-                    }}
-                >
-                    View Description
-                </button>
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1rem' }}>

@@ -18,24 +18,62 @@ async function main() {
         })
 
         if (!exists) {
-            await prisma.superAdmin.create({
+            const newAdmin = await prisma.superAdmin.create({
                 data: {
-                    // id: user.id, // Better to let it generate a new UUID or keep same? 
-                    // Keeping same ID is risky if UUIDs clash or if we want clean separation. 
-                    // Let's generate new ID to ensure no PK conflicts if tables were somehow merged later, 
-                    // BUT preserving ID is better for relations if we had them. 
-                    // Since we are decoupling, new ID is fine, but I'll try to keep other data.
                     email: user.email,
-                    password: user.password, // Keep hashed password
+                    password: user.password,
                     firstName: user.firstName,
                     lastName: user.lastName,
                     avatar: user.avatar,
                     gender: user.gender,
-                    createdAt: user.lastActivity // Approximation or keep current
+                    createdAt: user.lastActivity
                 }
             })
-            console.log(`Migrated ${user.email}`)
+            console.log(`Migrated ${user.email} -> New ID: ${newAdmin.id}`)
+
+            // 1. Handle AuditLogs
+            // Update logs to point to the new SuperAdmin ID and unlink from User
+            const updatedLogs = await prisma.auditLog.updateMany({
+                where: { userId: user.id },
+                data: {
+                    userId: null,
+                    superAdminId: newAdmin.id
+                }
+            })
+            console.log(`Updated ${updatedLogs.count} AuditLogs`)
+        } else {
+            console.log(`SuperAdmin already exists for ${user.email}`)
         }
+
+        // Handle other dependencies before deletion (even if SuperAdmin existed locally, we might need to clean up User)
+        // If "exists" was true, we don't have the newAdmin ID easily unless we fetch it, but usually we just want to clean up the User.
+        // For safety, let's assume we proceed to cleanup. 
+
+        // 2. Unlink Created Tasks (Set createdBy to null)
+        await prisma.task.updateMany({
+            where: { createdBy: user.id },
+            data: { createdBy: null }
+        })
+
+        // 3. Delete Assigned Tasks (Super Admins shouldn't have tasks usually)
+        await prisma.task.deleteMany({
+            where: { assigneeId: user.id }
+        })
+
+        // 4. Delete Notifications
+        await prisma.notification.deleteMany({
+            where: { userId: user.id }
+        })
+
+        // 5. Delete Obligations
+        await prisma.obligation.deleteMany({
+            where: { assigneeId: user.id }
+        })
+
+        // 6. Delete Salary Records
+        await prisma.salaryRecord.deleteMany({
+            where: { userId: user.id }
+        })
 
         // Delete from User table
         await prisma.user.delete({

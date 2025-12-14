@@ -20,7 +20,7 @@ async function main() {
                     firstName: 'Super',
                     lastName: 'Admin',
                     role: 'SUPER_ADMIN',
-                    active: true
+                    status: 'ACTIVE'
                 }
             })
             console.log('Created SUPER_ADMIN user:', superAdmin.email)
@@ -43,7 +43,7 @@ async function main() {
                     firstName: 'Team',
                     lastName: 'Leader',
                     role: 'TEAM_LEADER',
-                    active: true
+                    status: 'ACTIVE'
                 }
             })
             console.log('Created TEAM_LEADER user:', teamLeader.email)

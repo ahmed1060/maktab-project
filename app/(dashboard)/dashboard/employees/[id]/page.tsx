@@ -12,6 +12,8 @@ export default function EditEmployeePage({ params, searchParams }: { params: { i
     const [role, setRole] = useState('')
     const [gender, setGender] = useState('MALE')
     const [salary, setSalary] = useState<string>('')
+    const [companyId, setCompanyId] = useState('')
+    const [companies, setCompanies] = useState<{ id: string, name: string }[]>([])
     const [loading, setLoading] = useState(true)
     const [saving, setSaving] = useState(false)
     const [error, setError] = useState('')
@@ -23,7 +25,7 @@ export default function EditEmployeePage({ params, searchParams }: { params: { i
     useEffect(() => {
         const fetchEmployee = async () => {
             try {
-                const res = await fetch(`/api/users?id=${params.id}`)
+                const res = await fetch(`/api/users?id=${params.id}`, { cache: 'no-store' })
                 if (!res.ok) throw new Error('Failed to fetch employee')
                 const employee = await res.json()
                 // Handle both old name field (if exists) and new fields
@@ -39,14 +41,31 @@ export default function EditEmployeePage({ params, searchParams }: { params: { i
                 setRole(employee.role)
                 setGender(employee.gender || 'MALE')
                 setSalary(employee.salary !== undefined && employee.salary !== null ? employee.salary.toString() : '')
+                setCompanyId(employee.companyId || '')
             } catch (err) {
                 setError('Failed to load employee data')
             } finally {
                 setLoading(false)
             }
         }
+
+        const fetchCompanies = async () => {
+            try {
+                const res = await fetch('/api/companies')
+                if (res.ok) {
+                    const data = await res.json()
+                    setCompanies(data)
+                }
+            } catch (e) {
+                console.error('Failed to fetch companies', e)
+            }
+        }
+
         fetchEmployee()
-    }, [params.id])
+        if (userRole === 'SUPER_ADMIN') {
+            fetchCompanies()
+        }
+    }, [params.id, userRole])
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -80,6 +99,7 @@ export default function EditEmployeePage({ params, searchParams }: { params: { i
 
                     role,
                     gender,
+                    companyId: userRole === 'SUPER_ADMIN' ? companyId : undefined,
                     salary: (userRole === 'ADMIN' || userRole === 'SUPER_ADMIN') && params.id !== session?.user?.id ? parseFloat(salary) || 0 : undefined
                 }),
                 headers: { 'Content-Type': 'application/json' }
@@ -227,6 +247,24 @@ export default function EditEmployeePage({ params, searchParams }: { params: { i
                         <option value="FEMALE">Female</option>
                     </select>
                 </div>
+
+                {userRole === 'SUPER_ADMIN' && (
+                    <div style={{ marginBottom: '1rem' }}>
+                        <label style={{ display: 'block', marginBottom: '0.5rem' }}>Company</label>
+                        <select
+                            className="input"
+                            value={companyId}
+                            onChange={e => setCompanyId(e.target.value)}
+                            disabled={isViewMode}
+                            style={isViewMode ? { background: '#f1f5f9', cursor: 'not-allowed' } : {}}
+                        >
+                            <option value="">Select Company</option>
+                            {companies.map(c => (
+                                <option key={c.id} value={c.id}>{c.name}</option>
+                            ))}
+                        </select>
+                    </div>
+                )}
                 <div>
                     <label style={{ display: 'block', marginBottom: '0.5rem' }}>Email</label>
                     <input

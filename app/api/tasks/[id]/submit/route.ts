@@ -121,7 +121,7 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
             if (previousLocations.length === 1) { // 1 because we just pushed it
                 const now = new Date()
                 const deadline = new Date(currentTask.deadline)
-                
+
                 // Check if today is the deadline day (ignoring time)
                 const isDeadlineDay = now.toDateString() === deadline.toDateString()
 
@@ -199,8 +199,8 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
             data: updateData
         })
 
-        // Notify the creator (Admin) only if submitted
-        if (!isDraft) {
+        // Notify the creator (Admin) only if submitted and creator exists
+        if (!isDraft && task.createdBy) {
             await tx.notification.create({
                 data: {
                     userId: task.createdBy,

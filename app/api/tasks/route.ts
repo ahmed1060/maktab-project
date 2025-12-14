@@ -8,7 +8,13 @@ export async function GET(req: Request) {
     const userRole = (session?.user as any)?.role
     const userId = (session?.user as any)?.id // Explicitly cast to string if needed, assuming auth returns id
     const { searchParams } = new URL(req.url)
-    const companyId = searchParams.get('companyId')
+    let companyId = searchParams.get('companyId')
+    const companyName = searchParams.get('company')
+
+    if (!companyId && companyName) {
+        const comp = await prisma.company.findUnique({ where: { name: companyName } })
+        if (comp) companyId = comp.id
+    }
 
     if (!session) {
         return new NextResponse("Unauthorized", { status: 401 })
@@ -16,13 +22,20 @@ export async function GET(req: Request) {
 
     let whereClause: any = {}
 
-    // ADMIN, SUPER_ADMIN, and TEAM_LEADER see all tasks; EMPLOYEE sees only assigned tasks
-    if (['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole)) {
-        // Apply Company Filter if provided (mostly for Super Admins)
+    // 1. GET Logic Hardening
+    if (userRole === 'SUPER_ADMIN') {
         if (companyId) {
             whereClause.assignee = { companyId }
         }
+    } else if (['ADMIN', 'TEAM_LEADER'].includes(userRole)) {
+        // Strict Company Isolation
+        const userCompanyId = (session.user as any).companyId
+        if (!userCompanyId) {
+            return NextResponse.json([]) // Unassigned Admins see nothing
+        }
+        whereClause.assignee = { companyId: userCompanyId }
     } else {
+        // Employee seeing their own tasks is safe
         whereClause.assigneeId = userId
     }
 
@@ -60,6 +73,24 @@ export async function POST(req: Request) {
         return new NextResponse("Description must be between 10 and 1000 characters", { status: 400 })
     }
     const creatorId = (session.user as any).id
+    const creatorCompanyId = (session.user as any).companyId
+
+    // 2. POST Logic Hardening: Verify Cross-Company Assignment
+    if (userRole !== 'SUPER_ADMIN') {
+        if (!creatorCompanyId) {
+            return new NextResponse("You are not part of a company", { status: 403 })
+        }
+
+        // Check if assignee is in the same company
+        const assigneeUser = await prisma.user.findUnique({
+            where: { id: assigneeId },
+            select: { companyId: true }
+        })
+
+        if (!assigneeUser || assigneeUser.companyId !== creatorCompanyId) {
+            return new NextResponse("Cannot assign task to user in a different company", { status: 403 })
+        }
+    }
 
     // Server-side Deadline Validation
     if (difficulty < 0 || difficulty > 10) {

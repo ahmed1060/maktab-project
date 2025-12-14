@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { useCompany } from '@/context/CompanyContext'
 
 type Company = {
     id: string
@@ -16,6 +17,14 @@ export default function CompaniesPage() {
     const [formData, setFormData] = useState({ name: '' })
     const [submitLoading, setSubmitLoading] = useState(false)
     const [error, setError] = useState('')
+    const { triggerRefresh } = useCompany()
+
+    // Delete State
+    const [showDeleteModal, setShowDeleteModal] = useState(false)
+    const [companyToDelete, setCompanyToDelete] = useState<Company | null>(null)
+    const [deletePasscode, setDeletePasscode] = useState('')
+    const [deleteError, setDeleteError] = useState('')
+    const [isDeleting, setIsDeleting] = useState(false)
 
     const fetchCompanies = async () => {
         try {
@@ -74,10 +83,47 @@ export default function CompaniesPage() {
             // Success
             setShowModal(false)
             fetchCompanies()
+            triggerRefresh()
         } catch (err: any) {
             setError(err.message)
         } finally {
             setSubmitLoading(false)
+        }
+    }
+
+    const openDeleteModal = (company: Company) => {
+        setCompanyToDelete(company)
+        setDeletePasscode('')
+        setDeleteError('')
+        setShowDeleteModal(true)
+    }
+
+    const handleDelete = async (e: React.FormEvent) => {
+        e.preventDefault()
+        if (deletePasscode !== '2025') {
+            setDeleteError('Invalid passcode')
+            return
+        }
+
+        if (!companyToDelete) return
+
+        setIsDeleting(true)
+        setDeleteError('')
+
+        try {
+            const res = await fetch(`/api/companies?id=${companyToDelete.id}`, { method: 'DELETE' })
+            const data = await res.json()
+
+            if (!res.ok) throw new Error(data.error || 'Failed to delete company')
+
+            setShowDeleteModal(false)
+            setCompanyToDelete(null)
+            fetchCompanies()
+            triggerRefresh()
+        } catch (err: any) {
+            setDeleteError(err.message)
+        } finally {
+            setIsDeleting(false)
         }
     }
 
@@ -119,6 +165,19 @@ export default function CompaniesPage() {
                                         >
                                             Edit
                                         </button>
+                                        <button
+                                            onClick={() => openDeleteModal(company)}
+                                            className="btn"
+                                            style={{
+                                                background: '#fee2e2',
+                                                color: '#b91c1c',
+                                                padding: '0.4rem 0.8rem',
+                                                fontSize: '0.8rem',
+                                                marginLeft: '0.5rem'
+                                            }}
+                                        >
+                                            Delete
+                                        </button>
                                     </td>
                                 </tr>
                             ))}
@@ -158,6 +217,51 @@ export default function CompaniesPage() {
                                 </button>
                                 <button type="submit" className="btn btn-primary" disabled={submitLoading}>
                                     {submitLoading ? 'Saving...' : 'Save'}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Delete Modal */}
+            {showDeleteModal && companyToDelete && (
+                <div style={{
+                    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                    background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center',
+                    alignItems: 'center', zIndex: 100
+                }}>
+                    <div style={{ background: 'white', padding: '2rem', borderRadius: '12px', width: '100%', maxWidth: '400px' }}>
+                        <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1rem', color: '#b91c1c' }}>
+                            Delete Company
+                        </h2>
+                        <p style={{ marginBottom: '1.5rem', color: '#64748b' }}>
+                            Are you sure you want to delete <strong>{companyToDelete.name}</strong>?
+                            <br /><br />
+                            <span style={{ fontWeight: 'bold', color: '#dc2626' }}>WARNING: This will permanently delete all employees, tasks, and data associated with this company.</span>
+                        </p>
+
+                        {deleteError && <div style={{ color: 'red', marginBottom: '1rem', fontSize: '0.9rem' }}>{deleteError}</div>}
+
+                        <form onSubmit={handleDelete}>
+                            <div style={{ marginBottom: '1.5rem' }}>
+                                <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem' }}>Enter Passcode to Confirm</label>
+                                <input
+                                    type="password"
+                                    className="input"
+                                    required
+                                    placeholder="Enter passcode"
+                                    value={deletePasscode}
+                                    onChange={e => setDeletePasscode(e.target.value)}
+                                />
+                            </div>
+
+                            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
+                                <button type="button" onClick={() => setShowDeleteModal(false)} style={{ padding: '0.75rem 1.5rem', border: '1px solid #e2e8f0', borderRadius: '0.5rem', background: 'transparent' }}>
+                                    Cancel
+                                </button>
+                                <button type="submit" className="btn" disabled={isDeleting} style={{ background: '#dc2626', color: 'white', padding: '0.75rem 1.5rem', borderRadius: '0.5rem', border: 'none', cursor: 'pointer' }}>
+                                    {isDeleting ? 'Deleting...' : 'Delete Permanently'}
                                 </button>
                             </div>
                         </form>

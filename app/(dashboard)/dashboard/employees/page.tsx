@@ -32,7 +32,7 @@ export default function EmployeesPage() {
 
     const fetchEmployees = async () => {
         const query = selectedCompanyId ? `?companyId=${selectedCompanyId}` : ''
-        const res = await fetch(`/api/users${query}`)
+        const res = await fetch(`/api/users${query}`, { cache: 'no-store' })
         const data = await res.json()
         // Filter out current user AND Super Admins
         const filteredData = data.filter((u: Employee) => u.id !== (session?.user?.id || '') && u.role !== 'SUPER_ADMIN')

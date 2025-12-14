@@ -39,6 +39,7 @@ export async function GET(req: Request) {
                 role: true,
                 gender: true,
                 salary: true,
+                companyId: true,
                 tasks: {
                     select: {
                         difficulty: true,
@@ -69,6 +70,7 @@ export async function GET(req: Request) {
                 status: user.status,
                 role: user.role,
                 gender: user.gender,
+                companyId: user.companyId,
                 salary: canViewSalary ? user.salary : undefined,
                 totalDifficultyPoints
             })
@@ -103,12 +105,36 @@ export async function GET(req: Request) {
         return new NextResponse("User not found", { status: 404 })
     }
 
+    const companyIdParam = searchParams.get('companyId')
+    const companyNameParam = searchParams.get('company')
+    let filterCompanyId: string | undefined = undefined
+
+    if (companyIdParam) {
+        filterCompanyId = companyIdParam
+    } else if (companyNameParam) {
+        const comp = await prisma.company.findUnique({ where: { name: companyNameParam } })
+        if (comp) filterCompanyId = comp.id
+    }
+
     // Fetch list of users
-    const whereClause = userRole === 'SUPER_ADMIN'
-        ? {}
-        : userRole === 'ADMIN'
-            ? { role: { not: 'SUPER_ADMIN' } }
-            : { role: 'EMPLOYEE' } // TEAM_LEADER sees only employees logic can be refined if needed
+    let whereClause: any = {}
+
+    if (userRole === 'SUPER_ADMIN') {
+        if (filterCompanyId) {
+            whereClause.companyId = filterCompanyId
+        }
+    } else {
+        // Enforce strict isolation for ADMIN, TEAM_LEADER, EMPLOYEE
+        const userCompanyId = (session.user as any).companyId
+        if (!userCompanyId) {
+            // User has no company, so they shouldn't see any users list
+            return NextResponse.json([])
+        }
+        whereClause.companyId = userCompanyId
+
+        // Also exclude SUPER_ADMINs from the list visible to regular companies
+        whereClause.role = { not: 'SUPER_ADMIN' }
+    }
 
     const users = await prisma.user.findMany({
         where: whereClause,
@@ -209,8 +235,16 @@ export async function POST(req: Request) {
 
     // Determine Company ID
     let targetCompanyId = (session.user as any).companyId
-    if (userRole === 'SUPER_ADMIN' && companyId) {
-        targetCompanyId = companyId
+
+    if (userRole === 'SUPER_ADMIN') {
+        if (companyId) {
+            targetCompanyId = companyId
+        }
+    } else {
+        // Enforce company inheritance for Admins/Team Leaders
+        if (!targetCompanyId) {
+            return new NextResponse("Error: Your account is not associated with any company. Cannot create user.", { status: 403 })
+        }
     }
 
     // Check if user already exists
@@ -247,7 +281,7 @@ export async function PUT(req: Request) {
     }
 
     const json = await req.json()
-    const { id, firstName, lastName, email, password, role, gender, salary } = json
+    const { id, firstName, lastName, email, password, role, gender, salary, companyId } = json
 
     if (!id) {
         return new NextResponse("User ID required", { status: 400 })
@@ -327,17 +361,22 @@ export async function PUT(req: Request) {
             }
         }
 
-        if (salary !== undefined) {
-            if (['ADMIN', 'SUPER_ADMIN'].includes(userRole || '')) {
-                if (salary > 1000000000) return new NextResponse("Salary cannot exceed 1 billion", { status: 400 })
-                updateData.salary = salary
-            }
+        if (['ADMIN', 'SUPER_ADMIN'].includes(userRole || '')) {
+            if (salary > 1000000000) return new NextResponse("Salary cannot exceed 1 billion", { status: 400 })
+            updateData.salary = salary
+        }
+
+
+        // Allow Super Admin to update Company
+        if (companyId !== undefined && userRole === 'SUPER_ADMIN') {
+            updateData.companyId = companyId || null
+            console.log(`[API] Updating user ${id} company to: ${updateData.companyId}`)
         }
 
         const updatedUser = await prisma.user.update({
             where: { id },
             data: updateData,
-            select: { id: true, firstName: true, lastName: true, email: true, role: true, gender: true, salary: true }
+            select: { id: true, firstName: true, lastName: true, email: true, role: true, gender: true, salary: true, companyId: true }
         })
 
         // Sync Salary Record
@@ -389,6 +428,8 @@ export async function PUT(req: Request) {
             salary: 0
         })
     }
+
+    return new NextResponse("Unexpected error", { status: 500 })
 }
 
 export async function DELETE(req: Request) {

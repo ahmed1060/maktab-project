@@ -164,7 +164,12 @@ export default function SuperAdminsPage() {
                             {admins.map(admin => (
                                 <tr key={admin.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
                                     <td style={{ padding: '1rem' }}>
-                                        <div style={{ fontWeight: '500' }}>{admin.firstName} {admin.lastName}</div>
+                                        <div
+                                            style={{ fontWeight: '500', cursor: 'pointer', color: '#2563eb' }}
+                                            onClick={() => setViewingAdmin(admin)}
+                                        >
+                                            {admin.firstName} {admin.lastName}
+                                        </div>
                                     </td>
                                     <td style={{ padding: '1rem' }}>{admin.email}</td>
                                     <td style={{ padding: '1rem' }}>
@@ -181,13 +186,6 @@ export default function SuperAdminsPage() {
                                     </td>
                                     <td style={{ padding: '1rem', textAlign: 'right' }}>
                                         <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-                                            <button
-                                                onClick={() => setViewingAdmin(admin)}
-                                                className="btn"
-                                                style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem', background: '#e0f2fe', color: '#0369a1' }}
-                                            >
-                                                View
-                                            </button>
                                             <button
                                                 onClick={() => openEdit(admin)}
                                                 className="btn"
@@ -258,7 +256,7 @@ export default function SuperAdminsPage() {
                     alignItems: 'center', zIndex: 100
                 }}>
                     <div style={{ background: 'white', padding: '2rem', borderRadius: '12px', width: '100%', maxWidth: '400px' }}>
-                        <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1.5rem' }}>Admin Profile</h2>
+                        <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1.5rem' }}>Profile</h2>
                         <div style={{ marginBottom: '1rem' }}>
                             <label style={{ color: '#64748b', fontSize: '0.875rem' }}>Full Name</label>
                             <div style={{ fontWeight: '500', fontSize: '1.1rem' }}>{viewingAdmin.firstName} {viewingAdmin.lastName}</div>

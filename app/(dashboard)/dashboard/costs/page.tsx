@@ -4,14 +4,19 @@ import { authOptions } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 import CostsClient from './CostsClient'
 
-export default async function CostsPage({ searchParams }: { searchParams: { companyId?: string } }) {
+export default async function CostsPage({ searchParams }: { searchParams: { company?: string } }) {
     const session = await getServerSession(authOptions)
     if (!session) {
         redirect('/login')
     }
 
+    let companyId: string | undefined = undefined
+    if (searchParams.company) {
+        const comp = await prisma.company.findUnique({ where: { name: searchParams.company } })
+        if (comp) companyId = comp.id
+    }
+
     const userRole = (session.user as any)?.role
-    const companyId = searchParams.companyId
 
     // Only allow ADMIN, SUPER_ADMIN, TEAM_LEADER
     if (!['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole)) {

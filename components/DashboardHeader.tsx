@@ -15,32 +15,56 @@ interface DashboardHeaderProps {
         avatar?: string | null
         gender: string
     }
+    onMenuClick?: () => void
 }
 
-export default function DashboardHeader({ user }: DashboardHeaderProps) {
+export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderProps) {
     const pathname = usePathname()
     const router = useRouter()
     const searchParams = useSearchParams()
     const [isMenuOpen, setIsMenuOpen] = useState(false)
-    const { selectedCompanyId, setSelectedCompanyId } = useCompany()
+    const { selectedCompanyId, setSelectedCompanyId, refreshTrigger } = useCompany()
     const [companies, setCompanies] = useState<{ id: string, name: string }[]>([])
 
     useEffect(() => {
         if (user.role === 'SUPER_ADMIN') {
-            fetch('/api/companies')
+            fetch('/api/companies', { cache: 'no-store' })
                 .then(res => res.json())
                 .then(data => setCompanies(data))
                 .catch(err => console.error('Failed to fetch companies', err))
         }
-    }, [user.role])
+    }, [user.role, refreshTrigger])
 
-    // Sync URL -> Context
+    // Sync URL <-> Context
     useEffect(() => {
-        const companyIdFromUrl = searchParams.get('companyId')
-        if (companyIdFromUrl !== selectedCompanyId) {
-            setSelectedCompanyId(companyIdFromUrl)
+        const companyNameFromUrl = searchParams.get('company')
+
+        if (companyNameFromUrl && companies.length > 0) {
+            // URL has priority
+            // Find company by name
+            const matchingCompany = companies.find(c => c.name === companyNameFromUrl)
+            if (matchingCompany && matchingCompany.id !== selectedCompanyId) {
+                setSelectedCompanyId(matchingCompany.id)
+            }
+        } else if (selectedCompanyId && companies.length > 0) {
+            // URL is missing param, but we have a selection (persistence)
+            // Re-apply the param to the current URL
+            const matchingCompany = companies.find(c => c.id === selectedCompanyId)
+            if (matchingCompany) {
+                const params = new URLSearchParams(searchParams ? searchParams.toString() : '')
+                params.set('company', matchingCompany.name)
+                // Remove legacy ID param if exists to be clean
+                params.delete('companyId')
+
+                // Only replace if the URL actually needs changing
+                const currentName = searchParams.get('company')
+                if (currentName !== matchingCompany.name) {
+                    router.replace(`${pathname}?${params.toString()}`)
+                }
+            }
         }
-    }, [searchParams])
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [searchParams, pathname, router, companies])
 
     const handleCompanyChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
         const val = e.target.value
@@ -48,8 +72,13 @@ export default function DashboardHeader({ user }: DashboardHeaderProps) {
 
         const params = new URLSearchParams(searchParams ? searchParams.toString() : '')
         if (val) {
-            params.set('companyId', val)
+            const selectedCompany = companies.find(c => c.id === val)
+            if (selectedCompany) {
+                params.set('company', selectedCompany.name)
+            }
+            params.delete('companyId')
         } else {
+            params.delete('company')
             params.delete('companyId')
         }
         router.push(`${pathname}?${params.toString()}`)
@@ -78,18 +107,42 @@ export default function DashboardHeader({ user }: DashboardHeaderProps) {
 
     return (
         <header style={{
-            padding: '1rem 2rem',
-            background: 'white',
-            borderBottom: '1px solid #e2e8f0',
+            padding: '0 2rem',
+            background: 'transparent',
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
-            height: '80px'
+            height: '72px'
         }}>
             {/* Left: Page Name */}
-            <h1 style={{ fontSize: '1.5rem', fontWeight: 'bold', margin: 0, color: '#1e293b' }}>
-                {title}
-            </h1>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                {onMenuClick && (
+                    <button
+                        onClick={onMenuClick}
+                        style={{
+                            display: 'none', // Hidden on desktop by default, controlled by parent or media query usually, but here we can force it or let parent handle responsiveness. 
+                            // actually, better to just show it always if passed, and let parent hide it via CSS if needed.
+                            // But for now let's style it as a mobile trigger.
+                            // We will use a class to hide on desktop in the parent, or just show it.
+                            // Let's rely on the Shell to pass it only when relevant or style it.
+                            // For simplicity, I'll style it to be visible.
+                            background: 'transparent',
+                            border: 'none',
+                            fontSize: '1.5rem',
+                            cursor: 'pointer',
+                            padding: '0.25rem',
+                            lineHeight: 1
+                        }}
+                        className="lg:hidden" // Tailwind utility if available, otherwise we need custom CSS. Assuming raw CSS for now from globals? 
+                    // The user uses vanilla CSS mostly. I will add a style block for responsiveness.
+                    >
+                        ☰
+                    </button>
+                )}
+                <h1 style={{ fontSize: '1.5rem', fontWeight: 'bold', margin: 0, color: '#1e293b' }}>
+                    {title}
+                </h1>
+            </div>
 
             {/* Right: Actions & Profile */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
