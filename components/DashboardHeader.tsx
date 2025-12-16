@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import { signOut } from 'next-auth/react'
+import { signOut, useSession } from 'next-auth/react'
 import NotificationBell from './NotificationBell'
 import { useCompany } from '@/context/CompanyContext'
 
@@ -26,14 +26,18 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
     const { selectedCompanyId, setSelectedCompanyId, refreshTrigger } = useCompany()
     const [companies, setCompanies] = useState<{ id: string, name: string }[]>([])
 
+    // Use client-side session for live updates (e.g. avatar change), fall back to prop
+    const { data: session } = useSession()
+    const currentUser = session?.user || user
+
     useEffect(() => {
-        if (user.role === 'SUPER_ADMIN') {
+        if (currentUser.role === 'SUPER_ADMIN') {
             fetch('/api/companies', { cache: 'no-store' })
                 .then(res => res.json())
                 .then(data => setCompanies(data))
                 .catch(err => console.error('Failed to fetch companies', err))
         }
-    }, [user.role, refreshTrigger])
+    }, [currentUser.role, refreshTrigger])
 
     // Sync URL <-> Context
     useEffect(() => {
@@ -125,7 +129,6 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
                             // But for now let's style it as a mobile trigger.
                             // We will use a class to hide on desktop in the parent, or just show it.
                             // Let's rely on the Shell to pass it only when relevant or style it.
-                            // For simplicity, I'll style it to be visible.
                             background: 'transparent',
                             border: 'none',
                             fontSize: '1.5rem',
@@ -133,32 +136,31 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
                             padding: '0.25rem',
                             lineHeight: 1
                         }}
-                        className="lg:hidden" // Tailwind utility if available, otherwise we need custom CSS. Assuming raw CSS for now from globals? 
-                    // The user uses vanilla CSS mostly. I will add a style block for responsiveness.
+                        className="lg:hidden"
                     >
                         ☰
                     </button>
                 )}
-                <h1 style={{ fontSize: '1.5rem', fontWeight: 'bold', margin: 0, color: '#1e293b' }}>
+                <h1 style={{ fontSize: '1.5rem', fontWeight: 'bold', margin: 0, color: 'var(--text-main)' }}>
                     {title}
                 </h1>
             </div>
 
             {/* Right: Actions & Profile */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
-                {user.role === 'SUPER_ADMIN' && (
+                {currentUser.role === 'SUPER_ADMIN' && (
                     <select
                         value={selectedCompanyId || ''}
                         onChange={handleCompanyChange}
+                        className="glass" // Use glass class
                         style={{
-                            padding: '0.5rem',
-                            borderRadius: '0.5rem',
-                            border: '1px solid #e2e8f0',
+                            padding: '0.5rem 1rem',
+                            borderRadius: '1rem',
                             marginRight: '0.5rem',
                             fontSize: '0.9rem',
                             outline: 'none',
-                            background: '#f8fafc',
-                            cursor: 'pointer'
+                            cursor: 'pointer',
+                            color: 'var(--text-main)'
                         }}
                     >
                         <option value="">All Companies</option>
@@ -173,11 +175,11 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
                 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                     {/* User Info (Role Top, Name Bottom) */}
                     <div style={{ textAlign: 'right' }}>
-                        <div style={{ fontSize: '0.75rem', fontWeight: 'bold', color: '#64748b', textTransform: 'uppercase' }}>
-                            {user.role.replace('_', ' ')}
+                        <div style={{ fontSize: '0.75rem', fontWeight: 'bold', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+                            {currentUser.role.replace('_', ' ')}
                         </div>
-                        <div style={{ fontSize: '0.9rem', fontWeight: '600', color: '#0f172a' }}>
-                            {user.firstName} {user.lastName}
+                        <div style={{ fontSize: '0.9rem', fontWeight: '600', color: 'var(--text-main)' }}>
+                            {currentUser.firstName} {currentUser.lastName}
                         </div>
                     </div>
 
@@ -189,19 +191,21 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
                                 width: '45px',
                                 height: '45px',
                                 borderRadius: '50%',
-                                background: '#f1f5f9',
-                                border: '2px solid #e2e8f0',
+                                background: 'rgba(255,255,255,0.5)',
+                                border: '2px solid rgba(255,255,255,0.8)',
                                 overflow: 'hidden',
                                 cursor: 'pointer',
                                 display: 'flex',
                                 alignItems: 'center',
-                                justifyContent: 'center'
+                                justifyContent: 'center',
+                                boxShadow: '0 4px 6px rgba(0,0,0,0.05)'
                             }}
                         >
-                            {user.avatar ? (
-                                <img src={user.avatar} alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+
+                            {currentUser.avatar ? (
+                                <img src={currentUser.avatar} alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                             ) : (
-                                <span style={{ fontSize: '1.5rem' }}>{user.gender === 'FEMALE' ? '👩🏻' : '👨🏻'}</span>
+                                <span style={{ fontSize: '1.5rem' }}>{currentUser.gender === 'FEMALE' ? '👩🏻' : '👨🏻'}</span>
                             )}
                         </div>
 
@@ -213,14 +217,10 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
                                     style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 99 }}
                                     onClick={() => setIsMenuOpen(false)}
                                 />
-                                <div style={{
+                                <div className="glass" style={{
                                     position: 'absolute',
                                     top: '120%',
                                     right: 0,
-                                    background: 'white',
-                                    border: '1px solid #e2e8f0',
-                                    borderRadius: '0.5rem',
-                                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
                                     width: '200px',
                                     zIndex: 100,
                                     padding: '0.5rem',
@@ -229,25 +229,26 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
                                     gap: '0.5rem'
                                 }}>
                                     <Link
-                                        href={`/dashboard/employees/${user.id}`}
+                                        href={`/dashboard/employees/${currentUser.id}`}
                                         onClick={() => setIsMenuOpen(false)}
                                         style={{
                                             display: 'block',
-                                            padding: '0.5rem 1rem',
+                                            padding: '0.6rem 1rem',
                                             textDecoration: 'none',
-                                            color: '#1e293b',
+                                            color: 'var(--text-main)',
                                             fontSize: '0.9rem',
-                                            borderRadius: '0.25rem',
-                                            transition: 'background 0.2s'
+                                            borderRadius: '0.5rem',
+                                            transition: 'background 0.2s',
+                                            fontWeight: '500'
                                         }}
-                                        onMouseEnter={(e) => e.currentTarget.style.background = '#f8fafc'}
+                                        onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.4)'}
                                         onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
                                     >
                                         My Profile
                                     </Link>
-                                    {user.role !== 'SUPER_ADMIN' && (
+                                    {currentUser.role !== 'SUPER_ADMIN' && (
                                         <Link
-                                            href={`/dashboard/employees/${user.id}/history`}
+                                            href={`/dashboard/employees/${currentUser.id}/history`}
                                             onClick={() => setIsMenuOpen(false)}
                                             style={{
                                                 display: 'block',

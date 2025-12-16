@@ -1,5 +1,6 @@
 'use client'
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 
 interface ModalProps {
     isOpen: boolean
@@ -12,7 +13,10 @@ interface ModalProps {
 export default function Modal({ isOpen, onClose, title, children, hideFooter = false }: ModalProps) {
     const modalRef = useRef<HTMLDivElement>(null)
 
+    const [mounted, setMounted] = useState(false)
+
     useEffect(() => {
+        setMounted(true)
         const handleEscape = (e: KeyboardEvent) => {
             if (e.key === 'Escape') onClose()
         }
@@ -26,9 +30,9 @@ export default function Modal({ isOpen, onClose, title, children, hideFooter = f
         }
     }, [isOpen, onClose])
 
-    if (!isOpen) return null
+    if (!isOpen || !mounted) return null
 
-    return (
+    return createPortal(
         <div style={{
             position: 'fixed',
             top: 0,
@@ -40,22 +44,24 @@ export default function Modal({ isOpen, onClose, title, children, hideFooter = f
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            zIndex: 1000,
+            zIndex: 9999, // Increased z-index
             animation: 'fadeIn 0.2s ease-out'
         }} onClick={onClose}>
             <div
                 ref={modalRef}
+                className="glass" // Use glass class
                 style={{
-                    backgroundColor: 'white',
                     padding: '2rem',
-                    borderRadius: '1rem',
+                    borderRadius: '1.5rem',
                     maxWidth: '800px', // Increased size
                     width: '90%',
                     maxHeight: '90vh',
                     overflowY: 'auto',
                     position: 'relative',
-                    boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
-                    animation: 'slideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1)'
+                    boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', // Deep shadow for lift
+                    animation: 'slideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
+                    background: 'rgba(255, 255, 255, 0.85)', // Slightly more opaque for content readability
+                    backdropFilter: 'blur(24px)'
                 }}
                 onClick={e => e.stopPropagation()}
             >
@@ -87,18 +93,24 @@ export default function Modal({ isOpen, onClose, title, children, hideFooter = f
                 {!hideFooter && (
                     <div style={{ marginTop: '2rem', display: 'flex', justifyContent: 'flex-end', borderTop: '1px solid #f1f5f9', paddingTop: '1rem' }}>
                         <button
-                            className="btn"
+                            className="btn glass"
                             onClick={onClose}
                             style={{
-                                background: '#f8fafc',
-                                border: '1px solid #e2e8f0',
-                                color: '#475569',
-                                fontWeight: '500',
+                                color: 'var(--text-muted)',
+                                fontWeight: '600',
                                 padding: '0.6rem 1.2rem',
-                                borderRadius: '0.5rem'
+                                borderRadius: '0.75rem',
+                                background: 'rgba(255,255,255,0.5)',
+                                border: '1px solid rgba(255,255,255,0.5)'
                             }}
-                            onMouseEnter={(e) => e.currentTarget.style.background = '#f1f5f9'}
-                            onMouseLeave={(e) => e.currentTarget.style.background = '#f8fafc'}
+                            onMouseEnter={(e) => {
+                                e.currentTarget.style.background = 'rgba(255,255,255,0.8)'
+                                e.currentTarget.style.transform = 'translateY(-1px)'
+                            }}
+                            onMouseLeave={(e) => {
+                                e.currentTarget.style.background = 'rgba(255,255,255,0.5)'
+                                e.currentTarget.style.transform = 'translateY(0)'
+                            }}
                         >
                             Close
                         </button>
@@ -115,6 +127,7 @@ export default function Modal({ isOpen, onClose, title, children, hideFooter = f
                     to { transform: translateY(0) scale(1); opacity: 1; }
                 }
             `}</style>
-        </div>
+        </div >,
+        document.body
     )
 }

@@ -52,8 +52,28 @@ export default function LoginPage() {
     }
 
     return (
-        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', background: 'var(--secondary)' }}>
-            <div className="card" style={{ width: '100%', maxWidth: '400px' }}>
+        <div style={{
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            minHeight: '100vh',
+            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            position: 'relative',
+            overflow: 'hidden'
+        }}>
+            {/* Animated background elements */}
+            <div style={{
+                position: 'absolute',
+                top: '-50%',
+                left: '-50%',
+                width: '200%',
+                height: '200%',
+                background: 'radial-gradient(circle, rgba(255,255,255,0.1) 1px, transparent 1px)',
+                backgroundSize: '50px 50px',
+                animation: 'float 20s linear infinite',
+                pointerEvents: 'none'
+            }} />
+            <div className="card" style={{ width: '100%', maxWidth: '400px', position: 'relative', zIndex: 1 }}>
                 <h1 style={{ marginBottom: '1.5rem', textAlign: 'center' }}>Login</h1>
                 {error && <div style={{ color: 'red', marginBottom: '1rem', textAlign: 'center' }}>{error}</div>}
                 <form onSubmit={handleSubmit}>

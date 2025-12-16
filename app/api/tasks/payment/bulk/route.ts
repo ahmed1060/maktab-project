@@ -34,18 +34,25 @@ export async function POST(req: Request) {
         })
 
         // Log the bulk payment update
+        const auditData: any = {
+            action: 'BULK_UPDATE_PAYMENT_STATUS',
+            entityType: 'TASK',
+            entityId: 'BULK',
+            details: JSON.stringify({
+                taskIds,
+                count: result.count,
+                paymentStatus: 'PAID'
+            })
+        }
+
+        if (role === 'SUPER_ADMIN') {
+            auditData.superAdminId = (session.user as any).id
+        } else {
+            auditData.userId = (session.user as any).id
+        }
+
         await prisma.auditLog.create({
-            data: {
-                action: 'BULK_UPDATE_PAYMENT_STATUS',
-                entityType: 'TASK',
-                entityId: 'BULK',
-                userId: (session.user as any).id,
-                details: JSON.stringify({
-                    taskIds,
-                    count: result.count,
-                    paymentStatus: 'PAID'
-                })
-            }
+            data: auditData
         })
 
         return NextResponse.json({ success: true, count: result.count })

@@ -1,0 +1,325 @@
+
+> app@0.1.0 lint
+> next lint
+
+
+./app/(auth)/login/page.tsx
+46:23  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+
+./app/(dashboard)/dashboard/all-users/page.tsx
+5:10  Error: 'useRouter' is defined but never used.  @typescript-eslint/no-unused-vars
+56:18  Error: 'e' is defined but never used.  @typescript-eslint/no-unused-vars
+283:57  Error: `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`.  react/no-unescaped-entities
+283:73  Error: `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`.  react/no-unescaped-entities
+
+./app/(dashboard)/dashboard/companies/page.tsx
+4:10  Error: 'useRouter' is defined but never used.  @typescript-eslint/no-unused-vars
+34:51  Error: React Hook "useState" is called conditionally. React Hooks must be called in the exact same order in every component render.  react-hooks/rules-of-hooks
+35:51  Error: React Hook "useState" is called conditionally. React Hooks must be called in the exact same order in every component render.  react-hooks/rules-of-hooks
+36:49  Error: React Hook "useState" is called conditionally. React Hooks must be called in the exact same order in every component render.  react-hooks/rules-of-hooks
+37:43  Error: React Hook "useState" is called conditionally. React Hooks must be called in the exact same order in every component render.  react-hooks/rules-of-hooks
+38:27  Error: React Hook "useToast" is called conditionally. React Hooks must be called in the exact same order in every component render.  react-hooks/rules-of-hooks
+39:41  Error: React Hook "useState" is called conditionally. React Hooks must be called in the exact same order in every component render.  react-hooks/rules-of-hooks
+48:18  Error: 'e' is defined but never used.  @typescript-eslint/no-unused-vars
+55:5  Error: React Hook "useEffect" is called conditionally. React Hooks must be called in the exact same order in every component render.  react-hooks/rules-of-hooks
+100:23  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+137:23  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+
+./app/(dashboard)/dashboard/costs/CostsClient.tsx
+9:21  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+
+./app/(dashboard)/dashboard/costs/page.tsx
+19:39  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+
+./app/(dashboard)/dashboard/employees/new/page.tsx
+66:25  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+89:18  Error: 'err' is defined but never used.  @typescript-eslint/no-unused-vars
+
+./app/(dashboard)/dashboard/employees/page.tsx
+30:11  Error: 'router' is assigned a value but never used.  @typescript-eslint/no-unused-vars
+90:8  Warning: React Hook useEffect has a missing dependency: 'fetchEmployees'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+
+./app/(dashboard)/dashboard/employees/[id]/bonus/page.tsx
+43:18  Error: 'err' is defined but never used.  @typescript-eslint/no-unused-vars
+
+./app/(dashboard)/dashboard/employees/[id]/deduction/page.tsx
+43:18  Error: 'err' is defined but never used.  @typescript-eslint/no-unused-vars
+53:86  Error: `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`.  react/no-unescaped-entities
+
+./app/(dashboard)/dashboard/employees/[id]/history/page.tsx
+26:11  Error: 'router' is assigned a value but never used.  @typescript-eslint/no-unused-vars
+
+./app/(dashboard)/dashboard/obligations/new/page.tsx
+12:40  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+22:52  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+25:56  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+25:64  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+45:12  Error: 'error' is assigned a value but never used.  @typescript-eslint/no-unused-vars
+45:19  Error: 'setError' is assigned a value but never used.  @typescript-eslint/no-unused-vars
+
+./app/(dashboard)/dashboard/obligations/ObligationsClient.tsx
+2:20  Error: 'useEffect' is defined but never used.  @typescript-eslint/no-unused-vars
+9:18  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+125:75  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+
+./app/(dashboard)/dashboard/obligations/page.tsx
+8:36  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+16:9  Error: 'whereClause' is never reassigned. Use 'const' instead.  prefer-const
+16:22  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+19:52  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+
+./app/(dashboard)/dashboard/obligations/[id]/client.tsx
+6:88  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+25:8  Warning: React Hook useEffect has a missing dependency: 'handleUpload'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+70:36  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+132:46  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+267:56  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+
+./app/(dashboard)/dashboard/obligations/[id]/page.tsx
+16:62  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+30:88  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+
+./app/(dashboard)/dashboard/page.tsx
+8:40  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+89:52  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+94:52  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+120:59  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+122:85  Error: `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`.  react/no-unescaped-entities
+
+./app/(dashboard)/dashboard/super-admins/page.tsx
+4:10  Error: 'useRouter' is defined but never used.  @typescript-eslint/no-unused-vars
+33:37  Error: React Hook "useState" is called conditionally. React Hooks must be called in the exact same order in every component render.  react-hooks/rules-of-hooks
+42:37  Error: React Hook "useState" is called conditionally. React Hooks must be called in the exact same order in every component render.  react-hooks/rules-of-hooks
+49:47  Error: React Hook "useState" is called conditionally. React Hooks must be called in the exact same order in every component render.  react-hooks/rules-of-hooks
+50:31  Error: React Hook "useState" is called conditionally. React Hooks must be called in the exact same order in every component render.  react-hooks/rules-of-hooks
+59:18  Error: 'e' is defined but never used.  @typescript-eslint/no-unused-vars
+66:5  Error: React Hook "useEffect" is called conditionally. React Hooks must be called in the exact same order in every component render.  react-hooks/rules-of-hooks
+93:23  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+124:23  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+
+./app/(dashboard)/dashboard/tasks/new/page.tsx
+12:40  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+19:11  Error: 'todayStr' is assigned a value but never used.  @typescript-eslint/no-unused-vars
+26:52  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+29:56  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+29:64  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+95:23  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+
+./app/(dashboard)/dashboard/tasks/page.tsx
+8:36  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+16:9  Error: 'whereClause' is never reassigned. Use 'const' instead.  prefer-const
+16:22  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+19:52  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+36:84  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+
+./app/(dashboard)/dashboard/tasks/TasksClient.tsx
+2:20  Error: 'useEffect' is defined but never used.  @typescript-eslint/no-unused-vars
+9:12  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+138:67  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+
+./app/(dashboard)/dashboard/tasks/[id]/client.tsx
+9:121  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+18:11  Error: 'todayStr' is assigned a value but never used.  @typescript-eslint/no-unused-vars
+45:63  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+78:46  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+86:54  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+86:62  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+98:8  Warning: React Hook useEffect has a missing dependency: 'allUsers.length'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+111:8  Warning: React Hook useEffect has missing dependencies: 'handleUpload', 'task.assigneeId', and 'userId'. Either include them or remove the dependency array.  react-hooks/exhaustive-deps
+192:87  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+215:26  Error: 'error' is defined but never used.  @typescript-eslint/no-unused-vars
+295:36  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+306:26  Error: 'err' is defined but never used.  @typescript-eslint/no-unused-vars
+343:64  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+344:49  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+391:21  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+431:14  Error: 'error' is defined but never used.  @typescript-eslint/no-unused-vars
+535:83  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+631:78  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+636:60  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+645:22  Error: 'e' is defined but never used.  @typescript-eslint/no-unused-vars
+653:82  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+669:74  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+674:54  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+710:22  Error: 'e' is defined but never used.  @typescript-eslint/no-unused-vars
+718:82  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+723:62  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+736:46  Error: 'e' is defined but never used.  @typescript-eslint/no-unused-vars
+877:26  Error: 'e' is defined but never used.  @typescript-eslint/no-unused-vars
+1349:70  Error: `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`.  react/no-unescaped-entities
+
+./app/(dashboard)/dashboard/tasks/[id]/page.tsx
+16:56  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+36:70  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+36:108  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+36:179  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+
+./app/api/companies/route.ts
+28:14  Error: 'error' is defined but never used.  @typescript-eslint/no-unused-vars
+56:23  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+94:23  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+
+./app/api/notifications/route.ts
+6:27  Error: 'request' is defined but never used.  @typescript-eslint/no-unused-vars
+32:29  Error: 'request' is defined but never used.  @typescript-eslint/no-unused-vars
+
+./app/api/obligations/route.ts
+8:40  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+14:47  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+61:35  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+62:37  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+66:9  Error: 'whereClause' is never reassigned. Use 'const' instead.  prefer-const
+66:22  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+74:48  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+
+./app/api/obligations/[id]/delete/route.ts
+11:40  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+
+./app/api/obligations/[id]/route.ts
+12:37  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+20:93  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+28:31  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+37:22  Error: 'e' is defined but never used.  @typescript-eslint/no-unused-vars
+47:27  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+51:89  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+51:119  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+83:42  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+84:48  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+97:73  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+106:14  Error: 'error' is defined but never used.  @typescript-eslint/no-unused-vars
+
+./app/api/super-admins/route.ts
+37:14  Error: 'error' is defined but never used.  @typescript-eslint/no-unused-vars
+74:27  Error: '_' is assigned a value but never used.  @typescript-eslint/no-unused-vars
+83:23  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+
+./app/api/tasks/payment/bulk/route.ts
+10:35  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+37:26  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+49:55  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+51:49  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+
+./app/api/tasks/route.ts
+8:40  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+9:38  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+23:9  Error: 'whereClause' is never reassigned. Use 'const' instead.  prefer-const
+23:22  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+32:48  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+60:40  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+75:40  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+76:47  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+154:21  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+159:29  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+160:29  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+
+./app/api/tasks/[id]/delete/route.ts
+11:40  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+
+./app/api/tasks/[id]/details/route.ts
+8:88  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+41:24  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+47:27  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+57:45  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+57:75  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+74:42  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+74:96  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+75:48  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+75:95  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+85:91  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+85:121  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+91:21  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+
+./app/api/tasks/[id]/locations/route.ts
+27:13  Error: 'comments' is never reassigned. Use 'const' instead.  prefer-const
+28:54  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+
+./app/api/tasks/[id]/payment/route.ts
+10:35  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+25:27  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+47:42  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+47:96  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+48:48  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+48:95  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+
+./app/api/tasks/[id]/review/route.ts
+12:37  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+16:13  Error: 'taskData' is never reassigned. Use 'const' instead.  prefer-const
+16:23  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+18:53  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+18:83  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+64:42  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+65:48  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+
+./app/api/tasks/[id]/submit/route.ts
+26:37  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+34:31  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+44:22  Error: 'e' is defined but never used.  @typescript-eslint/no-unused-vars
+58:22  Error: 'e' is defined but never used.  @typescript-eslint/no-unused-vars
+66:42  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+79:42  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+99:50  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+113:42  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+120:59  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+140:59  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+185:27  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+209:93  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+223:42  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+224:48  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+
+./app/api/tasks/[id]/transfer/route.ts
+13:37  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+14:39  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+34:35  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+38:22  Error: 'e' is defined but never used.  @typescript-eslint/no-unused-vars
+54:61  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+54:91  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+92:34  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+97:61  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+100:22  Error: 'e' is defined but never used.  @typescript-eslint/no-unused-vars
+149:21  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+
+./app/api/user/activity/route.ts
+20:14  Error: 'error' is defined but never used.  @typescript-eslint/no-unused-vars
+
+./app/api/users/route.ts
+120:9  Error: 'whereClause' is never reassigned. Use 'const' instead.  prefer-const
+120:22  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+128:48  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+186:43  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+205:31  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+244:44  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+334:23  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+
+./app/api/users/[id]/bonus/route.ts
+8:40  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+
+./app/api/users/[id]/deduction/route.ts
+8:40  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+
+./app/api/users/[id]/reset-points/route.ts
+11:40  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+
+./app/api/users/[id]/status/route.ts
+11:40  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+
+./components/DashboardHeader.tsx
+207:33  Warning: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+./components/DashboardShell.tsx
+9:11  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+
+./components/EmployeeProfileForm.tsx
+54:22  Error: 'err' is defined but never used.  @typescript-eslint/no-unused-vars
+77:8  Warning: React Hook useEffect has a missing dependency: 'showToast'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+146:23  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+
+./components/SearchableSelect.tsx
+202:33  Error: Expected an assignment or function call and instead saw an expression.  @typescript-eslint/no-unused-expressions
+203:33  Error: Expected an assignment or function call and instead saw an expression.  @typescript-eslint/no-unused-expressions
+206:33  Error: Expected an assignment or function call and instead saw an expression.  @typescript-eslint/no-unused-expressions
+207:33  Error: Expected an assignment or function call and instead saw an expression.  @typescript-eslint/no-unused-expressions
+
+./lib/auth.ts
+76:30  Error: 'e' is defined but never used.  @typescript-eslint/no-unused-vars
+
+info  - Need to disable some ESLint rules? Learn more here: https://nextjs.org/docs/basic-features/eslint#disabling-rules

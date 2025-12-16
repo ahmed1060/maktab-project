@@ -42,7 +42,7 @@ export default function TaskListItem({ task, currentUserId }: TaskListItemProps)
     }
 
     return (
-        <div className="card">
+        <div className="glass-card" style={{ marginBottom: '1rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <h3
                     style={{ margin: 0, cursor: 'pointer', transition: 'color 0.2s', color: 'inherit' }}

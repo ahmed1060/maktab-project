@@ -137,7 +137,8 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
                         penaltyDays = 0.25
                     }
 
-                    if (penaltyDays > 0) {
+                    const isSuperAdmin = (session.user as any).role === 'SUPER_ADMIN'
+                    if (penaltyDays > 0 && !isSuperAdmin) {
                         // Apply Deduction to Salary Record
                         const currentMonth = now.getMonth() + 1
                         const currentYear = now.getFullYear()
@@ -217,7 +218,8 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
                 action: isDraft ? 'UPDATE_TASK_PROGRESS' : 'SUBMIT_TASK',
                 entityType: 'TASK',
                 entityId: task.id,
-                userId: userId,
+                userId: (session.user as any).role === 'SUPER_ADMIN' ? null : userId,
+                superAdminId: (session.user as any).role === 'SUPER_ADMIN' ? userId : null,
                 details: JSON.stringify({ newAttachments, note, cost: costValue, isDraft, location })
             }
         })

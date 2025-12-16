@@ -5,6 +5,8 @@ import Link from 'next/link'
 import { useSession } from 'next-auth/react'
 import SortControl from '@/components/SortControl'
 import { useCompany } from '@/context/CompanyContext'
+import AccessDenied from '@/components/AccessDenied'
+import Modal from '@/components/Modal'
 
 
 interface Employee {
@@ -149,6 +151,10 @@ export default function EmployeesPage() {
 
     if (loading) {
         return <div>Loading...</div>
+    }
+
+    if (userRole === 'EMPLOYEE') {
+        return <AccessDenied />
     }
 
     return (
@@ -402,42 +408,38 @@ export default function EmployeesPage() {
                 )}
             </div>
 
-            {deleteConfirm && (
-                <div style={{
-                    position: 'fixed',
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    background: 'rgba(0, 0, 0, 0.5)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    zIndex: 1000
-                }}>
-                    <div className="card" style={{ maxWidth: '400px', padding: '1.5rem' }}>
-                        <h3 style={{ marginTop: 0 }}>Confirm Delete</h3>
-                        <p>Are you sure you want to delete <strong>{deleteConfirm.name}</strong>?</p>
-                        <p style={{ color: '#991b1b', fontSize: '0.875rem' }}>This action cannot be undone.</p>
-                        <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem' }}>
-                            <button
-                                onClick={confirmDelete}
-                                className="btn"
-                                style={{ background: '#991b1b', color: 'white', flex: 1 }}
-                            >
-                                Delete
-                            </button>
-                            <button
-                                onClick={() => setDeleteConfirm(null)}
-                                className="btn"
-                                style={{ background: '#e2e8f0', color: '#0f172a', flex: 1 }}
-                            >
-                                Cancel
-                            </button>
-                        </div>
+            {/* Delete Confirmation Modal */}
+            <Modal
+                isOpen={!!deleteConfirm}
+                onClose={() => setDeleteConfirm(null)}
+                title="Confirm Delete"
+                hideFooter={true} // Custom footer in content
+            >
+                <div>
+                    <p style={{ margin: '0 0 1rem 0', color: '#64748b' }}>
+                        Are you sure you want to delete <strong>{deleteConfirm?.name}</strong>?
+                    </p>
+                    <p style={{ color: '#991b1b', fontSize: '0.875rem', marginBottom: '1.5rem', background: '#fee2e2', padding: '0.5rem', borderRadius: '0.25rem' }}>
+                        ⚠️ This action cannot be undone.
+                    </p>
+                    <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
+                        <button
+                            onClick={() => setDeleteConfirm(null)}
+                            className="btn"
+                            style={{ background: '#e2e8f0', color: '#0f172a' }}
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            onClick={confirmDelete}
+                            className="btn"
+                            style={{ background: '#dc2626', color: 'white' }}
+                        >
+                            Delete Employee
+                        </button>
                     </div>
                 </div>
-            )}
+            </Modal>
         </div>
     )
 }

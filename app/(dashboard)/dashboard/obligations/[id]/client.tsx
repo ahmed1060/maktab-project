@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import Modal from '@/components/Modal'
 
 export default function ObligationDetailClient({ obligation, userRole }: { obligation: any, userRole: string }) {
     const [uploading, setUploading] = useState(false)
@@ -128,9 +129,97 @@ export default function ObligationDetailClient({ obligation, userRole }: { oblig
         setShowDeleteConfirm(false)
     }
 
+    const [allUsers, setAllUsers] = useState<any[]>([])
+    const [isReassigning, setIsReassigning] = useState(false)
+    const [newAssigneeId, setNewAssigneeId] = useState('')
+
+    const loadUsers = async () => {
+        if (allUsers.length > 0) return
+        const res = await fetch('/api/users')
+        if (res.ok) {
+            const data = await res.json()
+            setAllUsers(data)
+        }
+    }
+
+    const handleReassign = async () => {
+        if (!newAssigneeId) return
+        try {
+            await fetch(`/api/obligations/${obligation.id}`, {
+                method: 'PUT',
+                body: JSON.stringify({ assigneeId: newAssigneeId }),
+                headers: { 'Content-Type': 'application/json' }
+            })
+            setIsReassigning(false)
+            router.refresh()
+            setFeedbackMessage('Obligation reassigned successfully')
+            setShowFeedback(true)
+            setTimeout(() => setShowFeedback(false), 3000)
+        } catch (error) {
+            console.error('Reassign error', error)
+        }
+    }
+
+    const handleForceComplete = async () => {
+        try {
+            await fetch(`/api/obligations/${obligation.id}`, {
+                method: 'PUT',
+                body: JSON.stringify({ status: 'COMPLETED' }),
+                headers: { 'Content-Type': 'application/json' }
+            })
+            router.refresh()
+        } catch (error) { console.error(error) }
+    }
+
     return (
         <div className="card">
-            {/* ... (Header and Description) */}
+
+            {/* Deleted Assignee Alert */}
+            {obligation.assignee?.status === 'DELETED' && ['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole) && (
+                <div style={{ background: '#fee2e2', border: '1px solid #ef4444', color: '#991b1b', padding: '1.5rem', borderRadius: '0.5rem', marginBottom: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                        <span style={{ fontSize: '1.5rem' }}>🚫</span>
+                        <div>
+                            <strong>Assignee Deleted</strong>
+                            <p style={{ margin: 0, fontSize: '0.9rem' }}>
+                                The employee assigned to this obligation (<strong>{obligation.assignee.firstName} {obligation.assignee.lastName}</strong>) has been deleted.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
+                        <button
+                            onClick={handleForceComplete}
+                            className="btn"
+                            style={{ background: '#166534', color: 'white' }}
+                        >
+                            Mark as Completed
+                        </button>
+                        <button
+                            onClick={() => { setIsReassigning(true); loadUsers() }}
+                            className="btn"
+                            style={{ background: '#2563eb', color: 'white' }}
+                        >
+                            Reassign
+                        </button>
+                        <button
+                            onClick={() => setShowDeleteConfirm(true)}
+                            className="btn"
+                            style={{ background: '#b91c1c', color: 'white' }}
+                        >
+                            Delete
+                        </button>
+                        <button
+                            onClick={() => router.push('/dashboard/obligations')}
+                            className="btn"
+                            style={{ background: 'white', border: '1px solid #b91c1c', color: '#b91c1c' }}
+                        >
+                            Dismiss (Decide Later)
+                        </button>
+                    </div>
+                </div>
+            )}
+
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                     <h1>{obligation.title}</h1>
@@ -367,6 +456,30 @@ export default function ObligationDetailClient({ obligation, userRole }: { oblig
                     </div>
                 </div>
             )}
+            {/* Reassign Modal */}
+            <Modal isOpen={isReassigning} onClose={() => setIsReassigning(false)} title="Reassign Obligation" hideFooter={true}>
+                <div style={{ padding: '0.5rem' }}>
+                    <p style={{ marginBottom: '1rem' }}>Select the employee you want to reassign this obligation to.</p>
+                    <select
+                        className="input"
+                        value={newAssigneeId}
+                        onChange={(e) => setNewAssigneeId(e.target.value)}
+                        style={{ width: '100%', marginBottom: '1rem' }}
+                    >
+                        <option value="">Select Employee...</option>
+                        {allUsers.filter(u => u.id !== obligation.assigneeId).map(u => (
+                            <option key={u.id} value={u.id}>{u.firstName} {u.lastName} ({u.role})</option>
+                        ))}
+                    </select>
+
+                    <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
+                        <button className="btn" onClick={() => setIsReassigning(false)}>Cancel</button>
+                        <button className="btn btn-primary" onClick={handleReassign} disabled={!newAssigneeId}>
+                            Confirm Reassign
+                        </button>
+                    </div>
+                </div>
+            </Modal>
         </div>
     )
 }

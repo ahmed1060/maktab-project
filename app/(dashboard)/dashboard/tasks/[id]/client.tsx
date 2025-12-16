@@ -1,9 +1,11 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 'use client'
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { formatTaskStatus } from '@/lib/formatStatus'
 import Modal from '@/components/Modal'
 import DiffViewer from '@/components/DiffViewer'
+import { useToast } from '@/context/ToastContext'
 
 export default function TaskDetailClient({ task: initialTask, userRole, userId, creatorName, currentUserName }: { task: any, userRole: string, userId: string, creatorName: string, currentUserName: string }) {
     const [task, setTask] = useState(initialTask)
@@ -25,8 +27,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
     const [locationStatus, setLocationStatus] = useState('')
     const [capturingLocation, setCapturingLocation] = useState(false)
     const [uploading, setUploading] = useState(false)
-    const [showFeedback, setShowFeedback] = useState(false)
-    const [feedbackMessage, setFeedbackMessage] = useState('')
+    const { showToast } = useToast()
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
     const [showSubmitConfirm, setShowSubmitConfirm] = useState(false)
     const [locationToDelete, setLocationToDelete] = useState<{ date: string } | null>(null)
@@ -34,12 +35,15 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
     const [isTransferModalOpen, setIsTransferModalOpen] = useState(false)
     const [transferAssigneeId, setTransferAssigneeId] = useState('')
     const [transferring, setTransferring] = useState(false)
+    // const [dismissedDeletedWarning, setDismissedDeletedWarning] = useState(false) - Removed
+
+    // useEffect for localStorage - Removed
 
     // Extract latest changes
     const latestChanges = (() => {
         try {
-            const locs = JSON.parse(task.comments || '[]')
-            const lastEdit = [...locs].reverse().find((c: any) => c.type === 'TASK_EDITED')
+            const comments = JSON.parse(task.comments || '[]')
+            const lastEdit = [...comments].reverse().find((c: any) => c.type === 'TASK_EDITED')
             return lastEdit ? lastEdit.changes : null
         } catch { return null }
     })()
@@ -61,7 +65,9 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
     const [isReviewModalOpen, setIsReviewModalOpen] = useState(false)
     const [reviewAction, setReviewAction] = useState<'APPROVED' | 'REJECTED' | null>(null)
     const [reviewDifficulty, setReviewDifficulty] = useState(task.difficulty)
+
     const [submittingReview, setSubmittingReview] = useState(false)
+    const [editFieldErrors, setEditFieldErrors] = useState<{ [key: string]: string }>({})
 
     const [editForm, setEditForm] = useState({
         title: task.title,
@@ -107,6 +113,20 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
 
     const handleSaveDetails = async (e: React.FormEvent) => {
         e.preventDefault()
+        setEditFieldErrors({})
+        // Inline Validation
+        const errors: { [key: string]: string } = {}
+        if (!editForm.title || editForm.title.length < 3 || editForm.title.length > 100) {
+            errors.title = "Title must be between 3 and 100 characters"
+        }
+        if (!editForm.description || editForm.description.length < 10 || editForm.description.length > 500) {
+            errors.description = "Description must be between 10 and 500 characters"
+        }
+        if (Object.keys(errors).length > 0) {
+            setEditFieldErrors(errors)
+            return
+        }
+
         try {
             const res = await fetch(`/api/tasks/${task.id}/details`, {
                 method: 'PUT',
@@ -115,19 +135,15 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
             })
             if (!res.ok) {
                 const txt = await res.text()
-                setFeedbackMessage(`Failed to update task: ${txt}`)
-                setShowFeedback(true)
+                showToast(`Failed to update task: ${txt}`, 'error')
             } else {
-                setFeedbackMessage('Task details updated!')
-                setShowFeedback(true)
+                showToast('Task details updated!', 'success')
                 setIsEditing(false)
                 router.refresh()
-                setTimeout(() => setShowFeedback(false), 5000)
             }
         } catch (error) {
             console.error(error)
-            setFeedbackMessage('Failed to update task')
-            setShowFeedback(true)
+            showToast('Failed to update task', 'error')
         }
     }
 
@@ -162,8 +178,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
         })
 
         if (hasError) {
-            setFeedbackMessage('Some files were rejected because they exceed 10MB.')
-            setShowFeedback(true)
+            showToast('Some files were rejected because they exceed 10MB.', 'error')
         }
 
         setPendingFiles(prev => [...prev, ...validFiles])
@@ -177,9 +192,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
     const handleCaptureLocation = async () => {
         const currentLocations = task.comments ? JSON.parse(task.comments).filter((c: any) => c.type === 'LOCATION_ADDED') : []
         if (currentLocations.length >= 2) {
-            setFeedbackMessage('Maximum 2 locations allowed per task.')
-            setShowFeedback(true)
-            setTimeout(() => setShowFeedback(false), 3000)
+            showToast('Maximum 2 locations allowed per task.', 'error')
             return
         }
 
@@ -200,7 +213,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                     const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`)
                     const data = await response.json()
                     capturedLocation = data.display_name || coordString
-                } catch (error) { capturedLocation = coordString }
+                } catch { capturedLocation = coordString }
 
                 const locationData = { address: capturedLocation, coords: coordString, latitude: latitude, longitude: longitude }
                 const locationString = JSON.stringify(locationData)
@@ -244,9 +257,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
         if (!cost) return
         const val = parseFloat(cost)
         if (val < 0) {
-            setFeedbackMessage('Cost cannot be negative.')
-            setShowFeedback(true)
-            setTimeout(() => setShowFeedback(false), 3000)
+            showToast('Cost cannot be negative.', 'error')
             return
         }
         setCostEntries(prev => [...prev, { amount: cost, description: costDescription }])
@@ -262,9 +273,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
         console.log('handleUploadRequest called')
         // Validation before showing confirmation
         if (cost && !isNaN(parseFloat(cost)) && parseFloat(cost) < 0) {
-            setFeedbackMessage('Cost cannot be negative. Please enter a valid amount.')
-            setShowFeedback(true)
-            setTimeout(() => setShowFeedback(false), 3000)
+            showToast('Cost cannot be negative. Please enter a valid amount.', 'error')
             return
         }
         console.log('Opening confirmation modal')
@@ -295,9 +304,8 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                     if (data.success) {
                         uploadedAttachments.push({ name: file.name, url: data.url, type: file.type, uploadedAt: new Date().toISOString(), uploadedBy: currentUserName })
                     } else { throw new Error(`Failed to upload ${file.name}`) }
-                } catch (err) {
-                    setFeedbackMessage(`Failed to upload one or more files.`)
-                    setShowFeedback(true)
+                } catch {
+                    showToast(`Failed to upload one or more files.`, 'error')
                     setUploading(false)
                     return
                 }
@@ -315,16 +323,14 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                 }),
                 headers: { 'Content-Type': 'application/json' }
             })
-            setFeedbackMessage(isDraft ? 'Draft saved successfully!' : 'Task submitted successfully!')
-            setShowFeedback(true)
-            setTimeout(() => setShowFeedback(false), 5000)
+
+            showToast(isDraft ? 'Draft saved successfully!' : 'Task submitted successfully!', 'success')
             if (!isDraft) { setNote(''); setCost(''); setCostDescription(''); setLocation(''); setLocationStatus(''); setPendingFiles([]); setCostEntries([]) }
             else { setNote(''); setCost(''); setCostDescription(''); setLocation(''); setLocationStatus(''); setPendingFiles([]); setCostEntries([]) }
             router.refresh()
         } catch (error) {
             console.error('handleUpload error detected:', error)
-            setFeedbackMessage('Failed to save. Check console for details.')
-            setShowFeedback(true)
+            showToast('Failed to save. Check console for details.', 'error')
             // alert('Error saving task: ' + String(error)) // Optional: Uncomment if console is hard to reach
         } finally {
             console.log('handleUpload finished, setting uploading=false')
@@ -338,9 +344,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
             const locations = JSON.parse(task.comments).filter((c: any) => c.type === 'LOCATION_ADDED')
             const unverified = locations.filter((l: any) => !l.verificationStatus)
             if (unverified.length > 0) {
-                setFeedbackMessage(`Please verify all ${unverified.length} location(s) before proceeding.`)
-                setShowFeedback(true)
-                setTimeout(() => setShowFeedback(false), 4000)
+                showToast(`Please verify all ${unverified.length} location(s) before proceeding.`, 'error')
                 return false
             }
         } catch (e) { console.error('Error parsing locations', e) }
@@ -368,20 +372,26 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
         setIsReviewModalOpen(true)
     }
 
-    const submitReview = async (action: 'APPROVED' | 'REJECTED' | null = reviewAction, difficulty: number = reviewDifficulty) => {
+    const submitReview = async (action: 'APPROVED' | 'REJECTED' | 'COMPLETED' | null = reviewAction, difficulty: number = reviewDifficulty) => {
         if (!action) return
         setSubmittingReview(true)
         try {
-            await fetch(`/api/tasks/${task.id}/review`, {
+            const res = await fetch(`/api/tasks/${task.id}/review`, {
                 method: 'PUT',
                 body: JSON.stringify({ status: action, difficulty: difficulty }),
                 headers: { 'Content-Type': 'application/json' }
             })
+            if (!res.ok) {
+                const txt = await res.text()
+                throw new Error(txt || 'Failed to update status')
+            }
             setIsReviewModalOpen(false)
+            showToast(action === 'COMPLETED' ? 'Task marked as completed!' : `Task ${action.toLowerCase()}!`, 'success')
             router.refresh()
-            router.push('/dashboard/tasks')
-        } catch (error) {
+            if (action === 'COMPLETED') router.push('/dashboard/tasks')
+        } catch (error: any) {
             console.error('Review failed', error)
+            showToast(error.message || 'Failed to update task status', 'error')
         } finally {
             setSubmittingReview(false)
         }
@@ -397,15 +407,14 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                 headers: { 'Content-Type': 'application/json' }
             })
             if (res.ok) {
-                setFeedbackMessage('Task transferred successfully!')
-                setShowFeedback(true)
+                showToast('Task transferred successfully!', 'success')
                 setTimeout(() => {
                     router.push('/dashboard/tasks')
                     router.refresh()
                 }, 1500)
             } else {
-                setFeedbackMessage('Transfer failed.')
-                setShowFeedback(true)
+                const err = await res.text()
+                showToast(`Transfer failed: ${err}`, 'error')
             }
         } catch (error) {
             console.error('Transfer error', error)
@@ -419,10 +428,9 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
         try {
             const res = await fetch(`/api/tasks/${task.id}/delete`, { method: 'DELETE' })
             if (res.ok) { router.push('/dashboard/tasks'); router.refresh() }
-            else { setFeedbackMessage('Failed to delete task'); setShowFeedback(true) }
-        } catch (error) {
-            setFeedbackMessage('Failed to delete task')
-            setShowFeedback(true)
+            else { showToast('Failed to delete task', 'error') }
+        } catch {
+            showToast('Failed to delete task', 'error')
         }
         setShowDeleteConfirm(false)
     }
@@ -442,9 +450,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
 
     const handleEditClick = () => {
         if (['PENDING_CONFIRMATION', 'APPROVED', 'COMPLETED', 'REJECTED'].includes(task.status)) {
-            setFeedbackMessage('Cannot edit a task that has been submitted, completed or rejected.')
-            setShowFeedback(true)
-            setTimeout(() => setShowFeedback(false), 3000)
+            showToast('Cannot edit a task that has been submitted, completed or rejected.', 'error')
             return
         }
         setIsEditing(true)
@@ -461,10 +467,8 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                 const data = await res.json()
                 if (data.success && data.task) {
                     setTask(data.task)
-                    setFeedbackMessage(`Payment status updated to ${newStatus === 'PAID' ? 'Paid' : 'Pending Payment'}`)
-                    setShowFeedback(true)
+                    showToast(`Payment status updated to ${newStatus === 'PAID' ? 'Paid' : 'Pending Payment'}`, 'success')
                     router.refresh()
-                    setTimeout(() => setShowFeedback(false), 3000)
                 }
             }
         } catch (error) { console.error('Payment status update failed', error) }
@@ -472,6 +476,52 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
 
     return (
         <div className="card">
+            {/* Deleted Assignee Alert */}
+            {task.assignee?.status === 'DELETED' && ['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole) && !['COMPLETED', 'APPROVED', 'REJECTED'].includes(task.status) && (
+                <div style={{ background: '#fee2e2', border: '1px solid #ef4444', color: '#991b1b', padding: '1.5rem', borderRadius: '0.5rem', marginBottom: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                        <span style={{ fontSize: '1.5rem' }}>🚫</span>
+                        <div>
+                            <strong>Assignee Deleted</strong>
+                            <p style={{ margin: 0, fontSize: '0.9rem' }}>
+                                The employee assigned to this task (<strong>{task.assignee.firstName} {task.assignee.lastName}</strong>) has been deleted.
+                                Please decide how to proceed.
+                            </p>
+                        </div>
+                    </div>
+                    <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
+                        <button
+                            onClick={() => {
+                                submitReview('COMPLETED', task.difficulty)
+                            }}
+                            className="btn"
+                            style={{ background: '#166534', color: 'white' }}
+                        >
+                            Mark as Completed
+                        </button>
+                        <button
+                            onClick={() => {
+                                if (allUsers.length === 0) {
+                                    fetch('/api/users').then(res => res.json()).then(setAllUsers)
+                                }
+                                setIsTransferModalOpen(true)
+                            }}
+                            className="btn"
+                            style={{ background: '#2563eb', color: 'white' }}
+                        >
+                            Reassign
+                        </button>
+                        <button
+                            onClick={() => router.push('/dashboard/tasks')}
+                            className="btn"
+                            style={{ background: 'white', border: '1px solid #b91c1c', color: '#b91c1c' }}
+                        >
+                            Dismiss (Decide Later)
+                        </button>
+                    </div>
+                </div>
+            )}
+
             {/* Task Edited Alert */}
             {task.isEdited && (userRole === 'EMPLOYEE' || userId === task.assigneeId) && (
                 <div style={{ background: '#fff7ed', border: '1px solid #fdba74', color: '#9a3412', padding: '1rem', borderRadius: '0.5rem', marginBottom: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -1086,28 +1136,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                     </div>
                 )
             }
-            {/* Feedback Modal */}
-            {
-                showFeedback && (
-                    <div style={{
-                        position: 'fixed',
-                        top: '20px',
-                        right: '20px',
-                        background: 'white',
-                        padding: '1rem',
-                        borderRadius: '0.5rem',
-                        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
-                        zIndex: 2000,
-                        borderLeft: '4px solid #22c55e',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '1rem'
-                    }}>
-                        <span>{feedbackMessage}</span>
-                        <button onClick={() => setShowFeedback(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.2rem' }}>&times;</button>
-                    </div>
-                )
-            }
+
 
             {
                 ['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole) && task.status === 'PENDING_CONFIRMATION' && userId !== task.assigneeId && (
@@ -1119,142 +1148,136 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
             }
 
             {/* Delete Confirmation Modal (Task) */}
-            {
-                showDeleteConfirm && (
-                    <div style={{
-                        position: 'fixed',
-                        top: 0,
-                        left: 0,
-                        right: 0,
-                        bottom: 0,
-                        background: 'rgba(0, 0, 0, 0.5)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        zIndex: 3000
-                    }}>
-                        <div className="card" style={{ maxWidth: '400px', width: '100%', padding: '1.5rem' }}>
-                            <h3>Delete Task</h3>
-                            <p>Are you sure you want to delete this task? This action cannot be undone.</p>
-                            <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem' }}>
-                                <button
-                                    onClick={handleDelete}
-                                    className="btn"
-                                    style={{ background: '#991b1b', color: 'white', flex: 1 }}
-                                >
-                                    Delete
-                                </button>
-                                <button
-                                    onClick={() => setShowDeleteConfirm(false)}
-                                    className="btn"
-                                    style={{ background: '#e2e8f0', color: '#0f172a', flex: 1 }}
-                                >
-                                    Cancel
-                                </button>
-                            </div>
-                        </div>
+            <Modal
+                isOpen={showDeleteConfirm}
+                onClose={() => setShowDeleteConfirm(false)}
+                title="Delete Task"
+                hideFooter={true}
+            >
+                <div>
+                    <p>Are you sure you want to delete this task? This action cannot be undone.</p>
+                    <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem', justifyContent: 'flex-end' }}>
+                        <button
+                            onClick={() => setShowDeleteConfirm(false)}
+                            className="btn"
+                            style={{ background: '#e2e8f0', color: '#0f172a' }}
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            onClick={handleDelete}
+                            className="btn"
+                            style={{ background: '#991b1b', color: 'white' }}
+                        >
+                            Delete
+                        </button>
                     </div>
-                )
-            }
+                </div>
+            </Modal>
 
             {/* Edit Modal */}
-            {
-                isEditing && (
-                    <div style={{
-                        position: 'fixed',
-                        top: 0,
-                        left: 0,
-                        right: 0,
-                        bottom: 0,
-                        background: 'rgba(0, 0, 0, 0.5)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        zIndex: 3000
-                    }}>
-                        <div className="card" style={{ width: '100%', maxWidth: '600px', padding: '1.5rem', maxHeight: '90vh', overflowY: 'auto' }}>
-                            <h2 style={{ marginTop: 0, marginBottom: '1.5rem' }}>Edit Task Details</h2>
-                            <form onSubmit={handleSaveDetails}>
-                                <div style={{ marginBottom: '1rem' }}>
-                                    <label style={{ display: 'block', marginBottom: '0.5rem' }}>Title</label>
-                                    <input
-                                        className="input"
-                                        value={editForm.title}
-                                        onChange={e => setEditForm({ ...editForm, title: e.target.value })}
-                                        required
-                                        maxLength={100}
-                                    />
-                                    <div style={{ fontSize: '0.75rem', color: editForm.title.length >= 100 ? '#ef4444' : '#94a3b8', textAlign: 'right', marginTop: '0.25rem' }}>
-                                        {editForm.title.length}/100
-                                    </div>
-                                </div>
-                                <div style={{ marginBottom: '1rem' }}>
-                                    <label style={{ display: 'block', marginBottom: '0.5rem' }}>Description</label>
-                                    <textarea
-                                        className="input"
-                                        value={editForm.description}
-                                        onChange={e => setEditForm({ ...editForm, description: e.target.value })}
-                                        rows={4}
-                                        required
-                                        maxLength={500}
-                                    />
-                                    <div style={{ fontSize: '0.75rem', color: editForm.description.length >= 500 ? '#ef4444' : '#94a3b8', textAlign: 'right', marginTop: '0.25rem' }}>
-                                        {editForm.description.length}/500
-                                    </div>
-                                </div>
-                                <div style={{ marginBottom: '1rem' }}>
-                                    <label style={{ display: 'block', marginBottom: '0.5rem' }}>Assignee</label>
-                                    <select
-                                        className="input"
-                                        value={editForm.assigneeId}
-                                        onChange={e => setEditForm({ ...editForm, assigneeId: e.target.value })}
-                                        style={{ width: '100%' }}
-                                        required
-                                        disabled
-                                    >    <option value="">Select Employee</option>
-                                        {allUsers.map(u => <option key={u.id} value={u.id}>{u.firstName} {u.lastName}</option>)}
-                                    </select>
-                                </div>
-                                <div style={{ marginBottom: '1rem' }}>
-                                    <label style={{ display: 'block', marginBottom: '0.5rem' }}>Deadline</label>
-                                    <input
-                                        type="datetime-local"
-                                        className="input"
-                                        value={editForm.deadline ? new Date(editForm.deadline).toISOString().slice(0, 16) : ''}
-                                        onChange={e => setEditForm({ ...editForm, deadline: e.target.value })}
-                                        min={new Date().toISOString().slice(0, 16)}
-                                        max="9999-12-31T23:59"
-                                        required
-                                    />
-                                </div>
-                                <div style={{ marginBottom: '1rem' }}>
-                                    <label style={{ display: 'block', marginBottom: '0.5rem' }}>Difficulty</label>
-                                    <input
-                                        type="number"
-                                        className="input"
-                                        value={editForm.difficulty}
-                                        onChange={e => setEditForm({ ...editForm, difficulty: parseInt(e.target.value) || 0 })}
-                                        min="0"
-                                        max="10"
-                                        required
-                                    />
-                                </div>
-                                <div style={{ display: 'flex', gap: '1rem' }}>
-                                    <button type="submit" className="btn btn-primary">Save Changes</button>
-                                    <button
-                                        type="button"
-                                        className="btn"
-                                        style={{ background: '#e2e8f0', color: '#0f172a' }}
-                                        onClick={() => setIsEditing(false)}
-                                    >
-                                        Cancel
-                                    </button>
-                                </div>
-                            </form>
+            <Modal
+                isOpen={isEditing}
+                onClose={() => setIsEditing(false)}
+                title="Edit Task Details"
+                hideFooter={true}
+            >
+                <form onSubmit={handleSaveDetails}>
+                    <div style={{ marginBottom: '1rem' }}>
+                        <label style={{ display: 'block', marginBottom: '0.5rem' }}>Title</label>
+                        <input
+                            className="input"
+                            value={editForm.title}
+                            onChange={e => {
+                                setEditForm({ ...editForm, title: e.target.value })
+                                if (editFieldErrors.title) setEditFieldErrors({ ...editFieldErrors, title: '' })
+                            }}
+                            style={editFieldErrors.title ? { borderColor: '#ef4444' } : {}}
+                            required
+                            maxLength={100}
+                        />
+                        {editFieldErrors.title && (
+                            <div style={{ color: '#ef4444', fontSize: '0.85rem', marginTop: '0.25rem' }}>
+                                {editFieldErrors.title}
+                            </div>
+                        )}
+                        <div style={{ fontSize: '0.75rem', color: editForm.title.length >= 100 ? '#ef4444' : '#94a3b8', textAlign: 'right', marginTop: '0.25rem' }}>
+                            {editForm.title.length}/100
                         </div>
                     </div>
-                )
-            }
+                    <div style={{ marginBottom: '1rem' }}>
+                        <label style={{ display: 'block', marginBottom: '0.5rem' }}>Description</label>
+                        <textarea
+                            className="input"
+                            value={editForm.description}
+                            onChange={e => {
+                                setEditForm({ ...editForm, description: e.target.value })
+                                if (editFieldErrors.description) setEditFieldErrors({ ...editFieldErrors, description: '' })
+                            }}
+                            style={editFieldErrors.description ? { borderColor: '#ef4444' } : {}}
+                            rows={4}
+                            required
+                            maxLength={500}
+                        />
+                        {editFieldErrors.description && (
+                            <div style={{ color: '#ef4444', fontSize: '0.85rem', marginTop: '0.25rem' }}>
+                                {editFieldErrors.description}
+                            </div>
+                        )}
+                        <div style={{ fontSize: '0.75rem', color: editForm.description.length >= 500 ? '#ef4444' : '#94a3b8', textAlign: 'right', marginTop: '0.25rem' }}>
+                            {editForm.description.length}/500
+                        </div>
+                    </div>
+                    <div style={{ marginBottom: '1rem' }}>
+                        <label style={{ display: 'block', marginBottom: '0.5rem' }}>Assignee</label>
+                        <select
+                            className="input"
+                            value={editForm.assigneeId}
+                            onChange={e => setEditForm({ ...editForm, assigneeId: e.target.value })}
+                            style={{ width: '100%' }}
+                            required
+                            disabled
+                        >    <option value="">Select Employee</option>
+                            {allUsers.map(u => <option key={u.id} value={u.id}>{u.firstName} {u.lastName}</option>)}
+                        </select>
+                    </div>
+                    <div style={{ marginBottom: '1rem' }}>
+                        <label style={{ display: 'block', marginBottom: '0.5rem' }}>Deadline</label>
+                        <input
+                            type="datetime-local"
+                            className="input"
+                            value={editForm.deadline ? new Date(editForm.deadline).toISOString().slice(0, 16) : ''}
+                            onChange={e => setEditForm({ ...editForm, deadline: e.target.value })}
+                            min={new Date().toISOString().slice(0, 16)}
+                            max="9999-12-31T23:59"
+                            required
+                        />
+                    </div>
+                    <div style={{ marginBottom: '1rem' }}>
+                        <label style={{ display: 'block', marginBottom: '0.5rem' }}>Difficulty</label>
+                        <input
+                            type="number"
+                            className="input"
+                            value={editForm.difficulty}
+                            onChange={e => setEditForm({ ...editForm, difficulty: parseInt(e.target.value) || 0 })}
+                            min="0"
+                            max="10"
+                            required
+                        />
+                    </div>
+                    <div style={{ display: 'flex', gap: '1rem' }}>
+                        <button type="submit" className="btn btn-primary">Save Changes</button>
+                        <button
+                            type="button"
+                            className="btn"
+                            style={{ background: '#e2e8f0', color: '#0f172a' }}
+                            onClick={() => setIsEditing(false)}
+                        >
+                            Cancel
+                        </button>
+                    </div>
+                </form>
+            </Modal>
 
             {/* Transfer Modal */}
             <Modal isOpen={isTransferModalOpen} onClose={() => setIsTransferModalOpen(false)} title="Transfer Task" hideFooter={true}>
@@ -1317,53 +1340,47 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
             </Modal>
 
             {/* Submit Confirmation Modal */}
-            {showSubmitConfirm && (
-                <div style={{
-                    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-                    background: 'rgba(0, 0, 0, 0.5)', display: 'flex',
-                    alignItems: 'center', justifyContent: 'center', zIndex: 3000
-                }}>
-                    <div className="card" style={{ maxWidth: '400px', width: '90%', padding: '1.5rem', background: 'white', borderRadius: '0.5rem' }}>
-                        <h3>Confirm Submission</h3>
-                        <p>Are you sure you want to submit this task? You won't be able to edit it afterwards.</p>
-                        <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem', justifyContent: 'flex-end' }}>
-                            <button
-                                onClick={() => setShowSubmitConfirm(false)}
-                                className="btn"
-                                style={{ background: '#e2e8f0', color: '#0f172a' }}
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                onClick={() => { setShowSubmitConfirm(false); handleUpload(false); }}
-                                className="btn btn-primary"
-                            >
-                                Confirm Submit
-                            </button>
-                        </div>
+            <Modal
+                isOpen={showSubmitConfirm}
+                onClose={() => setShowSubmitConfirm(false)}
+                title="Confirm Submission"
+                hideFooter={true}
+            >
+                <div>
+                    <p>Are you sure you want to submit this task? You won't be able to edit it afterwards.</p>
+                    <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem', justifyContent: 'flex-end' }}>
+                        <button
+                            onClick={() => setShowSubmitConfirm(false)}
+                            className="btn"
+                            style={{ background: '#e2e8f0', color: '#0f172a' }}
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            onClick={() => { setShowSubmitConfirm(false); handleUpload(false); }}
+                            className="btn btn-primary"
+                        >
+                            Confirm Submit
+                        </button>
                     </div>
                 </div>
-            )}
+            </Modal>
 
             {/* Delete Location Modal */}
-            {
-                locationToDelete && (
-                    <div style={{
-                        position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-                        background: 'rgba(0, 0, 0, 0.5)', display: 'flex',
-                        alignItems: 'center', justifyContent: 'center', zIndex: 3000
-                    }}>
-                        <div className="card" style={{ maxWidth: '400px', padding: '1.5rem', background: 'white', borderRadius: '0.5rem' }}>
-                            <h3 style={{ marginTop: 0 }}>Delete Location</h3>
-                            <p>Are you sure you want to delete this location?</p>
-                            <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem' }}>
-                                <button onClick={confirmDeleteLocation} className="btn" style={{ background: '#991b1b', color: 'white', flex: 1 }}>Delete</button>
-                                <button onClick={() => setLocationToDelete(null)} className="btn" style={{ background: '#e2e8f0', color: '#0f172a', flex: 1 }}>Cancel</button>
-                            </div>
-                        </div>
+            <Modal
+                isOpen={!!locationToDelete}
+                onClose={() => setLocationToDelete(null)}
+                title="Delete Location"
+                hideFooter={true}
+            >
+                <div>
+                    <p>Are you sure you want to delete this location?</p>
+                    <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem', justifyContent: 'flex-end' }}>
+                        <button onClick={() => setLocationToDelete(null)} className="btn" style={{ background: '#e2e8f0', color: '#0f172a' }}>Cancel</button>
+                        <button onClick={confirmDeleteLocation} className="btn" style={{ background: '#991b1b', color: 'white' }}>Delete</button>
                     </div>
-                )
-            }
+                </div>
+            </Modal>
 
         </div >
     )

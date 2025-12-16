@@ -31,50 +31,50 @@ export default async function DashboardPage({ searchParams }: { searchParams: { 
                 </header>
 
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '1.5rem', marginBottom: '3rem' }}>
-                    <div className="card stats-card-gradient animate-delay-100">
+                    <div className="glass-card animate-delay-100">
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '1rem' }}>
                             <div style={{ fontSize: '0.9rem', opacity: 0.9, fontWeight: '500' }}>Total Tasks</div>
                             <span style={{ fontSize: '1.5rem', opacity: 0.8 }}>📊</span>
                         </div>
                         <div style={{ fontSize: '3rem', fontWeight: '800', lineHeight: 1 }}>{totalTasks}</div>
                     </div>
-                    <div className="card stats-card-white animate-delay-200" style={{ borderLeft: '4px solid #3b82f6' }}>
+                    <div className="glass-card glass-info animate-delay-200">
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '1rem' }}>
-                            <div style={{ color: '#64748b', fontSize: '0.9rem', fontWeight: '600' }}>Pending</div>
-                            <span style={{ fontSize: '1.5rem', background: '#eff6ff', padding: '0.5rem', borderRadius: '0.5rem' }}>⏳</span>
+                            <div style={{ fontSize: '0.9rem', fontWeight: '700' }}>Pending</div>
+                            <span style={{ fontSize: '1.5rem', background: 'rgba(255,255,255,0.4)', padding: '0.5rem', borderRadius: '0.5rem' }}>⏳</span>
                         </div>
-                        <div style={{ fontSize: '2.5rem', fontWeight: '800', color: '#1e293b' }}>{pendingTasks}</div>
+                        <div style={{ fontSize: '2.5rem', fontWeight: '800' }}>{pendingTasks}</div>
                     </div>
-                    <div className="card stats-card-white animate-delay-200" style={{ borderLeft: '4px solid #f59e0b' }}>
+                    <div className="glass-card glass-warning animate-delay-200">
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '1rem' }}>
-                            <div style={{ color: '#64748b', fontSize: '0.9rem', fontWeight: '600' }}>Review Needed</div>
-                            <span style={{ fontSize: '1.5rem', background: '#fffbeb', padding: '0.5rem', borderRadius: '0.5rem' }}>📝</span>
+                            <div style={{ fontSize: '0.9rem', fontWeight: '700' }}>Review Needed</div>
+                            <span style={{ fontSize: '1.5rem', background: 'rgba(255,255,255,0.4)', padding: '0.5rem', borderRadius: '0.5rem' }}>📝</span>
                         </div>
-                        <div style={{ fontSize: '2.5rem', fontWeight: '800', color: '#1e293b' }}>{submittedTasks}</div>
+                        <div style={{ fontSize: '2.5rem', fontWeight: '800' }}>{submittedTasks}</div>
                     </div>
-                    <div className="card stats-card-white animate-delay-300" style={{ borderLeft: '4px solid #22c55e' }}>
+                    <div className="glass-card glass-success animate-delay-300">
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '1rem' }}>
-                            <div style={{ color: '#64748b', fontSize: '0.9rem', fontWeight: '600' }}>Completed</div>
-                            <span style={{ fontSize: '1.5rem', background: '#f0fdf4', padding: '0.5rem', borderRadius: '0.5rem' }}>✅</span>
+                            <div style={{ fontSize: '0.9rem', fontWeight: '700' }}>Completed</div>
+                            <span style={{ fontSize: '1.5rem', background: 'rgba(255,255,255,0.4)', padding: '0.5rem', borderRadius: '0.5rem' }}>✅</span>
                         </div>
-                        <div style={{ fontSize: '2.5rem', fontWeight: '800', color: '#1e293b' }}>{completedTasks}</div>
+                        <div style={{ fontSize: '2.5rem', fontWeight: '800' }}>{completedTasks}</div>
                     </div>
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2rem' }}>
-                    <div className="card animate-delay-300" style={{ height: 'fit-content' }}>
+                    <div className="glass-card animate-delay-300" style={{ height: 'fit-content' }}>
                         <h3 style={{ marginBottom: '1.5rem', fontSize: '1.25rem', fontWeight: '700' }}>Quick Actions</h3>
                         <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
                             <Link href="/dashboard/tasks/new" className="btn btn-primary" style={{ flex: 1, justifyContent: 'center', height: '3rem' }}>
                                 + Create New Task
                             </Link>
-                            <Link href="/dashboard/employees/new" className="btn" style={{ flex: 1, justifyContent: 'center', background: '#f1f5f9', color: '#334155', height: '3rem' }}>
+                            <Link href="/dashboard/employees/new" className="btn" style={{ flex: 1, justifyContent: 'center', background: 'rgba(255,255,255,0.4)', color: '#334155', height: '3rem', border: '1px solid rgba(255,255,255,0.5)' }}>
                                 + Add Employee
                             </Link>
                         </div>
                     </div>
                     {/* Placeholder for future charts or recent activity */}
-                    <div className="card animate-delay-300" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f8fafc', borderStyle: 'dashed', minHeight: '200px' }}>
+                    <div className="glass-card animate-delay-300" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.2)', borderStyle: 'dashed', minHeight: '200px' }}>
                         <div style={{ textAlign: 'center' }}>
                             <div style={{ fontSize: '2rem', marginBottom: '0.5rem', opacity: 0.5 }}>📈</div>
                             <p style={{ color: '#94a3b8', margin: 0 }}>Activity insights coming soon</p>
@@ -138,8 +138,8 @@ export default async function DashboardPage({ searchParams }: { searchParams: { 
 
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1.5rem' }}>
                         {todayTasks.length === 0 ? (
-                            <div className="card animate-delay-100" style={{ background: 'linear-gradient(to right, #f0fdf4, #dcfce7)', border: '1px solid #bbf7d0', display: 'flex', alignItems: 'center', gap: '1.5rem', padding: '2rem' }}>
-                                <div style={{ fontSize: '3rem', background: 'white', borderRadius: '50%', width: '80px', height: '80px', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>🎉</div>
+                            <div className="glass-card glass-success animate-delay-100" style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', padding: '2rem' }}>
+                                <div style={{ fontSize: '3rem', background: 'rgba(255,255,255,0.8)', borderRadius: '50%', width: '80px', height: '80px', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>🎉</div>
                                 <div>
                                     <h3 style={{ fontSize: '1.25rem', marginBottom: '0.5rem', fontWeight: '700', color: '#166534' }}>All Caught Up!</h3>
                                     <p style={{ margin: 0, color: '#15803d' }}>You have no pending tasks due today. Great job!</p>
@@ -148,7 +148,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: { 
                         ) : (
                             todayTasks.map((task, idx) => (
                                 <Link key={task.id} href={`/dashboard/tasks/${task.id}`} style={{ textDecoration: 'none', color: 'inherit', display: 'block' }} className={`animate-delay-${Math.min((idx + 1) * 100, 500)}`}>
-                                    <div className="card" style={{ height: '100%', boxSizing: 'border-box', borderLeft: '6px solid #ef4444', position: 'relative', transition: 'transform 0.2s', padding: '1.75rem' }}>
+                                    <div className="glass-card" style={{ height: '100%', boxSizing: 'border-box', borderLeft: '6px solid #ef4444', position: 'relative', transition: 'transform 0.2s', padding: '1.75rem' }}>
                                         <div style={{ marginBottom: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
                                             <h3 style={{ fontSize: '1.25rem', fontWeight: '700', lineHeight: '1.3', color: '#1e293b' }}>{task.title}</h3>
                                             <span className="badge" style={{ background: '#fee2e2', color: '#b91c1c' }}>Today</span>
@@ -156,7 +156,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: { 
                                         <p style={{ color: '#64748b', fontSize: '0.95rem', lineHeight: '1.6', marginBottom: '1.5rem', overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
                                             {task.description}
                                         </p>
-                                        <div style={{ marginTop: 'auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid #f1f5f9', paddingTop: '1rem' }}>
+                                        <div style={{ marginTop: 'auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid rgba(255,255,255,0.2)', paddingTop: '1rem' }}>
                                             <span className="badge" style={{ background: '#f8fafc', color: '#475569', border: '1px solid #e2e8f0' }}>{task.status.replace('_', ' ')}</span>
                                             <span style={{ fontSize: '0.9rem', fontWeight: '600', color: '#4f46e5', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>View <span style={{ fontSize: '1.2em' }}>→</span></span>
                                         </div>
@@ -176,13 +176,13 @@ export default async function DashboardPage({ searchParams }: { searchParams: { 
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                             {upcomingTasks.length === 0 ? (
-                                <div className="card" style={{ padding: '2rem', textAlign: 'center', background: '#f9fafb' }}>
+                                <div className="glass-card" style={{ padding: '2rem', textAlign: 'center' }}>
                                     <p style={{ color: '#94a3b8', fontStyle: 'italic', margin: 0 }}>No upcoming tasks scheduled.</p>
                                 </div>
                             ) : (
                                 upcomingTasks.slice(0, 5).map(task => ( // Start with showing 5 max
                                     <Link key={task.id} href={`/dashboard/tasks/${task.id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
-                                        <div className="card" style={{ padding: '1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', transition: 'background 0.2s', borderLeft: '4px solid #cbd5e1' }}>
+                                        <div className="glass-card" style={{ padding: '1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', transition: 'background 0.2s', borderLeft: '4px solid #cbd5e1' }}>
                                             <div style={{ overflow: 'hidden' }}>
                                                 <h3 style={{ fontSize: '1rem', fontWeight: '600', marginBottom: '0.35rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{task.title}</h3>
                                                 <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
@@ -206,13 +206,13 @@ export default async function DashboardPage({ searchParams }: { searchParams: { 
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                             {myObligations.length === 0 ? (
-                                <div className="card" style={{ background: '#f8fafc', padding: '2rem', textAlign: 'center' }}>
+                                <div className="glass-card" style={{ padding: '2rem', textAlign: 'center' }}>
                                     <p style={{ margin: 0, color: '#94a3b8' }}>No obligations assigned.</p>
                                 </div>
                             ) : (
                                 myObligations.slice(0, 5).map(ob => (
                                     <Link key={ob.id} href={`/dashboard/obligations/${ob.id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
-                                        <div className="card" style={{ padding: '1.25rem', borderLeft: '4px solid #0ea5e9' }}>
+                                        <div className="glass-card" style={{ padding: '1.25rem', borderLeft: '4px solid #0ea5e9' }}>
                                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '0.5rem' }}>
                                                 <h3 style={{ fontSize: '1rem', fontWeight: '600', margin: 0 }}>{ob.title}</h3>
                                                 <span className="badge" style={{

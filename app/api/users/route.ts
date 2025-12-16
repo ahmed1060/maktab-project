@@ -136,6 +136,13 @@ export async function GET(req: Request) {
         whereClause.role = { not: 'SUPER_ADMIN' }
     }
 
+    // Filter out DELETED users by default, unless requested
+    const includeDeleted = searchParams.get('includeDeleted') === 'true'
+
+    if (!includeDeleted) {
+        whereClause.status = { not: 'DELETED' }
+    }
+
     const users = await prisma.user.findMany({
         where: whereClause,
         select: {
@@ -470,30 +477,16 @@ export async function DELETE(req: Request) {
     }
 
     try {
-        await prisma.$transaction(async (tx) => {
-            // 1. Delete Assigned Tasks
-            await tx.task.deleteMany({ where: { assigneeId: userId } })
+        // Soft Delete: Mark as DELETED and scramble email to release unique constraint
+        const timestamp = new Date().getTime()
+        const deletedEmail = `${userToDelete.email}_DELETED_${timestamp}`
 
-            // 2. Delete Obligations
-            await tx.obligation.deleteMany({ where: { assigneeId: userId } })
-
-            // 3. Delete Notifications
-            await tx.notification.deleteMany({ where: { userId: userId } })
-
-            // 4. Delete Salary Records
-            await tx.salaryRecord.deleteMany({ where: { userId: userId } })
-
-            // 5. Delete Audit Logs
-            await tx.auditLog.deleteMany({ where: { userId: userId } })
-
-            // 6. Unlink Created Tasks (Set createdBy to null)
-            await tx.task.updateMany({
-                where: { createdBy: userId },
-                data: { createdBy: null }
-            })
-
-            // 7. Finally delete the user
-            await tx.user.delete({ where: { id: userId } })
+        await prisma.user.update({
+            where: { id: userId },
+            data: {
+                status: 'DELETED',
+                email: deletedEmail
+            }
         })
 
         return NextResponse.json({ success: true })

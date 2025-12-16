@@ -44,7 +44,8 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
                 action: 'UPDATE_PAYMENT_STATUS',
                 entityType: 'TASK',
                 entityId: params.id,
-                userId: (session.user as any).id,
+                userId: (session.user as any).role === 'SUPER_ADMIN' ? null : (session.user as any).id,
+                superAdminId: (session.user as any).role === 'SUPER_ADMIN' ? (session.user as any).id : null,
                 details: JSON.stringify({
                     paymentStatus,
                     taskStatus: updateData.status,

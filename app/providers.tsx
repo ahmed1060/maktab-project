@@ -2,12 +2,15 @@
 
 import { SessionProvider } from "next-auth/react"
 import { CompanyProvider } from "@/context/CompanyContext"
+import { ToastProvider } from "@/context/ToastContext"
 
 export function Providers({ children }: { children: React.ReactNode }) {
     return (
         <SessionProvider>
             <CompanyProvider>
-                {children}
+                <ToastProvider>
+                    {children}
+                </ToastProvider>
             </CompanyProvider>
         </SessionProvider>
     )

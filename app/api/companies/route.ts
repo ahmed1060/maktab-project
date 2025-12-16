@@ -7,25 +7,15 @@ export async function GET() {
     try {
         const session = await getServerSession(authOptions)
         if (!session?.user || session.user.role !== 'SUPER_ADMIN') {
-            // Exception: Employees/Admins might need to fetch their own company name? 
-            // Actually, the frontend often has companyName in session.
-            // If this endpoint is used for the "Company Select" list (Super Admin only), then it's fine.
-            // If used for "My Company" profile, existing users use `api/users?id=me`.
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
         }
 
-        const companies = await prisma.company.findMany({
-            select: {
-                id: true,
-                name: true
-            },
-            orderBy: {
-                name: 'asc'
-            }
-        })
+        // Use raw query to fetch isBanned since client is stale
+        const companies = await prisma.$queryRaw`SELECT id, name, "isBanned" FROM "Company" ORDER BY name ASC`
 
         return NextResponse.json(companies)
     } catch (error) {
+        console.error('Fetch error:', error)
         return NextResponse.json(
             { error: "Failed to fetch companies" },
             { status: 500 }
@@ -34,6 +24,12 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
+    // ... existing POST logic (standard create is fine, defaults isBanned=false) ...
+    // Wait, standard create might fail if it tries to return all fields and doesn't know isBanned?
+    // Actually, create returns what it knows. If DB has default, it's fine.
+    // Let's keep POST standard for now, but wrapper it safely? 
+    // No, let's just leave POST as is. The client doesn't know isBanned so it won't try to select it return it.
+    // The DB will set default false.
     try {
         const session = await getServerSession(authOptions)
 
@@ -72,18 +68,39 @@ export async function PUT(req: Request) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
         }
 
-        const { id, name } = await req.json()
+        const body = await req.json()
+        const { id, name, isBanned } = body
 
-        if (!id || !name) {
-            return NextResponse.json({ error: "ID and Name are required" }, { status: 400 })
+        if (!id) {
+            return NextResponse.json({ error: "ID is required" }, { status: 400 })
         }
 
-        // Prevent renaming SHSD if strict requirement? User said "company name SHSD by default and can not be changed".
-        const existing = await prisma.company.findUnique({ where: { id } })
-        if (existing?.name === 'SHSD' && name !== 'SHSD') {
+        // Handle specific Ban/Unban action if isBanned is provided
+        if (isBanned !== undefined) {
+            // Use executeRaw for this hidden field
+            await prisma.$executeRaw`UPDATE "Company" SET "isBanned" = ${isBanned} WHERE id = ${id}`
+            // If name is also provided, update it too
+            if (name) {
+                // Prevent defaulting SHSD rename
+                const existing: any[] = await prisma.$queryRaw`SELECT name FROM "Company" WHERE id = ${id}`
+                if (existing[0]?.name === 'SHSD' && name !== 'SHSD') {
+                    return NextResponse.json({ error: "Cannot rename SHSD" }, { status: 403 })
+                }
+
+                await prisma.$executeRaw`UPDATE "Company" SET name = ${name} WHERE id = ${id}`
+            }
+            return NextResponse.json({ success: true })
+        }
+
+        // Standard Rename (fallback)
+        if (!name) return NextResponse.json({ error: "Name required" }, { status: 400 })
+
+        const existing: any[] = await prisma.$queryRaw`SELECT name FROM "Company" WHERE id = ${id}`
+        if (existing[0]?.name === 'SHSD' && name !== 'SHSD') {
             return NextResponse.json({ error: "Cannot rename the default system company (SHSD)" }, { status: 403 })
         }
 
+        // Use standard update for name if we want, or raw to be safe/consistent
         const company = await prisma.company.update({
             where: { id },
             data: { name }
@@ -91,6 +108,7 @@ export async function PUT(req: Request) {
 
         return NextResponse.json(company)
     } catch (error) {
+        console.error('Update error:', error)
         if ((error as any).code === 'P2002') {
             return NextResponse.json({ error: "Company name already exists" }, { status: 400 })
         }

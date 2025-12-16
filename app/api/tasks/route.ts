@@ -67,10 +67,10 @@ export async function POST(req: Request) {
     const { title, description, assigneeId, deadline, difficulty = 0 } = json
 
     if (!title || title.length < 3 || title.length > 100) {
-        return new NextResponse("Title must be between 3 and 100 characters", { status: 400 })
+        return new NextResponse(JSON.stringify({ message: "Title must be between 3 and 100 characters" }), { status: 400 })
     }
     if (!description || description.length < 10 || description.length > 1000) {
-        return new NextResponse("Description must be between 10 and 1000 characters", { status: 400 })
+        return new NextResponse(JSON.stringify({ message: "Description must be between 10 and 1000 characters" }), { status: 400 })
     }
     const creatorId = (session.user as any).id
     const creatorCompanyId = (session.user as any).companyId
@@ -94,7 +94,7 @@ export async function POST(req: Request) {
 
     // Server-side Deadline Validation
     if (difficulty < 0 || difficulty > 10) {
-        return new NextResponse("Difficulty must be between 0 and 10", { status: 400 })
+        return new NextResponse(JSON.stringify({ message: "Difficulty must be between 0 and 10" }), { status: 400 })
     }
     // ...
     const deadlineDate = new Date(deadline)
@@ -115,7 +115,13 @@ export async function POST(req: Request) {
                     deadline: new Date(deadline),
                     difficulty: Math.min(Math.max(difficulty, 0), 10), // Ensure 0-10 range
                     status: 'PENDING',
-                    createdBy: creatorId
+                    createdBy: userRole === 'SUPER_ADMIN' ? null : creatorId,
+                    // Store Super Admin creator info in comments since there is no FK relationship
+                    comments: userRole === 'SUPER_ADMIN' ? JSON.stringify([{
+                        text: "Task created by Super Admin",
+                        author: "System",
+                        date: new Date().toISOString()
+                    }]) : undefined
                 }
             })
 
@@ -135,7 +141,8 @@ export async function POST(req: Request) {
                     action: 'CREATE_TASK',
                     entityType: 'TASK',
                     entityId: task.id,
-                    userId: creatorId,
+                    userId: userRole === 'SUPER_ADMIN' ? null : creatorId,
+                    superAdminId: userRole === 'SUPER_ADMIN' ? creatorId : null,
                     details: JSON.stringify({ title, assigneeId })
                 }
             })
@@ -146,6 +153,11 @@ export async function POST(req: Request) {
         return NextResponse.json(result)
     } catch (error: any) {
         console.error("Error creating task:", error)
-        return new NextResponse(JSON.stringify({ message: error.message || "Internal Server Error" }), { status: 500 })
+        return new NextResponse(JSON.stringify({
+            message: error.message || "Internal Server Error",
+            details: error.toString(),
+            code: (error as any).code,
+            meta: (error as any).meta
+        }), { status: 500 })
     }
 }

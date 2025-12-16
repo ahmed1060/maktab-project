@@ -16,8 +16,30 @@ export async function DELETE(
     }
 
     try {
-        await prisma.task.delete({
-            where: { id: params.id }
+        await prisma.$transaction(async (tx) => {
+            const task = await tx.task.findUnique({
+                where: { id: params.id },
+                select: { status: true, difficulty: true, assigneeId: true }
+            })
+
+            if (task && ['APPROVED', 'COMPLETED'].includes(task.status)) {
+                try {
+                    await tx.user.update({
+                        where: { id: task.assigneeId },
+                        data: {
+                            totalDifficultyPoints: {
+                                decrement: task.difficulty
+                            }
+                        }
+                    })
+                } catch (error) {
+                    console.error("Failed to deduct points during task deletion:", error)
+                }
+            }
+
+            await tx.task.delete({
+                where: { id: params.id }
+            })
         })
 
         return NextResponse.json({ success: true })

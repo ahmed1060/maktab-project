@@ -12,13 +12,20 @@ interface DashboardShellProps {
 export default function DashboardShell({ children, user }: DashboardShellProps) {
     const [isSidebarOpen, setIsSidebarOpen] = useState(false)
     const [isMobile, setIsMobile] = useState(false)
+    const [isCollapsed, setIsCollapsed] = useState(false) // New State for Desktop Collapse
 
     // Handle responsive state matches
     useEffect(() => {
         const checkMobile = () => {
-            setIsMobile(window.innerWidth < 1024) // Tablets and below
-            if (window.innerWidth >= 1024) setIsSidebarOpen(true)
-            else setIsSidebarOpen(false)
+            const mobile = window.innerWidth < 1024
+            setIsMobile(mobile)
+            if (mobile) {
+                setIsSidebarOpen(false)
+                setIsCollapsed(false) // Reset collapse on mobile
+            } else {
+                setIsSidebarOpen(true)
+                // Keep existing collapsed state on desktop resize or default to false
+            }
         }
 
         checkMobile()
@@ -36,95 +43,142 @@ export default function DashboardShell({ children, user }: DashboardShellProps) 
         return () => window.removeEventListener('scroll', handleScroll)
     }, [])
 
+    // Dynamic width based on state
+    const sidebarWidth = isMobile ? '270px' : (isCollapsed ? '80px' : '270px')
+
     return (
-        <div style={{ display: 'flex', minHeight: '100vh', background: 'var(--background)' }}>
+        <div style={{ display: 'flex', minHeight: '100vh', background: 'transparent' }}>
             {/* Sidebar Overlay for Mobile */}
             {isMobile && isSidebarOpen && (
                 <div
                     onClick={() => setIsSidebarOpen(false)}
                     style={{
-                        position: 'fixed',
-                        top: 0,
-                        left: 0,
-                        right: 0,
-                        bottom: 0,
-                        backgroundColor: 'rgba(0,0,0,0.5)',
-                        zIndex: 49,
-                        backdropFilter: 'blur(2px)'
+                        position: 'fixed', inset: 0,
+                        backgroundColor: 'rgba(0,0,0,0.3)',
+                        backdropFilter: 'blur(4px)',
+                        zIndex: 49
                     }}
                 />
             )}
 
-            {/* Sidebar */}
-            <aside style={{
-                width: '260px',
-                background: '#1e293b',
-                color: 'white',
+            {/* Glass Sidebar */}
+            <aside className="glass-dark" style={{
+                width: sidebarWidth,
                 display: 'flex',
                 flexDirection: 'column',
                 position: 'fixed',
                 height: '100vh',
-                borderRight: '1px solid #334155',
                 zIndex: 50,
-                transition: 'transform 0.3s ease-in-out',
-                transform: isSidebarOpen ? 'translateX(0)' : 'translateX(-100%)',
-                boxShadow: isSidebarOpen ? '4px 0 24px rgba(0,0,0,0.1)' : 'none'
+                transition: 'width 0.4s cubic-bezier(0.16, 1, 0.3, 1), transform 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
+                transform: (isMobile && !isSidebarOpen) ? 'translateX(-100%)' : 'translateX(0)',
+                boxShadow: (isMobile && isSidebarOpen) ? '20px 0 50px rgba(0,0,0,0.2)' : 'none',
+                overflow: 'hidden'
             }}>
                 <div style={{
-                    height: '72px',
-                    padding: '0 2rem',
-                    borderBottom: '1px solid #334155',
-                    background: 'linear-gradient(to right, #1e293b, #0f172a)',
+                    height: (user?.role === 'SUPER_ADMIN') ? '80px' : '65px', // Standard for SA, Reduced to 70px for others
+                    padding: (user?.role === 'SUPER_ADMIN')
+                        ? (isCollapsed ? '0.5rem 1rem 0' : '0.5rem 2rem 0') // SA: Shift Down
+                        : (isCollapsed ? '0 1rem 0' : '0 2rem 0'),          // Others: Center in reduced height (effectively Shift Up)
                     display: 'flex',
-                    justifyContent: 'space-between',
+                    justifyContent: isCollapsed ? 'center' : 'space-between',
                     alignItems: 'center',
-                    boxSizing: 'border-box'
+                    transition: 'all 0.4s ease'
                 }}>
-                    <div style={{ fontSize: '1.25rem', fontWeight: '800', letterSpacing: '-0.025em', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <span style={{ fontSize: '1.5rem' }}>🚀</span> TaskManager
+                    <div
+                        onClick={() => !isMobile && setIsCollapsed(!isCollapsed)}
+                        style={{
+                            fontSize: '1.5rem',
+                            fontWeight: '800',
+                            letterSpacing: '-0.025em',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.75rem',
+                            color: 'white',
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            cursor: !isMobile ? 'pointer' : 'default'
+                        }}
+                        title={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
+                    >
+                        <span style={{ fontSize: isCollapsed ? '2rem' : '1.75rem', transition: 'font-size 0.3s' }}>🚀</span>
+                        {!isCollapsed && (
+                            <span style={{ background: 'linear-gradient(to right, #fff, #a5b4fc)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+                                TaskManager
+                            </span>
+                        )}
                     </div>
+
+                    {/* Mobile Close */}
                     {isMobile && (
                         <button
                             onClick={() => setIsSidebarOpen(false)}
-                            style={{ background: 'none', border: 'none', color: 'white', fontSize: '1.5rem', cursor: 'pointer' }}
+                            style={{ background: 'none', border: 'none', color: 'white', fontSize: '1.5rem', cursor: 'pointer', opacity: 0.7 }}
                         >
                             ×
                         </button>
                     )}
                 </div>
 
-                <nav style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', padding: '1.5rem 1rem', overflowY: 'auto' }}>
-                    <p style={{ fontSize: '0.75rem', fontWeight: 'bold', textTransform: 'uppercase', color: '#94a3b8', paddingLeft: '0.75rem', marginBottom: '0.25rem' }}>Menu</p>
+                <nav style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '0.5rem',
+                    padding: (user?.role === 'SUPER_ADMIN') ? '1rem 1rem' : '0 1rem 1rem', // Standard for SA, Reduced for others
+                    overflowY: 'auto',
+                    overflowX: 'hidden',
+                    scrollbarGutter: 'stable'
+                }}>
+                    {!isCollapsed && <p style={{ fontSize: '0.75rem', fontWeight: 'bold', textTransform: 'uppercase', color: '#94a3b8', paddingLeft: '1rem', marginBottom: '0.25rem', letterSpacing: '0.1em' }}>Menu</p>}
 
                     {[
                         { href: '/dashboard', label: 'Dashboard', icon: '📊' },
                         { href: '/dashboard/tasks', label: 'Tasks', icon: '✅' },
                         { href: '/dashboard/obligations', label: 'Obligations', icon: '📌' },
+                        { href: '/dashboard/clients', label: 'Clients', icon: '🤝' },
                     ].map(link => (
                         <Link
                             key={link.href}
                             href={link.href}
                             onClick={() => isMobile && setIsSidebarOpen(false)}
+                            title={isCollapsed ? link.label : ''}
                             className="nav-link"
                             style={{
-                                color: '#e2e8f0',
+                                color: 'rgba(255,255,255,0.8)',
                                 textDecoration: 'none',
-                                padding: '0.75rem 1rem',
-                                borderRadius: '0.5rem',
+                                padding: '0.85rem 1rem',
+                                borderRadius: '1rem',
                                 display: 'flex',
                                 alignItems: 'center',
-                                gap: '0.75rem',
+                                justifyContent: isCollapsed ? 'center' : 'flex-start',
+                                gap: isCollapsed ? '0' : '1rem',
                                 transition: 'all 0.2s',
                                 fontSize: '0.95rem',
-                                fontWeight: '500'
-                            }}>
-                            <span>{link.icon}</span> {link.label}
+                                fontWeight: '500',
+                                border: '1px solid transparent'
+                            }}
+                            onMouseOver={(e) => {
+                                e.currentTarget.style.background = 'rgba(255,255,255,0.1)'
+                                e.currentTarget.style.color = 'white'
+                                e.currentTarget.style.transform = isCollapsed ? 'scale(1.1)' : 'translateX(5px)'
+                            }}
+                            onMouseOut={(e) => {
+                                e.currentTarget.style.background = 'transparent'
+                                e.currentTarget.style.color = 'rgba(255,255,255,0.8)'
+                                e.currentTarget.style.transform = 'none'
+                            }}
+                        >
+                            <span style={{ fontSize: '1.4rem' }}>{link.icon}</span>
+                            {!isCollapsed && <span>{link.label}</span>}
                         </Link>
                     ))}
 
                     {(['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(user?.role || '')) && (
                         <>
-                            <p style={{ fontSize: '0.75rem', fontWeight: 'bold', textTransform: 'uppercase', color: '#94a3b8', paddingLeft: '0.75rem', marginTop: '1.5rem', marginBottom: '0.25rem' }}>Management</p>
+                            {isCollapsed ? (
+                                <hr style={{ border: 'none', borderTop: '1px solid rgba(255, 255, 255, 0.3)', margin: '1rem auto', width: '50%' }} />
+                            ) : (
+                                <p style={{ fontSize: '0.75rem', fontWeight: 'bold', textTransform: 'uppercase', color: '#94a3b8', paddingLeft: '1rem', marginTop: '1.5rem', marginBottom: '0.25rem', letterSpacing: '0.1em' }}>Management</p>
+                            )}
 
                             {[
                                 { href: '/dashboard/costs', label: 'Costs', icon: '💰' },
@@ -134,20 +188,34 @@ export default function DashboardShell({ children, user }: DashboardShellProps) 
                                     key={link.href}
                                     href={link.href}
                                     onClick={() => isMobile && setIsSidebarOpen(false)}
+                                    title={isCollapsed ? link.label : ''}
                                     className="nav-link"
                                     style={{
-                                        color: '#e2e8f0',
+                                        color: 'rgba(255,255,255,0.8)',
                                         textDecoration: 'none',
-                                        padding: '0.75rem 1rem',
-                                        borderRadius: '0.5rem',
+                                        padding: '0.85rem 1rem',
+                                        borderRadius: '1rem',
                                         display: 'flex',
                                         alignItems: 'center',
-                                        gap: '0.75rem',
+                                        justifyContent: isCollapsed ? 'center' : 'flex-start',
+                                        gap: isCollapsed ? '0' : '1rem',
                                         transition: 'all 0.2s',
                                         fontSize: '0.95rem',
                                         fontWeight: '500'
-                                    }}>
-                                    <span>{link.icon}</span> {link.label}
+                                    }}
+                                    onMouseOver={(e) => {
+                                        e.currentTarget.style.background = 'rgba(255,255,255,0.1)'
+                                        e.currentTarget.style.color = 'white'
+                                        e.currentTarget.style.transform = isCollapsed ? 'scale(1.1)' : 'translateX(5px)'
+                                    }}
+                                    onMouseOut={(e) => {
+                                        e.currentTarget.style.background = 'transparent'
+                                        e.currentTarget.style.color = 'rgba(255,255,255,0.8)'
+                                        e.currentTarget.style.transform = 'none'
+                                    }}
+                                >
+                                    <span style={{ fontSize: '1.4rem' }}>{link.icon}</span>
+                                    {!isCollapsed && <span>{link.label}</span>}
                                 </Link>
                             ))}
                         </>
@@ -156,58 +224,56 @@ export default function DashboardShell({ children, user }: DashboardShellProps) 
                     {/* SUPER ADMIN ONLY */}
                     {user?.role === 'SUPER_ADMIN' && (
                         <>
-                            <p style={{ fontSize: '0.75rem', fontWeight: 'bold', textTransform: 'uppercase', color: '#94a3b8', paddingLeft: '0.75rem', marginTop: '1.5rem', marginBottom: '0.25rem' }}>System</p>
-                            <Link href="/dashboard/super-admins" onClick={() => isMobile && setIsSidebarOpen(false)} className="nav-link" style={{
-                                color: '#e2e8f0',
-                                textDecoration: 'none',
-                                padding: '0.75rem 1rem',
-                                borderRadius: '0.5rem',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '0.75rem',
-                                transition: 'all 0.2s',
-                                fontSize: '0.95rem',
-                                fontWeight: '500'
-                            }}>
-                                <span>🛡️</span> Super Admins
-                            </Link>
-                            <Link href="/dashboard/companies" onClick={() => isMobile && setIsSidebarOpen(false)} className="nav-link" style={{
-                                color: '#e2e8f0',
-                                textDecoration: 'none',
-                                padding: '0.75rem 1rem',
-                                borderRadius: '0.5rem',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '0.75rem',
-                                transition: 'all 0.2s',
-                                fontSize: '0.95rem',
-                                fontWeight: '500'
-                            }}>
-                                <span>🏢</span> Companies
-                            </Link>
-                            <Link href="/dashboard/all-users" onClick={() => isMobile && setIsSidebarOpen(false)} className="nav-link" style={{
-                                color: '#e2e8f0',
-                                textDecoration: 'none',
-                                padding: '0.75rem 1rem',
-                                borderRadius: '0.5rem',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '0.75rem',
-                                transition: 'all 0.2s',
-                                fontSize: '0.95rem',
-                                fontWeight: '500'
-                            }}>
-                                <span>👥</span> All Users
-                            </Link>
+                            {isCollapsed ? (
+                                <hr style={{ border: 'none', borderTop: '1px solid rgba(255, 255, 255, 0.3)', margin: '1rem auto', width: '50%' }} />
+                            ) : (
+                                <p style={{ fontSize: '0.75rem', fontWeight: 'bold', textTransform: 'uppercase', color: '#94a3b8', paddingLeft: '1rem', marginTop: '1.5rem', marginBottom: '0.25rem', letterSpacing: '0.1em' }}>System</p>
+                            )}
+
+                            {[
+                                { href: '/dashboard/super-admins', label: 'Super Admins', icon: '🛡️' },
+                                { href: '/dashboard/companies', label: 'Companies', icon: '🏢' },
+                                { href: '/dashboard/all-users', label: 'All Users', icon: '👥' }
+                            ].map(link => (
+                                <Link key={link.href} href={link.href} onClick={() => isMobile && setIsSidebarOpen(false)} title={isCollapsed ? link.label : ''} className="nav-link" style={{
+                                    color: 'rgba(255,255,255,0.8)',
+                                    textDecoration: 'none',
+                                    padding: '0.85rem 1rem',
+                                    borderRadius: '1rem',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: isCollapsed ? 'center' : 'flex-start',
+                                    gap: isCollapsed ? '0' : '1rem',
+                                    transition: 'all 0.2s',
+                                    fontSize: '0.95rem',
+                                    fontWeight: '500'
+                                }}
+                                    onMouseOver={(e) => {
+                                        e.currentTarget.style.background = 'rgba(255,255,255,0.1)'
+                                        e.currentTarget.style.color = 'white'
+                                        e.currentTarget.style.transform = isCollapsed ? 'scale(1.1)' : 'translateX(5px)'
+                                    }}
+                                    onMouseOut={(e) => {
+                                        e.currentTarget.style.background = 'transparent'
+                                        e.currentTarget.style.color = 'rgba(255,255,255,0.8)'
+                                        e.currentTarget.style.transform = 'none'
+                                    }}
+                                >
+                                    <span style={{ fontSize: '1.4rem' }}>{link.icon}</span>
+                                    {!isCollapsed && <span>{link.label}</span>}
+                                </Link>
+                            ))}
                         </>
                     )}
                 </nav>
 
-                <div style={{ marginTop: 'auto', padding: '1.5rem', borderTop: '1px solid #334155' }}>
-                    <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>
-                        &copy; 2025 Maktab Project
+                {!isCollapsed && (
+                    <div style={{ marginTop: 'auto', padding: '1.5rem', borderTop: '1px solid rgba(255,255,255,0.1)', background: 'rgba(0,0,0,0.2)' }}>
+                        <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>
+                            &copy; 2025 Maktab Project
+                        </div>
                     </div>
-                </div>
+                )}
             </aside>
 
             {/* Main Content Wrapper */}
@@ -215,22 +281,25 @@ export default function DashboardShell({ children, user }: DashboardShellProps) 
                 flex: 1,
                 display: 'flex',
                 flexDirection: 'column',
-                marginLeft: (!isMobile) ? '260px' : '0', // Offset only on desktop
+                marginLeft: (!isMobile) ? sidebarWidth : '0', // Dynamic margin based on collapse state
                 minHeight: '100vh',
-                background: 'var(--background)',
+                background: 'transparent',
                 width: '100%',
-                transition: 'margin-left 0.3s ease-in-out'
+                transition: 'margin-left 0.4s cubic-bezier(0.16, 1, 0.3, 1)'
             }}>
-                {/* New Header */}
+                {/* Floating Glass Header */}
                 <div style={{
-                    background: isScrolled ? 'rgba(255, 255, 255, 0.8)' : 'transparent',
-                    borderBottom: isScrolled ? '1px solid var(--border)' : 'none',
+                    background: isScrolled ? 'rgba(255, 255, 255, 0.65)' : 'transparent',
+                    backdropFilter: isScrolled ? 'blur(16px)' : 'none',
+                    borderBottom: isScrolled ? '1px solid rgba(255,255,255,0.3)' : '1px solid transparent',
                     position: 'sticky',
                     top: 0,
                     zIndex: 40,
-                    boxShadow: isScrolled ? 'var(--shadow-sm)' : 'none',
-                    backdropFilter: isScrolled ? 'blur(12px)' : 'none',
-                    transition: 'all 0.3s ease'
+                    boxShadow: isScrolled ? '0 4px 30px rgba(0,0,0,0.05)' : 'none',
+                    transition: 'all 0.3s ease',
+                    margin: isScrolled ? '1rem' : '0',
+                    borderRadius: isScrolled ? '1.5rem' : '0',
+                    marginTop: isScrolled ? '1rem' : '0',
                 }}>
                     <DashboardHeader
                         user={user}

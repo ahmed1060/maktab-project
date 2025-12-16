@@ -47,12 +47,29 @@ export default function NewTaskPage() {
     }, [session])
 
     const [error, setError] = useState('')
+    const [fieldErrors, setFieldErrors] = useState<{ [key: string]: string }>({})
     const [isSubmitting, setIsSubmitting] = useState(false)
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
         setIsSubmitting(true)
         setError('')
+        setFieldErrors({})
+
+        // Client-side Validation (matching server rules)
+        const errors: { [key: string]: string } = {}
+        if (!title || title.length < 3 || title.length > 100) {
+            errors.title = "Title must be between 3 and 100 characters"
+        }
+        if (!description || description.length < 10 || description.length > 1000) {
+            errors.description = "Description must be between 10 and 1000 characters"
+        }
+
+        if (Object.keys(errors).length > 0) {
+            setFieldErrors(errors)
+            setIsSubmitting(false)
+            return
+        }
 
         try {
             const res = await fetch('/api/tasks', {
@@ -69,7 +86,8 @@ export default function NewTaskPage() {
 
             if (!res.ok) {
                 const data = await res.json().catch(() => ({}))
-                throw new Error(data.message || 'Failed to create task')
+                const errorMessage = data.details || data.message || `Failed to create task (${res.status})`
+                throw new Error(errorMessage)
             }
 
             router.push('/dashboard/tasks')
@@ -95,10 +113,19 @@ export default function NewTaskPage() {
                     <input
                         className="input"
                         value={title}
-                        onChange={e => setTitle(e.target.value)}
+                        onChange={e => {
+                            setTitle(e.target.value)
+                            if (fieldErrors.title) setFieldErrors({ ...fieldErrors, title: '' })
+                        }}
+                        style={fieldErrors.title ? { borderColor: '#ef4444' } : {}}
                         required
                         maxLength={100}
                     />
+                    {fieldErrors.title && (
+                        <div style={{ color: '#ef4444', fontSize: '0.85rem', marginTop: '0.25rem' }}>
+                            {fieldErrors.title}
+                        </div>
+                    )}
                     <div style={{ fontSize: '0.75rem', color: title.length >= 100 ? '#ef4444' : '#94a3b8', textAlign: 'right', marginTop: '0.25rem' }}>
                         {title.length}/100
                     </div>
@@ -108,13 +135,22 @@ export default function NewTaskPage() {
                     <textarea
                         className="input"
                         value={description}
-                        onChange={e => setDescription(e.target.value)}
+                        onChange={e => {
+                            setDescription(e.target.value)
+                            if (fieldErrors.description) setFieldErrors({ ...fieldErrors, description: '' })
+                        }}
+                        style={fieldErrors.description ? { borderColor: '#ef4444' } : {}}
                         rows={4}
                         required
-                        maxLength={500}
+                        maxLength={1000}
                     />
-                    <div style={{ fontSize: '0.75rem', color: description.length >= 500 ? '#ef4444' : '#94a3b8', textAlign: 'right', marginTop: '0.25rem' }}>
-                        {description.length}/500
+                    {fieldErrors.description && (
+                        <div style={{ color: '#ef4444', fontSize: '0.85rem', marginTop: '0.25rem' }}>
+                            {fieldErrors.description}
+                        </div>
+                    )}
+                    <div style={{ fontSize: '0.75rem', color: description.length >= 1000 ? '#ef4444' : '#94a3b8', textAlign: 'right', marginTop: '0.25rem' }}>
+                        {description.length}/1000
                     </div>
                 </div>
                 <div>

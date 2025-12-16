@@ -8,7 +8,7 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
     if (!session) return new NextResponse("Unauthorized", { status: 401 })
 
     const json = await req.json()
-    const { status, newAttachments } = json
+    const { status, newAttachments, assigneeId } = json
     const userId = (session.user as any).id
 
     const result = await prisma.$transaction(async (tx) => {
@@ -17,7 +17,6 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
         if (!currentObligation) throw new Error("Obligation not found")
 
         // Authorization Check
-        // Allow if Admin/SuperAdmin/TeamLeader OR if Assignee
         const isManager = ['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes((session.user as any).role)
         const isAssignee = currentObligation.assigneeId === userId
 
@@ -45,18 +44,25 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
             finalAttachments = [...finalAttachments, ...newAttachments]
         }
 
+        const updateData: any = {
+            attachments: JSON.stringify(finalAttachments)
+        }
+        if (status) updateData.status = status
+        if (status === 'COMPLETED') updateData.lastStatusUpdateBy = `${(session.user as any).role} ${(session.user as any).name}`
+
+        // Handle Reassignment
+        if (assigneeId && isManager) {
+            updateData.assigneeId = assigneeId
+        }
+
         const obligation = await tx.obligation.update({
             where: { id: params.id },
-            data: {
-                status,
-                attachments: JSON.stringify(finalAttachments),
-                lastStatusUpdateBy: status === 'COMPLETED' ? `${(session.user as any).role} ${(session.user as any).name}` : currentObligation.lastStatusUpdateBy
-            },
+            data: updateData,
             include: { assignee: true }
         })
 
-        // Add difficulty points to assignee if completed
-        if (status === 'COMPLETED') {
+        // Add difficulty points to assignee if completed (AND if status actually changed to completed)
+        if (status === 'COMPLETED' && currentObligation.status !== 'COMPLETED') {
             await tx.user.update({
                 where: { id: obligation.assigneeId },
                 data: {
@@ -73,7 +79,8 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
                 action: 'UPDATE_OBLIGATION',
                 entityType: 'OBLIGATION',
                 entityId: obligation.id,
-                userId: userId,
+                userId: (session.user as any).role === 'SUPER_ADMIN' ? null : userId,
+                superAdminId: (session.user as any).role === 'SUPER_ADMIN' ? userId : null,
                 details: JSON.stringify({ status, newAttachments })
             }
         })

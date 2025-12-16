@@ -9,6 +9,7 @@ export default function AddBonusPage() {
     const [amount, setAmount] = useState('')
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState('')
+    const [fieldError, setFieldError] = useState('')
     const [success, setSuccess] = useState('')
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -18,7 +19,7 @@ export default function AddBonusPage() {
         setSuccess('')
 
         if (parseFloat(amount) > 1000) {
-            setError('Bonus cannot exceed 1000 days')
+            setFieldError('Bonus cannot exceed 1000 days')
             setLoading(false)
             return
         }
@@ -71,7 +72,11 @@ export default function AddBonusPage() {
                         type="number"
                         className="input"
                         value={amount}
-                        onChange={e => setAmount(e.target.value)}
+                        onChange={e => {
+                            setAmount(e.target.value)
+                            setFieldError('')
+                        }}
+                        style={fieldError ? { borderColor: '#ef4444' } : {}}
                         required
                         min="0"
                         max="1000"
@@ -79,6 +84,11 @@ export default function AddBonusPage() {
                         placeholder="e.g. 1.5"
                         autoFocus
                     />
+                    {fieldError && (
+                        <div style={{ color: '#ef4444', fontSize: '0.85rem', marginTop: '0.25rem' }}>
+                            {fieldError}
+                        </div>
+                    )}
                 </div>
 
                 <div style={{ display: 'flex', gap: '1rem' }}>

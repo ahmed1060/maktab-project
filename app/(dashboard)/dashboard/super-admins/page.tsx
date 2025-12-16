@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
+import AccessDenied from '@/components/AccessDenied'
 
 type Admin = {
     id: string
@@ -22,6 +23,11 @@ export default function SuperAdminsPage() {
     const [editingAdmin, setEditingAdmin] = useState<Admin | null>(null)
 
     const { data: session } = useSession()
+    const userRole = session?.user?.role || ''
+
+    if (userRole !== 'SUPER_ADMIN') {
+        return <AccessDenied />
+    }
 
     // Create Form State
     const [formData, setFormData] = useState({

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import EmployeeProfileForm from '@/components/EmployeeProfileForm'
 import { useRouter } from 'next/navigation'
 
 type User = {
@@ -29,11 +30,13 @@ export default function AllUsersPage() {
     const [superAdminsList, setSuperAdminsList] = useState<User[]>([])
     const [loading, setLoading] = useState(true)
     const [companyFilter, setCompanyFilter] = useState('')
+    const [showExUsersModal, setShowExUsersModal] = useState(false)
+    const [viewingProfileId, setViewingProfileId] = useState<string | null>(null)
 
     const fetchData = async () => {
         try {
             const [usersRes, companiesRes, superAdminsRes] = await Promise.all([
-                fetch('/api/users'),
+                fetch('/api/users?includeDeleted=true'),
                 fetch('/api/companies'),
                 fetch('/api/super-admins')
             ])
@@ -64,8 +67,11 @@ export default function AllUsersPage() {
     // 1. Super Admins
     const superAdmins = superAdminsList
 
-    // 2. Regular Users Grouped by Company
-    const regularUsers = users
+    // 2. Regular Users & Deleted Users
+    const activeRegularUsers = users.filter(u => u.status !== 'DELETED')
+    const deletedUsers = users.filter(u => u.status === 'DELETED')
+
+    const regularUsers = activeRegularUsers
 
     // Group logic
     const usersByCompany: { [key: string]: { name: string, users: User[] } } = {}
@@ -275,6 +281,110 @@ export default function AllUsersPage() {
                     {companySections.length === 0 && !showSuperAdmins && (
                         <div style={{ textAlign: 'center', padding: '3rem', color: '#64748b' }}>
                             No companies found matching "{companyFilter}".
+                        </div>
+                    )}
+                </div>
+            )}
+            {/* Ex Users Section */}
+            {deletedUsers.length > 0 && (
+                <div style={{ marginTop: '2rem' }}>
+                    <div style={{ background: '#f8fafc', padding: '1.5rem', borderRadius: '12px', border: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div>
+                            <h2 style={{ fontSize: '1.2rem', fontWeight: 'bold', color: '#64748b' }}>Ex-Users</h2>
+                            <p style={{ margin: 0, color: '#94a3b8', fontSize: '0.9rem' }}>
+                                {deletedUsers.length} deleted user{deletedUsers.length !== 1 ? 's' : ''} in archive
+                            </p>
+                        </div>
+                        <button
+                            onClick={() => setShowExUsersModal(true)}
+                            className="btn"
+                            style={{ background: 'white', border: '1px solid #cbd5e1', color: '#475569' }}
+                        >
+                            View Archive
+                        </button>
+                    </div>
+                </div>
+            )}
+            {/* Ex Users Modal */}
+            {showExUsersModal && (
+                <div style={{
+                    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                    background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center',
+                    alignItems: 'center', zIndex: 100
+                }}>
+                    {viewingProfileId ? (
+                        <div style={{ background: 'white', borderRadius: '12px', width: '90%', maxWidth: '800px', maxHeight: '90vh', overflowY: 'auto' }}>
+                            <EmployeeProfileForm
+                                userId={viewingProfileId}
+                                isViewMode={true}
+                                onClose={() => setViewingProfileId(null)}
+                            />
+                        </div>
+                    ) : (
+                        <div style={{ background: 'white', padding: '2rem', borderRadius: '12px', width: '90%', maxWidth: '800px', maxHeight: '80vh', display: 'flex', flexDirection: 'column' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                                <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                    <span style={{ fontSize: '1.5rem' }}>🗑️</span> Ex-Users Archive
+                                </h2>
+                                <button onClick={() => setShowExUsersModal(false)} style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: '#64748b' }}>&times;</button>
+                            </div>
+
+                            <div style={{ overflowY: 'auto', flex: 1 }}>
+                                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                                    <thead style={{ background: '#f1f5f9', position: 'sticky', top: 0 }}>
+                                        <tr>
+                                            <th style={{ textAlign: 'left', padding: '1rem', color: '#64748b' }}>Name</th>
+                                            <th style={{ textAlign: 'left', padding: '1rem', color: '#64748b' }}>Email</th>
+                                            <th style={{ textAlign: 'left', padding: '1rem', color: '#64748b' }}>Previously</th>
+                                            <th style={{ textAlign: 'right', padding: '1rem', color: '#64748b' }}>Profile</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {deletedUsers.map(user => (
+                                            <tr key={user.id} style={{ borderBottom: '1px solid #e2e8f0' }}>
+                                                <td style={{ padding: '1rem', fontWeight: '500' }}>
+                                                    {user.firstName} {user.lastName}
+                                                </td>
+                                                <td style={{ padding: '1rem', color: '#64748b' }}>
+                                                    {user.email.includes('_DELETED_') ? user.email.split('_DELETED_')[0] : user.email}
+                                                </td>
+                                                <td style={{ padding: '1rem' }}>
+                                                    <span style={{ fontSize: '0.75rem', background: '#f1f5f9', padding: '0.2rem 0.5rem', borderRadius: '0.25rem', color: '#475569' }}>
+                                                        {user.company?.name || 'No Company'} &bull; {user.role}
+                                                    </span>
+                                                </td>
+                                                <td style={{ padding: '1rem', textAlign: 'right' }}>
+                                                    <button
+                                                        onClick={() => setViewingProfileId(user.id)}
+                                                        style={{
+                                                            background: '#eff6ff',
+                                                            color: '#2563eb',
+                                                            padding: '0.4rem 0.8rem',
+                                                            borderRadius: '0.5rem',
+                                                            fontWeight: '500',
+                                                            fontSize: '0.8rem',
+                                                            border: 'none',
+                                                            cursor: 'pointer'
+                                                        }}
+                                                    >
+                                                        View Profile
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <div style={{ marginTop: '1.5rem', textAlign: 'right' }}>
+                                <button
+                                    onClick={() => setShowExUsersModal(false)}
+                                    className="btn"
+                                    style={{ background: '#e2e8f0', color: '#0f172a' }}
+                                >
+                                    Close
+                                </button>
+                            </div>
                         </div>
                     )}
                 </div>

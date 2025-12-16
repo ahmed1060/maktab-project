@@ -18,6 +18,7 @@ export default function NewEmployeePage() {
     const [salary, setSalary] = useState('')
     const [companies, setCompanies] = useState<Company[]>([])
     const [error, setError] = useState('')
+    const [fieldErrors, setFieldErrors] = useState<{ [key: string]: string }>({})
     const [loading, setLoading] = useState(false)
     const router = useRouter()
     const { data: session } = useSession()
@@ -35,12 +36,22 @@ export default function NewEmployeePage() {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
         setError('')
+        setFieldErrors({})
         setLoading(true)
 
         // Regex: ^ (start) [^@]{1,20} (1-20 chars user) @ [^@]{1,10} (1-10 chars domain) \.com$
         const emailRegex = /^[^@]{1,20}@[^@]{1,10}\.com$/
+
+        const errors: { [key: string]: string } = {}
         if (!emailRegex.test(email)) {
-            setError('Email must be in format: user(max 20)@domain(max 10).com')
+            errors.email = "Email must be in format: user(max 20)@domain(max 10).com"
+        }
+        if (!firstName || firstName.length > 15) errors.firstName = "First Name max 15 chars"
+        if (!lastName || lastName.length > 15) errors.lastName = "Last Name max 15 chars"
+        if (!password || password.length < 6 || password.length > 20) errors.password = "Password must be 6-20 chars"
+
+        if (Object.keys(errors).length > 0) {
+            setFieldErrors(errors)
             setLoading(false)
             return
         }
@@ -104,22 +115,40 @@ export default function NewEmployeePage() {
                         <input
                             className="input"
                             value={firstName}
-                            onChange={e => setFirstName(e.target.value)}
+                            onChange={e => {
+                                setFirstName(e.target.value)
+                                if (fieldErrors.firstName) setFieldErrors({ ...fieldErrors, firstName: '' })
+                            }}
+                            style={fieldErrors.firstName ? { borderColor: '#ef4444' } : {}}
                             required
                             maxLength={15}
                             placeholder="John"
                         />
+                        {fieldErrors.firstName && (
+                            <div style={{ color: '#ef4444', fontSize: '0.85rem', marginTop: '0.25rem' }}>
+                                {fieldErrors.firstName}
+                            </div>
+                        )}
                     </div>
                     <div>
                         <label style={{ display: 'block', marginBottom: '0.5rem' }}>Last Name</label>
                         <input
                             className="input"
                             value={lastName}
-                            onChange={e => setLastName(e.target.value)}
+                            onChange={e => {
+                                setLastName(e.target.value)
+                                if (fieldErrors.lastName) setFieldErrors({ ...fieldErrors, lastName: '' })
+                            }}
+                            style={fieldErrors.lastName ? { borderColor: '#ef4444' } : {}}
                             required
                             maxLength={15}
                             placeholder="Doe"
                         />
+                        {fieldErrors.lastName && (
+                            <div style={{ color: '#ef4444', fontSize: '0.85rem', marginTop: '0.25rem' }}>
+                                {fieldErrors.lastName}
+                            </div>
+                        )}
                     </div>
                 </div>
                 <div>
@@ -128,10 +157,19 @@ export default function NewEmployeePage() {
                         type="email"
                         className="input"
                         value={email}
-                        onChange={e => setEmail(e.target.value)}
+                        onChange={e => {
+                            setEmail(e.target.value)
+                            if (fieldErrors.email) setFieldErrors({ ...fieldErrors, email: '' })
+                        }}
+                        style={fieldErrors.email ? { borderColor: '#ef4444' } : {}}
                         required
                         placeholder="john@example.com"
                     />
+                    {fieldErrors.email && (
+                        <div style={{ color: '#ef4444', fontSize: '0.85rem', marginTop: '0.25rem' }}>
+                            {fieldErrors.email}
+                        </div>
+                    )}
                 </div>
                 <div>
                     <label style={{ display: 'block', marginBottom: '0.5rem' }}>Password</label>
@@ -139,12 +177,21 @@ export default function NewEmployeePage() {
                         type="password"
                         className="input"
                         value={password}
-                        onChange={e => setPassword(e.target.value)}
+                        onChange={e => {
+                            setPassword(e.target.value)
+                            if (fieldErrors.password) setFieldErrors({ ...fieldErrors, password: '' })
+                        }}
+                        style={fieldErrors.password ? { borderColor: '#ef4444' } : {}}
                         required
                         minLength={6}
                         maxLength={20}
                         placeholder="Minimum 6 characters"
                     />
+                    {fieldErrors.password && (
+                        <div style={{ color: '#ef4444', fontSize: '0.85rem', marginTop: '0.25rem' }}>
+                            {fieldErrors.password}
+                        </div>
+                    )}
                 </div>
 
                 {/* Salary Input */}

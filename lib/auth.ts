@@ -60,8 +60,16 @@ export const authOptions: NextAuthOptions = {
                         throw new Error('This user does not belong to the selected company.')
                     }
 
-                    if (user.status === 'SUSPENDED') {
-                        throw new Error('Your account has been suspended.')
+                    // Check for Company Ban Status (Raw Query because client is stale)
+                    if (user.companyId) {
+                        const companyStatus: any[] = await prisma.$queryRaw`SELECT "isBanned", name FROM "Company" WHERE id = ${user.companyId}`
+                        if (companyStatus[0]?.isBanned) {
+                            throw new Error(`The company ${companyStatus[0].name} has been banned. Access denied.`)
+                        }
+                    }
+
+                    if (user.status === 'SUSPENDED' || user.status === 'DELETED') {
+                        throw new Error('Your account has been suspended or deleted.')
                     }
 
                     const isValid = await bcrypt.compare(credentials.password, user.password)
@@ -73,7 +81,7 @@ export const authOptions: NextAuthOptions = {
                             where: { id: user.id },
                             data: { status: 'ACTIVE', lastActivity: new Date() }
                         })
-                    } catch (e) { }
+                    } catch { }
 
                     return {
                         id: user.id,
@@ -109,7 +117,7 @@ export const authOptions: NextAuthOptions = {
             }
             return session
         },
-        async jwt({ token, user }) {
+        async jwt({ token, user, trigger, session }) {
             if (user) {
                 token.role = user.role
                 token.firstName = user.firstName
@@ -119,6 +127,12 @@ export const authOptions: NextAuthOptions = {
                 token.companyId = user.companyId
                 token.companyName = user.companyName
                 token.jti = uuidv4()
+            }
+            if (trigger === 'update' && session) {
+                if (session.firstName) token.firstName = session.firstName
+                if (session.lastName) token.lastName = session.lastName
+                if (session.gender) token.gender = session.gender
+                if (session.avatar) token.avatar = session.avatar
             }
             return token
         }
