@@ -165,9 +165,9 @@ export default function SectionNotesPage() {
                                             <span className="font-semibold text-slate-800">
                                                 {note.createdBy?.firstName} {note.createdBy?.lastName}
                                             </span>
-                                            <span className="text-slate-400 mx-2">•</span>
+                                            <span className="text-slate-400" style={{ margin: '0 1rem' }}>•</span>
                                             <span className="text-slate-500">
-                                                {new Date(note.createdAt).toLocaleDateString()} at {new Date(note.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                {new Date(note.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - {new Date(note.createdAt).toLocaleDateString()}
                                             </span>
                                         </div>
                                     </div>
