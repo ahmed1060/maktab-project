@@ -145,13 +145,13 @@ export default function SuperAdminsPage() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
                 <div>
                     <h1 style={{ fontSize: '1.8rem', fontWeight: 'bold' }}>Super Admins</h1>
-                    <p style={{ color: '#64748b' }}>Manage system administrators</p>
+                    <p style={{ color: '#64748b' }}>Manage super administrator accounts</p>
                 </div>
                 <button
                     className="btn btn-primary"
                     onClick={() => setShowCreateModal(true)}
                 >
-                    + Add New Admin
+                    + Add Super Admin
                 </button>
             </div>
 

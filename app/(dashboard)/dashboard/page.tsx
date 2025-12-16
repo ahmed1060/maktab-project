@@ -14,6 +14,113 @@ export default async function DashboardPage({ searchParams }: { searchParams: { 
     }
 
     if (['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole)) {
+        // Super Admin System Overview (when no specific company is selected)
+        if (userRole === 'SUPER_ADMIN' && !companyId) {
+            const totalCompanies = await prisma.company.count()
+            const totalUsers = await prisma.user.count()
+            const totalSuperAdmins = await prisma.user.count({ where: { role: 'SUPER_ADMIN' } })
+            const totalAdmins = await prisma.user.count({ where: { role: 'ADMIN' } })
+            const totalEmployees = await prisma.user.count({ where: { role: 'EMPLOYEE' } })
+            const totalTasks = await prisma.task.count()
+            const totalObligations = await prisma.obligation.count()
+            const totalClients = await prisma.businessClient.count()
+
+            return (
+                <div className="animate-fade-in">
+                    <header style={{ marginBottom: '2.5rem' }}>
+                        <h1 style={{ fontSize: '2rem', fontWeight: '800', color: '#1e293b' }}>
+                            System Overview
+                        </h1>
+                        <p style={{ color: '#64748b', fontSize: '1rem', marginTop: '0.5rem' }}>Complete system statistics across all companies.</p>
+                    </header>
+
+                    {/* System Stats Grid */}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '1.5rem', marginBottom: '3rem' }}>
+                        <div className="glass-card animate-delay-100">
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '1rem' }}>
+                                <div style={{ fontSize: '0.9rem', opacity: 0.9, fontWeight: '500' }}>Total Companies</div>
+                                <span style={{ fontSize: '1.5rem', opacity: 0.8 }}>🏢</span>
+                            </div>
+                            <div style={{ fontSize: '3rem', fontWeight: '800', lineHeight: 1 }}>{totalCompanies}</div>
+                        </div>
+                        <div className="glass-card glass-info animate-delay-200">
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '1rem' }}>
+                                <div style={{ fontSize: '0.9rem', fontWeight: '700' }}>Total Users</div>
+                                <span style={{ fontSize: '1.5rem', background: 'rgba(255,255,255,0.4)', padding: '0.5rem', borderRadius: '0.5rem' }}>👥</span>
+                            </div>
+                            <div style={{ fontSize: '2.5rem', fontWeight: '800' }}>{totalUsers}</div>
+                        </div>
+                        <div className="glass-card glass-warning animate-delay-200">
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '1rem' }}>
+                                <div style={{ fontSize: '0.9rem', fontWeight: '700' }}>Total Tasks</div>
+                                <span style={{ fontSize: '1.5rem', background: 'rgba(255,255,255,0.4)', padding: '0.5rem', borderRadius: '0.5rem' }}>✅</span>
+                            </div>
+                            <div style={{ fontSize: '2.5rem', fontWeight: '800' }}>{totalTasks}</div>
+                        </div>
+                        <div className="glass-card glass-success animate-delay-300">
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '1rem' }}>
+                                <div style={{ fontSize: '0.9rem', fontWeight: '700' }}>Business Clients</div>
+                                <span style={{ fontSize: '1.5rem', background: 'rgba(255,255,255,0.4)', padding: '0.5rem', borderRadius: '0.5rem' }}>🤝</span>
+                            </div>
+                            <div style={{ fontSize: '2.5rem', fontWeight: '800' }}>{totalClients}</div>
+                        </div>
+                    </div>
+
+                    {/* User Breakdown */}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2rem', marginBottom: '3rem' }}>
+                        <div className="glass-card animate-delay-300">
+                            <h3 style={{ marginBottom: '1.5rem', fontSize: '1.25rem', fontWeight: '700' }}>User Breakdown</h3>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem', background: 'rgba(99, 102, 241, 0.1)', borderRadius: '0.5rem' }}>
+                                    <span style={{ fontWeight: '600' }}>Super Admins</span>
+                                    <span style={{ fontSize: '1.5rem', fontWeight: '800', color: '#6366f1' }}>{totalSuperAdmins}</span>
+                                </div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem', background: 'rgba(139, 92, 246, 0.1)', borderRadius: '0.5rem' }}>
+                                    <span style={{ fontWeight: '600' }}>Admins</span>
+                                    <span style={{ fontSize: '1.5rem', fontWeight: '800', color: '#8b5cf6' }}>{totalAdmins}</span>
+                                </div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem', background: 'rgba(59, 130, 246, 0.1)', borderRadius: '0.5rem' }}>
+                                    <span style={{ fontWeight: '600' }}>Employees</span>
+                                    <span style={{ fontSize: '1.5rem', fontWeight: '800', color: '#3b82f6' }}>{totalEmployees}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="glass-card animate-delay-300">
+                            <h3 style={{ marginBottom: '1.5rem', fontSize: '1.25rem', fontWeight: '700' }}>System Activity</h3>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem', background: 'rgba(245, 158, 11, 0.1)', borderRadius: '0.5rem' }}>
+                                    <span style={{ fontWeight: '600' }}>Total Obligations</span>
+                                    <span style={{ fontSize: '1.5rem', fontWeight: '800', color: '#f59e0b' }}>{totalObligations}</span>
+                                </div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem', background: 'rgba(16, 185, 129, 0.1)', borderRadius: '0.5rem' }}>
+                                    <span style={{ fontWeight: '600' }}>Total Tasks</span>
+                                    <span style={{ fontSize: '1.5rem', fontWeight: '800', color: '#10b981' }}>{totalTasks}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Quick Actions */}
+                    <div className="glass-card animate-delay-300">
+                        <h3 style={{ marginBottom: '1.5rem', fontSize: '1.25rem', fontWeight: '700' }}>Quick Actions</h3>
+                        <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+                            <Link href="/dashboard/companies" className="btn btn-primary" style={{ flex: 1, justifyContent: 'center', height: '3rem', minWidth: '200px' }}>
+                                Manage Companies
+                            </Link>
+                            <Link href="/dashboard/all-users" className="btn" style={{ flex: 1, justifyContent: 'center', background: 'rgba(255,255,255,0.4)', color: '#334155', height: '3rem', border: '1px solid rgba(255,255,255,0.5)', minWidth: '200px' }}>
+                                View All Users
+                            </Link>
+                            <Link href="/dashboard/super-admins" className="btn" style={{ flex: 1, justifyContent: 'center', background: 'rgba(255,255,255,0.4)', color: '#334155', height: '3rem', border: '1px solid rgba(255,255,255,0.5)', minWidth: '200px' }}>
+                                Manage Super Admins
+                            </Link>
+                        </div>
+                    </div>
+                </div>
+            )
+        }
+
+        // Regular Admin/Team Leader view (or Super Admin with specific company selected)
         const baseWhere = companyId ? { assignee: { companyId } } : {}
 
         const totalTasks = await prisma.task.count({ where: baseWhere })
@@ -25,7 +132,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: { 
             <div className="animate-fade-in">
                 <header style={{ marginBottom: '2.5rem' }}>
                     <h1 style={{ fontSize: '2rem', fontWeight: '800', color: '#1e293b' }}>
-                        {userRole === 'TEAM_LEADER' ? 'Team Leader Overview' : 'Admin Overview'}
+                        {userRole === 'SUPER_ADMIN' ? 'Super Admin Overview' : userRole === 'TEAM_LEADER' ? 'Team Leader Overview' : 'Admin Overview'}
                     </h1>
                     <p style={{ color: '#64748b', fontSize: '1rem', marginTop: '0.5rem' }}>Here is a high-level summary of all activities.</p>
                 </header>

@@ -127,7 +127,6 @@ export default function ClientsPage() {
                     <button
                         onClick={() => setIsModalOpen(true)}
                         className="btn btn-primary"
-                        style={{ marginLeft: 'auto' }} // Force right alignment
                     >
                         Add Client
                     </button>

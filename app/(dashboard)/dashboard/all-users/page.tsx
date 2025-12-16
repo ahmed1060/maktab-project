@@ -121,7 +121,7 @@ export default function AllUsersPage() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
                 <div>
                     <h1 style={{ fontSize: '1.8rem', fontWeight: 'bold' }}>All Users</h1>
-                    <p style={{ color: '#64748b' }}>Comprehensive list of all registered users</p>
+                    <p style={{ color: '#64748b' }}>View all users across all companies</p>
                 </div>
             </div>
 
