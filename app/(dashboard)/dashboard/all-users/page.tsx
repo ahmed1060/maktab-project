@@ -67,8 +67,8 @@ export default function AllUsersPage() {
     // 1. Super Admins
     const superAdmins = superAdminsList
 
-    // 2. Regular Users & Deleted Users
-    const activeRegularUsers = users.filter(u => u.status !== 'DELETED')
+    // 2. Regular Users & Deleted Users (exclude SUPER_ADMIN role to prevent duplicates)
+    const activeRegularUsers = users.filter(u => u.status !== 'DELETED' && u.role !== 'SUPER_ADMIN')
     const deletedUsers = users.filter(u => u.status === 'DELETED')
 
     const regularUsers = activeRegularUsers

@@ -98,11 +98,38 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
     }
 
     try {
-        await prisma.obligation.delete({
-            where: { id: params.id }
+        await prisma.$transaction(async (tx) => {
+            // Get obligation details before deleting
+            const obligation = await tx.obligation.findUnique({
+                where: { id: params.id },
+                select: { status: true, difficulty: true, assigneeId: true }
+            })
+
+            // If obligation was completed, deduct points from assignee
+            if (obligation && obligation.status === 'COMPLETED') {
+                try {
+                    await tx.user.update({
+                        where: { id: obligation.assigneeId },
+                        data: {
+                            totalDifficultyPoints: {
+                                decrement: obligation.difficulty
+                            }
+                        }
+                    })
+                } catch (error) {
+                    console.error("Failed to deduct points during obligation deletion:", error)
+                }
+            }
+
+            // Delete the obligation
+            await tx.obligation.delete({
+                where: { id: params.id }
+            })
         })
+
         return new NextResponse("Obligation deleted", { status: 200 })
     } catch (error) {
+        console.error("Error deleting obligation:", error)
         return new NextResponse("Failed to delete obligation", { status: 500 })
     }
 }

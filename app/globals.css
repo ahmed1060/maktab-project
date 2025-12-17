@@ -81,6 +81,28 @@ body::before {
   }
 }
 
+@keyframes slideInRight {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 /* Glassmorphism Utilities */
 .glass {
   background: rgba(255, 255, 255, 0.7);
@@ -159,10 +181,10 @@ body::before {
 /* Modern Inputs */
 .input {
   width: 100%;
-  padding: 1rem 1.25rem;
-  /* Increased padding */
-  min-height: 3.5rem;
-  /* Enforce consistent height */
+  padding: 0.625rem 1rem;
+  /* Reduced padding for compact inputs */
+  height: 42px;
+  /* Fixed height instead of min-height */
   background: rgba(255, 255, 255, 0.6);
   border: 1px solid rgba(255, 255, 255, 0.4);
   border-radius: 1rem;

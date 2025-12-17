@@ -40,25 +40,11 @@ export async function GET(req: Request) {
                 gender: true,
                 salary: true,
                 companyId: true,
-                tasks: {
-                    select: {
-                        difficulty: true,
-                        status: true
-                    }
-                }
+                totalDifficultyPoints: true
             }
         })
 
         if (user) {
-            // Calculate total difficulty points
-            const approvedPoints = user.tasks
-                .filter(t => t.status === 'APPROVED' || t.status === 'COMPLETED')
-                .reduce((sum, task) => sum + task.difficulty, 0)
-            const rejectedPoints = user.tasks
-                .filter(t => t.status === 'REJECTED')
-                .reduce((sum, task) => sum + task.difficulty, 0)
-            const totalDifficultyPoints = approvedPoints - rejectedPoints
-
             // Filter Salary
             const canViewSalary = ['ADMIN', 'SUPER_ADMIN'].includes(userRole || '') || session.user.id === userId
 
@@ -72,7 +58,7 @@ export async function GET(req: Request) {
                 gender: user.gender,
                 companyId: user.companyId,
                 salary: canViewSalary ? user.salary : undefined,
-                totalDifficultyPoints
+                totalDifficultyPoints: user.totalDifficultyPoints
             })
         }
 
@@ -160,30 +146,18 @@ export async function GET(req: Request) {
                     name: true
                 }
             },
-            salary: false, // Salary NOT needed in list view generally, keeps payload small/secure
-            tasks: {
-                select: {
-                    difficulty: true,
-                    status: true
-                }
-            }
+            totalDifficultyPoints: true,
+            salary: false // Salary NOT needed in list view generally, keeps payload small/secure
         },
         orderBy: { firstName: 'asc' }
     })
 
-    // Calculate total difficulty points: approved/completed - rejected
-    const usersWithPoints = users.map(user => {
-        const approvedPoints = user.tasks
-            .filter(t => t.status === 'APPROVED' || t.status === 'COMPLETED')
-            .reduce((sum, task) => sum + task.difficulty, 0)
-        const rejectedPoints = user.tasks
-            .filter(t => t.status === 'REJECTED')
-            .reduce((sum, task) => sum + task.difficulty, 0)
-
+    // Map users with effective status
+    const usersWithStatus = users.map(user => {
         // Determine effective status based on lastActivity
         let effectiveStatus = user.status
         if (effectiveStatus === 'ACTIVE') {
-            const lastActivity = (user as any).lastActivity // accessing dynamic property
+            const lastActivity = user.lastActivity
             if (lastActivity) {
                 const diffMs = new Date().getTime() - new Date(lastActivity).getTime()
                 const oneMinuteMs = 60 * 1000
@@ -202,12 +176,12 @@ export async function GET(req: Request) {
             status: effectiveStatus,
             role: user.role,
             gender: user.gender,
-            company: (user as any).company,
-            totalDifficultyPoints: approvedPoints - rejectedPoints
+            company: user.company,
+            totalDifficultyPoints: user.totalDifficultyPoints
         }
     })
 
-    return NextResponse.json(usersWithPoints)
+    return NextResponse.json(usersWithStatus)
 }
 
 

@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import SearchableSelect from './SearchableSelect'
+import DateRangePicker from './DateRangePicker'
 
 interface EmployeeFilterProps {
     onFilterChange: (filters: { employeeId: string; dateFrom: string; dateTo: string; status: string }) => void
@@ -126,46 +127,14 @@ export default function EmployeeFilter({ onFilterChange, selectedEmployeeId, dat
                     </select>
                 </div>
 
-                <div>
-                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600', fontSize: '0.875rem' }}>
-                        From Date
-                    </label>
-                    <input
-                        type="date"
-                        value={dateFrom}
-                        max={dateTo}
-                        onChange={(e) => handleDateFromChange(e.target.value)}
-                        style={{
-                            padding: '0.5rem 1rem',
-                            borderRadius: '0.5rem',
-                            border: '1px solid #cbd5e1',
-                            fontSize: '0.875rem',
-                            cursor: 'pointer'
-                        }}
-                    />
-                </div>
-
-                <div>
-                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600', fontSize: '0.875rem' }}>
-                        To Date
-                    </label>
-                    <input
-                        type="date"
-                        value={dateTo}
-                        min={dateFrom}
-                        onChange={(e) => handleDateToChange(e.target.value)}
-                        style={{
-                            padding: '0.5rem 1rem',
-                            borderRadius: '0.5rem',
-                            border: '1px solid #cbd5e1',
-                            fontSize: '0.875rem',
-                            cursor: 'pointer'
-                        }}
-                    />
-                </div>
+                <DateRangePicker
+                    dateFrom={dateFrom}
+                    dateTo={dateTo}
+                    onChange={(from, to) => onFilterChange({ employeeId: selectedEmployeeId, dateFrom: from, dateTo: to, status: selectedStatus })}
+                />
             </div>
 
-            <div style={{ display: 'flex', gap: '0.75rem' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                 <div style={{
                     background: '#3b82f6',
                     color: 'white',

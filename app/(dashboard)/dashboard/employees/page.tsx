@@ -26,7 +26,6 @@ interface Employee {
 export default function EmployeesPage() {
     const [employees, setEmployees] = useState<Employee[]>([])
     const [loading, setLoading] = useState(true)
-    const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; name: string } | null>(null)
     const router = useRouter()
     const { data: session } = useSession()
     const userRole = session?.user?.role || ''
@@ -47,6 +46,11 @@ export default function EmployeesPage() {
     const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc')
     const [searchQuery, setSearchQuery] = useState('')
     const [roleFilter, setRoleFilter] = useState('')
+    const [alert, setAlert] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
+    const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; name: string } | null>(null)
+    const [resettingPoints, setResettingPoints] = useState<string | null>(null)
+    const [deletingUser, setDeletingUser] = useState<string | null>(null)
+    const [togglingStatus, setTogglingStatus] = useState<string | null>(null)
 
     const filteredEmployees = employees.filter(emp => {
         if (roleFilter && emp.role !== roleFilter) return false
@@ -96,56 +100,79 @@ export default function EmployeesPage() {
     const confirmDelete = async () => {
         if (!deleteConfirm) return
 
+        setDeletingUser(deleteConfirm.id)
         try {
             const res = await fetch(`/api/users?id=${deleteConfirm.id}`, {
                 method: 'DELETE'
             })
 
             if (res.ok) {
-                setEmployees(employees.filter(emp => emp.id !== deleteConfirm.id))
+                setEmployees(prev => prev.filter(emp => emp.id !== deleteConfirm.id))
+                setDeleteConfirm(null)
             } else {
-                const text = await res.text()
-                console.error('Delete failed:', text)
+                const data = await res.json()
+                window.alert(data.error || 'Failed to delete user')
             }
         } catch (err) {
             console.error('Delete error:', err)
+            window.alert('Error deleting user')
+        } finally {
+            setDeletingUser(null)
+            setDeleteConfirm(null)
         }
-
-        setDeleteConfirm(null)
     }
 
     const handleResetPoints = async (id: string) => {
+        setResettingPoints(id)
         try {
             const res = await fetch(`/api/users/${id}/reset-points`, {
                 method: 'POST'
             })
 
             if (res.ok) {
-                // Refresh employee list to show updated points
-                fetchEmployees()
+                // Optimistically update local state immediately
+                setEmployees(prevEmployees =>
+                    prevEmployees.map(emp =>
+                        emp.id === id ? { ...emp, totalDifficultyPoints: 0 } : emp
+                    )
+                )
+                setAlert({ type: 'success', message: 'Points reset successfully!' })
+                setTimeout(() => setAlert(null), 3000)
+            } else {
+                const data = await res.json()
+                setAlert({ type: 'error', message: data.error || 'Failed to reset points' })
+                setTimeout(() => setAlert(null), 5000)
             }
         } catch (err) {
             console.error('Reset points error:', err)
+            setAlert({ type: 'error', message: 'An error occurred while resetting points' })
+            setTimeout(() => setAlert(null), 5000)
+        } finally {
+            setResettingPoints(null)
         }
     }
 
     const handleStatusToggle = async (id: string, currentStatus: string) => {
+        const newStatus = currentStatus === 'ACTIVE' ? 'SUSPENDED' : 'ACTIVE'
+        setTogglingStatus(id)
         try {
-            // Toggle between ACTIVE/OFFLINE and SUSPENDED
-            const newStatus = currentStatus === 'SUSPENDED' ? 'OFFLINE' : 'SUSPENDED'
-
-            const res = await fetch(`/api/users/${id}/status`, {
-                method: 'POST',
+            const res = await fetch('/api/users', {
+                method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ status: newStatus })
+                body: JSON.stringify({ id, status: newStatus })
             })
-
             if (res.ok) {
-                // Refresh employee list to show updated status
-                fetchEmployees()
+                setEmployees(prev => prev.map(emp =>
+                    emp.id === id ? { ...emp, status: newStatus } : emp
+                ))
+            } else {
+                window.alert('Failed to update status')
             }
         } catch (err) {
             console.error('Status toggle error:', err)
+            window.alert('Error updating status')
+        } finally {
+            setTogglingStatus(null)
         }
     }
 
@@ -159,6 +186,35 @@ export default function EmployeesPage() {
 
     return (
         <div>
+            {/* Alert Message - Toast Style */}
+            {alert && (
+                <div style={{
+                    position: 'fixed',
+                    top: '2rem',
+                    right: '2rem',
+                    padding: '0.75rem 1.25rem',
+                    borderRadius: '0.5rem',
+                    background: alert.type === 'success' ? '#dcfce7' : '#fee2e2',
+                    color: alert.type === 'success' ? '#166534' : '#991b1b',
+                    border: `1px solid ${alert.type === 'success' ? '#86efac' : '#fca5a5'}`,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                    fontSize: '0.875rem',
+                    fontWeight: '500',
+                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+                    zIndex: 1000,
+                    minWidth: '250px',
+                    maxWidth: '350px',
+                    animation: 'slideInRight 0.3s ease-out'
+                }}>
+                    <span style={{ fontSize: '1rem' }}>
+                        {alert.type === 'success' ? '✓' : '✕'}
+                    </span>
+                    {alert.message}
+                </div>
+            )}
+
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
                 <h1>Employees</h1>
                 {['ADMIN', 'SUPER_ADMIN'].includes(userRole) && (
@@ -375,28 +431,34 @@ export default function EmployeesPage() {
                                             </Link>
                                             <button
                                                 onClick={() => handleResetPoints(emp.id)}
+                                                disabled={resettingPoints === emp.id}
                                                 className="btn"
                                                 style={{
-                                                    background: '#fef3c7',
+                                                    background: resettingPoints === emp.id ? '#fde68a' : '#fef3c7',
                                                     color: '#92400e',
                                                     padding: '0.5rem 1rem',
-                                                    fontSize: '0.875rem'
+                                                    fontSize: '0.875rem',
+                                                    cursor: resettingPoints === emp.id ? 'not-allowed' : 'pointer',
+                                                    opacity: resettingPoints === emp.id ? 0.7 : 1
                                                 }}
                                             >
-                                                Reset Points
+                                                {resettingPoints === emp.id ? 'Resetting...' : 'Reset Points'}
                                             </button>
                                             {emp.role !== 'SUPER_ADMIN' && (
                                                 <button
                                                     onClick={() => handleDelete(emp.id, `${emp.firstName} ${emp.lastName}`)}
+                                                    disabled={deletingUser === emp.id}
                                                     className="btn"
                                                     style={{
-                                                        background: '#fee2e2',
+                                                        background: deletingUser === emp.id ? '#fca5a5' : '#fee2e2',
                                                         color: '#991b1b',
                                                         padding: '0.5rem 1rem',
-                                                        fontSize: '0.875rem'
+                                                        fontSize: '0.875rem',
+                                                        cursor: deletingUser === emp.id ? 'not-allowed' : 'pointer',
+                                                        opacity: deletingUser === emp.id ? 0.7 : 1
                                                     }}
                                                 >
-                                                    Delete
+                                                    {deletingUser === emp.id ? 'Deleting...' : 'Delete'}
                                                 </button>
                                             )}
                                         </>

@@ -57,6 +57,11 @@ model User {
   salaryRecords SalaryRecord[]
   createdTasks  Task[]         @relation("CreatedTasks")
   createdBusinessClientNotes BusinessClientNote[]
+
+  @@index([email])
+  @@index([companyId])
+  @@index([status])
+  @@index([role])
 }
 
 model Task {
@@ -83,6 +88,12 @@ model Task {
   location           String?
   lastStatusUpdateBy String?
   lastEditBy         String?
+
+  @@index([assigneeId])
+  @@index([createdBy])
+  @@index([status])
+  @@index([createdAt])
+  @@index([paymentStatus])
 }
 
 model Notification {
@@ -126,6 +137,10 @@ model Obligation {
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
   lastStatusUpdateBy String?
+
+  @@index([assigneeId])
+  @@index([status])
+  @@index([createdAt])
 }
 
 model SalaryRecord {
@@ -142,6 +157,9 @@ model SalaryRecord {
   updatedAt  DateTime @updatedAt
 
   @@unique([userId, month, year])
+  @@index([userId])
+  @@index([month])
+  @@index([year])
 }
 
 model BusinessClient {
