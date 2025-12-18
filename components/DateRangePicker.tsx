@@ -50,18 +50,21 @@ export default function DateRangePicker({ dateFrom, dateTo, onChange }: DateRang
         return days
     }
 
-    const handleDateClick = (date: Date) => {
-        // Format date as YYYY-MM-DD in local timezone to avoid offset issues
+    const formatToLocalISO = (date: Date) => {
         const year = date.getFullYear()
         const month = String(date.getMonth() + 1).padStart(2, '0')
         const day = String(date.getDate()).padStart(2, '0')
-        const dateStr = `${year}-${month}-${day}`
+        return `${year}-${month}-${day}`
+    }
+
+    const handleDateClick = (date: Date) => {
+        const dateStr = formatToLocalISO(date)
 
         if (selectingFrom) {
-            onChange(dateStr, dateTo)
+            onChange(dateStr, '')
             setSelectingFrom(false)
         } else {
-            if (new Date(dateStr) < new Date(dateFrom)) {
+            if (dateStr < dateFrom) {
                 onChange(dateStr, dateFrom)
             } else {
                 onChange(dateFrom, dateStr)
@@ -71,18 +74,24 @@ export default function DateRangePicker({ dateFrom, dateTo, onChange }: DateRang
         }
     }
 
+    const handleReset = () => {
+        onChange('', '')
+        setSelectingFrom(true)
+        setIsOpen(false)
+    }
+
     const isInRange = (date: Date) => {
         if (!dateFrom || !dateTo) return false
-        const d = date.toISOString().split('T')[0]
+        const d = formatToLocalISO(date)
         return d >= dateFrom && d <= dateTo
     }
 
     const isStartDate = (date: Date) => {
-        return date.toISOString().split('T')[0] === dateFrom
+        return formatToLocalISO(date) === dateFrom
     }
 
     const isEndDate = (date: Date) => {
-        return date.toISOString().split('T')[0] === dateTo
+        return formatToLocalISO(date) === dateTo
     }
 
     const days = getDaysInMonth(currentMonth)
@@ -109,7 +118,11 @@ export default function DateRangePicker({ dateFrom, dateTo, onChange }: DateRang
                 }}
             >
                 <span style={{ color: dateFrom || dateTo ? '#1e293b' : '#94a3b8' }}>
-                    {dateFrom && dateTo ? `${formatDate(dateFrom)} → ${formatDate(dateTo)}` : 'Select date range'}
+                    {dateFrom && dateTo
+                        ? `${formatDate(dateFrom)} → ${formatDate(dateTo)}`
+                        : dateFrom
+                            ? `${formatDate(dateFrom)} → ...`
+                            : 'Select date range'}
                 </span>
                 <span style={{ color: '#94a3b8', marginLeft: '0.5rem' }}>📅</span>
             </div>
@@ -215,9 +228,38 @@ export default function DateRangePicker({ dateFrom, dateTo, onChange }: DateRang
                         })}
                     </div>
 
-                    {/* Instructions */}
-                    <div style={{ marginTop: '1rem', fontSize: '0.75rem', color: '#64748b', textAlign: 'center' }}>
-                        {selectingFrom ? 'Select start date' : 'Select end date'}
+                    {/* Instructions & Reset */}
+                    <div style={{
+                        marginTop: '1.25rem',
+                        paddingTop: '0.75rem',
+                        borderTop: '1px solid #f1f5f9',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center'
+                    }}>
+                        <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                            {selectingFrom ? 'Select start date' : 'Select end date'}
+                        </div>
+                        {(dateFrom || dateTo) && (
+                            <button
+                                onClick={handleReset}
+                                style={{
+                                    background: '#fef2f2',
+                                    color: '#ef4444',
+                                    border: 'none',
+                                    padding: '0.25rem 0.75rem',
+                                    borderRadius: '0.375rem',
+                                    fontSize: '0.75rem',
+                                    fontWeight: '600',
+                                    cursor: 'pointer',
+                                    transition: 'all 0.2s'
+                                }}
+                                onMouseEnter={(e) => e.currentTarget.style.background = '#fee2e2'}
+                                onMouseLeave={(e) => e.currentTarget.style.background = '#fef2f2'}
+                            >
+                                Reset
+                            </button>
+                        )}
                     </div>
                 </div>
             )}
