@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
+import DateTimePicker from '@/components/DateTimePicker'
 
 export default function NewObligationPage() {
     const [title, setTitle] = useState('')
@@ -82,7 +83,7 @@ export default function NewObligationPage() {
         <div className="card" style={{ maxWidth: '600px', margin: '0 auto' }}>
             <h1 style={{ marginBottom: '1.5rem' }}>Add New Obligation</h1>
             <form onSubmit={handleSubmit}>
-                <div>
+                <div style={{ marginBottom: '1.25rem' }}>
                     <label style={{ display: 'block', marginBottom: '0.5rem' }}>Title</label>
                     <input
                         className="input"
@@ -104,7 +105,7 @@ export default function NewObligationPage() {
                         {title.length}/100
                     </div>
                 </div>
-                <div>
+                <div style={{ marginBottom: '1.25rem' }}>
                     <label style={{ display: 'block', marginBottom: '0.5rem' }}>Description</label>
                     <textarea
                         className="input"
@@ -127,25 +128,22 @@ export default function NewObligationPage() {
                         {description.length}/500
                     </div>
                 </div>
-                <div>
+                <div style={{ marginBottom: '1.25rem' }}>
                     <label style={{ display: 'block', marginBottom: '0.5rem' }}>Assignee</label>
                     <select className="input" value={assigneeId} onChange={e => setAssigneeId(e.target.value)} required>
                         <option value="">Select Employee</option>
                         {users.map(u => <option key={u.id} value={u.id}>{u.firstName} {u.lastName} - {u.role}</option>)}
                     </select>
                 </div>
-                <div>
-                    <label style={{ display: 'block', marginBottom: '0.5rem' }}>Deadline</label>
-                    <input
-                        type="datetime-local"
-                        className="input"
+                <div style={{ marginBottom: '1.25rem' }}>
+                    <DateTimePicker
+                        label="Deadline"
                         value={deadline}
-                        onChange={e => setDeadline(e.target.value)}
-                        min={new Date().toISOString().slice(0, 16)}
-                        required
+                        onChange={setDeadline}
+                        min={new Date(Date.now() + 3 * 60 * 60 * 1000).toISOString()}
                     />
                 </div>
-                <div>
+                <div style={{ marginBottom: '1.5rem' }}>
                     <label style={{ display: 'block', marginBottom: '0.5rem' }}>Difficulty</label>
                     <input
                         type="number"

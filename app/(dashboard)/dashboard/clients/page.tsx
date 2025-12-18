@@ -122,8 +122,7 @@ export default function ClientsPage() {
         <>
             <div className="space-y-6 animate-in fade-in duration-500">
                 {/* Header matching Tasks Page Style */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-                    <h1 className="text-3xl font-bold text-slate-800 tracking-tight">Clients</h1>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginBottom: '1.5rem' }}>
                     <button
                         onClick={() => setIsModalOpen(true)}
                         className="btn btn-primary"

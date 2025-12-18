@@ -116,8 +116,7 @@ export default function CostsClient({ tasksWithCosts, userRole }: CostsClientPro
             )}
 
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-                <h1>Costs</h1>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginBottom: '2rem' }}>
 
                 {['ADMIN', 'SUPER_ADMIN'].includes(userRole) && sortedTasks.length > 0 && (
                     <button

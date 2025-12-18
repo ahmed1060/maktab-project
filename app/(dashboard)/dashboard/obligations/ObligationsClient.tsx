@@ -87,8 +87,7 @@ export default function ObligationsClient({ obligations, role }: ObligationsClie
 
     return (
         <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-                <h1>Obligations</h1>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginBottom: '1.5rem' }}>
                 {['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(role) && (
                     <Link href="/dashboard/obligations/new" className="btn btn-primary" style={{ textDecoration: 'none' }}>
                         Add Obligation

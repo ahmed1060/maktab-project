@@ -98,8 +98,7 @@ export default function TasksClient({ tasks, role, currentUserId }: TasksClientP
 
     return (
         <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-                <h1>Tasks</h1>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginBottom: '1.5rem' }}>
                 {['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(role) && (
                     <Link href="/dashboard/tasks/new" className="btn btn-primary" style={{ textDecoration: 'none' }}>
                         Create Task

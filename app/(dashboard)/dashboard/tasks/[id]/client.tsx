@@ -6,6 +6,7 @@ import { formatTaskStatus } from '@/lib/formatStatus'
 import Modal from '@/components/Modal'
 import DiffViewer from '@/components/DiffViewer'
 import { useToast } from '@/context/ToastContext'
+import DateTimePicker from '@/components/DateTimePicker'
 
 export default function TaskDetailClient({ task: initialTask, userRole, userId, creatorName, currentUserName }: { task: any, userRole: string, userId: string, creatorName: string, currentUserName: string }) {
     const [task, setTask] = useState(initialTask)
@@ -73,7 +74,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
         title: task.title,
         description: task.description,
         assigneeId: task.assigneeId,
-        deadline: new Date(task.deadline).toISOString().split('T')[0],
+        deadline: new Date(task.deadline).toISOString().slice(0, 16),
         difficulty: task.difficulty
     })
     const [allUsers, setAllUsers] = useState<any[]>([])
@@ -1183,7 +1184,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                 hideFooter={true}
             >
                 <form onSubmit={handleSaveDetails}>
-                    <div style={{ marginBottom: '1rem' }}>
+                    <div style={{ marginBottom: '1.25rem' }}>
                         <label style={{ display: 'block', marginBottom: '0.5rem' }}>Title</label>
                         <input
                             className="input"
@@ -1205,7 +1206,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                             {editForm.title.length}/100
                         </div>
                     </div>
-                    <div style={{ marginBottom: '1rem' }}>
+                    <div style={{ marginBottom: '1.25rem' }}>
                         <label style={{ display: 'block', marginBottom: '0.5rem' }}>Description</label>
                         <textarea
                             className="input"
@@ -1228,7 +1229,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                             {editForm.description.length}/500
                         </div>
                     </div>
-                    <div style={{ marginBottom: '1rem' }}>
+                    <div style={{ marginBottom: '1.25rem' }}>
                         <label style={{ display: 'block', marginBottom: '0.5rem' }}>Assignee</label>
                         <select
                             className="input"
@@ -1241,19 +1242,15 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                             {allUsers.map(u => <option key={u.id} value={u.id}>{u.firstName} {u.lastName}</option>)}
                         </select>
                     </div>
-                    <div style={{ marginBottom: '1rem' }}>
-                        <label style={{ display: 'block', marginBottom: '0.5rem' }}>Deadline</label>
-                        <input
-                            type="datetime-local"
-                            className="input"
-                            value={editForm.deadline ? new Date(editForm.deadline).toISOString().slice(0, 16) : ''}
-                            onChange={e => setEditForm({ ...editForm, deadline: e.target.value })}
-                            min={new Date().toISOString().slice(0, 16)}
-                            max="9999-12-31T23:59"
-                            required
+                    <div style={{ marginBottom: '1.25rem' }}>
+                        <DateTimePicker
+                            label="Deadline"
+                            value={editForm.deadline}
+                            onChange={(val) => setEditForm({ ...editForm, deadline: val })}
+                            min={new Date(Date.now() + 3 * 60 * 60 * 1000).toISOString()}
                         />
                     </div>
-                    <div style={{ marginBottom: '1rem' }}>
+                    <div style={{ marginBottom: '1.5rem' }}>
                         <label style={{ display: 'block', marginBottom: '0.5rem' }}>Difficulty</label>
                         <input
                             type="number"

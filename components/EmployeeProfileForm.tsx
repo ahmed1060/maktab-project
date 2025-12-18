@@ -22,6 +22,9 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
     const [companies, setCompanies] = useState<{ id: string, name: string }[]>([])
     const [loading, setLoading] = useState(true)
     const [saving, setSaving] = useState(false)
+    const [pendingRequest, setPendingRequest] = useState<{ newFirstName: string, newLastName: string } | null>(null)
+    const [originalFirstName, setOriginalFirstName] = useState('')
+    const [originalLastName, setOriginalLastName] = useState('')
     const router = useRouter()
     const { data: session, update } = useSession()
     const { showToast } = useToast()
@@ -41,16 +44,31 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                 if (employee.firstName) {
                     setFirstName(employee.firstName)
                     setLastName(employee.lastName)
+                    setOriginalFirstName(employee.firstName)
+                    setOriginalLastName(employee.lastName)
                 } else if (employee.name) {
                     const parts = employee.name.split(' ')
                     setFirstName(parts[0] || '')
                     setLastName(parts.slice(1).join(' ') || '')
+                    setOriginalFirstName(parts[0] || '')
+                    setOriginalLastName(parts.slice(1).join(' ') || '')
                 }
                 setEmail(employee.email)
                 setRole(employee.role)
                 setGender(employee.gender || 'MALE')
                 setSalary(employee.salary !== undefined && employee.salary !== null ? employee.salary.toString() : '')
                 setCompanyId(employee.companyId || '')
+
+                // Check for pending name change requests
+                if (userId === session?.user?.id && (employee.role === 'EMPLOYEE' || employee.role === 'TEAM_LEADER')) {
+                    const reqRes = await fetch(`/api/profile-requests?status=PENDING`)
+                    if (reqRes.ok) {
+                        const requests = await reqRes.json()
+                        if (requests.length > 0) {
+                            setPendingRequest(requests[0])
+                        }
+                    }
+                }
             } catch {
                 showToast('Failed to load employee data', 'error')
             } finally {
@@ -95,12 +113,38 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
         }
 
         try {
+            const isSelf = userId === session?.user?.id
+            const isNameChanged = firstName !== originalFirstName || lastName !== originalLastName
+            const isRestrictedRole = role === 'EMPLOYEE' || role === 'TEAM_LEADER'
+
+            // If name changed and user is restricted role editing self, use request system
+            if (isSelf && isRestrictedRole && isNameChanged) {
+                const reqRes = await fetch('/api/profile-requests', {
+                    method: 'POST',
+                    body: JSON.stringify({ newFirstName: firstName, newLastName: lastName }),
+                    headers: { 'Content-Type': 'application/json' }
+                })
+
+                if (!reqRes.ok) {
+                    const text = await reqRes.text()
+                    throw new Error(text || 'Failed to submit name change request')
+                }
+
+                showToast('Name change request submitted for admin approval!', 'success')
+                // Revert names in UI to original until approved? Or leave them?
+                // User said "restricted", so I'll leave them but show a pending message.
+                setPendingRequest({ newFirstName: firstName, newLastName: lastName })
+                setFirstName(originalFirstName)
+                setLastName(originalLastName)
+            }
+
             const res = await fetch('/api/users', {
                 method: 'PUT',
                 body: JSON.stringify({
                     id: userId,
-                    firstName,
-                    lastName,
+                    // Only send name if not restricted or not changed
+                    firstName: (isSelf && isRestrictedRole) ? undefined : firstName,
+                    lastName: (isSelf && isRestrictedRole) ? undefined : lastName,
                     email,
                     password: password || undefined,
                     role,
@@ -179,6 +223,26 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                     </span>
                 </div>
             </div>
+
+            {pendingRequest && (
+                <div style={{
+                    background: '#fffbeb',
+                    border: '1px solid #fef3c7',
+                    padding: '1rem',
+                    borderRadius: '0.75rem',
+                    marginBottom: '1.5rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.75rem',
+                    color: '#92400e'
+                }}>
+                    <span style={{ fontSize: '1.25rem' }}>⏳</span>
+                    <div>
+                        <div style={{ fontWeight: 'bold', fontSize: '0.9rem' }}>Name Change Request Pending</div>
+                        <div style={{ fontSize: '0.8rem' }}>Requested: {pendingRequest.newFirstName} {pendingRequest.newLastName}</div>
+                    </div>
+                </div>
+            )}
 
             <form onSubmit={handleSubmit}>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>

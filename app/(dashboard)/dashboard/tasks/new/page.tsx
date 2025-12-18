@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
+import DateTimePicker from '@/components/DateTimePicker'
 
 export default function NewTaskPage() {
     const [title, setTitle] = useState('')
@@ -108,7 +109,7 @@ export default function NewTaskPage() {
                 </div>
             )}
             <form onSubmit={handleSubmit}>
-                <div>
+                <div style={{ marginBottom: '1.25rem' }}>
                     <label style={{ display: 'block', marginBottom: '0.5rem' }}>Title</label>
                     <input
                         className="input"
@@ -130,7 +131,7 @@ export default function NewTaskPage() {
                         {title.length}/100
                     </div>
                 </div>
-                <div>
+                <div style={{ marginBottom: '1.25rem' }}>
                     <label style={{ display: 'block', marginBottom: '0.5rem' }}>Description</label>
                     <textarea
                         className="input"
@@ -153,26 +154,22 @@ export default function NewTaskPage() {
                         {description.length}/1000
                     </div>
                 </div>
-                <div>
+                <div style={{ marginBottom: '1.25rem' }}>
                     <label style={{ display: 'block', marginBottom: '0.5rem' }}>Assignee</label>
                     <select className="input" value={assigneeId} onChange={e => setAssigneeId(e.target.value)} required>
                         <option value="">Select Employee</option>
                         {users.map(u => <option key={u.id} value={u.id}>{u.firstName} {u.lastName} - {u.role}</option>)}
                     </select>
                 </div>
-                <div>
-                    <label style={{ display: 'block', marginBottom: '0.5rem' }}>Deadline</label>
-                    <input
-                        type="datetime-local"
-                        className="input"
+                <div style={{ marginBottom: '1.25rem' }}>
+                    <DateTimePicker
+                        label="Deadline"
                         value={deadline}
-                        onChange={e => setDeadline(e.target.value)}
-                        min={new Date().toISOString().slice(0, 16)}
-                        max="9999-12-31T23:59"
-                        required
+                        onChange={setDeadline}
+                        min={new Date(Date.now() + 3 * 60 * 60 * 1000).toISOString()}
                     />
                 </div>
-                <div>
+                <div style={{ marginBottom: '1.5rem' }}>
                     <label style={{ display: 'block', marginBottom: '0.5rem' }}>Difficulty</label>
                     <input
                         type="number"

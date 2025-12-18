@@ -215,8 +215,7 @@ export default function EmployeesPage() {
                 </div>
             )}
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-                <h1>Employees</h1>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginBottom: '1.5rem' }}>
                 {['ADMIN', 'SUPER_ADMIN'].includes(userRole) && (
                     <Link href="/dashboard/employees/new" className="btn btn-primary" style={{ textDecoration: 'none' }}>
                         Add Employee

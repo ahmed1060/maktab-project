@@ -57,6 +57,7 @@ model User {
   salaryRecords SalaryRecord[]
   createdTasks  Task[]         @relation("CreatedTasks")
   createdBusinessClientNotes BusinessClientNote[]
+  profileUpdateRequests      ProfileUpdateRequest[]
 
   @@index([email])
   @@index([companyId])
@@ -211,4 +212,21 @@ model BusinessClientNote {
   updatedAt DateTime @updatedAt
 
   @@map("ClientNote")
+}
+
+model ProfileUpdateRequest {
+  id           String   @id @default(uuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id])
+  oldFirstName String
+  oldLastName  String
+  newFirstName String
+  newLastName  String
+  status       String   @default("PENDING") // "PENDING" | "APPROVED" | "REJECTED"
+  adminNote    String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([userId])
+  @@index([status])
 }

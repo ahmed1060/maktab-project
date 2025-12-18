@@ -307,6 +307,15 @@ export async function PUT(req: Request) {
     // Build update data
     const updateData: any = {}
 
+    const isSelf = id === session.user.id
+    const isAdmin = ['ADMIN', 'SUPER_ADMIN'].includes(userRole || '')
+
+    if (isSelf && (regularUser?.role === 'EMPLOYEE' || regularUser?.role === 'TEAM_LEADER')) {
+        if ((firstName && firstName !== regularUser.firstName) || (lastName && lastName !== regularUser.lastName)) {
+            return new NextResponse("Name changes require admin approval. Please submit a request from your profile.", { status: 403 })
+        }
+    }
+
     if (firstName) {
         if (firstName.length > 15) return new NextResponse("First name max 15 chars", { status: 400 })
         updateData.firstName = firstName

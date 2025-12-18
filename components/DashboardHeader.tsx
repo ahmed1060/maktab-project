@@ -25,6 +25,7 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
     const [isMenuOpen, setIsMenuOpen] = useState(false)
     const { selectedCompanyId, setSelectedCompanyId, refreshTrigger } = useCompany()
     const [companies, setCompanies] = useState<{ id: string, name: string }[]>([])
+    const [pendingRequestsCount, setPendingRequestsCount] = useState(0)
 
     // Use client-side session for live updates (e.g. avatar change), fall back to prop
     const { data: session } = useSession()
@@ -36,6 +37,13 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
                 .then(res => res.json())
                 .then(data => setCompanies(data))
                 .catch(err => console.error('Failed to fetch companies', err))
+        }
+
+        if (['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role)) {
+            fetch('/api/profile-requests?status=PENDING', { cache: 'no-store' })
+                .then(res => res.json())
+                .then(data => setPendingRequestsCount(data.length))
+                .catch(err => console.error('Failed to fetch profile requests', err))
         }
     }, [currentUser.role, refreshTrigger])
 
@@ -99,7 +107,11 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
         if (path.startsWith('/dashboard/employees/')) return 'Employee Profile'
         if (path === '/dashboard/costs') return 'Costs'
         if (path === '/dashboard/all-users') return 'All Users'
-        return 'Task Manager'
+        if (path === '/dashboard/clients') return 'Clients'
+        if (path.startsWith('/dashboard/clients/')) return 'Client Details'
+        if (path === '/dashboard/companies') return 'Companies'
+        if (path === '/dashboard/super-admins') return 'Super Admins'
+        return 'System'
     }
 
     const title = getPageTitle(pathname)
@@ -168,6 +180,56 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
                             <option key={c.id} value={c.id}>{c.name}</option>
                         ))}
                     </select>
+                )}
+
+                {['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role) && (
+                    <Link
+                        href="/dashboard/profile-requests"
+                        title="Name Change Requests"
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            width: '40px',
+                            height: '40px',
+                            borderRadius: '12px',
+                            background: pathname === '/dashboard/profile-requests' ? 'rgba(99, 102, 241, 0.1)' : 'rgba(255,255,255,0.5)',
+                            border: '1px solid rgba(255,255,255,0.8)',
+                            color: pathname === '/dashboard/profile-requests' ? '#6366f1' : 'var(--text-main)',
+                            textDecoration: 'none',
+                            transition: 'all 0.2s',
+                            position: 'relative'
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.8)'}
+                        onMouseLeave={(e) => e.currentTarget.style.background = pathname === '/dashboard/profile-requests' ? 'rgba(99, 102, 241, 0.1)' : 'rgba(255,255,255,0.5)'}
+                    >
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
+                            <circle cx="9" cy="7" r="4"></circle>
+                            <polyline points="16 11 18 13 22 9"></polyline>
+                        </svg>
+                        {pendingRequestsCount > 0 && (
+                            <span style={{
+                                position: 'absolute',
+                                top: '-5px',
+                                right: '-5px',
+                                background: '#ef4444',
+                                color: 'white',
+                                fontSize: '0.7rem',
+                                fontWeight: 'bold',
+                                minWidth: '18px',
+                                height: '18px',
+                                borderRadius: '50%',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                border: '2px solid white',
+                                boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                            }}>
+                                {pendingRequestsCount}
+                            </span>
+                        )}
+                    </Link>
                 )}
 
                 <NotificationBell />
