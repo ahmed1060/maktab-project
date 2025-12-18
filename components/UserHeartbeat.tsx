@@ -7,6 +7,7 @@ export default function UserHeartbeat() {
     const { data: session } = useSession()
 
     const [isSuspended, setIsSuspended] = useState(false)
+    const [isCompanyBanned, setIsCompanyBanned] = useState(false)
 
     useEffect(() => {
         if (!session?.user) return
@@ -27,6 +28,17 @@ export default function UserHeartbeat() {
                     setTimeout(() => {
                         signOut({ callbackUrl: '/login' })
                     }, 4000)
+                } else if (data.status === 'COMPANY_BANNED') {
+                    // 1. Trigger Auto-Save in listeners
+                    window.dispatchEvent(new CustomEvent('app:suspend-detected'))
+
+                    // 2. Show Modal
+                    setIsCompanyBanned(true)
+
+                    // 3. Logout after delay
+                    setTimeout(() => {
+                        signOut({ callbackUrl: '/login' })
+                    }, 4000)
                 }
             } catch (error) {
                 console.error('Heartbeat failed', error)
@@ -42,7 +54,7 @@ export default function UserHeartbeat() {
         return () => clearInterval(interval)
     }, [session])
 
-    if (isSuspended) {
+    if (isSuspended || isCompanyBanned) {
         return (
             <div style={{
                 position: 'fixed',
@@ -54,12 +66,27 @@ export default function UserHeartbeat() {
                 justifyContent: 'center',
                 color: 'white',
                 flexDirection: 'column',
-                gap: '1rem'
+                gap: '1rem',
+                textAlign: 'center',
+                padding: '2rem'
             }}>
-                <h1 style={{ color: '#ef4444', fontSize: '2rem', margin: 0 }}>Account Suspended</h1>
-                <p>Your account has been suspended by an administrator.</p>
+                <h1 style={{ color: '#ef4444', fontSize: '2rem', margin: 0 }}>
+                    {isSuspended ? 'Account Suspended' : 'Company Banned'}
+                </h1>
+                <p style={{ fontSize: '1.1rem', maxWidth: '500px' }}>
+                    {isSuspended
+                        ? 'Your account has been suspended by an administrator.'
+                        : 'Access to this company\'s data has been restricted by an administrator.'}
+                </p>
                 <p style={{ fontSize: '0.9rem', opacity: 0.8 }}>Saving your work and logging out...</p>
-                <div className="spinner"></div> {/* Basic loading indicator idea */}
+                <div style={{
+                    width: '30px',
+                    height: '30px',
+                    border: '3px solid rgba(255,255,255,0.3)',
+                    borderTopColor: '#ef4444',
+                    borderRadius: '50%',
+                    animation: 'spin 1s linear infinite'
+                }}></div>
             </div>
         )
     }

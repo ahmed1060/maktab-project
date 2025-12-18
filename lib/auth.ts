@@ -64,7 +64,7 @@ export const authOptions: NextAuthOptions = {
                     if (user.companyId) {
                         const companyStatus: any[] = await prisma.$queryRaw`SELECT "isBanned", name FROM "Company" WHERE id = ${user.companyId}`
                         if (companyStatus[0]?.isBanned) {
-                            throw new Error(`The company ${companyStatus[0].name} has been banned. Access denied.`)
+                            throw new Error('Company access restricted. Please contact support.')
                         }
                     }
 

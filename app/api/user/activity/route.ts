@@ -13,10 +13,23 @@ export async function POST() {
         const user = await prisma.user.update({
             where: { id: session.user.id },
             data: { lastActivity: new Date() },
-            select: { status: true }
+            select: {
+                status: true,
+                company: {
+                    select: { isBanned: true }
+                }
+            }
         })
 
-        return NextResponse.json({ success: true, status: user.status })
+        if (user.status === 'SUSPENDED') {
+            return NextResponse.json({ success: true, status: 'SUSPENDED' })
+        }
+
+        if (user.company?.isBanned) {
+            return NextResponse.json({ success: true, status: 'COMPANY_BANNED' })
+        }
+
+        return NextResponse.json({ success: true, status: 'ACTIVE' })
     } catch (error) {
         return new NextResponse("Error updating activity", { status: 500 })
     }

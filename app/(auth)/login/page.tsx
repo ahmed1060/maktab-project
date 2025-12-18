@@ -30,6 +30,8 @@ export default function LoginPage() {
                 // Check if it's a suspension error
                 if (res.error.includes('suspended')) {
                     setError('Your account has been suspended. Please contact an administrator.')
+                } else if (res.error.includes('Company access restricted')) {
+                    setError('The company has been banned. Access denied.')
                 } else if (res.error.includes('This user does not belong')) {
                     // This shouldn't happen without companyId but good to keep
                     setError('Access Denied.')
