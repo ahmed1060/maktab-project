@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
+import { useHeader } from '@/context/HeaderContext'
 import { createPortal } from 'react-dom'
 import ConfirmModal from '@/components/ConfirmModal'
 
@@ -15,6 +16,7 @@ interface Note {
         firstName: string
         lastName: string
         avatar: string | null
+        role: string
     }
     createdBySuperAdmin?: {
         id: string
@@ -43,6 +45,7 @@ export default function SectionNotesPage() {
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [mounted, setMounted] = useState(false)
     const [deleteConfirm, setDeleteConfirm] = useState<{ isOpen: boolean, note: Note | null }>({ isOpen: false, note: null })
+    const { setTitle } = useHeader()
 
     useEffect(() => {
         setMounted(true)
@@ -53,6 +56,13 @@ export default function SectionNotesPage() {
             fetchData()
         }
     }, [clientId, sectionId])
+
+    useEffect(() => {
+        if (section?.title) {
+            setTitle(section.title)
+        }
+        return () => setTitle(null) // Reset on unmount
+    }, [section, setTitle])
 
     const fetchData = async () => {
         try {
@@ -113,16 +123,48 @@ export default function SectionNotesPage() {
     return (
         <>
             <div className="space-y-6 animate-in fade-in duration-500">
-                {/* Header */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-                    <h1 className="text-3xl font-bold text-slate-800 tracking-tight">{section?.title} Notes</h1>
-                    <button
-                        onClick={() => setIsModalOpen(true)}
-                        className="btn btn-primary"
-                        style={{ marginLeft: 'auto' }}
+                {/* Header Row */}
+                <div style={{ marginBottom: '1.5rem' }}>
+                    <Link
+                        href={`/dashboard/clients/${clientId}`}
+                        className="glass"
+                        style={{
+                            width: '40px',
+                            height: '40px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            marginBottom: '0.75rem',
+                            color: 'var(--primary)',
+                            textDecoration: 'none',
+                            transition: 'all 0.3s ease',
+                            border: '1px solid rgba(255, 255, 255, 0.4)',
+                            transform: 'translateY(-2px)'
+                        }}
+                        onMouseOver={(e) => {
+                            e.currentTarget.style.transform = 'translateY(-4px)'
+                            e.currentTarget.style.background = 'rgba(255, 255, 255, 0.9)'
+                        }}
+                        onMouseOut={(e) => {
+                            e.currentTarget.style.transform = 'translateY(-2px)'
+                            e.currentTarget.style.background = 'rgba(255, 255, 255, 0.7)'
+                        }}
+                        title="Back to Sections"
                     >
-                        Add Note
-                    </button>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            <line x1="19" y1="12" x2="5" y2="12"></line>
+                            <polyline points="12 19 5 12 12 5"></polyline>
+                        </svg>
+                    </Link>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <h1 className="text-3xl font-bold text-slate-800 tracking-tight">Notes</h1>
+                        <button
+                            onClick={() => setIsModalOpen(true)}
+                            className="btn btn-primary"
+                        >
+                            Add Note
+                        </button>
+                    </div>
                 </div>
 
                 {isLoading ? (
@@ -154,11 +196,13 @@ export default function SectionNotesPage() {
                                 {/* Author info and Delete button at the bottom */}
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                     <div className="flex items-center gap-2">
-                                        <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold text-xs uppercase shrink-0">
+                                        <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold text-[10px] uppercase shrink-0 px-1 overflow-hidden" title={note.createdBy?.role}>
                                             {note.createdBy?.avatar ? (
                                                 <img src={note.createdBy.avatar} alt="Avatar" className="w-full h-full rounded-full object-cover" />
                                             ) : (
-                                                (note.createdBy?.firstName?.[0] || 'U') + (note.createdBy?.lastName?.[0] || '')
+                                                <span style={{ fontSize: (note.createdBy?.role?.length || 0) > 10 ? '8px' : '9px', textAlign: 'center' }}>
+                                                    {note.createdBy?.role?.replace('_', ' ')}
+                                                </span>
                                             )}
                                         </div>
                                         <div className="text-sm">

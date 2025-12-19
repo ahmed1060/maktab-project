@@ -55,7 +55,7 @@ export async function GET(
             },
             include: {
                 createdBy: {
-                    select: { firstName: true, lastName: true, avatar: true }
+                    select: { firstName: true, lastName: true, avatar: true, role: true }
                 }
             },
             orderBy: {

@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { signOut, useSession } from 'next-auth/react'
 import NotificationBell from './NotificationBell'
 import { useCompany } from '@/context/CompanyContext'
+import { useHeader } from '@/context/HeaderContext'
 
 interface DashboardHeaderProps {
     user: {
@@ -24,6 +25,7 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
     const searchParams = useSearchParams()
     const [isMenuOpen, setIsMenuOpen] = useState(false)
     const { selectedCompanyId, setSelectedCompanyId, refreshTrigger } = useCompany()
+    const { title: contextTitle } = useHeader()
     const [companies, setCompanies] = useState<{ id: string, name: string }[]>([])
     const [pendingRequestsCount, setPendingRequestsCount] = useState(0)
 
@@ -114,7 +116,8 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
         return 'System'
     }
 
-    const title = getPageTitle(pathname)
+    const pathTitle = getPageTitle(pathname)
+    const title = contextTitle || pathTitle
 
     const handleLogout = async () => {
         await signOut({ redirect: false })
