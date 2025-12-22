@@ -299,6 +299,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
             for (const file of pendingFiles) {
                 const formData = new FormData()
                 formData.append('file', file)
+                formData.append('folder', 'tasks')
                 try {
                     const res = await fetch('/api/upload', { method: 'POST', body: formData })
                     const data = await res.json()

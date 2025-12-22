@@ -110,6 +110,7 @@ export default function SectionNotesPage() {
             if (selectedFile) {
                 const formData = new FormData()
                 formData.append('file', selectedFile)
+                formData.append('folder', 'notes')
                 const uploadRes = await fetch('/api/upload', { method: 'POST', body: formData })
                 const uploadData = await uploadRes.json()
                 if (uploadData.success) {

@@ -22,6 +22,8 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
     const [companies, setCompanies] = useState<{ id: string, name: string }[]>([])
     const [loading, setLoading] = useState(true)
     const [saving, setSaving] = useState(false)
+    const [uploadingAvatar, setUploadingAvatar] = useState(false)
+    const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
     const [pendingRequest, setPendingRequest] = useState<{ newFirstName: string, newLastName: string } | null>(null)
     const [originalFirstName, setOriginalFirstName] = useState('')
     const [originalLastName, setOriginalLastName] = useState('')
@@ -58,6 +60,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                 setGender(employee.gender || 'MALE')
                 setSalary(employee.salary !== undefined && employee.salary !== null ? employee.salary.toString() : '')
                 setCompanyId(employee.companyId || '')
+                setAvatarUrl(employee.avatar || null)
 
                 // Check for pending name change requests
                 if (userId === session?.user?.id && (employee.role === 'EMPLOYEE' || employee.role === 'TEAM_LEADER')) {
@@ -149,6 +152,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                     password: password || undefined,
                     role,
                     gender,
+                    avatar: avatarUrl,
                     companyId: userRole === 'SUPER_ADMIN' ? companyId : undefined,
                     salary: (userRole === 'ADMIN' || userRole === 'SUPER_ADMIN') && userId !== session?.user?.id ? parseFloat(salary) || 0 : undefined
                 }),
@@ -206,8 +210,9 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
 
 
 
-            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '2rem' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '2rem', gap: '1rem' }}>
                 <div style={{
+                    position: 'relative',
                     width: '100px',
                     height: '100px',
                     borderRadius: '50%',
@@ -216,12 +221,79 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                     alignItems: 'center',
                     justifyContent: 'center',
                     border: '4px solid white',
-                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+                    overflow: 'hidden'
                 }}>
-                    <span style={{ fontSize: '2.5rem' }}>
-                        {gender === 'MALE' ? '👨🏻' : '👩🏻'}
-                    </span>
+                    {avatarUrl ? (
+                        <img
+                            src={avatarUrl}
+                            alt="Avatar"
+                            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                        />
+                    ) : (
+                        <span style={{ fontSize: '2.5rem' }}>
+                            {gender === 'MALE' ? '👨🏻' : '👩🏻'}
+                        </span>
+                    )}
+
+                    {uploadingAvatar && (
+                        <div style={{
+                            position: 'absolute',
+                            inset: 0,
+                            background: 'rgba(255,255,255,0.7)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
+                        }}>
+                            <div className="loader" style={{ width: '20px', height: '20px' }} />
+                        </div>
+                    )}
                 </div>
+
+                {!isViewMode && (
+                    <div style={{ textAlign: 'center' }}>
+                        <label className="btn" style={{
+                            background: '#f1f5f9',
+                            color: '#0f172a',
+                            fontSize: '0.8rem',
+                            padding: '0.4rem 0.8rem',
+                            cursor: 'pointer',
+                            display: 'inline-block'
+                        }}>
+                            {uploadingAvatar ? 'Uploading...' : 'Change Photo'}
+                            <input
+                                type="file"
+                                hidden
+                                accept="image/*"
+                                onChange={async (e) => {
+                                    const file = e.target.files?.[0]
+                                    if (!file) return
+
+                                    setUploadingAvatar(true)
+                                    try {
+                                        const formData = new FormData()
+                                        formData.append('file', file)
+                                        formData.append('folder', 'avatars')
+
+                                        const res = await fetch('/api/upload', { method: 'POST', body: formData })
+                                        const data = await res.json()
+
+                                        if (data.success) {
+                                            setAvatarUrl(data.url)
+                                            showToast('Avatar uploaded! Click Update to save changes.', 'success')
+                                        } else {
+                                            throw new Error(data.error || 'Upload failed')
+                                        }
+                                    } catch (err: any) {
+                                        showToast(err.message || 'Failed to upload avatar', 'error')
+                                    } finally {
+                                        setUploadingAvatar(false)
+                                    }
+                                }}
+                            />
+                        </label>
+                    </div>
+                )}
             </div>
 
             {pendingRequest && (
