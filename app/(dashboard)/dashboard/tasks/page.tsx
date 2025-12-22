@@ -13,7 +13,7 @@ export default async function TasksPage({ searchParams }: { searchParams: { comp
         if (comp) companyId = comp.id
     }
 
-    let whereClause: any = {}
+    const whereClause: any = {}
 
     if (role === 'EMPLOYEE') {
         whereClause.assigneeId = (session?.user as any)?.id

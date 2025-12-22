@@ -63,7 +63,7 @@ export async function GET(req: Request) {
     const { searchParams } = new URL(req.url)
     const companyId = searchParams.get('companyId')
 
-    let whereClause: any = {}
+    const whereClause: any = {}
 
     if (role === 'SUPER_ADMIN') {
         if (companyId) {

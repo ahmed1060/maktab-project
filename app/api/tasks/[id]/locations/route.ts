@@ -24,7 +24,7 @@ export async function PUT(
             return NextResponse.json({ error: 'Task not found' }, { status: 404 })
         }
 
-        let comments = task.comments ? JSON.parse(task.comments) : []
+        const comments = task.comments ? JSON.parse(task.comments) : []
         const locationIndex = comments.findIndex((c: any) => c.type === 'LOCATION_ADDED' && c.date === timestamp)
 
         if (locationIndex === -1) {

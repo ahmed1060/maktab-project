@@ -279,7 +279,7 @@ export default function AllUsersPage() {
 
                     {companySections.length === 0 && !showSuperAdmins && (
                         <div style={{ textAlign: 'center', padding: '3rem', color: '#64748b' }}>
-                            No companies found matching "{companyFilter}".
+                            No companies found matching &quot;{companyFilter}&quot;.
                         </div>
                     )}
                 </div>

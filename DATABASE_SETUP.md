@@ -1,75 +1,45 @@
-# Quick Fix Script for Database Issues
+# Database Setup Guide (Supabase)
 
-## Option 1: Using Docker (Recommended for Development)
+This project uses Supabase as its PostgreSQL database provider. Local Docker setup is deprecated in favor of this cloud-based approach.
 
-If you have Docker installed, run this to start PostgreSQL:
+## 1. Supabase Configuration
+
+1. Create a new project on [Supabase](https://supabase.com/).
+2. Go to **Project Settings** > **Database**.
+3. Under **Connection string**, select **URI**.
+4. You will need two strings for your `.env` file:
+   - **Transaction Mode (Pooler)**: Use this for `DATABASE_URL` (port 6543).
+   - **Direct Connection**: Use this for `DIRECT_URL` (port 5432).
+
+## 2. Environment Variables
+
+Update your [app/.env](file:///d:/maktab%20project/app/.env) with the following:
+
+```env
+DATABASE_URL="postgresql://postgres.[YOUR-ID]:[YOUR-PASSWORD]@aws-0-eu-central-1.pooler.supabase.com:6543/postgres?pgbouncer=true"
+DIRECT_URL="postgresql://postgres.[YOUR-ID]:[YOUR-PASSWORD]@aws-0-eu-central-1.pooler.supabase.com:5432/postgres"
+```
+
+## 3. Apply Schema and Seed
+
+Run these commands in the `app` directory:
 
 ```powershell
-# Start PostgreSQL in Docker
-docker run --name maktab-postgres -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=maktab -p 5432:5432 -d postgres:14
-
-# Wait 5 seconds for it to start
-Start-Sleep -Seconds 5
-```
-
-Then add to your `.env` file:
-```
-DATABASE_URL="postgresql://postgres:postgres@localhost:5432/maktab"
-NEXTAUTH_SECRET="your-secret-key-change-this-in-production"
-```
-
-## Option 2: Using Local PostgreSQL Installation
-
-If you have PostgreSQL installed locally:
-
-1. Start the service:
-```powershell
-# Find your PostgreSQL service
-Get-Service | Where-Object {$_.Name -like "*postgres*"}
-
-# Start it (replace with your actual service name)
-Start-Service postgresql-x64-14
-```
-
-2. Create database (if needed):
-```powershell
-# Connect to PostgreSQL
-psql -U postgres
-
-# Inside psql:
-CREATE DATABASE maktab;
-\q
-```
-
-3. Update `.env`:
-```
-DATABASE_URL="postgresql://postgres:YOUR_PASSWORD@localhost:5432/maktab"
-NEXTAUTH_SECRET="your-secret-key-change-this-in-production"
-```
-
-## After Setting Up Database
-
-Run these commands in order:
-
-```powershell
-cd "d:\maktab project\app"
-
-# 1. Apply schema to database
+# 1. Sync the Prisma schema with Supabase
 npx prisma db push
 
-# 2. Create default users
+# 2. Create the default Super Admin user
 npx tsx prisma/seed.ts
-
-# 3. Verify users were created
-npx tsx check-users.ts
 ```
 
-## Test Login
+## 4. Troubleshooting
 
-Go to http://localhost:3000 and login with:
-- Email: `admin@example.com`
-- Password: `admin123`
+- **Connection Error**: Ensure your IP is added to the Supabase **Network Restrictions** (or Allow All IPs for testing).
+- **Migration Issues**: Always use `DIRECT_URL` for running migrations or `prisma db push` if you experience timeout issues with the pooler.
+- **Seeding Fails**: Ensure your database is empty or the user doesn't already exist before running the seed script.
 
 ---
 
-**Note:** If you're using a different database setup (remote server, different credentials, etc.), please update the `DATABASE_URL` accordingly.
+**Note:** The default login credentials after seeding are:
+- **Email**: `ahmed.hossam1060@gmail.com`
+- **Password**: `12345678`

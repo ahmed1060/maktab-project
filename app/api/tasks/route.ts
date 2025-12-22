@@ -20,7 +20,7 @@ export async function GET(req: Request) {
         return new NextResponse("Unauthorized", { status: 401 })
     }
 
-    let whereClause: any = {}
+    const whereClause: any = {}
 
     // 1. GET Logic Hardening
     if (userRole === 'SUPER_ADMIN') {

@@ -199,12 +199,12 @@ export default function SearchableSelect({ options, value, onChange, placeholder
                                 fontWeight: !value ? 500 : 400
                             }}
                             onMouseEnter={(e) => {
-                                !value && (e.currentTarget.style.background = '#dbeafe')
-                                value && (e.currentTarget.style.background = '#f8fafc')
+                                if (!value) e.currentTarget.style.background = '#dbeafe'
+                                if (value) e.currentTarget.style.background = '#f8fafc'
                             }}
                             onMouseLeave={(e) => {
-                                !value && (e.currentTarget.style.background = '#eff6ff')
-                                value && (e.currentTarget.style.background = 'transparent')
+                                if (!value) e.currentTarget.style.background = '#eff6ff'
+                                if (value) e.currentTarget.style.background = 'transparent'
                             }}
                         >
                             <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>

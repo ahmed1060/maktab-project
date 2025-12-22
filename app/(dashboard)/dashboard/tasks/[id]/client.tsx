@@ -1344,7 +1344,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                 hideFooter={true}
             >
                 <div>
-                    <p>Are you sure you want to submit this task? You won't be able to edit it afterwards.</p>
+                    <p>Are you sure you want to submit this task? You won&apos;t be able to edit it afterwards.</p>
                     <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem', justifyContent: 'flex-end' }}>
                         <button
                             onClick={() => setShowSubmitConfirm(false)}

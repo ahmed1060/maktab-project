@@ -1,26 +1,28 @@
 # Project Technology Stack
 
 ## Frontend & Backend (Unified)
-- **Framework:** Next.js 14.2.15 (App Router structure)
+- **Framework:** Next.js 14.2 (App Router)
 - **Language:** TypeScript
-- **Styling:** CSS Modules & Global CSS (Custom glassmorphism design, no Tailwind)
-- **State Management:** React Hooks (`useState`, `useEffect`)
+- **Styling:** CSS Modules & Global CSS (Premium glassmorphism design)
+- **Icons:** Emoji-based custom iconography
 
-## Database & Data
-- **Database:** PostgreSQL
+## Database & Infrastructure
+- **Provider:** Supabase (Cloud PostgreSQL)
 - **ORM:** Prisma 5.22.0
+- **Storage:** Supabase Storage (if used)
 - **Seeding:** Custom TypeScript seed script (`prisma/seed.ts`)
 
 ## Authentication
 - **Library:** NextAuth.js v4
-- **Method:** Credentials (Email/Password with BCrypt hashing)
+- **Method:** Credentials Provider (Email/Password)
+- **Encryption:** BCrypt hashing (via `bcryptjs`)
 
-## Hosting Requirements
-- **Environment:** Node.js (Server-side rendering required)
-- **Database Hosting:** Compatible with PostgreSQL (e.g., Neon, Supabase, Railway)
+## Hosting & Deployment
+- **Platform:** Vercel (Optimized for Next.js)
+- **CI/CD:** Automatic deployment via GitHub
 
 ## Key Libraries
-- `next-auth`: Authentication
-- `@prisma/client`: Database client
-- `bcryptjs`: Password hashing
-- `react` / `react-dom`: UI rendering
+- `next-auth`: Authentication flow
+- `@prisma/client`: Database interaction
+- `bcryptjs`: Secure password management
+- `tsx`: TypeScript execution for scripts

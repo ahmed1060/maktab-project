@@ -17,7 +17,7 @@ export async function GET(req: Request) {
 
     const isAdmin = ['ADMIN', 'SUPER_ADMIN'].includes(userRole || '')
 
-    let whereClause: any = { status }
+    const whereClause: any = { status }
 
     if (!isAdmin) {
         // Regular users can only see their own requests
@@ -27,7 +27,7 @@ export async function GET(req: Request) {
     }
 
     const requests = await prisma.profileUpdateRequest.findMany({
-        where: { status },
+        where: whereClause,
         include: {
             user: {
                 select: {

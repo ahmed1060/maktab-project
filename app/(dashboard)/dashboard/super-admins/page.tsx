@@ -25,11 +25,7 @@ export default function SuperAdminsPage() {
     const { data: session } = useSession()
     const userRole = session?.user?.role || ''
 
-    if (userRole !== 'SUPER_ADMIN') {
-        return <AccessDenied />
-    }
-
-    // Create Form State
+    // Move hooks to top level to comply with Rules of Hooks
     const [formData, setFormData] = useState({
         firstName: '',
         lastName: '',
@@ -38,7 +34,6 @@ export default function SuperAdminsPage() {
         gender: 'MALE'
     })
 
-    // Edit Form State
     const [editData, setEditData] = useState({
         firstName: '',
         lastName: '',
@@ -65,8 +60,14 @@ export default function SuperAdminsPage() {
     }
 
     useEffect(() => {
-        fetchAdmins()
-    }, [])
+        if (userRole === 'SUPER_ADMIN') {
+            fetchAdmins()
+        }
+    }, [userRole])
+
+    if (userRole !== 'SUPER_ADMIN') {
+        return <AccessDenied />
+    }
 
     const handleCreate = async (e: React.FormEvent) => {
         e.preventDefault()

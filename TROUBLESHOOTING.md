@@ -1,103 +1,55 @@
-# Troubleshooting Guide - Database Connection Issues
+# Deployment & Connectivity Guide (Supabase + Vercel)
 
-## Problem
-After restarting your laptop, you're getting "invalid email or password" when trying to login.
+This guide covers the end-to-end setup and troubleshooting for your production environment.
 
-## Root Cause
-The database connection is failing with error: `Error validating datasource ... url = env("DATABASE_URL")`
+## 1. Database Setup (Supabase)
 
-This happens because:
-1. PostgreSQL service may not have started automatically after restart
-2. The DATABASE_URL in `.env` may be invalid or pointing to a non-existent database
+### Connection Strings
+Supabase requires two distinct connection strings in your environment variables:
+1.  **DATABASE_URL (Pooled)**: Used by the application for regular queries.
+    - **Port**: 6543
+    - **Suffix**: `?pgbouncer=true`
+2.  **DIRECT_URL (Direct)**: Used by Prisma for migrations and `db push`.
+    - **Port**: 5432
 
-## Solution Steps
+### Critical: Password Encoding
+If your database password contains special characters (e.g., `@`, `#`, `$`, `!`), you **MUST** URL-encode them in your connection strings:
+- `@` becomes `%40`
+- `$` becomes `%24`
+- `#` becomes `%23`
 
-### Step 1: Start PostgreSQL Service
+## 2. Vercel Configuration
 
-**Windows (if using local PostgreSQL):**
-```powershell
-# Check if PostgreSQL is running
-Get-Service -Name postgresql*
+### Environment Variables
+Ensure the following are set in your Vercel Project Settings:
+- `DATABASE_URL`: The pooled connection string.
+- `DIRECT_URL`: The direct connection string.
+- `NEXTAUTH_SECRET`: A secure random string.
+- `NEXTAUTH_URL`: Your production domain (e.g., `https://your-app.vercel.app`).
 
-# Start PostgreSQL service (replace with your version)
-Start-Service -Name postgresql-x64-14
-```
+### Build Optimization
+The project is configured to automatically generate the Prisma Client using a `postinstall` script in `package.json`. If builds fail, ensure `prisma generate` is running successfully in the Vercel build logs.
 
-**Alternative: Check Services App**
-1. Press `Win + R`
-2. Type `services.msc`
-3. Find "PostgreSQL" in the list
-4. Right-click → Start
+## 3. Database Maintenance
 
-### Step 2: Verify DATABASE_URL in `.env`
+### Syncing Changes
+- **Local to Cloud**: After modifying `schema.prisma`, run `npx prisma db push` (it uses `DIRECT_URL`).
+- **Seeding**: To initialize or reset system users, run `npx tsx prisma/seed.ts`. Use `upsert` in your seed logic to prevent duplicates.
+- **Visualizing Data**: Run `npx prisma db studio` to open a local browser interface for your cloud database.
 
-Your `.env` file should contain:
-```
-DATABASE_URL="postgresql://USERNAME:PASSWORD@localhost:5432/DATABASE_NAME"
-NEXTAUTH_SECRET="your-secret-key-here"
-```
+## 4. Common Troubleshooting
 
-**Example with default PostgreSQL:**
-```
-DATABASE_URL="postgresql://postgres:postgres@localhost:5432/maktab"
-NEXTAUTH_SECRET="supersecretkey123"
-```
+### "Invalid `prisma.superAdmin.findUnique()` invocation"
+- **Cause**: Usually means `DATABASE_URL` is missing from Vercel environment variables or is misformatted.
+- **Fix**: Check Vercel Settings -> Environment Variables and ensure the key is exactly `DATABASE_URL`.
 
-### Step 3: Apply Database Schema
+### Connection Timeouts (Serverless)
+- **Cause**: Too many open connections.
+- **Fix**: Ensure `DATABASE_URL` includes `?pgbouncer=true` and points to port `6543`.
 
-Once your database is running:
-```powershell
-cd "d:\maktab project\app"
-npx prisma db push
-```
+### Authentication Errors (500 or "Invalid Secret")
+- **Cause**: `NEXTAUTH_SECRET` is missing in production.
+- **Fix**: Add a unique secret string to Vercel and redeploy.
 
-This will create all the tables (User, Task, Obligation, Notification, AuditLog).
-
-### Step 4: Create Default Users
-
-Run the seed script:
-```powershell
-npx tsx prisma/seed.ts
-```
-
-This creates:
-- **Admin**: `admin@example.com` / `admin123`
-- **Employee**: `employee@example.com` / `123456`
-
-### Step 5: Test Login
-
-1. Go to `http://localhost:3000`
-2. Click "Login"
-3. Use admin credentials: `admin@example.com` / `admin123`
-
-## Quick Check Commands
-
-```powershell
-# 1. Check if database is accessible
-npx prisma db pull
-
-# 2. Check existing users
-npx tsx check-users.ts
-
-# 3. View server logs for errors
-# (Check your npm run dev terminal)
-```
-
-## Common Issues
-
-### "Connection refused" or "cannot connect"
-- PostgreSQL is not running
-- Wrong port (default is 5432)
-- Firewall blocking connection
-
-### "database does not exist"
-Create it manually:
-```sql
--- Connect to PostgreSQL as admin
-psql -U postgres
-CREATE DATABASE maktab;
-\q
-```
-
-### Still can't login after seeding
-Clear browser cache or try incognito mode
+---
+**Reference**: This guide is based on the [Gemini Deployment Workflow](https://gemini.google.com/share/bb8335a7271d).

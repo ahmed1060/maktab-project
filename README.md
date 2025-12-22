@@ -3,11 +3,10 @@
 ## Prerequisites
 Before you start, make sure you have installed:
 - **Node.js** (v18 or newer) - [Download](https://nodejs.org/)
-- **Docker Desktop** (Required for the database) - [Download](https://www.docker.com/products/docker-desktop/)
 - **Git** - [Download](https://git-scm.com/)
 - **VS Code** (Recommended)
 
-## getting Started
+## Getting Started
 
 ### 1. Clone & Install
 ```bash
@@ -17,24 +16,24 @@ npm install
 ```
 
 ### 2. Configure Environment
-Create a file named `.env` in the root folder and add this content:
+Create a file named `.env` in the root folder and add your Supabase credentials:
 ```env
-# Database (connects to local Docker container)
-DATABASE_URL="postgresql://postgres:postgres@localhost:5432/maktab"
+# Database connection (Get these from Supabase Settings)
+DATABASE_URL="postgresql://postgres.[YOUR-ID]:[PASSWORD]@aws-0-eu-central-1.pooler.supabase.com:6543/postgres?pgbouncer=true"
+DIRECT_URL="postgresql://postgres.[YOUR-ID]:[PASSWORD]@aws-0-eu-central-1.pooler.supabase.com:5432/postgres"
 
-# Auth Secret (can be any random string for dev)
-NEXTAUTH_SECRET="development-secret-key"
+# Auth Secret (Use a secure random string)
+NEXTAUTH_SECRET="your-generated-secret"
+NEXTAUTH_URL="http://localhost:3000"
 ```
 
-### 3. Start Database
-Make sure Docker Desktop is running, then run:
-
+### 3. Initialize Database
+Apply the schema and seed the initial Super Admin:
 ```bash
-# Start Postgres Container
-docker run --name maktab-postgres -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=maktab -p 5432:5432 -d postgres:14
-
-# Give it a moment, then push schema and seed data
+# Push schema to Supabase
 npx prisma db push
+
+# Create default Super Admin
 npx tsx prisma/seed.ts
 ```
 
@@ -44,4 +43,4 @@ npm run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000)
-Login with: `admin@example.com` / `admin123`
+Initial Login: `ahmed.hossam1060@gmail.com` / `12345678` (configured in `seed.ts`)

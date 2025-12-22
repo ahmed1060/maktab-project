@@ -103,7 +103,7 @@ export async function GET(req: Request) {
     }
 
     // Fetch list of users
-    let whereClause: any = {}
+    const whereClause: any = {}
 
     if (userRole === 'SUPER_ADMIN') {
         if (filterCompanyId) {

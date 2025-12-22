@@ -50,7 +50,7 @@ export default function AddDeductionPage() {
         <div className="card" style={{ maxWidth: '500px', margin: '2rem auto' }}>
             <h1>Add Monthly Deduction (Days)</h1>
             <p style={{ color: '#64748b', marginBottom: '1.5rem' }}>
-                Enter the number of <strong>days</strong> to deduct from the employee's calculated salary for the current month.
+                Enter the number of <strong>days</strong> to deduct from the employee&apos;s calculated salary for the current month.
             </p>
 
             {error && (
