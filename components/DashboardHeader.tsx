@@ -46,6 +46,9 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
                 .then(res => res.json())
                 .then(data => setPendingRequestsCount(data.length))
                 .catch(err => console.error('Failed to fetch profile requests', err))
+
+            // Trigger Note Expiry Check
+            fetch('/api/notes/check-expiry', { method: 'POST' }).catch(() => { })
         }
     }, [currentUser.role, refreshTrigger])
 

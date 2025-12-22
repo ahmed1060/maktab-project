@@ -11,6 +11,9 @@ interface Note {
     id: string
     content: string
     createdAt: string
+    attachment?: string | null
+    expiryDate?: string | null
+    reminderDays?: number | null
     createdBy?: {
         id: string
         firstName: string
@@ -46,6 +49,12 @@ export default function SectionNotesPage() {
     const [mounted, setMounted] = useState(false)
     const [deleteConfirm, setDeleteConfirm] = useState<{ isOpen: boolean, note: Note | null }>({ isOpen: false, note: null })
     const { setTitle } = useHeader()
+
+    // New Fields
+    const [expiryDate, setExpiryDate] = useState('')
+    const [reminderDays, setReminderDays] = useState('')
+    const [selectedFile, setSelectedFile] = useState<File | null>(null)
+    const [uploading, setUploading] = useState(false)
 
     useEffect(() => {
         setMounted(true)
@@ -94,15 +103,38 @@ export default function SectionNotesPage() {
         if (!newNoteContent.trim()) return
 
         setIsSubmitting(true)
+        setUploading(true)
+
         try {
+            let attachmentUrl = null
+            if (selectedFile) {
+                const formData = new FormData()
+                formData.append('file', selectedFile)
+                const uploadRes = await fetch('/api/upload', { method: 'POST', body: formData })
+                const uploadData = await uploadRes.json()
+                if (uploadData.success) {
+                    attachmentUrl = uploadData.url
+                } else {
+                    throw new Error(uploadData.error || 'Upload failed')
+                }
+            }
+
             const res = await fetch(`/api/clients/${clientId}/sections/${sectionId}/notes`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ content: newNoteContent })
+                body: JSON.stringify({
+                    content: newNoteContent,
+                    attachment: attachmentUrl,
+                    expiryDate: expiryDate || null,
+                    reminderDays: reminderDays || null
+                })
             })
 
             if (res.ok) {
                 setNewNoteContent('')
+                setExpiryDate('')
+                setReminderDays('')
+                setSelectedFile(null)
                 setIsModalOpen(false)
                 fetchData() // Refresh
             } else {
@@ -115,6 +147,7 @@ export default function SectionNotesPage() {
             window.alert(`An unexpected error occurred: ${error}`)
         } finally {
             setIsSubmitting(false)
+            setUploading(false)
         }
     }
 
@@ -192,6 +225,27 @@ export default function SectionNotesPage() {
                                 <div className="text-slate-700 whitespace-pre-wrap mb-3" style={{ fontSize: '0.9rem', lineHeight: '1.6' }}>
                                     {note.content}
                                 </div>
+
+                                {/* Render Attachment and Expiry if they exist */}
+                                {(note.attachment || note.expiryDate) && (
+                                    <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem', fontSize: '0.8rem', color: '#64748b', alignItems: 'center', flexWrap: 'wrap' }}>
+                                        {note.attachment && (
+                                            <a href={note.attachment} target="_blank" rel="noopener noreferrer" className="hover:underline" style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', color: '#4f46e5', fontWeight: '600', textDecoration: 'none' }}>
+                                                <span>📎</span>
+                                                Attachment
+                                            </a>
+                                        )}
+                                        {note.expiryDate && (
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                                                <span>📅</span>
+                                                Expires: {new Date(note.expiryDate).toLocaleDateString()}
+                                                {note.reminderDays && note.reminderDays > 0 && (
+                                                    <span style={{ marginLeft: '0.25rem' }}>(Reminder: {note.reminderDays}d before)</span>
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
 
                                 {/* Author info and Delete button at the bottom */}
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -271,9 +325,10 @@ export default function SectionNotesPage() {
                                         padding: '0.75rem',
                                         border: `1px solid ${newNoteContent.length > MAX_CHARS ? '#ef4444' : '#e2e8f0'}`,
                                         borderRadius: '0.5rem',
-                                        minHeight: '150px',
+                                        minHeight: '120px',
                                         lineHeight: '1.5',
-                                        outline: 'none'
+                                        outline: 'none',
+                                        marginBottom: '0.5rem'
                                     }}
                                     placeholder="Write your note here..."
                                     autoFocus
@@ -283,6 +338,52 @@ export default function SectionNotesPage() {
                                         Note exceeds character limit.
                                     </p>
                                 )}
+                            </div>
+
+                            <div style={{ marginBottom: '1.5rem' }}>
+                                <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', color: '#64748b' }}>
+                                    Attachment
+                                </label>
+                                <input
+                                    type="file"
+                                    onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
+                                    className="input"
+                                    style={{
+                                        width: '100%',
+                                        padding: '0.5rem',
+                                        borderRadius: '0.5rem',
+                                        fontSize: '0.875rem'
+                                    }}
+                                />
+                            </div>
+
+                            <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem' }}>
+                                <div style={{ flex: 1 }}>
+                                    <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', color: '#64748b' }}>
+                                        Expiry Date
+                                    </label>
+                                    <input
+                                        type="date"
+                                        value={expiryDate}
+                                        onChange={(e) => setExpiryDate(e.target.value)}
+                                        className="input"
+                                        style={{ width: '100%', padding: '0.5rem', borderRadius: '0.5rem' }}
+                                    />
+                                </div>
+                                <div style={{ flex: 1 }}>
+                                    <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', color: '#64748b' }}>
+                                        Reminder Days
+                                    </label>
+                                    <input
+                                        type="number"
+                                        value={reminderDays}
+                                        onChange={(e) => setReminderDays(e.target.value)}
+                                        placeholder="Days"
+                                        min="1"
+                                        className="input"
+                                        style={{ width: '100%', padding: '0.5rem', borderRadius: '0.5rem' }}
+                                    />
+                                </div>
                             </div>
                             <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
                                 <button
@@ -298,7 +399,7 @@ export default function SectionNotesPage() {
                                     className="btn btn-primary"
                                     style={{ opacity: (!newNoteContent.trim() || isSubmitting || newNoteContent.length > MAX_CHARS) ? 0.5 : 1 }}
                                 >
-                                    {isSubmitting ? 'Saving...' : 'Add Note'}
+                                    {isSubmitting ? (uploading ? 'Uploading...' : 'Saving...') : 'Add Note'}
                                 </button>
                             </div>
                         </form>

@@ -112,7 +112,7 @@ export async function POST(
         }
 
         const body = await request.json()
-        const { content } = body
+        const { content, attachment, expiryDate, reminderDays } = body
 
         if (!content) return NextResponse.json({ error: 'Content required' }, { status: 400 })
 
@@ -156,7 +156,10 @@ export async function POST(
             data: {
                 content,
                 sectionId: params.sectionId,
-                createdById: userId
+                createdById: userId,
+                attachment,
+                expiryDate: expiryDate ? new Date(expiryDate) : null,
+                reminderDays: reminderDays ? parseInt(reminderDays) : null
             }
         })
 

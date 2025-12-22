@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
 import DashboardHeader from './DashboardHeader'
 
 interface DashboardShellProps {
@@ -45,6 +46,13 @@ export default function DashboardShell({ children, user }: DashboardShellProps) 
 
     // Dynamic width based on state
     const sidebarWidth = isMobile ? '270px' : (isCollapsed ? '80px' : '270px')
+
+    const searchParams = useSearchParams()
+    const selectedCompanyName = searchParams.get('company')
+
+    const displayName = user?.role === 'SUPER_ADMIN'
+        ? (selectedCompanyName || 'TaskManager')
+        : (user?.companyName || 'TaskManager')
 
     return (
         <div style={{ display: 'flex', minHeight: '100vh', background: 'transparent' }}>
@@ -102,8 +110,15 @@ export default function DashboardShell({ children, user }: DashboardShellProps) 
                     >
                         <span style={{ fontSize: isCollapsed ? '2rem' : '1.75rem', transition: 'font-size 0.3s' }}>🚀</span>
                         {!isCollapsed && (
-                            <span style={{ background: 'linear-gradient(to right, #fff, #a5b4fc)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-                                TaskManager
+                            <span style={{
+                                background: 'linear-gradient(to right, #fff, #a5b4fc)',
+                                WebkitBackgroundClip: 'text',
+                                WebkitTextFillColor: 'transparent',
+                                textOverflow: 'ellipsis',
+                                overflow: 'hidden',
+                                maxWidth: '180px'
+                            }}>
+                                {displayName}
                             </span>
                         )}
                     </div>
