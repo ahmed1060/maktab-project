@@ -132,32 +132,34 @@ body::before {
 
 @media (max-width: 1023px) {
   .mobile-padding {
-    padding-left: 0.75rem !important;
-    padding-right: 0.75rem !important;
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
   }
 
   .mobile-gap-dense {
-    gap: 0.5rem !important;
+    gap: 0.75rem !important;
   }
 
   .md-hidden {
     display: none !important;
   }
 
-  /* Ultra-small screen hiding */
-  @media (max-width: 380px) {
-    .xs-hidden {
-      display: none !important;
-    }
-  }
 
   .sm-select {
     padding: 0.35rem 0.6rem !important;
     padding-right: 1.75rem !important;
     /* Smaller arrow area */
     font-size: 0.75rem !important;
-    max-width: 110px !important;
+    max-width: 60px !important;
+    /* Extremely compact */
     height: 36px !important;
+    color: transparent !important;
+    /* Hide text to show initials mask */
+  }
+
+  .sm-select option {
+    color: var(--text-main) !important;
+    /* Keep options readable */
   }
 }
 

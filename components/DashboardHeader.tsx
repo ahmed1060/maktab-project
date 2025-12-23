@@ -144,6 +144,16 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
     const pathTitle = getPageTitle(pathname)
     const title = contextTitle || pathTitle
 
+    const getInitials = (text: string) => {
+        if (!text) return ''
+        return text
+            .split(' ')
+            .filter(word => word.length > 0)
+            .map(word => word[0])
+            .join(' ')
+            .toUpperCase()
+    }
+
     const handleLogout = async () => {
         await signOut({ redirect: false })
         router.push('/login')
@@ -201,37 +211,61 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
             {/* Right: Actions & Profile */}
             <div
                 className="mobile-gap-dense"
-                style={{ display: 'flex', alignItems: 'center', gap: '1rem', minWidth: 0, flexShrink: 0 }}
+                style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', minWidth: 0, flexShrink: 0 }}
             >
                 {currentUser.role === 'SUPER_ADMIN' && (
-                    <select
-                        value={selectedCompanyId || ''}
-                        onChange={handleCompanyChange}
-                        className="glass sm-select" // Use glass class and responsive sm-select
-                        style={{
-                            padding: '0.4rem 0.75rem',
-                            borderRadius: '1rem',
-                            marginRight: currentUser.role === 'SUPER_ADMIN' ? '0' : '0.5rem',
-                            fontSize: '0.85rem',
-                            outline: 'none',
-                            cursor: 'pointer',
+                    <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                        {/* Mobile Initials Mask */}
+                        <div className="lg-hidden" style={{
+                            position: 'absolute',
+                            left: '0',
+                            right: '1.75rem', /* Align with select text area */
+                            top: '50%',
+                            transform: 'translateY(-50%)',
+                            pointerEvents: 'none',
+                            fontSize: '0.75rem',
+                            fontWeight: '800',
                             color: 'var(--text-main)',
-                            flexShrink: 1,
-                            minWidth: 0
-                        }}
-                    >
-                        <option value="">All Companies</option>
-                        {companies.map(c => (
-                            <option key={c.id} value={c.id}>{c.name}</option>
-                        ))}
-                    </select>
+                            display: 'flex',
+                            justifyContent: 'center',
+                            alignItems: 'center',
+                            overflow: 'hidden',
+                            letterSpacing: '0.05em'
+                        }}>
+                            {selectedCompanyId
+                                ? getInitials(companies.find(c => c.id === selectedCompanyId)?.name || '')
+                                : 'AC'
+                            }
+                        </div>
+
+                        <select
+                            value={selectedCompanyId || ''}
+                            onChange={handleCompanyChange}
+                            className="glass sm-select"
+                            style={{
+                                padding: '0.5rem 1rem',
+                                paddingRight: '1.75rem',
+                                borderRadius: '1rem',
+                                fontSize: '0.9rem',
+                                outline: 'none',
+                                cursor: 'pointer',
+                                color: 'var(--text-main)',
+                                flexShrink: 1,
+                                minWidth: 0,
+                            }}
+                        >
+                            <option value="">All Companies</option>
+                            {companies.map(c => (
+                                <option key={c.id} value={c.id}>{c.name}</option>
+                            ))}
+                        </select>
+                    </div>
                 )}
 
                 {['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role) && (
                     <Link
                         href="/dashboard/profile-requests"
                         title="Name Change Requests"
-                        className="xs-hidden" // Hides on very small screens to save space
                         style={{
                             display: 'flex',
                             alignItems: 'center',
@@ -280,7 +314,7 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
 
                 <NotificationBell />
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                     {/* User Info (Role Top, Name Bottom) - Hidden on mobile for space */}
                     <div className="md-hidden" style={{ textAlign: 'right', flexShrink: 1, minWidth: 0 }}>
                         <div style={{ fontSize: '0.75rem', fontWeight: 'bold', color: 'var(--text-muted)', textTransform: 'uppercase', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
