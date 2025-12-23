@@ -16,6 +16,7 @@ model Company {
   updatedAt       DateTime         @updatedAt
   businessClients BusinessClient[]
   users           User[]
+  payments        CompanyPayment[]
 }
 
 model SuperAdmin {
@@ -212,5 +213,22 @@ model ProfileUpdateRequest {
   user         User     @relation(fields: [userId], references: [id])
 
   @@index([userId])
+  @@index([status])
+}
+
+model CompanyPayment {
+  id               String    @id @default(uuid())
+  companyId        String
+  cost             Float
+  subscriptionType String // MONTHLY, ANNUALLY
+  status           String    @default("UNPAID") // PAID, UNPAID
+  paidAt           DateTime?
+  startDate        DateTime?
+  endDate          DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  company          Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
   @@index([status])
 }

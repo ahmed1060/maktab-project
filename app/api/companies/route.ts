@@ -3,11 +3,22 @@ import { prisma } from "@/lib/prisma"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 
-export async function GET() {
+export async function GET(req: Request) {
     try {
         const session = await getServerSession(authOptions)
         if (!session?.user || session.user.role !== 'SUPER_ADMIN') {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+        }
+
+        const { searchParams } = new URL(req.url)
+        const id = searchParams.get('id')
+
+        if (id) {
+            const company: any[] = await prisma.$queryRaw`SELECT id, name, "isBanned" FROM "Company" WHERE id = ${id}`
+            if (company.length === 0) {
+                return NextResponse.json({ error: "Not found" }, { status: 404 })
+            }
+            return NextResponse.json(company[0])
         }
 
         // Use raw query to fetch isBanned since client is stale

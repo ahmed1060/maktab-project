@@ -16,6 +16,7 @@ type Company = {
 }
 
 export default function CompaniesPage() {
+    const router = useRouter()
     const [companies, setCompanies] = useState<Company[]>([])
     const [loading, setLoading] = useState(true)
     const [showModal, setShowModal] = useState(false)
@@ -169,6 +170,7 @@ export default function CompaniesPage() {
                                     <th style={{ textAlign: 'left', padding: '1rem', fontSize: '0.875rem', color: '#64748b' }}>Name</th>
                                     <th style={{ textAlign: 'left', padding: '1rem', fontSize: '0.875rem', color: '#64748b' }}>ID</th>
                                     <th style={{ textAlign: 'left', padding: '1rem', fontSize: '0.875rem', color: '#64748b' }}>Status</th>
+                                    <th style={{ textAlign: 'center', padding: '1rem', fontSize: '0.875rem', color: '#64748b' }}>Payments</th>
                                     <th style={{ textAlign: 'right', padding: '1rem', fontSize: '0.875rem', color: '#64748b' }}>Actions</th>
                                 </tr>
                             </thead>
@@ -183,6 +185,21 @@ export default function CompaniesPage() {
                                             ) : (
                                                 <span style={{ background: '#dcfce7', color: '#166534', padding: '0.25rem 0.5rem', borderRadius: '9999px', fontSize: '0.75rem', fontWeight: 'bold' }}>ACTIVE</span>
                                             )}
+                                        </td>
+                                        <td style={{ padding: '1rem', textAlign: 'center' }}>
+                                            <button
+                                                onClick={() => router.push(`/dashboard/companies/${company.id}/payments`)}
+                                                className="btn"
+                                                style={{
+                                                    background: 'rgba(99, 102, 241, 0.1)',
+                                                    color: '#6366f1',
+                                                    padding: '0.4rem 0.8rem',
+                                                    fontSize: '0.8rem',
+                                                    border: '1px solid rgba(99, 102, 241, 0.2)'
+                                                }}
+                                            >
+                                                💳 History
+                                            </button>
                                         </td>
                                         <td style={{ padding: '1rem', textAlign: 'right' }}>
                                             <button
