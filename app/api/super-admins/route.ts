@@ -34,7 +34,7 @@ export async function GET() {
         }))
 
         return NextResponse.json(formattedAdmins)
-    } catch (error) {
+    } catch {
         return NextResponse.json(
             { error: "Failed to fetch admins" },
             { status: 500 }
@@ -71,7 +71,7 @@ export async function POST(req: Request) {
         })
 
         // Remove password from response
-        const { password: _, ...adminWithoutPassword } = newAdmin
+        const { password: _password, ...adminWithoutPassword } = newAdmin
 
         return NextResponse.json({
             ...adminWithoutPassword,

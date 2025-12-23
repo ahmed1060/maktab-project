@@ -1,6 +1,6 @@
 'use client'
 
-import { type ReactNode } from 'react'
+
 
 interface DonutChartProps {
     data: { label: string; value: number; color: string }[]

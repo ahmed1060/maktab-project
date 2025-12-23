@@ -34,7 +34,7 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
                 } else if (parsed.url) {
                     finalAttachments = [parsed]
                 }
-            } catch (e) {
+            } catch {
                 finalAttachments = []
             }
         }
