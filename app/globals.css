@@ -146,14 +146,14 @@ body::before {
 
 
   .sm-select {
-    padding: 0.35rem 0.6rem !important;
-    padding-right: 1.75rem !important;
-    /* Smaller arrow area */
+    padding: 0.35rem 0.5rem !important;
     font-size: 0.75rem !important;
-    max-width: 60px !important;
-    /* Extremely compact */
+    max-width: 50px !important;
+    /* Slightly tighter without arrow */
     height: 36px !important;
     color: transparent !important;
+    background-image: none !important;
+    /* Hide arrows */
     /* Hide text to show initials mask */
   }
 

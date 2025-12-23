@@ -219,7 +219,7 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
                         <div className="lg-hidden" style={{
                             position: 'absolute',
                             left: '0',
-                            right: '1.75rem', /* Align with select text area */
+                            right: '0', /* Centered since arrow is hidden */
                             top: '50%',
                             transform: 'translateY(-50%)',
                             pointerEvents: 'none',
@@ -243,8 +243,7 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
                             onChange={handleCompanyChange}
                             className="glass sm-select"
                             style={{
-                                padding: '0.5rem 1rem',
-                                paddingRight: '1.75rem',
+                                padding: '0.5rem',
                                 borderRadius: '1rem',
                                 fontSize: '0.9rem',
                                 outline: 'none',
