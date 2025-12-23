@@ -288,7 +288,8 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
-                                boxShadow: '0 4px 6px rgba(0,0,0,0.05)'
+                                boxShadow: '0 4px 6px rgba(0,0,0,0.05)',
+                                position: 'relative'
                             }}
                         >
 
@@ -296,8 +297,9 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
                                 <Image
                                     src={headerAvatar}
                                     alt="Profile"
-                                    fill
-                                    style={{ objectFit: 'cover' }}
+                                    width={45}
+                                    height={45}
+                                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                                 />
                             ) : (
                                 <span style={{ fontSize: '1.5rem' }}>{currentUser.gender === 'FEMALE' ? '👩🏻' : '👨🏻'}</span>
