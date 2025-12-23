@@ -103,6 +103,44 @@ body::before {
   }
 }
 
+/* Responsive Utilities */
+.lg-hidden {
+  display: block;
+}
+
+.lg-block {
+  display: none;
+}
+
+@media (min-width: 1024px) {
+  .lg-hidden {
+    display: none !important;
+  }
+
+  .lg-block {
+    display: block !important;
+  }
+}
+
+.mobile-hidden {
+  display: none;
+}
+
+.mobile-block {
+  display: block;
+}
+
+@media (max-width: 1023px) {
+  .mobile-padding {
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+  }
+
+  .mobile-gap-dense {
+    gap: 0.5rem !important;
+  }
+}
+
 /* Glassmorphism Utilities */
 .glass {
   background: rgba(255, 255, 255, 0.7);

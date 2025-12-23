@@ -150,44 +150,57 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
     }
 
     return (
-        <header style={{
-            padding: '0 2rem',
-            background: 'transparent',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            height: '72px'
-        }}>
+        <header
+            className="mobile-padding"
+            style={{
+                padding: '0 2rem',
+                background: 'transparent',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                height: '72px'
+            }}
+        >
             {/* Left: Page Name */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                 {onMenuClick && (
                     <button
                         onClick={onMenuClick}
                         style={{
-                            display: 'none', // Hidden on desktop by default, controlled by parent or media query usually, but here we can force it or let parent handle responsiveness. 
-                            // actually, better to just show it always if passed, and let parent hide it via CSS if needed.
-                            // But for now let's style it as a mobile trigger.
-                            // We will use a class to hide on desktop in the parent, or just show it.
-                            // Let's rely on the Shell to pass it only when relevant or style it.
                             background: 'transparent',
                             border: 'none',
                             fontSize: '1.5rem',
                             cursor: 'pointer',
                             padding: '0.25rem',
-                            lineHeight: 1
+                            lineHeight: 1,
+                            color: 'var(--text-main)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
                         }}
-                        className="lg:hidden"
+                        className="lg-hidden"
                     >
                         ☰
                     </button>
                 )}
-                <h1 style={{ fontSize: '1.5rem', fontWeight: 'bold', margin: 0, color: 'var(--text-main)' }}>
+                <h1 style={{
+                    fontSize: 'clamp(1rem, 4vw, 1.5rem)',
+                    fontWeight: 'bold',
+                    margin: 0,
+                    color: 'var(--text-main)',
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis'
+                }}>
                     {title}
                 </h1>
             </div>
 
             {/* Right: Actions & Profile */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
+            <div
+                className="mobile-gap-dense"
+                style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}
+            >
                 {currentUser.role === 'SUPER_ADMIN' && (
                     <select
                         value={selectedCompanyId || ''}
