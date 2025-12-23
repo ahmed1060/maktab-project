@@ -150,7 +150,7 @@ export default function CompanyPaymentsPage() {
                 <div className="glass" style={{ padding: '4rem', textAlign: 'center', borderRadius: '1rem' }}>
                     <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🧾</div>
                     <h3 style={{ margin: '0 0 0.5rem' }}>No payments found</h3>
-                    <p style={{ color: '#64748b', margin: 0 }}>You haven't added any payment records for this company yet.</p>
+                    <p style={{ color: '#64748b', margin: 0 }}>You haven&apos;t added any payment records for this company yet.</p>
                 </div>
             ) : (
                 <div className="glass" style={{ borderRadius: '1rem', overflow: 'hidden' }}>
