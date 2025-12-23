@@ -85,7 +85,7 @@ export default function NotificationBell() {
     }
 
     return (
-        <div ref={dropdownRef} style={{ position: 'relative', marginLeft: 'auto', marginRight: '1rem' }}>
+        <div ref={dropdownRef} style={{ position: 'relative' }}>
             <button
                 onClick={toggleOpen}
                 style={{

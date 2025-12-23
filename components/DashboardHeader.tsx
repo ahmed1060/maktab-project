@@ -314,8 +314,9 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
 
                 <NotificationBell />
 
+                {/* Avatar area - Grouped for desktop info, but direct child for mobile gap consistency */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                    {/* User Info (Role Top, Name Bottom) - Hidden on mobile for space */}
+                    {/* User Info - Hidden on mobile, grouped with avatar on desktop */}
                     <div className="md-hidden" style={{ textAlign: 'right', flexShrink: 1, minWidth: 0 }}>
                         <div style={{ fontSize: '0.75rem', fontWeight: 'bold', color: 'var(--text-muted)', textTransform: 'uppercase', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                             {currentUser.role.replace('_', ' ')}
@@ -325,7 +326,7 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
                         </div>
                     </div>
 
-                    {/* Avatar with Dropdown */}
+                    {/* Avatar Container with Dropdown */}
                     <div style={{ position: 'relative' }}>
                         <div
                             onClick={() => setIsMenuOpen(!isMenuOpen)}
