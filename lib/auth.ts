@@ -108,39 +108,52 @@ export const authOptions: NextAuthOptions = {
     callbacks: {
         async session({ session, token }) {
             if (session.user) {
+                // Map all possible variations to ensure visibility
+                const avatar = (token.avatar || token.image || token.picture) as string | null
+
                 session.user.id = token.sub as string
                 session.user.role = token.role as string
                 session.user.firstName = token.firstName as string
                 session.user.lastName = token.lastName as string
                 session.user.gender = token.gender as string
-                session.user.avatar = (token.avatar || token.picture || token.image) as string | null
-                session.user.image = (token.avatar || token.picture || token.image) as string | null
+                session.user.avatar = avatar
+                session.user.image = avatar
+                session.user.picture = avatar
                 session.user.companyId = token.companyId as string | null
                 session.user.companyName = token.companyName as string | null
             }
             return session
         },
         async jwt({ token, user, trigger, session }) {
+            // Initial sign in
             if (user) {
                 token.role = user.role
                 token.firstName = user.firstName
                 token.lastName = user.lastName
                 token.gender = user.gender
-                token.avatar = user.avatar
-                token.image = user.avatar
-                token.picture = user.avatar
+                // Store in multiple fields to be safe against stripping
+                const avatarUrl = user.avatar || user.image || null
+                token.avatar = avatarUrl
+                token.image = avatarUrl
+                token.picture = avatarUrl
                 token.companyId = user.companyId
                 token.companyName = user.companyName
                 token.jti = uuidv4()
             }
+
+            // On session update (client-side update() call)
             if (trigger === 'update' && session) {
+                console.log('JWT Update Triggered:', session)
                 if (session.firstName !== undefined) token.firstName = session.firstName
                 if (session.lastName !== undefined) token.lastName = session.lastName
                 if (session.gender !== undefined) token.gender = session.gender
-                if (session.avatar !== undefined) {
-                    token.avatar = session.avatar
-                    token.image = session.avatar
-                    token.picture = session.avatar
+
+                // Allow both 'avatar' and 'image' as keys in the update call
+                const newAvatar = session.avatar !== undefined ? session.avatar : session.image
+                if (newAvatar !== undefined) {
+                    token.avatar = newAvatar
+                    token.image = newAvatar
+                    token.picture = newAvatar
                 }
             }
             return token

@@ -16,6 +16,7 @@ interface DashboardHeaderProps {
         role: string
         avatar?: string | null
         image?: string | null
+        picture?: string | null
         gender: string
     }
     onMenuClick?: () => void
@@ -272,9 +273,9 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
                             }}
                         >
 
-                            {(currentUser.avatar || currentUser.image) ? (
+                            {(currentUser.avatar || currentUser.image || currentUser.picture) ? (
                                 <Image
-                                    src={currentUser.avatar || currentUser.image || ''}
+                                    src={currentUser.avatar || currentUser.image || currentUser.picture || ''}
                                     alt="Profile"
                                     width={45}
                                     height={45}

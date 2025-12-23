@@ -177,7 +177,9 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                     firstName,
                     lastName,
                     gender,
-                    // If avatar was updated (not currently handled in form but good practice)
+                    avatar: avatarUrl,
+                    image: avatarUrl,
+                    picture: avatarUrl
                 })
                 showToast('Profile updated successfully!', 'success')
                 setSaving(false)
