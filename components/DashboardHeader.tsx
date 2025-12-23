@@ -219,7 +219,7 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
                         <div className="lg-hidden" style={{
                             position: 'absolute',
                             left: '0',
-                            right: '0', /* Centered since arrow is hidden */
+                            right: '0',
                             top: '50%',
                             transform: 'translateY(-50%)',
                             pointerEvents: 'none',
@@ -230,7 +230,9 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
                             justifyContent: 'center',
                             alignItems: 'center',
                             overflow: 'hidden',
-                            letterSpacing: '0.05em'
+                            letterSpacing: '0.05em',
+                            zIndex: 2, /* Ensure it's above the select background */
+                            pointerEvents: 'none'
                         }}>
                             {selectedCompanyId
                                 ? getInitials(companies.find(c => c.id === selectedCompanyId)?.name || '')
