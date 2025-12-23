@@ -35,6 +35,25 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
     // Use client-side session for live updates (e.g. avatar change), fall back to prop
     const { data: session } = useSession()
     const currentUser = session?.user || user
+    const [headerAvatar, setHeaderAvatar] = useState<string | null>(currentUser.avatar || currentUser.image || currentUser.picture || null)
+
+    // Precisely like the profile page: Fetch "Ground Truth" on mount and on session changes
+    useEffect(() => {
+        const fetchGroundTruth = async () => {
+            if (!currentUser.id) return
+            try {
+                const res = await fetch(`/api/users?id=${currentUser.id}`, { cache: 'no-store' })
+                if (res.ok) {
+                    const data = await res.json()
+                    // Fallback through all possible field names returned by API
+                    setHeaderAvatar(data.avatar || data.image || data.picture || null)
+                }
+            } catch (err) {
+                console.error('Header sync error:', err)
+            }
+        }
+        fetchGroundTruth()
+    }, [currentUser.id, session?.user?.image, session?.user?.avatar, session?.user?.picture])
 
     useEffect(() => {
         if (currentUser.role === 'SUPER_ADMIN') {
@@ -273,13 +292,12 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
                             }}
                         >
 
-                            {(currentUser.avatar || currentUser.image || currentUser.picture) ? (
+                            {headerAvatar ? (
                                 <Image
-                                    src={currentUser.avatar || currentUser.image || currentUser.picture || ''}
+                                    src={headerAvatar}
                                     alt="Profile"
-                                    width={45}
-                                    height={45}
-                                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                    fill
+                                    style={{ objectFit: 'cover' }}
                                 />
                             ) : (
                                 <span style={{ fontSize: '1.5rem' }}>{currentUser.gender === 'FEMALE' ? '👩🏻' : '👨🏻'}</span>
