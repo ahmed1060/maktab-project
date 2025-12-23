@@ -1,5 +1,5 @@
 'use client'
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 
 interface DateTimePickerProps {
@@ -15,8 +15,8 @@ export default function DateTimePicker({ value, onChange, label, min }: DateTime
     const [currentMonth, setCurrentMonth] = useState(new Date())
     const containerRef = useRef<HTMLDivElement>(null)
 
-    // Parse value to Date object
-    const selectedDate = value ? new Date(value) : null
+    // Parse value to Date object - Memoized to prevent dependency shifts
+    const selectedDate = useMemo(() => value ? new Date(value) : null, [value])
 
     useEffect(() => {
         setMounted(true)

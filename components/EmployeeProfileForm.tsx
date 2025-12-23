@@ -102,7 +102,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
         if (userRole === 'SUPER_ADMIN') {
             fetchCompanies()
         }
-    }, [userId, userRole, showToast])
+    }, [userId, userRole, showToast, session])
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()

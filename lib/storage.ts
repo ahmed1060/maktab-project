@@ -31,7 +31,7 @@ export async function uploadToCloud(file: File, folder: string) {
     const buffer = Buffer.from(arrayBuffer)
 
     // 3. Upload to the 'app-assets' bucket
-    const { data, error } = await supabase.storage
+    const { error } = await supabase.storage
         .from('app-assets')
         .upload(fileName, buffer, {
             contentType: file.type,

@@ -59,14 +59,6 @@ export default function EmployeeFilter({ onFilterChange, selectedEmployeeId, dat
         onFilterChange({ employeeId, dateFrom, dateTo, status: selectedStatus })
     }
 
-    const handleDateFromChange = (newDateFrom: string) => {
-        onFilterChange({ employeeId: selectedEmployeeId, dateFrom: newDateFrom, dateTo, status: selectedStatus })
-    }
-
-    const handleDateToChange = (newDateTo: string) => {
-        onFilterChange({ employeeId: selectedEmployeeId, dateFrom, dateTo: newDateTo, status: selectedStatus })
-    }
-
     const handleStatusChange = (status: string) => {
         onFilterChange({ employeeId: selectedEmployeeId, dateFrom, dateTo, status })
     }
