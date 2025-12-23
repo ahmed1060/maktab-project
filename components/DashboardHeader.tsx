@@ -201,7 +201,7 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
             {/* Right: Actions & Profile */}
             <div
                 className="mobile-gap-dense"
-                style={{ display: 'flex', alignItems: 'center', gap: '1.25rem', minWidth: 0, flexShrink: 0 }}
+                style={{ display: 'flex', alignItems: 'center', gap: '1rem', minWidth: 0, flexShrink: 0 }}
             >
                 {currentUser.role === 'SUPER_ADMIN' && (
                     <select
@@ -209,10 +209,10 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
                         onChange={handleCompanyChange}
                         className="glass sm-select" // Use glass class and responsive sm-select
                         style={{
-                            padding: '0.5rem 1rem',
+                            padding: '0.4rem 0.75rem',
                             borderRadius: '1rem',
-                            marginRight: '0.5rem',
-                            fontSize: '0.9rem',
+                            marginRight: currentUser.role === 'SUPER_ADMIN' ? '0' : '0.5rem',
+                            fontSize: '0.85rem',
                             outline: 'none',
                             cursor: 'pointer',
                             color: 'var(--text-main)',
@@ -231,6 +231,7 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
                     <Link
                         href="/dashboard/profile-requests"
                         title="Name Change Requests"
+                        className="xs-hidden" // Hides on very small screens to save space
                         style={{
                             display: 'flex',
                             alignItems: 'center',
@@ -279,7 +280,7 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
 
                 <NotificationBell />
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                     {/* User Info (Role Top, Name Bottom) - Hidden on mobile for space */}
                     <div className="md-hidden" style={{ textAlign: 'right', flexShrink: 1, minWidth: 0 }}>
                         <div style={{ fontSize: '0.75rem', fontWeight: 'bold', color: 'var(--text-muted)', textTransform: 'uppercase', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
