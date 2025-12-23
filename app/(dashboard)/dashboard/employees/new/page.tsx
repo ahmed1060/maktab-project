@@ -226,18 +226,20 @@ export default function NewEmployeePage() {
                     )}
                 </div>
 
-                {/* Salary Input */}
-                <div>
-                    <label style={{ display: 'block', marginBottom: '0.5rem' }}>Monthly Salary ($)</label>
-                    <input
-                        type="number"
-                        className="input"
-                        value={salary}
-                        onChange={e => setSalary(e.target.value)}
-                        min="0"
-                        placeholder="0.00"
-                    />
-                </div>
+                {/* Salary Input - Hidden for Super Admins */}
+                {role !== 'SUPER_ADMIN' && role !== '' && (
+                    <div>
+                        <label style={{ display: 'block', marginBottom: '0.5rem' }}>Monthly Salary ($)</label>
+                        <input
+                            type="number"
+                            className="input"
+                            value={salary}
+                            onChange={e => setSalary(e.target.value)}
+                            min="0"
+                            placeholder="0.00"
+                        />
+                    </div>
+                )}
 
                 {/* Company Selection for Super Admin */}
                 {userRole === 'SUPER_ADMIN' && (

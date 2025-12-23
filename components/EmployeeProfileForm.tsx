@@ -619,8 +619,8 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                     />
                 </div>
 
-                {/* Salary Field - Visible to Admins and Self, Editable only by Admins (not self) */}
-                {(['ADMIN', 'SUPER_ADMIN'].includes(userRole) || userId === session?.user?.id) && role !== 'SUPER_ADMIN' && (
+                {/* Salary Field - Visible to Admins and Self, Editable only by Admins (not self). Hidden for Super Admins. */}
+                {(['ADMIN', 'SUPER_ADMIN'].includes(userRole) || userId === session?.user?.id) && role !== 'SUPER_ADMIN' && role !== '' && (
                     <div style={{ marginBottom: '1rem' }}>
                         <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>Monthly Base Salary (EGP)</label>
                         <input

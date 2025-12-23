@@ -12,13 +12,15 @@ async function main() {
             email: 'ahmed.hossam1060@gmail.com',
             firstName: 'Ahmed',
             lastName: 'Hossam',
-            password: '12345678'
+            password: '12345678',
+            gender: 'MALE'
         },
         {
             email: 'mohamedsadek@gmail.com',
             firstName: 'Mohamed',
             lastName: 'Sadek',
-            password: '12345678'
+            password: '12345678',
+            gender: 'MALE'
         }
     ]
 
