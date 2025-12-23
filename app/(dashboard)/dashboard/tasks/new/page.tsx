@@ -17,7 +17,6 @@ export default function NewTaskPage() {
 
     // Get today's date in local time YYYY-MM-DD
     const today = new Date()
-    const todayStr = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0')
 
     useEffect(() => {
         fetch('/api/users')

@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { formatTaskStatus } from '@/lib/formatStatus'
 import Modal from '@/components/Modal'
@@ -99,6 +99,65 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
         }
     }, [isEditing])
 
+    const handleUpload = useCallback(async (isDraft: boolean = false) => {
+        console.log('handleUpload called', { isDraft, cost, pendingFiles: pendingFiles.length })
+        // If it's a draft, skip confirmation modal (or reuse it if desired, but user asked for "submit" confirmation mainly)
+        // If it's a submission (isDraft=false) and we haven't confirmed yet (called directly via buttons), we should divert to handleUploadRequest.
+        // However, we will make the Submit button call handleUploadRequest instead.
+
+        // Validation (redundant check for safety)
+        if (cost && !isNaN(parseFloat(cost)) && parseFloat(cost) < 0) {
+            console.log('Cost validation failed in handleUpload')
+            return
+        }
+
+        setUploading(true)
+        const uploadedAttachments: any[] = []
+        try {
+            for (const file of pendingFiles) {
+                const formData = new FormData()
+                formData.append('file', file)
+                formData.append('folder', 'tasks')
+                try {
+                    const res = await fetch('/api/upload', { method: 'POST', body: formData })
+                    const data = await res.json()
+                    if (data.success) {
+                        uploadedAttachments.push({ name: file.name, url: data.url, type: file.type, uploadedAt: new Date().toISOString(), uploadedBy: currentUserName })
+                    } else { throw new Error(`Failed to upload ${file.name}`) }
+                } catch {
+                    showToast(`Failed to upload one or more files.`, 'error')
+                    setUploading(false)
+                    return
+                }
+            }
+            await fetch(`/api/tasks/${task.id}/submit`, {
+                method: 'PUT',
+                body: JSON.stringify({
+                    newAttachments: uploadedAttachments, note,
+                    // If there is a pending input in the boxes, send it as single 'cost' (legacy/fallback)
+                    cost: cost ? parseFloat(cost) : 0,
+                    costDescription,
+                    // Send the list of added entries
+                    costs: costEntries,
+                    location, isDraft
+                }),
+                headers: { 'Content-Type': 'application/json' }
+            })
+
+            showToast(isDraft ? 'Draft saved successfully!' : 'Task submitted successfully!', 'success')
+            if (!isDraft) { setNote(''); setCost(''); setCostDescription(''); setLocation(''); setLocationStatus(''); setPendingFiles([]); setCostEntries([]) }
+            else { setNote(''); setCost(''); setCostDescription(''); setLocation(''); setLocationStatus(''); setPendingFiles([]); setCostEntries([]) }
+            router.refresh()
+        } catch (error) {
+            console.error('handleUpload error detected:', error)
+            showToast('Failed to save. Check console for details.', 'error')
+            // alert('Error saving task: ' + String(error)) // Optional: Uncomment if console is hard to reach
+        } finally {
+            console.log('handleUpload finished, setting uploading=false')
+            setUploading(false)
+        }
+    }, [cost, pendingFiles, currentUserName, showToast, task.id, note, costDescription, costEntries, location, router])
+
     // Listen for suspension auto-save event
     useEffect(() => {
         const handleSuspendSave = () => {
@@ -110,7 +169,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
         }
         window.addEventListener('app:suspend-detected', handleSuspendSave)
         return () => window.removeEventListener('app:suspend-detected', handleSuspendSave)
-    }, [task.status, userRole, pendingFiles, note, cost, costDescription, location])
+    }, [task.status, task.assigneeId, userRole, userId, handleUpload])
 
     const handleSaveDetails = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -281,64 +340,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
         setShowSubmitConfirm(true)
     }
 
-    const handleUpload = async (isDraft: boolean = false) => {
-        console.log('handleUpload called', { isDraft, cost, pendingFiles: pendingFiles.length })
-        // If it's a draft, skip confirmation modal (or reuse it if desired, but user asked for "submit" confirmation mainly)
-        // If it's a submission (isDraft=false) and we haven't confirmed yet (called directly via buttons), we should divert to handleUploadRequest.
-        // However, we will make the Submit button call handleUploadRequest instead.
 
-        // Validation (redundant check for safety)
-        if (cost && !isNaN(parseFloat(cost)) && parseFloat(cost) < 0) {
-            console.log('Cost validation failed in handleUpload')
-            return
-        }
-
-        setUploading(true)
-        const uploadedAttachments: any[] = []
-        try {
-            for (const file of pendingFiles) {
-                const formData = new FormData()
-                formData.append('file', file)
-                formData.append('folder', 'tasks')
-                try {
-                    const res = await fetch('/api/upload', { method: 'POST', body: formData })
-                    const data = await res.json()
-                    if (data.success) {
-                        uploadedAttachments.push({ name: file.name, url: data.url, type: file.type, uploadedAt: new Date().toISOString(), uploadedBy: currentUserName })
-                    } else { throw new Error(`Failed to upload ${file.name}`) }
-                } catch {
-                    showToast(`Failed to upload one or more files.`, 'error')
-                    setUploading(false)
-                    return
-                }
-            }
-            await fetch(`/api/tasks/${task.id}/submit`, {
-                method: 'PUT',
-                body: JSON.stringify({
-                    newAttachments: uploadedAttachments, note,
-                    // If there is a pending input in the boxes, send it as single 'cost' (legacy/fallback)
-                    cost: cost ? parseFloat(cost) : 0,
-                    costDescription,
-                    // Send the list of added entries
-                    costs: costEntries,
-                    location, isDraft
-                }),
-                headers: { 'Content-Type': 'application/json' }
-            })
-
-            showToast(isDraft ? 'Draft saved successfully!' : 'Task submitted successfully!', 'success')
-            if (!isDraft) { setNote(''); setCost(''); setCostDescription(''); setLocation(''); setLocationStatus(''); setPendingFiles([]); setCostEntries([]) }
-            else { setNote(''); setCost(''); setCostDescription(''); setLocation(''); setLocationStatus(''); setPendingFiles([]); setCostEntries([]) }
-            router.refresh()
-        } catch (error) {
-            console.error('handleUpload error detected:', error)
-            showToast('Failed to save. Check console for details.', 'error')
-            // alert('Error saving task: ' + String(error)) // Optional: Uncomment if console is hard to reach
-        } finally {
-            console.log('handleUpload finished, setting uploading=false')
-            setUploading(false)
-        }
-    }
 
     const validateLocations = (): boolean => {
         if (!task.comments) return true
@@ -736,7 +738,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                                                     googleMapsLink = `https://www.google.com/maps?q=${locData.latitude},${locData.longitude}`
                                                 }
                                             }
-                                        } catch (e) {
+                                        } catch {
                                             displayLocation = entry.location
                                         }
 
@@ -877,7 +879,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                                 </div>
                             )
                         }
-                    } catch (e) {
+                    } catch {
                         return null
                     }
                     return null
