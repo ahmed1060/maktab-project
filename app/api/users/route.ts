@@ -313,7 +313,6 @@ export async function PUT(req: Request) {
     const updateData: any = {}
 
     const isSelf = id === session.user.id
-    const isAdmin = ['ADMIN', 'SUPER_ADMIN'].includes(userRole || '')
 
     if (isSelf && (regularUser?.role === 'EMPLOYEE' || regularUser?.role === 'TEAM_LEADER')) {
         if ((firstName && firstName !== regularUser.firstName) || (lastName && lastName !== regularUser.lastName)) {

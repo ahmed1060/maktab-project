@@ -281,7 +281,7 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
                             position: 'relative'
                         }}
                         onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.8)'}
-                        onMouseLeave={(e) => e.currentTarget.style.background = pathname === '/dashboard/profile-requests' ? 'rgba(99, 102, 241, 0.1)' : 'rgba(255,255,255,0.5)'}
+                        onMouseLeave={() => { }}
                     >
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                             <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>

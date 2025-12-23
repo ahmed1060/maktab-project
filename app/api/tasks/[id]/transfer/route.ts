@@ -35,7 +35,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
             try {
                 existingComments = originalTask.comments ? JSON.parse(originalTask.comments) : []
                 if (!Array.isArray(existingComments)) existingComments = []
-            } catch (e) {
+            } catch {
                 existingComments = []
             }
 
@@ -97,7 +97,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
                         commentsToClone = parsed.filter((c: any) => c.type !== 'COST_ADDITION' && c.type !== 'LOCATION_ADDED')
                     }
                 }
-            } catch (e) { commentsToClone = [] }
+            } catch { commentsToClone = [] }
 
             const newTask = await tx.task.create({
                 data: {

@@ -41,7 +41,7 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
                     // Convert legacy single to array
                     finalAttachments = [parsed]
                 }
-            } catch (e) {
+            } catch {
                 finalAttachments = []
             }
         }
@@ -55,7 +55,7 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
         if (currentTask.comments) {
             try {
                 comments = JSON.parse(currentTask.comments)
-            } catch (e) {
+            } catch {
                 comments = []
             }
         }
