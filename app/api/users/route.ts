@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
+import { supabase } from "@/lib/storage"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import bcrypt from "bcryptjs"
@@ -262,7 +263,7 @@ export async function PUT(req: Request) {
     }
 
     const json = await req.json()
-    const { id, firstName, lastName, email, password, role, gender, salary, companyId } = json
+    const { id, firstName, lastName, email, password, role, gender, salary, companyId, avatar } = json
 
     if (!id) {
         return new NextResponse("User ID required", { status: 400 })
@@ -336,6 +337,22 @@ export async function PUT(req: Request) {
         updateData.password = await bcrypt.hash(password, 10)
     }
     if (gender) updateData.gender = gender
+    if (avatar !== undefined) {
+        updateData.avatar = avatar
+        // Cleanup old avatar if it's being replaced
+        const existingAvatar = regularUser?.avatar || superAdminUser?.avatar
+        if (existingAvatar && existingAvatar !== avatar) {
+            try {
+                const urlParts = existingAvatar.split('/app-assets/')
+                if (urlParts.length > 1) {
+                    const filePath = urlParts[1]
+                    await supabase.storage.from('app-assets').remove([filePath])
+                }
+            } catch (err) {
+                console.error('Failed to cleanup old avatar:', err)
+            }
+        }
+    }
 
     // --- CASE A: Regular User Update ---
     if (regularUser) {
@@ -366,7 +383,7 @@ export async function PUT(req: Request) {
         const updatedUser = await prisma.user.update({
             where: { id },
             data: updateData,
-            select: { id: true, firstName: true, lastName: true, email: true, role: true, gender: true, salary: true, companyId: true }
+            select: { id: true, firstName: true, lastName: true, email: true, role: true, gender: true, salary: true, companyId: true, avatar: true }
         })
 
         // Sync Salary Record
@@ -408,7 +425,7 @@ export async function PUT(req: Request) {
         const updatedAdmin = await prisma.superAdmin.update({
             where: { id },
             data: updateData,
-            select: { id: true, firstName: true, lastName: true, email: true, gender: true }
+            select: { id: true, firstName: true, lastName: true, email: true, gender: true, avatar: true }
         })
 
         return NextResponse.json({

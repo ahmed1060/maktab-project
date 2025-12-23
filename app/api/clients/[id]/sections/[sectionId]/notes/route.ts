@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
+import { supabase } from "@/lib/storage"
 
 export async function GET(
     request: Request,
@@ -133,7 +134,7 @@ export async function POST(
                 if (emailExists) {
                     // Start of a tricky edge case: Email exists but ID does not.
                     // We must use a different email for the shadow user.
-                    shadowEmail = `superadmin+${userId}@system.internal`
+                    shadowEmail = `superadmin + ${userId} @system.internal`
                 }
 
                 await prisma.user.create({
@@ -207,6 +208,20 @@ export async function DELETE(
         if (session.user.role !== 'SUPER_ADMIN') {
             if (note.section.client.companyId !== session.user.companyId) {
                 return NextResponse.json({ error: 'Access denied' }, { status: 403 })
+            }
+        }
+
+        if (note.attachment) {
+            try {
+                // Extract file path from URL (e.g., "notes/filename.ext")
+                const urlParts = note.attachment.split('/app-assets/')
+                if (urlParts.length > 1) {
+                    const filePath = urlParts[1]
+                    await supabase.storage.from('app-assets').remove([filePath])
+                }
+            } catch (storageError) {
+                console.error('Failed to delete attachment from storage:', storageError)
+                // We don't block note deletion if storage cleanup fails, but we log it
             }
         }
 

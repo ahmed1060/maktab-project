@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { supabase } from "@/lib/storage"
 
 export async function DELETE(
     request: Request,
@@ -19,7 +20,7 @@ export async function DELETE(
         await prisma.$transaction(async (tx) => {
             const task = await tx.task.findUnique({
                 where: { id: params.id },
-                select: { status: true, difficulty: true, assigneeId: true }
+                select: { status: true, difficulty: true, assigneeId: true, attachments: true }
             })
 
             if (task && ['APPROVED', 'COMPLETED'].includes(task.status)) {
@@ -34,6 +35,23 @@ export async function DELETE(
                     })
                 } catch (error) {
                     console.error("Failed to deduct points during task deletion:", error)
+                }
+            }
+
+            if (task?.attachments) {
+                try {
+                    const attachments = JSON.parse(task.attachments)
+                    if (Array.isArray(attachments)) {
+                        const filePaths = attachments
+                            .map((a: any) => a.url?.split('/app-assets/')?.[1])
+                            .filter(path => !!path)
+
+                        if (filePaths.length > 0) {
+                            await supabase.storage.from('app-assets').remove(filePaths)
+                        }
+                    }
+                } catch (e) {
+                    console.error("Failed to cleanup task attachments:", e)
                 }
             }
 

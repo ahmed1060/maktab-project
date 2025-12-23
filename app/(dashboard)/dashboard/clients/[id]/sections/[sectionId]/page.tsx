@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
 import { useHeader } from '@/context/HeaderContext'
 import { createPortal } from 'react-dom'
+import Image from 'next/image'
 import ConfirmModal from '@/components/ConfirmModal'
 
 interface Note {
@@ -253,7 +254,13 @@ export default function SectionNotesPage() {
                                     <div className="flex items-center gap-2">
                                         <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold text-[10px] uppercase shrink-0 px-1 overflow-hidden" title={note.createdBy?.role}>
                                             {note.createdBy?.avatar ? (
-                                                <img src={note.createdBy.avatar} alt="Avatar" className="w-full h-full rounded-full object-cover" />
+                                                <Image
+                                                    src={note.createdBy.avatar}
+                                                    alt="Avatar"
+                                                    width={32}
+                                                    height={32}
+                                                    className="w-full h-full rounded-full object-cover"
+                                                />
                                             ) : (
                                                 <span style={{ fontSize: (note.createdBy?.role?.length || 0) > 10 ? '8px' : '9px', textAlign: 'center' }}>
                                                     {note.createdBy?.role?.replace('_', ' ')}

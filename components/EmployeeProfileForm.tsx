@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { useToast } from '@/context/ToastContext'
+import Image from 'next/image'
 
 type EmployeeProfileFormProps = {
     userId: string
@@ -225,9 +226,11 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                     overflow: 'hidden'
                 }}>
                     {avatarUrl ? (
-                        <img
+                        <Image
                             src={avatarUrl}
                             alt="Avatar"
+                            width={100}
+                            height={100}
                             style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                         />
                     ) : (

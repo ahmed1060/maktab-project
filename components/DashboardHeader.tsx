@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { signOut, useSession } from 'next-auth/react'
+import Image from 'next/image'
 import NotificationBell from './NotificationBell'
 import { useCompany } from '@/context/CompanyContext'
 import { useHeader } from '@/context/HeaderContext'
@@ -271,7 +272,13 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
                         >
 
                             {currentUser.avatar ? (
-                                <img src={currentUser.avatar} alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                <Image
+                                    src={currentUser.avatar}
+                                    alt="Profile"
+                                    width={45}
+                                    height={45}
+                                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                />
                             ) : (
                                 <span style={{ fontSize: '1.5rem' }}>{currentUser.gender === 'FEMALE' ? '👩🏻' : '👨🏻'}</span>
                             )}

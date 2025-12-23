@@ -3,10 +3,16 @@ import { prisma } from '@/lib/prisma'
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 
-export async function POST() {
+export async function POST(req: Request) {
     try {
+        // Support both Session (Manual) and Cron Secret (Automated)
+        const authHeader = req.headers.get('Authorization')
+        const isCron = authHeader === `Bearer ${process.env.CRON_SECRET}`
+
         const session = await getServerSession(authOptions)
-        if (!session || !['ADMIN', 'SUPER_ADMIN'].includes((session.user as any).role)) {
+        const isAdmin = session && ['ADMIN', 'SUPER_ADMIN'].includes((session.user as any).role)
+
+        if (!isCron && !isAdmin) {
             return new NextResponse("Unauthorized", { status: 401 })
         }
 
