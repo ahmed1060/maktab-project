@@ -2,10 +2,13 @@ import { NextResponse } from "next/server"
 import { uploadToCloud } from "@/lib/storage"
 
 export async function POST(req: Request) {
+    console.log('[UPLOAD_API] Request received')
     try {
         const data = await req.formData()
         const file: File | null = data.get('file') as unknown as File
         const folder = (data.get('folder') as string) || 'misc'
+
+        console.log(`[UPLOAD_API] Processing file: ${file?.name}, size: ${file?.size}, folder: ${folder}`)
 
         if (!file) {
             return NextResponse.json({ success: false, error: 'No file provided' }, { status: 400 })

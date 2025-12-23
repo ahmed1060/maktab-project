@@ -1,9 +1,15 @@
 import { createClient } from '@supabase/supabase-js'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
-export const supabase = createClient(supabaseUrl, supabaseServiceKey)
+if (!supabaseUrl || !supabaseServiceKey) {
+    console.warn("⚠️ Supabase credentials missing. Cloud storage will fail.")
+}
+
+export const supabase = (supabaseUrl && supabaseServiceKey)
+    ? createClient(supabaseUrl, supabaseServiceKey)
+    : null as any
 
 /**
  * Uploads a file to Supabase Storage in the 'app-assets' bucket.
@@ -12,6 +18,10 @@ export const supabase = createClient(supabaseUrl, supabaseServiceKey)
  * @returns The public URL of the uploaded file
  */
 export async function uploadToCloud(file: File, folder: string) {
+    if (!supabase) {
+        throw new Error("Supabase client not initialized. Check your environment variables (NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY).")
+    }
+
     // 1. Create a unique filename
     const fileExt = file.name.split('.').pop()
     const fileName = `${folder}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`
