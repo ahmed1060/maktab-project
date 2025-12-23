@@ -129,10 +129,10 @@ export const authOptions: NextAuthOptions = {
                 token.jti = uuidv4()
             }
             if (trigger === 'update' && session) {
-                if (session.firstName) token.firstName = session.firstName
-                if (session.lastName) token.lastName = session.lastName
-                if (session.gender) token.gender = session.gender
-                if (session.avatar) token.avatar = session.avatar
+                if (session.firstName !== undefined) token.firstName = session.firstName
+                if (session.lastName !== undefined) token.lastName = session.lastName
+                if (session.gender !== undefined) token.gender = session.gender
+                if (session.avatar !== undefined) token.avatar = session.avatar
             }
             return token
         }

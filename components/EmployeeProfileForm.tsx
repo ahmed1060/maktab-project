@@ -5,6 +5,7 @@ import { useSession } from 'next-auth/react'
 import { useToast } from '@/context/ToastContext'
 import Image from 'next/image'
 import { createPortal } from 'react-dom'
+import ConfirmModal from './ConfirmModal'
 
 type EmployeeProfileFormProps = {
     userId: string
@@ -30,6 +31,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
     const [originalFirstName, setOriginalFirstName] = useState('')
     const [originalLastName, setOriginalLastName] = useState('')
     const [showAvatarModal, setShowAvatarModal] = useState(false)
+    const [showResetConfirm, setShowResetConfirm] = useState(false)
     const router = useRouter()
     const { data: session, update } = useSession()
     const { showToast } = useToast()
@@ -176,7 +178,6 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                     // If avatar was updated (not currently handled in form but good practice)
                 })
                 showToast('Profile updated successfully!', 'success')
-                showToast('Log out and back in to see avatar changes in sidebar.', 'info')
                 setSaving(false)
                 router.refresh()
             } else {
@@ -201,7 +202,6 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
     }
 
     const handleResetPhoto = async () => {
-        if (!window.confirm('Are you sure you want to reset your photo?')) return
         try {
             setUploadingAvatar(true)
             const res = await fetch('/api/users', {
@@ -217,6 +217,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
             }
             showToast('Photo reset successfully!', 'success')
             setShowAvatarModal(false)
+            setShowResetConfirm(false)
         } catch (err: any) {
             showToast(err.message || 'Failed to reset photo', 'error')
         } finally {
@@ -422,21 +423,23 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                             {avatarUrl && (
                                 <button
                                     type="button"
-                                    onClick={handleResetPhoto}
+                                    onClick={() => setShowResetConfirm(true)}
+                                    disabled={uploadingAvatar}
                                     style={{
                                         padding: '0.625rem 1.25rem',
                                         border: 'none',
                                         borderRadius: '0.5rem',
                                         background: '#fee2e2',
-                                        cursor: 'pointer',
+                                        cursor: uploadingAvatar ? 'not-allowed' : 'pointer',
                                         fontSize: '0.875rem',
                                         fontWeight: '500',
                                         color: '#dc2626',
                                         transition: 'all 0.2s',
-                                        flex: 1
+                                        flex: 1,
+                                        opacity: uploadingAvatar ? 0.5 : 1
                                     }}
-                                    onMouseEnter={(e) => e.currentTarget.style.background = '#fecaca'}
-                                    onMouseLeave={(e) => e.currentTarget.style.background = '#fee2e2'}
+                                    onMouseEnter={(e) => !uploadingAvatar && (e.currentTarget.style.background = '#fecaca')}
+                                    onMouseLeave={(e) => !uploadingAvatar && (e.currentTarget.style.background = '#fee2e2')}
                                 >
                                     Reset
                                 </button>
@@ -445,24 +448,31 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                             <button
                                 type="button"
                                 onClick={() => setShowAvatarModal(false)}
+                                disabled={uploadingAvatar}
                                 style={{
                                     padding: '0.625rem 1.25rem',
                                     border: '1px solid #e2e8f0',
                                     borderRadius: '0.5rem',
                                     background: 'white',
-                                    cursor: 'pointer',
+                                    cursor: uploadingAvatar ? 'not-allowed' : 'pointer',
                                     fontSize: '0.875rem',
                                     fontWeight: '500',
                                     color: '#475569',
                                     transition: 'all 0.2s',
-                                    flex: 1
+                                    flex: 1,
+                                    opacity: uploadingAvatar ? 0.5 : 1
                                 }}
-                                onMouseEnter={(e) => e.currentTarget.style.background = '#f8fafc'}
-                                onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
+                                onMouseEnter={(e) => !uploadingAvatar && (e.currentTarget.style.background = '#f8fafc')}
+                                onMouseLeave={(e) => !uploadingAvatar && (e.currentTarget.style.background = 'white')}
                             >
                                 Close
                             </button>
                         </div>
+                        {uploadingAvatar && (
+                            <div style={{ marginTop: '1rem', color: '#6366f1', fontSize: '0.875rem', fontWeight: 'bold' }}>
+                                Uploading in progress...
+                            </div>
+                        )}
                     </div>
 
                     <style jsx global>{`
@@ -484,6 +494,16 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                 </div>,
                 document.body
             )}
+
+            <ConfirmModal
+                isOpen={showResetConfirm}
+                title="Reset Photo"
+                message="Are you sure you want to remove your profile photo and return to the default emoji?"
+                confirmText="Yes, Reset"
+                onConfirm={handleResetPhoto}
+                onCancel={() => setShowResetConfirm(false)}
+                variant="danger"
+            />
 
             {pendingRequest && (
                 <div style={{
