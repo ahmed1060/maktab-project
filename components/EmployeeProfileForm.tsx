@@ -28,6 +28,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
     const [pendingRequest, setPendingRequest] = useState<{ newFirstName: string, newLastName: string } | null>(null)
     const [originalFirstName, setOriginalFirstName] = useState('')
     const [originalLastName, setOriginalLastName] = useState('')
+    const [showAvatarModal, setShowAvatarModal] = useState(false)
     const router = useRouter()
     const { data: session, update } = useSession()
     const { showToast } = useToast()
@@ -198,6 +199,65 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
         }
     }
 
+    const handleResetPhoto = async () => {
+        if (!window.confirm('Are you sure you want to reset your photo?')) return
+        try {
+            setUploadingAvatar(true)
+            const res = await fetch('/api/users', {
+                method: 'PUT',
+                body: JSON.stringify({ id: userId, avatar: null }),
+                headers: { 'Content-Type': 'application/json' }
+            })
+            if (!res.ok) throw new Error('Failed to reset photo')
+
+            setAvatarUrl(null)
+            if (userId === session?.user?.id) {
+                await update({ avatar: null })
+            }
+            showToast('Photo reset successfully!', 'success')
+            setShowAvatarModal(false)
+        } catch (err: any) {
+            showToast(err.message || 'Failed to reset photo', 'error')
+        } finally {
+            setUploadingAvatar(false)
+        }
+    }
+
+    const handleAvatarUpload = async (file: File) => {
+        setUploadingAvatar(true)
+        try {
+            const formData = new FormData()
+            formData.append('file', file)
+            formData.append('folder', 'avatars')
+
+            const res = await fetch('/api/upload', { method: 'POST', body: formData })
+            const data = await res.json()
+
+            if (data.success) {
+                // 1. Update DB immediately
+                await fetch('/api/users', {
+                    method: 'PUT',
+                    body: JSON.stringify({ id: userId, avatar: data.url }),
+                    headers: { 'Content-Type': 'application/json' }
+                })
+
+                // 2. Update UI and Session
+                setAvatarUrl(data.url)
+                if (userId === session?.user?.id) {
+                    await update({ avatar: data.url })
+                }
+                showToast('Photo updated successfully!', 'success')
+                setShowAvatarModal(false)
+            } else {
+                throw new Error(data.error || 'Upload failed')
+            }
+        } catch (err: any) {
+            showToast(err.message || 'Failed to upload photo', 'error')
+        } finally {
+            setUploadingAvatar(false)
+        }
+    }
+
     if (loading) return <div>Loading...</div>
 
 
@@ -255,49 +315,114 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
 
                 {!isViewMode && (
                     <div style={{ textAlign: 'center' }}>
-                        <label className="btn" style={{
-                            background: '#f1f5f9',
-                            color: '#0f172a',
-                            fontSize: '0.8rem',
-                            padding: '0.4rem 0.8rem',
-                            cursor: 'pointer',
-                            display: 'inline-block'
-                        }}>
-                            {uploadingAvatar ? 'Uploading...' : 'Change Photo'}
-                            <input
-                                type="file"
-                                hidden
-                                accept="image/*"
-                                onChange={async (e) => {
-                                    const file = e.target.files?.[0]
-                                    if (!file) return
-
-                                    setUploadingAvatar(true)
-                                    try {
-                                        const formData = new FormData()
-                                        formData.append('file', file)
-                                        formData.append('folder', 'avatars')
-
-                                        const res = await fetch('/api/upload', { method: 'POST', body: formData })
-                                        const data = await res.json()
-
-                                        if (data.success) {
-                                            setAvatarUrl(data.url)
-                                            showToast('Avatar uploaded! Click Update to save changes.', 'success')
-                                        } else {
-                                            throw new Error(data.error || 'Upload failed')
-                                        }
-                                    } catch (err: any) {
-                                        showToast(err.message || 'Failed to upload avatar', 'error')
-                                    } finally {
-                                        setUploadingAvatar(false)
-                                    }
-                                }}
-                            />
-                        </label>
+                        <button
+                            type="button"
+                            className="btn"
+                            style={{
+                                background: '#f1f5f9',
+                                color: '#0f172a',
+                                fontSize: '0.8rem',
+                                padding: '0.4rem 0.8rem',
+                                cursor: 'pointer',
+                                display: 'inline-block',
+                                border: 'none',
+                                fontWeight: '600'
+                            }}
+                            onClick={() => setShowAvatarModal(true)}
+                        >
+                            {uploadingAvatar ? 'Uploading...' : (avatarUrl ? 'View Photo' : 'Add Photo')}
+                        </button>
                     </div>
                 )}
             </div>
+
+            {/* Avatar Management Modal */}
+            {showAvatarModal && (
+                <div style={{
+                    position: 'fixed',
+                    top: 0, left: 0, right: 0, bottom: 0,
+                    background: 'rgba(0,0,0,0.7)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    zIndex: 10000,
+                    backdropFilter: 'blur(4px)'
+                }}>
+                    <div style={{
+                        background: 'white',
+                        padding: '2rem',
+                        borderRadius: '1.5rem',
+                        width: '100%',
+                        maxWidth: '400px',
+                        textAlign: 'center',
+                        position: 'relative'
+                    }}>
+                        <h3 style={{ marginBottom: '1.5rem', fontWeight: 'bold' }}>Manage Photo</h3>
+
+                        <div style={{
+                            width: '180px',
+                            height: '180px',
+                            borderRadius: '50%',
+                            margin: '0 auto 2rem',
+                            overflow: 'hidden',
+                            border: '4px solid #f1f5f9',
+                            background: '#f1f5f9',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
+                        }}>
+                            {avatarUrl ? (
+                                <Image
+                                    src={avatarUrl}
+                                    alt="Avatar Large"
+                                    width={180}
+                                    height={180}
+                                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                />
+                            ) : (
+                                <span style={{ fontSize: '5rem' }}>
+                                    {gender === 'MALE' ? '👨🏻' : '👩🏻'}
+                                </span>
+                            )}
+                        </div>
+
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                            <label className="btn btn-primary" style={{ cursor: 'pointer' }}>
+                                {avatarUrl ? 'Change Photo' : 'Upload Photo'}
+                                <input
+                                    type="file"
+                                    hidden
+                                    accept="image/*"
+                                    onChange={(e) => {
+                                        const file = e.target.files?.[0]
+                                        if (file) handleAvatarUpload(file)
+                                    }}
+                                />
+                            </label>
+
+                            {avatarUrl && (
+                                <button
+                                    type="button"
+                                    className="btn"
+                                    style={{ background: '#fee2e2', color: '#b91c1c' }}
+                                    onClick={handleResetPhoto}
+                                >
+                                    Reset Photo
+                                </button>
+                            )}
+
+                            <button
+                                type="button"
+                                className="btn"
+                                style={{ background: '#f1f5f9', color: '#0f172a' }}
+                                onClick={() => setShowAvatarModal(false)}
+                            >
+                                Close
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {pendingRequest && (
                 <div style={{
