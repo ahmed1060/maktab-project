@@ -41,7 +41,8 @@ export async function GET(req: Request) {
                 gender: true,
                 salary: true,
                 companyId: true,
-                totalDifficultyPoints: true
+                totalDifficultyPoints: true,
+                avatar: true
             }
         })
 
@@ -59,7 +60,8 @@ export async function GET(req: Request) {
                 gender: user.gender,
                 companyId: user.companyId,
                 salary: canViewSalary ? user.salary : undefined,
-                totalDifficultyPoints: user.totalDifficultyPoints
+                totalDifficultyPoints: user.totalDifficultyPoints,
+                avatar: user.avatar
             })
         }
 
@@ -71,7 +73,8 @@ export async function GET(req: Request) {
                 firstName: true,
                 lastName: true,
                 email: true,
-                gender: true
+                gender: true,
+                avatar: true
             }
         })
 
@@ -84,6 +87,7 @@ export async function GET(req: Request) {
                 status: 'ACTIVE',
                 role: 'SUPER_ADMIN', // Injected role
                 gender: superAdmin.gender,
+                avatar: superAdmin.avatar,
                 salary: 0, // No salary for Super Admins
                 totalDifficultyPoints: 0 // Super Admins don't play the points game
             })
