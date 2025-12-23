@@ -26,6 +26,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
     const [loading, setLoading] = useState(true)
     const [saving, setSaving] = useState(false)
     const [uploadingAvatar, setUploadingAvatar] = useState(false)
+    const [isResetting, setIsResetting] = useState(false)
     const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
     const [pendingRequest, setPendingRequest] = useState<{ newFirstName: string, newLastName: string } | null>(null)
     const [originalFirstName, setOriginalFirstName] = useState('')
@@ -203,7 +204,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
 
     const handleResetPhoto = async () => {
         try {
-            setUploadingAvatar(true)
+            setIsResetting(true)
             const res = await fetch('/api/users', {
                 method: 'PUT',
                 body: JSON.stringify({ id: userId, avatar: null }),
@@ -213,7 +214,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
 
             setAvatarUrl(null)
             if (userId === session?.user?.id) {
-                await update({ avatar: null })
+                await update({ avatar: null, image: null, picture: null })
             }
             showToast('Photo reset successfully!', 'success')
             setShowAvatarModal(false)
@@ -221,7 +222,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
         } catch (err: any) {
             showToast(err.message || 'Failed to reset photo', 'error')
         } finally {
-            setUploadingAvatar(false)
+            setIsResetting(false)
         }
     }
 
@@ -246,7 +247,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                 // 2. Update UI and Session
                 setAvatarUrl(data.url)
                 if (userId === session?.user?.id) {
-                    await update({ avatar: data.url })
+                    await update({ avatar: data.url, image: data.url, picture: data.url })
                 }
                 showToast('Photo updated successfully!', 'success')
                 setShowAvatarModal(false)
@@ -471,6 +472,11 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                         {uploadingAvatar && (
                             <div style={{ marginTop: '1rem', color: '#6366f1', fontSize: '0.875rem', fontWeight: 'bold' }}>
                                 Uploading in progress...
+                            </div>
+                        )}
+                        {isResetting && (
+                            <div style={{ marginTop: '1rem', color: '#dc2626', fontSize: '0.875rem', fontWeight: 'bold' }}>
+                                Resetting in progress...
                             </div>
                         )}
                     </div>
