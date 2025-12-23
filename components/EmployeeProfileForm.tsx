@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { useToast } from '@/context/ToastContext'
 import Image from 'next/image'
+import { createPortal } from 'react-dom'
 
 type EmployeeProfileFormProps = {
     userId: string
@@ -337,58 +338,76 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
             </div>
 
             {/* Avatar Management Modal */}
-            {showAvatarModal && (
+            {showAvatarModal && createPortal(
                 <div style={{
                     position: 'fixed',
                     top: 0, left: 0, right: 0, bottom: 0,
-                    background: 'rgba(0,0,0,0.7)',
+                    background: 'rgba(0,0,0,0.5)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     zIndex: 10000,
-                    backdropFilter: 'blur(4px)'
+                    animation: 'fadeIn 0.2s ease-out'
                 }}>
+                    <div
+                        style={{ position: 'absolute', inset: 0 }}
+                        onClick={() => setShowAvatarModal(false)}
+                    />
                     <div style={{
                         background: 'white',
                         padding: '2rem',
-                        borderRadius: '1.5rem',
+                        borderRadius: '12px',
                         width: '100%',
-                        maxWidth: '400px',
+                        maxWidth: '450px',
                         textAlign: 'center',
-                        position: 'relative'
+                        position: 'relative',
+                        zIndex: 10,
+                        boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+                        animation: 'slideUp 0.3s ease-out'
                     }}>
-                        <h3 style={{ marginBottom: '1.5rem', fontWeight: 'bold' }}>Manage Photo</h3>
+                        <h2 style={{ fontSize: '1.25rem', fontWeight: 'bold', color: '#1e293b', marginBottom: '1.5rem' }}>
+                            {avatarUrl ? 'Manage Photo' : 'Add Photo'}
+                        </h2>
 
                         <div style={{
-                            width: '180px',
-                            height: '180px',
+                            width: '160px',
+                            height: '160px',
                             borderRadius: '50%',
                             margin: '0 auto 2rem',
                             overflow: 'hidden',
-                            border: '4px solid #f1f5f9',
+                            border: '4px solid #f8fafc',
                             background: '#f1f5f9',
                             display: 'flex',
                             alignItems: 'center',
-                            justifyContent: 'center'
+                            justifyContent: 'center',
+                            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
                         }}>
                             {avatarUrl ? (
                                 <Image
                                     src={avatarUrl}
                                     alt="Avatar Large"
-                                    width={180}
-                                    height={180}
+                                    width={160}
+                                    height={160}
                                     style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                                 />
                             ) : (
-                                <span style={{ fontSize: '5rem' }}>
+                                <span style={{ fontSize: '4.5rem' }}>
                                     {gender === 'MALE' ? '👨🏻' : '👩🏻'}
                                 </span>
                             )}
                         </div>
 
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                            <label className="btn btn-primary" style={{ cursor: 'pointer' }}>
-                                {avatarUrl ? 'Change Photo' : 'Upload Photo'}
+                        <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center' }}>
+                            <label
+                                className="btn btn-primary"
+                                style={{
+                                    cursor: 'pointer',
+                                    padding: '0.625rem 1.25rem',
+                                    fontSize: '0.875rem',
+                                    flex: 1
+                                }}
+                            >
+                                {avatarUrl ? 'Change' : 'Upload'}
                                 <input
                                     type="file"
                                     hidden
@@ -403,25 +422,67 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                             {avatarUrl && (
                                 <button
                                     type="button"
-                                    className="btn"
-                                    style={{ background: '#fee2e2', color: '#b91c1c' }}
                                     onClick={handleResetPhoto}
+                                    style={{
+                                        padding: '0.625rem 1.25rem',
+                                        border: 'none',
+                                        borderRadius: '0.5rem',
+                                        background: '#fee2e2',
+                                        cursor: 'pointer',
+                                        fontSize: '0.875rem',
+                                        fontWeight: '500',
+                                        color: '#dc2626',
+                                        transition: 'all 0.2s',
+                                        flex: 1
+                                    }}
+                                    onMouseEnter={(e) => e.currentTarget.style.background = '#fecaca'}
+                                    onMouseLeave={(e) => e.currentTarget.style.background = '#fee2e2'}
                                 >
-                                    Reset Photo
+                                    Reset
                                 </button>
                             )}
 
                             <button
                                 type="button"
-                                className="btn"
-                                style={{ background: '#f1f5f9', color: '#0f172a' }}
                                 onClick={() => setShowAvatarModal(false)}
+                                style={{
+                                    padding: '0.625rem 1.25rem',
+                                    border: '1px solid #e2e8f0',
+                                    borderRadius: '0.5rem',
+                                    background: 'white',
+                                    cursor: 'pointer',
+                                    fontSize: '0.875rem',
+                                    fontWeight: '500',
+                                    color: '#475569',
+                                    transition: 'all 0.2s',
+                                    flex: 1
+                                }}
+                                onMouseEnter={(e) => e.currentTarget.style.background = '#f8fafc'}
+                                onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
                             >
                                 Close
                             </button>
                         </div>
                     </div>
-                </div>
+
+                    <style jsx global>{`
+                        @keyframes fadeIn {
+                            from { opacity: 0; }
+                            to { opacity: 1; }
+                        }
+                        @keyframes slideUp {
+                            from {
+                                opacity: 0;
+                                transform: translateY(20px);
+                            }
+                            to {
+                                opacity: 1;
+                                transform: translateY(0);
+                            }
+                        }
+                    `}</style>
+                </div>,
+                document.body
             )}
 
             {pendingRequest && (
@@ -485,21 +546,31 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                     </select>
                 </div>
 
-                {userRole === 'SUPER_ADMIN' && (
+                {(userRole === 'SUPER_ADMIN' || role === 'SUPER_ADMIN') && (
                     <div style={{ marginBottom: '1rem' }}>
                         <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>Company</label>
-                        <select
-                            className="input"
-                            value={companyId}
-                            onChange={e => setCompanyId(e.target.value)}
-                            disabled={isViewMode}
-                            style={isViewMode ? { background: '#f1f5f9', cursor: 'not-allowed' } : {}}
-                        >
-                            <option value="">Select Company</option>
-                            {companies.map(c => (
-                                <option key={c.id} value={c.id}>{c.name}</option>
-                            ))}
-                        </select>
+                        {role === 'SUPER_ADMIN' ? (
+                            <input
+                                className="input"
+                                value="SHSD"
+                                disabled
+                                readOnly
+                                style={{ background: '#f1f5f9', cursor: 'not-allowed' }}
+                            />
+                        ) : (
+                            <select
+                                className="input"
+                                value={companyId}
+                                onChange={e => setCompanyId(e.target.value)}
+                                disabled={isViewMode}
+                                style={isViewMode ? { background: '#f1f5f9', cursor: 'not-allowed' } : {}}
+                            >
+                                <option value="">Select Company</option>
+                                {companies.map(c => (
+                                    <option key={c.id} value={c.id}>{c.name}</option>
+                                ))}
+                            </select>
+                        )}
                     </div>
                 )}
                 <div style={{ marginBottom: '1rem' }}>

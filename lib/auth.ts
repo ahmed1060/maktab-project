@@ -42,7 +42,7 @@ export const authOptions: NextAuthOptions = {
                             gender: superAdmin.gender || 'MALE',
                             avatar: superAdmin.avatar || null,
                             companyId: null, // Super Admins might not have a company
-                            companyName: 'System'
+                            companyName: 'SHSD'
                         }
                     }
 
