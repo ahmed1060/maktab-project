@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import AccessDenied from '@/components/AccessDenied'
 import Modal from '@/components/Modal'
+import ConfirmModal from '@/components/ConfirmModal'
 import { useToast } from '@/context/ToastContext'
 
 type Payment = {
@@ -39,6 +40,7 @@ export default function CompanyPaymentsPage() {
         subscriptionType: 'MONTHLY'
     })
     const [submitting, setSubmitting] = useState(false)
+    const [paymentToDelete, setPaymentToDelete] = useState<string | null>(null)
 
     const fetchCompanyData = async () => {
         try {
@@ -117,11 +119,15 @@ export default function CompanyPaymentsPage() {
         }
     }
 
-    const handleDelete = async (paymentId: string) => {
-        if (!confirm('Are you sure you want to delete this payment record?')) return
+    const handleDelete = (paymentId: string) => {
+        setPaymentToDelete(paymentId)
+    }
+
+    const confirmDelete = async () => {
+        if (!paymentToDelete) return
 
         try {
-            const res = await fetch(`/api/companies/${companyId}/payments/${paymentId}`, {
+            const res = await fetch(`/api/companies/${companyId}/payments/${paymentToDelete}`, {
                 method: 'DELETE'
             })
 
@@ -134,6 +140,8 @@ export default function CompanyPaymentsPage() {
             }
         } catch (error) {
             showToast('Error deleting payment', 'error')
+        } finally {
+            setPaymentToDelete(null)
         }
     }
 
@@ -313,6 +321,15 @@ export default function CompanyPaymentsPage() {
                     </div>
                 </form>
             </Modal>
+
+            <ConfirmModal
+                isOpen={!!paymentToDelete}
+                title="Delete Payment Record"
+                message="Are you sure you want to delete this payment record? This action cannot be undone."
+                onConfirm={confirmDelete}
+                onCancel={() => setPaymentToDelete(null)}
+                variant="danger"
+            />
         </div>
     )
 }
