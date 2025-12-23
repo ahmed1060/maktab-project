@@ -57,3 +57,40 @@ export async function PATCH(
         )
     }
 }
+export async function DELETE(
+    req: Request,
+    { params }: { params: { id: string, paymentId: string } }
+) {
+    try {
+        const session = await getServerSession(authOptions)
+        if (!session?.user || session.user.role !== 'SUPER_ADMIN') {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+        }
+
+        const { paymentId } = params
+
+        const payment = await prisma.companyPayment.findUnique({
+            where: { id: paymentId }
+        })
+
+        if (!payment) {
+            return NextResponse.json({ error: "Payment not found" }, { status: 404 })
+        }
+
+        if (payment.status === 'PAID') {
+            return NextResponse.json({ error: "Cannot delete a PAID payment record" }, { status: 400 })
+        }
+
+        await prisma.companyPayment.delete({
+            where: { id: paymentId }
+        })
+
+        return NextResponse.json({ success: true })
+    } catch (error) {
+        console.error('Delete payment error:', error)
+        return NextResponse.json(
+            { error: "Failed to delete payment" },
+            { status: 500 }
+        )
+    }
+}

@@ -117,6 +117,26 @@ export default function CompanyPaymentsPage() {
         }
     }
 
+    const handleDelete = async (paymentId: string) => {
+        if (!confirm('Are you sure you want to delete this payment record?')) return
+
+        try {
+            const res = await fetch(`/api/companies/${companyId}/payments/${paymentId}`, {
+                method: 'DELETE'
+            })
+
+            if (res.ok) {
+                showToast('Payment deleted successfully', 'success')
+                fetchPayments()
+            } else {
+                const data = await res.json()
+                showToast(data.error || 'Failed to delete payment', 'error')
+            }
+        } catch (error) {
+            showToast('Error deleting payment', 'error')
+        }
+    }
+
     if (!session?.user || session.user.role !== 'SUPER_ADMIN') {
         return <AccessDenied />
     }
@@ -197,21 +217,48 @@ export default function CompanyPaymentsPage() {
                                         </span>
                                     </td>
                                     <td style={{ padding: '1.25rem', textAlign: 'right' }}>
-                                        <button
-                                            onClick={() => payment.status === 'UNPAID' && markAsPaid(payment.id)}
-                                            className="btn"
-                                            disabled={payment.status === 'PAID'}
-                                            style={{
-                                                background: payment.status === 'PAID' ? '#f1f5f9' : '#6366f1',
-                                                color: payment.status === 'PAID' ? '#94a3b8' : 'white',
-                                                padding: '0.4rem 0.8rem',
-                                                fontSize: '0.8rem',
-                                                cursor: payment.status === 'PAID' ? 'not-allowed' : 'pointer',
-                                                border: payment.status === 'PAID' ? '1px solid #e2e8f0' : 'none'
-                                            }}
-                                        >
-                                            {payment.status === 'PAID' ? '✅ Paid' : 'Mark as Paid'}
-                                        </button>
+                                        <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', alignItems: 'center' }}>
+                                            <button
+                                                onClick={() => payment.status === 'UNPAID' && markAsPaid(payment.id)}
+                                                className="btn"
+                                                disabled={payment.status === 'PAID'}
+                                                style={{
+                                                    background: payment.status === 'PAID' ? '#f1f5f9' : '#6366f1',
+                                                    color: payment.status === 'PAID' ? '#94a3b8' : 'white',
+                                                    padding: '0.4rem 0.8rem',
+                                                    fontSize: '0.8rem',
+                                                    cursor: payment.status === 'PAID' ? 'not-allowed' : 'pointer',
+                                                    border: payment.status === 'PAID' ? '1px solid #e2e8f0' : 'none'
+                                                }}
+                                            >
+                                                {payment.status === 'PAID' ? '✅ Paid' : 'Mark as Paid'}
+                                            </button>
+
+                                            {payment.status === 'UNPAID' && (
+                                                <button
+                                                    onClick={() => handleDelete(payment.id)}
+                                                    className="btn"
+                                                    style={{
+                                                        background: '#fee2e2',
+                                                        color: '#dc2626',
+                                                        padding: '0.4rem',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center',
+                                                        borderRadius: '0.5rem',
+                                                        border: 'none',
+                                                        cursor: 'pointer'
+                                                    }}
+                                                    title="Delete Payment"
+                                                >
+                                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                        <path d="M3 6h18"></path>
+                                                        <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
+                                                        <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
+                                                    </svg>
+                                                </button>
+                                            )}
+                                        </div>
                                     </td>
                                 </tr>
                             ))}
