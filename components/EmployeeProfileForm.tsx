@@ -40,6 +40,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
 
     useEffect(() => {
         const fetchEmployee = async () => {
+            if (!session) return // Don't fetch if no session (avoids errors on signout)
             try {
                 // Determine API endpoint: If fetching DELETED user, we might need special handling?
                 // The current GET /api/users?id=... handles finding user by ID regardless of status if caller is admin.
@@ -247,7 +248,11 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                 // 2. Update UI and Session
                 setAvatarUrl(data.url)
                 if (userId === session?.user?.id) {
-                    await update({ avatar: data.url, image: data.url, picture: data.url })
+                    await update({
+                        avatar: data.url,
+                        image: data.url,
+                        picture: data.url
+                    })
                 }
                 showToast('Photo updated successfully!', 'success')
                 setShowAvatarModal(false)
