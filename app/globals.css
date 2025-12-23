@@ -149,11 +149,13 @@ body::before {
     padding: 0.35rem 0.5rem !important;
     font-size: 0.75rem !important;
     max-width: 50px !important;
-    /* Slightly tighter without arrow */
     height: 36px !important;
     color: transparent !important;
     background-image: none !important;
-    /* Hide arrows */
+    background-color: rgba(255, 255, 255, 0.45) !important;
+    -webkit-appearance: none !important;
+    -moz-appearance: none !important;
+    appearance: none !important;
     /* Hide text to show initials mask */
   }
 

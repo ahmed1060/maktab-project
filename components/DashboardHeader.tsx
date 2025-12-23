@@ -222,7 +222,6 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
                             right: '0',
                             top: '50%',
                             transform: 'translateY(-50%)',
-                            pointerEvents: 'none',
                             fontSize: '0.75rem',
                             fontWeight: '800',
                             color: 'var(--text-main)',
