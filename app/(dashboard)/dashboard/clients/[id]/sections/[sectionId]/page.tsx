@@ -424,7 +424,7 @@ export default function SectionNotesPage() {
                 onConfirm={async () => {
                     if (deleteConfirm.note) {
                         try {
-                            const res = await fetch(`/api/clients/${clientId}/sections/${sectionId}/notes?id=${deleteConfirm.note.id}`, { method: 'DELETE' })
+                            const res = await fetch(`/api/clients/${clientId}/sections/${sectionId}/notes?noteId=${deleteConfirm.note.id}`, { method: 'DELETE' })
                             if (res.ok) {
                                 fetchData()
                                 setDeleteConfirm({ isOpen: false, note: null })

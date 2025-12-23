@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 
 import { getServerSession } from "next-auth"
@@ -173,7 +173,7 @@ export async function POST(
 }
 
 export async function DELETE(
-    request: Request,
+    request: NextRequest,
     { params }: { params: { id: string, sectionId: string } }
 ) {
     try {
@@ -183,8 +183,7 @@ export async function DELETE(
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
         }
 
-        const { searchParams } = new URL(request.url)
-        const noteId = searchParams.get('id')
+        const noteId = request.nextUrl.searchParams.get('noteId') || request.nextUrl.searchParams.get('id')
 
         if (!noteId) {
             return NextResponse.json({ error: 'ID is required' }, { status: 400 })
