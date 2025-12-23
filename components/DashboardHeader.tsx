@@ -158,7 +158,9 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
-                height: '72px'
+                height: '72px',
+                width: '100%',
+                boxSizing: 'border-box'
             }}
         >
             {/* Left: Page Name */}
@@ -199,13 +201,13 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
             {/* Right: Actions & Profile */}
             <div
                 className="mobile-gap-dense"
-                style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}
+                style={{ display: 'flex', alignItems: 'center', gap: '1.25rem', minWidth: 0, flexShrink: 0 }}
             >
                 {currentUser.role === 'SUPER_ADMIN' && (
                     <select
                         value={selectedCompanyId || ''}
                         onChange={handleCompanyChange}
-                        className="glass" // Use glass class
+                        className="glass sm-select" // Use glass class and responsive sm-select
                         style={{
                             padding: '0.5rem 1rem',
                             borderRadius: '1rem',
@@ -213,7 +215,9 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
                             fontSize: '0.9rem',
                             outline: 'none',
                             cursor: 'pointer',
-                            color: 'var(--text-main)'
+                            color: 'var(--text-main)',
+                            flexShrink: 1,
+                            minWidth: 0
                         }}
                     >
                         <option value="">All Companies</option>
@@ -276,12 +280,12 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
                 <NotificationBell />
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                    {/* User Info (Role Top, Name Bottom) */}
-                    <div style={{ textAlign: 'right' }}>
-                        <div style={{ fontSize: '0.75rem', fontWeight: 'bold', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+                    {/* User Info (Role Top, Name Bottom) - Hidden on mobile for space */}
+                    <div className="md-hidden" style={{ textAlign: 'right', flexShrink: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: '0.75rem', fontWeight: 'bold', color: 'var(--text-muted)', textTransform: 'uppercase', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                             {currentUser.role.replace('_', ' ')}
                         </div>
-                        <div style={{ fontSize: '0.9rem', fontWeight: '600', color: 'var(--text-main)' }}>
+                        <div style={{ fontSize: '0.9rem', fontWeight: '600', color: 'var(--text-main)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                             {currentUser.firstName} {currentUser.lastName}
                         </div>
                     </div>

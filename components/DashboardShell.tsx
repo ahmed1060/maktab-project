@@ -312,9 +312,9 @@ export default function DashboardShell({ children, user }: DashboardShellProps) 
                     zIndex: 40,
                     boxShadow: isScrolled ? '0 4px 30px rgba(0,0,0,0.05)' : 'none',
                     transition: 'all 0.3s ease',
-                    margin: isScrolled ? '1rem' : '0',
+                    margin: isScrolled ? (isMobile ? '0.5rem' : '1rem') : '0',
                     borderRadius: isScrolled ? '1.5rem' : '0',
-                    marginTop: isScrolled ? '1rem' : '0',
+                    marginTop: isScrolled ? (isMobile ? '0.5rem' : '1rem') : '0',
                 }}>
                     <DashboardHeader
                         user={user}

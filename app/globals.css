@@ -139,6 +139,16 @@ body::before {
   .mobile-gap-dense {
     gap: 0.5rem !important;
   }
+
+  .md-hidden {
+    display: none !important;
+  }
+
+  .sm-select {
+    padding: 0.4rem 0.6rem !important;
+    font-size: 0.8rem !important;
+    max-width: 130px !important;
+  }
 }
 
 /* Glassmorphism Utilities */
