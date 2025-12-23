@@ -16,7 +16,7 @@ import { authOptions } from "@/lib/auth"
 // However, looking at `api / users / route.ts` or `api / tasks / route.ts` would be best.
 // I'll assume standard robust pattern:
 
-export async function GET(request: Request) {
+export async function GET() {
     try {
         const session = await getServerSession(authOptions)
         const userId = (session?.user as any)?.id

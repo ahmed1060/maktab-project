@@ -134,8 +134,7 @@ export async function POST(
 }
 
 export async function DELETE(
-    request: Request,
-    { params }: { params: { id: string } }
+    request: Request
 ) {
     try {
         const session = await getServerSession(authOptions)
