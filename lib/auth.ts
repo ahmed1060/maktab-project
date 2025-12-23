@@ -41,7 +41,8 @@ export const authOptions: NextAuthOptions = {
                             lastName: superAdmin.lastName,
                             gender: superAdmin.gender || 'MALE',
                             avatar: superAdmin.avatar || null,
-                            companyId: null, // Super Admins might not have a company
+                            image: superAdmin.avatar || null, // Map to standard NextAuth field
+                            companyId: null,
                             companyName: 'SHSD'
                         }
                     }
@@ -92,6 +93,7 @@ export const authOptions: NextAuthOptions = {
                         lastName: user.lastName,
                         gender: user.gender || 'MALE',
                         avatar: user.avatar || null,
+                        image: user.avatar || null, // Map to standard NextAuth field
                         companyId: user.companyId,
                         companyName: user.company?.name || null
                     }
@@ -107,13 +109,14 @@ export const authOptions: NextAuthOptions = {
         async session({ session, token }) {
             if (session.user) {
                 session.user.id = token.sub as string
-                session.user.role = token.role
-                session.user.firstName = token.firstName
-                session.user.lastName = token.lastName
-                session.user.gender = token.gender
-                session.user.avatar = token.avatar
-                session.user.companyId = token.companyId
-                session.user.companyName = token.companyName
+                session.user.role = token.role as string
+                session.user.firstName = token.firstName as string
+                session.user.lastName = token.lastName as string
+                session.user.gender = token.gender as string
+                session.user.avatar = (token.avatar || token.picture || token.image) as string | null
+                session.user.image = (token.avatar || token.picture || token.image) as string | null
+                session.user.companyId = token.companyId as string | null
+                session.user.companyName = token.companyName as string | null
             }
             return session
         },
@@ -124,6 +127,8 @@ export const authOptions: NextAuthOptions = {
                 token.lastName = user.lastName
                 token.gender = user.gender
                 token.avatar = user.avatar
+                token.image = user.avatar
+                token.picture = user.avatar
                 token.companyId = user.companyId
                 token.companyName = user.companyName
                 token.jti = uuidv4()
@@ -132,7 +137,11 @@ export const authOptions: NextAuthOptions = {
                 if (session.firstName !== undefined) token.firstName = session.firstName
                 if (session.lastName !== undefined) token.lastName = session.lastName
                 if (session.gender !== undefined) token.gender = session.gender
-                if (session.avatar !== undefined) token.avatar = session.avatar
+                if (session.avatar !== undefined) {
+                    token.avatar = session.avatar
+                    token.image = session.avatar
+                    token.picture = session.avatar
+                }
             }
             return token
         }
