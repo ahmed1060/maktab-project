@@ -27,6 +27,7 @@ model SuperAdmin {
   lastName  String
   avatar    String?
   gender    String     @default("MALE")
+  language  String     @default("en")
   createdAt DateTime   @default(now())
   updatedAt DateTime   @updatedAt
   auditLogs AuditLog[]
@@ -41,6 +42,7 @@ model User {
   role                       String
   avatar                     String?
   gender                     String                 @default("MALE")
+  language                   String                 @default("en")
   companyId                  String?
   status                     String                 @default("OFFLINE")
   lastActivity               DateTime               @default(now())

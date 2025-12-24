@@ -7,6 +7,8 @@ import Image from 'next/image'
 import NotificationBell from './NotificationBell'
 import { useCompany } from '@/context/CompanyContext'
 import { useHeader } from '@/context/HeaderContext'
+import { useLanguage } from '@/context/LanguageContext'
+import LanguageToggleButton from './LanguageToggleButton'
 
 interface DashboardHeaderProps {
     user: {
@@ -31,6 +33,7 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
     const { title: contextTitle } = useHeader()
     const [companies, setCompanies] = useState<{ id: string, name: string }[]>([])
     const [pendingRequestsCount, setPendingRequestsCount] = useState(0)
+    const { t } = useLanguage()
 
     // Use client-side session for live updates (e.g. avatar change), fall back to prop
     const { data: session } = useSession()
@@ -125,20 +128,20 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
 
     // Map path to title
     const getPageTitle = (path: string) => {
-        if (path === '/dashboard') return 'Dashboard'
-        if (path === '/dashboard/tasks') return 'Tasks'
-        if (path.startsWith('/dashboard/tasks/')) return 'Task Details'
-        if (path === '/dashboard/obligations') return 'Obligations'
-        if (path.startsWith('/dashboard/obligations/')) return 'Obligation Details'
-        if (path === '/dashboard/employees') return 'Employees'
-        if (path.startsWith('/dashboard/employees/')) return 'Employee Profile'
-        if (path === '/dashboard/costs') return 'Costs'
-        if (path === '/dashboard/all-users') return 'All Users'
-        if (path === '/dashboard/clients') return 'Clients'
-        if (path.startsWith('/dashboard/clients/')) return 'Client Details'
-        if (path === '/dashboard/companies') return 'Companies'
-        if (path === '/dashboard/super-admins') return 'Super Admins'
-        return 'System'
+        if (path === '/dashboard') return t('dashboard')
+        if (path === '/dashboard/tasks') return t('tasks')
+        if (path.startsWith('/dashboard/tasks/')) return t('task_details')
+        if (path === '/dashboard/obligations') return t('obligations')
+        if (path.startsWith('/dashboard/obligations/')) return t('obligation_details')
+        if (path === '/dashboard/employees') return t('employees')
+        if (path.startsWith('/dashboard/employees/')) return t('employee_profile')
+        if (path === '/dashboard/costs') return t('costs')
+        if (path === '/dashboard/all-users') return t('all_users')
+        if (path === '/dashboard/clients') return t('clients')
+        if (path.startsWith('/dashboard/clients/')) return t('client_details')
+        if (path === '/dashboard/companies') return t('companies')
+        if (path === '/dashboard/super-admins') return t('super_admins')
+        return t('system')
     }
 
     const pathTitle = getPageTitle(pathname)
@@ -254,7 +257,7 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
                                 minWidth: 0,
                             }}
                         >
-                            <option value="">All Companies</option>
+                            <option value="">{t('all_companies')}</option>
                             {companies.map(c => (
                                 <option key={c.id} value={c.id}>{c.name}</option>
                             ))}
@@ -265,7 +268,7 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
                 {['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role) && (
                     <Link
                         href="/dashboard/profile-requests"
-                        title="Name Change Requests"
+                        title={t('profile_requests')}
                         style={{
                             display: 'flex',
                             alignItems: 'center',
@@ -394,7 +397,7 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
                                         onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.4)'}
                                         onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
                                     >
-                                        My Profile
+                                        {t('my_profile')}
                                     </Link>
                                     {currentUser.role !== 'SUPER_ADMIN' && (
                                         <Link
@@ -404,35 +407,38 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
                                                 display: 'block',
                                                 padding: '0.5rem 1rem',
                                                 textDecoration: 'none',
-                                                color: '#1e293b',
+                                                color: 'var(--text-main)',
                                                 fontSize: '0.9rem',
-                                                borderRadius: '0.25rem',
-                                                transition: 'background 0.2s'
+                                                borderRadius: '0.5rem',
+                                                transition: 'background 0.2s',
+                                                fontWeight: '500'
                                             }}
-                                            onMouseEnter={(e) => e.currentTarget.style.background = '#f8fafc'}
+                                            onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.4)'}
                                             onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
                                         >
-                                            Salary History
+                                            {t('salary_history')}
                                         </Link>
                                     )}
+                                    <LanguageToggleButton variant="menu-item" onAction={() => setIsMenuOpen(false)} />
                                     <button
                                         onClick={handleLogout}
                                         style={{
                                             width: '100%',
                                             textAlign: 'left',
-                                            padding: '0.5rem 1rem',
+                                            padding: '0.6rem 1rem',
                                             background: 'none',
                                             border: 'none',
                                             color: '#ef4444',
                                             fontSize: '0.9rem',
                                             fontWeight: 'bold',
                                             cursor: 'pointer',
-                                            borderRadius: '0.25rem'
+                                            borderRadius: '0.5rem',
+                                            transition: 'background 0.2s'
                                         }}
                                         onMouseEnter={(e) => e.currentTarget.style.background = '#fef2f2'}
                                         onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
                                     >
-                                        Sign Out
+                                        {t('sign_out')}
                                     </button>
                                 </div>
                             </>

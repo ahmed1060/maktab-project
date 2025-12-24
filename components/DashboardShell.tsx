@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import DashboardHeader from './DashboardHeader'
+import { useLanguage } from '@/context/LanguageContext'
 
 interface DashboardShellProps {
     children: React.ReactNode
@@ -14,6 +15,8 @@ export default function DashboardShell({ children, user }: DashboardShellProps) 
     const [isSidebarOpen, setIsSidebarOpen] = useState(false)
     const [isMobile, setIsMobile] = useState(false)
     const [isCollapsed, setIsCollapsed] = useState(false) // New State for Desktop Collapse
+    const { t, locale } = useLanguage()
+    const isRtl = locale === 'ar'
 
     // Handle responsive state matches
     useEffect(() => {
@@ -78,9 +81,11 @@ export default function DashboardShell({ children, user }: DashboardShellProps) 
                 height: '100vh',
                 zIndex: 50,
                 transition: 'width 0.4s cubic-bezier(0.16, 1, 0.3, 1), transform 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
-                transform: (isMobile && !isSidebarOpen) ? 'translateX(-100%)' : 'translateX(0)',
-                boxShadow: (isMobile && isSidebarOpen) ? '20px 0 50px rgba(0,0,0,0.2)' : 'none',
-                overflow: 'hidden'
+                [isRtl ? 'right' : 'left']: 0,
+                transform: (isMobile && !isSidebarOpen) ? (isRtl ? 'translateX(100%)' : 'translateX(-100%)') : 'translateX(0)',
+                boxShadow: (isMobile && isSidebarOpen) ? (isRtl ? '-20px 0 50px rgba(0,0,0,0.2)' : '20px 0 50px rgba(0,0,0,0.2)') : 'none',
+                overflow: 'hidden',
+                direction: isRtl ? 'rtl' : 'ltr'
             }}>
                 <div style={{
                     height: (user?.role === 'SUPER_ADMIN') ? '80px' : '65px', // Standard for SA, Reduced to 70px for others
@@ -143,13 +148,13 @@ export default function DashboardShell({ children, user }: DashboardShellProps) 
                     overflowX: 'hidden',
                     scrollbarGutter: 'stable'
                 }}>
-                    {!isCollapsed && <p style={{ fontSize: '0.75rem', fontWeight: 'bold', textTransform: 'uppercase', color: '#94a3b8', paddingLeft: '1rem', marginBottom: '0.25rem', letterSpacing: '0.1em' }}>Menu</p>}
+                    {!isCollapsed && <p style={{ fontSize: '0.75rem', fontWeight: 'bold', textTransform: 'uppercase', color: '#94a3b8', [isRtl ? 'paddingRight' : 'paddingLeft']: '1rem', marginBottom: '0.25rem', letterSpacing: '0.1em' }}>Menu</p>}
 
                     {[
-                        { href: '/dashboard', label: 'Dashboard', icon: '📊' },
-                        { href: '/dashboard/tasks', label: 'Tasks', icon: '✅' },
-                        { href: '/dashboard/obligations', label: 'Obligations', icon: '📌' },
-                        { href: '/dashboard/clients', label: 'Clients', icon: '🤝' },
+                        { href: '/dashboard', label: t('dashboard'), icon: '📊' },
+                        { href: '/dashboard/tasks', label: t('tasks'), icon: '✅' },
+                        { href: '/dashboard/obligations', label: t('obligations'), icon: '📌' },
+                        { href: '/dashboard/clients', label: t('clients'), icon: '🤝' },
                     ].map(link => (
                         <Link
                             key={link.href}
@@ -192,12 +197,12 @@ export default function DashboardShell({ children, user }: DashboardShellProps) 
                             {isCollapsed ? (
                                 <hr style={{ border: 'none', borderTop: '1px solid rgba(255, 255, 255, 0.3)', margin: '1rem auto', width: '50%' }} />
                             ) : (
-                                <p style={{ fontSize: '0.75rem', fontWeight: 'bold', textTransform: 'uppercase', color: '#94a3b8', paddingLeft: '1rem', marginTop: '1.5rem', marginBottom: '0.25rem', letterSpacing: '0.1em' }}>Management</p>
+                                <p style={{ fontSize: '0.75rem', fontWeight: 'bold', textTransform: 'uppercase', color: '#94a3b8', [isRtl ? 'paddingRight' : 'paddingLeft']: '1rem', marginTop: '1.5rem', marginBottom: '0.25rem', letterSpacing: '0.1em' }}>Management</p>
                             )}
 
                             {[
-                                { href: '/dashboard/costs', label: 'Costs', icon: '💰' },
-                                { href: '/dashboard/employees', label: 'Employees', icon: '👥' },
+                                { href: '/dashboard/costs', label: t('costs'), icon: '💰' },
+                                { href: '/dashboard/employees', label: t('employees'), icon: '👥' },
                             ].map(link => (
                                 <Link
                                     key={link.href}
@@ -242,13 +247,13 @@ export default function DashboardShell({ children, user }: DashboardShellProps) 
                             {isCollapsed ? (
                                 <hr style={{ border: 'none', borderTop: '1px solid rgba(255, 255, 255, 0.3)', margin: '1rem auto', width: '50%' }} />
                             ) : (
-                                <p style={{ fontSize: '0.75rem', fontWeight: 'bold', textTransform: 'uppercase', color: '#94a3b8', paddingLeft: '1rem', marginTop: '1.5rem', marginBottom: '0.25rem', letterSpacing: '0.1em' }}>System</p>
+                                <p style={{ fontSize: '0.75rem', fontWeight: 'bold', textTransform: 'uppercase', color: '#94a3b8', [isRtl ? 'paddingRight' : 'paddingLeft']: '1rem', marginTop: '1.5rem', marginBottom: '0.25rem', letterSpacing: '0.1em' }}>{t('system')}</p>
                             )}
 
                             {[
-                                { href: '/dashboard/super-admins', label: 'Super Admins', icon: '🛡️' },
-                                { href: '/dashboard/companies', label: 'Companies', icon: '🏢' },
-                                { href: '/dashboard/all-users', label: 'All Users', icon: '👥' }
+                                { href: '/dashboard/super-admins', label: t('super_admins'), icon: '🛡️' },
+                                { href: '/dashboard/companies', label: t('companies'), icon: '🏢' },
+                                { href: '/dashboard/all-users', label: t('all_users'), icon: '👥' }
                             ].map(link => (
                                 <Link key={link.href} href={link.href} onClick={() => isMobile && setIsSidebarOpen(false)} title={isCollapsed ? link.label : ''} className="nav-link" style={{
                                     color: 'rgba(255,255,255,0.8)',
@@ -296,11 +301,12 @@ export default function DashboardShell({ children, user }: DashboardShellProps) 
                 flex: 1,
                 display: 'flex',
                 flexDirection: 'column',
-                marginLeft: (!isMobile) ? sidebarWidth : '0', // Dynamic margin based on collapse state
+                [isRtl ? 'marginRight' : 'marginLeft']: (!isMobile) ? sidebarWidth : '0', // Dynamic margin based on collapse state
                 minHeight: '100vh',
                 background: 'transparent',
                 width: '100%',
-                transition: 'margin-left 0.4s cubic-bezier(0.16, 1, 0.3, 1)'
+                transition: 'margin 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
+                direction: isRtl ? 'rtl' : 'ltr'
             }}>
                 {/* Floating Glass Header */}
                 <div style={{

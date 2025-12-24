@@ -2,8 +2,11 @@
 import { signIn } from 'next-auth/react'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { useLanguage } from '@/context/LanguageContext'
+import LanguageToggleButton from '@/components/LanguageToggleButton'
 
 export default function LoginPage() {
+    const { t } = useLanguage()
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
     const [error, setError] = useState('')
@@ -29,21 +32,21 @@ export default function LoginPage() {
             if (res?.error) {
                 // Check if it's a suspension error
                 if (res.error.includes('suspended')) {
-                    setError('Your account has been suspended. Please contact an administrator.')
+                    setError(t('error_suspended'))
                 } else if (res.error.includes('Company access restricted')) {
-                    setError('The company has been banned. Access denied.')
+                    setError(t('error_banned'))
                 } else if (res.error.includes('This user does not belong')) {
                     // This shouldn't happen without companyId but good to keep
                     setError('Access Denied.')
                 } else {
-                    setError('Invalid email or password')
+                    setError(t('error_invalid_credentials'))
                 }
                 setLoading(false)
             } else if (res?.ok) {
                 router.push('/dashboard')
                 router.refresh()
             } else {
-                setError('Something went wrong')
+                setError(t('error_generic'))
                 setLoading(false)
             }
         } catch (err: any) {
@@ -100,13 +103,13 @@ export default function LoginPage() {
                         WebkitBackgroundClip: 'text',
                         WebkitTextFillColor: 'transparent',
                         backgroundClip: 'text'
-                    }}>Welcome Back</h1>
+                    }}>{t('welcome_back')}</h1>
                     <p style={{
                         textAlign: 'center',
                         color: '#64748b',
                         marginBottom: '2rem',
                         fontSize: '0.875rem'
-                    }}>Sign in to continue to your dashboard</p>
+                    }}>{t('sign_in_subtitle')}</p>
                     {error && (
                         <div style={{
                             padding: '1rem',
@@ -122,7 +125,7 @@ export default function LoginPage() {
                     )}
                     <form onSubmit={handleSubmit}>
                         <div style={{ marginBottom: '1.25rem' }}>
-                            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>Email</label>
+                            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>{t('email')}</label>
                             <input
                                 type="email"
                                 className="input"
@@ -133,7 +136,7 @@ export default function LoginPage() {
                             />
                         </div>
                         <div style={{ position: 'relative', marginBottom: '1.25rem' }}>
-                            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>Password</label>
+                            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>{t('password')}</label>
                             <input
                                 type={showPassword ? "text" : "password"}
                                 className="input"
@@ -211,13 +214,14 @@ export default function LoginPage() {
                                         borderRadius: '50%',
                                         animation: 'spin 0.6s linear infinite'
                                     }}></span>
-                                    Signing in...
+                                    {t('signing_in')}
                                 </span>
-                            ) : 'Sign In'}
+                            ) : t('sign_in')}
                         </button>
                     </form>
                 </div>
             </div>
+            <LanguageToggleButton variant="fixed" />
         </div>
     )
 }

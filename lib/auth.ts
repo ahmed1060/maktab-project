@@ -43,7 +43,8 @@ export const authOptions: NextAuthOptions = {
                             avatar: superAdmin.avatar || null,
                             image: superAdmin.avatar || null, // Map to standard NextAuth field
                             companyId: null,
-                            companyName: 'SHSD'
+                            companyName: 'SHSD',
+                            language: superAdmin.language || 'en'
                         }
                     }
 
@@ -95,7 +96,8 @@ export const authOptions: NextAuthOptions = {
                         avatar: user.avatar || null,
                         image: user.avatar || null, // Map to standard NextAuth field
                         companyId: user.companyId,
-                        companyName: user.company?.name || null
+                        companyName: user.company?.name || null,
+                        language: user.language || 'en'
                     }
 
                 } catch (error) {
@@ -121,6 +123,7 @@ export const authOptions: NextAuthOptions = {
                 session.user.picture = avatar
                 session.user.companyId = token.companyId as string | null
                 session.user.companyName = token.companyName as string | null
+                session.user.language = token.language as string
             }
             return session
         },
@@ -138,6 +141,7 @@ export const authOptions: NextAuthOptions = {
                 token.picture = avatarUrl
                 token.companyId = user.companyId
                 token.companyName = user.companyName
+                token.language = user.language || 'en'
                 token.jti = uuidv4()
             }
 
@@ -155,6 +159,7 @@ export const authOptions: NextAuthOptions = {
                     token.image = newAvatar
                     token.picture = newAvatar
                 }
+                if (session.language !== undefined) token.language = session.language
             }
             return token
         }
