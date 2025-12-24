@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
+import { useLanguage } from "@/context/LanguageContext"
 
 interface Notification {
     id: string
@@ -18,6 +19,7 @@ export default function NotificationBell() {
     const [unreadCount, setUnreadCount] = useState(0)
     const dropdownRef = useRef<HTMLDivElement>(null)
     const router = useRouter()
+    const { t, locale } = useLanguage()
 
     const fetchNotifications = async () => {
         try {
@@ -121,7 +123,7 @@ export default function NotificationBell() {
             {isOpen && (
                 <div style={{
                     position: 'absolute',
-                    right: 0,
+                    [locale === 'ar' ? 'left' : 'right']: 0,
                     top: '100%',
                     width: '300px',
                     background: 'white',
@@ -133,11 +135,11 @@ export default function NotificationBell() {
                     overflowY: 'auto'
                 }}>
                     <div style={{ padding: '0.5rem', borderBottom: '1px solid #eee', fontWeight: 'bold' }}>
-                        Notifications
+                        {t('notifications')}
                     </div>
                     {notifications.length === 0 ? (
                         <div style={{ padding: '1rem', textAlign: 'center', color: '#666' }}>
-                            No notifications
+                            {t('no_notifications')}
                         </div>
                     ) : (
                         notifications.map(notification => (

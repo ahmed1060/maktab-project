@@ -32,6 +32,7 @@ export const translations = {
         all_companies: "All Companies",
         profile_requests: "Profile Requests",
         notifications: "Notifications",
+        no_notifications: "No notifications",
         toggle_language: "العربية"
     },
     ar: {
@@ -65,6 +66,7 @@ export const translations = {
         all_companies: "جميع الشركات",
         profile_requests: "طلبات تغيير الملف الشخصي",
         notifications: "التنبيهات",
+        no_notifications: "لا توجد تنبيهات",
         toggle_language: "English"
     }
 };

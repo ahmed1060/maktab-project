@@ -33,7 +33,7 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
     const { title: contextTitle } = useHeader()
     const [companies, setCompanies] = useState<{ id: string, name: string }[]>([])
     const [pendingRequestsCount, setPendingRequestsCount] = useState(0)
-    const { t } = useLanguage()
+    const { t, locale } = useLanguage()
 
     // Use client-side session for live updates (e.g. avatar change), fall back to prop
     const { data: session } = useSession()
@@ -373,7 +373,7 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
                                 <div className="glass" style={{
                                     position: 'absolute',
                                     top: '120%',
-                                    right: 0,
+                                    [locale === 'ar' ? 'left' : 'right']: 0,
                                     width: '200px',
                                     zIndex: 100,
                                     padding: '0.5rem',
