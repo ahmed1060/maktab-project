@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { createPortal } from 'react-dom'
 import ConfirmModal from '@/components/ConfirmModal'
+import { useLanguage } from '@/context/LanguageContext'
 
 interface Client {
     id: string
@@ -14,6 +15,7 @@ interface Client {
 }
 
 export default function ClientsPage() {
+    const { t, locale } = useLanguage()
     const [clients, setClients] = useState<Client[]>([])
     const [filteredClients, setFilteredClients] = useState<Client[]>([])
     const [searchQuery, setSearchQuery] = useState('')
@@ -29,16 +31,9 @@ export default function ClientsPage() {
         setMounted(true)
     }, [])
 
-    // New State for Super Admin Company Selection
     const [companies, setCompanies] = useState<{ id: string, name: string }[]>([])
     const [selectedCompanyId, setSelectedCompanyId] = useState('')
     const [showCompanySelect, setShowCompanySelect] = useState(false)
-
-    // Helper functions need to be defined BEFORE useEffect if used inside (or defined efficiently)
-    // Actually, function declarations are hoisted, consts are not. 
-    // Safest pattern: Define them above, or inside useEffect, or use useCallback.
-    // Given the structure, I'll define checkSuperAdmin here or just inline the logic in useEffect to avoid hoisting issues,
-    // OR just define it before the useEffect.
 
     const checkSuperAdmin = async () => {
         try {
@@ -81,10 +76,6 @@ export default function ClientsPage() {
         setFilteredClients(filtered)
     }, [searchQuery, clients])
 
-    // checkSuperAdmin and fetchClients moved up
-    // Removing duplicate definitions if they exist below this block in the file
-    // The previous view showed them at line 35 and 48. I must replace them to avoid duplicates.
-
     const handleCreateClient = async (e: React.FormEvent) => {
         e.preventDefault()
         if (!newClientName.trim()) return
@@ -108,11 +99,11 @@ export default function ClientsPage() {
                 fetchClients()
             } else {
                 const err = await res.json()
-                window.alert(`Failed to create client: ${err.error}\n${err.details || ''}`)
+                window.alert(`${t('failed_create_client')}: ${err.error}\n${err.details || ''}`)
             }
         } catch (error) {
             console.error('Failed to create client', error)
-            window.alert('An unexpected error occurred while creating client')
+            window.alert(t('error_generic'))
         } finally {
             setIsSubmitting(false)
         }
@@ -121,17 +112,15 @@ export default function ClientsPage() {
     return (
         <>
             <div className="space-y-6 animate-in fade-in duration-500">
-                {/* Header matching Tasks Page Style */}
                 <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginBottom: '1.5rem' }}>
                     <button
                         onClick={() => setIsModalOpen(true)}
                         className="btn btn-primary"
                     >
-                        Add Client
+                        {t('add_client')}
                     </button>
                 </div>
 
-                {/* Filter/Search Row - Styled like EmployeeFilter */}
                 <div style={{
                     marginBottom: '1.5rem',
                     display: 'flex',
@@ -141,13 +130,19 @@ export default function ClientsPage() {
                     flexWrap: 'wrap'
                 }}>
                     <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-end', flex: 1, flexWrap: 'wrap' }}>
-                        <div style={{ position: 'relative' }}>
-                            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600', fontSize: '0.875rem' }}>
-                                Search Clients
+                        <div style={{ position: 'relative', width: '100%', maxWidth: '400px' }}>
+                            <label style={{
+                                display: 'block',
+                                marginBottom: '0.5rem',
+                                fontWeight: '600',
+                                fontSize: '0.875rem',
+                                textAlign: locale === 'ar' ? 'right' : 'left'
+                            }}>
+                                {t('search_clients')}
                             </label>
                             <input
                                 type="text"
-                                placeholder="e.g. Acme Corp..."
+                                placeholder={t('client_placeholder')}
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
                                 onFocus={() => setShowSuggestions(true)}
@@ -157,9 +152,9 @@ export default function ClientsPage() {
                                     borderRadius: '0.5rem',
                                     border: '1px solid #cbd5e1',
                                     fontSize: '0.875rem',
-                                    minWidth: '250px',
                                     outline: 'none',
-                                    width: '100%'
+                                    width: '100%',
+                                    textAlign: locale === 'ar' ? 'right' : 'left'
                                 }}
                             />
                             {showSuggestions && (
@@ -191,7 +186,8 @@ export default function ClientsPage() {
                                                     cursor: 'pointer',
                                                     fontSize: '0.875rem',
                                                     color: '#334155',
-                                                    borderBottom: '1px solid #f1f5f9'
+                                                    borderBottom: '1px solid #f1f5f9',
+                                                    textAlign: locale === 'ar' ? 'right' : 'left'
                                                 }}
                                                 className="hover:bg-slate-50"
                                             >
@@ -199,8 +195,8 @@ export default function ClientsPage() {
                                             </div>
                                         ))}
                                     {clients.filter(c => c.name.toLowerCase().includes(searchQuery.toLowerCase())).length === 0 && (
-                                        <div style={{ padding: '0.5rem 1rem', fontSize: '0.875rem', color: '#94a3b8' }}>
-                                            No clients found
+                                        <div style={{ padding: '0.5rem 1rem', fontSize: '0.875rem', color: '#94a3b8', textAlign: locale === 'ar' ? 'right' : 'left' }}>
+                                            {t('no_clients_found')}
                                         </div>
                                     )}
                                 </div>
@@ -209,25 +205,24 @@ export default function ClientsPage() {
                     </div>
                 </div>
 
-                {/* List View */}
                 {isLoading ? (
                     <div className="flex flex-col items-center justify-center py-20 space-y-4">
                         <div className="w-12 h-12 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></div>
-                        <p className="text-slate-500 font-medium animate-pulse">Loading clients...</p>
+                        <p className="text-slate-500 font-medium animate-pulse">{t('loading_clients')}</p>
                     </div>
                 ) : filteredClients.length === 0 ? (
                     <div className="glass-card flex flex-col items-center justify-center py-12 text-center text-slate-500">
                         <span className="text-4xl mb-2">🏢</span>
-                        <h3 className="text-lg font-bold text-slate-800">No clients found</h3>
+                        <h3 className="text-lg font-bold text-slate-800">{t('no_clients_found')}</h3>
                         <p className="max-w-xs mx-auto mt-1 mb-4">
-                            {searchQuery ? `No matches for "${searchQuery}"` : "Get started by adding your first client."}
+                            {searchQuery ? `${t('no_tasks_found')}` : t('get_started_client')}
                         </p>
                         {searchQuery && (
                             <button
                                 onClick={() => setSearchQuery('')}
                                 className="text-indigo-600 hover:underline"
                             >
-                                Clear search
+                                {t('clear_search')}
                             </button>
                         )}
                     </div>
@@ -239,12 +234,11 @@ export default function ClientsPage() {
                                 className="glass-card hover:bg-white/60 transition-all duration-300 p-4 border border-white/40 shadow-sm relative overflow-hidden"
                                 style={{
                                     animationDelay: `${index * 50}ms`,
-                                    marginBottom: '0.5rem' // Fallback for gap support
+                                    marginBottom: '0.5rem'
                                 }}
                             >
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', gap: '1rem' }}>
-                                    {/* Left Side: Title & Info */}
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', gap: '1rem', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
                                         <h3 className="text-lg font-semibold text-slate-800 leading-tight" style={{ margin: 0 }}>
                                             {client.name}
                                         </h3>
@@ -257,12 +251,11 @@ export default function ClientsPage() {
                                             fontWeight: '600',
                                             whiteSpace: 'nowrap'
                                         }}>
-                                            {client._count.sections} {client._count.sections === 1 ? 'Section' : 'Sections'}
+                                            {client._count.sections} {client._count.sections === 1 ? t('section_label') : t('sections_label')}
                                         </span>
                                     </div>
 
-                                    {/* Right Side: Action Button */}
-                                    <div style={{ marginLeft: 'auto', display: 'flex', gap: '0.5rem' }}>
+                                    <div style={{ [locale === 'ar' ? 'marginRight' : 'marginLeft']: 'auto', display: 'flex', gap: '0.5rem', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
                                         <Link
                                             href={`/dashboard/clients/${client.id}`}
                                             className="btn btn-primary"
@@ -273,7 +266,7 @@ export default function ClientsPage() {
                                                 display: 'inline-block'
                                             }}
                                         >
-                                            View Client
+                                            {t('view_client')}
                                         </Link>
                                         <button
                                             onClick={(e) => {
@@ -290,7 +283,7 @@ export default function ClientsPage() {
                                                 cursor: 'pointer'
                                             }}
                                         >
-                                            Delete
+                                            {t('delete')}
                                         </button>
                                     </div>
                                 </div>
@@ -300,7 +293,6 @@ export default function ClientsPage() {
                 )}
             </div>
 
-            {/* Create Client Modal - Uses Portal to escape stacking contexts */}
             {isModalOpen && mounted && createPortal(
                 <div style={{
                     position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
@@ -312,22 +304,24 @@ export default function ClientsPage() {
                         onClick={() => !isSubmitting && setIsModalOpen(false)}
                     />
                     <div style={{ background: 'white', padding: '2rem', borderRadius: '12px', width: '100%', maxWidth: '500px', position: 'relative', zIndex: 10 }}>
-                        <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1.5rem', color: '#1e293b' }}>Add New Client</h2>
+                        <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1.5rem', color: '#1e293b', textAlign: locale === 'ar' ? 'right' : 'left' }}>
+                            {t('add_new_client_title')}
+                        </h2>
 
                         <form onSubmit={handleCreateClient}>
                             {showCompanySelect && (
                                 <div style={{ marginBottom: '1rem' }}>
-                                    <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', color: '#64748b' }}>
-                                        Assign to Company
+                                    <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', color: '#64748b', textAlign: locale === 'ar' ? 'right' : 'left' }}>
+                                        {t('assign_to_company')}
                                     </label>
                                     <select
                                         value={selectedCompanyId}
                                         onChange={(e) => setSelectedCompanyId(e.target.value)}
                                         className="input"
-                                        style={{ width: '100%', padding: '0.5rem', border: '1px solid #e2e8f0', borderRadius: '0.5rem' }}
+                                        style={{ width: '100%', padding: '0.5rem', border: '1px solid #e2e8f0', borderRadius: '0.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}
                                         required
                                     >
-                                        <option value="">Select a company...</option>
+                                        <option value="">{t('select_company_placeholder')}</option>
                                         {companies.map(c => (
                                             <option key={c.id} value={c.id}>{c.name}</option>
                                         ))}
@@ -336,34 +330,34 @@ export default function ClientsPage() {
                             )}
 
                             <div style={{ marginBottom: '1.5rem' }}>
-                                <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', color: '#64748b' }}>
-                                    Client Company Name
+                                <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', color: '#64748b', textAlign: locale === 'ar' ? 'right' : 'left' }}>
+                                    {t('client_company_name')}
                                 </label>
                                 <input
                                     type="text"
                                     value={newClientName}
                                     onChange={(e) => setNewClientName(e.target.value)}
                                     className="input"
-                                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #e2e8f0', borderRadius: '0.5rem' }}
-                                    placeholder="e.g. Acme Corp Inc."
+                                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #e2e8f0', borderRadius: '0.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}
+                                    placeholder={t('client_placeholder')}
                                     autoFocus
                                 />
                             </div>
 
-                            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
+                            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
                                 <button
                                     type="button"
                                     onClick={() => setIsModalOpen(false)}
                                     style={{ padding: '0.75rem 1.5rem', border: '1px solid #e2e8f0', borderRadius: '0.5rem', background: 'transparent', cursor: 'pointer' }}
                                 >
-                                    Cancel
+                                    {t('cancel')}
                                 </button>
                                 <button
                                     type="submit"
                                     disabled={!newClientName.trim() || isSubmitting || (showCompanySelect && !selectedCompanyId)}
                                     className="btn btn-primary"
                                 >
-                                    {isSubmitting ? 'Creating...' : 'Create Client'}
+                                    {isSubmitting ? t('creating') : t('create_client')}
                                 </button>
                             </div>
                         </form>
@@ -374,9 +368,9 @@ export default function ClientsPage() {
 
             <ConfirmModal
                 isOpen={deleteConfirm.isOpen}
-                title="Delete Client"
-                message={`Are you sure you want to delete "${deleteConfirm.client?.name}"? This will permanently delete all sections and notes associated with this client. This action cannot be undone.`}
-                confirmText="Delete Client"
+                title={t('delete_client_title')}
+                message={`${t('delete_client_warning')}${deleteConfirm.client?.name}${t('delete_client_warning_suffix')}`}
+                confirmText={t('delete_client_title')}
                 onConfirm={async () => {
                     if (deleteConfirm.client) {
                         try {
@@ -386,10 +380,10 @@ export default function ClientsPage() {
                                 setDeleteConfirm({ isOpen: false, client: null })
                             } else {
                                 const err = await res.json()
-                                alert(`Failed to delete: ${err.error}`)
+                                alert(`${t('error_generic')}: ${err.error}`)
                             }
                         } catch (error) {
-                            alert('Error deleting client')
+                            alert(t('error_delete_client'))
                         }
                     }
                 }}

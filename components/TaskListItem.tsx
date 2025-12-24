@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { formatTaskStatus } from '@/lib/formatStatus'
+import { useLanguage } from '@/context/LanguageContext'
 import Modal from './Modal'
 
 interface TaskListItemProps {
@@ -29,16 +30,17 @@ interface TaskListItemProps {
 export default function TaskListItem({ task, currentUserId }: TaskListItemProps) {
     const [isModalOpen, setIsModalOpen] = useState(false)
     const [mounted, setMounted] = useState(false)
+    const { t, locale } = useLanguage()
 
     useEffect(() => {
         setMounted(true)
     }, [])
 
     const getButtonLabel = () => {
-        if (currentUserId !== task.assigneeId) return 'View Task'
-        if (task.status === 'PENDING') return 'Start Task'
-        if (task.status === 'IN_PROGRESS') return 'Continue Task'
-        return 'Open Task'
+        if (currentUserId !== task.assigneeId) return t('view_task')
+        if (task.status === 'PENDING') return t('start_task')
+        if (task.status === 'IN_PROGRESS') return t('continue_task')
+        return t('open_task')
     }
 
     return (
@@ -63,10 +65,10 @@ export default function TaskListItem({ task, currentUserId }: TaskListItemProps)
                     display: 'inline-flex',
                     alignItems: 'center'
                 }}>
-                    {formatTaskStatus(task.status)}
+                    {t(`status_${task.status.toLowerCase()}` as any)}
                     {task.lastStatusUpdateBy && (task.status === 'APPROVED' || task.status === 'COMPLETED' || task.status === 'REJECTED') && (
-                        <span style={{ marginLeft: '0.25rem', fontSize: '0.65rem', opacity: 0.8 }}>
-                            by {task.lastStatusUpdateBy}
+                        <span style={{ [locale === 'ar' ? 'marginRight' : 'marginLeft']: '0.25rem', fontSize: '0.65rem', opacity: 0.8 }}>
+                            {t('by')} {task.lastStatusUpdateBy}
                         </span>
                     )}
                 </span>
@@ -76,15 +78,15 @@ export default function TaskListItem({ task, currentUserId }: TaskListItemProps)
                 <div style={{ fontSize: '0.875rem', color: '#64748b' }}>
                     <div style={{ marginBottom: '0.25rem' }}>
                         {currentUserId === task.assigneeId && task.creator ? (
-                            <span>Assigned by: <strong>{task.creator.firstName} {task.creator.lastName}</strong></span>
+                            <span>{t('assigned_by')}: <strong>{task.creator.firstName} {task.creator.lastName}</strong></span>
                         ) : (
-                            <span>Assignee: {task.assignee.firstName} {task.assignee.lastName}</span>
+                            <span>{t('assignee_label')}: {task.assignee.firstName} {task.assignee.lastName}</span>
                         )}
                     </div>
                     <div>
                         {mounted && (
                             <>
-                                Created: {new Date(task.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} {new Date(task.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })} | Deadline: {new Date(task.deadline).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} {new Date(task.deadline).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                                {t('created_label')}: {new Date(task.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} {new Date(task.createdAt).toLocaleDateString(locale === 'ar' ? 'ar-EG' : 'en-GB')} | {t('deadline_label')}: {new Date(task.deadline).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} {new Date(task.deadline).toLocaleDateString(locale === 'ar' ? 'ar-EG' : 'en-GB')}
                             </>
                         )}
                     </div>

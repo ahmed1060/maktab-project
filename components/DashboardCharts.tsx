@@ -1,4 +1,4 @@
-'use client'
+import { useLanguage } from '@/context/LanguageContext'
 
 
 
@@ -8,6 +8,7 @@ interface DonutChartProps {
 }
 
 export function DonutChart({ data, title }: DonutChartProps) {
+    const { t } = useLanguage()
     const total = data.reduce((acc, item) => acc + item.value, 0)
     let currentAngle = 0
     const radius = 35
@@ -17,7 +18,7 @@ export function DonutChart({ data, title }: DonutChartProps) {
     if (total === 0) {
         return (
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
-                <div style={{ fontSize: '0.9rem', color: '#94a3b8' }}>No data available</div>
+                <div style={{ fontSize: '0.9rem', color: '#94a3b8' }}>{t('no_data_available')}</div>
             </div>
         )
     }
@@ -57,7 +58,7 @@ export function DonutChart({ data, title }: DonutChartProps) {
                     textAlign: 'center'
                 }}>
                     <div style={{ fontSize: '1.5rem', fontWeight: '800', color: '#1e293b' }}>{total}</div>
-                    <div style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: 'bold' }}>TOTAL</div>
+                    <div style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: 'bold' }}>{t('total_label')}</div>
                 </div>
             </div>
             <div style={{ marginTop: '1.5rem', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', width: '100%' }}>
@@ -84,6 +85,7 @@ interface StatMetricProps {
 }
 
 export function StatMetric({ label, value, icon, color, percentage, subLabel }: StatMetricProps) {
+    const { t } = useLanguage()
     return (
         <div className="glass-card" style={{ padding: '1.25rem', borderLeft: `4px solid ${color}` }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '0.75rem' }}>
@@ -107,7 +109,7 @@ export function StatMetric({ label, value, icon, color, percentage, subLabel }: 
             {percentage !== undefined && (
                 <div style={{ marginTop: '1rem' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', marginBottom: '0.4rem', fontWeight: '700' }}>
-                        <span style={{ color: '#64748b' }}>{subLabel || 'Completion Rate'}</span>
+                        <span style={{ color: '#64748b' }}>{subLabel || t('completion_rate')}</span>
                         <span style={{ color: color }}>{percentage}%</span>
                     </div>
                     <div style={{ height: '6px', background: '#f1f5f9', borderRadius: '10px', overflow: 'hidden' }}>

@@ -4,6 +4,7 @@ import Link from 'next/link'
 import TaskListItem from '@/components/TaskListItem'
 import EmployeeFilter from '@/components/EmployeeFilter'
 import SortControl from '@/components/SortControl'
+import { useLanguage } from '@/context/LanguageContext'
 
 interface TasksClientProps {
     tasks: any[]
@@ -12,6 +13,7 @@ interface TasksClientProps {
 }
 
 export default function TasksClient({ tasks, role, currentUserId }: TasksClientProps) {
+    const { t } = useLanguage()
     const [filters, setFilters] = useState({
         employeeId: '',
         dateFrom: '',
@@ -101,7 +103,7 @@ export default function TasksClient({ tasks, role, currentUserId }: TasksClientP
             <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginBottom: '1.5rem' }}>
                 {['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(role) && (
                     <Link href="/dashboard/tasks/new" className="btn btn-primary" style={{ textDecoration: 'none' }}>
-                        Create Task
+                        {t('create_new_task')}
                     </Link>
                 )}
             </div>
@@ -120,10 +122,10 @@ export default function TasksClient({ tasks, role, currentUserId }: TasksClientP
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '1rem' }}>
                 <SortControl
                     options={[
-                        { label: 'Smart Sort (Status)', value: 'smart' },
-                        { label: 'Deadline', value: 'deadline' },
-                        { label: 'Difficulty', value: 'difficulty' },
-                        { label: 'Date Created', value: 'createdAt' },
+                        { label: t('smart_sort'), value: 'smart' },
+                        { label: t('deadline_label'), value: 'deadline' },
+                        { label: t('difficulty'), value: 'difficulty' },
+                        { label: t('date_created'), value: 'createdAt' },
                     ]}
                     sortBy={sortBy}
                     sortOrder={sortOrder}
@@ -138,7 +140,7 @@ export default function TasksClient({ tasks, role, currentUserId }: TasksClientP
                     ))
                 ) : (
                     <div className="card" style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>
-                        No tasks found for the selected filters
+                        {t('no_tasks_found')}
                     </div>
                 )}
             </div>

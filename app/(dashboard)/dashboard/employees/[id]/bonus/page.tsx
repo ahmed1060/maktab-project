@@ -2,8 +2,10 @@
 import { useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { useLanguage } from '@/context/LanguageContext'
 
 export default function AddBonusPage() {
+    const { t, locale } = useLanguage()
     const params = useParams()
     const router = useRouter()
     const [amount, setAmount] = useState('')
@@ -19,7 +21,7 @@ export default function AddBonusPage() {
         setSuccess('')
 
         if (parseFloat(amount) > 1000) {
-            setFieldError('Bonus cannot exceed 1000 days')
+            setFieldError(t('bonus_limit_error' as any))
             setLoading(false)
             return
         }
@@ -31,26 +33,31 @@ export default function AddBonusPage() {
                 headers: { 'Content-Type': 'application/json' }
             })
 
-            if (!res.ok) throw new Error('Failed to add bonus')
+            if (!res.ok) throw new Error(t('failed_add_bonus' as any))
 
-            setSuccess('Bonus added successfully! Redirecting...')
+            setSuccess(t('bonus_added_success' as any))
 
             // Wait a moment then redirect
             setTimeout(() => {
                 router.push('/dashboard/employees')
                 router.refresh()
             }, 1500)
-        } catch (err) {
-            setError('Failed to add bonus')
+        } catch (err: any) {
+            setError(err.message || t('failed_add_bonus' as any))
             setLoading(false)
         }
     }
 
+    const containerStyle: React.CSSProperties = {
+        direction: locale === 'ar' ? 'rtl' : 'ltr',
+        textAlign: locale === 'ar' ? 'right' : 'left'
+    }
+
     return (
-        <div className="card" style={{ maxWidth: '500px', margin: '2rem auto' }}>
-            <h1>Add Monthly Bonus (Days)</h1>
+        <div className="card" style={{ maxWidth: '500px', margin: '2rem auto', ...containerStyle }}>
+            <h1>{t('add_monthly_bonus_title' as any)}</h1>
             <p style={{ color: '#64748b', marginBottom: '1.5rem' }}>
-                Enter the number of <strong>days</strong> to add as a bonus for the current month.
+                {t('bonus_days_hint' as any)}
             </p>
 
             {error && (
@@ -67,7 +74,7 @@ export default function AddBonusPage() {
 
             <form onSubmit={handleSubmit}>
                 <div style={{ marginBottom: '1.5rem' }}>
-                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>Bonus Days</label>
+                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>{t('bonus_days_label' as any)}</label>
                     <input
                         type="number"
                         className="input"
@@ -91,16 +98,16 @@ export default function AddBonusPage() {
                     )}
                 </div>
 
-                <div style={{ display: 'flex', gap: '1rem' }}>
+                <div style={{ display: 'flex', gap: '1rem', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
                     <Link
                         href="/dashboard/employees"
                         className="btn"
                         style={{ background: '#e2e8f0', color: '#0f172a', textAlign: 'center', textDecoration: 'none' }}
                     >
-                        Cancel
+                        {t('cancel')}
                     </Link>
                     <button type="submit" className="btn btn-primary" disabled={loading} style={{ flex: 1 }}>
-                        {loading ? 'Adding...' : 'Add Bonus'}
+                        {loading ? t('adding' as any) : t('add_bonus')}
                     </button>
                 </div>
             </form>

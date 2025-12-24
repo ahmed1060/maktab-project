@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
+import { useLanguage } from '@/context/LanguageContext'
 import SearchableSelect from './SearchableSelect'
 import DateRangePicker from './DateRangePicker'
 
@@ -24,6 +25,7 @@ interface EmployeeType {
 export default function EmployeeFilter({ onFilterChange, selectedEmployeeId, dateFrom, dateTo, totalCount, totalCost, selectedStatus = '' }: EmployeeFilterProps) {
     const [employees, setEmployees] = useState<EmployeeType[]>([])
     const [loading, setLoading] = useState(true)
+    const { t } = useLanguage()
 
     useEffect(() => {
         fetch('/api/users')
@@ -64,7 +66,7 @@ export default function EmployeeFilter({ onFilterChange, selectedEmployeeId, dat
     }
 
     if (loading) {
-        return <div style={{ fontSize: '0.875rem', color: '#64748b' }}>Loading filters...</div>
+        return <div style={{ fontSize: '0.875rem', color: '#64748b' }}>{t('loading_filters')}</div>
     }
 
     return (
@@ -79,7 +81,7 @@ export default function EmployeeFilter({ onFilterChange, selectedEmployeeId, dat
             <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-end', flex: 1, flexWrap: 'wrap' }}>
                 <div>
                     <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600', fontSize: '0.875rem' }}>
-                        Filter by Employee
+                        {t('filter_by_employee')}
                     </label>
                     <SearchableSelect
                         options={employees.map(emp => ({
@@ -89,13 +91,13 @@ export default function EmployeeFilter({ onFilterChange, selectedEmployeeId, dat
                         }))}
                         value={selectedEmployeeId}
                         onChange={handleEmployeeChange}
-                        placeholder="All Employees"
+                        placeholder={t('placeholder_all_employees')}
                     />
                 </div>
 
                 <div>
                     <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600', fontSize: '0.875rem' }}>
-                        Filter by Status
+                        {t('filter_by_status')}
                     </label>
                     <select
                         value={selectedStatus}
@@ -110,12 +112,12 @@ export default function EmployeeFilter({ onFilterChange, selectedEmployeeId, dat
                             background: 'white'
                         }}
                     >
-                        <option value="">All Statuses</option>
-                        <option value="COMPLETED">Completed</option>
-                        <option value="APPROVED">Approved</option>
-                        <option value="REJECTED">Rejected</option>
-                        <option value="PENDING_CONFIRMATION">Pending Approval</option>
-                        <option value="IN_PROGRESS">Pending</option>
+                        <option value="">{t('placeholder_all_statuses')}</option>
+                        <option value="COMPLETED">{t('status_completed')}</option>
+                        <option value="APPROVED">{t('status_approved')}</option>
+                        <option value="REJECTED">{t('status_rejected')}</option>
+                        <option value="PENDING_CONFIRMATION">{t('status_pending_approval')}</option>
+                        <option value="IN_PROGRESS">{t('status_pending')}</option>
                     </select>
                 </div>
 
@@ -136,7 +138,7 @@ export default function EmployeeFilter({ onFilterChange, selectedEmployeeId, dat
                     minWidth: '90px'
                 }}>
                     <div style={{ fontSize: '0.7rem', fontWeight: '600', marginBottom: '0.15rem', opacity: 0.9 }}>
-                        Total
+                        {t('total_label')}
                     </div>
                     <div style={{ fontSize: '1.25rem', fontWeight: 'bold' }}>
                         {totalCount}
@@ -153,7 +155,7 @@ export default function EmployeeFilter({ onFilterChange, selectedEmployeeId, dat
                         minWidth: '120px'
                     }}>
                         <div style={{ fontSize: '0.7rem', fontWeight: '600', marginBottom: '0.15rem', opacity: 0.9 }}>
-                            Total Cost
+                            {t('total_cost')}
                         </div>
                         <div style={{ fontSize: '1.25rem', fontWeight: 'bold' }}>
                             {totalCost.toFixed(2)} EGP

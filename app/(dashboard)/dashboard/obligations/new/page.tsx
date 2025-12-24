@@ -3,8 +3,10 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import DateTimePicker from '@/components/DateTimePicker'
+import { useLanguage } from '@/context/LanguageContext'
 
 export default function NewObligationPage() {
+    const { t, locale } = useLanguage()
     const [title, setTitle] = useState('')
     const [description, setDescription] = useState('')
     const [assigneeId, setAssigneeId] = useState('')
@@ -45,46 +47,73 @@ export default function NewObligationPage() {
 
     const [error, setError] = useState('')
     const [fieldErrors, setFieldErrors] = useState<{ [key: string]: string }>({})
+    const [isSubmitting, setIsSubmitting] = useState(false)
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
         setFieldErrors({})
+        setIsSubmitting(true)
+        setError('')
 
         // Client-side Validation
         const errors: { [key: string]: string } = {}
         if (!title || title.length < 3 || title.length > 100) {
-            errors.title = "Title must be between 3 and 100 characters"
+            errors.title = t('task_title_validation' as any)
         }
         if (!description || description.length < 10 || description.length > 500) {
-            errors.description = "Description must be between 10 and 500 characters"
+            errors.description = t('obligation_description_validation' as any)
         }
 
         if (Object.keys(errors).length > 0) {
             setFieldErrors(errors)
+            setIsSubmitting(false)
             return
         }
 
-        await fetch('/api/obligations', {
-            method: 'POST',
-            body: JSON.stringify({
-                title,
-                description,
-                assigneeId,
-                deadline,
-                difficulty: parseInt(difficulty) || 0
-            }),
-            headers: { 'Content-Type': 'application/json' }
-        })
-        router.push('/dashboard/obligations')
-        router.refresh()
+        try {
+            const res = await fetch('/api/obligations', {
+                method: 'POST',
+                body: JSON.stringify({
+                    title,
+                    description,
+                    assigneeId,
+                    deadline,
+                    difficulty: parseInt(difficulty) || 0
+                }),
+                headers: { 'Content-Type': 'application/json' }
+            })
+
+            if (!res.ok) {
+                const data = await res.json().catch(() => ({}))
+                const errorMessage = data.details || data.message || `${t('error_generic')} (${res.status})`
+                throw new Error(errorMessage)
+            }
+
+            router.push('/dashboard/obligations')
+            router.refresh()
+        } catch (err: any) {
+            console.error(err)
+            setError(err.message || t('error_generic'))
+            setIsSubmitting(false)
+        }
+    }
+
+    const containerStyle: React.CSSProperties = {
+        direction: locale === 'ar' ? 'rtl' : 'ltr',
+        textAlign: locale === 'ar' ? 'right' : 'left'
     }
 
     return (
-        <div className="card" style={{ maxWidth: '600px', margin: '0 auto' }}>
-            <h1 style={{ marginBottom: '1.5rem' }}>Add New Obligation</h1>
+        <div className="card" style={{ maxWidth: '600px', margin: '0 auto', ...containerStyle }}>
+            <h1 style={{ marginBottom: '1.5rem' }}>{t('add_obligation')}</h1>
+            {error && (
+                <div style={{ background: '#fee2e2', color: '#991b1b', padding: '1rem', borderRadius: '0.5rem', marginBottom: '1rem', border: '1px solid #fecaca' }}>
+                    {error}
+                </div>
+            )}
             <form onSubmit={handleSubmit}>
                 <div style={{ marginBottom: '1.25rem' }}>
-                    <label style={{ display: 'block', marginBottom: '0.5rem' }}>Title</label>
+                    <label style={{ display: 'block', marginBottom: '0.5rem' }}>{t('title_label' as any)}</label>
                     <input
                         className="input"
                         value={title}
@@ -101,12 +130,12 @@ export default function NewObligationPage() {
                             {fieldErrors.title}
                         </div>
                     )}
-                    <div style={{ fontSize: '0.75rem', color: title.length >= 100 ? '#ef4444' : '#94a3b8', textAlign: 'right', marginTop: '0.25rem' }}>
+                    <div style={{ fontSize: '0.75rem', color: title.length >= 100 ? '#ef4444' : '#94a3b8', textAlign: locale === 'ar' ? 'left' : 'right', marginTop: '0.25rem' }}>
                         {title.length}/100
                     </div>
                 </div>
                 <div style={{ marginBottom: '1.25rem' }}>
-                    <label style={{ display: 'block', marginBottom: '0.5rem' }}>Description</label>
+                    <label style={{ display: 'block', marginBottom: '0.5rem' }}>{t('description_label' as any)}</label>
                     <textarea
                         className="input"
                         value={description}
@@ -124,27 +153,27 @@ export default function NewObligationPage() {
                             {fieldErrors.description}
                         </div>
                     )}
-                    <div style={{ fontSize: '0.75rem', color: description.length >= 500 ? '#ef4444' : '#94a3b8', textAlign: 'right', marginTop: '0.25rem' }}>
+                    <div style={{ fontSize: '0.75rem', color: description.length >= 500 ? '#ef4444' : '#94a3b8', textAlign: locale === 'ar' ? 'left' : 'right', marginTop: '0.25rem' }}>
                         {description.length}/500
                     </div>
                 </div>
                 <div style={{ marginBottom: '1.25rem' }}>
-                    <label style={{ display: 'block', marginBottom: '0.5rem' }}>Assignee</label>
-                    <select className="input" value={assigneeId} onChange={e => setAssigneeId(e.target.value)} required>
-                        <option value="">Select Employee</option>
-                        {users.map(u => <option key={u.id} value={u.id}>{u.firstName} {u.lastName} - {u.role}</option>)}
+                    <label style={{ display: 'block', marginBottom: '0.5rem' }}>{t('assignee_label')}</label>
+                    <select className="input" value={assigneeId} onChange={e => setAssigneeId(e.target.value)} required style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>
+                        <option value="">{t('select_employee_placeholder')}</option>
+                        {users.map(u => <option key={u.id} value={u.id}>{u.firstName} {u.lastName} - {t(`role_${u.role?.toLowerCase().replace('team_leader', 'team_leader').replace('employee', 'employee').replace('admin', 'admin')}` as any)}</option>)}
                     </select>
                 </div>
                 <div style={{ marginBottom: '1.25rem' }}>
                     <DateTimePicker
-                        label="Deadline"
+                        label={t('deadline_label')}
                         value={deadline}
                         onChange={setDeadline}
                         min={new Date(Date.now() + 3 * 60 * 60 * 1000).toISOString()}
                     />
                 </div>
                 <div style={{ marginBottom: '1.5rem' }}>
-                    <label style={{ display: 'block', marginBottom: '0.5rem' }}>Difficulty</label>
+                    <label style={{ display: 'block', marginBottom: '0.5rem' }}>{t('difficulty')}</label>
                     <input
                         type="number"
                         className="input"
@@ -164,15 +193,17 @@ export default function NewObligationPage() {
                         required
                     />
                 </div>
-                <div style={{ display: 'flex', gap: '1rem' }}>
-                    <button type="submit" className="btn btn-primary">Add Obligation</button>
+                <div style={{ display: 'flex', gap: '1rem', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
+                    <button type="submit" className="btn btn-primary" disabled={isSubmitting}>
+                        {isSubmitting ? t('creating') : t('create_obligation_button' as any)}
+                    </button>
                     <button
                         type="button"
                         className="btn"
                         style={{ background: '#e2e8f0', color: '#0f172a' }}
                         onClick={() => router.push('/dashboard/obligations')}
                     >
-                        Cancel
+                        {t('cancel')}
                     </button>
                 </div>
             </form>

@@ -6,6 +6,7 @@ import { useToast } from '@/context/ToastContext'
 import Image from 'next/image'
 import { createPortal } from 'react-dom'
 import ConfirmModal from './ConfirmModal'
+import { useLanguage } from '@/context/LanguageContext'
 
 type EmployeeProfileFormProps = {
     userId: string
@@ -14,6 +15,7 @@ type EmployeeProfileFormProps = {
 }
 
 export default function EmployeeProfileForm({ userId, isViewMode = false, onClose }: EmployeeProfileFormProps) {
+    const { t, locale } = useLanguage()
     const [firstName, setFirstName] = useState('')
     const [lastName, setLastName] = useState('')
     const [email, setEmail] = useState('')
@@ -42,10 +44,6 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
         const fetchEmployee = async () => {
             if (!session) return // Don't fetch if no session (avoids errors on signout)
             try {
-                // Determine API endpoint: If fetching DELETED user, we might need special handling?
-                // The current GET /api/users?id=... handles finding user by ID regardless of status if caller is admin.
-                // However, the LIST endpoint filters out deleted. The ID endpoint (lines 31-50 of route.ts) does findUnique, which typically finds even deleted records unless using soft-delete middleware (not used here).
-                // So it should work.
                 const res = await fetch(`/api/users?id=${userId}`, { cache: 'no-store' })
                 if (!res.ok) throw new Error('Failed to fetch employee')
                 const employee = await res.json()
@@ -80,7 +78,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                     }
                 }
             } catch {
-                showToast('Failed to load employee data', 'error')
+                showToast(t('error_generic'), 'error')
             } finally {
                 setLoading(false)
             }
@@ -102,7 +100,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
         if (userRole === 'SUPER_ADMIN') {
             fetchCompanies()
         }
-    }, [userId, userRole, showToast, session])
+    }, [userId, userRole, showToast, session, t])
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -111,13 +109,13 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
         // Validation
         const emailRegex = /^[^@]{1,20}@[^@]{1,10}\.com$/
         if (!emailRegex.test(email)) {
-            showToast('Email must be in format: user(max 20)@domain(max 10).com', 'error')
+            showToast(t('email_format_error'), 'error')
             setSaving(false)
             return
         }
 
         if (salary && parseFloat(salary) > 1000000000) {
-            showToast('Salary cannot exceed 1 billion EGP', 'error')
+            showToast(t('salary_limit_error'), 'error')
             setSaving(false)
             return
         }
@@ -140,9 +138,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                     throw new Error(text || 'Failed to submit name change request')
                 }
 
-                showToast('Name change request submitted for admin approval!', 'success')
-                // Revert names in UI to original until approved? Or leave them?
-                // User said "restricted", so I'll leave them but show a pending message.
+                showToast(t('name_change_submitted'), 'success')
                 setPendingRequest({ newFirstName: firstName, newLastName: lastName })
                 setFirstName(originalFirstName)
                 setLastName(originalLastName)
@@ -181,11 +177,11 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                     image: avatarUrl,
                     picture: avatarUrl
                 })
-                showToast('Profile updated successfully!', 'success')
+                showToast(t('profile_updated_success'), 'success')
                 setSaving(false)
                 router.refresh()
             } else {
-                showToast('Employee updated successfully!', 'success')
+                showToast(t('employee_updated_success'), 'success')
                 setSaving(false)
                 if (onClose) {
                     setTimeout(() => {
@@ -200,7 +196,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                 }
             }
         } catch (err: any) { // eslint-disable-line @typescript-eslint/no-explicit-any
-            showToast(err.message || 'Failed to update employee', 'error')
+            showToast(err.message || t('error_generic'), 'error')
             setSaving(false)
         }
     }
@@ -219,11 +215,11 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
             if (userId === session?.user?.id) {
                 await update({ avatar: null, image: null, picture: null })
             }
-            showToast('Photo reset successfully!', 'success')
+            showToast(t('photo_reset_success'), 'success')
             setShowAvatarModal(false)
             setShowResetConfirm(false)
         } catch (err: any) {
-            showToast(err.message || 'Failed to reset photo', 'error')
+            showToast(err.message || t('photo_reset_failed'), 'error')
         } finally {
             setIsResetting(false)
         }
@@ -256,30 +252,28 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                         picture: data.url
                     })
                 }
-                showToast('Photo updated successfully!', 'success')
+                showToast(t('photo_updated_success'), 'success')
                 setShowAvatarModal(false)
             } else {
                 throw new Error(data.error || 'Upload failed')
             }
         } catch (err: any) {
-            showToast(err.message || 'Failed to upload photo', 'error')
+            showToast(err.message || t('photo_upload_failed'), 'error')
         } finally {
             setUploadingAvatar(false)
         }
     }
 
-    if (loading) return <div>Loading...</div>
+    if (loading) return <div style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('loading_filters')}</div>
 
 
     return (
-        <div className="glass-card" style={{ maxWidth: '600px', margin: '0 auto', padding: onClose ? '0' : '2rem' }}>
+        <div className="glass-card" style={{ maxWidth: '600px', margin: '0 auto', padding: onClose ? '0' : '2rem', direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
             {!onClose && (
-                <h1 style={{ marginBottom: '1.5rem', fontSize: '1.5rem', fontWeight: 'bold' }}>
-                    {isViewMode ? 'Employee Profile' : (userId === session?.user?.id ? 'Profile' : 'Edit Employee')}
+                <h1 style={{ marginBottom: '1.5rem', fontSize: '1.5rem', fontWeight: 'bold', textAlign: locale === 'ar' ? 'right' : 'left' }}>
+                    {isViewMode ? t('employee_profile') : (userId === session?.user?.id ? t('profile_title') : t('edit_employee_title'))}
                 </h1>
             )}
-
-
 
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '2rem', gap: '1rem' }}>
                 <div style={{
@@ -340,7 +334,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                             }}
                             onClick={() => setShowAvatarModal(true)}
                         >
-                            {uploadingAvatar ? 'Uploading...' : (avatarUrl ? 'View Photo' : 'Add Photo')}
+                            {uploadingAvatar ? t('uploading_photo') : (avatarUrl ? t('view_photo') : t('add_photo'))}
                         </button>
                     </div>
                 )}
@@ -372,10 +366,11 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                         position: 'relative',
                         zIndex: 10,
                         boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
-                        animation: 'slideUp 0.3s ease-out'
+                        animation: 'slideUp 0.3s ease-out',
+                        direction: locale === 'ar' ? 'rtl' : 'ltr'
                     }}>
-                        <h2 style={{ fontSize: '1.25rem', fontWeight: 'bold', color: '#1e293b', marginBottom: '1.5rem' }}>
-                            {avatarUrl ? 'Manage Photo' : 'Add Photo'}
+                        <h2 style={{ fontSize: '1.25rem', fontWeight: 'bold', color: '#1e293b', marginBottom: '1.5rem', textAlign: 'center' }}>
+                            {avatarUrl ? t('manage_photo_title') : t('add_photo')}
                         </h2>
 
                         <div style={{
@@ -406,7 +401,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                             )}
                         </div>
 
-                        <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center' }}>
+                        <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
                             <label
                                 className="btn btn-primary"
                                 style={{
@@ -416,7 +411,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                                     flex: 1
                                 }}
                             >
-                                {avatarUrl ? 'Change' : 'Upload'}
+                                {avatarUrl ? t('change_button') : t('upload_button')}
                                 <input
                                     type="file"
                                     hidden
@@ -449,7 +444,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                                     onMouseEnter={(e) => !uploadingAvatar && (e.currentTarget.style.background = '#fecaca')}
                                     onMouseLeave={(e) => !uploadingAvatar && (e.currentTarget.style.background = '#fee2e2')}
                                 >
-                                    Reset
+                                    {t('reset_button')}
                                 </button>
                             )}
 
@@ -473,46 +468,29 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                                 onMouseEnter={(e) => !uploadingAvatar && (e.currentTarget.style.background = '#f8fafc')}
                                 onMouseLeave={(e) => !uploadingAvatar && (e.currentTarget.style.background = 'white')}
                             >
-                                Close
+                                {t('close_button')}
                             </button>
                         </div>
                         {uploadingAvatar && (
                             <div style={{ marginTop: '1rem', color: '#6366f1', fontSize: '0.875rem', fontWeight: 'bold' }}>
-                                Uploading in progress...
+                                {t('uploading_in_progress')}
                             </div>
                         )}
                         {isResetting && (
                             <div style={{ marginTop: '1rem', color: '#dc2626', fontSize: '0.875rem', fontWeight: 'bold' }}>
-                                Resetting in progress...
+                                {t('resetting_in_progress')}
                             </div>
                         )}
                     </div>
-
-                    <style jsx global>{`
-                        @keyframes fadeIn {
-                            from { opacity: 0; }
-                            to { opacity: 1; }
-                        }
-                        @keyframes slideUp {
-                            from {
-                                opacity: 0;
-                                transform: translateY(20px);
-                            }
-                            to {
-                                opacity: 1;
-                                transform: translateY(0);
-                            }
-                        }
-                    `}</style>
                 </div>,
                 document.body
             )}
 
             <ConfirmModal
                 isOpen={showResetConfirm}
-                title="Reset Photo"
-                message="Are you sure you want to remove your profile photo and return to the default emoji?"
-                confirmText="Yes, Reset"
+                title={t('reset_photo_title')}
+                message={t('reset_photo_warning')}
+                confirmText={t('yes_reset')}
                 onConfirm={handleResetPhoto}
                 onCancel={() => setShowResetConfirm(false)}
                 variant="danger"
@@ -528,67 +506,68 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                     display: 'flex',
                     alignItems: 'center',
                     gap: '0.75rem',
-                    color: '#92400e'
+                    color: '#92400e',
+                    textAlign: locale === 'ar' ? 'right' : 'left'
                 }}>
                     <span style={{ fontSize: '1.25rem' }}>⏳</span>
                     <div>
-                        <div style={{ fontWeight: 'bold', fontSize: '0.9rem' }}>Name Change Request Pending</div>
-                        <div style={{ fontSize: '0.8rem' }}>Requested: {pendingRequest.newFirstName} {pendingRequest.newLastName}</div>
+                        <div style={{ fontWeight: 'bold', fontSize: '0.9rem' }}>{t('name_change_request_pending')}</div>
+                        <div style={{ fontSize: '0.8rem' }}>{t('requested_label')}: {pendingRequest.newFirstName} {pendingRequest.newLastName}</div>
                     </div>
                 </div>
             )}
 
             <form onSubmit={handleSubmit}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: locale === 'ar' ? '1fr 1fr' : '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
                     <div>
-                        <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>First Name</label>
+                        <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('first_name_label')}</label>
                         <input
                             className="input"
                             value={firstName}
                             onChange={e => setFirstName(e.target.value)}
                             required
                             disabled={isViewMode}
-                            style={isViewMode ? { background: '#f1f5f9', cursor: 'not-allowed' } : {}}
+                            style={isViewMode ? { background: '#f1f5f9', cursor: 'not-allowed', textAlign: locale === 'ar' ? 'right' : 'left' } : { textAlign: locale === 'ar' ? 'right' : 'left' }}
                         />
                     </div>
                     <div>
-                        <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>Last Name</label>
+                        <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('last_name_label')}</label>
                         <input
                             className="input"
                             value={lastName}
                             onChange={e => setLastName(e.target.value)}
                             required
                             disabled={isViewMode}
-                            style={isViewMode ? { background: '#f1f5f9', cursor: 'not-allowed' } : {}}
+                            style={isViewMode ? { background: '#f1f5f9', cursor: 'not-allowed', textAlign: locale === 'ar' ? 'right' : 'left' } : { textAlign: locale === 'ar' ? 'right' : 'left' }}
                         />
                     </div>
                 </div>
 
                 <div style={{ marginBottom: '1rem' }}>
-                    <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>Gender</label>
+                    <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('gender_label')}</label>
                     <select
                         className="input"
                         value={gender}
                         onChange={e => setGender(e.target.value)}
                         required
                         disabled={isViewMode}
-                        style={isViewMode ? { background: '#f1f5f9', cursor: 'not-allowed' } : {}}
+                        style={isViewMode ? { background: '#f1f5f9', cursor: 'not-allowed', textAlign: locale === 'ar' ? 'right' : 'left' } : { textAlign: locale === 'ar' ? 'right' : 'left' }}
                     >
-                        <option value="MALE">Male</option>
-                        <option value="FEMALE">Female</option>
+                        <option value="MALE">{t('male')}</option>
+                        <option value="FEMALE">{t('female')}</option>
                     </select>
                 </div>
 
                 {(userRole === 'SUPER_ADMIN' || role === 'SUPER_ADMIN') && (
                     <div style={{ marginBottom: '1rem' }}>
-                        <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>Company</label>
+                        <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('company_label')}</label>
                         {role === 'SUPER_ADMIN' ? (
                             <input
                                 className="input"
                                 value="SHSD"
                                 disabled
                                 readOnly
-                                style={{ background: '#f1f5f9', cursor: 'not-allowed' }}
+                                style={{ background: '#f1f5f9', cursor: 'not-allowed', textAlign: locale === 'ar' ? 'right' : 'left' }}
                             />
                         ) : (
                             <select
@@ -596,9 +575,9 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                                 value={companyId}
                                 onChange={e => setCompanyId(e.target.value)}
                                 disabled={isViewMode}
-                                style={isViewMode ? { background: '#f1f5f9', cursor: 'not-allowed' } : {}}
+                                style={isViewMode ? { background: '#f1f5f9', cursor: 'not-allowed', textAlign: locale === 'ar' ? 'right' : 'left' } : { textAlign: locale === 'ar' ? 'right' : 'left' }}
                             >
-                                <option value="">Select Company</option>
+                                <option value="">{t('select_company')}</option>
                                 {companies.map(c => (
                                     <option key={c.id} value={c.id}>{c.name}</option>
                                 ))}
@@ -607,7 +586,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                     </div>
                 )}
                 <div style={{ marginBottom: '1rem' }}>
-                    <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>Email</label>
+                    <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('email')}</label>
                     <input
                         type="email"
                         className="input"
@@ -615,14 +594,14 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                         onChange={e => setEmail(e.target.value)}
                         required
                         disabled={isViewMode || userId === session?.user?.id}
-                        style={(isViewMode || userId === session?.user?.id) ? { background: '#f1f5f9', cursor: 'not-allowed' } : {}}
+                        style={(isViewMode || userId === session?.user?.id) ? { background: '#f1f5f9', cursor: 'not-allowed', textAlign: locale === 'ar' ? 'right' : 'left' } : { textAlign: locale === 'ar' ? 'right' : 'left' }}
                     />
                 </div>
 
                 {/* Salary Field - Visible to Admins and Self, Editable only by Admins (not self). Hidden for Super Admins. */}
                 {(['ADMIN', 'SUPER_ADMIN'].includes(userRole) || userId === session?.user?.id) && role !== 'SUPER_ADMIN' && role !== '' && (
                     <div style={{ marginBottom: '1rem' }}>
-                        <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>Monthly Base Salary (EGP)</label>
+                        <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('monthly_base_salary_label')}</label>
                         <input
                             type="number"
                             className="input"
@@ -630,15 +609,15 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                             onChange={e => setSalary(e.target.value)}
                             disabled={isViewMode || userId === session?.user?.id || !['ADMIN', 'SUPER_ADMIN'].includes(userRole)}
                             max={1000000000}
-                            style={(isViewMode || userId === session?.user?.id || !['ADMIN', 'SUPER_ADMIN'].includes(userRole)) ? { background: '#f1f5f9', cursor: 'not-allowed' } : {}}
-                            placeholder={userId === session?.user?.id && !salary ? 'Not set' : ''}
+                            style={(isViewMode || userId === session?.user?.id || !['ADMIN', 'SUPER_ADMIN'].includes(userRole)) ? { background: '#f1f5f9', cursor: 'not-allowed', textAlign: locale === 'ar' ? 'right' : 'left' } : { textAlign: locale === 'ar' ? 'right' : 'left' }}
+                            placeholder={userId === session?.user?.id && !salary ? t('no_data_available') : ''}
                         />
                     </div>
                 )}
 
                 {!isViewMode && (
                     <div style={{ marginBottom: '1rem' }}>
-                        <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>New Password (optional)</label>
+                        <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('new_password_optional_label')}</label>
                         <input
                             type="password"
                             className="input"
@@ -646,33 +625,34 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                             onChange={e => setPassword(e.target.value)}
                             minLength={6}
                             maxLength={20}
-                            placeholder="Leave empty to keep current password"
+                            placeholder={t('keep_current_password_placeholder')}
+                            style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}
                         />
                     </div>
                 )}
                 {(userRole === 'SUPER_ADMIN' || userRole === 'ADMIN') && userId !== session?.user?.id && (
                     <div style={{ marginBottom: '1rem' }}>
-                        <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>Role</label>
+                        <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('role_label')}</label>
                         <select
                             className="input"
                             value={role}
                             onChange={e => setRole(e.target.value)}
                             required
                             disabled={isViewMode || userId === session?.user?.id || role === 'SUPER_ADMIN'}
-                            style={(isViewMode || userId === session?.user?.id || role === 'SUPER_ADMIN') ? { background: '#f1f5f9', cursor: 'not-allowed', color: '#64748b' } : {}}
+                            style={(isViewMode || userId === session?.user?.id || role === 'SUPER_ADMIN') ? { background: '#f1f5f9', cursor: 'not-allowed', color: '#64748b', textAlign: locale === 'ar' ? 'right' : 'left' } : { textAlign: locale === 'ar' ? 'right' : 'left' }}
                         >
-                            <option value="EMPLOYEE">Employee</option>
-                            <option value="TEAM_LEADER">Team Leader</option>
-                            {userRole === 'SUPER_ADMIN' && <option value="ADMIN">Admin</option>}
-                            {role === 'SUPER_ADMIN' && <option value="SUPER_ADMIN">Super Admin</option>}
+                            <option value="EMPLOYEE">{t('role_employee')}</option>
+                            <option value="TEAM_LEADER">{t('role_team_leader')}</option>
+                            {userRole === 'SUPER_ADMIN' && <option value="ADMIN">{t('role_admin')}</option>}
+                            {role === 'SUPER_ADMIN' && <option value="SUPER_ADMIN">{t('super_admins')}</option>}
                         </select>
                     </div>
                 )}
 
-                <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem', justifyContent: isViewMode ? 'flex-end' : 'flex-start' }}>
+                <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem', justifyContent: isViewMode ? 'flex-end' : 'flex-start', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
                     {!isViewMode && (
                         <button type="submit" className="btn btn-primary" disabled={saving}>
-                            {saving ? 'Updating...' : 'Update'}
+                            {saving ? t('updating_button') : t('update_button')}
                         </button>
                     )}
                     <button
@@ -681,7 +661,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                         style={{ background: '#e2e8f0', color: '#0f172a' }}
                         onClick={onClose || (() => router.back())}
                     >
-                        {onClose ? 'Close' : 'Close'}
+                        {t('close_button')}
                     </button>
                 </div>
             </form>

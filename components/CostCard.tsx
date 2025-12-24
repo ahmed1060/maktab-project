@@ -1,7 +1,7 @@
 'use client'
 import Link from 'next/link'
 import { useState } from 'react'
-import { formatTaskStatus } from '@/lib/formatStatus'
+import { useLanguage } from '@/context/LanguageContext'
 
 interface CostCardProps {
     task: {
@@ -17,7 +17,18 @@ interface CostCardProps {
 }
 
 export default function CostCard({ task }: CostCardProps) {
+    const { t, locale } = useLanguage()
     const [isHovered, setIsHovered] = useState(false)
+
+    // Status mapping using translation keys
+    const getStatusKey = (status: string) => {
+        switch (status) {
+            case 'APPROVED': return 'status_approved'
+            case 'COMPLETED': return 'status_completed'
+            case 'REJECTED': return 'status_rejected'
+            default: return 'status_pending'
+        }
+    }
 
     return (
         <Link
@@ -33,7 +44,9 @@ export default function CostCard({ task }: CostCardProps) {
                     height: '100%',
                     transform: isHovered ? 'translateY(-2px)' : 'translateY(0)',
                     boxShadow: isHovered ? '0 4px 12px rgba(0,0,0,0.1)' : 'none',
-                    borderColor: isHovered ? '#3b82f6' : '#e2e8f0'
+                    borderColor: isHovered ? '#3b82f6' : '#e2e8f0',
+                    textAlign: locale === 'ar' ? 'right' : 'left',
+                    direction: locale === 'ar' ? 'rtl' : 'ltr'
                 }}
                 onMouseEnter={() => setIsHovered(true)}
                 onMouseLeave={() => setIsHovered(false)}
@@ -41,7 +54,7 @@ export default function CostCard({ task }: CostCardProps) {
                 <div style={{ marginBottom: '1rem' }}>
                     <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1.1rem' }}>{task.title}</h3>
                     <div style={{ fontSize: '0.85rem', color: '#64748b' }}>
-                        Assignee: {task.assignee.firstName} {task.assignee.lastName}
+                        {t('assignee_label')}: {task.assignee.firstName} {task.assignee.lastName}
                     </div>
                 </div>
 
@@ -53,10 +66,10 @@ export default function CostCard({ task }: CostCardProps) {
                     textAlign: 'center'
                 }}>
                     <div style={{ fontSize: '0.75rem', color: '#92400e', fontWeight: '600', marginBottom: '0.25rem' }}>
-                        Total Cost
+                        {t('total_cost')}
                     </div>
                     <div style={{ fontSize: '1.75rem', fontWeight: 'bold', color: '#92400e' }}>
-                        {task.totalCost.toFixed(2)} EGP
+                        {new Intl.NumberFormat(locale === 'ar' ? 'ar-EG' : 'en-EG', { minimumFractionDigits: 2 }).format(task.totalCost)} {t('egp')}
                     </div>
                 </div>
 
@@ -78,7 +91,7 @@ export default function CostCard({ task }: CostCardProps) {
                     fontWeight: '600',
                     textAlign: 'center'
                 }}>
-                    {formatTaskStatus(task.status)}
+                    {t(getStatusKey(task.status) as any)}
                 </div>
             </div>
         </Link>

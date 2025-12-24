@@ -7,6 +7,7 @@ import { useHeader } from '@/context/HeaderContext'
 import { createPortal } from 'react-dom'
 import Image from 'next/image'
 import ConfirmModal from '@/components/ConfirmModal'
+import { useLanguage } from '@/context/LanguageContext'
 
 interface Note {
     id: string
@@ -22,12 +23,6 @@ interface Note {
         avatar: string | null
         role: string
     }
-    createdBySuperAdmin?: {
-        id: string
-        firstName: string
-        lastName: string
-        avatar: string | null
-    }
 }
 
 interface SectionData {
@@ -36,6 +31,7 @@ interface SectionData {
 }
 
 export default function SectionNotesPage() {
+    const { t, locale } = useLanguage()
     const params = useParams()
     const router = useRouter()
     const clientId = params.id as string
@@ -117,7 +113,7 @@ export default function SectionNotesPage() {
                 if (uploadData.success) {
                     attachmentUrl = uploadData.url
                 } else {
-                    throw new Error(uploadData.error || 'Upload failed')
+                    throw new Error(uploadData.error || t('photo_upload_failed'))
                 }
             }
 
@@ -141,12 +137,11 @@ export default function SectionNotesPage() {
                 fetchData() // Refresh
             } else {
                 const err = await res.json()
-                console.error('API Error:', err)
-                window.alert(`Failed to add note: ${err.error}\n${err.details || ''}`)
+                alert(`${t('failed_save_generic')}: ${err.error}`)
             }
         } catch (error) {
             console.error('Failed to create note', error)
-            window.alert(`An unexpected error occurred: ${error}`)
+            alert(t('failed_save_generic'))
         } finally {
             setIsSubmitting(false)
             setUploading(false)
@@ -155,8 +150,13 @@ export default function SectionNotesPage() {
 
     const MAX_CHARS = 500
 
+    const containerStyle: React.CSSProperties = {
+        direction: locale === 'ar' ? 'rtl' : 'ltr',
+        textAlign: locale === 'ar' ? 'right' : 'left'
+    }
+
     return (
-        <>
+        <div style={containerStyle}>
             <div className="space-y-6 animate-in fade-in duration-500">
                 {/* Header Row */}
                 <div style={{ marginBottom: '1.5rem' }}>
@@ -174,42 +174,44 @@ export default function SectionNotesPage() {
                             textDecoration: 'none',
                             transition: 'all 0.3s ease',
                             border: '1px solid rgba(255, 255, 255, 0.4)',
-                            transform: 'translateY(-2px)'
+                            transform: `translateY(-2px)${locale === 'ar' ? ' scaleX(-1)' : ''}`,
+                            float: locale === 'ar' ? 'right' : 'left'
                         }}
                         onMouseOver={(e) => {
-                            e.currentTarget.style.transform = 'translateY(-4px)'
+                            e.currentTarget.style.transform = `translateY(-4px)${locale === 'ar' ? ' scaleX(-1)' : ''}`
                             e.currentTarget.style.background = 'rgba(255, 255, 255, 0.9)'
                         }}
                         onMouseOut={(e) => {
-                            e.currentTarget.style.transform = 'translateY(-2px)'
+                            e.currentTarget.style.transform = `translateY(-2px)${locale === 'ar' ? ' scaleX(-1)' : ''}`
                             e.currentTarget.style.background = 'rgba(255, 255, 255, 0.7)'
                         }}
-                        title="Back to Sections"
+                        title={t('back_to_sections' as any)}
                     >
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                             <line x1="19" y1="12" x2="5" y2="12"></line>
                             <polyline points="12 19 5 12 12 5"></polyline>
                         </svg>
                     </Link>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <h1 className="text-3xl font-bold text-slate-800 tracking-tight">Notes</h1>
+                    <div style={{ clear: 'both' }}></div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
+                        <h1 className="text-3xl font-bold text-slate-800 tracking-tight">{t('notes_label' as any)}</h1>
                         <button
                             onClick={() => setIsModalOpen(true)}
                             className="btn btn-primary"
                         >
-                            Add Note
+                            {t('add_note_button' as any)}
                         </button>
                     </div>
                 </div>
 
                 {isLoading ? (
-                    <div className="text-center py-10 text-slate-500">Loading notes...</div>
+                    <div className="text-center py-10 text-slate-500">{t('loading_filters')}</div>
                 ) : notes.length === 0 ? (
                     <div className="glass-card flex flex-col items-center justify-center py-12 text-center text-slate-500">
                         <span className="text-4xl mb-2">📝</span>
-                        <h3 className="text-lg font-bold text-slate-800">No notes found</h3>
+                        <h3 className="text-lg font-bold text-slate-800">{t('no_notes_found' as any)}</h3>
                         <p className="max-w-xs mx-auto mt-1 mb-4">
-                            Start documenting this section by adding a note.
+                            {t('start_documenting_msg' as any)}
                         </p>
                     </div>
                 ) : (
@@ -220,7 +222,8 @@ export default function SectionNotesPage() {
                                 className="glass-card hover:bg-white/60 transition-all duration-300 p-6 border border-white/40 shadow-sm relative overflow-hidden"
                                 style={{
                                     animationDelay: `${index * 50}ms`,
-                                    marginBottom: '0.5rem'
+                                    marginBottom: '0.5rem',
+                                    textAlign: locale === 'ar' ? 'right' : 'left'
                                 }}
                             >
                                 {/* Note Content at the top */}
@@ -230,19 +233,19 @@ export default function SectionNotesPage() {
 
                                 {/* Render Attachment and Expiry if they exist */}
                                 {(note.attachment || note.expiryDate) && (
-                                    <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem', fontSize: '0.8rem', color: '#64748b', alignItems: 'center', flexWrap: 'wrap' }}>
+                                    <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem', fontSize: '0.8rem', color: '#64748b', alignItems: 'center', flexWrap: 'wrap', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
                                         {note.attachment && (
-                                            <a href={note.attachment} target="_blank" rel="noopener noreferrer" className="hover:underline" style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', color: '#4f46e5', fontWeight: '600', textDecoration: 'none' }}>
+                                            <a href={note.attachment} target="_blank" rel="noopener noreferrer" className="hover:underline" style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', color: '#4f46e5', fontWeight: '600', textDecoration: 'none', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
                                                 <span>📎</span>
-                                                Attachment
+                                                {t('attachment_label' as any)}
                                             </a>
                                         )}
                                         {note.expiryDate && (
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
                                                 <span>📅</span>
-                                                Expires: {new Date(note.expiryDate).toLocaleDateString()}
+                                                {t('expires_label' as any)}: {new Date(note.expiryDate).toLocaleDateString(locale === 'ar' ? 'ar-EG' : 'en-GB')}
                                                 {note.reminderDays && note.reminderDays > 0 && (
-                                                    <span style={{ marginLeft: '0.25rem' }}>(Reminder: {note.reminderDays}d before)</span>
+                                                    <span style={{ [locale === 'ar' ? 'marginRight' : 'marginLeft']: '0.25rem' }}>({t('reminder_label' as any)}: {note.reminderDays}{t('days_label').split('')[0]} {t('by').split('')[0]} {t('deadline_label').split('')[0]})</span>
                                                 )}
                                             </div>
                                         )}
@@ -250,8 +253,8 @@ export default function SectionNotesPage() {
                                 )}
 
                                 {/* Author info and Delete button at the bottom */}
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                    <div className="flex items-center gap-2">
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
+                                    <div className="flex items-center gap-2" style={{ flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
                                         <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold text-[10px] uppercase shrink-0 px-1 overflow-hidden" title={note.createdBy?.role}>
                                             {note.createdBy?.avatar ? (
                                                 <Image
@@ -267,13 +270,13 @@ export default function SectionNotesPage() {
                                                 </span>
                                             )}
                                         </div>
-                                        <div className="text-sm">
+                                        <div className="text-sm" style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>
                                             <span className="font-semibold text-slate-800">
                                                 {note.createdBy?.firstName} {note.createdBy?.lastName}
                                             </span>
-                                            <span className="text-slate-400" style={{ margin: '0 1rem' }}>•</span>
+                                            <span className="text-slate-400" style={{ margin: '0 0.5rem' }}>•</span>
                                             <span className="text-slate-500">
-                                                {new Date(note.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - {new Date(note.createdAt).toLocaleDateString()}
+                                                {new Date(note.createdAt).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' })} - {new Date(note.createdAt).toLocaleDateString(locale === 'ar' ? 'ar-EG' : 'en-GB')}
                                             </span>
                                         </div>
                                     </div>
@@ -292,7 +295,7 @@ export default function SectionNotesPage() {
                                             flexShrink: 0
                                         }}
                                     >
-                                        Delete
+                                        {t('delete')}
                                     </button>
                                 </div>
                             </div>
@@ -312,17 +315,17 @@ export default function SectionNotesPage() {
                         className="absolute inset-0"
                         onClick={() => !isSubmitting && setIsModalOpen(false)}
                     />
-                    <div style={{ background: 'white', padding: '2rem', borderRadius: '12px', width: '100%', maxWidth: '500px', position: 'relative', zIndex: 10 }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-                            <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#1e293b', margin: 0 }}>Add Note</h2>
+                    <div style={{ background: 'white', padding: '2rem', borderRadius: '12px', width: '100%', maxWidth: '500px', position: 'relative', zIndex: 10, direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
+                            <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#1e293b', margin: 0 }}>{t('add_note_button' as any)}</h2>
                             <span style={{ fontSize: '0.75rem', color: newNoteContent.length > MAX_CHARS ? '#ef4444' : '#64748b' }}>
                                 {newNoteContent.length}/{MAX_CHARS}
                             </span>
                         </div>
                         <form onSubmit={handleCreateNote}>
                             <div style={{ marginBottom: '1.5rem' }}>
-                                <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', color: '#64748b' }}>
-                                    Note Content
+                                <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', color: '#64748b', textAlign: locale === 'ar' ? 'right' : 'left' }}>
+                                    {t('note_content_label' as any)}
                                 </label>
                                 <textarea
                                     value={newNoteContent}
@@ -336,21 +339,22 @@ export default function SectionNotesPage() {
                                         minHeight: '120px',
                                         lineHeight: '1.5',
                                         outline: 'none',
-                                        marginBottom: '0.5rem'
+                                        marginBottom: '0.5rem',
+                                        textAlign: locale === 'ar' ? 'right' : 'left'
                                     }}
-                                    placeholder="Write your note here..."
+                                    placeholder={t('note_placeholder' as any)}
                                     autoFocus
                                 />
                                 {newNoteContent.length > MAX_CHARS && (
                                     <p style={{ color: '#ef4444', fontSize: '0.75rem', marginTop: '0.5rem' }}>
-                                        Note exceeds character limit.
+                                        {t('note_limit_exceeded' as any)}
                                     </p>
                                 )}
                             </div>
 
                             <div style={{ marginBottom: '1.5rem' }}>
-                                <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', color: '#64748b' }}>
-                                    Attachment
+                                <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', color: '#64748b', textAlign: locale === 'ar' ? 'right' : 'left' }}>
+                                    {t('attachment_label' as any)}
                                 </label>
                                 <input
                                     type="file"
@@ -360,46 +364,47 @@ export default function SectionNotesPage() {
                                         width: '100%',
                                         padding: '0.5rem',
                                         borderRadius: '0.5rem',
-                                        fontSize: '0.875rem'
+                                        fontSize: '0.875rem',
+                                        textAlign: locale === 'ar' ? 'right' : 'left'
                                     }}
                                 />
                             </div>
 
-                            <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem' }}>
+                            <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
                                 <div style={{ flex: 1 }}>
-                                    <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', color: '#64748b' }}>
-                                        Expiry Date
+                                    <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', color: '#64748b', textAlign: locale === 'ar' ? 'right' : 'left' }}>
+                                        {t('expiry_date_label' as any)}
                                     </label>
                                     <input
                                         type="date"
                                         value={expiryDate}
                                         onChange={(e) => setExpiryDate(e.target.value)}
                                         className="input"
-                                        style={{ width: '100%', padding: '0.5rem', borderRadius: '0.5rem' }}
+                                        style={{ width: '100%', padding: '0.5rem', borderRadius: '0.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}
                                     />
                                 </div>
                                 <div style={{ flex: 1 }}>
-                                    <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', color: '#64748b' }}>
-                                        Reminder Days
+                                    <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', color: '#64748b', textAlign: locale === 'ar' ? 'right' : 'left' }}>
+                                        {t('reminder_days_label' as any)}
                                     </label>
                                     <input
                                         type="number"
                                         value={reminderDays}
                                         onChange={(e) => setReminderDays(e.target.value)}
-                                        placeholder="Days"
+                                        placeholder={t('days_label')}
                                         min="1"
                                         className="input"
-                                        style={{ width: '100%', padding: '0.5rem', borderRadius: '0.5rem' }}
+                                        style={{ width: '100%', padding: '0.5rem', borderRadius: '0.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}
                                     />
                                 </div>
                             </div>
-                            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
+                            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
                                 <button
                                     type="button"
                                     onClick={() => setIsModalOpen(false)}
                                     style={{ padding: '0.75rem 1.5rem', border: '1px solid #e2e8f0', borderRadius: '0.5rem', background: 'transparent', cursor: 'pointer' }}
                                 >
-                                    Cancel
+                                    {t('cancel')}
                                 </button>
                                 <button
                                     type="submit"
@@ -407,7 +412,7 @@ export default function SectionNotesPage() {
                                     className="btn btn-primary"
                                     style={{ opacity: (!newNoteContent.trim() || isSubmitting || newNoteContent.length > MAX_CHARS) ? 0.5 : 1 }}
                                 >
-                                    {isSubmitting ? (uploading ? 'Uploading...' : 'Saving...') : 'Add Note'}
+                                    {isSubmitting ? (uploading ? t('uploading_photo') : t('saving')) : t('add_note_button' as any)}
                                 </button>
                             </div>
                         </form>
@@ -418,9 +423,9 @@ export default function SectionNotesPage() {
 
             <ConfirmModal
                 isOpen={deleteConfirm.isOpen}
-                title="Delete Note"
-                message="Are you sure you want to delete this note? This action cannot be undone."
-                confirmText="Delete Note"
+                title={t('delete_note_title' as any)}
+                message={t('delete_note_msg' as any)}
+                confirmText={t('delete')}
                 onConfirm={async () => {
                     if (deleteConfirm.note) {
                         try {
@@ -430,16 +435,16 @@ export default function SectionNotesPage() {
                                 setDeleteConfirm({ isOpen: false, note: null })
                             } else {
                                 const err = await res.json()
-                                alert(`Failed to delete: ${err.error}`)
+                                alert(`${t('failed_save_generic')}: ${err.error}`)
                             }
                         } catch (error) {
-                            alert('Error deleting note')
+                            alert(t('failed_save_generic'))
                         }
                     }
                 }}
                 onCancel={() => setDeleteConfirm({ isOpen: false, note: null })}
                 variant="danger"
             />
-        </>
+        </div>
     )
 }

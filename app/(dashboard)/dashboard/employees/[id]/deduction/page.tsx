@@ -2,8 +2,10 @@
 import { useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { useLanguage } from '@/context/LanguageContext'
 
 export default function AddDeductionPage() {
+    const { t, locale } = useLanguage()
     const params = useParams()
     const router = useRouter()
     const [amount, setAmount] = useState('')
@@ -19,7 +21,7 @@ export default function AddDeductionPage() {
         setSuccess('')
 
         if (parseFloat(amount) > 1000) {
-            setFieldError('Deduction cannot exceed 1000 days')
+            setFieldError(t('deduction_limit_error' as any))
             setLoading(false)
             return
         }
@@ -31,26 +33,31 @@ export default function AddDeductionPage() {
                 headers: { 'Content-Type': 'application/json' }
             })
 
-            if (!res.ok) throw new Error('Failed to add deduction')
+            if (!res.ok) throw new Error(t('failed_add_deduction' as any))
 
-            setSuccess('Deduction added successfully! Redirecting...')
+            setSuccess(t('deduction_added_success' as any))
 
             // Wait a moment then redirect
             setTimeout(() => {
                 router.push('/dashboard/employees')
                 router.refresh()
             }, 1500)
-        } catch (err) {
-            setError('Failed to add deduction')
+        } catch (err: any) {
+            setError(err.message || t('failed_add_deduction' as any))
             setLoading(false)
         }
     }
 
+    const containerStyle: React.CSSProperties = {
+        direction: locale === 'ar' ? 'rtl' : 'ltr',
+        textAlign: locale === 'ar' ? 'right' : 'left'
+    }
+
     return (
-        <div className="card" style={{ maxWidth: '500px', margin: '2rem auto' }}>
-            <h1>Add Monthly Deduction (Days)</h1>
+        <div className="card" style={{ maxWidth: '500px', margin: '2rem auto', ...containerStyle }}>
+            <h1>{t('add_monthly_deduction_title' as any)}</h1>
             <p style={{ color: '#64748b', marginBottom: '1.5rem' }}>
-                Enter the number of <strong>days</strong> to deduct from the employee&apos;s calculated salary for the current month.
+                {t('deduction_days_hint' as any)}
             </p>
 
             {error && (
@@ -67,7 +74,7 @@ export default function AddDeductionPage() {
 
             <form onSubmit={handleSubmit}>
                 <div style={{ marginBottom: '1.5rem' }}>
-                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>Deduction Days</label>
+                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>{t('deduction_days_label' as any)}</label>
                     <input
                         type="number"
                         className="input"
@@ -91,16 +98,16 @@ export default function AddDeductionPage() {
                     )}
                 </div>
 
-                <div style={{ display: 'flex', gap: '1rem' }}>
+                <div style={{ display: 'flex', gap: '1rem', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
                     <Link
                         href="/dashboard/employees"
                         className="btn"
                         style={{ background: '#e2e8f0', color: '#0f172a', textAlign: 'center', textDecoration: 'none' }}
                     >
-                        Cancel
+                        {t('cancel')}
                     </Link>
                     <button type="submit" className="btn btn-danger" disabled={loading} style={{ flex: 1, background: '#ef4444', color: 'white' }}>
-                        {loading ? 'Adding...' : 'Add Deduction'}
+                        {loading ? t('adding' as any) : t('add_deduction')}
                     </button>
                 </div>
             </form>

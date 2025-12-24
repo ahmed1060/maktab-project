@@ -4,6 +4,7 @@ import { useSession } from 'next-auth/react'
 import AccessDenied from '@/components/AccessDenied'
 import { useToast } from '@/context/ToastContext'
 import { useRouter } from 'next/navigation'
+import { useLanguage } from '@/context/LanguageContext'
 
 type Request = {
     id: string
@@ -24,6 +25,7 @@ type Request = {
 }
 
 export default function ProfileRequestsPage() {
+    const { t, locale } = useLanguage()
     const { data: session } = useSession()
     const [requests, setRequests] = useState<Request[]>([])
     const [loading, setLoading] = useState(true)
@@ -61,16 +63,26 @@ export default function ProfileRequestsPage() {
             })
 
             if (res.ok) {
-                showToast(`Request ${action}d successfully`, 'success')
+                showToast(action === 'approve' ? t('request_approved_success') : t('request_rejected_success'), 'success')
                 fetchRequests()
                 router.refresh()
             } else {
-                showToast(`Failed to ${action} request`, 'error')
+                showToast(action === 'approve' ? t('request_approval_failed') : t('request_rejection_failed'), 'error')
             }
         } catch (e) {
-            showToast('An error occurred', 'error')
+            showToast(t('error_generic'), 'error')
         } finally {
             setProcessingId(null)
+        }
+    }
+
+    const getRoleKey = (role: string) => {
+        switch (role) {
+            case 'EMPLOYEE': return 'role_employee'
+            case 'TEAM_LEADER': return 'role_team_leader'
+            case 'ADMIN': return 'role_admin'
+            case 'SUPER_ADMIN': return 'super_admins'
+            default: return 'role_employee'
         }
     }
 
@@ -79,8 +91,8 @@ export default function ProfileRequestsPage() {
     }
 
     return (
-        <div className="animate-in fade-in duration-500">
-            <div style={{ marginBottom: '2rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+        <div className="animate-in fade-in duration-500" style={{ direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
+            <div style={{ marginBottom: '2rem', display: 'flex', alignItems: 'center', gap: '1rem', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
                 <button
                     onClick={() => router.back()}
                     style={{
@@ -104,48 +116,47 @@ export default function ProfileRequestsPage() {
                         e.currentTarget.style.background = 'rgba(255, 255, 255, 0.5)'
                         e.currentTarget.style.color = '#64748b'
                     }}
-                    title="Go Back"
                 >
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transform: locale === 'ar' ? 'rotate(180deg)' : 'none' }}>
                         <line x1="19" y1="12" x2="5" y2="12"></line>
                         <polyline points="12 19 5 12 12 5"></polyline>
                     </svg>
                 </button>
-                <div>
-                    <h1 style={{ fontSize: '1.8rem', fontWeight: 'bold', margin: 0 }}>Profile Name Requests</h1>
-                    <p style={{ color: '#64748b', margin: 0 }}>Review and approve employee name change requests</p>
+                <div style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>
+                    <h1 style={{ fontSize: '1.8rem', fontWeight: 'bold', margin: 0 }}>{t('profile_name_requests')}</h1>
+                    <p style={{ color: '#64748b', margin: 0 }}>{t('profile_requests_subtitle')}</p>
                 </div>
             </div>
 
-            {loading ? <p>Loading requests...</p> : (
-                <div style={{ background: 'white', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            {loading ? <p style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('loading_filters')}</p> : (
+                <div style={{ background: 'white', borderRadius: '12px', overflowX: 'auto', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '800px' }}>
                         <thead style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
                             <tr>
-                                <th style={{ textAlign: 'left', padding: '1rem', fontSize: '0.875rem', color: '#64748b' }}>Employee</th>
-                                <th style={{ textAlign: 'left', padding: '1rem', fontSize: '0.875rem', color: '#64748b' }}>Current Name</th>
-                                <th style={{ textAlign: 'left', padding: '1rem', fontSize: '0.875rem', color: '#64748b' }}>Requested Name</th>
-                                <th style={{ textAlign: 'left', padding: '1rem', fontSize: '0.875rem', color: '#64748b' }}>Date</th>
-                                <th style={{ textAlign: 'right', padding: '1rem', fontSize: '0.875rem', color: '#64748b' }}>Actions</th>
+                                <th style={{ textAlign: locale === 'ar' ? 'right' : 'left', padding: '1rem', fontSize: '0.875rem', color: '#64748b' }}>{t('role_employee')}</th>
+                                <th style={{ textAlign: locale === 'ar' ? 'right' : 'left', padding: '1rem', fontSize: '0.875rem', color: '#64748b' }}>{t('current_name_label')}</th>
+                                <th style={{ textAlign: locale === 'ar' ? 'right' : 'left', padding: '1rem', fontSize: '0.875rem', color: '#64748b' }}>{t('requested_name_label')}</th>
+                                <th style={{ textAlign: locale === 'ar' ? 'right' : 'left', padding: '1rem', fontSize: '0.875rem', color: '#64748b' }}>{t('today')}</th>
+                                <th style={{ textAlign: locale === 'ar' ? 'left' : 'right', padding: '1rem', fontSize: '0.875rem', color: '#64748b' }}>{t('system')}</th>
                             </tr>
                         </thead>
                         <tbody>
                             {requests.length === 0 ? (
                                 <tr>
-                                    <td colSpan={5} style={{ padding: '3rem', textAlign: 'center', color: '#94a3b8' }}>No pending requests found.</td>
+                                    <td colSpan={5} style={{ padding: '3rem', textAlign: 'center', color: '#94a3b8' }}>{t('no_pending_requests')}</td>
                                 </tr>
                             ) : requests.map(req => (
                                 <tr key={req.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                                    <td style={{ padding: '1rem' }}>
+                                    <td style={{ padding: '1rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
                                         <div style={{ fontWeight: '600' }}>{req.user.firstName} {req.user.lastName}</div>
-                                        <div style={{ fontSize: '0.8rem', color: '#64748b' }}>{req.user.email} • {req.user.role}</div>
+                                        <div style={{ fontSize: '0.8rem', color: '#64748b' }}>{req.user.email} • {t(getRoleKey(req.user.role) as any)}</div>
                                         {req.user.company && <div style={{ fontSize: '0.75rem', color: '#6366f1' }}>{req.user.company.name}</div>}
                                     </td>
-                                    <td style={{ padding: '1rem', color: '#64748b' }}>{req.oldFirstName} {req.oldLastName}</td>
-                                    <td style={{ padding: '1rem', fontWeight: 'bold', color: '#166534' }}>{req.newFirstName} {req.newLastName}</td>
-                                    <td style={{ padding: '1rem', fontSize: '0.8rem', color: '#64748b' }}>{new Date(req.createdAt).toLocaleDateString()}</td>
-                                    <td style={{ padding: '1rem', textAlign: 'right' }}>
-                                        <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+                                    <td style={{ padding: '1rem', color: '#64748b', textAlign: locale === 'ar' ? 'right' : 'left' }}>{req.oldFirstName} {req.oldLastName}</td>
+                                    <td style={{ padding: '1rem', fontWeight: 'bold', color: '#166534', textAlign: locale === 'ar' ? 'right' : 'left' }}>{req.newFirstName} {req.newLastName}</td>
+                                    <td style={{ padding: '1rem', fontSize: '0.8rem', color: '#64748b', textAlign: locale === 'ar' ? 'right' : 'left' }}>{new Date(req.createdAt).toLocaleDateString(locale === 'ar' ? 'ar-EG' : 'en-EG')}</td>
+                                    <td style={{ padding: '1rem', textAlign: locale === 'ar' ? 'left' : 'right' }}>
+                                        <div style={{ display: 'flex', gap: '0.5rem', justifyContent: locale === 'ar' ? 'flex-start' : 'flex-end' }}>
                                             <button
                                                 disabled={processingId === req.id}
                                                 onClick={() => handleAction(req.id, 'approve')}
@@ -161,7 +172,7 @@ export default function ProfileRequestsPage() {
                                                     opacity: processingId === req.id ? 0.6 : 1
                                                 }}
                                             >
-                                                Approve
+                                                {t('approve_button')}
                                             </button>
                                             <button
                                                 disabled={processingId === req.id}
@@ -178,7 +189,7 @@ export default function ProfileRequestsPage() {
                                                     opacity: processingId === req.id ? 0.6 : 1
                                                 }}
                                             >
-                                                Reject
+                                                {t('reject_button')}
                                             </button>
                                         </div>
                                     </td>

@@ -4,6 +4,7 @@ import Link from 'next/link'
 import ObligationListItem from '@/components/ObligationListItem'
 import EmployeeFilter from '@/components/EmployeeFilter'
 import SortControl from '@/components/SortControl'
+import { useLanguage } from '@/context/LanguageContext'
 
 interface ObligationsClientProps {
     obligations: any[]
@@ -11,6 +12,7 @@ interface ObligationsClientProps {
 }
 
 export default function ObligationsClient({ obligations, role }: ObligationsClientProps) {
+    const { t } = useLanguage()
     const [filters, setFilters] = useState({
         employeeId: '',
         dateFrom: '',
@@ -90,7 +92,7 @@ export default function ObligationsClient({ obligations, role }: ObligationsClie
             <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginBottom: '1.5rem' }}>
                 {['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(role) && (
                     <Link href="/dashboard/obligations/new" className="btn btn-primary" style={{ textDecoration: 'none' }}>
-                        Add Obligation
+                        {t('add_obligation')}
                     </Link>
                 )}
             </div>
@@ -109,8 +111,8 @@ export default function ObligationsClient({ obligations, role }: ObligationsClie
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '1rem' }}>
                 <SortControl
                     options={[
-                        { label: 'Smart Sort (Status)', value: 'smart' },
-                        { label: 'Date Created', value: 'createdAt' },
+                        { label: t('smart_sort'), value: 'smart' },
+                        { label: t('date_created'), value: 'createdAt' },
                     ]}
                     sortBy={sortBy}
                     sortOrder={sortOrder}
@@ -125,7 +127,7 @@ export default function ObligationsClient({ obligations, role }: ObligationsClie
                     ))
                 ) : (
                     <div className="card" style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>
-                        No obligations found for the selected filters
+                        {t('no_obligations_found')}
                     </div>
                 )}
             </div>

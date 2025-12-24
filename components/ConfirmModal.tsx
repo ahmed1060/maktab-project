@@ -2,6 +2,7 @@
 
 import { createPortal } from 'react-dom'
 import { useState, useEffect } from 'react'
+import { useLanguage } from '@/context/LanguageContext'
 
 interface ConfirmModalProps {
     isOpen: boolean
@@ -18,12 +19,13 @@ export default function ConfirmModal({
     isOpen,
     title,
     message,
-    confirmText = 'Confirm',
-    cancelText = 'Cancel',
+    confirmText,
+    cancelText,
     onConfirm,
     onCancel,
     variant = 'danger'
 }: ConfirmModalProps) {
+    const { t, locale } = useLanguage()
     const [mounted, setMounted] = useState(false)
 
     useEffect(() => {
@@ -31,6 +33,9 @@ export default function ConfirmModal({
     }, [])
 
     if (!isOpen || !mounted) return null
+
+    const finalConfirmText = confirmText || t('confirm') || 'Confirm'
+    const finalCancelText = cancelText || t('cancel') || 'Cancel'
 
     const variantStyles = {
         danger: {
@@ -82,9 +87,11 @@ export default function ConfirmModal({
                 position: 'relative',
                 zIndex: 10,
                 boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
-                animation: 'slideUp 0.3s ease-out'
+                animation: 'slideUp 0.3s ease-out',
+                direction: locale === 'ar' ? 'rtl' : 'ltr',
+                textAlign: locale === 'ar' ? 'right' : 'left'
             }}>
-                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '1rem', marginBottom: '1.5rem' }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '1rem', marginBottom: '1.5rem', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
                     <div style={{
                         width: '48px',
                         height: '48px',
@@ -111,7 +118,7 @@ export default function ConfirmModal({
                     </div>
                 </div>
 
-                <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
+                <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
                     <button
                         onClick={onCancel}
                         style={{
@@ -128,7 +135,7 @@ export default function ConfirmModal({
                         onMouseEnter={(e) => e.currentTarget.style.background = '#f8fafc'}
                         onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
                     >
-                        {cancelText}
+                        {finalCancelText}
                     </button>
                     <button
                         onClick={onConfirm}
@@ -146,7 +153,7 @@ export default function ConfirmModal({
                         onMouseEnter={(e) => e.currentTarget.style.background = styles.confirmHover}
                         onMouseLeave={(e) => e.currentTarget.style.background = styles.confirmBg}
                     >
-                        {confirmText}
+                        {finalConfirmText}
                     </button>
                 </div>
             </div>

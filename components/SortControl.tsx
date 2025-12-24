@@ -1,4 +1,5 @@
 'use client'
+import { useLanguage } from '@/context/LanguageContext'
 
 interface SortOption {
     label: string
@@ -13,9 +14,11 @@ interface SortControlProps {
 }
 
 export default function SortControl({ options, sortBy, sortOrder, onSortChange }: SortControlProps) {
+    const { t } = useLanguage()
+
     return (
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <span style={{ fontSize: '0.875rem', fontWeight: '600', color: '#64748b' }}>Sort by:</span>
+            <span style={{ fontSize: '0.875rem', fontWeight: '600', color: '#64748b' }}>{t('sort_by')}:</span>
             <select
                 value={sortBy}
                 onChange={(e) => onSortChange(e.target.value, sortOrder)}
@@ -34,7 +37,7 @@ export default function SortControl({ options, sortBy, sortOrder, onSortChange }
             </select>
             <button
                 onClick={() => onSortChange(sortBy, sortOrder === 'asc' ? 'desc' : 'asc')}
-                title={sortOrder === 'asc' ? 'Ascending' : 'Descending'}
+                title={sortOrder === 'asc' ? t('ascending') : t('descending')}
                 style={{
                     padding: '0.375rem 0.5rem',
                     borderRadius: '0.375rem',

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import AccessDenied from '@/components/AccessDenied'
+import { useLanguage } from '@/context/LanguageContext'
 
 type Admin = {
     id: string
@@ -16,6 +17,7 @@ type Admin = {
 }
 
 export default function SuperAdminsPage() {
+    const { t, locale } = useLanguage()
     const [admins, setAdmins] = useState<Admin[]>([])
     const [loading, setLoading] = useState(true)
     const [showCreateModal, setShowCreateModal] = useState(false)
@@ -25,7 +27,6 @@ export default function SuperAdminsPage() {
     const { data: session } = useSession()
     const userRole = session?.user?.role || ''
 
-    // Move hooks to top level to comply with Rules of Hooks
     const [formData, setFormData] = useState({
         firstName: '',
         lastName: '',
@@ -75,8 +76,6 @@ export default function SuperAdminsPage() {
         setError('')
 
         try {
-            // Note: Currently calling super-admins API which enforces SHSD or similar logic
-            // Ideally we should unify this with /api/users but /api/super-admins is specific
             const res = await fetch('/api/super-admins', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -130,8 +129,6 @@ export default function SuperAdminsPage() {
         }
     }
 
-
-
     const openEdit = (admin: Admin) => {
         setEditingAdmin(admin)
         setEditData({
@@ -142,35 +139,43 @@ export default function SuperAdminsPage() {
         })
     }
 
+    const getStatusKey = (status: string) => {
+        switch (status) {
+            case 'ACTIVE': return 'status_active'
+            case 'BANNED': return 'status_banned'
+            default: return 'status_pending'
+        }
+    }
+
     return (
-        <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-                <div>
-                    <p style={{ color: '#64748b' }}>Manage super administrator accounts</p>
+        <div style={{ direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
+                <div style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>
+                    <p style={{ color: '#64748b' }}>{t('manage_super_admins_subtitle')}</p>
                 </div>
                 <button
                     className="btn btn-primary"
                     onClick={() => setShowCreateModal(true)}
                 >
-                    + Add Super Admin
+                    + {t('add_super_admin_button')}
                 </button>
             </div>
 
-            {loading ? <p>Loading...</p> : (
+            {loading ? <p style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('loading_filters')}</p> : (
                 <div style={{ background: 'white', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                         <thead style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
                             <tr>
-                                <th style={{ textAlign: 'left', padding: '1rem', fontSize: '0.875rem', color: '#64748b' }}>Name</th>
-                                <th style={{ textAlign: 'left', padding: '1rem', fontSize: '0.875rem', color: '#64748b' }}>Email</th>
-                                <th style={{ textAlign: 'left', padding: '1rem', fontSize: '0.875rem', color: '#64748b' }}>Status</th>
-                                <th style={{ textAlign: 'right', padding: '1rem', fontSize: '0.875rem', color: '#64748b' }}>Actions</th>
+                                <th style={{ textAlign: locale === 'ar' ? 'right' : 'left', padding: '1rem', fontSize: '0.875rem', color: '#64748b' }}>{t('name_label')}</th>
+                                <th style={{ textAlign: locale === 'ar' ? 'right' : 'left', padding: '1rem', fontSize: '0.875rem', color: '#64748b' }}>{t('email')}</th>
+                                <th style={{ textAlign: locale === 'ar' ? 'right' : 'left', padding: '1rem', fontSize: '0.875rem', color: '#64748b' }}>{t('system')}</th>
+                                <th style={{ textAlign: locale === 'ar' ? 'left' : 'right', padding: '1rem', fontSize: '0.875rem', color: '#64748b' }}>{t('quick_actions')}</th>
                             </tr>
                         </thead>
                         <tbody>
                             {admins.map(admin => (
                                 <tr key={admin.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                                    <td style={{ padding: '1rem' }}>
+                                    <td style={{ padding: '1rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
                                         <div
                                             style={{ fontWeight: '500', cursor: 'pointer', color: '#2563eb' }}
                                             onClick={() => setViewingAdmin(admin)}
@@ -178,8 +183,8 @@ export default function SuperAdminsPage() {
                                             {admin.firstName} {admin.lastName}
                                         </div>
                                     </td>
-                                    <td style={{ padding: '1rem' }}>{admin.email}</td>
-                                    <td style={{ padding: '1rem' }}>
+                                    <td style={{ padding: '1rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{admin.email}</td>
+                                    <td style={{ padding: '1rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
                                         <span style={{
                                             padding: '0.25rem 0.75rem',
                                             borderRadius: '999px',
@@ -188,17 +193,17 @@ export default function SuperAdminsPage() {
                                             color: admin.status === 'ACTIVE' ? '#166534' : '#854d0e',
                                             fontWeight: '600'
                                         }}>
-                                            {admin.status}
+                                            {t(getStatusKey(admin.status) as any)}
                                         </span>
                                     </td>
-                                    <td style={{ padding: '1rem', textAlign: 'right' }}>
-                                        <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+                                    <td style={{ padding: '1rem', textAlign: locale === 'ar' ? 'left' : 'right' }}>
+                                        <div style={{ display: 'flex', gap: '0.5rem', justifyContent: locale === 'ar' ? 'flex-start' : 'flex-end' }}>
                                             <button
                                                 onClick={() => openEdit(admin)}
                                                 className="btn"
                                                 style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem', background: '#f1f5f9', color: '#334155' }}
                                             >
-                                                Edit
+                                                {t('edit')}
                                             </button>
                                         </div>
                                     </td>
@@ -216,41 +221,44 @@ export default function SuperAdminsPage() {
                     background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center',
                     alignItems: 'center', zIndex: 100
                 }}>
-                    <div style={{ background: 'white', padding: '2rem', borderRadius: '12px', width: '100%', maxWidth: '500px' }}>
-                        <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1.5rem' }}>Add Super Admin</h2>
-                        {error && <div style={{ color: 'red', marginBottom: '1rem', fontSize: '0.9rem' }}>{error}</div>}
+                    <div
+                        style={{ position: 'absolute', inset: 0 }}
+                        onClick={() => setShowCreateModal(false)}
+                    />
+                    <div style={{ background: 'white', padding: '2rem', borderRadius: '12px', width: '100%', maxWidth: '500px', position: 'relative', zIndex: 101, direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
+                        <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('add_super_admin_title')}</h2>
+                        {error && <div style={{ color: 'red', marginBottom: '1rem', fontSize: '0.9rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{error}</div>}
                         <form onSubmit={handleCreate}>
-                            {/* ... Same fields as before ... */}
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
                                 <div>
-                                    <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem' }}>First Name</label>
-                                    <input className="input" required value={formData.firstName} onChange={e => setFormData({ ...formData, firstName: e.target.value })} />
+                                    <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('first_name_label')}</label>
+                                    <input className="input" required value={formData.firstName} onChange={e => setFormData({ ...formData, firstName: e.target.value })} style={{ textAlign: locale === 'ar' ? 'right' : 'left' }} />
                                 </div>
                                 <div>
-                                    <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem' }}>Last Name</label>
-                                    <input className="input" required value={formData.lastName} onChange={e => setFormData({ ...formData, lastName: e.target.value })} />
+                                    <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('last_name_label')}</label>
+                                    <input className="input" required value={formData.lastName} onChange={e => setFormData({ ...formData, lastName: e.target.value })} style={{ textAlign: locale === 'ar' ? 'right' : 'left' }} />
                                 </div>
                             </div>
                             <div style={{ marginBottom: '1rem' }}>
-                                <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem' }}>Email</label>
-                                <input className="input" type="email" required value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} />
+                                <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('email')}</label>
+                                <input className="input" type="email" required value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} style={{ textAlign: locale === 'ar' ? 'right' : 'left' }} />
                             </div>
                             <div style={{ marginBottom: '1rem', position: 'relative' }}>
-                                <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem' }}>Password</label>
+                                <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('password')}</label>
                                 <input
                                     className="input"
                                     type={showPassword ? "text" : "password"}
                                     required
                                     value={formData.password}
                                     onChange={e => setFormData({ ...formData, password: e.target.value })}
-                                    style={{ paddingRight: '2.5rem' }}
+                                    style={{ paddingRight: locale === 'ar' ? '1rem' : '2.5rem', paddingLeft: locale === 'ar' ? '2.5rem' : '1rem', textAlign: locale === 'ar' ? 'right' : 'left' }}
                                 />
                                 <button
                                     type="button"
                                     onClick={() => setShowPassword(!showPassword)}
                                     style={{
                                         position: 'absolute',
-                                        right: '0.75rem',
+                                        [locale === 'ar' ? 'left' : 'right']: '0.75rem',
                                         top: '2.25rem',
                                         background: 'none',
                                         border: 'none',
@@ -275,15 +283,15 @@ export default function SuperAdminsPage() {
                                 </button>
                             </div>
                             <div style={{ marginBottom: '1.5rem' }}>
-                                <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem' }}>Gender</label>
-                                <select className="input" value={formData.gender} onChange={e => setFormData({ ...formData, gender: e.target.value })}>
-                                    <option value="MALE">Male</option>
-                                    <option value="FEMALE">Female</option>
+                                <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('gender_label')}</label>
+                                <select className="input" value={formData.gender} onChange={e => setFormData({ ...formData, gender: e.target.value })} style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>
+                                    <option value="MALE">{t('male')}</option>
+                                    <option value="FEMALE">{t('female')}</option>
                                 </select>
                             </div>
-                            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
-                                <button type="button" onClick={() => setShowCreateModal(false)} style={{ padding: '0.75rem 1.5rem', border: '1px solid #e2e8f0', borderRadius: '0.5rem', background: 'transparent' }}>Cancel</button>
-                                <button type="submit" className="btn btn-primary" disabled={submitLoading}>{submitLoading ? 'Creating...' : 'Create'}</button>
+                            <div style={{ display: 'flex', gap: '1rem', justifyContent: locale === 'ar' ? 'flex-start' : 'flex-end', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
+                                <button type="button" onClick={() => setShowCreateModal(false)} style={{ padding: '0.75rem 1.5rem', border: '1px solid #e2e8f0', borderRadius: '0.5rem', background: 'transparent' }}>{t('cancel')}</button>
+                                <button type="submit" className="btn btn-primary" disabled={submitLoading}>{submitLoading ? t('creating') : t('sign_in')}</button>
                             </div>
                         </form>
                     </div>
@@ -297,22 +305,26 @@ export default function SuperAdminsPage() {
                     background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center',
                     alignItems: 'center', zIndex: 100
                 }}>
-                    <div style={{ background: 'white', padding: '2rem', borderRadius: '12px', width: '100%', maxWidth: '400px' }}>
-                        <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1.5rem' }}>Profile</h2>
+                    <div
+                        style={{ position: 'absolute', inset: 0 }}
+                        onClick={() => setViewingAdmin(null)}
+                    />
+                    <div style={{ background: 'white', padding: '2rem', borderRadius: '12px', width: '100%', maxWidth: '400px', position: 'relative', zIndex: 101, direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
+                        <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('profile_title')}</h2>
                         <div style={{ marginBottom: '1rem' }}>
-                            <label style={{ color: '#64748b', fontSize: '0.875rem' }}>Full Name</label>
-                            <div style={{ fontWeight: '500', fontSize: '1.1rem' }}>{viewingAdmin.firstName} {viewingAdmin.lastName}</div>
+                            <label style={{ color: '#64748b', fontSize: '0.875rem', display: 'block', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('full_name_label')}</label>
+                            <div style={{ fontWeight: '500', fontSize: '1.1rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{viewingAdmin.firstName} {viewingAdmin.lastName}</div>
                         </div>
                         <div style={{ marginBottom: '1rem' }}>
-                            <label style={{ color: '#64748b', fontSize: '0.875rem' }}>Email</label>
-                            <div>{viewingAdmin.email}</div>
+                            <label style={{ color: '#64748b', fontSize: '0.875rem', display: 'block', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('email')}</label>
+                            <div style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>{viewingAdmin.email}</div>
                         </div>
                         <div style={{ marginBottom: '1rem' }}>
-                            <label style={{ color: '#64748b', fontSize: '0.875rem' }}>Role</label>
-                            <div style={{ color: '#d97706', fontWeight: 'bold' }}>{viewingAdmin.role}</div>
+                            <label style={{ color: '#64748b', fontSize: '0.875rem', display: 'block', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('role_label')}</label>
+                            <div style={{ color: '#d97706', fontWeight: 'bold', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('super_admins')}</div>
                         </div>
-                        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '2rem' }}>
-                            <button className="btn" onClick={() => setViewingAdmin(null)} style={{ background: '#e2e8f0', color: '#0f172a' }}>Close</button>
+                        <div style={{ display: 'flex', justifyContent: locale === 'ar' ? 'flex-start' : 'flex-end', marginTop: '2rem' }}>
+                            <button className="btn" onClick={() => setViewingAdmin(null)} style={{ background: '#e2e8f0', color: '#0f172a' }}>{t('close_button')}</button>
                         </div>
                     </div>
                 </div>
@@ -325,41 +337,43 @@ export default function SuperAdminsPage() {
                     background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center',
                     alignItems: 'center', zIndex: 100
                 }}>
-                    <div style={{ background: 'white', padding: '2rem', borderRadius: '12px', width: '100%', maxWidth: '500px' }}>
-                        <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1.5rem' }}>Edit Admin</h2>
-                        {error && <div style={{ color: 'red', marginBottom: '1rem', fontSize: '0.9rem' }}>{error}</div>}
+                    <div
+                        style={{ position: 'absolute', inset: 0 }}
+                        onClick={() => setEditingAdmin(null)}
+                    />
+                    <div style={{ background: 'white', padding: '2rem', borderRadius: '12px', width: '100%', maxWidth: '500px', position: 'relative', zIndex: 101, direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
+                        <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('edit_admin_title')}</h2>
+                        {error && <div style={{ color: 'red', marginBottom: '1rem', fontSize: '0.9rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{error}</div>}
                         <form onSubmit={handleUpdate}>
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
                                 <div>
-                                    <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem' }}>First Name</label>
-                                    <input className="input" required value={editData.firstName} onChange={e => setEditData({ ...editData, firstName: e.target.value })} />
+                                    <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('first_name_label')}</label>
+                                    <input className="input" required value={editData.firstName} onChange={e => setEditData({ ...editData, firstName: e.target.value })} style={{ textAlign: locale === 'ar' ? 'right' : 'left' }} />
                                 </div>
                                 <div>
-                                    <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem' }}>Last Name</label>
-                                    <input className="input" required value={editData.lastName} onChange={e => setEditData({ ...editData, lastName: e.target.value })} />
+                                    <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('last_name_label')}</label>
+                                    <input className="input" required value={editData.lastName} onChange={e => setEditData({ ...editData, lastName: e.target.value })} style={{ textAlign: locale === 'ar' ? 'right' : 'left' }} />
                                 </div>
                             </div>
                             <div style={{ marginBottom: '1rem' }}>
-                                <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem' }}>Email</label>
-                                <input className="input" type="email" required value={editData.email} onChange={e => setEditData({ ...editData, email: e.target.value })} />
+                                <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('email')}</label>
+                                <input className="input" type="email" required value={editData.email} onChange={e => setEditData({ ...editData, email: e.target.value })} style={{ textAlign: locale === 'ar' ? 'right' : 'left' }} />
                             </div>
                             <div style={{ marginBottom: '1.5rem' }}>
-                                <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem' }}>Gender</label>
-                                <select className="input" value={editData.gender} onChange={e => setEditData({ ...editData, gender: e.target.value })}>
-                                    <option value="MALE">Male</option>
-                                    <option value="FEMALE">Female</option>
+                                <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('gender_label')}</label>
+                                <select className="input" value={editData.gender} onChange={e => setEditData({ ...editData, gender: e.target.value })} style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>
+                                    <option value="MALE">{t('male')}</option>
+                                    <option value="FEMALE">{t('female')}</option>
                                 </select>
                             </div>
-                            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
-                                <button type="button" onClick={() => setEditingAdmin(null)} style={{ padding: '0.75rem 1.5rem', border: '1px solid #e2e8f0', borderRadius: '0.5rem', background: 'transparent' }}>Cancel</button>
-                                <button type="submit" className="btn btn-primary" disabled={submitLoading}>{submitLoading ? 'Saving...' : 'Save Changes'}</button>
+                            <div style={{ display: 'flex', gap: '1rem', justifyContent: locale === 'ar' ? 'flex-start' : 'flex-end', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
+                                <button type="button" onClick={() => setEditingAdmin(null)} style={{ padding: '0.75rem 1.5rem', border: '1px solid #e2e8f0', borderRadius: '0.5rem', background: 'transparent' }}>{t('cancel')}</button>
+                                <button type="submit" className="btn btn-primary" disabled={submitLoading}>{submitLoading ? t('saving') : t('save_changes_button')}</button>
                             </div>
                         </form>
                     </div>
                 </div>
             )}
-
-
         </div>
     )
 }

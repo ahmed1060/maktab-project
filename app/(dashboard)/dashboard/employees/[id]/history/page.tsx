@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { useLanguage } from '@/context/LanguageContext'
 
 interface SalaryRecord {
     id: string
@@ -22,6 +23,7 @@ interface Employee {
 }
 
 export default function EmployeeHistoryPage() {
+    const { t, locale } = useLanguage()
     const params = useParams()
     const router = useRouter()
     const [records, setRecords] = useState<SalaryRecord[]>([])
@@ -57,46 +59,46 @@ export default function EmployeeHistoryPage() {
     }, [params.id])
 
     const getMonthName = (month: number) => {
-        return new Date(2000, month - 1).toLocaleString('default', { month: 'long' })
+        return new Date(2000, month - 1).toLocaleString(locale === 'ar' ? 'ar-EG' : 'en-US', { month: 'long' })
     }
 
-    if (loading) return <div style={{ padding: '2rem' }}>Loading...</div>
+    if (loading) return <div style={{ padding: '2rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('loading_filters')}</div>
 
     return (
-        <div>
+        <div style={{ direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
             <div style={{ marginBottom: '2rem' }}>
-                <Link href="/dashboard/employees" style={{ color: '#64748b', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
-                    ← Back to Employees
+                <Link href="/dashboard/employees" style={{ color: '#64748b', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem', flexDirection: locale === 'ar' ? 'row-reverse' : 'row', justifyContent: 'flex-end' }}>
+                    <span style={{ transform: locale === 'ar' ? 'rotate(180deg)' : 'none' }}>←</span> {t('back_to_employees')}
                 </Link>
-                <h1>Salary History</h1>
+                <h1 style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('salary_history')}</h1>
                 {employee && (
-                    <div style={{ fontSize: '1.2rem', color: '#475569' }}>
-                        <p style={{ margin: 0 }}>For: <strong>{employee.firstName} {employee.lastName}</strong></p>
+                    <div style={{ fontSize: '1.2rem', color: '#475569', textAlign: locale === 'ar' ? 'right' : 'left' }}>
+                        <p style={{ margin: 0 }}>{t('for_label')}: <strong>{employee.firstName} {employee.lastName}</strong></p>
                         {employee.salary !== undefined && (
-                            <p style={{ margin: '0.25rem 0 0 0', fontSize: '1rem' }}>Current Base Salary: <strong>{employee.salary} EGP</strong></p>
+                            <p style={{ margin: '0.25rem 0 0 0', fontSize: '1rem' }}>{t('current_base_salary')}: <strong>{employee.salary} {t('egp')}</strong></p>
                         )}
                     </div>
                 )}
             </div>
 
-            <div className="card">
-                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <div className="card" style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '800px' }}>
                     <thead>
                         <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
-                            <th style={{ padding: '1rem', textAlign: 'left' }}>Month/Year</th>
-                            <th style={{ padding: '1rem', textAlign: 'left' }}>Base Salary</th>
-                            <th style={{ padding: '1rem', textAlign: 'left' }}>Values (Net / Total)</th>
-                            <th style={{ padding: '1rem', textAlign: 'left' }}>Deduction Days</th>
-                            <th style={{ padding: '1rem', textAlign: 'left' }}>Bonus Days</th>
-                            <th style={{ padding: '1rem', textAlign: 'left' }}>Calculated Salary</th>
-                            <th style={{ padding: '1rem', textAlign: 'left' }}>Details</th>
+                            <th style={{ padding: '1rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('month_year_column')}</th>
+                            <th style={{ padding: '1rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('base_salary_column')}</th>
+                            <th style={{ padding: '1rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('values_net_total_column')}</th>
+                            <th style={{ padding: '1rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('deduction_days_column')}</th>
+                            <th style={{ padding: '1rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('bonus_days_column')}</th>
+                            <th style={{ padding: '1rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('calculated_salary_column')}</th>
+                            <th style={{ padding: '1rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('details_column')}</th>
                         </tr>
                     </thead>
                     <tbody>
                         {records.length === 0 ? (
                             <tr>
                                 <td colSpan={7} style={{ padding: '2rem', textAlign: 'center', color: '#64748b' }}>
-                                    No records found.
+                                    {t('no_records_found')}
                                 </td>
                             </tr>
                         ) : (
@@ -117,32 +119,32 @@ export default function EmployeeHistoryPage() {
                                     calculatedSalary = (baseSalaryToUse / record.totalDays) * totalPayableDays
                                 }
 
-                                const formattedCalculated = new Intl.NumberFormat('en-EG', { style: 'currency', currency: 'EGP' }).format(calculatedSalary)
-                                const formattedBase = new Intl.NumberFormat('en-EG', { style: 'currency', currency: 'EGP' }).format(baseSalaryToUse)
+                                const formattedCalculated = new Intl.NumberFormat(locale === 'ar' ? 'ar-EG' : 'en-EG', { style: 'currency', currency: 'EGP' }).format(calculatedSalary)
+                                const formattedBase = new Intl.NumberFormat(locale === 'ar' ? 'ar-EG' : 'en-EG', { style: 'currency', currency: 'EGP' }).format(baseSalaryToUse)
 
                                 return (
                                     <tr key={record.id} style={{ borderBottom: '1px solid #e2e8f0' }}>
-                                        <td style={{ padding: '1rem', fontWeight: '500' }}>
+                                        <td style={{ padding: '1rem', fontWeight: '500', textAlign: locale === 'ar' ? 'right' : 'left' }}>
                                             {getMonthName(record.month)} {record.year}
                                         </td>
-                                        <td style={{ padding: '1rem', color: '#475569' }}>
+                                        <td style={{ padding: '1rem', color: '#475569', textAlign: locale === 'ar' ? 'right' : 'left' }}>
                                             {formattedBase}
                                         </td>
-                                        <td style={{ padding: '1rem', fontSize: '1.1rem', color: '#0f172a' }}>
+                                        <td style={{ padding: '1rem', fontSize: '1.1rem', color: '#0f172a', textAlign: locale === 'ar' ? 'right' : 'left' }}>
                                             <span style={{ fontWeight: 'bold' }}>{fractionDisplay}</span>
                                             <span style={{ color: '#94a3b8' }}> / {record.totalDays}</span>
                                         </td>
-                                        <td style={{ padding: '1rem', color: '#dc2626', fontWeight: '500' }}>
-                                            {record.deductions > 0 ? `-${record.deductions} days` : '-'}
+                                        <td style={{ padding: '1rem', color: '#dc2626', fontWeight: '500', textAlign: locale === 'ar' ? 'right' : 'left' }}>
+                                            {record.deductions > 0 ? `-${record.deductions} ${t('days_label')}` : '-'}
                                         </td>
-                                        <td style={{ padding: '1rem', color: '#7c3aed', fontWeight: '500' }}>
-                                            {record.bonusDays ? `+${record.bonusDays} days` : '-'}
+                                        <td style={{ padding: '1rem', color: '#7c3aed', fontWeight: '500', textAlign: locale === 'ar' ? 'right' : 'left' }}>
+                                            {record.bonusDays ? `+${record.bonusDays} ${t('days_label')}` : '-'}
                                         </td>
-                                        <td style={{ padding: '1rem', fontWeight: '600', color: '#166534' }}>
+                                        <td style={{ padding: '1rem', fontWeight: '600', color: '#166534', textAlign: locale === 'ar' ? 'right' : 'left' }}>
                                             {formattedCalculated}
                                         </td>
-                                        <td style={{ padding: '1rem', color: '#64748b', fontSize: '0.875rem' }}>
-                                            Created: {new Date(record.createdAt).toLocaleDateString()}
+                                        <td style={{ padding: '1rem', color: '#64748b', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
+                                            {t('created_label')}: {new Date(record.createdAt).toLocaleDateString(locale === 'ar' ? 'ar-EG' : 'en-US')}
                                         </td>
                                     </tr>
                                 )

@@ -7,7 +7,7 @@ import SortControl from '@/components/SortControl'
 import { useCompany } from '@/context/CompanyContext'
 import AccessDenied from '@/components/AccessDenied'
 import Modal from '@/components/Modal'
-
+import { useLanguage } from '@/context/LanguageContext'
 
 interface Employee {
     id: string
@@ -21,9 +21,8 @@ interface Employee {
     avatar?: string | null
 }
 
-
-
 export default function EmployeesPage() {
+    const { t, locale } = useLanguage()
     const [employees, setEmployees] = useState<Employee[]>([])
     const [loading, setLoading] = useState(true)
     const router = useRouter()
@@ -35,12 +34,10 @@ export default function EmployeesPage() {
         const query = selectedCompanyId ? `?companyId=${selectedCompanyId}` : ''
         const res = await fetch(`/api/users${query}`, { cache: 'no-store' })
         const data = await res.json()
-        // Filter out current user AND Super Admins
         const filteredData = data.filter((u: Employee) => u.id !== (session?.user?.id || '') && u.role !== 'SUPER_ADMIN')
         setEmployees(filteredData)
         setLoading(false)
     }
-
 
     const [sortBy, setSortBy] = useState('name')
     const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc')
@@ -72,7 +69,6 @@ export default function EmployeesPage() {
                 comparison = a.firstName.localeCompare(b.firstName)
                 break
             case 'role':
-                // Sort by role: EMPLOYEE -> TEAM_LEADER -> ADMIN -> SUPER_ADMIN
                 const rolePriority: { [key: string]: number } = {
                     'EMPLOYEE': 1, 'TEAM_LEADER': 2, 'ADMIN': 3, 'SUPER_ADMIN': 4
                 }
@@ -111,11 +107,11 @@ export default function EmployeesPage() {
                 setDeleteConfirm(null)
             } else {
                 const data = await res.json()
-                window.alert(data.error || 'Failed to delete user')
+                window.alert(data.error || t('error_generic'))
             }
         } catch (err) {
             console.error('Delete error:', err)
-            window.alert('Error deleting user')
+            window.alert(t('error_generic'))
         } finally {
             setDeletingUser(null)
             setDeleteConfirm(null)
@@ -130,22 +126,21 @@ export default function EmployeesPage() {
             })
 
             if (res.ok) {
-                // Optimistically update local state immediately
                 setEmployees(prevEmployees =>
                     prevEmployees.map(emp =>
                         emp.id === id ? { ...emp, totalDifficultyPoints: 0 } : emp
                     )
                 )
-                setAlert({ type: 'success', message: 'Points reset successfully!' })
+                setAlert({ type: 'success', message: t('points_reset_success') })
                 setTimeout(() => setAlert(null), 3000)
             } else {
                 const data = await res.json()
-                setAlert({ type: 'error', message: data.error || 'Failed to reset points' })
+                setAlert({ type: 'error', message: data.error || t('points_reset_failed') })
                 setTimeout(() => setAlert(null), 5000)
             }
         } catch (err) {
             console.error('Reset points error:', err)
-            setAlert({ type: 'error', message: 'An error occurred while resetting points' })
+            setAlert({ type: 'error', message: t('error_generic') })
             setTimeout(() => setAlert(null), 5000)
         } finally {
             setResettingPoints(null)
@@ -166,18 +161,18 @@ export default function EmployeesPage() {
                     emp.id === id ? { ...emp, status: newStatus } : emp
                 ))
             } else {
-                window.alert('Failed to update status')
+                window.alert(t('error_generic'))
             }
         } catch (err) {
             console.error('Status toggle error:', err)
-            window.alert('Error updating status')
+            window.alert(t('error_generic'))
         } finally {
             setTogglingStatus(null)
         }
     }
 
     if (loading) {
-        return <div>Loading...</div>
+        return <div>{t('loading_filters')}</div>
     }
 
     if (userRole === 'EMPLOYEE') {
@@ -186,12 +181,12 @@ export default function EmployeesPage() {
 
     return (
         <div>
-            {/* Alert Message - Toast Style */}
             {alert && (
                 <div style={{
                     position: 'fixed',
                     top: '2rem',
-                    right: '2rem',
+                    right: locale === 'ar' ? 'auto' : '2rem',
+                    left: locale === 'ar' ? '2rem' : 'auto',
                     padding: '0.75rem 1.25rem',
                     borderRadius: '0.5rem',
                     background: alert.type === 'success' ? '#dcfce7' : '#fee2e2',
@@ -218,12 +213,11 @@ export default function EmployeesPage() {
             <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginBottom: '1.5rem' }}>
                 {['ADMIN', 'SUPER_ADMIN'].includes(userRole) && (
                     <Link href="/dashboard/employees/new" className="btn btn-primary" style={{ textDecoration: 'none' }}>
-                        Add Employee
+                        {t('add_employee')}
                     </Link>
                 )}
             </div>
 
-            {/* Filters Row */}
             <div style={{
                 marginBottom: '2rem',
                 display: 'flex',
@@ -240,7 +234,7 @@ export default function EmployeesPage() {
                     width: '300px',
                     position: 'relative'
                 }}>
-                    <div style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }}>
+                    <div style={{ position: 'absolute', [locale === 'ar' ? 'right' : 'left']: '1rem', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }}>
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                             <circle cx="11" cy="11" r="8"></circle>
                             <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
@@ -248,17 +242,18 @@ export default function EmployeesPage() {
                     </div>
                     <input
                         type="text"
-                        placeholder="Search employees..."
+                        placeholder={t('search_employees')}
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         style={{
                             width: '100%',
-                            padding: '0.75rem 1rem 0.75rem 3rem',
+                            padding: locale === 'ar' ? '0.75rem 3rem 0.75rem 1rem' : '0.75rem 1rem 0.75rem 3rem',
                             borderRadius: '0.75rem',
                             border: 'none',
                             fontSize: '1rem',
                             outline: 'none',
-                            background: 'transparent'
+                            background: 'transparent',
+                            textAlign: locale === 'ar' ? 'right' : 'left'
                         }}
                     />
                 </div>
@@ -272,7 +267,7 @@ export default function EmployeesPage() {
                     position: 'relative',
                     minWidth: '200px'
                 }}>
-                    <div style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: '#64748b' }}>
+                    <div style={{ position: 'absolute', [locale === 'ar' ? 'right' : 'left']: '1rem', top: '50%', transform: 'translateY(-50%)', color: '#64748b' }}>
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                             <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
                             <circle cx="12" cy="7" r="4"></circle>
@@ -283,7 +278,7 @@ export default function EmployeesPage() {
                         onChange={(e) => setRoleFilter(e.target.value)}
                         style={{
                             width: '100%',
-                            padding: '0.75rem 2.5rem 0.75rem 3rem', // Right padding for arrow, left for icon
+                            padding: locale === 'ar' ? '0.75rem 3rem 0.75rem 2.5rem' : '0.75rem 2.5rem 0.75rem 3rem',
                             borderRadius: '0.75rem',
                             border: 'none',
                             fontSize: '0.875rem',
@@ -293,14 +288,15 @@ export default function EmployeesPage() {
                             appearance: 'none',
                             backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2364748b'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`,
                             backgroundRepeat: 'no-repeat',
-                            backgroundPosition: 'right 1rem center',
-                            backgroundSize: '1.25rem'
+                            backgroundPosition: locale === 'ar' ? 'left 1rem center' : 'right 1rem center',
+                            backgroundSize: '1.25rem',
+                            textAlign: locale === 'ar' ? 'right' : 'left'
                         }}
                     >
-                        <option value="">All Roles</option>
-                        <option value="EMPLOYEE">Employee</option>
-                        <option value="TEAM_LEADER">Team Leader</option>
-                        <option value="ADMIN">Admin</option>
+                        <option value="">{t('all_roles')}</option>
+                        <option value="EMPLOYEE">{t('role_employee')}</option>
+                        <option value="TEAM_LEADER">{t('role_team_leader')}</option>
+                        <option value="ADMIN">{t('role_admin')}</option>
                     </select>
                 </div>
             </div>
@@ -308,9 +304,9 @@ export default function EmployeesPage() {
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '1.5rem' }}>
                 <SortControl
                     options={[
-                        { label: 'Name', value: 'name' },
-                        { label: 'Role', value: 'role' },
-                        { label: 'Points', value: 'points' },
+                        { label: t('name_label'), value: 'name' },
+                        { label: t('role_admin'), value: 'role' },
+                        { label: t('points_label'), value: 'points' },
                     ]}
                     sortBy={sortBy}
                     sortOrder={sortOrder}
@@ -320,17 +316,16 @@ export default function EmployeesPage() {
 
             <div style={{ display: 'grid', gap: '1rem' }}>
                 {sortedEmployees.length === 0 ? (
-                    <p>No employees found.</p>
+                    <p>{t('no_employees_found')}</p>
                 ) : (
                     sortedEmployees.map(emp => (
                         <div key={emp.id} className="card">
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                 <div style={{ flex: 1 }}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                                        {/* Status Dot Indicator */}
                                         <div
                                             onClick={() => userRole === 'SUPER_ADMIN' && handleStatusToggle(emp.id, emp.status || 'OFFLINE')}
-                                            title={userRole === 'SUPER_ADMIN' ? (emp.status === 'SUSPENDED' ? 'Suspended - Click to unsuspend' : emp.status === 'ACTIVE' ? 'Online' : 'Offline - Click to suspend') : (emp.status === 'SUSPENDED' ? 'Suspended' : emp.status === 'ACTIVE' ? 'Online' : 'Offline')}
+                                            title={userRole === 'SUPER_ADMIN' ? (emp.status === 'SUSPENDED' ? t('status_suspended_msg') : emp.status === 'ACTIVE' ? t('status_online_msg') : t('status_offline_msg')) : (emp.status === 'SUSPENDED' ? t('status_suspended_msg') : emp.status === 'ACTIVE' ? t('status_online_msg') : t('status_offline_msg'))}
                                             style={{
                                                 width: '12px',
                                                 height: '12px',
@@ -354,7 +349,7 @@ export default function EmployeesPage() {
                                             fontSize: '0.875rem',
                                             fontWeight: '600'
                                         }}>
-                                            {emp.totalDifficultyPoints || 0} pts
+                                            {emp.totalDifficultyPoints || 0} {t('pts')}
                                         </span>
                                     </div>
                                     <p style={{ margin: '0.5rem 0 0 0', color: '#64748b', fontSize: '0.875rem' }}>{emp.email}</p>
@@ -369,11 +364,11 @@ export default function EmployeesPage() {
                                             fontSize: '0.75rem',
                                             fontWeight: 'bold'
                                         }}>
-                                            {emp.role}
+                                            {t(`role_${emp.role.toLowerCase()}` as any) || emp.role}
                                         </span>
                                     )}
                                 </div>
-                                <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                                     {['ADMIN', 'SUPER_ADMIN'].includes(userRole) && (
                                         <>
                                             <Link
@@ -387,7 +382,7 @@ export default function EmployeesPage() {
                                                     textDecoration: 'none'
                                                 }}
                                             >
-                                                Edit
+                                                {t('edit')}
                                             </Link>
                                             <Link
                                                 href={`/dashboard/employees/${emp.id}/history`}
@@ -400,7 +395,7 @@ export default function EmployeesPage() {
                                                     textDecoration: 'none'
                                                 }}
                                             >
-                                                History
+                                                {t('history')}
                                             </Link>
                                             <Link
                                                 href={`/dashboard/employees/${emp.id}/bonus`}
@@ -413,7 +408,7 @@ export default function EmployeesPage() {
                                                     textDecoration: 'none'
                                                 }}
                                             >
-                                                Add Bonus
+                                                {t('add_bonus')}
                                             </Link>
                                             <Link
                                                 href={`/dashboard/employees/${emp.id}/deduction`}
@@ -426,7 +421,7 @@ export default function EmployeesPage() {
                                                     textDecoration: 'none'
                                                 }}
                                             >
-                                                Add Deduction
+                                                {t('add_deduction')}
                                             </Link>
                                             <button
                                                 onClick={() => handleResetPoints(emp.id)}
@@ -441,7 +436,7 @@ export default function EmployeesPage() {
                                                     opacity: resettingPoints === emp.id ? 0.7 : 1
                                                 }}
                                             >
-                                                {resettingPoints === emp.id ? 'Resetting...' : 'Reset Points'}
+                                                {resettingPoints === emp.id ? t('resetting') : t('reset_points')}
                                             </button>
                                             {emp.role !== 'SUPER_ADMIN' && (
                                                 <button
@@ -457,7 +452,7 @@ export default function EmployeesPage() {
                                                         opacity: deletingUser === emp.id ? 0.7 : 1
                                                     }}
                                                 >
-                                                    {deletingUser === emp.id ? 'Deleting...' : 'Delete'}
+                                                    {deletingUser === emp.id ? t('deleting') : t('delete')}
                                                 </button>
                                             )}
                                         </>
@@ -469,19 +464,18 @@ export default function EmployeesPage() {
                 )}
             </div>
 
-            {/* Delete Confirmation Modal */}
             <Modal
                 isOpen={!!deleteConfirm}
                 onClose={() => setDeleteConfirm(null)}
-                title="Confirm Delete"
-                hideFooter={true} // Custom footer in content
+                title={t('confirm_delete')}
+                hideFooter={true}
             >
                 <div>
                     <p style={{ margin: '0 0 1rem 0', color: '#64748b' }}>
-                        Are you sure you want to delete <strong>{deleteConfirm?.name}</strong>?
+                        {t('delete_warning')} <strong>{deleteConfirm?.name}</strong>?
                     </p>
                     <p style={{ color: '#991b1b', fontSize: '0.875rem', marginBottom: '1.5rem', background: '#fee2e2', padding: '0.5rem', borderRadius: '0.25rem' }}>
-                        ⚠️ This action cannot be undone.
+                        {t('undone_warning')}
                     </p>
                     <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
                         <button
@@ -489,14 +483,14 @@ export default function EmployeesPage() {
                             className="btn"
                             style={{ background: '#e2e8f0', color: '#0f172a' }}
                         >
-                            Cancel
+                            {t('cancel')}
                         </button>
                         <button
                             onClick={confirmDelete}
                             className="btn"
                             style={{ background: '#dc2626', color: 'white' }}
                         >
-                            Delete Employee
+                            {t('delete_employee')}
                         </button>
                     </div>
                 </div>

@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import { useLanguage } from '@/context/LanguageContext'
 import Modal from './Modal'
 
 interface ObligationListItemProps {
@@ -22,15 +23,16 @@ interface ObligationListItemProps {
 export default function ObligationListItem({ obligation }: ObligationListItemProps) {
     const [isModalOpen, setIsModalOpen] = useState(false)
     const [mounted, setMounted] = useState(false)
+    const { t, locale } = useLanguage()
 
     useEffect(() => {
         setMounted(true)
     }, [])
 
     const getButtonLabel = () => {
-        if (obligation.status === 'PENDING') return 'Start Obligation'
-        if (obligation.status === 'IN_PROGRESS') return 'Continue Obligation'
-        return 'Open Obligation'
+        if (obligation.status === 'PENDING') return t('start_obligation')
+        if (obligation.status === 'IN_PROGRESS') return t('continue_obligation')
+        return t('open_obligation')
     }
 
     return (
@@ -55,10 +57,10 @@ export default function ObligationListItem({ obligation }: ObligationListItemPro
                     display: 'inline-flex',
                     alignItems: 'center'
                 }}>
-                    {obligation.status}
+                    {t(`status_${obligation.status.toLowerCase()}` as any)}
                     {obligation.lastStatusUpdateBy && obligation.status === 'COMPLETED' && (
-                        <span style={{ marginLeft: '0.25rem', fontSize: '0.65rem', opacity: 0.8 }}>
-                            by {obligation.lastStatusUpdateBy}
+                        <span style={{ [locale === 'ar' ? 'marginRight' : 'marginLeft']: '0.25rem', fontSize: '0.65rem', opacity: 0.8 }}>
+                            {t('by')} {obligation.lastStatusUpdateBy}
                         </span>
                     )}
                 </span>
@@ -66,11 +68,11 @@ export default function ObligationListItem({ obligation }: ObligationListItemPro
 
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1rem' }}>
                 <div style={{ fontSize: '0.875rem', color: '#64748b' }}>
-                    <div>Assignee: {obligation.assignee.firstName} {obligation.assignee.lastName}</div>
+                    <div>{t('assignee_label')}: {obligation.assignee.firstName} {obligation.assignee.lastName}</div>
                     <div style={{ marginTop: '0.25rem' }}>
                         {mounted && (
                             <>
-                                Created: {new Date(obligation.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} {new Date(obligation.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })} | Deadline: {new Date(obligation.deadline).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} {new Date(obligation.deadline).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                                {t('created_label')}: {new Date(obligation.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} {new Date(obligation.createdAt).toLocaleDateString(locale === 'ar' ? 'ar-EG' : 'en-GB')} | {t('deadline_label')}: {new Date(obligation.deadline).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} {new Date(obligation.deadline).toLocaleDateString(locale === 'ar' ? 'ar-EG' : 'en-GB')}
                             </>
                         )}
                     </div>

@@ -9,6 +9,7 @@ import AccessDenied from '@/components/AccessDenied'
 import Modal from '@/components/Modal'
 import { useToast } from '@/context/ToastContext'
 import ConfirmModal from '@/components/ConfirmModal'
+import { useLanguage } from '@/context/LanguageContext'
 
 type Company = {
     id: string
@@ -16,6 +17,7 @@ type Company = {
 }
 
 export default function CompaniesPage() {
+    const { t, locale } = useLanguage()
     const router = useRouter()
     const [companies, setCompanies] = useState<Company[]>([])
     const [loading, setLoading] = useState(true)
@@ -28,8 +30,6 @@ export default function CompaniesPage() {
 
     const { data: session } = useSession()
     const userRole = session?.user?.role || ''
-
-
 
     // Delete State
     const [showDeleteModal, setShowDeleteModal] = useState(false)
@@ -91,11 +91,11 @@ export default function CompaniesPage() {
             const data = await res.json()
 
             if (!res.ok) {
-                throw new Error(data.error || 'Operation failed')
+                throw new Error(data.error || t('error_generic'))
             }
 
             // Success
-            showToast(editingCompany ? 'Company updated successfully!' : 'Company created successfully!', 'success')
+            showToast(editingCompany ? t('company_updated_success') : t('company_created_success'), 'success')
             setShowModal(false)
             fetchCompanies()
             triggerRefresh()
@@ -116,7 +116,7 @@ export default function CompaniesPage() {
     const handleDelete = async (e: React.FormEvent) => {
         e.preventDefault()
         if (deletePasscode !== '2025') {
-            setDeleteError('Invalid passcode')
+            setDeleteError(t('invalid_passcode'))
             return
         }
 
@@ -129,9 +129,9 @@ export default function CompaniesPage() {
             const res = await fetch(`/api/companies?id=${companyToDelete.id}`, { method: 'DELETE' })
             const data = await res.json()
 
-            if (!res.ok) throw new Error(data.error || 'Failed to delete company')
+            if (!res.ok) throw new Error(data.error || t('error_generic'))
 
-            showToast('Company deleted successfully!', 'success')
+            showToast(t('company_deleted_success'), 'success')
             setShowDeleteModal(false)
             setCompanyToDelete(null)
             fetchCompanies()
@@ -150,40 +150,40 @@ export default function CompaniesPage() {
     return (
         <>
             <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
                     <div>
-                        <p style={{ color: '#64748b' }}>Manage registered companies</p>
+                        <p style={{ color: '#64748b' }}>{t('manage_registered_companies')}</p>
                     </div>
                     <button
                         className="btn btn-primary"
                         onClick={() => handleOpenModal()}
                     >
-                        + Add Company
+                        {t('add_company')}
                     </button>
                 </div>
 
-                {loading ? <p>Loading...</p> : (
+                {loading ? <p>{t('loading_filters')}</p> : (
                     <div style={{ background: 'white', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-                        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                        <table style={{ width: '100%', borderCollapse: 'collapse', direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
                             <thead style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
                                 <tr>
-                                    <th style={{ textAlign: 'left', padding: '1rem', fontSize: '0.875rem', color: '#64748b' }}>Name</th>
-                                    <th style={{ textAlign: 'left', padding: '1rem', fontSize: '0.875rem', color: '#64748b' }}>ID</th>
-                                    <th style={{ textAlign: 'left', padding: '1rem', fontSize: '0.875rem', color: '#64748b' }}>Status</th>
-                                    <th style={{ textAlign: 'center', padding: '1rem', fontSize: '0.875rem', color: '#64748b' }}>Payments</th>
-                                    <th style={{ textAlign: 'right', padding: '1rem', fontSize: '0.875rem', color: '#64748b' }}>Actions</th>
+                                    <th style={{ textAlign: locale === 'ar' ? 'right' : 'left', padding: '1rem', fontSize: '0.875rem', color: '#64748b' }}>{t('name_label')}</th>
+                                    <th style={{ textAlign: locale === 'ar' ? 'right' : 'left', padding: '1rem', fontSize: '0.875rem', color: '#64748b' }}>{t('col_id')}</th>
+                                    <th style={{ textAlign: locale === 'ar' ? 'right' : 'left', padding: '1rem', fontSize: '0.875rem', color: '#64748b' }}>{t('status_label')}</th>
+                                    <th style={{ textAlign: 'center', padding: '1rem', fontSize: '0.875rem', color: '#64748b' }}>{t('costs')}</th>
+                                    <th style={{ textAlign: locale === 'ar' ? 'left' : 'right', padding: '1rem', fontSize: '0.875rem', color: '#64748b' }}>{t('quick_actions')}</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {companies.map(company => (
                                     <tr key={company.id} style={{ borderBottom: '1px solid #f1f5f9', background: (company as any).isBanned ? '#fff1f2' : 'white' }}>
-                                        <td style={{ padding: '1rem', fontWeight: '500' }}>{company.name}</td>
-                                        <td style={{ padding: '1rem', fontFamily: 'monospace', color: '#64748b', fontSize: '0.8rem' }}>{company.id}</td>
-                                        <td style={{ padding: '1rem' }}>
+                                        <td style={{ padding: '1rem', fontWeight: '500', textAlign: locale === 'ar' ? 'right' : 'left' }}>{company.name}</td>
+                                        <td style={{ padding: '1rem', fontFamily: 'monospace', color: '#64748b', fontSize: '0.8rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{company.id}</td>
+                                        <td style={{ padding: '1rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
                                             {(company as any).isBanned ? (
-                                                <span style={{ background: '#fee2e2', color: '#dc2626', padding: '0.25rem 0.5rem', borderRadius: '9999px', fontSize: '0.75rem', fontWeight: 'bold' }}>BANNED</span>
+                                                <span style={{ background: '#fee2e2', color: '#dc2626', padding: '0.25rem 0.5rem', borderRadius: '9999px', fontSize: '0.75rem', fontWeight: 'bold' }}>{t('status_banned')}</span>
                                             ) : (
-                                                <span style={{ background: '#dcfce7', color: '#166534', padding: '0.25rem 0.5rem', borderRadius: '9999px', fontSize: '0.75rem', fontWeight: 'bold' }}>ACTIVE</span>
+                                                <span style={{ background: '#dcfce7', color: '#166534', padding: '0.25rem 0.5rem', borderRadius: '9999px', fontSize: '0.75rem', fontWeight: 'bold' }}>{t('status_active')}</span>
                                             )}
                                         </td>
                                         <td style={{ padding: '1rem', textAlign: 'center' }}>
@@ -198,49 +198,49 @@ export default function CompaniesPage() {
                                                     border: '1px solid rgba(99, 102, 241, 0.2)'
                                                 }}
                                             >
-                                                💳 History
+                                                💳 {t('payments_history')}
                                             </button>
                                         </td>
-                                        <td style={{ padding: '1rem', textAlign: 'right' }}>
-                                            <button
-                                                onClick={() => handleOpenModal(company)}
-                                                className="btn"
-                                                style={{ background: '#f1f5f9', color: '#0f172a', padding: '0.4rem 0.8rem', fontSize: '0.8rem' }}
-                                            >
-                                                Edit
-                                            </button>
-                                            <button
-                                                onClick={() => {
-                                                    setBanConfirm({
-                                                        isOpen: true,
-                                                        company,
-                                                        action: (company as any).isBanned ? 'unban' : 'ban'
-                                                    })
-                                                }}
-                                                className="btn"
-                                                style={{
-                                                    background: (company as any).isBanned ? '#dcfce7' : '#fee2e2',
-                                                    color: (company as any).isBanned ? '#166534' : '#b91c1c',
-                                                    padding: '0.4rem 0.8rem',
-                                                    fontSize: '0.8rem',
-                                                    marginLeft: '0.5rem'
-                                                }}
-                                            >
-                                                {(company as any).isBanned ? 'Unban' : 'Ban'}
-                                            </button>
-                                            <button
-                                                onClick={() => openDeleteModal(company)}
-                                                className="btn"
-                                                style={{
-                                                    background: '#fee2e2',
-                                                    color: '#b91c1c',
-                                                    padding: '0.4rem 0.8rem',
-                                                    fontSize: '0.8rem',
-                                                    marginLeft: '0.5rem'
-                                                }}
-                                            >
-                                                Delete
-                                            </button>
+                                        <td style={{ padding: '1rem', textAlign: locale === 'ar' ? 'left' : 'right' }}>
+                                            <div style={{ display: 'flex', gap: '0.5rem', justifyContent: locale === 'ar' ? 'flex-start' : 'flex-end' }}>
+                                                <button
+                                                    onClick={() => handleOpenModal(company)}
+                                                    className="btn"
+                                                    style={{ background: '#f1f5f9', color: '#0f172a', padding: '0.4rem 0.8rem', fontSize: '0.8rem' }}
+                                                >
+                                                    {t('edit')}
+                                                </button>
+                                                <button
+                                                    onClick={() => {
+                                                        setBanConfirm({
+                                                            isOpen: true,
+                                                            company,
+                                                            action: (company as any).isBanned ? 'unban' : 'ban'
+                                                        })
+                                                    }}
+                                                    className="btn"
+                                                    style={{
+                                                        background: (company as any).isBanned ? '#dcfce7' : '#fee2e2',
+                                                        color: (company as any).isBanned ? '#166534' : '#b91c1c',
+                                                        padding: '0.4rem 0.8rem',
+                                                        fontSize: '0.8rem',
+                                                    }}
+                                                >
+                                                    {(company as any).isBanned ? t('unban_company') : t('ban_company')}
+                                                </button>
+                                                <button
+                                                    onClick={() => openDeleteModal(company)}
+                                                    className="btn"
+                                                    style={{
+                                                        background: '#fee2e2',
+                                                        color: '#b91c1c',
+                                                        padding: '0.4rem 0.8rem',
+                                                        fontSize: '0.8rem',
+                                                    }}
+                                                >
+                                                    {t('delete')}
+                                                </button>
+                                            </div>
                                         </td>
                                     </tr>
                                 ))}
@@ -249,76 +249,74 @@ export default function CompaniesPage() {
                     </div>
                 )}
 
-                {/* Modal */}
-                {/* Modal */}
                 <Modal
                     isOpen={showModal}
                     onClose={() => setShowModal(false)}
-                    title={editingCompany ? 'Edit Company' : 'Add Company'}
+                    title={editingCompany ? t('edit_company_title') : t('add_company')}
                     hideFooter={true}
                 >
-                    <div>
+                    <div style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>
                         {error && <div style={{ color: 'red', marginBottom: '1rem', fontSize: '0.9rem' }}>{error}</div>}
 
                         <form onSubmit={handleSubmit}>
                             <div style={{ marginBottom: '1.5rem' }}>
-                                <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem' }}>Company Name</label>
+                                <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem' }}>{t('company_name_label')}</label>
                                 <input
                                     className="input"
                                     required
                                     value={formData.name}
                                     onChange={e => setFormData({ name: e.target.value })}
+                                    style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}
                                 />
                             </div>
 
-                            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
+                            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
                                 <button type="button" onClick={() => setShowModal(false)} className="btn" style={{ background: '#e2e8f0', color: '#0f172a' }}>
-                                    Cancel
+                                    {t('cancel')}
                                 </button>
                                 <button type="submit" className="btn btn-primary" disabled={submitLoading}>
-                                    {submitLoading ? 'Saving...' : 'Save'}
+                                    {submitLoading ? t('saving') : t('save')}
                                 </button>
                             </div>
                         </form>
                     </div>
                 </Modal>
 
-                {/* Delete Modal */}
-                {/* Delete Modal */}
                 <Modal
                     isOpen={showDeleteModal}
                     onClose={() => setShowDeleteModal(false)}
-                    title="Delete Company"
+                    title={t('delete_company_title')}
                     hideFooter={true}
                 >
-                    <div>
+                    <div style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>
                         <p style={{ marginBottom: '1.5rem', color: '#64748b' }}>
-                            Are you sure you want to delete <strong>{companyToDelete?.name}</strong>?
+                            {t('delete_company_warning')} <strong>{companyToDelete?.name}</strong>?
                             <br /><br />
-                            <span style={{ fontWeight: 'bold', color: '#dc2626' }}>WARNING: This will permanently delete all employees, tasks, and data associated with this company.</span>
+                            <span style={{ fontWeight: 'bold', color: '#dc2626' }}>{t('delete_company_critical_warning')}</span>
                         </p>
 
                         {deleteError && <div style={{ color: 'red', marginBottom: '1rem', fontSize: '0.9rem' }}>{deleteError}</div>}
 
                         <form onSubmit={handleDelete}>
                             <div style={{ marginBottom: '1.5rem' }}>
-                                <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem' }}>Enter Passcode to Confirm</label>
+                                <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem' }}>{t('enter_passcode_label')}</label>
                                 <input
                                     type="password"
                                     className="input"
                                     required
-                                    placeholder="Enter passcode"
+                                    placeholder={t('enter_passcode_placeholder')}
                                     value={deletePasscode}
                                     onChange={e => setDeletePasscode(e.target.value)}
+                                    style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}
                                 />
                             </div>
 
-                            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
+                            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
                                 <button type="button" onClick={() => setShowDeleteModal(false)} className="btn" style={{ background: '#e2e8f0', color: '#0f172a' }}>
-                                    Cancel
+                                    {t('cancel')}
                                 </button>
                                 <button type="submit" className="btn" disabled={isDeleting} style={{ background: '#dc2626', color: 'white', padding: '0.75rem 1.5rem', borderRadius: '0.5rem', border: 'none', cursor: 'pointer' }}>
-                                    {isDeleting ? 'Deleting...' : 'Delete Permanently'}
+                                    {isDeleting ? t('deleting') : t('delete_permanently')}
                                 </button>
                             </div>
                         </form>
@@ -328,9 +326,12 @@ export default function CompaniesPage() {
 
             <ConfirmModal
                 isOpen={banConfirm.isOpen}
-                title={banConfirm.action === 'ban' ? 'Ban Company' : 'Unban Company'}
-                message={`Are you sure you want to ${banConfirm.action} "${banConfirm.company?.name}"? ${banConfirm.action === 'ban' ? 'Users from this company will not be able to log in.' : 'Users from this company will be able to log in again.'}`}
-                confirmText={banConfirm.action === 'ban' ? 'Ban Company' : 'Unban Company'}
+                title={banConfirm.action === 'ban' ? t('ban_company') : t('unban_company')}
+                message={banConfirm.action === 'ban'
+                    ? `${t('ban_warning')}${banConfirm.company?.name}${t('ban_warning_suffix')}`
+                    : `${t('unban_warning')}${banConfirm.company?.name}${t('unban_warning_suffix')}`
+                }
+                confirmText={banConfirm.action === 'ban' ? t('ban_company') : t('unban_company')}
                 onConfirm={async () => {
                     if (banConfirm.company) {
                         try {
@@ -343,10 +344,10 @@ export default function CompaniesPage() {
                                 fetchCompanies()
                                 setBanConfirm({ isOpen: false, company: null, action: null })
                             } else {
-                                alert('Failed to change ban status')
+                                alert(t('failed_change_ban_status'))
                             }
                         } catch (e) {
-                            alert('Error changing status')
+                            alert(t('error_changing_status'))
                         }
                     }
                 }}

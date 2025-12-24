@@ -6,6 +6,7 @@ import { useParams, useRouter } from 'next/navigation'
 import { useHeader } from '@/context/HeaderContext'
 import { createPortal } from 'react-dom'
 import ConfirmModal from '@/components/ConfirmModal'
+import { useLanguage } from '@/context/LanguageContext'
 
 interface Section {
     id: string
@@ -21,6 +22,7 @@ interface ClientData {
 }
 
 export default function ClientDetailsPage() {
+    const { t, locale } = useLanguage()
     const params = useParams()
     const router = useRouter()
     const clientId = params.id as string
@@ -72,24 +74,18 @@ export default function ClientDetailsPage() {
                 const foundClient = clientsData.find((c: any) => c.id === clientId)
                 if (foundClient) {
                     setClient(foundClient)
-                } else {
-                    // Start of mismatch detection - if client list doesn't have it, but sections fetch worked?
-                    // Currently sections fetch validates existence too.
                 }
-
                 setSections(sectionsData)
             } else {
                 if (sectionsRes.status === 404) {
-                    console.error('Sections API returned 404')
-                    setError('Client not found or access denied.')
-                    setIsLoading(false)
-                    return
+                    setError(t('failed_fetch_client_details' as any))
+                } else {
+                    setError(t('failed_save_generic'))
                 }
-                setError('Failed to load client data.')
             }
         } catch (error) {
             console.error('Failed to fetch data', error)
-            setError('An unexpected error occurred.')
+            setError(t('failed_save_generic'))
         } finally {
             setIsLoading(false)
         }
@@ -125,20 +121,25 @@ export default function ClientDetailsPage() {
 
     if (error) {
         return (
-            <div className="flex flex-col items-center justify-center min-h-[50vh] text-center space-y-4">
+            <div className="flex flex-col items-center justify-center min-h-[50vh] text-center space-y-4" style={{ direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
                 <div className="text-red-500 text-5xl">⚠️</div>
-                <h2 className="text-2xl font-bold text-slate-800">Error Loading Client</h2>
+                <h2 className="text-2xl font-bold text-slate-800">{t('failed_save_generic')}</h2>
                 <p className="text-slate-500 max-w-md">{error}</p>
-                <div className="flex gap-4">
-                    <button onClick={fetchData} className="btn btn-outline">Retry</button>
-                    <Link href="/dashboard/clients" className="btn btn-primary">Back to Clients</Link>
+                <div className="flex gap-4" style={{ flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
+                    <button onClick={fetchData} className="btn btn-outline">{t('all_companies').split(' ')[0]}</button>
+                    <Link href="/dashboard/clients" className="btn btn-primary">{t('back_to_clients' as any)}</Link>
                 </div>
             </div>
         )
     }
 
+    const containerStyle: React.CSSProperties = {
+        direction: locale === 'ar' ? 'rtl' : 'ltr',
+        textAlign: locale === 'ar' ? 'right' : 'left'
+    }
+
     return (
-        <>
+        <div style={containerStyle}>
             <div className="space-y-6 animate-in fade-in duration-500">
                 {/* Header Row */}
                 <div style={{ marginBottom: '1.5rem' }}>
@@ -156,30 +157,32 @@ export default function ClientDetailsPage() {
                             textDecoration: 'none',
                             transition: 'all 0.3s ease',
                             border: '1px solid rgba(255, 255, 255, 0.4)',
-                            transform: 'translateY(-2px)'
+                            transform: `translateY(-2px)${locale === 'ar' ? ' scaleX(-1)' : ''}`,
+                            float: locale === 'ar' ? 'right' : 'left'
                         }}
                         onMouseOver={(e) => {
-                            e.currentTarget.style.transform = 'translateY(-4px)'
+                            e.currentTarget.style.transform = `translateY(-4px)${locale === 'ar' ? ' scaleX(-1)' : ''}`
                             e.currentTarget.style.background = 'rgba(255, 255, 255, 0.9)'
                         }}
                         onMouseOut={(e) => {
-                            e.currentTarget.style.transform = 'translateY(-2px)'
+                            e.currentTarget.style.transform = `translateY(-2px)${locale === 'ar' ? ' scaleX(-1)' : ''}`
                             e.currentTarget.style.background = 'rgba(255, 255, 255, 0.7)'
                         }}
-                        title="Back to Clients"
+                        title={t('back_to_clients' as any)}
                     >
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                             <line x1="19" y1="12" x2="5" y2="12"></line>
                             <polyline points="12 19 5 12 12 5"></polyline>
                         </svg>
                     </Link>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <h1 className="text-3xl font-bold text-slate-800 tracking-tight">Sections</h1>
+                    <div style={{ clear: 'both' }}></div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
+                        <h1 className="text-3xl font-bold text-slate-800 tracking-tight">{t('sections_title' as any)}</h1>
                         <button
                             onClick={() => setIsModalOpen(true)}
                             className="btn btn-primary"
                         >
-                            Add Section
+                            {t('add_section_button' as any)}
                         </button>
                     </div>
                 </div>
@@ -191,16 +194,17 @@ export default function ClientDetailsPage() {
                     gap: '1rem',
                     alignItems: 'flex-end',
                     justifyContent: 'space-between',
-                    flexWrap: 'wrap'
+                    flexWrap: 'wrap',
+                    flexDirection: locale === 'ar' ? 'row-reverse' : 'row'
                 }}>
-                    <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-end', flex: 1, flexWrap: 'wrap' }}>
-                        <div style={{ position: 'relative' }}>
+                    <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-end', flex: 1, flexWrap: 'wrap', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
+                        <div style={{ position: 'relative', width: '100%', maxWidth: '400px' }}>
                             <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600', fontSize: '0.875rem' }}>
-                                Search Sections
+                                {t('search_sections_label' as any)}
                             </label>
                             <input
                                 type="text"
-                                placeholder="e.g. Marketing..."
+                                placeholder={t('search_placeholder')}
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
                                 onFocus={() => setShowSuggestions(true)}
@@ -210,9 +214,9 @@ export default function ClientDetailsPage() {
                                     borderRadius: '0.5rem',
                                     border: '1px solid #cbd5e1',
                                     fontSize: '0.875rem',
-                                    minWidth: '250px',
                                     outline: 'none',
-                                    width: '100%'
+                                    width: '100%',
+                                    textAlign: locale === 'ar' ? 'right' : 'left'
                                 }}
                             />
                             {showSuggestions && (
@@ -244,7 +248,8 @@ export default function ClientDetailsPage() {
                                                     cursor: 'pointer',
                                                     fontSize: '0.875rem',
                                                     color: '#334155',
-                                                    borderBottom: '1px solid #f1f5f9'
+                                                    borderBottom: '1px solid #f1f5f9',
+                                                    textAlign: locale === 'ar' ? 'right' : 'left'
                                                 }}
                                                 className="hover:bg-slate-50"
                                             >
@@ -252,8 +257,8 @@ export default function ClientDetailsPage() {
                                             </div>
                                         ))}
                                     {sections.filter(s => s.title.toLowerCase().includes(searchQuery.toLowerCase())).length === 0 && (
-                                        <div style={{ padding: '0.5rem 1rem', fontSize: '0.875rem', color: '#94a3b8' }}>
-                                            No sections found
+                                        <div style={{ padding: '0.5rem 1rem', fontSize: '0.875rem', color: '#94a3b8', textAlign: locale === 'ar' ? 'right' : 'left' }}>
+                                            {t('no_sections_found' as any)}
                                         </div>
                                     )}
                                 </div>
@@ -266,14 +271,14 @@ export default function ClientDetailsPage() {
                 {isLoading ? (
                     <div className="flex flex-col items-center justify-center py-20 space-y-4">
                         <div className="w-12 h-12 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></div>
-                        <p className="text-slate-500 font-medium animate-pulse">Loading sections...</p>
+                        <p className="text-slate-500 font-medium animate-pulse">{t('loading_filters')}</p>
                     </div>
                 ) : filteredSections.length === 0 ? (
                     <div className="glass-card flex flex-col items-center justify-center py-12 text-center text-slate-500">
                         <span className="text-4xl mb-2">📂</span>
-                        <h3 className="text-lg font-bold text-slate-800">No sections found</h3>
+                        <h3 className="text-lg font-bold text-slate-800">{t('no_sections_found' as any)}</h3>
                         <p className="max-w-xs mx-auto mt-1 mb-4">
-                            {searchQuery ? `No matches for "${searchQuery}"` : "Get started by adding your first section."}
+                            {searchQuery ? `${t('no_matches_found' as any)} "${searchQuery}"` : t('add_first_section_msg' as any)}
                         </p>
                     </div>
                 ) : (
@@ -287,9 +292,9 @@ export default function ClientDetailsPage() {
                                     marginBottom: '0.5rem'
                                 }}
                             >
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', gap: '1rem' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', gap: '1rem', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
                                     {/* Left Side: Title & Info */}
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
                                         <h3 className="text-lg font-semibold text-slate-800 leading-tight" style={{ margin: 0 }}>
                                             {section.title}
                                         </h3>
@@ -302,12 +307,12 @@ export default function ClientDetailsPage() {
                                             fontWeight: '600',
                                             whiteSpace: 'nowrap'
                                         }}>
-                                            {section._count.notes} {section._count.notes === 1 ? 'Note' : 'Notes'}
+                                            {section._count.notes} {section._count.notes === 1 ? t('note_label' as any) : t('notes_label' as any)}
                                         </span>
                                     </div>
 
                                     {/* Right Side: Action Button */}
-                                    <div style={{ marginLeft: 'auto', display: 'flex', gap: '0.5rem' }}>
+                                    <div style={{ display: 'flex', gap: '0.5rem', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
                                         <Link
                                             href={`/dashboard/clients/${clientId}/sections/${section.id}`}
                                             className="btn btn-primary"
@@ -318,7 +323,7 @@ export default function ClientDetailsPage() {
                                                 display: 'inline-block'
                                             }}
                                         >
-                                            View Section
+                                            {t('view_section_button' as any)}
                                         </Link>
                                         <button
                                             onClick={(e) => {
@@ -335,7 +340,7 @@ export default function ClientDetailsPage() {
                                                 cursor: 'pointer'
                                             }}
                                         >
-                                            Delete
+                                            {t('delete')}
                                         </button>
                                     </div>
                                 </div>
@@ -356,39 +361,39 @@ export default function ClientDetailsPage() {
                         className="absolute inset-0"
                         onClick={() => !isSubmitting && setIsModalOpen(false)}
                     />
-                    <div style={{ background: 'white', padding: '2rem', borderRadius: '12px', width: '100%', maxWidth: '500px', position: 'relative', zIndex: 10 }}>
-                        <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1.5rem', color: '#1e293b' }}>Add New Section</h2>
+                    <div style={{ background: 'white', padding: '2rem', borderRadius: '12px', width: '100%', maxWidth: '500px', position: 'relative', zIndex: 10, direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
+                        <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1.5rem', color: '#1e293b', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('add_section_title' as any)}</h2>
 
                         <form onSubmit={handleCreateSection}>
                             <div style={{ marginBottom: '1.5rem' }}>
-                                <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', color: '#64748b' }}>
-                                    Section Title
+                                <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', color: '#64748b', textAlign: locale === 'ar' ? 'right' : 'left' }}>
+                                    {t('section_title_label' as any)}
                                 </label>
                                 <input
                                     type="text"
                                     value={newSectionTitle}
                                     onChange={(e) => setNewSectionTitle(e.target.value)}
                                     className="input"
-                                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #e2e8f0', borderRadius: '0.5rem' }}
-                                    placeholder="e.g. Marketing, Legal, Finance"
+                                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #e2e8f0', borderRadius: '0.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}
+                                    placeholder={t('section_title_placeholder' as any)}
                                     autoFocus
                                 />
                             </div>
 
-                            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
+                            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
                                 <button
                                     type="button"
                                     onClick={() => setIsModalOpen(false)}
                                     style={{ padding: '0.75rem 1.5rem', border: '1px solid #e2e8f0', borderRadius: '0.5rem', background: 'transparent', cursor: 'pointer' }}
                                 >
-                                    Cancel
+                                    {t('cancel')}
                                 </button>
                                 <button
                                     type="submit"
                                     disabled={!newSectionTitle.trim() || isSubmitting}
                                     className="btn btn-primary"
                                 >
-                                    {isSubmitting ? 'Creating...' : 'Create Section'}
+                                    {isSubmitting ? t('creating') : t('create_section_button' as any)}
                                 </button>
                             </div>
                         </form>
@@ -399,9 +404,9 @@ export default function ClientDetailsPage() {
 
             <ConfirmModal
                 isOpen={deleteConfirm.isOpen}
-                title="Delete Section"
-                message={`Are you sure you want to delete "${deleteConfirm.section?.title}"? This will permanently delete all notes in this section. This action cannot be undone.`}
-                confirmText="Delete Section"
+                title={t('delete_section_title' as any)}
+                message={t('delete_section_msg' as any).replace('{title}', deleteConfirm.section?.title || '')}
+                confirmText={t('delete')}
                 onConfirm={async () => {
                     if (deleteConfirm.section) {
                         try {
@@ -411,16 +416,16 @@ export default function ClientDetailsPage() {
                                 setDeleteConfirm({ isOpen: false, section: null })
                             } else {
                                 const err = await res.json()
-                                alert(`Failed to delete: ${err.error}`)
+                                alert(`${t('failed_save_generic')}: ${err.error}`)
                             }
                         } catch (error) {
-                            alert('Error deleting section')
+                            alert(t('failed_save_generic'))
                         }
                     }
                 }}
                 onCancel={() => setDeleteConfirm({ isOpen: false, section: null })}
                 variant="danger"
             />
-        </>
+        </div>
     )
 }

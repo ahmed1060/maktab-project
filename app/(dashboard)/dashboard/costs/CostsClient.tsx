@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import CostCard from '@/components/CostCard'
 import EmployeeFilter from '@/components/EmployeeFilter'
 import SortControl from '@/components/SortControl'
+import { useLanguage } from '@/context/LanguageContext'
 
 interface CostsClientProps {
     tasksWithCosts: any[]
@@ -11,6 +12,7 @@ interface CostsClientProps {
 }
 
 export default function CostsClient({ tasksWithCosts, userRole }: CostsClientProps) {
+    const { t, locale } = useLanguage()
     const router = useRouter()
     const [filters, setFilters] = useState({
         employeeId: '',
@@ -76,19 +78,18 @@ export default function CostsClient({ tasksWithCosts, userRole }: CostsClientPro
             })
 
             if (res.ok) {
-                const data = await res.json()
-                setFeedbackMessage(`Successfully marked ${data.count} task(s) as paid!`)
+                setFeedbackMessage(t('successfully_marked_paid'))
                 setShowFeedback(true)
                 setTimeout(() => setShowFeedback(false), 5000)
                 router.refresh()
             } else {
-                setFeedbackMessage('Failed to update payment status')
+                setFeedbackMessage(t('failed_update_payment_status'))
                 setShowFeedback(true)
                 setTimeout(() => setShowFeedback(false), 5000)
             }
         } catch (error) {
             console.error('Bulk payment update failed', error)
-            setFeedbackMessage('An error occurred')
+            setFeedbackMessage(t('error_generic'))
             setShowFeedback(true)
             setTimeout(() => setShowFeedback(false), 5000)
         } finally {
@@ -97,14 +98,14 @@ export default function CostsClient({ tasksWithCosts, userRole }: CostsClientPro
     }
 
     return (
-        <div>
+        <div style={{ direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
             {showFeedback && (
                 <div style={{
                     position: 'fixed',
                     top: '20px',
-                    right: '20px',
-                    background: feedbackMessage.includes('Successfully') ? '#dcfce7' : '#fee2e2',
-                    color: feedbackMessage.includes('Successfully') ? '#166534' : '#991b1b',
+                    [locale === 'ar' ? 'left' : 'right']: '20px',
+                    background: feedbackMessage === t('successfully_marked_paid') ? '#dcfce7' : '#fee2e2',
+                    color: feedbackMessage === t('successfully_marked_paid') ? '#166534' : '#991b1b',
                     padding: '1rem 1.5rem',
                     borderRadius: '0.5rem',
                     boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
@@ -116,7 +117,7 @@ export default function CostsClient({ tasksWithCosts, userRole }: CostsClientPro
             )}
 
 
-            <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginBottom: '2rem' }}>
+            <div style={{ display: 'flex', justifyContent: locale === 'ar' ? 'flex-start' : 'flex-end', alignItems: 'center', marginBottom: '2rem' }}>
 
                 {['ADMIN', 'SUPER_ADMIN'].includes(userRole) && sortedTasks.length > 0 && (
                     <button
@@ -134,7 +135,7 @@ export default function CostsClient({ tasksWithCosts, userRole }: CostsClientPro
                             opacity: isUpdating ? 0.6 : 1
                         }}
                     >
-                        {isUpdating ? 'Updating...' : `Mark All as Paid (${sortedTasks.length})`}
+                        {isUpdating ? t('marking_as_paid') : `${t('mark_all_as_paid')} (${sortedTasks.length})`}
                     </button>
                 )}
             </div>
@@ -148,11 +149,11 @@ export default function CostsClient({ tasksWithCosts, userRole }: CostsClientPro
                 totalCost={totalCost}
             />
 
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '1rem' }}>
+            <div style={{ display: 'flex', justifyContent: locale === 'ar' ? 'flex-start' : 'flex-end', marginBottom: '1rem' }}>
                 <SortControl
                     options={[
-                        { label: 'Date', value: 'date' },
-                        { label: 'Amount', value: 'amount' },
+                        { label: t('today'), value: 'date' },
+                        { label: t('amount_label'), value: 'amount' },
                     ]}
                     sortBy={sortBy}
                     sortOrder={sortOrder}
@@ -164,10 +165,10 @@ export default function CostsClient({ tasksWithCosts, userRole }: CostsClientPro
                 <div className="card" style={{ textAlign: 'center', padding: '3rem', color: '#64748b' }}>
                     <p style={{ fontSize: '1.1rem', marginBottom: '0.5rem' }}>
                         {filters.employeeId || filters.dateFrom || filters.dateTo
-                            ? 'No approved tasks with costs for the selected filters'
-                            : 'No approved tasks with costs yet'}
+                            ? t('no_costs_found_filters')
+                            : t('no_costs_found_yet')}
                     </p>
-                    <p style={{ fontSize: '0.9rem' }}>Approved tasks with cost entries will appear here</p>
+                    <p style={{ fontSize: '0.9rem' }}>{t('approved_tasks_costs_hint')}</p>
                 </div>
             ) : (
                 <div style={{

@@ -2,187 +2,346 @@
 'use client'
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { formatTaskStatus } from '@/lib/formatStatus'
 import Modal from '@/components/Modal'
 import DiffViewer from '@/components/DiffViewer'
 import { useToast } from '@/context/ToastContext'
 import DateTimePicker from '@/components/DateTimePicker'
+import { useLanguage } from '@/context/LanguageContext'
 
 export default function TaskDetailClient({ task: initialTask, userRole, userId, creatorName, currentUserName }: { task: any, userRole: string, userId: string, creatorName: string, currentUserName: string }) {
+    const { t, locale } = useLanguage()
     const [task, setTask] = useState(initialTask)
-
-    useEffect(() => {
-        setTask(initialTask)
-    }, [initialTask])
-
-    // Get today's date in local time YYYY-MM-DD
-    const today = new Date()
-    const todayStr = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0')
-
-    const [pendingFiles, setPendingFiles] = useState<File[]>([])
+    const [existingAttachments, setExistingAttachments] = useState<any[]>(task.attachments || [])
     const [note, setNote] = useState('')
     const [cost, setCost] = useState('')
     const [costDescription, setCostDescription] = useState('')
-    const [costEntries, setCostEntries] = useState<{ amount: string, description: string }[]>([])
     const [location, setLocation] = useState('')
     const [locationStatus, setLocationStatus] = useState('')
-    const [capturingLocation, setCapturingLocation] = useState(false)
     const [uploading, setUploading] = useState(false)
-    const { showToast } = useToast()
-    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
-    const [showSubmitConfirm, setShowSubmitConfirm] = useState(false)
-    const [locationToDelete, setLocationToDelete] = useState<{ date: string } | null>(null)
-    const [isEditing, setIsEditing] = useState(false)
+    const [capturingLocation, setCapturingLocation] = useState(false)
+    const [pendingFiles, setPendingFiles] = useState<File[]>([])
+    const [inputKey, setInputKey] = useState(Date.now())
+    const [isDragging, setIsDragging] = useState(false)
+    const [costEntries, setCostEntries] = useState<any[]>([])
     const [isTransferModalOpen, setIsTransferModalOpen] = useState(false)
     const [transferAssigneeId, setTransferAssigneeId] = useState('')
+    const [allUsers, setAllUsers] = useState<any[]>([])
     const [transferring, setTransferring] = useState(false)
-    // const [dismissedDeletedWarning, setDismissedDeletedWarning] = useState(false) - Removed
-
-    // useEffect for localStorage - Removed
-
-    // Extract latest changes
-    const latestChanges = (() => {
-        try {
-            const comments = JSON.parse(task.comments || '[]')
-            const lastEdit = [...comments].reverse().find((c: any) => c.type === 'TASK_EDITED')
-            return lastEdit ? lastEdit.changes : null
-        } catch { return null }
-    })()
-
-    const [diffField, setDiffField] = useState<'title' | 'description' | null>(null)
-    const [viewedTitleChange, setViewedTitleChange] = useState(false)
-    const [viewedDescriptionChange, setViewedDescriptionChange] = useState(false)
-    // Persist isEdited state so buttons don't disappear when "I Understand" is clicked
-    const [isEditedPersistent] = useState(initialTask.isEdited)
-
-    // ... (rest of the code)
-
-
-    // ... (rest of the code)
-
-
-
-    // Add Review Modal State (Existing prompt was simple, now we need a custom modal for Difficulty)
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+    const [isEditing, setIsEditing] = useState(false)
+    const [editForm, setEditForm] = useState({
+        title: initialTask.title,
+        description: initialTask.description,
+        assigneeId: initialTask.assigneeId,
+        deadline: initialTask.deadline,
+        difficulty: initialTask.difficulty
+    })
+    const [editFieldErrors, setEditFieldErrors] = useState({ title: '', description: '' })
     const [isReviewModalOpen, setIsReviewModalOpen] = useState(false)
     const [reviewAction, setReviewAction] = useState<'APPROVED' | 'REJECTED' | null>(null)
-    const [reviewDifficulty, setReviewDifficulty] = useState(task.difficulty)
-
+    const [reviewDifficulty, setReviewDifficulty] = useState(initialTask.difficulty)
     const [submittingReview, setSubmittingReview] = useState(false)
-    const [editFieldErrors, setEditFieldErrors] = useState<{ [key: string]: string }>({})
+    const [viewedTitleChange, setViewedTitleChange] = useState(false)
+    const [viewedDescriptionChange, setViewedDescriptionChange] = useState(false)
+    const [diffField, setDiffField] = useState<'title' | 'description' | null>(null)
+    const [isEditedPersistent, setIsEditedPersistent] = useState(initialTask.isEdited)
+    const [latestChanges, setLatestChanges] = useState<{ title?: any, description?: any } | null>(null)
+    const [showSubmitConfirm, setShowSubmitConfirm] = useState(false)
+    const [locationToDelete, setLocationToDelete] = useState<{ index?: number, date?: string } | null>(null)
 
-    const [editForm, setEditForm] = useState({
-        title: task.title,
-        description: task.description,
-        assigneeId: task.assigneeId,
-        deadline: new Date(task.deadline).toISOString().slice(0, 16),
-        difficulty: task.difficulty
-    })
-    const [allUsers, setAllUsers] = useState<any[]>([])
     const router = useRouter()
+    const { showToast } = useToast()
 
     useEffect(() => {
-        if (isEditing && allUsers.length === 0) {
-            fetch('/api/users')
-                .then(res => res.json())
-                .then(data => {
-                    const sortedData = data.sort((a: any, b: any) => {
-                        const rolePriority: { [key: string]: number } = {
-                            'EMPLOYEE': 1, 'TEAM_LEADER': 2, 'ADMIN': 3, 'SUPER_ADMIN': 4
-                        }
-                        const priorityA = rolePriority[a.role] || 99
-                        const priorityB = rolePriority[b.role] || 99
-                        if (priorityA !== priorityB) return priorityA - priorityB
-                        return a.firstName.localeCompare(b.firstName)
-                    })
-                    setAllUsers(sortedData)
-                })
+        if (task.comments) {
+            try {
+                const logs = JSON.parse(task.comments)
+                const lastEdit = [...logs].reverse().find((l: any) => l.type === 'TASK_EDITED')
+                if (lastEdit && lastEdit.changes) {
+                    setLatestChanges(lastEdit.changes)
+                }
+            } catch (e) { console.error('Error parsing changes:', e) }
         }
-    }, [isEditing])
+    }, [task.comments])
 
-    const handleUpload = useCallback(async (isDraft: boolean = false) => {
-        console.log('handleUpload called', { isDraft, cost, pendingFiles: pendingFiles.length })
-        // If it's a draft, skip confirmation modal (or reuse it if desired, but user asked for "submit" confirmation mainly)
-        // If it's a submission (isDraft=false) and we haven't confirmed yet (called directly via buttons), we should divert to handleUploadRequest.
-        // However, we will make the Submit button call handleUploadRequest instead.
+    useEffect(() => {
+        if (userId === task.assigneeId && (task.isEdited || isEditedPersistent)) {
+            // Logic to track if they've seen it could be here
+        }
+    }, [userId, task.assigneeId, task.isEdited, isEditedPersistent])
 
-        // Validation (redundant check for safety)
-        if (cost && !isNaN(parseFloat(cost)) && parseFloat(cost) < 0) {
-            console.log('Cost validation failed in handleUpload')
+    const handleDismiss = async () => {
+        try {
+            await fetch(`/api/tasks/${task.id}/dismiss-edit`, { method: 'POST' })
+            setIsEditedPersistent(false)
+            setTask({ ...task, isEdited: false })
+            router.refresh()
+        } catch (e) { console.error(e) }
+    }
+
+    const handleFiles = (newFiles: File[]) => {
+        const validFiles = newFiles.filter(file => {
+            if (file.size > 10 * 1024 * 1024) {
+                showToast(`File ${file.name} is too large (max 10MB)`, 'error')
+                return false
+            }
+            return true
+        })
+        setPendingFiles(prev => [...prev, ...validFiles])
+    }
+
+    const removePendingFile = (index: number) => {
+        setPendingFiles(prev => prev.filter((_, i) => i !== index))
+    }
+
+    const handleAddCost = () => {
+        if (!cost) return
+        if (parseFloat(cost) < 0) {
+            showToast(t('cost_negative_error'), 'error')
             return
         }
+        setCostEntries(prev => [...prev, { amount: parseFloat(cost), description: costDescription || '' }])
+        setCost('')
+        setCostDescription('')
+    }
 
+    const removeCostEntry = (index: number) => {
+        setCostEntries(prev => prev.filter((_, i) => i !== index))
+    }
+
+    const handleUploadRequest = () => {
+        if (pendingFiles.length === 0 && costEntries.length === 0 && !note.trim()) {
+            setShowSubmitConfirm(true)
+        } else {
+            handleUpload(false)
+        }
+    }
+
+    const handleUpload = async (isDraft: boolean) => {
+        if (uploading) return
         setUploading(true)
-        const uploadedAttachments: any[] = []
+        console.log('handleUpload started, isDraft:', isDraft)
+
         try {
-            for (const file of pendingFiles) {
+            let uploadedUrls: string[] = []
+            if (pendingFiles.length > 0) {
                 const formData = new FormData()
-                formData.append('file', file)
-                formData.append('folder', 'tasks')
-                try {
-                    const res = await fetch('/api/upload', { method: 'POST', body: formData })
-                    const data = await res.json()
-                    if (data.success) {
-                        uploadedAttachments.push({ name: file.name, url: data.url, type: file.type, uploadedAt: new Date().toISOString(), uploadedBy: currentUserName })
-                    } else { throw new Error(`Failed to upload ${file.name}`) }
-                } catch {
-                    showToast(`Failed to upload one or more files.`, 'error')
-                    setUploading(false)
-                    return
-                }
+                pendingFiles.forEach(file => formData.append('files', file))
+                formData.append('taskId', task.id)
+
+                const uploadRes = await fetch('/api/upload', {
+                    method: 'POST',
+                    body: formData
+                })
+
+                if (!uploadRes.ok) throw new Error('Upload failed')
+                const data = await uploadRes.json()
+                uploadedUrls = data.urls
             }
-            await fetch(`/api/tasks/${task.id}/submit`, {
+
+            const res = await fetch(`/api/tasks/${task.id}/submit`, {
                 method: 'PUT',
                 body: JSON.stringify({
-                    newAttachments: uploadedAttachments, note,
-                    // If there is a pending input in the boxes, send it as single 'cost' (legacy/fallback)
-                    cost: cost ? parseFloat(cost) : 0,
-                    costDescription,
-                    // Send the list of added entries
-                    costs: costEntries,
-                    location, isDraft
+                    newAttachments: uploadedUrls,
+                    note,
+                    costEntries,
+                    location,
+                    isDraft
                 }),
                 headers: { 'Content-Type': 'application/json' }
             })
 
-            showToast(isDraft ? 'Draft saved successfully!' : 'Task submitted successfully!', 'success')
-            if (!isDraft) { setNote(''); setCost(''); setCostDescription(''); setLocation(''); setLocationStatus(''); setPendingFiles([]); setCostEntries([]) }
-            else { setNote(''); setCost(''); setCostDescription(''); setLocation(''); setLocationStatus(''); setPendingFiles([]); setCostEntries([]) }
+            if (!res.ok) throw new Error('Submission failed')
+
+            showToast(isDraft ? t('draft_saved_success') : t('task_submitted_success'), 'success')
+            if (!isDraft) {
+                setNote('')
+                setCost('')
+                setCostDescription('')
+                setLocation('')
+                setLocationStatus('')
+                setPendingFiles([])
+                setCostEntries([])
+            }
             router.refresh()
         } catch (error) {
-            console.error('handleUpload error detected:', error)
-            showToast('Failed to save. Check console for details.', 'error')
-            // alert('Error saving task: ' + String(error)) // Optional: Uncomment if console is hard to reach
+            console.error('handleUpload error:', error)
+            showToast(t('failed_save_generic'), 'error')
         } finally {
-            console.log('handleUpload finished, setting uploading=false')
             setUploading(false)
         }
-    }, [cost, pendingFiles, currentUserName, showToast, task.id, note, costDescription, costEntries, location, router])
+    }
 
-    // Listen for suspension auto-save event
-    useEffect(() => {
-        const handleSuspendSave = () => {
-            console.log('Suspension detected, auto-saving task draft...')
-            // Only auto-save if employee interaction is expected & possible (or if user is the assignee)
-            if ((userRole === 'EMPLOYEE' || userId === task.assigneeId) && task.status !== 'APPROVED' && task.status !== 'COMPLETED' && task.status !== 'PENDING_CONFIRMATION' && task.status !== 'REJECTED') {
-                handleUpload(true)
-            }
+    const handleCaptureLocation = async () => {
+        if (!navigator.geolocation) {
+            setLocationStatus('Geolocation not supported')
+            return
         }
-        window.addEventListener('app:suspend-detected', handleSuspendSave)
-        return () => window.removeEventListener('app:suspend-detected', handleSuspendSave)
-    }, [task.status, task.assigneeId, userRole, userId, handleUpload])
+
+        try {
+            const comments = JSON.parse(task.comments || '[]')
+            const locationCount = comments.filter((c: any) => c.type === 'LOCATION_ADDED').length
+            if (locationCount >= 2) {
+                showToast(t('max_locations_error'), 'error')
+                return
+            }
+        } catch (e) { console.error(e) }
+
+        setCapturingLocation(true)
+        setLocationStatus(t('capturing_location_button'))
+
+        navigator.geolocation.getCurrentPosition(
+            async (pos) => {
+                const { latitude, longitude } = pos.coords
+                const locationString = `{"latitude": ${latitude}, "longitude": ${longitude}}`
+                setLocation(locationString)
+                setLocationStatus(t('location_captured_saving'))
+
+                try {
+                    const res = await fetch(`/api/tasks/${task.id}/submit`, {
+                        method: 'PUT',
+                        body: JSON.stringify({
+                            newAttachments: [],
+                            note: '',
+                            costEntries: [],
+                            location: locationString,
+                            isDraft: true
+                        }),
+                        headers: { 'Content-Type': 'application/json' }
+                    })
+
+                    if (res.ok) {
+                        setLocationStatus(t('location_saved_success'))
+                        setLocation('')
+                        router.refresh()
+                        setTimeout(() => setLocationStatus(''), 3000)
+                    } else {
+                        throw new Error('Auto-save failed')
+                    }
+                } catch (error) {
+                    console.error('Location save failed:', error)
+                    setLocationStatus(t('failed_save_generic'))
+                }
+                setCapturingLocation(false)
+            },
+            (err) => {
+                console.error('Geolocation error:', err)
+                setLocationStatus('Failed to get location')
+                setCapturingLocation(false)
+            },
+            { enableHighAccuracy: true, timeout: 10000 }
+        )
+    }
+
+    const handleApprove = () => {
+        setReviewAction('APPROVED')
+        setReviewDifficulty(task.difficulty)
+        setIsReviewModalOpen(true)
+    }
+
+    const handleReject = () => {
+        setReviewAction('REJECTED')
+        setIsReviewModalOpen(true)
+    }
+
+    const submitReview = async (forcedStatus?: string, forcedDifficulty?: number) => {
+        if (submittingReview) return
+        setSubmittingReview(true)
+
+        const action = forcedStatus || reviewAction
+        const diff = forcedDifficulty !== undefined ? forcedDifficulty : reviewDifficulty
+
+        try {
+            const res = await fetch(`/api/tasks/${task.id}/review`, {
+                method: 'POST',
+                body: JSON.stringify({ action, difficulty: diff }),
+                headers: { 'Content-Type': 'application/json' }
+            })
+
+            if (!res.ok) throw new Error('Review failed')
+
+            showToast(`Task ${action === 'APPROVED' ? 'approved' : 'rejected'}`, 'success')
+            setIsReviewModalOpen(false)
+            router.refresh()
+        } catch (e) {
+            console.error(e)
+            showToast('Failed to process review', 'error')
+        } finally {
+            setSubmittingReview(false)
+        }
+    }
+
+    const handleDelete = async () => {
+        try {
+            const res = await fetch(`/api/tasks/${task.id}`, { method: 'DELETE' })
+            if (!res.ok) throw new Error('Delete failed')
+            showToast('Task deleted successfully', 'success')
+            router.push('/dashboard/tasks')
+            router.refresh()
+        } catch (e) {
+            console.error(e)
+            showToast('Failed to delete task', 'error')
+        }
+    }
+
+    const handleTransfer = async () => {
+        if (!transferAssigneeId || transferring) return
+        setTransferring(true)
+        try {
+            const res = await fetch(`/api/tasks/${task.id}/transfer`, {
+                method: 'POST',
+                body: JSON.stringify({ newAssigneeId: transferAssigneeId }),
+                headers: { 'Content-Type': 'application/json' }
+            })
+            if (!res.ok) throw new Error('Transfer failed')
+            showToast(t('task_transfer_success'), 'success')
+            setIsTransferModalOpen(false)
+            router.refresh()
+        } catch (e) {
+            console.error(e)
+            showToast('Failed to transfer task', 'error')
+        } finally {
+            setTransferring(false)
+        }
+    }
+
+    const isTransferredTask = () => {
+        try {
+            const logs = JSON.parse(task.comments || '[]')
+            return logs.some((l: any) => l.type === 'TASK_TRANSFERRED')
+        } catch { return false }
+    }
+
+    const handleEditClick = () => {
+        if (['APPROVED', 'COMPLETED', 'REJECTED'].includes(task.status)) {
+            showToast(t('cannot_edit_submitted_task'), 'error')
+            return
+        }
+        setEditForm({
+            title: task.title,
+            description: task.description,
+            assigneeId: task.assigneeId,
+            deadline: task.deadline,
+            difficulty: task.difficulty
+        })
+        setIsEditing(true)
+    }
 
     const handleSaveDetails = async (e: React.FormEvent) => {
         e.preventDefault()
-        setEditFieldErrors({})
-        // Inline Validation
-        const errors: { [key: string]: string } = {}
-        if (!editForm.title || editForm.title.length < 3 || editForm.title.length > 100) {
-            errors.title = "Title must be between 3 and 100 characters"
+        let hasError = false
+        const errors = { title: '', description: '' }
+
+        if (!editForm.title.trim()) {
+            errors.title = 'Title is required'
+            hasError = true
         }
-        if (!editForm.description || editForm.description.length < 10 || editForm.description.length > 500) {
-            errors.description = "Description must be between 10 and 500 characters"
+        if (!editForm.description.trim()) {
+            errors.description = 'Description is required'
+            hasError = true
         }
-        if (Object.keys(errors).length > 0) {
+
+        if (hasError) {
             setEditFieldErrors(errors)
             return
         }
@@ -193,1195 +352,538 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                 body: JSON.stringify(editForm),
                 headers: { 'Content-Type': 'application/json' }
             })
-            if (!res.ok) {
-                const txt = await res.text()
-                showToast(`Failed to update task: ${txt}`, 'error')
-            } else {
-                showToast('Task details updated!', 'success')
-                setIsEditing(false)
-                router.refresh()
-            }
-        } catch (error) {
-            console.error(error)
-            showToast('Failed to update task', 'error')
-        }
-    }
-
-    const handleDismiss = async () => {
-        await fetch(`/api/tasks/${task.id}/acknowledge`, { method: 'PUT' })
-        router.refresh()
-    }
-
-    const existingAttachments = task.attachments ? (() => {
-        try {
-            const parsed = JSON.parse(task.attachments)
-            if (Array.isArray(parsed)) return parsed
-            if (parsed.url) return [parsed]
-            return []
-        } catch { return [] }
-    })() : []
-
-    const [inputKey, setInputKey] = useState(0)
-
-    const [isDragging, setIsDragging] = useState(false)
-
-    const handleFiles = (files: File[]) => {
-        const validFiles: File[] = []
-        let hasError = false
-
-        files.forEach(file => {
-            if (file.size > 10 * 1024 * 1024) {
-                hasError = true
-            } else {
-                validFiles.push(file)
-            }
-        })
-
-        if (hasError) {
-            showToast('Some files were rejected because they exceed 10MB.', 'error')
-        }
-
-        setPendingFiles(prev => [...prev, ...validFiles])
-        setInputKey(prev => prev + 1)
-    }
-
-    const removePendingFile = (index: number) => {
-        setPendingFiles(prev => prev.filter((_, i) => i !== index))
-    }
-
-    const handleCaptureLocation = async () => {
-        const currentLocations = task.comments ? JSON.parse(task.comments).filter((c: any) => c.type === 'LOCATION_ADDED') : []
-        if (currentLocations.length >= 2) {
-            showToast('Maximum 2 locations allowed per task.', 'error')
-            return
-        }
-
-        if (!navigator.geolocation) {
-            setLocationStatus('Geolocation not supported')
-            return
-        }
-
-        setCapturingLocation(true)
-        setLocationStatus('Capturing location...')
-
-        navigator.geolocation.getCurrentPosition(
-            async (position) => {
-                const { latitude, longitude } = position.coords
-                const coordString = `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`
-                let capturedLocation = coordString
-                try {
-                    const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`)
-                    const data = await response.json()
-                    capturedLocation = data.display_name || coordString
-                } catch { capturedLocation = coordString }
-
-                const locationData = { address: capturedLocation, coords: coordString, latitude: latitude, longitude: longitude }
-                const locationString = JSON.stringify(locationData)
-
-                setLocation(capturedLocation)
-                setLocationStatus('Location captured ✓ Saving...')
-
-                try {
-                    await fetch(`/api/tasks/${task.id}/submit`, {
-                        method: 'PUT',
-                        body: JSON.stringify({
-                            newAttachments: [], note: '', cost: 0, costDescription: '', location: locationString, isDraft: true
-                        }),
-                        headers: { 'Content-Type': 'application/json' }
-                    })
-                    setLocationStatus('Location saved ✓')
-                    setLocation('')
-                    router.refresh()
-                    setTimeout(() => setLocationStatus(''), 3000)
-                } catch (error) {
-                    console.error('Auto-save failed:', error)
-                    setLocationStatus('Location captured but save failed')
-                }
-                setCapturingLocation(false)
-            },
-            (error) => {
-                let errorMessage = 'Failed to get location. '
-                switch (error.code) {
-                    case error.PERMISSION_DENIED: errorMessage += 'Permission denied. Please allow location access in your browser settings.'; break
-                    case error.POSITION_UNAVAILABLE: errorMessage += 'Location information unavailable. Try again or check your GPS.'; break
-                    case error.TIMEOUT: errorMessage += 'Request timed out. Please try again.'; break
-                    default: errorMessage += error.message || 'Unknown error occurred.'
-                }
-                setLocationStatus(errorMessage)
-                setCapturingLocation(false)
-            }
-        )
-    }
-
-    const handleAddCost = () => {
-        if (!cost) return
-        const val = parseFloat(cost)
-        if (val < 0) {
-            showToast('Cost cannot be negative.', 'error')
-            return
-        }
-        setCostEntries(prev => [...prev, { amount: cost, description: costDescription }])
-        setCost('')
-        setCostDescription('')
-    }
-
-    const removeCostEntry = (index: number) => {
-        setCostEntries(prev => prev.filter((_, i) => i !== index))
-    }
-
-    const handleUploadRequest = () => {
-        console.log('handleUploadRequest called')
-        // Validation before showing confirmation
-        if (cost && !isNaN(parseFloat(cost)) && parseFloat(cost) < 0) {
-            showToast('Cost cannot be negative. Please enter a valid amount.', 'error')
-            return
-        }
-        console.log('Opening confirmation modal')
-        setShowSubmitConfirm(true)
-    }
-
-
-
-    const validateLocations = (): boolean => {
-        if (!task.comments) return true
-        try {
-            const locations = JSON.parse(task.comments).filter((c: any) => c.type === 'LOCATION_ADDED')
-            const unverified = locations.filter((l: any) => !l.verificationStatus)
-            if (unverified.length > 0) {
-                showToast(`Please verify all ${unverified.length} location(s) before proceeding.`, 'error')
-                return false
-            }
-        } catch (e) { console.error('Error parsing locations', e) }
-        return true
-    }
-
-    const isTransferredTask = () => {
-        // Use the new isTransfer database flag (or fallback to comment check for old data)
-        if (task.isTransfer) return true
-        if (!task.comments) return false
-        return task.comments.includes('Task transferred to new employee') || task.comments.includes('Transferred from task')
-    }
-
-    const handleApprove = () => {
-        if (!validateLocations()) return
-        setReviewAction('APPROVED')
-        setReviewDifficulty(task.difficulty)
-        setIsReviewModalOpen(true)
-    }
-
-    const handleReject = () => {
-        if (!validateLocations()) return
-        setReviewAction('REJECTED')
-        setReviewDifficulty(task.difficulty)
-        setIsReviewModalOpen(true)
-    }
-
-    const submitReview = async (action: 'APPROVED' | 'REJECTED' | 'COMPLETED' | null = reviewAction, difficulty: number = reviewDifficulty) => {
-        if (!action) return
-        setSubmittingReview(true)
-        try {
-            const res = await fetch(`/api/tasks/${task.id}/review`, {
-                method: 'PUT',
-                body: JSON.stringify({ status: action, difficulty: difficulty }),
-                headers: { 'Content-Type': 'application/json' }
-            })
-            if (!res.ok) {
-                const txt = await res.text()
-                throw new Error(txt || 'Failed to update status')
-            }
-            setIsReviewModalOpen(false)
-            showToast(action === 'COMPLETED' ? 'Task marked as completed!' : `Task ${action.toLowerCase()}!`, 'success')
+            if (!res.ok) throw new Error('Update failed')
+            showToast(t('task_details_updated_success'), 'success')
+            setIsEditing(false)
             router.refresh()
-            if (action === 'COMPLETED') router.push('/dashboard/tasks')
-        } catch (error: any) {
-            console.error('Review failed', error)
-            showToast(error.message || 'Failed to update task status', 'error')
-        } finally {
-            setSubmittingReview(false)
+        } catch (e) {
+            console.error(e)
+            showToast(t('failed_update_task'), 'error')
         }
     }
 
-    const handleTransfer = async () => {
-        if (!transferAssigneeId) return
-        setTransferring(true)
+    const handlePaymentStatusChange = async (newStatus: string) => {
         try {
-            const res = await fetch(`/api/tasks/${task.id}/transfer`, {
-                method: 'POST',
-                body: JSON.stringify({ newAssigneeId: transferAssigneeId }),
+            const res = await fetch(`/api/tasks/${task.id}/payment-status`, {
+                method: 'PUT',
+                body: JSON.stringify({ paymentStatus: newStatus }),
                 headers: { 'Content-Type': 'application/json' }
             })
-            if (res.ok) {
-                showToast('Task transferred successfully!', 'success')
-                setTimeout(() => {
-                    router.push('/dashboard/tasks')
-                    router.refresh()
-                }, 1500)
-            } else {
-                const err = await res.text()
-                showToast(`Transfer failed: ${err}`, 'error')
-            }
-        } catch (error) {
-            console.error('Transfer error', error)
-        } finally {
-            setTransferring(false)
-            setIsTransferModalOpen(false)
+            if (!res.ok) throw new Error('Update failed')
+            showToast(t('payment_status_updated_prefix') + newStatus, 'success')
+            router.refresh()
+        } catch (e) {
+            console.error(e)
+            showToast(t('failed_update_payment_status'), 'error')
         }
-    }
-
-    const handleDelete = async () => {
-        try {
-            const res = await fetch(`/api/tasks/${task.id}/delete`, { method: 'DELETE' })
-            if (res.ok) { router.push('/dashboard/tasks'); router.refresh() }
-            else { showToast('Failed to delete task', 'error') }
-        } catch {
-            showToast('Failed to delete task', 'error')
-        }
-        setShowDeleteConfirm(false)
     }
 
     const confirmDeleteLocation = async () => {
         if (!locationToDelete) return
         try {
-            await fetch(`/api/tasks/${task.id}/locations`, {
-                method: 'PUT',
-                body: JSON.stringify({ timestamp: locationToDelete.date, action: 'DELETE' }),
+            const res = await fetch(`/api/tasks/${task.id}/locations`, {
+                method: 'DELETE',
+                body: JSON.stringify(locationToDelete),
                 headers: { 'Content-Type': 'application/json' }
             })
-            router.refresh()
+            if (!res.ok) throw new Error('Delete location failed')
+            showToast('Location deleted successfully', 'success')
             setLocationToDelete(null)
-        } catch (error) { console.error('Failed to delete location', error) }
-    }
-
-    const handleEditClick = () => {
-        if (['PENDING_CONFIRMATION', 'APPROVED', 'COMPLETED', 'REJECTED'].includes(task.status)) {
-            showToast('Cannot edit a task that has been submitted, completed or rejected.', 'error')
-            return
+            router.refresh()
+        } catch (e) {
+            console.error(e)
+            showToast('Failed to delete location', 'error')
         }
-        setIsEditing(true)
     }
 
-    const handlePaymentStatusChange = async (newStatus: string) => {
-        try {
-            const res = await fetch(`/api/tasks/${task.id}/payment`, {
-                method: 'PUT',
-                body: JSON.stringify({ paymentStatus: newStatus }),
-                headers: { 'Content-Type': 'application/json' }
-            })
-            if (res.ok) {
-                const data = await res.json()
-                if (data.success && data.task) {
-                    setTask(data.task)
-                    showToast(`Payment status updated to ${newStatus === 'PAID' ? 'Paid' : 'Pending Payment'}`, 'success')
-                    router.refresh()
-                }
-            }
-        } catch (error) { console.error('Payment status update failed', error) }
+    const containerStyle: React.CSSProperties = {
+        direction: locale === 'ar' ? 'rtl' : 'ltr',
+        textAlign: locale === 'ar' ? 'right' : 'left'
+    }
+
+    const headerRowStyle: React.CSSProperties = {
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        flexDirection: locale === 'ar' ? 'row-reverse' : 'row',
+        gap: '1rem',
+        flexWrap: 'wrap'
+    }
+
+    const badgeGroupStyle: React.CSSProperties = {
+        display: 'flex',
+        alignItems: 'center',
+        gap: '0.75rem',
+        flexDirection: locale === 'ar' ? 'row-reverse' : 'row'
+    }
+
+    const alertStyle: React.CSSProperties = {
+        padding: '1rem',
+        borderRadius: '0.5rem',
+        marginBottom: '1.5rem',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        flexDirection: locale === 'ar' ? 'row-reverse' : 'row'
     }
 
     return (
-        <div className="card">
+        <div className="card" style={containerStyle}>
             {/* Deleted Assignee Alert */}
             {task.assignee?.status === 'DELETED' && ['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole) && !['COMPLETED', 'APPROVED', 'REJECTED'].includes(task.status) && (
-                <div style={{ background: '#fee2e2', border: '1px solid #ef4444', color: '#991b1b', padding: '1.5rem', borderRadius: '0.5rem', marginBottom: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                <div style={{ ...alertStyle, background: '#fee2e2', border: '1px solid #ef4444', color: '#991b1b', flexDirection: 'column', gap: '1rem', alignItems: 'stretch' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
                         <span style={{ fontSize: '1.5rem' }}>🚫</span>
-                        <div>
-                            <strong>Assignee Deleted</strong>
+                        <div style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>
+                            <strong>{t('assignee_deleted_alert')}</strong>
                             <p style={{ margin: 0, fontSize: '0.9rem' }}>
-                                The employee assigned to this task (<strong>{task.assignee.firstName} {task.assignee.lastName}</strong>) has been deleted.
-                                Please decide how to proceed.
+                                {t('assignee_deleted_msg').replace('{name}', `${task.assignee.firstName} ${task.assignee.lastName}`)}
                             </p>
                         </div>
                     </div>
-                    <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
-                        <button
-                            onClick={() => {
-                                submitReview('COMPLETED', task.difficulty)
-                            }}
-                            className="btn"
-                            style={{ background: '#166534', color: 'white' }}
-                        >
-                            Mark as Completed
-                        </button>
-                        <button
-                            onClick={() => {
-                                if (allUsers.length === 0) {
-                                    fetch('/api/users').then(res => res.json()).then(setAllUsers)
-                                }
-                                setIsTransferModalOpen(true)
-                            }}
-                            className="btn"
-                            style={{ background: '#2563eb', color: 'white' }}
-                        >
-                            Reassign
-                        </button>
-                        <button
-                            onClick={() => router.push('/dashboard/tasks')}
-                            className="btn"
-                            style={{ background: 'white', border: '1px solid #b91c1c', color: '#b91c1c' }}
-                        >
-                            Dismiss (Decide Later)
-                        </button>
+                    <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
+                        <button onClick={() => submitReview('COMPLETED', task.difficulty)} className="btn" style={{ background: '#166534', color: 'white' }}>{t('mark_as_completed')}</button>
+                        <button onClick={() => { if (allUsers.length === 0) fetch('/api/users').then(r => r.json()).then(setAllUsers); setIsTransferModalOpen(true); }} className="btn" style={{ background: '#2563eb', color: 'white' }}>{t('reassign_button')}</button>
+                        <button onClick={() => router.push('/dashboard/tasks')} className="btn" style={{ background: 'white', border: '1px solid #b91c1c', color: '#b91c1c' }}>{t('dismiss_decide_later')}</button>
                     </div>
                 </div>
             )}
 
             {/* Task Edited Alert */}
             {task.isEdited && (userRole === 'EMPLOYEE' || userId === task.assigneeId) && (
-                <div style={{ background: '#fff7ed', border: '1px solid #fdba74', color: '#9a3412', padding: '1rem', borderRadius: '0.5rem', marginBottom: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                <div style={{ ...alertStyle, background: '#fff7ed', border: '1px solid #fdba74', color: '#9a3412' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
                         <span style={{ fontSize: '1.5rem' }}>⚠️</span>
-                        <div>
-                            <strong>Task Updated</strong>
+                        <div style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>
+                            <strong>{t('task_updated_alert')}</strong>
                             <p style={{ margin: 0, fontSize: '0.9rem' }}>
-                                The details of this task have been changed by <strong>{(() => {
+                                {t('task_updated_msg').replace('{author}', (() => {
                                     try {
-                                        const locs = JSON.parse(task.comments || '[]')
-                                        const lastEdit = [...locs].reverse().find((c: any) => c.type === 'TASK_EDITED')
-                                        if (lastEdit && lastEdit.author) return lastEdit.author
-                                        return 'an admin'
-                                    } catch { return 'an admin' }
-                                })()}</strong>. Please review the new requirements.
+                                        const logs = JSON.parse(task.comments || '[]')
+                                        const lastEdit = [...logs].reverse().find((l: any) => l.type === 'TASK_EDITED')
+                                        return lastEdit?.author || (locale === 'ar' ? 'مسؤول' : 'an admin')
+                                    } catch { return locale === 'ar' ? 'مسؤول' : 'an admin' }
+                                })())}
                             </p>
                         </div>
                     </div>
-                    <button onClick={handleDismiss} className="btn" style={{ background: '#ffedd5', color: '#9a3412', border: '1px solid #fdba74' }}>I Understand</button>
+                    <button onClick={handleDismiss} className="btn" style={{ background: '#ffedd5', color: '#9a3412', border: '1px solid #fdba74' }}>{t('i_understand_button')}</button>
                 </div>
             )}
 
             {/* Diff Modal */}
-            <Modal isOpen={!!diffField} onClose={() => setDiffField(null)} title={`${diffField === 'title' ? 'Title' : 'Description'} Changes`}>
+            <Modal isOpen={!!diffField} onClose={() => setDiffField(null)} title={diffField === 'title' ? t('title_changes_title') : t('description_changes_title')}>
                 {diffField && latestChanges && latestChanges[diffField] && (
-                    <div>
+                    <div style={{ direction: 'ltr' }}>
                         <DiffViewer oldText={latestChanges[diffField].from} newText={latestChanges[diffField].to} />
                     </div>
                 )}
             </Modal>
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <h1>{task.title}</h1>
-                        {/* Title Diff Button */}
+            <div style={headerRowStyle}>
+                <div style={badgeGroupStyle}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
+                        <h1 style={{ margin: 0 }}>{task.title}</h1>
                         {(task.isEdited || isEditedPersistent) && userId === task.assigneeId && latestChanges?.title && !viewedTitleChange && (
-                            <button
-                                onClick={() => {
-                                    setDiffField('title')
-                                    setViewedTitleChange(true)
-                                }}
-                                style={{
-                                    background: '#ffedd5',
-                                    color: '#9a3412',
-                                    border: '1px solid #fdba74',
-                                    borderRadius: '0.25rem',
-                                    padding: '0.25rem 0.5rem',
-                                    fontSize: '0.75rem',
-                                    cursor: 'pointer',
-                                    fontWeight: 'bold'
-                                }}
-                                title="View Title Changes"
-                            >
-                                Changed
-                            </button>
+                            <button onClick={() => { setDiffField('title'); setViewedTitleChange(true); }} style={{ background: '#ffedd5', color: '#9a3412', border: '1px solid #fdba74', borderRadius: '0.25rem', padding: '0.25rem 0.5rem', fontSize: '0.75rem', cursor: 'pointer', fontWeight: 'bold' }}>{t('edit')}</button>
                         )}
                     </div>
-                    <span style={{ padding: '0.25rem 0.75rem', borderRadius: '9999px', background: '#3b82f6', color: 'white', fontWeight: 'bold', fontSize: '0.9rem' }}>{task.difficulty} Points</span>
-                    <span style={{ padding: '0.5rem', borderRadius: '0.5rem', background: task.status === 'COMPLETED' ? '#e0f2fe' : task.status === 'APPROVED' ? '#dcfce7' : task.status === 'PENDING_CONFIRMATION' ? '#fef9c3' : task.status === 'REJECTED' ? '#fee2e2' : '#e2e8f0', color: task.status === 'COMPLETED' ? '#0369a1' : task.status === 'APPROVED' ? '#166534' : task.status === 'PENDING_CONFIRMATION' ? '#854d0e' : task.status === 'REJECTED' ? '#991b1b' : '#0f172a' }}>{formatTaskStatus(task.status)}</span>
+                    <span style={{ padding: '0.25rem 0.75rem', borderRadius: '9999px', background: '#3b82f6', color: 'white', fontWeight: 'bold', fontSize: '0.9rem' }}>{task.difficulty} {t('points_label_plural')}</span>
+                    <span style={{ padding: '0.5rem', borderRadius: '0.5rem', background: task.status === 'COMPLETED' ? '#e0f2fe' : task.status === 'APPROVED' ? '#dcfce7' : task.status === 'PENDING_CONFIRMATION' ? '#fef9c3' : task.status === 'REJECTED' ? '#fee2e2' : '#e2e8f0', color: task.status === 'COMPLETED' ? '#0369a1' : task.status === 'APPROVED' ? '#166534' : task.status === 'PENDING_CONFIRMATION' ? '#854d0e' : task.status === 'REJECTED' ? '#991b1b' : '#0f172a' }}>
+                        {t(`status_${task.status.toLowerCase()}` as any)}
+                    </span>
                     {task.totalCost > 0 && (task.status === 'APPROVED' || task.status === 'COMPLETED') && (
-                        <span style={{ padding: '0.5rem', borderRadius: '0.5rem', background: task.paymentStatus === 'PAID' ? '#d1fae5' : '#fed7aa', color: task.paymentStatus === 'PAID' ? '#065f46' : '#9a3412', fontSize: '0.875rem', fontWeight: '600' }}>{task.paymentStatus === 'PAID' ? '✓ PAID' : '⏳ PENDING PAYMENT'}</span>
+                        <span style={{ padding: '0.5rem', borderRadius: '0.5rem', background: task.paymentStatus === 'PAID' ? '#d1fae5' : '#fed7aa', color: task.paymentStatus === 'PAID' ? '#065f46' : '#9a3412', fontSize: '0.875rem', fontWeight: '600' }}>
+                            {task.paymentStatus === 'PAID' ? t('paid_status') : t('pending_payment_status')}
+                        </span>
                     )}
                 </div>
-                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <div style={{ display: 'flex', gap: '0.5rem', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
                     {task.totalCost > 0 && (task.status === 'APPROVED' || task.status === 'COMPLETED') && ['ADMIN', 'SUPER_ADMIN'].includes(userRole) && (
-                        <button onClick={() => handlePaymentStatusChange(task.paymentStatus === 'PAID' ? 'PENDING_PAYMENT' : 'PAID')} style={{ background: task.paymentStatus === 'PAID' ? '#fed7aa' : '#d1fae5', color: task.paymentStatus === 'PAID' ? '#9a3412' : '#065f46', border: 'none', borderRadius: '0.25rem', padding: '0.5rem 1rem', cursor: 'pointer', fontSize: '0.875rem', fontWeight: '600' }}>{task.paymentStatus === 'PAID' ? 'Mark as Pending' : 'Mark as Paid'}</button>
+                        <button onClick={() => handlePaymentStatusChange(task.paymentStatus === 'PAID' ? 'PENDING_PAYMENT' : 'PAID')} style={{ background: task.paymentStatus === 'PAID' ? '#fed7aa' : '#d1fae5', color: task.paymentStatus === 'PAID' ? '#9a3412' : '#065f46', border: 'none', borderRadius: '0.25rem', padding: '0.5rem 1rem', cursor: 'pointer', fontSize: '0.875rem', fontWeight: '600' }}>
+                            {task.paymentStatus === 'PAID' ? t('mark_as_pending_button') : t('mark_as_paid')}
+                        </button>
                     )}
-                    <button onClick={() => router.back()} style={{ background: 'none', border: '1px solid #cbd5e1', borderRadius: '0.25rem', padding: '0.5rem 1rem', cursor: 'pointer', color: '#64748b' }}>Close</button>
-                    {['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole) && userId !== task.assigneeId && (<button onClick={handleEditClick} style={{ background: '#e0f2fe', color: '#0369a1', border: 'none', borderRadius: '0.25rem', padding: '0.5rem 1rem', cursor: 'pointer' }}>Edit Task</button>)}
-                    {['ADMIN', 'SUPER_ADMIN'].includes(userRole) && (<button onClick={() => setShowDeleteConfirm(true)} style={{ background: '#fee2e2', color: '#991b1b', border: 'none', borderRadius: '0.25rem', padding: '0.5rem 1rem', cursor: 'pointer' }}>Delete Task</button>)}
+                    <button onClick={() => router.back()} style={{ background: 'none', border: '1px solid #cbd5e1', borderRadius: '0.25rem', padding: '0.5rem 1rem', cursor: 'pointer', color: '#64748b' }}>{t('close_button')}</button>
+                    {['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole) && userId !== task.assigneeId && (<button onClick={handleEditClick} style={{ background: '#e0f2fe', color: '#0369a1', border: 'none', borderRadius: '0.25rem', padding: '0.5rem 1rem', cursor: 'pointer' }}>{t('edit_task_button')}</button>)}
+                    {['ADMIN', 'SUPER_ADMIN'].includes(userRole) && (<button onClick={() => setShowDeleteConfirm(true)} style={{ background: '#fee2e2', color: '#991b1b', border: 'none', borderRadius: '0.25rem', padding: '0.5rem 1rem', cursor: 'pointer' }}>{t('delete_task_button')}</button>)}
                 </div>
             </div>
 
-            <div style={{ marginTop: '1rem' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                    {/* Description Diff Button */}
+            <div style={{ marginTop: '1.5rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
                     {(task.isEdited || isEditedPersistent) && userId === task.assigneeId && latestChanges?.description && !viewedDescriptionChange && (
-                        <button
-                            onClick={() => {
-                                setDiffField('description')
-                                setViewedDescriptionChange(true)
-                            }}
-                            style={{
-                                background: '#ffedd5',
-                                color: '#9a3412',
-                                border: '1px solid #fdba74',
-                                borderRadius: '0.25rem',
-                                padding: '0.1rem 0.5rem',
-                                fontSize: '0.7rem',
-                                cursor: 'pointer',
-                                fontWeight: 'bold'
-                            }}
-                            title="View Description Changes"
-                        >
-                            Changed
-                        </button>
+                        <button onClick={() => { setDiffField('description'); setViewedDescriptionChange(true); }} style={{ background: '#ffedd5', color: '#9a3412', border: '1px solid #fdba74', borderRadius: '0.25rem', padding: '0.1rem 0.5rem', fontSize: '0.7rem', cursor: 'pointer', fontWeight: 'bold' }}>{t('edit')}</button>
                     )}
                 </div>
                 <p style={{ fontSize: '1.1rem', margin: 0, whiteSpace: 'pre-wrap' }}>{task.description}</p>
             </div>
-            <div style={{ marginTop: '1rem', color: '#64748b' }}>Assigned by: {creatorName} | Deadline: {new Date(task.deadline).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} {new Date(task.deadline).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })}</div>
 
-            {/* Comments Section */}
+            <div style={{ marginTop: '1rem', color: '#64748b', fontSize: '0.9rem' }}>
+                {t('assigned_by')}: <strong>{creatorName}</strong> | {t('deadline_label')}: <strong>{new Date(task.deadline).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' }) + ' ' + new Date(task.deadline).toLocaleDateString(locale === 'ar' ? 'ar-EG' : 'en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</strong>
+            </div>
+
+            {/* Comments / Logs Section */}
             {task.comments && (() => {
                 try {
-                    const regularComments = JSON.parse(task.comments).filter((c: any) => c.type !== 'COST_ADDITION' && c.type !== 'LOCATION_ADDED')
-                    if (regularComments.length > 0) {
+                    const logs = JSON.parse(task.comments)
+                    const regularLogs = logs.filter((l: any) => l.type !== 'COST_ADDITION' && l.type !== 'LOCATION_ADDED')
+                    if (regularLogs.length > 0) {
                         return (
-                            <div style={{ marginTop: '2rem', borderTop: '1px solid #e2e8f0', paddingTop: '1rem' }}>
-                                <h3>Comments / Notes</h3>
-                                {regularComments.map((comment: any, i: number) => (
-                                    <div key={i} style={{ background: '#f8fafc', padding: '0.5rem', borderRadius: '0.25rem', marginTop: '0.5rem' }}>
-                                        <p style={{ margin: 0 }}>{comment.text}</p>
-                                        <span style={{ fontSize: '0.75rem', color: '#64748b' }}>- {comment.author} ({new Date(comment.date || comment.createdAt).toLocaleTimeString(undefined, { timeStyle: 'short' }) + ' ' + new Date(comment.date || comment.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })})</span>
-                                    </div>
-                                ))}
+                            <div style={{ marginTop: '2rem', borderTop: '1px solid #e2e8f0', paddingTop: '1.5rem' }}>
+                                <h3 style={{ marginBottom: '1rem' }}>{t('comments_notes_title')}</h3>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                    {[...regularLogs].reverse().map((log: any, i: number) => (
+                                        <div key={i} style={{ padding: '1rem', background: '#f8fafc', borderRadius: '0.5rem', border: '1px solid #e2e8f0' }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
+                                                <span style={{ fontWeight: 'bold', color: '#1e293b' }}>{log.author}</span>
+                                                <span style={{ fontSize: '0.75rem', color: '#64748b' }}>{new Date(log.date || log.createdAt).toLocaleString(locale)}</span>
+                                            </div>
+                                            <p style={{ margin: 0, fontSize: '0.95rem', color: '#334155', whiteSpace: 'pre-wrap' }}>{log.text}</p>
+                                        </div>
+                                    ))}
+                                </div>
                             </div>
                         )
                     }
-                } catch (e) { return null }
-                return null
+                } catch { return null }
             })()}
 
             {/* Attachments Section */}
-            <div style={{ marginTop: '2rem', borderTop: '1px solid #e2e8f0', paddingTop: '1rem' }}>
-                <h3>Attachments</h3>
-                <div style={{ marginTop: '0.5rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                    {existingAttachments.length > 0 ? (existingAttachments.map((att: any, index: number) => (
-                        <div key={index} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                            <span style={{ fontSize: '1.2rem' }}>📎</span>
-                            <a href={att.url} target="_blank" style={{ color: 'blue', textDecoration: 'underline' }}>{att.name || 'Attachment'}</a>
-                            <span style={{ fontSize: '0.8rem', color: '#64748b' }}>
-                                {att.uploadedBy ? `- ${att.uploadedBy} ` : ''}
-                                ({new Date(att.uploadedAt || Date.now()).toLocaleTimeString(undefined, { timeStyle: 'short' }) + ' ' + new Date(att.uploadedAt || Date.now()).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })})
-                            </span>
-                        </div>
-                    ))) : (<span style={{ color: '#64748b', fontStyle: 'italic' }}>No attachments</span>)}
-                </div>
+            <div style={{ marginTop: '2rem', borderTop: '1px solid #e2e8f0', paddingTop: '1.5rem' }}>
+                <h3 style={{ marginBottom: '1rem' }}>{t('attachments_optional_label').split(' ')[0]}</h3>
+                {existingAttachments.length > 0 ? (
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '1rem' }}>
+                        {existingAttachments.map((att: any, idx: number) => (
+                            <a key={idx} href={att.url} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.75rem', background: 'white', border: '1px solid #e2e8f0', borderRadius: '0.5rem', textDecoration: 'none', color: '#334155', transition: 'all 0.2s', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
+                                <span style={{ fontSize: '1.5rem' }}>📄</span>
+                                <div style={{ overflow: 'hidden', textAlign: locale === 'ar' ? 'right' : 'left' }}>
+                                    <div style={{ fontSize: '0.9rem', fontWeight: '500', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>{att.name || 'Attachment'}</div>
+                                    <div style={{ fontSize: '0.7rem', color: '#64748b' }}>{att.uploadedBy} • {new Date(att.uploadedAt).toLocaleDateString(locale)}</div>
+                                </div>
+                            </a>
+                        ))}
+                    </div>
+                ) : (
+                    <p style={{ color: '#64748b', fontStyle: 'italic' }}>{t('no_attachments_msg')}</p>
+                )}
             </div>
 
             {/* Costs Section */}
             {task.comments && (() => {
                 try {
-                    const costEntries = JSON.parse(task.comments).filter((c: any) => c.type === 'COST_ADDITION')
-                    if (costEntries.length > 0) {
+                    const costs = JSON.parse(task.comments).filter((l: any) => l.type === 'COST_ADDITION')
+                    if (costs.length > 0) {
                         return (
-                            <div style={{ marginTop: '2rem', borderTop: '1px solid #e2e8f0', paddingTop: '1rem' }}>
-                                <h3>Costs</h3>
-                                {costEntries.map((entry: any, i: number) => (
-                                    <div key={i} style={{ marginTop: '1rem' }}>
-                                        <div style={{ display: 'flex', gap: '1rem', alignItems: 'stretch' }}>
-                                            <div style={{ flex: 1, background: '#fef3c7', padding: '1rem', borderRadius: '0.5rem', border: '2px solid #f59e0b', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                                                <div style={{ fontSize: '0.75rem', color: '#92400e', fontWeight: '600', marginBottom: '0.25rem' }}>Description</div>
-                                                <p style={{ margin: 0, fontWeight: '600', color: '#92400e', fontSize: '1rem' }}>{entry.description || entry.text}</p>
+                            <div style={{ marginTop: '2rem', borderTop: '1px solid #e2e8f0', paddingTop: '1.5rem' }}>
+                                <h3 style={{ marginBottom: '1rem' }}>{t('costs')}</h3>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                                    {costs.map((c: any, i: number) => (
+                                        <div key={i} style={{ display: 'flex', flexDirection: 'column', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: '0.5rem', padding: '1rem' }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
+                                                <div style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>
+                                                    <div style={{ fontSize: '0.75rem', color: '#92400e', textTransform: 'uppercase', fontWeight: '600', marginBottom: '0.25rem' }}>{t('cost_description_placeholder').split(' ')[0]}</div>
+                                                    <div style={{ fontSize: '1rem', fontWeight: '600', color: '#78350f' }}>{c.description || (locale === 'ar' ? 'بدون وصف' : 'No description')}</div>
+                                                </div>
+                                                <div style={{ textAlign: 'center', background: '#fef3c7', padding: '0.5rem 1rem', borderRadius: '0.375rem', border: '1px solid #fcd34d' }}>
+                                                    <div style={{ fontSize: '0.75rem', color: '#92400e', textTransform: 'uppercase', fontWeight: '600' }}>{t('amount_label')}</div>
+                                                    <div style={{ fontSize: '1.1rem', fontWeight: 'bold', color: '#92400e' }}>{(c.amount || 0).toFixed(2)} {t('egp')}</div>
+                                                </div>
                                             </div>
-                                            <div style={{ minWidth: '150px', background: '#fef3c7', padding: '1rem', borderRadius: '0.5rem', border: '2px solid #f59e0b', display: 'flex', flexDirection: 'column', justifyContent: 'center', textAlign: 'center' }}>
-                                                <div style={{ fontSize: '0.75rem', color: '#92400e', fontWeight: '600', marginBottom: '0.25rem' }}>Amount</div>
-                                                <div style={{ fontSize: '1.25rem', fontWeight: 'bold', color: '#92400e' }}>{entry.amount || (entry.text?.match(/[\d.]+/) || ['0'])[0]} EGP</div>
+                                            <div style={{ fontSize: '0.75rem', color: '#b45309', marginTop: '0.5rem', borderTop: '1px dashed #fcd34d', paddingTop: '0.5rem' }}>
+                                                {c.author} • {new Date(c.date).toLocaleString(locale)}
                                             </div>
                                         </div>
-                                        <span style={{ fontSize: '0.75rem', color: '#78350f', marginTop: '0.5rem', display: 'block' }}>- {entry.author} ({new Date(entry.date).toLocaleTimeString(undefined, { timeStyle: 'short' }) + ' ' + new Date(entry.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })})</span>
+                                    ))}
+                                    <div style={{ background: '#f59e0b', color: 'white', padding: '1rem', borderRadius: '0.5rem', textAlign: 'center', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }}>
+                                        <div style={{ fontSize: '0.875rem', fontWeight: '600', opacity: 0.9 }}>{t('total_cost')}</div>
+                                        <div style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>{(task.totalCost || 0).toFixed(2)} {t('egp')}</div>
                                     </div>
-                                ))}
-                                {task.totalCost > 0 && (
-                                    <div style={{
-                                        background: '#fef3c7',
-                                        border: '2px solid #f59e0b',
-                                        borderRadius: '0.5rem',
-                                        padding: '1rem',
-                                        marginTop: '2rem',
-                                        marginBottom: '1rem',
-                                        textAlign: 'center'
-                                    }}>
-                                        <div style={{ fontSize: '0.875rem', color: '#92400e', fontWeight: '600', marginBottom: '0.25rem' }}>
-                                            Total Cost
-                                        </div>
-                                        <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#92400e' }}>
-                                            {task.totalCost.toFixed(2)} EGP
-                                        </div>
-                                    </div>
-                                )}
+                                </div>
                             </div>
                         )
                     }
-                } catch (e) { return null }
-                return null
+                } catch { return null }
             })()}
 
-            {/* Location History Section (Enhanced) */}
-            {
-                task.comments && (() => {
-                    try {
-                        const locationEntries = JSON.parse(task.comments).filter((c: any) => c.type === 'LOCATION_ADDED')
-                        if (locationEntries.length > 0) {
-                            return (
-                                <div style={{ marginTop: '2rem', borderTop: '1px solid #e2e8f0', paddingTop: '1rem' }}>
-                                    <h3>Location History</h3>
-                                    {locationEntries.map((entry: any, i: number) => {
-                                        // Parse location
-                                        let displayLocation = entry.location
-                                        let googleMapsLink = null
-
+            {/* Location History Section */}
+            {task.comments && (() => {
+                try {
+                    const locations = JSON.parse(task.comments).filter((l: any) => l.type === 'LOCATION_ADDED')
+                    if (locations.length > 0) {
+                        return (
+                            <div style={{ marginTop: '2rem', borderTop: '1px solid #e2e8f0', paddingTop: '1.5rem' }}>
+                                <h3 style={{ marginBottom: '1rem' }}>{t('location_history_title')}</h3>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                                    {locations.map((loc: any, i: number) => {
+                                        let displayLoc = loc.location
+                                        let mapsLink = null
                                         try {
-                                            if (entry.location.startsWith('{')) {
-                                                const locData = JSON.parse(entry.location)
-                                                displayLocation = locData.address || locData.coords
-                                                if (locData.latitude && locData.longitude) {
-                                                    googleMapsLink = `https://www.google.com/maps?q=${locData.latitude},${locData.longitude}`
-                                                }
+                                            if (loc.location.startsWith('{')) {
+                                                const d = JSON.parse(loc.location)
+                                                displayLoc = d.address || `${d.latitude}, ${d.longitude}`
+                                                if (d.latitude && d.longitude) mapsLink = `https://www.google.com/maps?q=${d.latitude},${d.longitude}`
                                             }
-                                        } catch {
-                                            displayLocation = entry.location
-                                        }
+                                        } catch { }
+
+                                        const canVerify = ['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole) && task.status === 'PENDING_CONFIRMATION' && userId !== task.assigneeId
+                                        const canDelete = (userRole === 'EMPLOYEE' || userId === task.assigneeId) && ['PENDING', 'IN_PROGRESS', 'REJECTED'].includes(task.status)
 
                                         const handleVerify = async (status: 'CORRECT' | 'WRONG') => {
                                             await fetch(`/api/tasks/${task.id}/locations`, {
                                                 method: 'PUT',
-                                                body: JSON.stringify({ timestamp: entry.date, action: 'VERIFY', verificationStatus: status }),
+                                                body: JSON.stringify({ timestamp: loc.date, action: 'VERIFY', verificationStatus: status }),
                                                 headers: { 'Content-Type': 'application/json' }
                                             })
                                             router.refresh()
                                         }
 
-                                        const handleDeleteLocation = () => {
-                                            setLocationToDelete({ date: entry.date })
-                                        }
-
-                                        // Permission Checks
-                                        const canDelete = (userRole === 'EMPLOYEE' || userId === task.assigneeId) && (task.status === 'PENDING' || task.status === 'REJECTED' || task.status === 'IN_PROGRESS')
-                                        const canVerify = ['SUPER_ADMIN', 'ADMIN', 'TEAM_LEADER'].includes(userRole) && task.status === 'PENDING_CONFIRMATION' && userId !== task.assigneeId
-
                                         return (
-                                            <div key={i} style={{
-                                                marginTop: '0.5rem',
-                                                padding: '0.75rem',
-                                                background: '#f0f9ff',
-                                                borderRadius: '0.5rem',
-                                                border: '1px solid #bae6fd',
-                                                display: 'flex',
-                                                justifyContent: 'space-between',
-                                                alignItems: 'center',
-                                                gap: '1rem'
-                                            }}>
-                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', flex: 1 }}>
-                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                                        <span style={{ fontSize: '1.2rem' }}>📍</span>
-                                                        {googleMapsLink ? (
-                                                            <a
-                                                                href={googleMapsLink}
-                                                                target="_blank"
-                                                                rel="noopener noreferrer"
-                                                                style={{ margin: 0, fontWeight: '500', color: '#0369a1', textDecoration: 'underline' }}
-                                                            >
-                                                                {displayLocation}
-                                                            </a>
-                                                        ) : (
-                                                            <p style={{ margin: 0, fontWeight: '500', color: '#0c4a6e' }}>
-                                                                {displayLocation}
-                                                            </p>
+                                            <div key={i} style={{ border: '1px solid #bae6fd', background: '#f0f9ff', borderRadius: '0.5rem', padding: '1rem' }}>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexDirection: locale === 'ar' ? 'row-reverse' : 'row', gap: '1rem' }}>
+                                                    <div style={{ display: 'flex', gap: '0.75rem', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
+                                                        <span style={{ fontSize: '1.25rem' }}>📍</span>
+                                                        <div style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>
+                                                            {mapsLink ? <a href={mapsLink} target="_blank" rel="noreferrer" style={{ fontWeight: '600', color: '#0369a1', textDecoration: 'underline' }}>{displayLoc}</a> : <span style={{ fontWeight: '600', color: '#0c4a6e' }}>{displayLoc}</span>}
+                                                            <div style={{ fontSize: '0.75rem', color: '#0369a1', marginTop: '0.25rem' }}>{loc.author} • {new Date(loc.date).toLocaleString(locale)}</div>
+                                                        </div>
+                                                    </div>
+                                                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
+                                                        {loc.verificationStatus && (
+                                                            <span style={{ fontSize: '0.75rem', fontWeight: '700', color: loc.verificationStatus === 'CORRECT' ? '#16a34a' : '#dc2626', background: loc.verificationStatus === 'CORRECT' ? '#dcfce7' : '#fee2e2', padding: '0.25rem 0.5rem', borderRadius: '0.25rem' }}>
+                                                                {loc.verificationStatus === 'CORRECT' ? t('verified_correct_title') : t('verified_wrong_title')}
+                                                            </span>
+                                                        )}
+                                                        {canVerify && (
+                                                            <div style={{ display: 'flex', gap: '0.25rem' }}>
+                                                                <button onClick={() => handleVerify('CORRECT')} style={{ background: '#dcfce7', border: '1px solid #22c55e', color: '#166534', width: '32px', height: '32px', borderRadius: '50%', cursor: 'pointer' }} title={t('mark_correct_title')}>✓</button>
+                                                                <button onClick={() => handleVerify('WRONG')} style={{ background: '#fee2e2', border: '1px solid #ef4444', color: '#991b1b', width: '32px', height: '32px', borderRadius: '50%', cursor: 'pointer' }} title={t('mark_wrong_title')}>✕</button>
+                                                            </div>
+                                                        )}
+                                                        {canDelete && (
+                                                            <button onClick={() => setLocationToDelete({ date: loc.date })} style={{ background: '#fee2e2', color: '#dc2626', border: 'none', borderRadius: '0.25rem', padding: '0.4rem', cursor: 'pointer' }} title={t('delete_location_title')}>🗑️</button>
                                                         )}
                                                     </div>
-                                                    <div style={{ paddingLeft: '1.7rem' }}>
-                                                        <span style={{ fontSize: '0.75rem', color: '#0369a1' }}>
-                                                            - {entry.author} ({new Date(entry.date).toLocaleTimeString(undefined, { timeStyle: 'short' }) + ' ' + new Date(entry.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })})
-                                                        </span>
-                                                    </div>
-                                                </div>
-
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                                    {/* Verification Buttons */}
-                                                    {(canVerify || entry.verificationStatus) && (
-                                                        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                                                            {(canVerify || entry.verificationStatus === 'CORRECT') && (
-                                                                <button
-                                                                    onClick={() => canVerify && handleVerify('CORRECT')}
-                                                                    disabled={!canVerify}
-                                                                    style={{
-                                                                        border: entry.verificationStatus === 'CORRECT' ? '2px solid #16a34a' : '1px solid #cbd5e1',
-                                                                        background: entry.verificationStatus === 'CORRECT' ? '#dcfce7' : 'white',
-                                                                        borderRadius: '50%',
-                                                                        width: '32px',
-                                                                        height: '32px',
-                                                                        cursor: canVerify ? 'pointer' : 'default',
-                                                                        display: (entry.verificationStatus === 'WRONG' && !canVerify) ? 'none' : 'flex',
-                                                                        alignItems: 'center', justifyContent: 'center',
-                                                                        color: '#166534',
-                                                                        transition: 'all 0.2s',
-                                                                    }}
-                                                                    title={canVerify ? "Mark Correct" : "Verified Correct"}
-                                                                >
-                                                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                                                        <polyline points="20 6 9 17 4 12" />
-                                                                    </svg>
-                                                                </button>
-                                                            )}
-
-                                                            {(canVerify || entry.verificationStatus === 'WRONG') && (
-                                                                <button
-                                                                    onClick={() => canVerify && handleVerify('WRONG')}
-                                                                    disabled={!canVerify}
-                                                                    style={{
-                                                                        border: entry.verificationStatus === 'WRONG' ? '2px solid #dc2626' : '1px solid #cbd5e1',
-                                                                        background: entry.verificationStatus === 'WRONG' ? '#fee2e2' : 'white',
-                                                                        borderRadius: '50%',
-                                                                        width: '32px',
-                                                                        height: '32px',
-                                                                        cursor: canVerify ? 'pointer' : 'default',
-                                                                        display: (entry.verificationStatus === 'CORRECT' && !canVerify) ? 'none' : 'flex',
-                                                                        alignItems: 'center', justifyContent: 'center',
-                                                                        color: '#991b1b',
-                                                                        transition: 'all 0.2s',
-                                                                    }}
-                                                                    title={canVerify ? "Mark Wrong" : "Verified Wrong"}
-                                                                >
-                                                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                                                        <line x1="18" y1="6" x2="6" y2="18"></line>
-                                                                        <line x1="6" y1="6" x2="18" y2="18"></line>
-                                                                    </svg>
-                                                                </button>
-                                                            )}
-                                                        </div>
-                                                    )}
-
-                                                    {/* Delete Button */}
-                                                    {canDelete && (
-                                                        <button
-                                                            onClick={handleDeleteLocation}
-                                                            style={{
-                                                                border: 'none',
-                                                                background: 'none',
-                                                                cursor: 'pointer',
-                                                                padding: '4px',
-                                                                borderRadius: '4px',
-                                                                color: '#dc2626',
-                                                                display: 'flex', alignItems: 'center', justifyContent: 'center'
-                                                            }}
-                                                            title="Delete Location"
-                                                        >
-                                                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                                                <polyline points="3 6 5 6 21 6"></polyline>
-                                                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                                                            </svg>
-                                                        </button>
-                                                    )}
                                                 </div>
                                             </div>
                                         )
                                     })}
                                 </div>
-                            )
-                        }
-                    } catch {
-                        return null
+                            </div>
+                        )
                     }
-                    return null
-                })()
-            }
+                } catch { return null }
+            })()}
 
-            {/* Total Cost Box */}
+            {/* Submission Section (Employee only) */}
+            {(userRole === 'EMPLOYEE' || userId === task.assigneeId) && !['APPROVED', 'COMPLETED', 'PENDING_CONFIRMATION', 'REJECTED'].includes(task.status) && (
+                <div style={{ marginTop: '3rem', borderTop: '2px solid #e2e8f0', paddingTop: '2rem' }}>
+                    <h3 style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
+                        <span>📤</span> {t('submit_task_title')}
+                    </h3>
 
-
-            {/* Submission Form */}
-            {
-                (userRole === 'EMPLOYEE' || userId === task.assigneeId) && task.status !== 'APPROVED' && task.status !== 'COMPLETED' && task.status !== 'PENDING_CONFIRMATION' && task.status !== 'REJECTED' && (
-                    <div style={{ marginTop: '2rem', borderTop: '1px solid #e2e8f0', paddingTop: '1rem' }}>
-                        <h3>Submit Task</h3>
-                        <div style={{ marginBottom: '1rem' }}>
-                            <label style={{ display: 'block', marginBottom: '0.5rem' }}>Attachments (Optional)</label>
-                            <div
-                                onDragOver={(e) => { e.preventDefault(); setIsDragging(true) }}
-                                onDragLeave={(e) => { e.preventDefault(); setIsDragging(false) }}
-                                onDrop={(e) => {
-                                    e.preventDefault()
-                                    setIsDragging(false)
-                                    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-                                        handleFiles(Array.from(e.dataTransfer.files))
-                                    }
-                                }}
-                                style={{
-                                    border: `2px dashed ${isDragging ? '#3b82f6' : '#cbd5e1'}`,
-                                    borderRadius: '0.5rem',
-                                    padding: '2rem',
-                                    textAlign: 'center',
-                                    background: isDragging ? '#eff6ff' : '#f8fafc',
-                                    transition: 'all 0.2s ease',
-                                    cursor: 'pointer',
-                                    position: 'relative'
-                                }}
-                            >
-                                <input
-                                    key={inputKey}
-                                    type="file"
-                                    multiple
-                                    accept=".jpg,.jpeg,.png,.gif,.webp,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx"
-                                    onChange={(e) => {
-                                        if (e.target.files) handleFiles(Array.from(e.target.files))
-                                    }}
-                                    disabled={uploading}
-                                    style={{
-                                        opacity: 0,
-                                        position: 'absolute',
-                                        top: 0,
-                                        left: 0,
-                                        width: '100%',
-                                        height: '100%',
-                                        cursor: 'pointer'
-                                    }}
-                                />
-                                <div style={{ pointerEvents: 'none' }}>
-                                    <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>☁️</div>
-                                    <p style={{ margin: 0, fontWeight: '600', color: '#475569' }}>
-                                        Click or drag files here to upload
-                                    </p>
-                                    <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.8rem', color: '#94a3b8' }}>
-                                        Images, PDF, Office (Max 10MB)
-                                    </p>
-                                </div>
+                    <div style={{ marginBottom: '1.5rem' }}>
+                        <label style={{ display: 'block', fontWeight: '600', marginBottom: '0.75rem' }}>{t('attachments_optional_label')}</label>
+                        <div
+                            onDragOver={e => { e.preventDefault(); setIsDragging(true); }}
+                            onDragLeave={() => setIsDragging(false)}
+                            onDrop={e => { e.preventDefault(); setIsDragging(false); if (e.dataTransfer.files.length) handleFiles(Array.from(e.dataTransfer.files)); }}
+                            style={{ border: `2px dashed ${isDragging ? '#3b82f6' : '#cbd5e1'}`, borderRadius: '0.75rem', padding: '2.5rem', textAlign: 'center', background: isDragging ? '#eff6ff' : '#f8fafc', transition: 'all 0.2s', cursor: 'pointer', position: 'relative' }}
+                        >
+                            <input type="file" multiple onChange={e => e.target.files && handleFiles(Array.from(e.target.files))} style={{ opacity: 0, position: 'absolute', inset: 0, cursor: 'pointer' }} disabled={uploading} />
+                            <div style={{ pointerEvents: 'none' }}>
+                                <div style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>☁️</div>
+                                <div style={{ fontWeight: '600', color: '#475569' }}>{t('upload_drag_files_msg')}</div>
+                                <div style={{ fontSize: '0.8rem', color: '#94a3b8', marginTop: '0.25rem' }}>{t('upload_allowed_types_msg')}</div>
                             </div>
+                        </div>
 
-                            {/* List of pending files */}
-                            {pendingFiles.length > 0 && (
-                                <div style={{ marginTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                                    {pendingFiles.map((file, i) => (
-                                        <div key={i} style={{
-                                            display: 'flex',
-                                            justifyContent: 'space-between',
-                                            alignItems: 'center',
-                                            padding: '0.75rem',
-                                            background: 'white',
-                                            border: '1px solid #e2e8f0',
-                                            borderRadius: '0.5rem',
-                                            boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)'
-                                        }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                                                <span style={{ fontSize: '1.2rem' }}>📄</span>
-                                                <div>
-                                                    <div style={{ fontSize: '0.9rem', fontWeight: '500', color: '#334155' }}>{file.name}</div>
-                                                    <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>{(file.size / 1024 / 1024).toFixed(2)} MB</div>
-                                                </div>
+                        {pendingFiles.length > 0 && (
+                            <div style={{ marginTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                {pendingFiles.map((f, i) => (
+                                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem 1rem', background: 'white', border: '1px solid #e2e8f0', borderRadius: '0.5rem', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
+                                            <span style={{ fontSize: '1.25rem' }}>📄</span>
+                                            <div style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>
+                                                <div style={{ fontSize: '0.9rem', fontWeight: '500' }}>{f.name}</div>
+                                                <div style={{ fontSize: '0.7rem', color: '#94a3b8' }}>{(f.size / 1024 / 1024).toFixed(2)} MB</div>
                                             </div>
-                                            <button
-                                                onClick={() => removePendingFile(i)}
-                                                style={{
-                                                    color: '#ef4444',
-                                                    background: '#fef2f2',
-                                                    border: 'none',
-                                                    borderRadius: '0.25rem',
-                                                    padding: '0.25rem 0.5rem',
-                                                    cursor: 'pointer',
-                                                    fontSize: '0.875rem',
-                                                    fontWeight: '500',
-                                                    transition: 'background 0.2s'
-                                                }}
-                                                disabled={uploading}
-                                            >
-                                                Remove
-                                            </button>
                                         </div>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-                        <div style={{ marginBottom: '1rem' }}>
-                            <label style={{ display: 'block', marginBottom: '0.5rem' }}>Add Costs</label>
-                            <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                                <input
-                                    type="text"
-                                    className="form-control"
-                                    value={costDescription}
-                                    onChange={e => setCostDescription(e.target.value)}
-                                    placeholder="Description (e.g. Transportation)"
-                                    style={{ flex: 1, padding: '0.5rem', borderRadius: '0.25rem', border: '1px solid #cbd5e1' }}
-                                />
-                                <input
-                                    type="number"
-                                    className="form-control"
-                                    value={cost}
-                                    onChange={e => setCost(e.target.value)}
-                                    placeholder="Amount"
-                                    min="0"
-                                    step="0.01"
-                                    style={{ width: '120px', padding: '0.5rem', borderRadius: '0.25rem', border: '1px solid #cbd5e1' }}
-                                />
-                                <button
-                                    type="button"
-                                    onClick={handleAddCost}
-                                    className="btn"
-                                    style={{ background: '#e0f2fe', color: '#0369a1', border: '1px solid #0ea5e9', fontWeight: 'bold' }}
-                                    disabled={!cost}
-                                >
-                                    Add
-                                </button>
+                                        <button onClick={() => removePendingFile(i)} style={{ color: '#ef4444', background: '#fef2f2', border: 'none', borderRadius: '0.375rem', padding: '0.4rem 0.75rem', cursor: 'pointer', fontSize: '0.8rem', fontWeight: '600' }}>{t('delete')}</button>
+                                    </div>
+                                ))}
                             </div>
-                            {/* List of added costs */}
-                            {costEntries.length > 0 && (
-                                <div style={{ background: '#f8fafc', padding: '0.5rem', borderRadius: '0.5rem', border: '1px solid #e2e8f0' }}>
-                                    {costEntries.map((entry, i) => (
-                                        <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.25rem 0', borderBottom: i < costEntries.length - 1 ? '1px solid #e2e8f0' : 'none' }}>
-                                            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                                                <span style={{ fontWeight: '500', color: '#334155' }}>{entry.description || 'No description'}</span>
-                                                <span style={{ color: '#64748b' }}>-</span>
-                                                <span style={{ fontWeight: '600', color: '#9a3412' }}>{entry.amount} EGP</span>
-                                            </div>
-                                            <button
-                                                onClick={() => removeCostEntry(i)}
-                                                style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 'bold' }}
-                                            >
-                                                &times;
-                                            </button>
+                        )}
+                    </div>
+
+                    <div style={{ marginBottom: '1.5rem' }}>
+                        <label style={{ display: 'block', fontWeight: '600', marginBottom: '0.75rem' }}>{t('add_costs_label')}</label>
+                        <div style={{ display: 'flex', gap: '0.5rem', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
+                            <input type="text" className="input" placeholder={t('cost_description_placeholder')} value={costDescription} onChange={e => setCostDescription(e.target.value)} style={{ flex: 1 }} />
+                            <input type="number" className="input" placeholder={t('cost_amount_placeholder')} value={cost} onChange={e => setCost(e.target.value)} style={{ width: '120px' }} />
+                            <button onClick={handleAddCost} disabled={!cost} className="btn" style={{ background: '#e0f2fe', color: '#0369a1', fontWeight: '700', minWidth: '80px' }}>{t('add_client' as any).split(' ')[0]}</button>
+                        </div>
+                        {costEntries.length > 0 && (
+                            <div style={{ marginTop: '1rem', background: 'white', border: '1px solid #e2e8f0', borderRadius: '0.5rem', overflow: 'hidden' }}>
+                                {costEntries.map((e, i) => (
+                                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem 1rem', borderBottom: i < costEntries.length - 1 ? '1px solid #f1f5f9' : 'none', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
+                                        <div style={{ display: 'flex', gap: '0.5rem', fontWeight: '500', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
+                                            <span>{e.description || (locale === 'ar' ? 'بدون وصف' : 'No description')}</span>
+                                            <span style={{ color: '#94a3b8' }}>•</span>
+                                            <span style={{ color: '#b45309' }}>{e.amount.toFixed(2)} {t('egp')}</span>
                                         </div>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-                        <div style={{ marginBottom: '1rem' }}>
-                            <label style={{ display: 'block', marginBottom: '0.5rem' }}>Note (Optional)</label>
-                            <textarea
-                                className="form-control"
-                                value={note}
-                                onChange={e => setNote(e.target.value)}
-                                placeholder="Add a note about your work..."
-                                id="submission-note"
-                                style={{ width: '100%', padding: '0.5rem', borderRadius: '0.25rem', border: '1px solid #cbd5e1' }}
-                                maxLength={500}
-                            />
-                            <div style={{ fontSize: '0.75rem', color: note.length >= 500 ? '#ef4444' : '#94a3b8', textAlign: 'right', marginTop: '0.25rem' }}>
-                                {note.length}/500
+                                        <button onClick={() => removeCostEntry(i)} style={{ color: '#ef4444', padding: '0.25rem', cursor: 'pointer', border: 'none', background: 'none', fontWeight: 'bold', fontSize: '1.2rem' }}>×</button>
+                                    </div>
+                                ))}
                             </div>
-                        </div>
-                        <div style={{ marginBottom: '1rem' }}>
-                            <label style={{ display: 'block', marginBottom: '0.5rem' }}>Current Location</label>
-                            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-start' }}>
-                                <button
-                                    type="button"
-                                    onClick={handleCaptureLocation}
-                                    disabled={uploading || capturingLocation}
-                                    style={{
-                                        padding: '0.5rem 1rem',
-                                        borderRadius: '0.25rem',
-                                        border: '1px solid #cbd5e1',
-                                        background: capturingLocation ? '#e2e8f0' : '#3b82f6',
-                                        color: capturingLocation ? '#64748b' : 'white',
-                                        cursor: capturingLocation || uploading ? 'not-allowed' : 'pointer',
-                                        fontSize: '0.875rem',
-                                        fontWeight: '600'
-                                    }}
-                                >
-                                    {capturingLocation ? '📍 Capturing...' : '📍 Capture Location'}
-                                </button>
-                                {locationStatus && (
-                                    <span style={{
-                                        fontSize: '0.875rem',
-                                        color: locationStatus.includes('✓') ? '#16a34a' : locationStatus.includes('Failed') ? '#dc2626' : '#64748b',
-                                        alignSelf: 'center'
-                                    }}>
-                                        {locationStatus}
-                                    </span>
-                                )}
-                            </div>
-                            {location && (
-                                <div style={{
-                                    marginTop: '0.5rem',
-                                    padding: '0.5rem',
-                                    background: '#f1f5f9',
-                                    borderRadius: '0.25rem',
-                                    fontSize: '0.875rem',
-                                    color: '#475569'
-                                }}>
-                                    📍 {location}
-                                </div>
-                            )}
-                        </div>
-                        <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
-                            <button
-                                className="btn"
-                                style={{ background: '#e2e8f0', color: '#0f172a' }}
-                                onClick={() => handleUpload(true)}
-                                disabled={uploading}
-                            >
-                                {uploading ? 'Saving...' : 'Save Draft'}
+                        )}
+                    </div>
+
+                    <div style={{ marginBottom: '1.5rem' }}>
+                        <label style={{ display: 'block', fontWeight: '600', marginBottom: '0.75rem' }}>{t('note_optional_label')}</label>
+                        <textarea className="input" rows={3} placeholder={t('note_placeholder')} value={note} onChange={e => setNote(e.target.value)} style={{ width: '100%', resize: 'none' }} maxLength={500} />
+                        <div style={{ textAlign: locale === 'ar' ? 'left' : 'right', fontSize: '0.75rem', color: note.length >= 500 ? '#ef4444' : '#94a3b8', marginTop: '0.25rem' }}>{note.length}/500</div>
+                    </div>
+
+                    <div style={{ marginBottom: '2rem' }}>
+                        <label style={{ display: 'block', fontWeight: '600', marginBottom: '0.75rem' }}>{t('current_location_label')}</label>
+                        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
+                            <button onClick={handleCaptureLocation} disabled={capturingLocation || uploading} className="btn" style={{ background: capturingLocation ? '#e2e8f0' : '#3b82f6', color: capturingLocation ? '#64748b' : 'white', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                {capturingLocation ? t('capturing_location_button').replace('📍', '') : t('capture_location_button').replace('📍', '')}
                             </button>
-                            <button
-                                className="btn btn-primary"
-                                onClick={handleUploadRequest}
-                                disabled={uploading}
-                            >
-                                {uploading ? 'Uploading...' : 'Submit Task'}
-                            </button>
+                            <span style={{ fontSize: '0.875rem', fontWeight: '500', color: locationStatus.includes('✓') ? '#16a34a' : locationStatus.includes('Failed') ? '#dc2626' : '#64748b' }}>{locationStatus}</span>
                         </div>
                     </div>
-                )
-            }
 
-            {/* Transfer Button (Admins/Team Leaders Only) */}
-            {
-                ['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole) && (task.status === 'IN_PROGRESS' || task.status === 'PENDING') && (
-                    <div style={{ marginTop: '1rem', textAlign: 'right' }}>
-                        <button
-                            onClick={() => {
-                                // Fetch users if not loaded
-                                if (allUsers.length === 0) {
-                                    fetch('/api/users').then(r => r.json()).then(setAllUsers)
-                                }
-                                setIsTransferModalOpen(true)
-                            }}
-                            style={{ background: 'none', border: 'none', color: '#64748b', textDecoration: 'underline', cursor: 'pointer', fontSize: '0.9rem' }}
-                        >
-                            Transfer to another employee
-                        </button>
+                    <div style={{ display: 'flex', gap: '1rem', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
+                        <button onClick={() => handleUpload(true)} disabled={uploading} className="btn" style={{ background: '#e2e8f0', color: '#1e293b', fontWeight: '600', flex: 1 }}>{uploading ? t('saving') : t('save_draft_button')}</button>
+                        <button onClick={handleUploadRequest} disabled={uploading} className="btn btn-primary" style={{ fontWeight: '700', flex: 2 }}>{uploading ? t('signing_in').split(' ')[0] + '...' : t('submit_task_button')}</button>
                     </div>
-                )
-            }
+                </div>
+            )}
 
+            {/* Transfer Link (Admins only) */}
+            {['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole) && ['IN_PROGRESS', 'PENDING'].includes(task.status) && (
+                <div style={{ marginTop: '2rem', textAlign: locale === 'ar' ? 'left' : 'right' }}>
+                    <button onClick={() => { if (allUsers.length === 0) fetch('/api/users').then(r => r.json()).then(setAllUsers); setIsTransferModalOpen(true); }} style={{ background: 'none', border: 'none', color: '#64748b', textDecoration: 'underline', cursor: 'pointer', fontSize: '0.875rem' }}>{t('transfer_to_another_employee')}</button>
+                </div>
+            )}
 
-            {
-                ['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole) && task.status === 'PENDING_CONFIRMATION' && userId !== task.assigneeId && (
-                    <div style={{ marginTop: '2rem', display: 'flex', gap: '1rem' }}>
-                        <button className="btn btn-primary" onClick={handleApprove}>Approve</button>
-                        <button className="btn" style={{ background: 'red', color: 'white' }} onClick={handleReject}>Reject</button>
-                    </div>
-                )
-            }
+            {/* Approve/Reject Buttons (Admins only) */}
+            {['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole) && task.status === 'PENDING_CONFIRMATION' && userId !== task.assigneeId && (
+                <div style={{ marginTop: '2.5rem', display: 'flex', gap: '1.25rem', borderTop: '2px solid #e2e8f0', paddingTop: '2rem', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
+                    <button onClick={handleApprove} className="btn btn-primary" style={{ flex: 1, padding: '1rem', fontSize: '1.1rem', fontWeight: '700' }}>{t('approve_button')}</button>
+                    <button onClick={handleReject} className="btn" style={{ flex: 1, padding: '1rem', fontSize: '1.1rem', fontWeight: '700', background: '#ef4444', color: 'white' }}>{t('reject_button')}</button>
+                </div>
+            )}
 
-            {/* Delete Confirmation Modal (Task) */}
-            <Modal
-                isOpen={showDeleteConfirm}
-                onClose={() => setShowDeleteConfirm(false)}
-                title="Delete Task"
-                hideFooter={true}
-            >
-                <div>
-                    <p>Are you sure you want to delete this task? This action cannot be undone.</p>
-                    <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem', justifyContent: 'flex-end' }}>
-                        <button
-                            onClick={() => setShowDeleteConfirm(false)}
-                            className="btn"
-                            style={{ background: '#e2e8f0', color: '#0f172a' }}
-                        >
-                            Cancel
-                        </button>
-                        <button
-                            onClick={handleDelete}
-                            className="btn"
-                            style={{ background: '#991b1b', color: 'white' }}
-                        >
-                            Delete
-                        </button>
+            {/* Modals */}
+
+            {/* Delete Modal */}
+            <Modal isOpen={showDeleteConfirm} onClose={() => setShowDeleteConfirm(false)} title={t('delete_task_title')} hideFooter>
+                <div style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>
+                    <p>{t('delete_task_warning')}</p>
+                    <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem', justifyContent: 'flex-end', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
+                        <button onClick={() => setShowDeleteConfirm(false)} className="btn" style={{ background: '#e2e8f0' }}>{t('cancel')}</button>
+                        <button onClick={handleDelete} className="btn" style={{ background: '#dc2626', color: 'white' }}>{t('delete')}</button>
                     </div>
                 </div>
             </Modal>
 
             {/* Edit Modal */}
-            <Modal
-                isOpen={isEditing}
-                onClose={() => setIsEditing(false)}
-                title="Edit Task Details"
-                hideFooter={true}
-            >
-                <form onSubmit={handleSaveDetails}>
+            <Modal isOpen={isEditing} onClose={() => setIsEditing(false)} title={t('edit_task_details_title')} hideFooter>
+                <form onSubmit={handleSaveDetails} style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>
                     <div style={{ marginBottom: '1.25rem' }}>
-                        <label style={{ display: 'block', marginBottom: '0.5rem' }}>Title</label>
-                        <input
-                            className="input"
-                            value={editForm.title}
-                            onChange={e => {
-                                setEditForm({ ...editForm, title: e.target.value })
-                                if (editFieldErrors.title) setEditFieldErrors({ ...editFieldErrors, title: '' })
-                            }}
-                            style={editFieldErrors.title ? { borderColor: '#ef4444' } : {}}
-                            required
-                            maxLength={100}
-                        />
-                        {editFieldErrors.title && (
-                            <div style={{ color: '#ef4444', fontSize: '0.85rem', marginTop: '0.25rem' }}>
-                                {editFieldErrors.title}
-                            </div>
-                        )}
-                        <div style={{ fontSize: '0.75rem', color: editForm.title.length >= 100 ? '#ef4444' : '#94a3b8', textAlign: 'right', marginTop: '0.25rem' }}>
-                            {editForm.title.length}/100
-                        </div>
+                        <label className="label">{t('name_label')}</label>
+                        <input className="input" value={editForm.title} onChange={e => { setEditForm({ ...editForm, title: e.target.value }); setEditFieldErrors({ ...editFieldErrors, title: '' }); }} style={{ borderColor: editFieldErrors.title ? '#ef4444' : undefined }} maxLength={100} required />
+                        <div style={{ textAlign: locale === 'ar' ? 'left' : 'right', fontSize: '0.7rem', color: '#94a3b8', marginTop: '0.25rem' }}>{editForm.title.length}/100</div>
                     </div>
                     <div style={{ marginBottom: '1.25rem' }}>
-                        <label style={{ display: 'block', marginBottom: '0.5rem' }}>Description</label>
-                        <textarea
-                            className="input"
-                            value={editForm.description}
-                            onChange={e => {
-                                setEditForm({ ...editForm, description: e.target.value })
-                                if (editFieldErrors.description) setEditFieldErrors({ ...editFieldErrors, description: '' })
-                            }}
-                            style={editFieldErrors.description ? { borderColor: '#ef4444' } : {}}
-                            rows={4}
-                            required
-                            maxLength={500}
-                        />
-                        {editFieldErrors.description && (
-                            <div style={{ color: '#ef4444', fontSize: '0.85rem', marginTop: '0.25rem' }}>
-                                {editFieldErrors.description}
-                            </div>
-                        )}
-                        <div style={{ fontSize: '0.75rem', color: editForm.description.length >= 500 ? '#ef4444' : '#94a3b8', textAlign: 'right', marginTop: '0.25rem' }}>
-                            {editForm.description.length}/500
-                        </div>
+                        <label className="label">{t('description_changes_title').split(' ')[0]}</label>
+                        <textarea className="input" rows={4} value={editForm.description} onChange={e => { setEditForm({ ...editForm, description: e.target.value }); setEditFieldErrors({ ...editFieldErrors, description: '' }); }} style={{ borderColor: editFieldErrors.description ? '#ef4444' : undefined }} maxLength={500} required />
+                        <div style={{ textAlign: locale === 'ar' ? 'left' : 'right', fontSize: '0.7rem', color: '#94a3b8', marginTop: '0.25rem' }}>{editForm.description.length}/500</div>
                     </div>
                     <div style={{ marginBottom: '1.25rem' }}>
-                        <label style={{ display: 'block', marginBottom: '0.5rem' }}>Assignee</label>
-                        <select
-                            className="input"
-                            value={editForm.assigneeId}
-                            onChange={e => setEditForm({ ...editForm, assigneeId: e.target.value })}
-                            style={{ width: '100%' }}
-                            required
-                            disabled
-                        >    <option value="">Select Employee</option>
-                            {allUsers.map(u => <option key={u.id} value={u.id}>{u.firstName} {u.lastName}</option>)}
+                        <label className="label">{t('assignee_label')}</label>
+                        <select className="input" value={editForm.assigneeId} disabled style={{ background: '#f8fafc', width: '100%' }}>
+                            <option value={task.assigneeId}>{task.assignee?.firstName} {task.assignee?.lastName}</option>
                         </select>
                     </div>
                     <div style={{ marginBottom: '1.25rem' }}>
-                        <DateTimePicker
-                            label="Deadline"
-                            value={editForm.deadline}
-                            onChange={(val) => setEditForm({ ...editForm, deadline: val })}
-                            min={new Date(Date.now() + 3 * 60 * 60 * 1000).toISOString()}
-                        />
+                        <DateTimePicker label={t('deadline_label')} value={editForm.deadline} onChange={v => setEditForm({ ...editForm, deadline: v })} min={new Date().toISOString()} />
                     </div>
                     <div style={{ marginBottom: '1.5rem' }}>
-                        <label style={{ display: 'block', marginBottom: '0.5rem' }}>Difficulty</label>
-                        <input
-                            type="number"
-                            className="input"
-                            value={editForm.difficulty}
-                            onChange={e => setEditForm({ ...editForm, difficulty: parseInt(e.target.value) || 0 })}
-                            min="0"
-                            max="10"
-                            required
-                        />
+                        <label className="label">{t('difficulty')}</label>
+                        <input type="number" className="input" value={editForm.difficulty} onChange={e => setEditForm({ ...editForm, difficulty: parseInt(e.target.value) || 0 })} min={0} max={10} required />
                     </div>
-                    <div style={{ display: 'flex', gap: '1rem' }}>
-                        <button type="submit" className="btn btn-primary">Save Changes</button>
-                        <button
-                            type="button"
-                            className="btn"
-                            style={{ background: '#e2e8f0', color: '#0f172a' }}
-                            onClick={() => setIsEditing(false)}
-                        >
-                            Cancel
-                        </button>
+                    <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
+                        <button type="button" onClick={() => setIsEditing(false)} className="btn" style={{ background: '#e2e8f0' }}>{t('cancel')}</button>
+                        <button type="submit" className="btn btn-primary">{t('save_changes_button')}</button>
                     </div>
                 </form>
             </Modal>
 
             {/* Transfer Modal */}
-            <Modal isOpen={isTransferModalOpen} onClose={() => setIsTransferModalOpen(false)} title="Transfer Task" hideFooter={true}>
-                <div style={{ padding: '0.5rem' }}>
-                    <p style={{ marginBottom: '1rem' }}>Select the employee you want to transfer this task to. The current task will be submitted, and a copy will be created for the new employee.</p>
-                    <select
-                        className="input"
-                        value={transferAssigneeId}
-                        onChange={(e) => setTransferAssigneeId(e.target.value)}
-                        style={{ width: '100%', marginBottom: '1rem' }}
-                    >
-                        <option value="">Select Employee...</option>
+            <Modal isOpen={isTransferModalOpen} onClose={() => setIsTransferModalOpen(false)} title={t('transfer_task_title')} hideFooter>
+                <div style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>
+                    <p style={{ marginBottom: '1.25rem', lineHeight: '1.5' }}>{t('transfer_task_msg')}</p>
+                    <select className="input" style={{ width: '100%', marginBottom: '1.5rem' }} value={transferAssigneeId} onChange={e => setTransferAssigneeId(e.target.value)}>
+                        <option value="">{t('select_employee_placeholder')}...</option>
                         {allUsers.filter(u => u.id !== task.assigneeId && u.id !== userId).map(u => (
                             <option key={u.id} value={u.id}>{u.firstName} {u.lastName} ({u.role})</option>
                         ))}
                     </select>
-
-                    <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
-                        <button className="btn" onClick={() => setIsTransferModalOpen(false)}>Cancel</button>
-                        <button className="btn btn-primary" onClick={handleTransfer} disabled={transferring || !transferAssigneeId}>
-                            {transferring ? 'Transferring...' : 'Confirm Transfer'}
-                        </button>
+                    <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
+                        <button onClick={() => setIsTransferModalOpen(false)} className="btn" style={{ background: '#e2e8f0' }}>{t('cancel')}</button>
+                        <button onClick={handleTransfer} disabled={!transferAssigneeId || transferring} className="btn btn-primary">{transferring ? '...' : t('confirm_transfer_button')}</button>
                     </div>
                 </div>
             </Modal>
 
-            {/* Review Modal (Difficulty Adjustment) */}
-            <Modal isOpen={isReviewModalOpen} onClose={() => setIsReviewModalOpen(false)} title={`Confirm ${reviewAction === 'APPROVED' ? 'Approval' : 'Rejection'}`} hideFooter={true}>
-                <div style={{ padding: '0.5rem' }}>
-                    <p style={{ marginBottom: '1rem' }}>
-                        You are about to {reviewAction?.toLowerCase()} this task.
-                        {isTransferredTask() ? ' Please confirm the difficulty points.' : ' Are you sure?'}
+            {/* Review Modal (Approve/Reject) */}
+            <Modal isOpen={isReviewModalOpen} onClose={() => setIsReviewModalOpen(false)} title={reviewAction === 'APPROVED' ? t('confirm_approval_title') : t('confirm_rejection_title')} hideFooter>
+                <div style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>
+                    <p style={{ marginBottom: '1.25rem' }}>
+                        {t('confirm_task_action_msg').replace('{action}', reviewAction === 'APPROVED' ? (locale === 'ar' ? 'الموافقة على' : 'approve') : (locale === 'ar' ? 'رفض' : 'reject'))}
+                        {isTransferredTask() ? t('is_transferred_difficulty_hint') : t('are_you_sure_msg')}
                     </p>
                     {isTransferredTask() && (
-                        <>
-                            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>Difficulty Points</label>
-                            <input
-                                type="number"
-                                className="input"
-                                value={reviewDifficulty}
-                                onChange={(e) => setReviewDifficulty(parseInt(e.target.value) || 0)}
-                                min="0"
-                                max="100"
-                                style={{ width: '100%', marginBottom: '1.5rem' }}
-                            />
-                        </>
+                        <div style={{ marginBottom: '1.5rem' }}>
+                            <label className="label">{t('points_label')}</label>
+                            <input type="number" className="input" value={reviewDifficulty} onChange={e => setReviewDifficulty(parseInt(e.target.value) || 0)} min={0} max={100} style={{ width: '100%' }} />
+                        </div>
                     )}
-                    <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
-                        <button className="btn" onClick={() => setIsReviewModalOpen(false)}>Cancel</button>
-                        <button
-                            className="btn"
-                            style={{ background: reviewAction === 'APPROVED' ? '#16a34a' : '#dc2626', color: 'white' }}
-                            onClick={() => submitReview()}
-                            disabled={submittingReview}
-                        >
-                            {submittingReview ? 'Processing...' : `Confirm ${reviewAction}`}
+                    <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
+                        <button onClick={() => setIsReviewModalOpen(false)} className="btn" style={{ background: '#e2e8f0' }}>{t('cancel')}</button>
+                        <button onClick={() => submitReview()} disabled={submittingReview} className="btn" style={{ background: reviewAction === 'APPROVED' ? '#16a34a' : '#dc2626', color: 'white', minWidth: '100px' }}>
+                            {submittingReview ? '...' : t('confirm_action_button')}
                         </button>
                     </div>
                 </div>
             </Modal>
 
             {/* Submit Confirmation Modal */}
-            <Modal
-                isOpen={showSubmitConfirm}
-                onClose={() => setShowSubmitConfirm(false)}
-                title="Confirm Submission"
-                hideFooter={true}
-            >
-                <div>
-                    <p>Are you sure you want to submit this task? You won&apos;t be able to edit it afterwards.</p>
-                    <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem', justifyContent: 'flex-end' }}>
-                        <button
-                            onClick={() => setShowSubmitConfirm(false)}
-                            className="btn"
-                            style={{ background: '#e2e8f0', color: '#0f172a' }}
-                        >
-                            Cancel
-                        </button>
-                        <button
-                            onClick={() => { setShowSubmitConfirm(false); handleUpload(false); }}
-                            className="btn btn-primary"
-                        >
-                            Confirm Submit
-                        </button>
+            <Modal isOpen={showSubmitConfirm} onClose={() => setShowSubmitConfirm(false)} title={t('confirm_submission_title')} hideFooter>
+                <div style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>
+                    <p>{t('confirm_submission_msg')}</p>
+                    <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem', justifyContent: 'flex-end', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
+                        <button onClick={() => setShowSubmitConfirm(false)} className="btn" style={{ background: '#e2e8f0' }}>{t('cancel')}</button>
+                        <button onClick={() => { setShowSubmitConfirm(false); handleUpload(false); }} className="btn btn-primary">{t('confirm_submit_button')}</button>
                     </div>
                 </div>
             </Modal>
 
             {/* Delete Location Modal */}
-            <Modal
-                isOpen={!!locationToDelete}
-                onClose={() => setLocationToDelete(null)}
-                title="Delete Location"
-                hideFooter={true}
-            >
-                <div>
-                    <p>Are you sure you want to delete this location?</p>
-                    <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem', justifyContent: 'flex-end' }}>
-                        <button onClick={() => setLocationToDelete(null)} className="btn" style={{ background: '#e2e8f0', color: '#0f172a' }}>Cancel</button>
-                        <button onClick={confirmDeleteLocation} className="btn" style={{ background: '#991b1b', color: 'white' }}>Delete</button>
+            <Modal isOpen={!!locationToDelete} onClose={() => setLocationToDelete(null)} title={t('delete_location_title')} hideFooter>
+                <div style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>
+                    <p>{t('delete_location_warning')}</p>
+                    <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem', justifyContent: 'flex-end', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
+                        <button onClick={() => setLocationToDelete(null)} className="btn" style={{ background: '#e2e8f0' }}>{t('cancel')}</button>
+                        <button onClick={confirmDeleteLocation} className="btn" style={{ background: '#dc2626', color: 'white' }}>{t('delete')}</button>
                     </div>
                 </div>
             </Modal>
 
-        </div >
+        </div>
     )
 }
