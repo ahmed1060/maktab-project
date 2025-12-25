@@ -54,6 +54,10 @@ export default function SectionNotesPage() {
     const [isEditSectionModalOpen, setIsEditSectionModalOpen] = useState(false)
     const [editSectionTitle, setEditSectionTitle] = useState('')
     const [isEditingSection, setIsEditingSection] = useState(false)
+    const [clientName, setClientName] = useState<string>('')
+    const [isEditClientModalOpen, setIsEditClientModalOpen] = useState(false)
+    const [editClientName, setEditClientName] = useState('')
+    const [isEditingClient, setIsEditingClient] = useState(false)
 
     const canEdit = session?.user?.role === 'SUPER_ADMIN' || session?.user?.role === 'ADMIN' || session?.user?.role === 'TEAM_LEADER'
 
@@ -108,11 +112,40 @@ export default function SectionNotesPage() {
         }
     }
 
+    const handleEditClient = async (e: React.FormEvent) => {
+        e.preventDefault()
+        if (!editClientName.trim()) return
+
+        setIsEditingClient(true)
+        try {
+            const res = await fetch('/api/clients', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id: clientId, name: editClientName })
+            })
+
+            if (res.ok) {
+                const updated = await res.json()
+                setClientName(updated.name)
+                setIsEditClientModalOpen(false)
+                showToast(t('client_updated_success' as any) || 'Client updated successfully', 'success')
+            } else {
+                showToast(t('failed_save_generic'), 'error')
+            }
+        } catch (error) {
+            console.error('Failed to update client', error)
+            showToast(t('failed_save_generic'), 'error')
+        } finally {
+            setIsEditingClient(false)
+        }
+    }
+
     const fetchData = async () => {
         try {
-            const [sectionsRes, notesRes] = await Promise.all([
+            const [sectionsRes, notesRes, clientsRes] = await Promise.all([
                 fetch(`/api/clients/${clientId}/sections`),
-                fetch(`/api/clients/${clientId}/sections/${sectionId}/notes`)
+                fetch(`/api/clients/${clientId}/sections/${sectionId}/notes`),
+                fetch('/api/clients')
             ])
 
             if (sectionsRes.ok && notesRes.ok) {
@@ -123,6 +156,15 @@ export default function SectionNotesPage() {
                 if (foundSection) setSection(foundSection)
 
                 setNotes(notesData)
+
+                // Get client name
+                if (clientsRes.ok) {
+                    const clientsData = await clientsRes.json()
+                    const foundClient = clientsData.find((c: any) => c.id === clientId)
+                    if (foundClient) {
+                        setClientName(foundClient.name)
+                    }
+                }
             } else {
                 if (notesRes.status === 404) router.push(`/dashboard/clients/${clientId}`)
             }
@@ -231,6 +273,50 @@ export default function SectionNotesPage() {
                         </svg>
                     </Link>
                     <div style={{ clear: 'both' }}></div>
+
+                    {/* Client Name Row */}
+                    {clientName && (
+                        <div style={{
+                            marginBottom: '1rem',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.75rem',
+                            padding: '0.5rem 0'
+                        }}>
+                            <span style={{
+                                fontSize: '0.875rem',
+                                color: '#64748b',
+                                fontWeight: '500'
+                            }}>
+                                {clientName}
+                            </span>
+                            {canEdit && (
+                                <button
+                                    onClick={() => {
+                                        setEditClientName(clientName)
+                                        setIsEditClientModalOpen(true)
+                                    }}
+                                    className="btn"
+                                    style={{
+                                        background: '#dbeafe',
+                                        color: '#1e40af',
+                                        padding: '0.25rem 0.75rem',
+                                        fontSize: '0.75rem',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '0.25rem'
+                                    }}
+                                >
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                                    </svg>
+                                    {t('edit')}
+                                </button>
+                            )}
+                        </div>
+                    )}
+
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                             <h1 className="text-3xl font-bold text-slate-800 tracking-tight">{t('notes_label' as any)}</h1>
@@ -549,6 +635,48 @@ export default function SectionNotesPage() {
                             className="btn btn-primary"
                         >
                             {isEditingSection ? t('saving') : t('save')}
+                        </button>
+                    </div>
+                </form>
+            </Modal>
+
+            {/* Edit Client Modal */}
+            <Modal
+                isOpen={isEditClientModalOpen}
+                onClose={() => setIsEditClientModalOpen(false)}
+                title={t('edit_client_title' as any) || 'Edit Client Name'}
+            >
+                <form onSubmit={handleEditClient} style={{ direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
+                    <div style={{ marginBottom: '1.5rem' }}>
+                        <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', color: '#64748b', textAlign: locale === 'ar' ? 'right' : 'left' }}>
+                            {t('client_company_name' as any)}
+                        </label>
+                        <input
+                            type="text"
+                            value={editClientName}
+                            onChange={(e) => setEditClientName(e.target.value)}
+                            className="input"
+                            style={{ width: '100%', padding: '0.5rem', border: '1px solid #e2e8f0', borderRadius: '0.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}
+                            placeholder={t('client_placeholder' as any)}
+                            autoFocus
+                        />
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
+                        <button
+                            type="button"
+                            onClick={() => setIsEditClientModalOpen(false)}
+                            className="btn"
+                            style={{ background: '#f1f5f9' }}
+                        >
+                            {t('cancel')}
+                        </button>
+                        <button
+                            type="submit"
+                            disabled={!editClientName.trim() || isEditingClient}
+                            className="btn btn-primary"
+                        >
+                            {isEditingClient ? t('saving') : t('save')}
                         </button>
                     </div>
                 </form>
