@@ -67,9 +67,39 @@ export default function EmployeeHistoryPage() {
     return (
         <div style={{ direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
             <div style={{ marginBottom: '2rem' }}>
-                <Link href="/dashboard/employees" style={{ color: '#64748b', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
-                    <span style={{ transform: locale === 'ar' ? 'rotate(180deg)' : 'none' }}>←</span> {t('back_to_employees')}
+                <Link
+                    href="/dashboard/employees"
+                    className="glass"
+                    style={{
+                        width: '40px',
+                        height: '40px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        marginBottom: '0.75rem',
+                        color: 'var(--primary)',
+                        textDecoration: 'none',
+                        transition: 'all 0.3s ease',
+                        border: '1px solid rgba(255, 255, 255, 0.4)',
+                        transform: `translateY(-2px)${locale === 'ar' ? ' scaleX(-1)' : ''}`,
+                        float: locale === 'ar' ? 'right' : 'left'
+                    }}
+                    onMouseOver={(e) => {
+                        e.currentTarget.style.transform = `translateY(-4px)${locale === 'ar' ? ' scaleX(-1)' : ''}`
+                        e.currentTarget.style.background = 'rgba(255, 255, 255, 0.9)'
+                    }}
+                    onMouseOut={(e) => {
+                        e.currentTarget.style.transform = `translateY(-2px)${locale === 'ar' ? ' scaleX(-1)' : ''}`
+                        e.currentTarget.style.background = 'rgba(255, 255, 255, 0.7)'
+                    }}
+                    title={t('back_to_employees')}
+                >
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <line x1="19" y1="12" x2="5" y2="12"></line>
+                        <polyline points="12 19 5 12 12 5"></polyline>
+                    </svg>
                 </Link>
+                <div style={{ clear: 'both' }}></div>
                 <h1 style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('salary_history')}</h1>
                 {employee && (
                     <div style={{ fontSize: '1.2rem', color: '#475569', textAlign: locale === 'ar' ? 'right' : 'left' }}>

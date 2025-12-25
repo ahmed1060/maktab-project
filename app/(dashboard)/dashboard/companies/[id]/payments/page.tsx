@@ -157,10 +157,38 @@ export default function CompanyPaymentsPage() {
                 <div style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>
                     <button
                         onClick={() => router.push('/dashboard/companies')}
-                        style={{ border: 'none', background: 'none', color: '#6366f1', display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontWeight: '600', marginBottom: '0.5rem', flexDirection: 'row' }}
+                        className="glass"
+                        style={{
+                            width: '40px',
+                            height: '40px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            marginBottom: '0.75rem',
+                            color: 'var(--primary)',
+                            textDecoration: 'none',
+                            transition: 'all 0.3s ease',
+                            border: '1px solid rgba(255, 255, 255, 0.4)',
+                            transform: `translateY(-2px)${locale === 'ar' ? ' scaleX(-1)' : ''}`,
+                            float: locale === 'ar' ? 'right' : 'left',
+                            cursor: 'pointer'
+                        }}
+                        onMouseOver={(e) => {
+                            e.currentTarget.style.transform = `translateY(-4px)${locale === 'ar' ? ' scaleX(-1)' : ''}`
+                            e.currentTarget.style.background = 'rgba(255, 255, 255, 0.9)'
+                        }}
+                        onMouseOut={(e) => {
+                            e.currentTarget.style.transform = `translateY(-2px)${locale === 'ar' ? ' scaleX(-1)' : ''}`
+                            e.currentTarget.style.background = 'rgba(255, 255, 255, 0.7)'
+                        }}
+                        title={t('back_to_companies')}
                     >
-                        {locale === 'ar' ? '←' : '←'} {t('back_to_companies')}
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            <line x1="19" y1="12" x2="5" y2="12"></line>
+                            <polyline points="12 19 5 12 12 5"></polyline>
+                        </svg>
                     </button>
+                    <div style={{ clear: 'both' }}></div>
                     <h1 style={{ margin: 0 }}>{t('payment_history')}</h1>
                     <p style={{ color: '#64748b', marginTop: '0.25rem' }}>{t('management_for')} <strong>{company?.name || t('loading_filters')}</strong></p>
                 </div>

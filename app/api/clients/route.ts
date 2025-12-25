@@ -178,3 +178,40 @@ export async function DELETE(request: Request) {
         return NextResponse.json({ error: 'Failed to delete client' }, { status: 500 })
     }
 }
+
+export async function PUT(request: Request) {
+    try {
+        const session = await getServerSession(authOptions)
+
+        if (!session?.user || (session.user.role !== 'SUPER_ADMIN' && session.user.role !== 'ADMIN' && session.user.role !== 'TEAM_LEADER')) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+        }
+
+        const body = await request.json()
+        const { id, name } = body
+
+        if (!id || !name) {
+            return NextResponse.json({ error: 'ID and Name are required' }, { status: 400 })
+        }
+
+        const client = await prisma.businessClient.findUnique({ where: { id } })
+        if (!client) return NextResponse.json({ error: 'Client not found' }, { status: 404 })
+
+        if (session.user.role !== 'SUPER_ADMIN') {
+            if (client.companyId !== session.user.companyId) {
+                return NextResponse.json({ error: 'Access denied' }, { status: 403 })
+            }
+        }
+
+        const updatedClient = await prisma.businessClient.update({
+            where: { id },
+            data: { name }
+        })
+
+        return NextResponse.json(updatedClient)
+
+    } catch (error) {
+        console.error('Error updating client:', error)
+        return NextResponse.json({ error: 'Failed to update client' }, { status: 500 })
+    }
+}

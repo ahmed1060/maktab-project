@@ -166,9 +166,51 @@ export async function DELETE(
         await prisma.businessClientSection.delete({ where: { id: sectionId } })
 
         return NextResponse.json({ success: true })
-
     } catch (error) {
         console.error('Error deleting section:', error)
         return NextResponse.json({ error: 'Failed to delete section' }, { status: 500 })
+    }
+}
+
+export async function PUT(
+    request: Request
+) {
+    try {
+        const session = await getServerSession(authOptions)
+
+        if (!session?.user || (session.user.role !== 'SUPER_ADMIN' && session.user.role !== 'ADMIN' && session.user.role !== 'TEAM_LEADER')) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+        }
+
+        const body = await request.json()
+        const { id, title } = body
+
+        if (!id || !title) {
+            return NextResponse.json({ error: 'ID and Title are required' }, { status: 400 })
+        }
+
+        const section = await prisma.businessClientSection.findUnique({
+            where: { id },
+            include: { client: { select: { companyId: true } } }
+        })
+
+        if (!section) return NextResponse.json({ error: 'Section not found' }, { status: 404 })
+
+        if (session.user.role !== 'SUPER_ADMIN') {
+            if (section.client.companyId !== session.user.companyId) {
+                return NextResponse.json({ error: 'Access denied' }, { status: 403 })
+            }
+        }
+
+        const updatedSection = await prisma.businessClientSection.update({
+            where: { id },
+            data: { title }
+        })
+
+        return NextResponse.json(updatedSection)
+
+    } catch (error) {
+        console.error('Error updating section:', error)
+        return NextResponse.json({ error: 'Failed to update section' }, { status: 500 })
     }
 }
