@@ -499,7 +499,7 @@ export default function ClientDetailsPage() {
                 onConfirm={async () => {
                     if (deleteConfirm.section) {
                         try {
-                            const res = await fetch(`/api/clients/${clientId}/sections?id=${deleteConfirm.section.id}`, { method: 'DELETE' })
+                            const res = await fetch(`/api/clients/${clientId}/sections?sectionId=${deleteConfirm.section.id}`, { method: 'DELETE' })
                             if (res.ok) {
                                 fetchData()
                                 setDeleteConfirm({ isOpen: false, section: null })
