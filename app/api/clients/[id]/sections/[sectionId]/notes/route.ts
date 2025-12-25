@@ -173,7 +173,8 @@ export async function POST(
 }
 
 export async function DELETE(
-    request: NextRequest
+    request: NextRequest,
+    { params }: { params: { id: string, sectionId: string } }
 ) {
     try {
         const session = await getServerSession(authOptions)
@@ -182,7 +183,8 @@ export async function DELETE(
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
         }
 
-        const noteId = request.nextUrl.searchParams.get('noteId') || request.nextUrl.searchParams.get('id')
+        const url = new URL(request.url)
+        const noteId = url.searchParams.get('noteId') || url.searchParams.get('id')
 
         if (!noteId) {
             return NextResponse.json({ error: 'ID is required' }, { status: 400 })
