@@ -183,8 +183,7 @@ export async function DELETE(
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
         }
 
-        const url = new URL(request.url)
-        const noteId = url.searchParams.get('noteId') || url.searchParams.get('id')
+        const noteId = request.nextUrl.searchParams.get('noteId') || request.nextUrl.searchParams.get('id')
 
         if (!noteId) {
             return NextResponse.json({ error: 'ID is required' }, { status: 400 })
