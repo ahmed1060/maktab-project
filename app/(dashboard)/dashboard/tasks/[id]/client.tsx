@@ -166,7 +166,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
             router.refresh()
         } catch (error) {
             console.error('handleUpload error:', error)
-            showToast(t('failed_save_generic'), 'error')
+            showToast(t('failed_save_generic') as any, 'error')
         } finally {
             setUploading(false)
         }
@@ -260,12 +260,12 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
 
             if (!res.ok) throw new Error('Review failed')
 
-            showToast(`Task ${action === 'APPROVED' ? 'approved' : 'rejected'}`, 'success')
+            showToast(action === 'APPROVED' ? t('task_approved_success') : t('task_rejected_success'), 'success')
             setIsReviewModalOpen(false)
             router.refresh()
         } catch (e) {
             console.error(e)
-            showToast('Failed to process review', 'error')
+            showToast(t('failed_process_review'), 'error')
         } finally {
             setSubmittingReview(false)
         }
@@ -275,12 +275,12 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
         try {
             const res = await fetch(`/api/tasks/${task.id}`, { method: 'DELETE' })
             if (!res.ok) throw new Error('Delete failed')
-            showToast('Task deleted successfully', 'success')
+            showToast(t('task_deleted_success'), 'success')
             router.push('/dashboard/tasks')
             router.refresh()
         } catch (e) {
             console.error(e)
-            showToast('Failed to delete task', 'error')
+            showToast(t('error_generic'), 'error')
         }
     }
 
@@ -299,7 +299,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
             router.refresh()
         } catch (e) {
             console.error(e)
-            showToast('Failed to transfer task', 'error')
+            showToast(t('failed_transfer_task'), 'error')
         } finally {
             setTransferring(false)
         }
@@ -333,11 +333,11 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
         const errors = { title: '', description: '' }
 
         if (!editForm.title.trim()) {
-            errors.title = 'Title is required'
+            errors.title = t('title_required')
             hasError = true
         }
         if (!editForm.description.trim()) {
-            errors.description = 'Description is required'
+            errors.description = t('description_required')
             hasError = true
         }
 
@@ -387,12 +387,12 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                 headers: { 'Content-Type': 'application/json' }
             })
             if (!res.ok) throw new Error('Delete location failed')
-            showToast('Location deleted successfully', 'success')
+            showToast(t('location_deleted_success'), 'success')
             setLocationToDelete(null)
             router.refresh()
         } catch (e) {
             console.error(e)
-            showToast('Failed to delete location', 'error')
+            showToast(t('failed_delete_location'), 'error')
         }
     }
 
@@ -461,7 +461,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                                     try {
                                         const logs = JSON.parse(task.comments || '[]')
                                         const lastEdit = [...logs].reverse().find((l: any) => l.type === 'TASK_EDITED')
-                                        return lastEdit?.author || (locale === 'ar' ? 'مسؤول' : 'an admin')
+                                        return lastEdit?.author || t('an_admin')
                                     } catch { return locale === 'ar' ? 'مسؤول' : 'an admin' }
                                 })())}
                             </p>
@@ -558,7 +558,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                             <a key={idx} href={att.url} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.75rem', background: 'white', border: '1px solid #e2e8f0', borderRadius: '0.5rem', textDecoration: 'none', color: '#334155', transition: 'all 0.2s', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
                                 <span style={{ fontSize: '1.5rem' }}>📄</span>
                                 <div style={{ overflow: 'hidden', textAlign: locale === 'ar' ? 'right' : 'left' }}>
-                                    <div style={{ fontSize: '0.9rem', fontWeight: '500', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>{att.name || 'Attachment'}</div>
+                                    <div style={{ fontSize: '0.9rem', fontWeight: '500', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>{att.name || t('attachment')}</div>
                                     <div style={{ fontSize: '0.7rem', color: '#64748b' }}>{att.uploadedBy} • {new Date(att.uploadedAt).toLocaleDateString(locale)}</div>
                                 </div>
                             </a>
@@ -583,7 +583,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
                                                 <div style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>
                                                     <div style={{ fontSize: '0.75rem', color: '#92400e', textTransform: 'uppercase', fontWeight: '600', marginBottom: '0.25rem' }}>{t('cost_description_placeholder').split(' ')[0]}</div>
-                                                    <div style={{ fontSize: '1rem', fontWeight: '600', color: '#78350f' }}>{c.description || (locale === 'ar' ? 'بدون وصف' : 'No description')}</div>
+                                                    <div style={{ fontSize: '1rem', fontWeight: '600', color: '#78350f' }}>{c.description || t('no_description')}</div>
                                                 </div>
                                                 <div style={{ textAlign: 'center', background: '#fef3c7', padding: '0.5rem 1rem', borderRadius: '0.375rem', border: '1px solid #fcd34d' }}>
                                                     <div style={{ fontSize: '0.75rem', color: '#92400e', textTransform: 'uppercase', fontWeight: '600' }}>{t('amount_label')}</div>
@@ -721,14 +721,14 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                         <div style={{ display: 'flex', gap: '0.5rem', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
                             <input type="text" className="input" placeholder={t('cost_description_placeholder')} value={costDescription} onChange={e => setCostDescription(e.target.value)} style={{ flex: 1 }} />
                             <input type="number" className="input" placeholder={t('cost_amount_placeholder')} value={cost} onChange={e => setCost(e.target.value)} style={{ width: '120px' }} />
-                            <button onClick={handleAddCost} disabled={!cost} className="btn" style={{ background: '#e0f2fe', color: '#0369a1', fontWeight: '700', minWidth: '80px' }}>{t('add_client' as any).split(' ')[0]}</button>
+                            <button onClick={handleAddCost} disabled={!cost} className="btn" style={{ background: '#e0f2fe', color: '#0369a1', fontWeight: '700', minWidth: '80px' }}>{t('add_label')}</button>
                         </div>
                         {costEntries.length > 0 && (
                             <div style={{ marginTop: '1rem', background: 'white', border: '1px solid #e2e8f0', borderRadius: '0.5rem', overflow: 'hidden' }}>
                                 {costEntries.map((e, i) => (
                                     <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem 1rem', borderBottom: i < costEntries.length - 1 ? '1px solid #f1f5f9' : 'none', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
                                         <div style={{ display: 'flex', gap: '0.5rem', fontWeight: '500', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
-                                            <span>{e.description || (locale === 'ar' ? 'بدون وصف' : 'No description')}</span>
+                                            <span>{e.description || t('no_description')}</span>
                                             <span style={{ color: '#94a3b8' }}>•</span>
                                             <span style={{ color: '#b45309' }}>{e.amount.toFixed(2)} {t('egp')}</span>
                                         </div>

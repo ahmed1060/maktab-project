@@ -135,7 +135,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
 
                 if (!reqRes.ok) {
                     const text = await reqRes.text()
-                    throw new Error(text || 'Failed to submit name change request')
+                    throw new Error(text || t('error_generic'))
                 }
 
                 showToast(t('name_change_submitted'), 'success')
@@ -164,7 +164,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
 
             if (!res.ok) {
                 const text = await res.text()
-                throw new Error(text || 'Failed to update employee')
+                throw new Error(text || t('error_generic'))
             }
 
             // Sync Logic
@@ -209,7 +209,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                 body: JSON.stringify({ id: userId, avatar: null }),
                 headers: { 'Content-Type': 'application/json' }
             })
-            if (!res.ok) throw new Error('Failed to reset photo')
+            if (!res.ok) throw new Error(t('photo_reset_failed'))
 
             setAvatarUrl(null)
             if (userId === session?.user?.id) {
@@ -255,7 +255,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                 showToast(t('photo_updated_success'), 'success')
                 setShowAvatarModal(false)
             } else {
-                throw new Error(data.error || 'Upload failed')
+                throw new Error(data.error || t('photo_upload_failed'))
             }
         } catch (err: any) {
             showToast(err.message || t('photo_upload_failed'), 'error')
@@ -610,7 +610,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                             disabled={isViewMode || userId === session?.user?.id || !['ADMIN', 'SUPER_ADMIN'].includes(userRole)}
                             max={1000000000}
                             style={(isViewMode || userId === session?.user?.id || !['ADMIN', 'SUPER_ADMIN'].includes(userRole)) ? { background: '#f1f5f9', cursor: 'not-allowed', textAlign: locale === 'ar' ? 'right' : 'left' } : { textAlign: locale === 'ar' ? 'right' : 'left' }}
-                            placeholder={userId === session?.user?.id && !salary ? t('no_data_available') : ''}
+                            placeholder={userId === session?.user?.id && !salary ? t('no_data_available') : (locale === 'ar' ? 'أدخل الراتب' : 'Enter salary')}
                         />
                     </div>
                 )}

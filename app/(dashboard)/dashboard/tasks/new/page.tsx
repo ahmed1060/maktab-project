@@ -189,7 +189,7 @@ export default function NewTaskPage() {
                         }}
                         min="0"
                         max="10"
-                        placeholder="0-10"
+                        placeholder={locale === 'ar' ? '٠-١٠' : '0-10'}
                         required
                     />
                 </div>

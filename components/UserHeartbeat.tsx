@@ -2,9 +2,11 @@
 
 import { useSession, signOut } from "next-auth/react"
 import { useEffect, useState } from "react"
+import { useLanguage } from "@/context/LanguageContext"
 
 export default function UserHeartbeat() {
     const { data: session } = useSession()
+    const { t } = useLanguage()
 
     const [isSuspended, setIsSuspended] = useState(false)
     const [isCompanyBanned, setIsCompanyBanned] = useState(false)
@@ -71,14 +73,14 @@ export default function UserHeartbeat() {
                 padding: '2rem'
             }}>
                 <h1 style={{ color: '#ef4444', fontSize: '2rem', margin: 0 }}>
-                    {isSuspended ? 'Account Suspended' : 'Company Banned'}
+                    {isSuspended ? t('account_suspended') : t('company_banned')}
                 </h1>
                 <p style={{ fontSize: '1.1rem', maxWidth: '500px' }}>
                     {isSuspended
-                        ? 'Your account has been suspended by an administrator.'
-                        : 'Access to this company\'s data has been restricted by an administrator.'}
+                        ? t('suspension_msg')
+                        : t('banned_msg')}
                 </p>
-                <p style={{ fontSize: '0.9rem', opacity: 0.8 }}>Saving your work and logging out...</p>
+                <p style={{ fontSize: '0.9rem', opacity: 0.8 }}>{t('logging_out_msg')}</p>
                 <div style={{
                     width: '30px',
                     height: '30px',

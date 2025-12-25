@@ -88,7 +88,7 @@ export default function AddDeductionPage() {
                         min="0"
                         max="1000"
                         step="0.01"
-                        placeholder="e.g. 1"
+                        placeholder={t('example_deduction' as any)}
                         autoFocus
                     />
                     {fieldError && (

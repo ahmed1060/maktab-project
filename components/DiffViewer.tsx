@@ -1,5 +1,6 @@
 'use client'
 import React from 'react'
+import { useLanguage } from '@/context/LanguageContext'
 
 interface DiffViewerProps {
     oldText: string
@@ -7,6 +8,7 @@ interface DiffViewerProps {
 }
 
 export default function DiffViewer({ oldText, newText }: DiffViewerProps) {
+    const { locale } = useLanguage()
     if (!oldText && !newText) return null
     if (!oldText) return <span style={{ backgroundColor: '#dcfce7', color: '#166534' }}>{newText}</span>
     if (!newText) return <span style={{ textDecoration: 'line-through', color: '#dc2626' }}>{oldText}</span>
@@ -74,7 +76,7 @@ export default function DiffViewer({ oldText, newText }: DiffViewerProps) {
     const diff = diffWords(oldText, newText)
 
     return (
-        <div style={{ lineHeight: '1.6' }}>
+        <div style={{ lineHeight: '1.6', direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
             {diff.map((part, index) => (
                 <span
                     key={index}
@@ -82,7 +84,8 @@ export default function DiffViewer({ oldText, newText }: DiffViewerProps) {
                         backgroundColor: part.type === 'added' ? '#dcfce7' : part.type === 'removed' ? '#fee2e2' : 'transparent',
                         color: part.type === 'added' ? '#166534' : part.type === 'removed' ? '#991b1b' : 'inherit',
                         textDecoration: part.type === 'removed' ? 'line-through' : 'none',
-                        marginRight: '4px'
+                        marginRight: locale === 'ar' ? '0' : '4px',
+                        marginLeft: locale === 'ar' ? '4px' : '0'
                     }}
                 >
                     {part.text}

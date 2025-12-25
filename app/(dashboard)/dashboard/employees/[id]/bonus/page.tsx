@@ -88,7 +88,7 @@ export default function AddBonusPage() {
                         min="0"
                         max="1000"
                         step="0.01"
-                        placeholder="e.g. 1.5"
+                        placeholder={t('example_bonus' as any)}
                         autoFocus
                     />
                     {fieldError && (
@@ -107,7 +107,7 @@ export default function AddBonusPage() {
                         {t('cancel')}
                     </Link>
                     <button type="submit" className="btn btn-primary" disabled={loading} style={{ flex: 1 }}>
-                        {loading ? t('adding' as any) : t('add_bonus')}
+                        {loading ? t('adding' as any) : t('add_bonus' as any)}
                     </button>
                 </div>
             </form>
