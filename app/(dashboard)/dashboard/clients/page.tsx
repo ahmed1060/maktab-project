@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { createPortal } from 'react-dom'
 import ConfirmModal from '@/components/ConfirmModal'
 import { useLanguage } from '@/context/LanguageContext'
+import { useToast } from '@/context/ToastContext'
 
 interface Client {
     id: string
@@ -26,6 +27,11 @@ export default function ClientsPage() {
     const [mounted, setMounted] = useState(false)
     const [showSuggestions, setShowSuggestions] = useState(false)
     const [deleteConfirm, setDeleteConfirm] = useState<{ isOpen: boolean, client: Client | null }>({ isOpen: false, client: null })
+    const [isEditClientModalOpen, setIsEditClientModalOpen] = useState(false)
+    const [editClientName, setEditClientName] = useState('')
+    const [editingClientId, setEditingClientId] = useState<string | null>(null)
+    const [isEditingClient, setIsEditingClient] = useState(false)
+    const { showToast } = useToast()
 
     useEffect(() => {
         setMounted(true)
@@ -106,6 +112,36 @@ export default function ClientsPage() {
             window.alert(t('error_generic'))
         } finally {
             setIsSubmitting(false)
+        }
+    }
+
+    const handleEditClient = async (e: React.FormEvent) => {
+        e.preventDefault()
+        if (!editClientName.trim() || !editingClientId) return
+
+        setIsEditingClient(true)
+        try {
+            const res = await fetch('/api/clients', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id: editingClientId, name: editClientName })
+            })
+
+            if (res.ok) {
+                setIsEditClientModalOpen(false)
+                setEditingClientId(null)
+                setEditClientName('')
+                fetchClients()
+                showToast(t('client_updated_success' as any) || 'Client updated successfully', 'success')
+            } else {
+                const err = await res.json()
+                showToast(err.error || t('error_generic'), 'error')
+            }
+        } catch (error) {
+            console.error('Failed to update client', error)
+            showToast(t('error_generic'), 'error')
+        } finally {
+            setIsEditingClient(false)
         }
     }
 
@@ -269,6 +305,29 @@ export default function ClientsPage() {
                                             {t('view_client')}
                                         </Link>
                                         <button
+                                            onClick={() => {
+                                                setEditingClientId(client.id)
+                                                setEditClientName(client.name)
+                                                setIsEditClientModalOpen(true)
+                                            }}
+                                            className="btn"
+                                            style={{
+                                                background: '#dbeafe',
+                                                color: '#1e40af',
+                                                padding: '0.5rem 1rem',
+                                                fontSize: '0.875rem',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '0.25rem'
+                                            }}
+                                        >
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                                            </svg>
+                                            {t('edit')}
+                                        </button>
+                                        <button
                                             onClick={(e) => {
                                                 e.preventDefault()
                                                 setDeleteConfirm({ isOpen: true, client })
@@ -390,6 +449,66 @@ export default function ClientsPage() {
                 onCancel={() => setDeleteConfirm({ isOpen: false, client: null })}
                 variant="danger"
             />
+            {/* Edit Client Modal */}
+            {isEditClientModalOpen && mounted && createPortal(
+                <div style={{
+                    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                    background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center',
+                    alignItems: 'center', zIndex: 9999
+                }}>
+                    <div
+                        className="absolute inset-0"
+                        onClick={() => !isEditingClient && setIsEditClientModalOpen(false)}
+                    />
+                    <div style={{ background: 'white', padding: '2rem', borderRadius: '12px', width: '100%', maxWidth: '500px', position: 'relative', zIndex: 10, direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                            <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#1e293b', margin: 0 }}>{t('edit_client_title' as any) || 'Edit Client Name'}</h2>
+                        </div>
+                        <form onSubmit={handleEditClient}>
+                            <div style={{ marginBottom: '1.5rem' }}>
+                                <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', color: '#64748b', textAlign: locale === 'ar' ? 'right' : 'left' }}>
+                                    {t('client_company_name' as any)}
+                                </label>
+                                <input
+                                    type="text"
+                                    value={editClientName}
+                                    onChange={(e) => setEditClientName(e.target.value)}
+                                    className="input"
+                                    style={{
+                                        width: '100%',
+                                        padding: '0.75rem',
+                                        border: '1px solid #e2e8f0',
+                                        borderRadius: '0.5rem',
+                                        outline: 'none',
+                                        textAlign: locale === 'ar' ? 'right' : 'left'
+                                    }}
+                                    placeholder={t('client_placeholder')}
+                                    autoFocus
+                                />
+                            </div>
+
+                            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
+                                <button
+                                    type="button"
+                                    onClick={() => setIsEditClientModalOpen(false)}
+                                    style={{ padding: '0.75rem 1.5rem', border: '1px solid #e2e8f0', borderRadius: '0.5rem', background: 'transparent', cursor: 'pointer' }}
+                                >
+                                    {t('cancel')}
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={!editClientName.trim() || isEditingClient}
+                                    className="btn btn-primary"
+                                    style={{ opacity: (!editClientName.trim() || isEditingClient) ? 0.5 : 1 }}
+                                >
+                                    {isEditingClient ? t('saving') : t('save')}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>,
+                document.body
+            )}
         </>
     )
 }
