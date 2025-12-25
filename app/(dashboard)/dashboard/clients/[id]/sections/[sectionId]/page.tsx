@@ -296,21 +296,6 @@ export default function SectionNotesPage() {
                                 {/* Author info and Delete button at the bottom */}
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                     <div className="flex items-center gap-2">
-                                        <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold text-[10px] uppercase shrink-0 px-1 overflow-hidden" title={note.createdBy?.role}>
-                                            {note.createdBy?.avatar ? (
-                                                <Image
-                                                    src={note.createdBy.avatar}
-                                                    alt="Avatar"
-                                                    width={32}
-                                                    height={32}
-                                                    className="w-full h-full rounded-full object-cover"
-                                                />
-                                            ) : (
-                                                <span style={{ fontSize: (note.createdBy?.role?.length || 0) > 10 ? '8px' : '9px', textAlign: 'center' }}>
-                                                    {note.createdBy?.role?.replace('_', ' ')}
-                                                </span>
-                                            )}
-                                        </div>
                                         <div className="text-sm" style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>
                                             <span className="font-semibold text-slate-800">
                                                 {note.createdBy?.firstName} {note.createdBy?.lastName}

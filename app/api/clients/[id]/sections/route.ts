@@ -1,11 +1,11 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 
 export async function GET(
-    request: Request,
+    request: NextRequest,
     { params }: { params: { id: string } }
 ) {
     try {
@@ -76,7 +76,7 @@ export async function GET(
 }
 
 export async function POST(
-    request: Request,
+    request: NextRequest,
     { params }: { params: { id: string } }
 ) {
     try {
@@ -134,7 +134,8 @@ export async function POST(
 }
 
 export async function DELETE(
-    request: Request
+    request: NextRequest,
+    { params }: { params: { id: string } }
 ) {
     try {
         const session = await getServerSession(authOptions)
@@ -143,8 +144,8 @@ export async function DELETE(
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
         }
 
-        const { searchParams } = new URL(request.url)
-        const sectionId = searchParams.get('id')
+        const url = new URL(request.url)
+        const sectionId = url.searchParams.get('id')
 
         if (!sectionId) {
             return NextResponse.json({ error: 'ID is required' }, { status: 400 })
@@ -173,7 +174,8 @@ export async function DELETE(
 }
 
 export async function PUT(
-    request: Request
+    request: NextRequest,
+    { params }: { params: { id: string } }
 ) {
     try {
         const session = await getServerSession(authOptions)
