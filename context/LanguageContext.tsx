@@ -49,6 +49,9 @@ export function LanguageProvider({ children, initialLocale }: { children: React.
                 console.error('Failed to sync language preference:', error);
             }
         }
+
+        // Force a page refresh to update server-rendered components with the new locale from cookie
+        window.location.reload();
     };
 
     const t = (key: TranslationKey): string => {
