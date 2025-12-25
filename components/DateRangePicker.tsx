@@ -120,10 +120,10 @@ export default function DateRangePicker({ dateFrom, dateTo, onChange }: DateRang
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
-                    flexDirection: locale === 'ar' ? 'row-reverse' : 'row'
+                    flexDirection: 'row'
                 }}
             >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexDirection: 'row' }}>
                     <span style={{ color: '#94a3b8' }}>📅</span>
                     <span style={{ color: dateFrom || dateTo ? '#1e293b' : '#94a3b8' }}>
                         {dateFrom && dateTo
@@ -152,7 +152,7 @@ export default function DateRangePicker({ dateFrom, dateTo, onChange }: DateRang
                     animation: 'slideUp 0.2s ease-out'
                 }}>
                     {/* Month Navigation */}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexDirection: 'row' }}>
                         <button
                             onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - (locale === 'ar' ? -1 : 1)))}
                             style={{
@@ -246,7 +246,7 @@ export default function DateRangePicker({ dateFrom, dateTo, onChange }: DateRang
                         display: 'flex',
                         justifyContent: 'space-between',
                         alignItems: 'center',
-                        flexDirection: locale === 'ar' ? 'row-reverse' : 'row'
+                        flexDirection: 'row'
                     }}>
                         <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
                             {selectingFrom ? t('select_start_date' as any) : t('select_end_date' as any)}

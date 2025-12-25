@@ -197,7 +197,7 @@ export default function ObligationDetailClient({ obligation, userRole }: { oblig
             {/* Deleted Assignee Alert */}
             {obligation.assignee?.status === 'DELETED' && ['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole) && (
                 <div style={{ background: '#fee2e2', border: '1px solid #ef4444', color: '#991b1b', padding: '1.5rem', borderRadius: '0.5rem', marginBottom: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexDirection: 'row' }}>
                         <span style={{ fontSize: '1.5rem' }}>🚫</span>
                         <div style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>
                             <strong>{t('assignee_deleted_alert')}</strong>
@@ -207,7 +207,7 @@ export default function ObligationDetailClient({ obligation, userRole }: { oblig
                         </div>
                     </div>
 
-                    <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
+                    <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', flexDirection: 'row' }}>
                         <button
                             onClick={handleForceComplete}
                             className="btn"
@@ -240,8 +240,8 @@ export default function ObligationDetailClient({ obligation, userRole }: { oblig
                 </div>
             )}
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexDirection: 'row' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexDirection: 'row' }}>
                     <h1 style={{ margin: 0 }}>{obligation.title}</h1>
                     <span style={{
                         fontSize: '0.75rem',
@@ -256,7 +256,7 @@ export default function ObligationDetailClient({ obligation, userRole }: { oblig
                         {t(`status_${obligation.status.toLowerCase()}` as any)}
                     </span>
                 </div>
-                <div style={{ display: 'flex', gap: '0.5rem', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
+                <div style={{ display: 'flex', gap: '0.5rem', flexDirection: 'row' }}>
                     <button
                         onClick={() => router.push('/dashboard/obligations')}
                         style={{ background: 'none', border: '1px solid #cbd5e1', borderRadius: '0.25rem', padding: '0.5rem 1rem', cursor: 'pointer', color: '#64748b' }}
@@ -285,7 +285,7 @@ export default function ObligationDetailClient({ obligation, userRole }: { oblig
                 {existingAttachments.length > 0 ? (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                         {existingAttachments.map((att: any, index: number) => (
-                            <div key={index} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
+                            <div key={index} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexDirection: 'row' }}>
                                 <span style={{ fontSize: '1.2rem' }}>📎</span>
                                 <a href={att.url} target="_blank" style={{ color: 'blue', textDecoration: 'underline' }}>
                                     {att.name || t('view_photo')}
@@ -369,9 +369,9 @@ export default function ObligationDetailClient({ obligation, userRole }: { oblig
                                     border: '1px solid #e2e8f0',
                                     borderRadius: '0.5rem',
                                     boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
-                                    flexDirection: locale === 'ar' ? 'row-reverse' : 'row'
+                                    flexDirection: 'row'
                                 }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexDirection: 'row' }}>
                                         <span style={{ fontSize: '1.2rem' }}>📄</span>
                                         <div style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>
                                             <div style={{ fontSize: '0.9rem', fontWeight: '500', color: '#334155' }}>{file.name}</div>
@@ -400,7 +400,7 @@ export default function ObligationDetailClient({ obligation, userRole }: { oblig
                         </div>
                     )}
 
-                    <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
+                    <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem', flexDirection: 'row' }}>
                         <button
                             className="btn"
                             style={{ background: '#e2e8f0', color: '#0f172a' }}
@@ -459,7 +459,7 @@ export default function ObligationDetailClient({ obligation, userRole }: { oblig
                     <div className="card" style={{ maxWidth: '400px', padding: '1.5rem', direction: locale === 'ar' ? 'rtl' : 'ltr', textAlign: locale === 'ar' ? 'right' : 'left' }}>
                         <h3 style={{ marginTop: 0 }}>{t('confirm_delete')}</h3>
                         <p>{t('delete_task_warning').replace(t('tasks'), t('obligations'))}</p>
-                        <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
+                        <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem', flexDirection: 'row' }}>
                             <button
                                 onClick={handleDelete}
                                 className="btn"
@@ -494,7 +494,7 @@ export default function ObligationDetailClient({ obligation, userRole }: { oblig
                         ))}
                     </select>
 
-                    <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
+                    <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', flexDirection: 'row' }}>
                         <button className="btn" onClick={() => setIsReassigning(false)}>{t('cancel')}</button>
                         <button className="btn btn-primary" onClick={handleReassign} disabled={!newAssigneeId}>
                             {t('confirm_transfer_button')}

@@ -193,7 +193,7 @@ export default function NewObligationPage() {
                         required
                     />
                 </div>
-                <div style={{ display: 'flex', gap: '1rem', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
+                <div style={{ display: 'flex', gap: '1rem' }}>
                     <button type="submit" className="btn btn-primary" disabled={isSubmitting}>
                         {isSubmitting ? t('creating') : t('create_obligation_button' as any)}
                     </button>

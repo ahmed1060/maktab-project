@@ -149,7 +149,7 @@ export default function SuperAdminsPage() {
 
     return (
         <div style={{ direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', flexDirection: 'row' }}>
                 <div style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>
                     <p style={{ color: '#64748b' }}>{t('manage_super_admins_subtitle')}</p>
                 </div>
@@ -289,7 +289,7 @@ export default function SuperAdminsPage() {
                                     <option value="FEMALE">{t('female')}</option>
                                 </select>
                             </div>
-                            <div style={{ display: 'flex', gap: '1rem', justifyContent: locale === 'ar' ? 'flex-start' : 'flex-end', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
+                            <div style={{ display: 'flex', gap: '1rem', justifyContent: locale === 'ar' ? 'flex-start' : 'flex-end', flexDirection: 'row' }}>
                                 <button type="button" onClick={() => setShowCreateModal(false)} style={{ padding: '0.75rem 1.5rem', border: '1px solid #e2e8f0', borderRadius: '0.5rem', background: 'transparent' }}>{t('cancel')}</button>
                                 <button type="submit" className="btn btn-primary" disabled={submitLoading}>{submitLoading ? t('creating') : t('sign_in')}</button>
                             </div>
@@ -366,7 +366,7 @@ export default function SuperAdminsPage() {
                                     <option value="FEMALE">{t('female')}</option>
                                 </select>
                             </div>
-                            <div style={{ display: 'flex', gap: '1rem', justifyContent: locale === 'ar' ? 'flex-start' : 'flex-end', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
+                            <div style={{ display: 'flex', gap: '1rem', justifyContent: locale === 'ar' ? 'flex-start' : 'flex-end', flexDirection: 'row' }}>
                                 <button type="button" onClick={() => setEditingAdmin(null)} style={{ padding: '0.75rem 1.5rem', border: '1px solid #e2e8f0', borderRadius: '0.5rem', background: 'transparent' }}>{t('cancel')}</button>
                                 <button type="submit" className="btn btn-primary" disabled={submitLoading}>{submitLoading ? t('saving') : t('save_changes_button')}</button>
                             </div>

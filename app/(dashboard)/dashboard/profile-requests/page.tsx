@@ -92,7 +92,7 @@ export default function ProfileRequestsPage() {
 
     return (
         <div className="animate-in fade-in duration-500" style={{ direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
-            <div style={{ marginBottom: '2rem', display: 'flex', alignItems: 'center', gap: '1rem', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
+            <div style={{ marginBottom: '2rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
                 <button
                     onClick={() => router.back()}
                     style={{

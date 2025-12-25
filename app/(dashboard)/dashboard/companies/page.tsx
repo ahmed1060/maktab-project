@@ -150,7 +150,7 @@ export default function CompaniesPage() {
     return (
         <>
             <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', flexDirection: 'row' }}>
                     <div>
                         <p style={{ color: '#64748b' }}>{t('manage_registered_companies')}</p>
                     </div>
@@ -270,7 +270,7 @@ export default function CompaniesPage() {
                                 />
                             </div>
 
-                            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
+                            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', flexDirection: 'row' }}>
                                 <button type="button" onClick={() => setShowModal(false)} className="btn" style={{ background: '#e2e8f0', color: '#0f172a' }}>
                                     {t('cancel')}
                                 </button>
@@ -311,7 +311,7 @@ export default function CompaniesPage() {
                                 />
                             </div>
 
-                            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
+                            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', flexDirection: 'row' }}>
                                 <button type="button" onClick={() => setShowDeleteModal(false)} className="btn" style={{ background: '#e2e8f0', color: '#0f172a' }}>
                                     {t('cancel')}
                                 </button>

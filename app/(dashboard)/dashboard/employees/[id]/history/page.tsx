@@ -67,7 +67,7 @@ export default function EmployeeHistoryPage() {
     return (
         <div style={{ direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
             <div style={{ marginBottom: '2rem' }}>
-                <Link href="/dashboard/employees" style={{ color: '#64748b', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem', flexDirection: locale === 'ar' ? 'row-reverse' : 'row', justifyContent: 'flex-end' }}>
+                <Link href="/dashboard/employees" style={{ color: '#64748b', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
                     <span style={{ transform: locale === 'ar' ? 'rotate(180deg)' : 'none' }}>←</span> {t('back_to_employees')}
                 </Link>
                 <h1 style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('salary_history')}</h1>

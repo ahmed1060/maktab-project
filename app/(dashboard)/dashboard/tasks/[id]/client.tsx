@@ -405,7 +405,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
-        flexDirection: locale === 'ar' ? 'row-reverse' : 'row',
+        flexDirection: 'row',
         gap: '1rem',
         flexWrap: 'wrap'
     }
@@ -414,7 +414,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
         display: 'flex',
         alignItems: 'center',
         gap: '0.75rem',
-        flexDirection: locale === 'ar' ? 'row-reverse' : 'row'
+        flexDirection: 'row'
     }
 
     const alertStyle: React.CSSProperties = {
@@ -424,7 +424,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
-        flexDirection: locale === 'ar' ? 'row-reverse' : 'row'
+        flexDirection: 'row'
     }
 
     return (
@@ -432,7 +432,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
             {/* Deleted Assignee Alert */}
             {task.assignee?.status === 'DELETED' && ['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole) && !['COMPLETED', 'APPROVED', 'REJECTED'].includes(task.status) && (
                 <div style={{ ...alertStyle, background: '#fee2e2', border: '1px solid #ef4444', color: '#991b1b', flexDirection: 'column', gap: '1rem', alignItems: 'stretch' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexDirection: 'row' }}>
                         <span style={{ fontSize: '1.5rem' }}>🚫</span>
                         <div style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>
                             <strong>{t('assignee_deleted_alert')}</strong>
@@ -441,7 +441,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                             </p>
                         </div>
                     </div>
-                    <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
+                    <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', flexDirection: 'row' }}>
                         <button onClick={() => submitReview('COMPLETED', task.difficulty)} className="btn" style={{ background: '#166534', color: 'white' }}>{t('mark_as_completed')}</button>
                         <button onClick={() => { if (allUsers.length === 0) fetch('/api/users').then(r => r.json()).then(setAllUsers); setIsTransferModalOpen(true); }} className="btn" style={{ background: '#2563eb', color: 'white' }}>{t('reassign_button')}</button>
                         <button onClick={() => router.push('/dashboard/tasks')} className="btn" style={{ background: 'white', border: '1px solid #b91c1c', color: '#b91c1c' }}>{t('dismiss_decide_later')}</button>
@@ -452,7 +452,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
             {/* Task Edited Alert */}
             {task.isEdited && (userRole === 'EMPLOYEE' || userId === task.assigneeId) && (
                 <div style={{ ...alertStyle, background: '#fff7ed', border: '1px solid #fdba74', color: '#9a3412' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexDirection: 'row' }}>
                         <span style={{ fontSize: '1.5rem' }}>⚠️</span>
                         <div style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>
                             <strong>{t('task_updated_alert')}</strong>
@@ -482,7 +482,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
 
             <div style={headerRowStyle}>
                 <div style={badgeGroupStyle}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexDirection: 'row' }}>
                         <h1 style={{ margin: 0 }}>{task.title}</h1>
                         {(task.isEdited || isEditedPersistent) && userId === task.assigneeId && latestChanges?.title && !viewedTitleChange && (
                             <button onClick={() => { setDiffField('title'); setViewedTitleChange(true); }} style={{ background: '#ffedd5', color: '#9a3412', border: '1px solid #fdba74', borderRadius: '0.25rem', padding: '0.25rem 0.5rem', fontSize: '0.75rem', cursor: 'pointer', fontWeight: 'bold' }}>{t('edit')}</button>
@@ -498,7 +498,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                         </span>
                     )}
                 </div>
-                <div style={{ display: 'flex', gap: '0.5rem', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
+                <div style={{ display: 'flex', gap: '0.5rem', flexDirection: 'row' }}>
                     {task.totalCost > 0 && (task.status === 'APPROVED' || task.status === 'COMPLETED') && ['ADMIN', 'SUPER_ADMIN'].includes(userRole) && (
                         <button onClick={() => handlePaymentStatusChange(task.paymentStatus === 'PAID' ? 'PENDING_PAYMENT' : 'PAID')} style={{ background: task.paymentStatus === 'PAID' ? '#fed7aa' : '#d1fae5', color: task.paymentStatus === 'PAID' ? '#9a3412' : '#065f46', border: 'none', borderRadius: '0.25rem', padding: '0.5rem 1rem', cursor: 'pointer', fontSize: '0.875rem', fontWeight: '600' }}>
                             {task.paymentStatus === 'PAID' ? t('mark_as_pending_button') : t('mark_as_paid')}
@@ -511,7 +511,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
             </div>
 
             <div style={{ marginTop: '1.5rem' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem', flexDirection: 'row' }}>
                     {(task.isEdited || isEditedPersistent) && userId === task.assigneeId && latestChanges?.description && !viewedDescriptionChange && (
                         <button onClick={() => { setDiffField('description'); setViewedDescriptionChange(true); }} style={{ background: '#ffedd5', color: '#9a3412', border: '1px solid #fdba74', borderRadius: '0.25rem', padding: '0.1rem 0.5rem', fontSize: '0.7rem', cursor: 'pointer', fontWeight: 'bold' }}>{t('edit')}</button>
                     )}
@@ -535,7 +535,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                                     {[...regularLogs].reverse().map((log: any, i: number) => (
                                         <div key={i} style={{ padding: '1rem', background: '#f8fafc', borderRadius: '0.5rem', border: '1px solid #e2e8f0' }}>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', flexDirection: 'row' }}>
                                                 <span style={{ fontWeight: 'bold', color: '#1e293b' }}>{log.author}</span>
                                                 <span style={{ fontSize: '0.75rem', color: '#64748b' }}>{new Date(log.date || log.createdAt).toLocaleString(locale)}</span>
                                             </div>
@@ -555,7 +555,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                 {existingAttachments.length > 0 ? (
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '1rem' }}>
                         {existingAttachments.map((att: any, idx: number) => (
-                            <a key={idx} href={att.url} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.75rem', background: 'white', border: '1px solid #e2e8f0', borderRadius: '0.5rem', textDecoration: 'none', color: '#334155', transition: 'all 0.2s', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
+                            <a key={idx} href={att.url} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.75rem', background: 'white', border: '1px solid #e2e8f0', borderRadius: '0.5rem', textDecoration: 'none', color: '#334155', transition: 'all 0.2s', flexDirection: 'row' }}>
                                 <span style={{ fontSize: '1.5rem' }}>📄</span>
                                 <div style={{ overflow: 'hidden', textAlign: locale === 'ar' ? 'right' : 'left' }}>
                                     <div style={{ fontSize: '0.9rem', fontWeight: '500', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>{att.name || t('attachment')}</div>
@@ -580,7 +580,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                                     {costs.map((c: any, i: number) => (
                                         <div key={i} style={{ display: 'flex', flexDirection: 'column', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: '0.5rem', padding: '1rem' }}>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexDirection: 'row' }}>
                                                 <div style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>
                                                     <div style={{ fontSize: '0.75rem', color: '#92400e', textTransform: 'uppercase', fontWeight: '600', marginBottom: '0.25rem' }}>{t('cost_description_placeholder').split(' ')[0]}</div>
                                                     <div style={{ fontSize: '1rem', fontWeight: '600', color: '#78350f' }}>{c.description || t('no_description')}</div>
@@ -640,15 +640,15 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
 
                                         return (
                                             <div key={i} style={{ border: '1px solid #bae6fd', background: '#f0f9ff', borderRadius: '0.5rem', padding: '1rem' }}>
-                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexDirection: locale === 'ar' ? 'row-reverse' : 'row', gap: '1rem' }}>
-                                                    <div style={{ display: 'flex', gap: '0.75rem', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexDirection: 'row', gap: '1rem' }}>
+                                                    <div style={{ display: 'flex', gap: '0.75rem', flexDirection: 'row' }}>
                                                         <span style={{ fontSize: '1.25rem' }}>📍</span>
                                                         <div style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>
                                                             {mapsLink ? <a href={mapsLink} target="_blank" rel="noreferrer" style={{ fontWeight: '600', color: '#0369a1', textDecoration: 'underline' }}>{displayLoc}</a> : <span style={{ fontWeight: '600', color: '#0c4a6e' }}>{displayLoc}</span>}
                                                             <div style={{ fontSize: '0.75rem', color: '#0369a1', marginTop: '0.25rem' }}>{loc.author} • {new Date(loc.date).toLocaleString(locale)}</div>
                                                         </div>
                                                     </div>
-                                                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
+                                                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexDirection: 'row' }}>
                                                         {loc.verificationStatus && (
                                                             <span style={{ fontSize: '0.75rem', fontWeight: '700', color: loc.verificationStatus === 'CORRECT' ? '#16a34a' : '#dc2626', background: loc.verificationStatus === 'CORRECT' ? '#dcfce7' : '#fee2e2', padding: '0.25rem 0.5rem', borderRadius: '0.25rem' }}>
                                                                 {loc.verificationStatus === 'CORRECT' ? t('verified_correct_title') : t('verified_wrong_title')}
@@ -678,7 +678,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
             {/* Submission Section (Employee only) */}
             {(userRole === 'EMPLOYEE' || userId === task.assigneeId) && !['APPROVED', 'COMPLETED', 'PENDING_CONFIRMATION', 'REJECTED'].includes(task.status) && (
                 <div style={{ marginTop: '3rem', borderTop: '2px solid #e2e8f0', paddingTop: '2rem' }}>
-                    <h3 style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
+                    <h3 style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', flexDirection: 'row' }}>
                         <span>📤</span> {t('submit_task_title')}
                     </h3>
 
@@ -701,8 +701,8 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                         {pendingFiles.length > 0 && (
                             <div style={{ marginTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                                 {pendingFiles.map((f, i) => (
-                                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem 1rem', background: 'white', border: '1px solid #e2e8f0', borderRadius: '0.5rem', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
+                                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem 1rem', background: 'white', border: '1px solid #e2e8f0', borderRadius: '0.5rem', flexDirection: 'row' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexDirection: 'row' }}>
                                             <span style={{ fontSize: '1.25rem' }}>📄</span>
                                             <div style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>
                                                 <div style={{ fontSize: '0.9rem', fontWeight: '500' }}>{f.name}</div>
@@ -718,7 +718,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
 
                     <div style={{ marginBottom: '1.5rem' }}>
                         <label style={{ display: 'block', fontWeight: '600', marginBottom: '0.75rem' }}>{t('add_costs_label')}</label>
-                        <div style={{ display: 'flex', gap: '0.5rem', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
+                        <div style={{ display: 'flex', gap: '0.5rem', flexDirection: 'row' }}>
                             <input type="text" className="input" placeholder={t('cost_description_placeholder')} value={costDescription} onChange={e => setCostDescription(e.target.value)} style={{ flex: 1 }} />
                             <input type="number" className="input" placeholder={t('cost_amount_placeholder')} value={cost} onChange={e => setCost(e.target.value)} style={{ width: '120px' }} />
                             <button onClick={handleAddCost} disabled={!cost} className="btn" style={{ background: '#e0f2fe', color: '#0369a1', fontWeight: '700', minWidth: '80px' }}>{t('add_label')}</button>
@@ -726,8 +726,8 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                         {costEntries.length > 0 && (
                             <div style={{ marginTop: '1rem', background: 'white', border: '1px solid #e2e8f0', borderRadius: '0.5rem', overflow: 'hidden' }}>
                                 {costEntries.map((e, i) => (
-                                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem 1rem', borderBottom: i < costEntries.length - 1 ? '1px solid #f1f5f9' : 'none', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
-                                        <div style={{ display: 'flex', gap: '0.5rem', fontWeight: '500', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
+                                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem 1rem', borderBottom: i < costEntries.length - 1 ? '1px solid #f1f5f9' : 'none', flexDirection: 'row' }}>
+                                        <div style={{ display: 'flex', gap: '0.5rem', fontWeight: '500', flexDirection: 'row' }}>
                                             <span>{e.description || t('no_description')}</span>
                                             <span style={{ color: '#94a3b8' }}>•</span>
                                             <span style={{ color: '#b45309' }}>{e.amount.toFixed(2)} {t('egp')}</span>
@@ -747,7 +747,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
 
                     <div style={{ marginBottom: '2rem' }}>
                         <label style={{ display: 'block', fontWeight: '600', marginBottom: '0.75rem' }}>{t('current_location_label')}</label>
-                        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
+                        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexDirection: 'row' }}>
                             <button onClick={handleCaptureLocation} disabled={capturingLocation || uploading} className="btn" style={{ background: capturingLocation ? '#e2e8f0' : '#3b82f6', color: capturingLocation ? '#64748b' : 'white', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                 {capturingLocation ? t('capturing_location_button').replace('📍', '') : t('capture_location_button').replace('📍', '')}
                             </button>
@@ -755,7 +755,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                         </div>
                     </div>
 
-                    <div style={{ display: 'flex', gap: '1rem', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
+                    <div style={{ display: 'flex', gap: '1rem', flexDirection: 'row' }}>
                         <button onClick={() => handleUpload(true)} disabled={uploading} className="btn" style={{ background: '#e2e8f0', color: '#1e293b', fontWeight: '600', flex: 1 }}>{uploading ? t('saving') : t('save_draft_button')}</button>
                         <button onClick={handleUploadRequest} disabled={uploading} className="btn btn-primary" style={{ fontWeight: '700', flex: 2 }}>{uploading ? t('signing_in').split(' ')[0] + '...' : t('submit_task_button')}</button>
                     </div>
@@ -771,7 +771,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
 
             {/* Approve/Reject Buttons (Admins only) */}
             {['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole) && task.status === 'PENDING_CONFIRMATION' && userId !== task.assigneeId && (
-                <div style={{ marginTop: '2.5rem', display: 'flex', gap: '1.25rem', borderTop: '2px solid #e2e8f0', paddingTop: '2rem', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
+                <div style={{ marginTop: '2.5rem', display: 'flex', gap: '1.25rem', borderTop: '2px solid #e2e8f0', paddingTop: '2rem', flexDirection: 'row' }}>
                     <button onClick={handleApprove} className="btn btn-primary" style={{ flex: 1, padding: '1rem', fontSize: '1.1rem', fontWeight: '700' }}>{t('approve_button')}</button>
                     <button onClick={handleReject} className="btn" style={{ flex: 1, padding: '1rem', fontSize: '1.1rem', fontWeight: '700', background: '#ef4444', color: 'white' }}>{t('reject_button')}</button>
                 </div>
@@ -783,7 +783,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
             <Modal isOpen={showDeleteConfirm} onClose={() => setShowDeleteConfirm(false)} title={t('delete_task_title')} hideFooter>
                 <div style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>
                     <p>{t('delete_task_warning')}</p>
-                    <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem', justifyContent: 'flex-end', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
+                    <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem', justifyContent: 'flex-end', flexDirection: 'row' }}>
                         <button onClick={() => setShowDeleteConfirm(false)} className="btn" style={{ background: '#e2e8f0' }}>{t('cancel')}</button>
                         <button onClick={handleDelete} className="btn" style={{ background: '#dc2626', color: 'white' }}>{t('delete')}</button>
                     </div>
@@ -816,7 +816,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                         <label className="label">{t('difficulty')}</label>
                         <input type="number" className="input" value={editForm.difficulty} onChange={e => setEditForm({ ...editForm, difficulty: parseInt(e.target.value) || 0 })} min={0} max={10} required />
                     </div>
-                    <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
+                    <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', flexDirection: 'row' }}>
                         <button type="button" onClick={() => setIsEditing(false)} className="btn" style={{ background: '#e2e8f0' }}>{t('cancel')}</button>
                         <button type="submit" className="btn btn-primary">{t('save_changes_button')}</button>
                     </div>
@@ -833,7 +833,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                             <option key={u.id} value={u.id}>{u.firstName} {u.lastName} ({u.role})</option>
                         ))}
                     </select>
-                    <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
+                    <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', flexDirection: 'row' }}>
                         <button onClick={() => setIsTransferModalOpen(false)} className="btn" style={{ background: '#e2e8f0' }}>{t('cancel')}</button>
                         <button onClick={handleTransfer} disabled={!transferAssigneeId || transferring} className="btn btn-primary">{transferring ? '...' : t('confirm_transfer_button')}</button>
                     </div>
@@ -853,7 +853,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                             <input type="number" className="input" value={reviewDifficulty} onChange={e => setReviewDifficulty(parseInt(e.target.value) || 0)} min={0} max={100} style={{ width: '100%' }} />
                         </div>
                     )}
-                    <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
+                    <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', flexDirection: 'row' }}>
                         <button onClick={() => setIsReviewModalOpen(false)} className="btn" style={{ background: '#e2e8f0' }}>{t('cancel')}</button>
                         <button onClick={() => submitReview()} disabled={submittingReview} className="btn" style={{ background: reviewAction === 'APPROVED' ? '#16a34a' : '#dc2626', color: 'white', minWidth: '100px' }}>
                             {submittingReview ? '...' : t('confirm_action_button')}
@@ -866,7 +866,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
             <Modal isOpen={showSubmitConfirm} onClose={() => setShowSubmitConfirm(false)} title={t('confirm_submission_title')} hideFooter>
                 <div style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>
                     <p>{t('confirm_submission_msg')}</p>
-                    <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem', justifyContent: 'flex-end', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
+                    <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem', justifyContent: 'flex-end', flexDirection: 'row' }}>
                         <button onClick={() => setShowSubmitConfirm(false)} className="btn" style={{ background: '#e2e8f0' }}>{t('cancel')}</button>
                         <button onClick={() => { setShowSubmitConfirm(false); handleUpload(false); }} className="btn btn-primary">{t('confirm_submit_button')}</button>
                     </div>
@@ -877,7 +877,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
             <Modal isOpen={!!locationToDelete} onClose={() => setLocationToDelete(null)} title={t('delete_location_title')} hideFooter>
                 <div style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>
                     <p>{t('delete_location_warning')}</p>
-                    <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem', justifyContent: 'flex-end', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
+                    <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem', justifyContent: 'flex-end', flexDirection: 'row' }}>
                         <button onClick={() => setLocationToDelete(null)} className="btn" style={{ background: '#e2e8f0' }}>{t('cancel')}</button>
                         <button onClick={confirmDeleteLocation} className="btn" style={{ background: '#dc2626', color: 'white' }}>{t('delete')}</button>
                     </div>

@@ -91,7 +91,7 @@ export default function ConfirmModal({
                 direction: locale === 'ar' ? 'rtl' : 'ltr',
                 textAlign: locale === 'ar' ? 'right' : 'left'
             }}>
-                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '1rem', marginBottom: '1.5rem', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '1rem', marginBottom: '1.5rem', flexDirection: 'row' }}>
                     <div style={{
                         width: '48px',
                         height: '48px',
@@ -118,7 +118,7 @@ export default function ConfirmModal({
                     </div>
                 </div>
 
-                <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
+                <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', flexDirection: 'row' }}>
                     <button
                         onClick={onCancel}
                         style={{

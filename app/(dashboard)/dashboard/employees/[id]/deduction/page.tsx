@@ -98,7 +98,7 @@ export default function AddDeductionPage() {
                     )}
                 </div>
 
-                <div style={{ display: 'flex', gap: '1rem', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
+                <div style={{ display: 'flex', gap: '1rem' }}>
                     <Link
                         href="/dashboard/employees"
                         className="btn"

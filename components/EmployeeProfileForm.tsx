@@ -401,7 +401,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                             )}
                         </div>
 
-                        <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
+                        <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center', flexDirection: 'row' }}>
                             <label
                                 className="btn btn-primary"
                                 style={{
@@ -649,7 +649,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                     </div>
                 )}
 
-                <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem', justifyContent: isViewMode ? 'flex-end' : 'flex-start', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
+                <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem', justifyContent: isViewMode ? 'flex-end' : 'flex-start', flexDirection: 'row' }}>
                     {!isViewMode && (
                         <button type="submit" className="btn btn-primary" disabled={saving}>
                             {saving ? t('updating_button') : t('update_button')}

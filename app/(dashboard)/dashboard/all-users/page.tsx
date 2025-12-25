@@ -325,8 +325,8 @@ export default function AllUsersPage() {
                         </div>
                     ) : (
                         <div style={{ background: 'white', padding: '2rem', borderRadius: '12px', width: '90%', maxWidth: '800px', maxHeight: '80vh', display: 'flex', flexDirection: 'column', position: 'relative', zIndex: 101, direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
-                                <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '0.5rem', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexDirection: 'row' }}>
+                                <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '0.5rem', flexDirection: 'row' }}>
                                     <span style={{ fontSize: '1.5rem' }}>🗑️</span> {t('ex_users_archive_title')}
                                 </h2>
                                 <button onClick={() => setShowExUsersModal(false)} style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: '#64748b' }}>&times;</button>
