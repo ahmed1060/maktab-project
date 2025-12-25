@@ -98,7 +98,7 @@ export default function NewEmployeePage() {
     return (
         <div className="card" style={{ maxWidth: '600px', margin: '0 auto' }}>
             <h1 style={{ marginBottom: '1.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
-                {userRole === 'SUPER_ADMIN' ? t('add_new_user_title' as any) || 'Add New User' : t('add_employee')}
+                {userRole === 'SUPER_ADMIN' ? t('add_new_user_title') : t('add_employee')}
             </h1>
             {error && (
                 <div style={{
@@ -290,7 +290,7 @@ export default function NewEmployeePage() {
                 )}
                 <div style={{ display: 'flex', gap: '1rem' }}>
                     <button type="submit" className="btn btn-primary" disabled={loading}>
-                        {loading ? 'Creating...' : userRole === 'SUPER_ADMIN' ? 'Create User' : 'Create Employee'}
+                        {loading ? t('creating') : userRole === 'SUPER_ADMIN' ? t('create_user_button') : t('create_employee_button')}
                     </button>
                     <button
                         type="button"
@@ -298,7 +298,7 @@ export default function NewEmployeePage() {
                         style={{ background: '#e2e8f0', color: '#0f172a' }}
                         onClick={() => router.push('/dashboard/employees')}
                     >
-                        Cancel
+                        {t('cancel')}
                     </button>
                 </div>
             </form>
