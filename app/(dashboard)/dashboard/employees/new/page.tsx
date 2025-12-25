@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
+import { useLanguage } from '@/context/LanguageContext'
 
 type Company = {
     id: string
@@ -9,6 +10,7 @@ type Company = {
 }
 
 export default function NewEmployeePage() {
+    const { t, locale } = useLanguage()
     const [firstName, setFirstName] = useState('')
     const [lastName, setLastName] = useState('')
     const [email, setEmail] = useState('')
@@ -95,8 +97,8 @@ export default function NewEmployeePage() {
 
     return (
         <div className="card" style={{ maxWidth: '600px', margin: '0 auto' }}>
-            <h1 style={{ marginBottom: '1.5rem' }}>
-                {userRole === 'SUPER_ADMIN' ? 'Add New User' : 'Add New Employee'}
+            <h1 style={{ marginBottom: '1.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
+                {userRole === 'SUPER_ADMIN' ? t('add_new_user_title' as any) || 'Add New User' : t('add_employee')}
             </h1>
             {error && (
                 <div style={{
@@ -110,9 +112,9 @@ export default function NewEmployeePage() {
                 </div>
             )}
             <form onSubmit={handleSubmit}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
                     <div>
-                        <label style={{ display: 'block', marginBottom: '0.5rem' }}>First Name</label>
+                        <label style={{ display: 'block', marginBottom: '0.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('first_name_label')}</label>
                         <input
                             className="input"
                             value={firstName}
@@ -120,19 +122,22 @@ export default function NewEmployeePage() {
                                 setFirstName(e.target.value)
                                 if (fieldErrors.firstName) setFieldErrors({ ...fieldErrors, firstName: '' })
                             }}
-                            style={fieldErrors.firstName ? { borderColor: '#ef4444' } : {}}
+                            style={{
+                                ...(fieldErrors.firstName ? { borderColor: '#ef4444' } : {}),
+                                textAlign: locale === 'ar' ? 'right' : 'left'
+                            }}
                             required
                             maxLength={15}
-                            placeholder="John"
+                            placeholder={locale === 'ar' ? 'جون' : "John"}
                         />
                         {fieldErrors.firstName && (
-                            <div style={{ color: '#ef4444', fontSize: '0.85rem', marginTop: '0.25rem' }}>
+                            <div style={{ color: '#ef4444', fontSize: '0.85rem', marginTop: '0.25rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
                                 {fieldErrors.firstName}
                             </div>
                         )}
                     </div>
                     <div>
-                        <label style={{ display: 'block', marginBottom: '0.5rem' }}>Last Name</label>
+                        <label style={{ display: 'block', marginBottom: '0.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('last_name_label')}</label>
                         <input
                             className="input"
                             value={lastName}
@@ -140,20 +145,23 @@ export default function NewEmployeePage() {
                                 setLastName(e.target.value)
                                 if (fieldErrors.lastName) setFieldErrors({ ...fieldErrors, lastName: '' })
                             }}
-                            style={fieldErrors.lastName ? { borderColor: '#ef4444' } : {}}
+                            style={{
+                                ...(fieldErrors.lastName ? { borderColor: '#ef4444' } : {}),
+                                textAlign: locale === 'ar' ? 'right' : 'left'
+                            }}
                             required
                             maxLength={15}
-                            placeholder="Doe"
+                            placeholder={locale === 'ar' ? 'دو' : "Doe"}
                         />
                         {fieldErrors.lastName && (
-                            <div style={{ color: '#ef4444', fontSize: '0.85rem', marginTop: '0.25rem' }}>
+                            <div style={{ color: '#ef4444', fontSize: '0.85rem', marginTop: '0.25rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
                                 {fieldErrors.lastName}
                             </div>
                         )}
                     </div>
                 </div>
                 <div>
-                    <label style={{ display: 'block', marginBottom: '0.5rem' }}>Email</label>
+                    <label style={{ display: 'block', marginBottom: '0.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('email')}</label>
                     <input
                         type="email"
                         className="input"
@@ -162,18 +170,21 @@ export default function NewEmployeePage() {
                             setEmail(e.target.value)
                             if (fieldErrors.email) setFieldErrors({ ...fieldErrors, email: '' })
                         }}
-                        style={fieldErrors.email ? { borderColor: '#ef4444' } : {}}
+                        style={{
+                            ...(fieldErrors.email ? { borderColor: '#ef4444' } : {}),
+                            textAlign: locale === 'ar' ? 'right' : 'left'
+                        }}
                         required
                         placeholder="john@example.com"
                     />
                     {fieldErrors.email && (
-                        <div style={{ color: '#ef4444', fontSize: '0.85rem', marginTop: '0.25rem' }}>
+                        <div style={{ color: '#ef4444', fontSize: '0.85rem', marginTop: '0.25rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
                             {fieldErrors.email}
                         </div>
                     )}
                 </div>
                 <div style={{ position: 'relative' }}>
-                    <label style={{ display: 'block', marginBottom: '0.5rem' }}>Password</label>
+                    <label style={{ display: 'block', marginBottom: '0.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('password')}</label>
                     <input
                         type={showPassword ? "text" : "password"}
                         className="input"
@@ -184,19 +195,21 @@ export default function NewEmployeePage() {
                         }}
                         style={{
                             ...(fieldErrors.password ? { borderColor: '#ef4444' } : {}),
-                            paddingRight: '2.5rem'
+                            paddingRight: locale === 'ar' ? '1rem' : '2.5rem',
+                            paddingLeft: locale === 'ar' ? '2.5rem' : '1rem',
+                            textAlign: locale === 'ar' ? 'right' : 'left'
                         }}
                         required
                         minLength={6}
                         maxLength={20}
-                        placeholder="Minimum 6 characters"
+                        placeholder={locale === 'ar' ? '٦ أحرف على الأقل' : "Minimum 6 characters"}
                     />
                     <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
                         style={{
                             position: 'absolute',
-                            right: '0.75rem',
+                            [locale === 'ar' ? 'left' : 'right']: '0.75rem',
                             top: '2.25rem',
                             background: 'none',
                             border: 'none',
@@ -220,16 +233,15 @@ export default function NewEmployeePage() {
                         )}
                     </button>
                     {fieldErrors.password && (
-                        <div style={{ color: '#ef4444', fontSize: '0.85rem', marginTop: '0.25rem' }}>
+                        <div style={{ color: '#ef4444', fontSize: '0.85rem', marginTop: '0.25rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
                             {fieldErrors.password}
                         </div>
                     )}
                 </div>
 
-                {/* Salary Input - Hidden for Super Admins */}
                 {role !== 'SUPER_ADMIN' && role !== '' && (
-                    <div>
-                        <label style={{ display: 'block', marginBottom: '0.5rem' }}>Monthly Salary ($)</label>
+                    <div style={{ marginBottom: '1rem' }}>
+                        <label style={{ display: 'block', marginBottom: '0.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('monthly_base_salary_label')}</label>
                         <input
                             type="number"
                             className="input"
@@ -237,21 +249,22 @@ export default function NewEmployeePage() {
                             onChange={e => setSalary(e.target.value)}
                             min="0"
                             placeholder="0.00"
+                            style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}
                         />
                     </div>
                 )}
 
-                {/* Company Selection for Super Admin */}
                 {userRole === 'SUPER_ADMIN' && (
-                    <div>
-                        <label style={{ display: 'block', marginBottom: '0.5rem' }}>Company</label>
+                    <div style={{ marginBottom: '1rem' }}>
+                        <label style={{ display: 'block', marginBottom: '0.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('company_label')}</label>
                         <select
                             className="input"
                             value={companyId}
                             onChange={e => setCompanyId(e.target.value)}
                             required
+                            style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}
                         >
-                            <option value="">Select a Company</option>
+                            <option value="">{t('select_company_placeholder')}</option>
                             {companies.map(c => (
                                 <option key={c.id} value={c.id}>{c.name}</option>
                             ))}
@@ -260,17 +273,18 @@ export default function NewEmployeePage() {
                 )}
 
                 {(userRole === 'SUPER_ADMIN' || userRole === 'ADMIN') && (
-                    <div>
-                        <label style={{ display: 'block', marginBottom: '0.5rem' }}>Role</label>
+                    <div style={{ marginBottom: '1rem' }}>
+                        <label style={{ display: 'block', marginBottom: '0.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('role_label')}</label>
                         <select
                             className="input"
                             value={role}
                             onChange={e => setRole(e.target.value)}
                             required
+                            style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}
                         >
-                            <option value="EMPLOYEE">Employee</option>
-                            <option value="TEAM_LEADER">Team Leader</option>
-                            {userRole === 'SUPER_ADMIN' && <option value="ADMIN">Admin</option>}
+                            <option value="EMPLOYEE">{t('role_employee')}</option>
+                            <option value="TEAM_LEADER">{t('role_team_leader')}</option>
+                            {userRole === 'SUPER_ADMIN' && <option value="ADMIN">{t('role_admin')}</option>}
                         </select>
                     </div>
                 )}

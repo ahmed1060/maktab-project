@@ -25,7 +25,7 @@ interface EmployeeType {
 export default function EmployeeFilter({ onFilterChange, selectedEmployeeId, dateFrom, dateTo, totalCount, totalCost, selectedStatus = '' }: EmployeeFilterProps) {
     const [employees, setEmployees] = useState<EmployeeType[]>([])
     const [loading, setLoading] = useState(true)
-    const { t } = useLanguage()
+    const { t, locale } = useLanguage()
 
     useEffect(() => {
         fetch('/api/users')
@@ -102,14 +102,16 @@ export default function EmployeeFilter({ onFilterChange, selectedEmployeeId, dat
                     <select
                         value={selectedStatus}
                         onChange={(e) => handleStatusChange(e.target.value)}
+                        className="input"
                         style={{
-                            padding: '0.5rem 1rem',
+                            padding: locale === 'ar' ? '0.5rem 1rem 0.5rem 2.5rem' : '0.5rem 2.5rem 0.5rem 1rem',
                             borderRadius: '0.5rem',
-                            border: '1px solid #cbd5e1',
                             fontSize: '0.875rem',
                             minWidth: '180px',
                             cursor: 'pointer',
-                            background: 'white'
+                            background: 'white',
+                            height: 'auto',
+                            textAlign: locale === 'ar' ? 'right' : 'left'
                         }}
                     >
                         <option value="">{t('placeholder_all_statuses')}</option>

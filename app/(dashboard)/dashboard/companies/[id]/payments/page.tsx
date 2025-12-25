@@ -7,6 +7,7 @@ import AccessDenied from '@/components/AccessDenied'
 import Modal from '@/components/Modal'
 import ConfirmModal from '@/components/ConfirmModal'
 import { useToast } from '@/context/ToastContext'
+import { useLanguage } from '@/context/LanguageContext'
 
 type Payment = {
     id: string
@@ -30,6 +31,7 @@ export default function CompanyPaymentsPage() {
     const { id: companyId } = params as { id: string }
     const { data: session } = useSession()
     const { showToast } = useToast()
+    const { t, locale } = useLanguage()
 
     const [company, setCompany] = useState<Company | null>(null)
     const [payments, setPayments] = useState<Payment[]>([])
@@ -86,15 +88,15 @@ export default function CompanyPaymentsPage() {
             })
 
             if (res.ok) {
-                showToast('Payment record added successfully!', 'success')
+                showToast(t('payment_added_success'), 'success')
                 setShowModal(false)
                 setFormData({ cost: '', subscriptionType: 'MONTHLY' })
                 fetchPayments()
             } else {
-                showToast('Failed to add payment', 'error')
+                showToast(t('error_generic'), 'error')
             }
         } catch (error) {
-            showToast('Error adding payment', 'error')
+            showToast(t('error_generic'), 'error')
         } finally {
             setSubmitting(false)
         }
@@ -109,13 +111,13 @@ export default function CompanyPaymentsPage() {
             })
 
             if (res.ok) {
-                showToast('Payment marked as PAID!', 'success')
+                showToast(t('payment_marked_paid'), 'success')
                 fetchPayments()
             } else {
-                showToast('Failed to update payment status', 'error')
+                showToast(t('error_generic'), 'error')
             }
         } catch (error) {
-            showToast('Error updating status', 'error')
+            showToast(t('error_generic'), 'error')
         }
     }
 
@@ -132,14 +134,14 @@ export default function CompanyPaymentsPage() {
             })
 
             if (res.ok) {
-                showToast('Payment deleted successfully', 'success')
+                showToast(t('payment_deleted_success'), 'success')
                 fetchPayments()
             } else {
                 const data = await res.json()
-                showToast(data.error || 'Failed to delete payment', 'error')
+                showToast(data.error || t('error_generic'), 'error')
             }
         } catch (error) {
-            showToast('Error deleting payment', 'error')
+            showToast(t('error_generic'), 'error')
         } finally {
             setPaymentToDelete(null)
         }
@@ -150,69 +152,69 @@ export default function CompanyPaymentsPage() {
     }
 
     return (
-        <div className="animate-in fade-in duration-500">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-                <div>
+        <div className="animate-in fade-in duration-500" style={{ direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', flexDirection: 'row' }}>
+                <div style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>
                     <button
                         onClick={() => router.push('/dashboard/companies')}
-                        style={{ border: 'none', background: 'none', color: '#6366f1', display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontWeight: '600', marginBottom: '0.5rem' }}
+                        style={{ border: 'none', background: 'none', color: '#6366f1', display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontWeight: '600', marginBottom: '0.5rem', flexDirection: 'row' }}
                     >
-                        ← Back to Companies
+                        {locale === 'ar' ? '←' : '←'} {t('back_to_companies')}
                     </button>
-                    <h1 style={{ margin: 0 }}>Payment History</h1>
-                    <p style={{ color: '#64748b', marginTop: '0.25rem' }}>Management for <strong>{company?.name || 'Loading...'}</strong></p>
+                    <h1 style={{ margin: 0 }}>{t('payment_history')}</h1>
+                    <p style={{ color: '#64748b', marginTop: '0.25rem' }}>{t('management_for')} <strong>{company?.name || t('loading_filters')}</strong></p>
                 </div>
                 <button
                     className="btn btn-primary"
                     onClick={() => setShowModal(true)}
                 >
-                    + Add Payment
+                    + {t('add_payment')}
                 </button>
             </div>
 
             {loading ? (
                 <div style={{ padding: '4rem', textAlign: 'center' }}>
-                    <p style={{ color: '#64748b' }}>Loading payments...</p>
+                    <p style={{ color: '#64748b' }}>{t('loading_payments')}</p>
                 </div>
             ) : payments.length === 0 ? (
                 <div className="glass" style={{ padding: '4rem', textAlign: 'center', borderRadius: '1rem' }}>
                     <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🧾</div>
-                    <h3 style={{ margin: '0 0 0.5rem' }}>No payments found</h3>
-                    <p style={{ color: '#64748b', margin: 0 }}>You haven&apos;t added any payment records for this company yet.</p>
+                    <h3 style={{ margin: '0 0 0.5rem' }}>{t('no_payments_found')}</h3>
+                    <p style={{ color: '#64748b', margin: 0 }}>{t('no_payments_hint')}</p>
                 </div>
             ) : (
                 <div className="glass" style={{ borderRadius: '1rem', overflow: 'hidden' }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                         <thead style={{ background: 'rgba(255,255,255,0.5)', borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
                             <tr>
-                                <th style={{ textAlign: 'left', padding: '1.25rem', fontSize: '0.8rem', textTransform: 'uppercase', color: '#64748b' }}>Type</th>
-                                <th style={{ textAlign: 'left', padding: '1.25rem', fontSize: '0.8rem', textTransform: 'uppercase', color: '#64748b' }}>Cost</th>
-                                <th style={{ textAlign: 'left', padding: '1.25rem', fontSize: '0.8rem', textTransform: 'uppercase', color: '#64748b' }}>Dates</th>
-                                <th style={{ textAlign: 'left', padding: '1.25rem', fontSize: '0.8rem', textTransform: 'uppercase', color: '#64748b' }}>Status</th>
-                                <th style={{ textAlign: 'right', padding: '1.25rem', fontSize: '0.8rem', textTransform: 'uppercase', color: '#64748b' }}>Action</th>
+                                <th style={{ textAlign: locale === 'ar' ? 'right' : 'left', padding: '1.25rem', fontSize: '0.8rem', textTransform: 'uppercase', color: '#64748b' }}>{t('subscription_type')}</th>
+                                <th style={{ textAlign: locale === 'ar' ? 'right' : 'left', padding: '1.25rem', fontSize: '0.8rem', textTransform: 'uppercase', color: '#64748b' }}>{t('costs')}</th>
+                                <th style={{ textAlign: locale === 'ar' ? 'right' : 'left', padding: '1.25rem', fontSize: '0.8rem', textTransform: 'uppercase', color: '#64748b' }}>{t('dates_column')}</th>
+                                <th style={{ textAlign: locale === 'ar' ? 'right' : 'left', padding: '1.25rem', fontSize: '0.8rem', textTransform: 'uppercase', color: '#64748b' }}>{t('status_label')}</th>
+                                <th style={{ textAlign: locale === 'ar' ? 'left' : 'right', padding: '1.25rem', fontSize: '0.8rem', textTransform: 'uppercase', color: '#64748b' }}>{t('quick_actions')}</th>
                             </tr>
                         </thead>
                         <tbody>
                             {payments.map(payment => (
                                 <tr key={payment.id} style={{ borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
-                                    <td style={{ padding: '1.25rem' }}>
-                                        <div style={{ fontWeight: '600', fontSize: '0.9rem' }}>{payment.subscriptionType}</div>
-                                        <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Created {new Date(payment.createdAt).toLocaleDateString()}</div>
+                                    <td style={{ padding: '1.25rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
+                                        <div style={{ fontWeight: '600', fontSize: '0.9rem' }}>{payment.subscriptionType === 'MONTHLY' ? t('monthly') : t('annually')}</div>
+                                        <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>{t('created_at')} {new Date(payment.createdAt).toLocaleDateString(locale === 'ar' ? 'ar-EG' : 'en-US')}</div>
                                     </td>
-                                    <td style={{ padding: '1.25rem', fontWeight: 'bold', color: '#1e293b' }}>
+                                    <td style={{ padding: '1.25rem', fontWeight: 'bold', color: '#1e293b', textAlign: locale === 'ar' ? 'right' : 'left' }}>
                                         ${payment.cost.toLocaleString()}
                                     </td>
-                                    <td style={{ padding: '1.25rem' }}>
+                                    <td style={{ padding: '1.25rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
                                         {payment.status === 'PAID' ? (
                                             <div style={{ fontSize: '0.85rem' }}>
-                                                <div><span style={{ color: '#64748b' }}>Start:</span> {new Date(payment.startDate!).toLocaleDateString()}</div>
-                                                <div><span style={{ color: '#64748b' }}>End:</span> {new Date(payment.endDate!).toLocaleDateString()}</div>
+                                                <div><span style={{ color: '#64748b' }}>{t('start_date')}:</span> {new Date(payment.startDate!).toLocaleDateString(locale === 'ar' ? 'ar-EG' : 'en-US')}</div>
+                                                <div><span style={{ color: '#64748b' }}>{t('end_date')}:</span> {new Date(payment.endDate!).toLocaleDateString(locale === 'ar' ? 'ar-EG' : 'en-US')}</div>
                                             </div>
                                         ) : (
-                                            <span style={{ fontSize: '0.85rem', color: '#94a3b8', fontStyle: 'italic' }}>Pending Activation</span>
+                                            <span style={{ fontSize: '0.85rem', color: '#94a3b8', fontStyle: 'italic' }}>{t('pending_activation')}</span>
                                         )}
                                     </td>
-                                    <td style={{ padding: '1.25rem' }}>
+                                    <td style={{ padding: '1.25rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
                                         <span style={{
                                             padding: '0.4rem 0.75rem',
                                             borderRadius: '999px',
@@ -221,11 +223,11 @@ export default function CompanyPaymentsPage() {
                                             background: payment.status === 'PAID' ? '#dcfce7' : '#fee2e2',
                                             color: payment.status === 'PAID' ? '#166534' : '#dc2626'
                                         }}>
-                                            {payment.status}
+                                            {payment.status === 'PAID' ? t('status_paid') : t('status_unpaid')}
                                         </span>
                                     </td>
-                                    <td style={{ padding: '1.25rem', textAlign: 'right' }}>
-                                        <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', alignItems: 'center' }}>
+                                    <td style={{ padding: '1.25rem', textAlign: locale === 'ar' ? 'left' : 'right' }}>
+                                        <div style={{ display: 'flex', gap: '0.5rem', justifyContent: locale === 'ar' ? 'flex-start' : 'flex-end', alignItems: 'center', flexDirection: 'row' }}>
                                             <button
                                                 onClick={() => payment.status === 'UNPAID' && markAsPaid(payment.id)}
                                                 className="btn"
@@ -239,7 +241,7 @@ export default function CompanyPaymentsPage() {
                                                     border: payment.status === 'PAID' ? '1px solid #e2e8f0' : 'none'
                                                 }}
                                             >
-                                                {payment.status === 'PAID' ? '✅ Paid' : 'Mark as Paid'}
+                                                {payment.status === 'PAID' ? `✅ ${t('status_paid')}` : t('mark_as_paid')}
                                             </button>
 
                                             {payment.status === 'UNPAID' && (
@@ -257,7 +259,7 @@ export default function CompanyPaymentsPage() {
                                                         border: 'none',
                                                         cursor: 'pointer'
                                                     }}
-                                                    title="Delete Payment"
+                                                    title={t('delete_payment_title')}
                                                 >
                                                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                                         <path d="M3 6h18"></path>
@@ -278,31 +280,32 @@ export default function CompanyPaymentsPage() {
             <Modal
                 isOpen={showModal}
                 onClose={() => setShowModal(false)}
-                title="Add New Subscription Payment"
+                title={t('add_subscription_title')}
                 hideFooter={true}
             >
-                <form onSubmit={handleAddPayment} style={{ padding: '0.5rem' }}>
+                <form onSubmit={handleAddPayment} style={{ padding: '0.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
                     <div style={{ marginBottom: '1.5rem' }}>
-                        <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem', fontWeight: '500' }}>Subscription Type</label>
+                        <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem', fontWeight: '500' }}>{t('subscription_type')}</label>
                         <select
                             className="input"
                             value={formData.subscriptionType}
                             onChange={e => setFormData({ ...formData, subscriptionType: e.target.value as any })}
+                            style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}
                         >
-                            <option value="MONTHLY">Monthly</option>
-                            <option value="ANNUALLY">Annually</option>
+                            <option value="MONTHLY">{t('monthly')}</option>
+                            <option value="ANNUALLY">{t('annually')}</option>
                         </select>
                     </div>
 
                     <div style={{ marginBottom: '2rem' }}>
-                        <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem', fontWeight: '500' }}>Total Cost</label>
+                        <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem', fontWeight: '500' }}>{t('total_cost')}</label>
                         <div style={{ position: 'relative' }}>
-                            <span style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: '#64748b' }}>$</span>
+                            <span style={{ position: 'absolute', [locale === 'ar' ? 'right' : 'left']: '1rem', top: '50%', transform: 'translateY(-50%)', color: '#64748b' }}>$</span>
                             <input
                                 type="number"
                                 step="0.01"
                                 className="input"
-                                style={{ paddingLeft: '2.5rem' }}
+                                style={{ [locale === 'ar' ? 'paddingRight' : 'paddingLeft']: '2.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}
                                 required
                                 value={formData.cost}
                                 onChange={e => setFormData({ ...formData, cost: e.target.value })}
@@ -311,12 +314,12 @@ export default function CompanyPaymentsPage() {
                         </div>
                     </div>
 
-                    <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
+                    <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', flexDirection: 'row' }}>
                         <button type="button" onClick={() => setShowModal(false)} className="btn" style={{ background: '#f1f5f9', color: '#64748b' }}>
-                            Cancel
+                            {t('cancel')}
                         </button>
                         <button type="submit" disabled={submitting} className="btn btn-primary">
-                            {submitting ? 'Adding...' : 'Add Record'}
+                            {submitting ? t('saving') : t('add_payment')}
                         </button>
                     </div>
                 </form>
@@ -324,8 +327,10 @@ export default function CompanyPaymentsPage() {
 
             <ConfirmModal
                 isOpen={!!paymentToDelete}
-                title="Delete Payment Record"
-                message="Are you sure you want to delete this payment record? This action cannot be undone."
+                title={t('delete_payment_title')}
+                message={t('delete_payment_warning_msg')}
+                confirmText={t('delete')}
+                cancelText={t('cancel')}
                 onConfirm={confirmDelete}
                 onCancel={() => setPaymentToDelete(null)}
                 variant="danger"

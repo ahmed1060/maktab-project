@@ -100,7 +100,11 @@ export default function CompaniesPage() {
             fetchCompanies()
             triggerRefresh()
         } catch (err: any) {
-            setError(err.message)
+            if (err.message === 'Company already exists') {
+                setError(t('error_company_exists'))
+            } else {
+                setError(err.message)
+            }
         } finally {
             setSubmitLoading(false)
         }

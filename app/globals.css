@@ -273,6 +273,12 @@ select.input {
   padding-right: 2.5rem;
 }
 
+html[dir="rtl"] select.input {
+  background-position: left 1rem center;
+  padding-right: 1rem;
+  padding-left: 2.5rem;
+}
+
 .input:focus {
   outline: none;
   background: rgba(255, 255, 255, 0.9);

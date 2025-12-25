@@ -14,7 +14,7 @@ interface SortControlProps {
 }
 
 export default function SortControl({ options, sortBy, sortOrder, onSortChange }: SortControlProps) {
-    const { t } = useLanguage()
+    const { t, locale } = useLanguage()
 
     return (
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -22,13 +22,16 @@ export default function SortControl({ options, sortBy, sortOrder, onSortChange }
             <select
                 value={sortBy}
                 onChange={(e) => onSortChange(e.target.value, sortOrder)}
+                className="input"
                 style={{
-                    padding: '0.375rem 2rem 0.375rem 0.75rem',
+                    padding: locale === 'ar' ? '0.375rem 0.75rem 0.375rem 2rem' : '0.375rem 2rem 0.375rem 0.75rem',
                     borderRadius: '0.375rem',
-                    border: '1px solid #cbd5e1',
                     fontSize: '0.875rem',
                     backgroundColor: 'white',
-                    cursor: 'pointer'
+                    cursor: 'pointer',
+                    height: 'auto',
+                    minWidth: '140px',
+                    textAlign: locale === 'ar' ? 'right' : 'left'
                 }}
             >
                 {options.map(opt => (

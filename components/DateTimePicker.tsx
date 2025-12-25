@@ -1,5 +1,6 @@
 'use client'
 import { useState, useRef, useEffect, useMemo } from 'react'
+import { useLanguage } from '@/context/LanguageContext'
 import { createPortal } from 'react-dom'
 
 interface DateTimePickerProps {
@@ -10,6 +11,7 @@ interface DateTimePickerProps {
 }
 
 export default function DateTimePicker({ value, onChange, label, min }: DateTimePickerProps) {
+    const { t, locale } = useLanguage()
     const [isOpen, setIsOpen] = useState(false)
     const [mounted, setMounted] = useState(false)
     const [currentMonth, setCurrentMonth] = useState(new Date())
@@ -106,8 +108,21 @@ export default function DateTimePicker({ value, onChange, label, min }: DateTime
         onChange(newDate.toISOString())
     }
 
-    const days = getDaysInMonth(currentMonth)
-    const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+    const days_list = getDaysInMonth(currentMonth)
+    const months = [
+        t('month_january' as any) || 'January',
+        t('month_february' as any) || 'February',
+        t('month_march' as any) || 'March',
+        t('month_april' as any) || 'April',
+        t('month_may' as any) || 'May',
+        t('month_june' as any) || 'June',
+        t('month_july' as any) || 'July',
+        t('month_august' as any) || 'August',
+        t('month_september' as any) || 'September',
+        t('month_october' as any) || 'October',
+        t('month_november' as any) || 'November',
+        t('month_december' as any) || 'December'
+    ]
     const monthYear = `${months[currentMonth.getMonth()]} ${currentMonth.getFullYear()}`
 
     const hours12 = Array.from({ length: 12 }, (_, i) => i + 1)
@@ -127,8 +142,8 @@ export default function DateTimePicker({ value, onChange, label, min }: DateTime
     const currentPeriod = currentH24 >= 12 ? 'PM' : 'AM'
 
     return (
-        <div ref={containerRef} style={{ position: 'relative', width: '100%' }}>
-            {label && <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600' }}>{label}</label>}
+        <div ref={containerRef} style={{ position: 'relative', width: '100%', direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
+            {label && <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600', textAlign: locale === 'ar' ? 'right' : 'left' }}>{label}</label>}
             <div
                 onClick={() => setIsOpen(!isOpen)}
                 style={{
@@ -191,7 +206,8 @@ export default function DateTimePicker({ value, onChange, label, min }: DateTime
                             flexDirection: 'column',
                             gap: '1rem',
                             animation: 'modalSlideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
-                            position: 'relative'
+                            position: 'relative',
+                            direction: locale === 'ar' ? 'rtl' : 'ltr'
                         }}
                     >
 
@@ -217,13 +233,13 @@ export default function DateTimePicker({ value, onChange, label, min }: DateTime
                                 </div>
 
                                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '0.1rem', marginBottom: '0.4rem' }}>
-                                    {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map(d => (
+                                    {[t('sun'), t('mon'), t('tue'), t('wed'), t('thu'), t('fri'), t('sat')].map(d => (
                                         <div key={d} style={{ textAlign: 'center', fontSize: '0.65rem', fontWeight: 'bold', color: '#94a3b8' }}>{d}</div>
                                     ))}
                                 </div>
 
                                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '0.1rem' }}>
-                                    {days.map((date, i) => {
+                                    {days_list.map((date, i) => {
                                         if (!date) return <div key={i} />
                                         const selected = isSelected(date)
                                         const today = isToday(date)
@@ -258,9 +274,9 @@ export default function DateTimePicker({ value, onChange, label, min }: DateTime
                             </div>
 
                             {/* Time Picker Section */}
-                            <div style={{ width: '140px', borderLeft: '1px solid #f1f5f9', paddingLeft: '1.25rem' }}>
+                            <div style={{ width: '140px', [locale === 'ar' ? 'borderRight' : 'borderLeft']: '1px solid #f1f5f9', [locale === 'ar' ? 'paddingRight' : 'paddingLeft']: '1.25rem' }}>
                                 <div style={{ fontSize: '0.85rem', fontWeight: '800', marginBottom: '1rem', color: '#1e293b', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                                    <span>🕒</span> Time
+                                    <span>🕒</span> {t('time_label' as any) || 'Time'}
                                 </div>
 
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
@@ -270,7 +286,7 @@ export default function DateTimePicker({ value, onChange, label, min }: DateTime
                                             className="input"
                                             value={currentH12}
                                             onChange={(e) => handleTimeChange('hour', parseInt(e.target.value))}
-                                            style={{ width: '100%', textAlign: 'center', height: '32px', fontSize: '0.8rem', padding: '0 0.25rem' }}
+                                            style={{ width: '100%', textAlign: 'center', height: '32px', fontSize: '0.8rem', padding: locale === 'ar' ? '0 1.25rem 0 0' : '0 0 0 1.25rem' }}
                                         >
                                             {hours12.map(h => {
                                                 // Simple restriction check: if today is selected and min is today
@@ -288,7 +304,7 @@ export default function DateTimePicker({ value, onChange, label, min }: DateTime
                                             className="input"
                                             value={selectedDate?.getMinutes() || 0}
                                             onChange={(e) => handleTimeChange('minute', parseInt(e.target.value))}
-                                            style={{ width: '100%', textAlign: 'center', height: '32px', fontSize: '0.8rem', padding: '0 0.25rem' }}
+                                            style={{ width: '100%', textAlign: 'center', height: '32px', fontSize: '0.8rem', padding: locale === 'ar' ? '0 1.25rem 0 0' : '0 0 0 1.25rem' }}
                                         >
                                             {minutes.filter(m => m % 5 === 0).map(m => (
                                                 <option key={m} value={m}>{m.toString().padStart(2, '0')}</option>
@@ -302,7 +318,7 @@ export default function DateTimePicker({ value, onChange, label, min }: DateTime
                                             className="input"
                                             value={currentPeriod}
                                             onChange={(e) => handleTimeChange('period', e.target.value)}
-                                            style={{ width: '100%', textAlign: 'center', height: '32px', fontSize: '0.8rem', padding: '0 0.25rem' }}
+                                            style={{ width: '100%', textAlign: 'center', height: '32px', fontSize: '0.8rem', padding: locale === 'ar' ? '0 1.25rem 0 0' : '0 0 0 1.25rem' }}
                                         >
                                             <option value="AM">AM</option>
                                             <option value="PM">PM</option>
@@ -338,7 +354,7 @@ export default function DateTimePicker({ value, onChange, label, min }: DateTime
                                 fontSize: '0.9rem'
                             }}
                         >
-                            Confirm Selection
+                            {t('confirm_selection_button' as any) || 'Confirm Selection'}
                         </button>
                     </div>
                 </div>,

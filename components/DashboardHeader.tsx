@@ -245,9 +245,9 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
                         <select
                             value={selectedCompanyId || ''}
                             onChange={handleCompanyChange}
-                            className="glass sm-select"
+                            className="glass sm-select input"
                             style={{
-                                padding: '0.5rem',
+                                padding: locale === 'ar' ? '0.5rem 1rem 0.5rem 2.5rem' : '0.5rem 2.5rem 0.5rem 1rem',
                                 borderRadius: '1rem',
                                 fontSize: '0.9rem',
                                 outline: 'none',
@@ -255,6 +255,8 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
                                 color: 'var(--text-main)',
                                 flexShrink: 1,
                                 minWidth: 0,
+                                height: 'auto',
+                                textAlign: locale === 'ar' ? 'right' : 'left'
                             }}
                         >
                             <option value="">{t('all_companies')}</option>
