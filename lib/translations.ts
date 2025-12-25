@@ -428,7 +428,9 @@ export const translations = {
         select_start_date: "Select start date",
         select_end_date: "Select end date",
         reset: "Reset",
-        status_others: "Others"
+        status_others: "Others",
+        menu: "Menu",
+        management: "Management"
     },
     ar: {
         welcome_back: "مرحباً بك مجدداً",
@@ -857,7 +859,9 @@ export const translations = {
         select_start_date: "اختر تاريخ البدء",
         select_end_date: "اختر تاريخ الانتهاء",
         reset: "إعادة تعيين",
-        status_others: "أخرى"
+        status_others: "أخرى",
+        menu: "القائمة",
+        management: "الإدارة"
     }
 };
 

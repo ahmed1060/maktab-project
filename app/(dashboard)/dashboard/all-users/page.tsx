@@ -287,7 +287,7 @@ export default function AllUsersPage() {
             {/* Ex Users Section */}
             {deletedUsers.length > 0 && (
                 <div style={{ marginTop: '2rem' }}>
-                    <div style={{ background: '#f8fafc', padding: '1.5rem', borderRadius: '12px', border: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
+                    <div style={{ background: '#f8fafc', padding: '1.5rem', borderRadius: '12px', border: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <div style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>
                             <h2 style={{ fontSize: '1.2rem', fontWeight: 'bold', color: '#64748b' }}>{t('ex_users_label')}</h2>
                             <p style={{ margin: 0, color: '#94a3b8', fontSize: '0.9rem' }}>

@@ -54,7 +54,7 @@ export default function DashboardShell({ children, user }: DashboardShellProps) 
     const selectedCompanyName = searchParams.get('company')
 
     const displayName = user?.role === 'SUPER_ADMIN'
-        ? (selectedCompanyName || 'TaskManager')
+        ? (selectedCompanyName || t('all_companies'))
         : (user?.companyName || 'TaskManager')
 
     return (
@@ -148,7 +148,7 @@ export default function DashboardShell({ children, user }: DashboardShellProps) 
                     overflowX: 'hidden',
                     scrollbarGutter: 'stable'
                 }}>
-                    {!isCollapsed && <p style={{ fontSize: '0.75rem', fontWeight: 'bold', textTransform: 'uppercase', color: '#94a3b8', [isRtl ? 'paddingRight' : 'paddingLeft']: '1rem', marginBottom: '0.25rem', letterSpacing: '0.1em' }}>Menu</p>}
+                    {!isCollapsed && <p style={{ fontSize: '0.75rem', fontWeight: 'bold', textTransform: 'uppercase', color: '#94a3b8', [isRtl ? 'paddingRight' : 'paddingLeft']: '1rem', marginBottom: '0.25rem', letterSpacing: '0.1em' }}>{t('menu' as any)}</p>}
 
                     {[
                         { href: '/dashboard', label: t('dashboard'), icon: '📊' },
@@ -197,7 +197,7 @@ export default function DashboardShell({ children, user }: DashboardShellProps) 
                             {isCollapsed ? (
                                 <hr style={{ border: 'none', borderTop: '1px solid rgba(255, 255, 255, 0.3)', margin: '1rem auto', width: '50%' }} />
                             ) : (
-                                <p style={{ fontSize: '0.75rem', fontWeight: 'bold', textTransform: 'uppercase', color: '#94a3b8', [isRtl ? 'paddingRight' : 'paddingLeft']: '1rem', marginTop: '1.5rem', marginBottom: '0.25rem', letterSpacing: '0.1em' }}>Management</p>
+                                <p style={{ fontSize: '0.75rem', fontWeight: 'bold', textTransform: 'uppercase', color: '#94a3b8', [isRtl ? 'paddingRight' : 'paddingLeft']: '1rem', marginTop: '1.5rem', marginBottom: '0.25rem', letterSpacing: '0.1em' }}>{t('management' as any)}</p>
                             )}
 
                             {[

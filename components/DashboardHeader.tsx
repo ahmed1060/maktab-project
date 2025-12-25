@@ -238,7 +238,7 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
                         }}>
                             {selectedCompanyId
                                 ? getInitials(companies.find(c => c.id === selectedCompanyId)?.name || '')
-                                : 'AC'
+                                : getInitials(t('all_companies'))
                             }
                         </div>
 
