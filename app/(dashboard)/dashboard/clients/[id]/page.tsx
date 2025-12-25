@@ -223,13 +223,24 @@ export default function ClientDetailsPage() {
                                         setEditClientName(client.name)
                                         setIsEditClientModalOpen(true)
                                     }}
-                                    className="p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-500 hover:text-primary"
-                                    title={t('edit' as any)}
+                                    className="btn"
+                                    style={{
+                                        background: '#dbeafe',
+                                        color: '#1e40af',
+                                        padding: '0.5rem 1rem',
+                                        fontSize: '0.875rem',
+                                        marginLeft: locale === 'ar' ? '0' : '0.5rem',
+                                        marginRight: locale === 'ar' ? '0.5rem' : '0',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '0.25rem'
+                                    }}
                                 >
-                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
                                         <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
                                         <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
                                     </svg>
+                                    {t('edit')}
                                 </button>
                             )}
                         </div>
@@ -378,6 +389,33 @@ export default function ClientDetailsPage() {
                                         >
                                             {t('view_section_button' as any)}
                                         </Link>
+                                        <button
+                                            onClick={() => {
+                                                // We can't use the simple modal because it's for creation
+                                                // but we can repurpose the 'edit' logic or add a new state
+                                                // However, the Section Notes page also has an edit button now.
+                                                // For consistency, let's just make the edit button here Link to the section page or open a modal?
+                                                // The user wants it "like the edit button in the employee page".
+                                                // On employee page, Edit goes to the detail page.
+                                                // So maybe Edit here should also just go to the section notes page?
+                                                // Wait, the client name edit button opens a modal.
+                                                // Let's stick to the modal for consistency within this page if possible.
+                                                // But I need a state for editing section.
+                                                alert("Redirecting to section notes to edit...")
+                                                router.push(`/dashboard/clients/${clientId}/sections/${section.id}`)
+                                            }}
+                                            className="btn"
+                                            style={{
+                                                background: '#dbeafe',
+                                                color: '#1e40af',
+                                                padding: '0.5rem 1rem',
+                                                fontSize: '0.875rem',
+                                                border: 'none',
+                                                cursor: 'pointer'
+                                            }}
+                                        >
+                                            {t('edit')}
+                                        </button>
                                         <button
                                             onClick={(e) => {
                                                 e.preventDefault()

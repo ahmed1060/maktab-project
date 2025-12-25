@@ -41,6 +41,22 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
     const userRole = session?.user?.role || ''
 
     useEffect(() => {
+        // Prevent default drag and drop behavior globally for this page
+        const preventDefault = (e: DragEvent) => {
+            e.preventDefault()
+            e.stopPropagation()
+        }
+
+        window.addEventListener('dragover', preventDefault)
+        window.addEventListener('drop', preventDefault)
+
+        return () => {
+            window.removeEventListener('dragover', preventDefault)
+            window.removeEventListener('drop', preventDefault)
+        }
+    }, [])
+
+    useEffect(() => {
         const fetchEmployee = async () => {
             if (!session) return // Don't fetch if no session (avoids errors on signout)
             try {
