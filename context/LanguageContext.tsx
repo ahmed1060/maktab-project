@@ -13,44 +13,70 @@ interface LanguageContextType {
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
 
 export function LanguageProvider({ children, initialLocale }: { children: React.ReactNode, initialLocale: Locale }) {
-    const { data: session, status } = useSession();
+    const { data: session, status, update } = useSession();
     const [locale, setLocale] = useState<Locale>(initialLocale);
+    const [hasSyncedWithSession, setHasSyncedWithSession] = useState(false);
 
-    // Sync with session language if available
+    // Initial language detection
     useEffect(() => {
-        if (session?.user?.language && session.user.language !== locale) {
-            setLocale(session.user.language as Locale);
-            document.cookie = `NEXT_LOCALE=${session.user.language};path=/;max-age=31536000`;
-            document.documentElement.dir = session.user.language === 'ar' ? 'rtl' : 'ltr';
-            document.documentElement.lang = session.user.language;
+        const storedLocale = document.cookie.split('; ').find(row => row.startsWith('NEXT_LOCALE='))?.split('=')[1];
+
+        if (!storedLocale) {
+            // No cookie? Check browser language
+            const browserLang = navigator.language.split('-')[0];
+            const detectedLocale = browserLang === 'ar' ? 'ar' : 'en';
+
+            // Apply it only if we haven't already set a locale
+            if (locale !== detectedLocale) {
+                setLocale(detectedLocale as Locale);
+                document.cookie = `NEXT_LOCALE=${detectedLocale};path=/;max-age=31536000`;
+                document.documentElement.dir = detectedLocale === 'ar' ? 'rtl' : 'ltr';
+                document.documentElement.lang = detectedLocale;
+            }
         }
-    }, [session?.user?.language]);
+    }, []);
+
+    // Sync with session language ONLY ONCE on login or mount
+    useEffect(() => {
+        if (status === 'authenticated' && session?.user?.language && !hasSyncedWithSession) {
+            const sessionLang = session.user.language as Locale;
+            if (sessionLang !== locale) {
+                setLocale(sessionLang);
+                document.cookie = `NEXT_LOCALE=${sessionLang};path=/;max-age=31536000`;
+                document.documentElement.dir = sessionLang === 'ar' ? 'rtl' : 'ltr';
+                document.documentElement.lang = sessionLang;
+            }
+            setHasSyncedWithSession(true);
+        }
+    }, [status, session?.user?.language, hasSyncedWithSession, locale]);
 
     const toggleLanguage = async () => {
         const newLocale = locale === 'en' ? 'ar' : 'en';
+
+        // 1. Update UI state immediately
         setLocale(newLocale);
-
-        // Update cookie for SSR
         document.cookie = `NEXT_LOCALE=${newLocale};path=/;max-age=31536000`;
-
-        // Update DOM attributes
         document.documentElement.dir = newLocale === 'ar' ? 'rtl' : 'ltr';
         document.documentElement.lang = newLocale;
 
-        // Background sync if authenticated
+        // 2. Background sync if authenticated
         if (status === 'authenticated') {
             try {
+                // Update Database
                 await fetch('/api/user/language', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ language: newLocale }),
                 });
+
+                // Update Session (JWT) - this prevents the "snap-back" by making the refresh see the new language
+                await update({ language: newLocale });
             } catch (error) {
                 console.error('Failed to sync language preference:', error);
             }
         }
 
-        // Force a page refresh to update server-rendered components with the new locale from cookie
+        // 3. Force a page refresh to update server-rendered components
         window.location.reload();
     };
 
