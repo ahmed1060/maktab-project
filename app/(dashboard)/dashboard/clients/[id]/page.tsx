@@ -49,6 +49,10 @@ export default function ClientDetailsPage() {
     const [isEditClientModalOpen, setIsEditClientModalOpen] = useState(false)
     const [editClientName, setEditClientName] = useState('')
     const [isEditingClient, setIsEditingClient] = useState(false)
+    const [isEditSectionModalOpen, setIsEditSectionModalOpen] = useState(false)
+    const [editSectionTitle, setEditSectionTitle] = useState('')
+    const [editingSectionId, setEditingSectionId] = useState<string | null>(null)
+    const [isEditingSection, setIsEditingSection] = useState(false)
 
     const canEdit = session?.user?.role === 'SUPER_ADMIN' || session?.user?.role === 'ADMIN' || session?.user?.role === 'TEAM_LEADER'
 
@@ -126,6 +130,35 @@ export default function ClientDetailsPage() {
             showToast(t('failed_save_generic'), 'error')
         } finally {
             setIsEditingClient(false)
+        }
+    }
+
+    const handleEditSection = async (e: React.FormEvent) => {
+        e.preventDefault()
+        if (!editSectionTitle.trim() || !editingSectionId) return
+
+        setIsEditingSection(true)
+        try {
+            const res = await fetch(`/api/clients/${clientId}/sections`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id: editingSectionId, title: editSectionTitle })
+            })
+
+            if (res.ok) {
+                const updated = await res.json()
+                setSections(prev => prev.map(s => s.id === editingSectionId ? { ...s, title: updated.title } : s))
+                setIsEditSectionModalOpen(false)
+                setEditingSectionId(null)
+                showToast(t('section_updated_success' as any) || 'Section updated successfully', 'success')
+            } else {
+                showToast(t('failed_save_generic'), 'error')
+            }
+        } catch (error) {
+            console.error('Failed to update section', error)
+            showToast(t('failed_save_generic'), 'error')
+        } finally {
+            setIsEditingSection(false)
         }
     }
 
@@ -391,18 +424,9 @@ export default function ClientDetailsPage() {
                                         </Link>
                                         <button
                                             onClick={() => {
-                                                // We can't use the simple modal because it's for creation
-                                                // but we can repurpose the 'edit' logic or add a new state
-                                                // However, the Section Notes page also has an edit button now.
-                                                // For consistency, let's just make the edit button here Link to the section page or open a modal?
-                                                // The user wants it "like the edit button in the employee page".
-                                                // On employee page, Edit goes to the detail page.
-                                                // So maybe Edit here should also just go to the section notes page?
-                                                // Wait, the client name edit button opens a modal.
-                                                // Let's stick to the modal for consistency within this page if possible.
-                                                // But I need a state for editing section.
-                                                alert("Redirecting to section notes to edit...")
-                                                router.push(`/dashboard/clients/${clientId}/sections/${section.id}`)
+                                                setEditingSectionId(section.id)
+                                                setEditSectionTitle(section.title)
+                                                setIsEditSectionModalOpen(true)
                                             }}
                                             className="btn"
                                             style={{
@@ -555,6 +579,48 @@ export default function ClientDetailsPage() {
                             className="btn btn-primary"
                         >
                             {isEditingClient ? t('saving') : t('save')}
+                        </button>
+                    </div>
+                </form>
+            </Modal>
+
+            {/* Edit Section Modal */}
+            <Modal
+                isOpen={isEditSectionModalOpen}
+                onClose={() => setIsEditSectionModalOpen(false)}
+                title={t('edit_section_title' as any) || 'Edit Section Name'}
+            >
+                <form onSubmit={handleEditSection} style={{ direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
+                    <div style={{ marginBottom: '1.5rem' }}>
+                        <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', color: '#64748b', textAlign: locale === 'ar' ? 'right' : 'left' }}>
+                            {t('section_title_label' as any)}
+                        </label>
+                        <input
+                            type="text"
+                            value={editSectionTitle}
+                            onChange={(e) => setEditSectionTitle(e.target.value)}
+                            className="input"
+                            style={{ width: '100%', padding: '0.5rem', border: '1px solid #e2e8f0', borderRadius: '0.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}
+                            placeholder={t('section_title_placeholder' as any)}
+                            autoFocus
+                        />
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
+                        <button
+                            type="button"
+                            onClick={() => setIsEditSectionModalOpen(false)}
+                            className="btn"
+                            style={{ background: '#f1f5f9' }}
+                        >
+                            {t('cancel')}
+                        </button>
+                        <button
+                            type="submit"
+                            disabled={!editSectionTitle.trim() || isEditingSection}
+                            className="btn btn-primary"
+                        >
+                            {isEditingSection ? t('saving') : t('save')}
                         </button>
                     </div>
                 </form>
