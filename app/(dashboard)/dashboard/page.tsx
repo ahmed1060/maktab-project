@@ -43,12 +43,12 @@ export default async function DashboardPage({ searchParams }: { searchParams: { 
                 { label: t('status_completed'), value: taskStats.find(s => s.status === 'COMPLETED')?._count || 0, color: '#10b981' },
                 { label: t('status_pending'), value: (taskStats.find(s => s.status === 'PENDING')?._count || 0) + (taskStats.find(s => s.status === 'IN_PROGRESS')?._count || 0), color: '#3b82f6' },
                 { label: t('status_review'), value: taskStats.find(s => s.status === 'PENDING_CONFIRMATION')?._count || 0, color: '#f59e0b' },
-                { label: 'Others', value: taskStats.filter(s => !['COMPLETED', 'PENDING', 'IN_PROGRESS', 'PENDING_CONFIRMATION'].includes(s.status)).reduce((acc, s) => acc + s._count, 0), color: '#94a3b8' }
+                { label: t('status_others' as any), value: taskStats.filter(s => !['COMPLETED', 'PENDING', 'IN_PROGRESS', 'PENDING_CONFIRMATION'].includes(s.status)).reduce((acc, s) => acc + s._count, 0), color: '#94a3b8' }
             ]
 
             return (
-                <div className="animate-fade-in">
-                    <header style={{ marginBottom: '2.5rem' }}>
+                <div className="animate-fade-in" style={{ direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
+                    <header style={{ marginBottom: '2.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
                         <h1 style={{ fontSize: '2rem', fontWeight: '800', color: '#1e293b' }}>
                             {t('system_overview')}
                         </h1>
@@ -114,8 +114,8 @@ export default async function DashboardPage({ searchParams }: { searchParams: { 
         ]
 
         return (
-            <div className="animate-fade-in">
-                <header style={{ marginBottom: '2.5rem' }}>
+            <div className="animate-fade-in" style={{ direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
+                <header style={{ marginBottom: '2.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
                     <h1 style={{ fontSize: '2rem', fontWeight: '800', color: '#1e293b' }}>
                         {userRole === 'TEAM_LEADER' ? t('team_performance') : t('admin_overview')}
                     </h1>

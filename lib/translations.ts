@@ -422,7 +422,13 @@ export const translations = {
         logging_out_msg: "Saving your work and logging out...",
         failed_process_review: "Failed to process review",
         example_bonus: "e.g. 1.5",
-        example_deduction: "e.g. 1"
+        example_deduction: "e.g. 1",
+        filter_by_date_range: "Filter by Date Range",
+        select_date_range: "Select date range",
+        select_start_date: "Select start date",
+        select_end_date: "Select end date",
+        reset: "Reset",
+        status_others: "Others"
     },
     ar: {
         welcome_back: "مرحباً بك مجدداً",
@@ -845,7 +851,13 @@ export const translations = {
         logging_out_msg: "جاري حفظ عملك وتسجيل الخروج...",
         failed_process_review: "فشل في معالجة المراجعة",
         example_bonus: "مثلاً: ١.٥",
-        example_deduction: "مثلاً: ١"
+        example_deduction: "مثلاً: ١",
+        filter_by_date_range: "تصفية حسب نطاق التاريخ",
+        select_date_range: "اختر نطاق التاريخ",
+        select_start_date: "اختر تاريخ البدء",
+        select_end_date: "اختر تاريخ الانتهاء",
+        reset: "إعادة تعيين",
+        status_others: "أخرى"
     }
 };
 

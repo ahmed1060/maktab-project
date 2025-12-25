@@ -424,7 +424,7 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
                                         onClick={handleLogout}
                                         style={{
                                             width: '100%',
-                                            textAlign: 'left',
+                                            textAlign: locale === 'ar' ? 'right' : 'left',
                                             padding: '0.6rem 1rem',
                                             background: 'none',
                                             border: 'none',

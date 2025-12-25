@@ -1,5 +1,5 @@
-'use client'
 import { useState, useRef, useEffect } from 'react'
+import { useLanguage } from '@/context/LanguageContext'
 
 interface DateRangePickerProps {
     dateFrom: string
@@ -8,6 +8,7 @@ interface DateRangePickerProps {
 }
 
 export default function DateRangePicker({ dateFrom, dateTo, onChange }: DateRangePickerProps) {
+    const { t, locale } = useLanguage()
     const [isOpen, setIsOpen] = useState(false)
     const [currentMonth, setCurrentMonth] = useState(new Date())
     const [selectingFrom, setSelectingFrom] = useState(true)
@@ -27,7 +28,7 @@ export default function DateRangePicker({ dateFrom, dateTo, onChange }: DateRang
     const formatDate = (dateStr: string) => {
         if (!dateStr) return ''
         const date = new Date(dateStr)
-        return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+        return date.toLocaleDateString(locale === 'ar' ? 'ar-EG' : 'en-US', { month: 'short', day: 'numeric', year: 'numeric' })
     }
 
     const getDaysInMonth = (date: Date) => {
@@ -95,12 +96,16 @@ export default function DateRangePicker({ dateFrom, dateTo, onChange }: DateRang
     }
 
     const days = getDaysInMonth(currentMonth)
-    const monthYear = currentMonth.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
+    const monthYear = currentMonth.toLocaleDateString(locale === 'ar' ? 'ar-EG' : 'en-US', { month: 'short', year: 'numeric' })
+
+    const weekdaysAr = ['أح', 'اث', 'ثل', 'أر', 'خم', 'جم', 'سب']
+    const weekdaysEn = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa']
+    const weekdays = locale === 'ar' ? weekdaysAr : weekdaysEn
 
     return (
-        <div ref={containerRef} style={{ position: 'relative' }}>
+        <div ref={containerRef} style={{ position: 'relative', direction: locale === 'ar' ? 'rtl' : 'ltr', textAlign: locale === 'ar' ? 'right' : 'left' }}>
             <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600', fontSize: '0.875rem' }}>
-                Filter by Date Range
+                {t('filter_by_date_range' as any)}
             </label>
             <div
                 onClick={() => setIsOpen(!isOpen)}
@@ -111,27 +116,31 @@ export default function DateRangePicker({ dateFrom, dateTo, onChange }: DateRang
                     fontSize: '0.875rem',
                     cursor: 'pointer',
                     background: 'white',
-                    minWidth: '200px',
+                    minWidth: '220px',
                     display: 'flex',
                     alignItems: 'center',
-                    justifyContent: 'space-between'
+                    justifyContent: 'space-between',
+                    flexDirection: locale === 'ar' ? 'row-reverse' : 'row'
                 }}
             >
-                <span style={{ color: dateFrom || dateTo ? '#1e293b' : '#94a3b8' }}>
-                    {dateFrom && dateTo
-                        ? `${formatDate(dateFrom)} → ${formatDate(dateTo)}`
-                        : dateFrom
-                            ? `${formatDate(dateFrom)} → ...`
-                            : 'Select date range'}
-                </span>
-                <span style={{ color: '#94a3b8', marginLeft: '0.5rem' }}>📅</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
+                    <span style={{ color: '#94a3b8' }}>📅</span>
+                    <span style={{ color: dateFrom || dateTo ? '#1e293b' : '#94a3b8' }}>
+                        {dateFrom && dateTo
+                            ? (locale === 'ar' ? `${formatDate(dateTo)} ← ${formatDate(dateFrom)}` : `${formatDate(dateFrom)} → ${formatDate(dateTo)}`)
+                            : dateFrom
+                                ? `${formatDate(dateFrom)} → ...`
+                                : t('select_date_range' as any)}
+                    </span>
+                </div>
+                <span style={{ color: '#94a3b8', fontSize: '0.7rem' }}>{isOpen ? '▲' : '▼'}</span>
             </div>
 
             {isOpen && (
                 <div style={{
                     position: 'absolute',
                     top: '100%',
-                    left: 0,
+                    [locale === 'ar' ? 'right' : 'left']: 0,
                     marginTop: '0.5rem',
                     background: 'white',
                     border: '1px solid #e2e8f0',
@@ -139,12 +148,13 @@ export default function DateRangePicker({ dateFrom, dateTo, onChange }: DateRang
                     boxShadow: '0 10px 25px rgba(0, 0, 0, 0.1)',
                     padding: '1rem',
                     zIndex: 1000,
-                    minWidth: '320px'
+                    minWidth: '320px',
+                    animation: 'slideUp 0.2s ease-out'
                 }}>
                     {/* Month Navigation */}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
                         <button
-                            onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1))}
+                            onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - (locale === 'ar' ? -1 : 1)))}
                             style={{
                                 background: 'none',
                                 border: 'none',
@@ -154,13 +164,13 @@ export default function DateRangePicker({ dateFrom, dateTo, onChange }: DateRang
                                 color: '#64748b'
                             }}
                         >
-                            ‹
+                            {locale === 'ar' ? '›' : '‹'}
                         </button>
                         <div style={{ fontWeight: '600', fontSize: '0.95rem', color: '#64748b' }}>
                             {monthYear}
                         </div>
                         <button
-                            onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1))}
+                            onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + (locale === 'ar' ? -1 : 1)))}
                             style={{
                                 background: 'none',
                                 border: 'none',
@@ -170,13 +180,13 @@ export default function DateRangePicker({ dateFrom, dateTo, onChange }: DateRang
                                 color: '#64748b'
                             }}
                         >
-                            ›
+                            {locale === 'ar' ? '‹' : '›'}
                         </button>
                     </div>
 
                     {/* Weekday Headers */}
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '0.25rem', marginBottom: '0.5rem' }}>
-                        {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map(day => (
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '0.25rem', marginBottom: '0.5rem', direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
+                        {weekdays.map(day => (
                             <div key={day} style={{ textAlign: 'center', fontSize: '0.75rem', color: '#94a3b8', fontWeight: '600', padding: '0.25rem' }}>
                                 {day}
                             </div>
@@ -184,7 +194,7 @@ export default function DateRangePicker({ dateFrom, dateTo, onChange }: DateRang
                     </div>
 
                     {/* Calendar Days */}
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '0.25rem' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '0.25rem', direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
                         {days.map((date, index) => {
                             if (!date) {
                                 return <div key={`empty-${index}`} />
@@ -235,10 +245,11 @@ export default function DateRangePicker({ dateFrom, dateTo, onChange }: DateRang
                         borderTop: '1px solid #f1f5f9',
                         display: 'flex',
                         justifyContent: 'space-between',
-                        alignItems: 'center'
+                        alignItems: 'center',
+                        flexDirection: locale === 'ar' ? 'row-reverse' : 'row'
                     }}>
                         <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
-                            {selectingFrom ? 'Select start date' : 'Select end date'}
+                            {selectingFrom ? t('select_start_date' as any) : t('select_end_date' as any)}
                         </div>
                         {(dateFrom || dateTo) && (
                             <button
@@ -257,7 +268,7 @@ export default function DateRangePicker({ dateFrom, dateTo, onChange }: DateRang
                                 onMouseEnter={(e) => e.currentTarget.style.background = '#fee2e2'}
                                 onMouseLeave={(e) => e.currentTarget.style.background = '#fef2f2'}
                             >
-                                Reset
+                                {t('reset' as any)}
                             </button>
                         )}
                     </div>

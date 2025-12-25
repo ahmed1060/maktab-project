@@ -333,25 +333,25 @@ export default function AllUsersPage() {
                             </div>
 
                             <div style={{ overflowY: 'auto', flex: 1 }}>
-                                <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '600px' }}>
+                                <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '600px', textAlign: locale === 'ar' ? 'right' : 'left' }}>
                                     <thead style={{ background: '#f1f5f9', position: 'sticky', top: 0 }}>
                                         <tr>
-                                            <th style={{ textAlign: locale === 'ar' ? 'right' : 'left', padding: '1rem', color: '#64748b' }}>{t('name_label')}</th>
-                                            <th style={{ textAlign: locale === 'ar' ? 'right' : 'left', padding: '1rem', color: '#64748b' }}>{t('email')}</th>
-                                            <th style={{ textAlign: locale === 'ar' ? 'right' : 'left', padding: '1rem', color: '#64748b' }}>{t('previously_label')}</th>
+                                            <th style={{ textAlign: 'inherit', padding: '1rem', color: '#64748b' }}>{t('name_label')}</th>
+                                            <th style={{ textAlign: 'inherit', padding: '1rem', color: '#64748b' }}>{t('email')}</th>
+                                            <th style={{ textAlign: 'inherit', padding: '1rem', color: '#64748b' }}>{t('previously_label')}</th>
                                             <th style={{ textAlign: locale === 'ar' ? 'left' : 'right', padding: '1rem', color: '#64748b' }}>{t('profile_label')}</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {deletedUsers.map(user => (
                                             <tr key={user.id} style={{ borderBottom: '1px solid #e2e8f0' }}>
-                                                <td style={{ padding: '1rem', fontWeight: '500', textAlign: locale === 'ar' ? 'right' : 'left' }}>
+                                                <td style={{ padding: '1rem', fontWeight: '500', textAlign: 'inherit' }}>
                                                     {user.firstName} {user.lastName}
                                                 </td>
-                                                <td style={{ padding: '1rem', color: '#64748b', textAlign: locale === 'ar' ? 'right' : 'left' }}>
+                                                <td style={{ padding: '1rem', color: '#64748b', textAlign: 'inherit' }}>
                                                     {user.email.includes('_DELETED_') ? user.email.split('_DELETED_')[0] : user.email}
                                                 </td>
-                                                <td style={{ padding: '1rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
+                                                <td style={{ padding: '1rem', textAlign: 'inherit' }}>
                                                     <span style={{ fontSize: '0.75rem', background: '#f1f5f9', padding: '0.2rem 0.5rem', borderRadius: '0.25rem', color: '#475569' }}>
                                                         {user.company?.name || t('no_data_available')} &bull; {t(getRoleKey(user.role) as any)}
                                                     </span>
