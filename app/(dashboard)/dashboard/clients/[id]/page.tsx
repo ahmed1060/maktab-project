@@ -125,7 +125,7 @@ export default function ClientDetailsPage() {
                 <div className="text-red-500 text-5xl">⚠️</div>
                 <h2 className="text-2xl font-bold text-slate-800">{t('failed_save_generic')}</h2>
                 <p className="text-slate-500 max-w-md">{error}</p>
-                <div className="flex gap-4" style={{ flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
+                <div className="flex gap-4">
                     <button onClick={fetchData} className="btn btn-outline">{t('all_companies').split(' ')[0]}</button>
                     <Link href="/dashboard/clients" className="btn btn-primary">{t('back_to_clients' as any)}</Link>
                 </div>
@@ -176,7 +176,7 @@ export default function ClientDetailsPage() {
                         </svg>
                     </Link>
                     <div style={{ clear: 'both' }}></div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <h1 className="text-3xl font-bold text-slate-800 tracking-tight">{t('sections_title' as any)}</h1>
                         <button
                             onClick={() => setIsModalOpen(true)}
@@ -194,10 +194,8 @@ export default function ClientDetailsPage() {
                     gap: '1rem',
                     alignItems: 'flex-end',
                     justifyContent: 'space-between',
-                    flexWrap: 'wrap',
-                    flexDirection: locale === 'ar' ? 'row-reverse' : 'row'
                 }}>
-                    <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-end', flex: 1, flexWrap: 'wrap', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
+                    <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-end', flex: 1, flexWrap: 'wrap' }}>
                         <div style={{ position: 'relative', width: '100%', maxWidth: '400px' }}>
                             <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600', fontSize: '0.875rem' }}>
                                 {t('search_sections_label' as any)}
@@ -292,9 +290,9 @@ export default function ClientDetailsPage() {
                                     marginBottom: '0.5rem'
                                 }}
                             >
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', gap: '1rem', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', gap: '1rem' }}>
                                     {/* Left Side: Title & Info */}
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                                         <h3 className="text-lg font-semibold text-slate-800 leading-tight" style={{ margin: 0 }}>
                                             {section.title}
                                         </h3>
@@ -312,7 +310,7 @@ export default function ClientDetailsPage() {
                                     </div>
 
                                     {/* Right Side: Action Button */}
-                                    <div style={{ display: 'flex', gap: '0.5rem', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
+                                    <div style={{ display: 'flex', gap: '0.5rem' }}>
                                         <Link
                                             href={`/dashboard/clients/${clientId}/sections/${section.id}`}
                                             className="btn btn-primary"
@@ -380,7 +378,7 @@ export default function ClientDetailsPage() {
                                 />
                             </div>
 
-                            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
+                            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
                                 <button
                                     type="button"
                                     onClick={() => setIsModalOpen(false)}

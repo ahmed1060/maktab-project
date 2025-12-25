@@ -193,7 +193,7 @@ export default function SectionNotesPage() {
                         </svg>
                     </Link>
                     <div style={{ clear: 'both' }}></div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <h1 className="text-3xl font-bold text-slate-800 tracking-tight">{t('notes_label' as any)}</h1>
                         <button
                             onClick={() => setIsModalOpen(true)}
@@ -233,15 +233,15 @@ export default function SectionNotesPage() {
 
                                 {/* Render Attachment and Expiry if they exist */}
                                 {(note.attachment || note.expiryDate) && (
-                                    <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem', fontSize: '0.8rem', color: '#64748b', alignItems: 'center', flexWrap: 'wrap', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
+                                    <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem', fontSize: '0.8rem', color: '#64748b', alignItems: 'center', flexWrap: 'wrap' }}>
                                         {note.attachment && (
-                                            <a href={note.attachment} target="_blank" rel="noopener noreferrer" className="hover:underline" style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', color: '#4f46e5', fontWeight: '600', textDecoration: 'none', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
+                                            <a href={note.attachment} target="_blank" rel="noopener noreferrer" className="hover:underline" style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', color: '#4f46e5', fontWeight: '600', textDecoration: 'none' }}>
                                                 <span>📎</span>
                                                 {t('attachment_label' as any)}
                                             </a>
                                         )}
                                         {note.expiryDate && (
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
                                                 <span>📅</span>
                                                 {t('expires_label' as any)}: {new Date(note.expiryDate).toLocaleDateString(locale === 'ar' ? 'ar-EG' : 'en-GB')}
                                                 {note.reminderDays && note.reminderDays > 0 && (
@@ -253,8 +253,8 @@ export default function SectionNotesPage() {
                                 )}
 
                                 {/* Author info and Delete button at the bottom */}
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
-                                    <div className="flex items-center gap-2" style={{ flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <div className="flex items-center gap-2">
                                         <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold text-[10px] uppercase shrink-0 px-1 overflow-hidden" title={note.createdBy?.role}>
                                             {note.createdBy?.avatar ? (
                                                 <Image
@@ -316,7 +316,7 @@ export default function SectionNotesPage() {
                         onClick={() => !isSubmitting && setIsModalOpen(false)}
                     />
                     <div style={{ background: 'white', padding: '2rem', borderRadius: '12px', width: '100%', maxWidth: '500px', position: 'relative', zIndex: 10, direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
                             <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#1e293b', margin: 0 }}>{t('add_note_button' as any)}</h2>
                             <span style={{ fontSize: '0.75rem', color: newNoteContent.length > MAX_CHARS ? '#ef4444' : '#64748b' }}>
                                 {newNoteContent.length}/{MAX_CHARS}
@@ -370,7 +370,7 @@ export default function SectionNotesPage() {
                                 />
                             </div>
 
-                            <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
+                            <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem' }}>
                                 <div style={{ flex: 1 }}>
                                     <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', color: '#64748b', textAlign: locale === 'ar' ? 'right' : 'left' }}>
                                         {t('expiry_date_label' as any)}
@@ -398,7 +398,7 @@ export default function SectionNotesPage() {
                                     />
                                 </div>
                             </div>
-                            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
+                            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
                                 <button
                                     type="button"
                                     onClick={() => setIsModalOpen(false)}

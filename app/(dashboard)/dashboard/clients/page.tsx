@@ -237,8 +237,8 @@ export default function ClientsPage() {
                                     marginBottom: '0.5rem'
                                 }}
                             >
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', gap: '1rem', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', gap: '1rem' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                                         <h3 className="text-lg font-semibold text-slate-800 leading-tight" style={{ margin: 0 }}>
                                             {client.name}
                                         </h3>
@@ -255,7 +255,7 @@ export default function ClientsPage() {
                                         </span>
                                     </div>
 
-                                    <div style={{ [locale === 'ar' ? 'marginRight' : 'marginLeft']: 'auto', display: 'flex', gap: '0.5rem', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
+                                    <div style={{ [locale === 'ar' ? 'marginRight' : 'marginLeft']: 'auto', display: 'flex', gap: '0.5rem' }}>
                                         <Link
                                             href={`/dashboard/clients/${client.id}`}
                                             className="btn btn-primary"
@@ -344,7 +344,7 @@ export default function ClientsPage() {
                                 />
                             </div>
 
-                            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
+                            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
                                 <button
                                     type="button"
                                     onClick={() => setIsModalOpen(false)}
