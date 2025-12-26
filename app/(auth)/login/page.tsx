@@ -6,7 +6,7 @@ import { useLanguage } from '@/context/LanguageContext'
 import LanguageToggleButton from '@/components/LanguageToggleButton'
 
 export default function LoginPage() {
-    const { t } = useLanguage()
+    const { t, locale } = useLanguage()
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
     const [error, setError] = useState('')
@@ -125,32 +125,43 @@ export default function LoginPage() {
                     )}
                     <form onSubmit={handleSubmit}>
                         <div style={{ marginBottom: '1.25rem' }}>
-                            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>{t('email')}</label>
+                            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('email')}</label>
                             <input
                                 type="email"
                                 className="input"
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
                                 required
-                                style={{ padding: '0.625rem 1rem', height: '42px' }}
+                                style={{
+                                    padding: '0.625rem 1rem',
+                                    height: '42px',
+                                    textAlign: locale === 'ar' ? 'right' : 'left',
+                                    direction: locale === 'ar' ? 'rtl' : 'ltr'
+                                }}
                             />
                         </div>
                         <div style={{ position: 'relative', marginBottom: '1.25rem' }}>
-                            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>{t('password')}</label>
+                            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('password')}</label>
                             <input
                                 type={showPassword ? "text" : "password"}
                                 className="input"
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
                                 required
-                                style={{ padding: '0.625rem 1rem', height: '42px', paddingRight: '2.5rem' }}
+                                style={{
+                                    padding: '0.625rem 1rem',
+                                    height: '42px',
+                                    [locale === 'ar' ? 'paddingLeft' : 'paddingRight']: '2.5rem',
+                                    textAlign: locale === 'ar' ? 'right' : 'left',
+                                    direction: locale === 'ar' ? 'rtl' : 'ltr'
+                                }}
                             />
                             <button
                                 type="button"
                                 onClick={() => setShowPassword(!showPassword)}
                                 style={{
                                     position: 'absolute',
-                                    right: '0.75rem',
+                                    [locale === 'ar' ? 'left' : 'right']: '0.75rem',
                                     top: '2.25rem',
                                     background: 'none',
                                     border: 'none',
