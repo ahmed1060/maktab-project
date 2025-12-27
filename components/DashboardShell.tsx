@@ -118,40 +118,60 @@ export default function DashboardShell({ children, user }: DashboardShellProps) 
                             <div style={{
                                 display: 'flex',
                                 flexDirection: 'column',
-                                width: '100%',
-                                maskImage: 'linear-gradient(to right, #fff, #a5b4fc)',
-                                WebkitMaskImage: 'linear-gradient(to right, #fff, #a5b4fc)'
+                                alignItems: 'flex-start',
+                                gap: '0.1rem',
+                                padding: '0.5rem 0'
                             }}>
                                 {(() => {
                                     const words = displayName.split(' ');
-                                    const mid = Math.ceil(words.length / 2);
-                                    const part1 = words.slice(0, mid).join(' ');
-                                    const part2 = words.slice(mid).join(' ');
+                                    const part1 = words[0] || '';
+                                    const part2 = words.slice(1).join(' ');
 
-                                    const textStyle: React.CSSProperties = {
+                                    const baseStyle: React.CSSProperties = {
                                         background: 'linear-gradient(to right, #fff, #a5b4fc)',
                                         WebkitBackgroundClip: 'text',
                                         WebkitTextFillColor: 'transparent',
-                                        fontSize: (displayName.length > 15)
-                                            ? 'clamp(0.8rem, 1.1vw, 1rem)'
-                                            : 'clamp(1rem, 1.4vw, 1.4rem)',
-                                        fontWeight: '800',
-                                        lineHeight: '1',
+                                        fontSize: 'clamp(1.1rem, 1.6vw, 1.6rem)',
+                                        fontWeight: '900',
+                                        lineHeight: '1.1',
                                         whiteSpace: 'nowrap',
-                                        transition: 'font-size 0.2s ease'
+                                        transition: 'all 0.3s ease',
+                                        fontFamily: 'inherit',
+                                        display: 'inline-block'
                                     };
 
+                                    // Check if we want staggered or left-aligned
+                                    // Default to Staggered if there are 2 parts and it's not too long
+                                    const isStaggered = !!part2 && displayName.length < 20;
+
+                                    if (!isStaggered) {
+                                        return (
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                                                <span style={baseStyle}>{part1}</span>
+                                                {part2 && <span style={baseStyle}>{part2}</span>}
+                                            </div>
+                                        );
+                                    }
+
                                     return (
-                                        <>
-                                            <span style={{ ...textStyle, alignSelf: 'flex-start' }}>
-                                                {part1}
-                                            </span>
-                                            {part2 && (
-                                                <span style={{ ...textStyle, alignSelf: 'flex-end', marginTop: '0.2rem' }}>
-                                                    {part2}
-                                                </span>
-                                            )}
-                                        </>
+                                        <div style={{ position: 'relative', display: 'inline-block' }}>
+                                            {/* First Line: Upper-left */}
+                                            <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
+                                                <span style={baseStyle}>{part1}</span>
+                                            </div>
+
+                                            {/* Second Line: Staggered Intersection */}
+                                            {/* We shift the second line by (Part1 Length - 1) characters roughly */}
+                                            {/* to align the first char of part2 under the last char of part1 */}
+                                            <div style={{
+                                                display: 'flex',
+                                                justifyContent: 'flex-start',
+                                                marginLeft: `calc(${part1.length}ch - 1.2ch)`,
+                                                marginTop: '-0.1rem'
+                                            }}>
+                                                <span style={baseStyle}>{part2}</span>
+                                            </div>
+                                        </div>
                                     );
                                 })()}
                             </div>
