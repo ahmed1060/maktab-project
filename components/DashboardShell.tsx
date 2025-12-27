@@ -105,7 +105,7 @@ export default function DashboardShell({ children, user }: DashboardShellProps) 
                             letterSpacing: '-0.025em',
                             display: 'flex',
                             alignItems: 'center',
-                            gap: '0.75rem',
+                            gap: '0.375rem', // Decreased gap by half
                             color: 'white',
                             whiteSpace: 'nowrap',
                             overflow: 'visible',
@@ -121,10 +121,11 @@ export default function DashboardShell({ children, user }: DashboardShellProps) 
                                 flexDirection: 'column',
                                 alignItems: 'flex-start',
                                 flex: 1,
-                                marginInlineStart: '0.25rem',
                                 position: 'relative',
                                 border: '2px solid #ef4444', // Visible red border for testing
-                                padding: '0.25rem'
+                                padding: '0.25rem',
+                                marginInlineEnd: '-2rem', // Align with sidebar edge (counteract parent padding)
+                                boxSizing: 'border-box'
                             }}>
                                 {(() => {
                                     const words = displayName.split(' ');
