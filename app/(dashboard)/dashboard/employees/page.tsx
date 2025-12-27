@@ -171,6 +171,19 @@ export default function EmployeesPage() {
         }
     }
 
+    const getRoleStyles = (role: string) => {
+        switch (role) {
+            case 'ADMIN':
+                return { background: '#fef3c7', color: '#92400e' }
+            case 'TEAM_LEADER':
+                return { background: '#ede9fe', color: '#5b21b6' }
+            case 'EMPLOYEE':
+                return { background: '#f1f5f9', color: '#475569' }
+            default:
+                return { background: '#f1f5f9', color: '#475569' }
+        }
+    }
+
     if (loading) {
         return <div>{t('loading_filters')}</div>
     }
@@ -353,16 +366,15 @@ export default function EmployeesPage() {
                                         </span>
                                     </div>
                                     <p style={{ margin: '0.5rem 0 0 0', color: '#64748b', fontSize: '0.875rem' }}>{emp.email}</p>
-                                    {emp.role && emp.role !== 'EMPLOYEE' && (
+                                    {emp.role && (
                                         <span style={{
                                             display: 'inline-block',
                                             marginTop: '0.25rem',
                                             padding: '0.125rem 0.5rem',
-                                            background: '#fef3c7',
-                                            color: '#92400e',
                                             borderRadius: '0.25rem',
                                             fontSize: '0.75rem',
-                                            fontWeight: 'bold'
+                                            fontWeight: 'bold',
+                                            ...getRoleStyles(emp.role)
                                         }}>
                                             {t(`role_${emp.role.toLowerCase()}` as any) || emp.role}
                                         </span>
