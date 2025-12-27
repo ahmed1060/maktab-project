@@ -121,9 +121,14 @@ export default function DashboardShell({ children, user }: DashboardShellProps) 
                                 flexDirection: 'column',
                                 alignItems: 'flex-start',
                                 gap: '0.1rem',
-                                padding: '0.5rem 0',
+                                padding: '0.5rem 0.75rem',
                                 flex: 1,
-                                overflow: 'hidden'
+                                overflow: 'hidden',
+                                border: '1px solid rgba(255, 255, 255, 0.15)',
+                                borderRadius: '0.75rem',
+                                background: 'rgba(255, 255, 255, 0.03)',
+                                backdropFilter: 'blur(4px)',
+                                marginInlineStart: '0.5rem'
                             }}>
                                 {(() => {
                                     const words = displayName.split(' ');
