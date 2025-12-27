@@ -126,10 +126,11 @@ export default function DashboardShell({ children, user }: DashboardShellProps) 
                                 alignItems: 'flex-start',
                                 flex: 1,
                                 position: 'relative',
-                                border: '2px solid #ef4444', // Visible red border for testing
-                                padding: '0.2rem 0.4rem',
+                                border: '1px solid #ef4444', // 1px border for testing
+                                padding: '0.2rem 0.3rem',
                                 boxSizing: 'border-box',
-                                width: '100%',
+                                width: 'fit-content',
+                                maxWidth: '100%',
                                 overflow: 'visible'
                             }}>
                                 {(() => {
@@ -159,10 +160,10 @@ export default function DashboardShell({ children, user }: DashboardShellProps) 
                                             {/* Top Word: Starts Left */}
                                             <span style={textStyle}>{part1}</span>
 
-                                            {/* Bottom Word: Precise intersection (T under m) */}
+                                            {/* Bottom Word: Compact intersection */}
                                             <span style={{
                                                 ...textStyle,
-                                                marginInlineStart: `calc(${part1.length - 1}ch + 0.2ch)`, // Precise character-level shift
+                                                marginInlineStart: `calc(${part1.length - 1}ch)`, // Compact shift
                                                 marginTop: '-0.1rem'
                                             }}>
                                                 {part2}
