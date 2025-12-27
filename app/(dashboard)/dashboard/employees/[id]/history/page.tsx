@@ -154,8 +154,24 @@ export default function EmployeeHistoryPage() {
                         <polyline points="12 19 5 12 12 5"></polyline>
                     </svg>
                 </Link>
-                <div style={{ clear: 'both' }}></div>
-                <h1 style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('salary_history')}</h1>
+                <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    gap: '1rem',
+                    flexWrap: 'wrap',
+                    marginBottom: '1rem'
+                }}>
+                    <h1 style={{ margin: 0 }}>{t('salary_history')}</h1>
+                    {isAdmin && (
+                        <button
+                            onClick={() => { setIsAdjustmentsModalOpen(true); fetchAdjustments(); }}
+                            className="btn btn-primary"
+                        >
+                            {t('manage_adjustments' as any)}
+                        </button>
+                    )}
+                </div>
                 {employee && (
                     <div style={{ fontSize: '1.2rem', color: '#475569', textAlign: locale === 'ar' ? 'right' : 'left' }}>
                         <p style={{ margin: 0 }}>{t('for_label')}: <strong>{employee.firstName} {employee.lastName}</strong></p>

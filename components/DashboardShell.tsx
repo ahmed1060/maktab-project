@@ -119,9 +119,12 @@ export default function DashboardShell({ children, user }: DashboardShellProps) 
                                 background: 'linear-gradient(to right, #fff, #a5b4fc)',
                                 WebkitBackgroundClip: 'text',
                                 WebkitTextFillColor: 'transparent',
-                                textOverflow: 'ellipsis',
-                                overflow: 'hidden',
-                                maxWidth: '180px'
+                                whiteSpace: 'normal',
+                                lineHeight: '1.2',
+                                display: '-webkit-box',
+                                WebkitLineClamp: isCollapsed ? 1 : 2,
+                                WebkitBoxOrient: 'vertical',
+                                overflow: 'hidden'
                             }}>
                                 {displayName}
                             </span>
