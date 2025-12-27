@@ -88,14 +88,15 @@ export default function DashboardShell({ children, user }: DashboardShellProps) 
                 direction: isRtl ? 'rtl' : 'ltr'
             }}>
                 <div style={{
-                    height: (user?.role === 'SUPER_ADMIN') ? '80px' : '65px', // Standard for SA, Reduced to 70px for others
-                    padding: (user?.role === 'SUPER_ADMIN')
-                        ? (isCollapsed ? '0.5rem 1rem 0' : '0.5rem 2rem 0') // SA: Shift Down
-                        : (isCollapsed ? '0 1rem 0' : '0 2rem 0'),          // Others: Center in reduced height (effectively Shift Up)
+                    height: (user?.role === 'SUPER_ADMIN') ? '80px' : '65px',
+                    paddingInlineStart: isCollapsed ? '0.7rem' : '1.4rem', // Shifted left by 30%
+                    paddingInlineEnd: 0,
+                    paddingTop: (user?.role === 'SUPER_ADMIN' ? '0.5rem' : 0),
                     display: 'flex',
-                    justifyContent: isCollapsed ? 'center' : 'space-between',
+                    justifyContent: isCollapsed ? 'center' : 'flex-start',
                     alignItems: 'center',
-                    transition: 'all 0.4s ease'
+                    transition: 'all 0.4s ease',
+                    width: '100%'
                 }}>
                     <div
                         onClick={() => !isMobile && setIsCollapsed(!isCollapsed)}
@@ -105,12 +106,13 @@ export default function DashboardShell({ children, user }: DashboardShellProps) 
                             letterSpacing: '-0.025em',
                             display: 'flex',
                             alignItems: 'center',
-                            gap: '0.375rem', // Decreased gap by half
+                            gap: '0.2rem', // Reduced gap further as requested
                             color: 'white',
                             whiteSpace: 'nowrap',
                             overflow: 'visible',
                             cursor: !isMobile ? 'pointer' : 'default',
-                            flex: isCollapsed ? '0' : '1'
+                            flex: 1,
+                            width: '100%'
                         }}
                         title={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
                     >
@@ -123,9 +125,10 @@ export default function DashboardShell({ children, user }: DashboardShellProps) 
                                 flex: 1,
                                 position: 'relative',
                                 border: '2px solid #ef4444', // Visible red border for testing
-                                padding: '0.25rem',
-                                marginInlineEnd: '-2rem', // Align with sidebar edge (counteract parent padding)
-                                boxSizing: 'border-box'
+                                padding: '0.2rem 0.4rem',
+                                boxSizing: 'border-box',
+                                width: '100%',
+                                overflow: 'visible'
                             }}>
                                 {(() => {
                                     const words = displayName.split(' ');
@@ -136,28 +139,29 @@ export default function DashboardShell({ children, user }: DashboardShellProps) 
                                         background: 'linear-gradient(to right, #ffffff, #a5b4fc)',
                                         WebkitBackgroundClip: 'text',
                                         WebkitTextFillColor: 'transparent',
-                                        fontSize: 'clamp(1.5rem, 2.5vw, 2.2rem)',
+                                        fontSize: 'clamp(1.2rem, 1.8vw, 1.7rem)', // Balanced bold size
                                         fontWeight: '900',
                                         lineHeight: '0.9',
                                         whiteSpace: 'nowrap',
                                         fontFamily: 'inherit',
-                                        display: 'block'
+                                        display: 'block',
+                                        letterSpacing: '-0.02em'
                                     };
 
                                     if (!part2) {
-                                        return <span style={textStyle}>{part1}</span>;
+                                        return <span style={{ ...textStyle, fontSize: 'clamp(1.2rem, 1.8vw, 2rem)' }}>{part1}</span>;
                                     }
 
                                     return (
-                                        <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                        <div style={{ display: 'flex', flexDirection: 'column', width: '100%' }}>
                                             {/* Top Word: Starts Left */}
                                             <span style={textStyle}>{part1}</span>
 
-                                            {/* Bottom Word: Staggered to intersect at the end of the top word */}
+                                            {/* Bottom Word: Precise intersection (T under m) */}
                                             <span style={{
                                                 ...textStyle,
-                                                marginInlineStart: `calc(${part1.length}ch - 0.8ch)`,
-                                                marginTop: '-0.2rem'
+                                                marginInlineStart: `calc(${part1.length - 1}ch + 0.2ch)`, // Precise character-level shift
+                                                marginTop: '-0.1rem'
                                             }}>
                                                 {part2}
                                             </span>
