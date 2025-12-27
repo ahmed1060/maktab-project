@@ -127,7 +127,7 @@ export default function DashboardShell({ children, user }: DashboardShellProps) 
                                 flex: 1,
                                 position: 'relative',
                                 border: '1px solid #ef4444', // 1px border for testing
-                                padding: '0.2rem 0.3rem',
+                                padding: '0.4rem 0.6rem 0.6rem 0.6rem', // Increased bottom padding for descenders
                                 boxSizing: 'border-box',
                                 width: 'fit-content',
                                 maxWidth: '100%',
