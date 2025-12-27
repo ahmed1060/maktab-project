@@ -137,7 +137,8 @@ export default function DashboardShell({ children, user }: DashboardShellProps) 
                                         whiteSpace: 'nowrap',
                                         transition: 'all 0.3s ease',
                                         fontFamily: 'inherit',
-                                        display: 'inline-block'
+                                        display: 'inline-block',
+                                        textAlign: 'start'
                                     };
 
                                     // Check if we want staggered or left-aligned
@@ -154,19 +155,17 @@ export default function DashboardShell({ children, user }: DashboardShellProps) 
                                     }
 
                                     return (
-                                        <div style={{ position: 'relative', display: 'inline-block' }}>
-                                            {/* First Line: Upper-left */}
+                                        <div style={{ position: 'relative', display: 'inline-block', width: '100%' }}>
+                                            {/* First Line: Top-Start */}
                                             <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
                                                 <span style={baseStyle}>{part1}</span>
                                             </div>
 
                                             {/* Second Line: Staggered Intersection */}
-                                            {/* We shift the second line by (Part1 Length - 1) characters roughly */}
-                                            {/* to align the first char of part2 under the last char of part1 */}
                                             <div style={{
                                                 display: 'flex',
                                                 justifyContent: 'flex-start',
-                                                marginLeft: `calc(${part1.length}ch - 1.2ch)`,
+                                                marginInlineStart: `calc(${part1.length}ch - 1.2ch)`,
                                                 marginTop: '-0.1rem'
                                             }}>
                                                 <span style={baseStyle}>{part2}</span>
