@@ -56,6 +56,8 @@ model User {
   salaryRecords              SalaryRecord[]
   tasks                      Task[]                 @relation("AssignedTasks")
   createdTasks               Task[]                 @relation("CreatedTasks")
+  dayOffCredit               Float                  @default(0)
+  dayOffRequests             DayOffRequest[]
   company                    Company?               @relation(fields: [companyId], references: [id])
 
   @@index([email])
@@ -233,5 +235,21 @@ model CompanyPayment {
   company                Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
   @@index([companyId])
+  @@index([status])
+}
+
+model DayOffRequest {
+  id           String   @id @default(uuid())
+  userId       String
+  type         String   // CASUAL, REGULAR
+  status       String   @default("PENDING") // PENDING, APPROVED, REJECTED
+  reason       String?
+  date         DateTime
+  daysDeducted Float?   @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  user         User     @relation(fields: [userId], references: [id])
+
+  @@index([userId])
   @@index([status])
 }

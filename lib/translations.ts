@@ -482,7 +482,25 @@ export const translations = {
         month_november: "November",
         month_december: "December",
         time_label: "Time",
-        confirm_selection_button: "Confirm Selection"
+        confirm_selection_button: "Confirm Selection",
+        day_off_requests: "Day Off Requests",
+        request_day_off: "Request Day Off",
+        requests_history: "Requests History",
+        day_off_credit: "Day Off Credit",
+        casual_day_off: "Casual Day Off",
+        regular_day_off: "Regular Day Off",
+        reason_label: "Reason",
+        reason_placeholder: "Optional cause of the day off...",
+        approve_deduction_title: "Approve & Deduct Days",
+        days_to_deduct_label: "Days to deduct",
+        remaining_credit: "Remaining Credit",
+        used_credit: "Used Credit",
+        credit_overview: "Credit Overview",
+        select_date: "Select Date",
+        day_off_type: "Request Type",
+        request_submitted_success: "Request submitted successfully!",
+        failed_submit_request: "Failed to submit request",
+        request_action_success: "Request processed successfully!"
     },
     ar: {
         welcome_back: "مرحباً بك مجدداً",
@@ -965,7 +983,25 @@ export const translations = {
         month_november: "نوفمبر",
         month_december: "ديسمبر",
         time_label: "الوقت",
-        confirm_selection_button: "تأكيد الاختيار"
+        confirm_selection_button: "تأكيد الاختيار",
+        day_off_requests: "طلبات الإجازة",
+        request_day_off: "طلب إجازة",
+        requests_history: "سجل الطلبات",
+        day_off_credit: "رصيد الإجازات",
+        casual_day_off: "إجازة عارضة",
+        regular_day_off: "إجازة اعتيادية",
+        reason_label: "السبب",
+        reason_placeholder: "سبب الإجازة الاختياري...",
+        approve_deduction_title: "الموافقة وخصم الأيام",
+        days_to_deduct_label: "الأيام المراد خصمها",
+        remaining_credit: "الرصيد المتبقي",
+        used_credit: "الرصيد المستخدم",
+        credit_overview: "نظرة عامة على الرصيد",
+        select_date: "اختر التاريخ",
+        day_off_type: "نوع الطلب",
+        request_submitted_success: "تم تقديم الطلب بنجاح!",
+        failed_submit_request: "فشل تقديم الطلب",
+        request_action_success: "تم معالجة الطلب بنجاح!"
     }
 };
 

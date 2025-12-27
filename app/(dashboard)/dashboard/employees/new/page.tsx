@@ -18,6 +18,7 @@ export default function NewEmployeePage() {
     const [role, setRole] = useState('EMPLOYEE')
     const [companyId, setCompanyId] = useState('')
     const [salary, setSalary] = useState('')
+    const [dayOffCredit, setDayOffCredit] = useState('0')
     const [companies, setCompanies] = useState<Company[]>([])
     const [error, setError] = useState('')
     const [fieldErrors, setFieldErrors] = useState<{ [key: string]: string }>({})
@@ -76,7 +77,10 @@ export default function NewEmployeePage() {
 
             const res = await fetch('/api/users', {
                 method: 'POST',
-                body: JSON.stringify(body),
+                body: JSON.stringify({
+                    ...body,
+                    dayOffCredit: parseFloat(dayOffCredit) || 0
+                }),
                 headers: { 'Content-Type': 'application/json' }
             })
 
@@ -249,6 +253,22 @@ export default function NewEmployeePage() {
                             onChange={e => setSalary(e.target.value)}
                             min="0"
                             placeholder="0.00"
+                            style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}
+                        />
+                    </div>
+                )}
+
+                {(role === 'EMPLOYEE' || role === 'TEAM_LEADER') && (
+                    <div style={{ marginBottom: '1rem' }}>
+                        <label style={{ display: 'block', marginBottom: '0.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('day_off_credit')}</label>
+                        <input
+                            type="number"
+                            className="input"
+                            value={dayOffCredit}
+                            onChange={e => setDayOffCredit(e.target.value)}
+                            min="0"
+                            step="0.5"
+                            placeholder="0"
                             style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}
                         />
                     </div>

@@ -164,6 +164,22 @@ export default async function DashboardPage({ searchParams }: { searchParams: { 
 
         const completionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0
 
+        // Fetch current user details for dayOffCredit
+        const currentUser = await prisma.user.findUnique({
+            where: { id: userId },
+            select: { dayOffCredit: true }
+        })
+
+        // Fetch approved day off requests for "used" credit
+        const approvedRequests = await prisma.dayOffRequest.findMany({
+            where: {
+                userId: userId,
+                status: 'APPROVED'
+            },
+            select: { daysDeducted: true }
+        })
+        const usedCredits = approvedRequests.reduce((acc, req) => acc + (req.daysDeducted || 0), 0)
+
         // Fetch salary record for current month
         const salaryRecord = await prisma.salaryRecord.findUnique({
             where: {
@@ -215,8 +231,15 @@ export default async function DashboardPage({ searchParams }: { searchParams: { 
                 </header>
 
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2rem', marginBottom: '3rem' }}>
-                    <div className="glass-card">
+                    <div className="glass-card" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
                         <DonutChart title={t('task_distribution')} data={chartData} />
+                        <DonutChart
+                            title={t('credit_overview' as any)}
+                            data={[
+                                { label: t('remaining_credit' as any), value: currentUser?.dayOffCredit || 0, color: '#10b981' },
+                                { label: t('used_credit' as any), value: usedCredits, color: '#ef4444' }
+                            ]}
+                        />
                     </div>
                     <div style={{ display: 'grid', gap: '1.5rem' }}>
                         <StatMetric label={t('overall_progress')} value={`${completedTasks}/${totalTasks}`} icon="🎯" color="#6366f1" percentage={completionRate} subLabel={t('completion_rate')} />

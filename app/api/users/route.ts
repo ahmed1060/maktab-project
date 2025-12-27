@@ -42,7 +42,8 @@ export async function GET(req: Request) {
                 salary: true,
                 companyId: true,
                 totalDifficultyPoints: true,
-                avatar: true
+                avatar: true,
+                dayOffCredit: true
             }
         })
 
@@ -60,6 +61,7 @@ export async function GET(req: Request) {
                 gender: user.gender,
                 companyId: user.companyId,
                 salary: canViewSalary ? user.salary : undefined,
+                dayOffCredit: user.dayOffCredit,
                 totalDifficultyPoints: user.totalDifficultyPoints,
                 avatar: user.avatar
             })
@@ -199,7 +201,7 @@ export async function POST(req: Request) {
     }
 
     const json = await req.json()
-    const { firstName, lastName, email, password, role, gender, companyId, salary } = json
+    const { firstName, lastName, email, password, role, gender, companyId, salary, dayOffCredit } = json
 
     // Validation
     if (firstName.length > 15) return new NextResponse("First name must be max 15 characters", { status: 400 })
@@ -250,7 +252,8 @@ export async function POST(req: Request) {
             status: 'OFFLINE',
             gender: gender || 'MALE',
             companyId: targetCompanyId,
-            salary: salary ? parseFloat(salary) : 0
+            salary: salary ? parseFloat(salary) : 0,
+            dayOffCredit: dayOffCredit ? parseFloat(dayOffCredit) : 0
         },
         select: { id: true, firstName: true, lastName: true, email: true, role: true, status: true, gender: true }
     })
@@ -267,7 +270,7 @@ export async function PUT(req: Request) {
     }
 
     const json = await req.json()
-    const { id, firstName, lastName, email, password, role, gender, salary, companyId, avatar } = json
+    const { id, firstName, lastName, email, password, role, gender, salary, companyId, avatar, dayOffCredit } = json
 
     if (!id) {
         return new NextResponse("User ID required", { status: 400 })
@@ -374,6 +377,7 @@ export async function PUT(req: Request) {
         if (['ADMIN', 'SUPER_ADMIN'].includes(userRole || '')) {
             if (salary > 1000000000) return new NextResponse("Salary cannot exceed 1 billion", { status: 400 })
             updateData.salary = salary
+            if (dayOffCredit !== undefined) updateData.dayOffCredit = parseFloat(dayOffCredit)
         }
 
 
@@ -386,7 +390,7 @@ export async function PUT(req: Request) {
         const updatedUser = await prisma.user.update({
             where: { id },
             data: updateData,
-            select: { id: true, firstName: true, lastName: true, email: true, role: true, gender: true, salary: true, companyId: true, avatar: true }
+            select: { id: true, firstName: true, lastName: true, email: true, role: true, gender: true, salary: true, companyId: true, avatar: true, dayOffCredit: true }
         })
 
         // Sync Salary Record
