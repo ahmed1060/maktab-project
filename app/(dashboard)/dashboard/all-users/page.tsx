@@ -98,10 +98,26 @@ export default function AllUsersPage() {
 
     const getStatusKey = (status: string) => {
         switch (status) {
-            case 'ACTIVE': return 'status_active'
+            case 'ACTIVE': return 'status_online'
+            case 'OFFLINE': return 'status_offline'
+            case 'SUSPENDED':
             case 'BANNED': return 'status_banned'
             case 'DELETED': return 'delete'
             default: return 'status_pending'
+        }
+    }
+
+    const getStatusStyles = (status: string) => {
+        switch (status) {
+            case 'ACTIVE':
+                return { background: '#dcfce7', color: '#166534' }
+            case 'OFFLINE':
+                return { background: '#f1f5f9', color: '#475569' }
+            case 'SUSPENDED':
+            case 'BANNED':
+                return { background: '#fee2e2', color: '#991b1b' }
+            default:
+                return { background: '#fef9c3', color: '#854d0e' }
         }
     }
 
@@ -199,9 +215,8 @@ export default function AllUsersPage() {
                                                         padding: '0.25rem 0.75rem',
                                                         borderRadius: '999px',
                                                         fontSize: '0.75rem',
-                                                        background: user.status === 'ACTIVE' ? '#dcfce7' : '#fef9c3',
-                                                        color: user.status === 'ACTIVE' ? '#166534' : '#854d0e',
-                                                        fontWeight: '600'
+                                                        fontWeight: '600',
+                                                        ...getStatusStyles(user.status)
                                                     }}>
                                                         {t(getStatusKey(user.status) as any)}
                                                     </span>
@@ -257,9 +272,8 @@ export default function AllUsersPage() {
                                                         padding: '0.25rem 0.75rem',
                                                         borderRadius: '999px',
                                                         fontSize: '0.75rem',
-                                                        background: user.status === 'ACTIVE' ? '#dcfce7' : '#fef9c3',
-                                                        color: user.status === 'ACTIVE' ? '#166534' : '#854d0e',
-                                                        fontWeight: '600'
+                                                        fontWeight: '600',
+                                                        ...getStatusStyles(user.status)
                                                     }}>
                                                         {t(getStatusKey(user.status) as any)}
                                                     </span>

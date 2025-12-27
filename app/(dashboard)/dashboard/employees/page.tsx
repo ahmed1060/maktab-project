@@ -330,10 +330,10 @@ export default function EmployeesPage() {
                                                 width: '12px',
                                                 height: '12px',
                                                 borderRadius: '50%',
-                                                background: emp.status === 'SUSPENDED' ? '#ef4444' : emp.status === 'ACTIVE' ? '#22c55e' : '#f97316',
+                                                background: emp.status === 'SUSPENDED' ? '#ef4444' : emp.status === 'ACTIVE' ? '#22c55e' : '#94a3b8',
                                                 cursor: userRole === 'SUPER_ADMIN' ? 'pointer' : 'default',
                                                 flexShrink: 0,
-                                                boxShadow: `0 0 0 2px ${emp.status === 'SUSPENDED' ? '#fecaca' : emp.status === 'ACTIVE' ? '#bbf7d0' : '#fed7aa'}`
+                                                boxShadow: `0 0 0 2px ${emp.status === 'SUSPENDED' ? '#fecaca' : emp.status === 'ACTIVE' ? '#bbf7d0' : '#e2e8f0'}`
                                             }}
                                         />
                                         <Link href={`/dashboard/employees/${emp.id}?mode=view`} style={{ textDecoration: 'none', color: 'inherit' }}>
