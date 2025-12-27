@@ -115,19 +115,43 @@ export default function DashboardShell({ children, user }: DashboardShellProps) 
                     >
                         <span style={{ fontSize: isCollapsed ? '2rem' : '1.75rem', transition: 'font-size 0.3s' }}>🚀</span>
                         {!isCollapsed && (
-                            <span style={{
-                                background: 'linear-gradient(to right, #fff, #a5b4fc)',
-                                WebkitBackgroundClip: 'text',
-                                WebkitTextFillColor: 'transparent',
-                                whiteSpace: 'normal',
-                                lineHeight: '1.2',
-                                display: '-webkit-box',
-                                WebkitLineClamp: isCollapsed ? 1 : 2,
-                                WebkitBoxOrient: 'vertical',
-                                overflow: 'hidden'
+                            <div style={{
+                                display: 'flex',
+                                flexDirection: 'column',
+                                width: '100%',
+                                maskImage: 'linear-gradient(to right, #fff, #a5b4fc)',
+                                WebkitMaskImage: 'linear-gradient(to right, #fff, #a5b4fc)'
                             }}>
-                                {displayName}
-                            </span>
+                                {(() => {
+                                    const words = displayName.split(' ');
+                                    const mid = Math.ceil(words.length / 2);
+                                    const part1 = words.slice(0, mid).join(' ');
+                                    const part2 = words.slice(mid).join(' ');
+
+                                    const textStyle: React.CSSProperties = {
+                                        background: 'linear-gradient(to right, #fff, #a5b4fc)',
+                                        WebkitBackgroundClip: 'text',
+                                        WebkitTextFillColor: 'transparent',
+                                        fontSize: (displayName.length > 15) ? '0.9rem' : '1.1rem',
+                                        fontWeight: '800',
+                                        lineHeight: '1',
+                                        whiteSpace: 'nowrap'
+                                    };
+
+                                    return (
+                                        <>
+                                            <span style={{ ...textStyle, alignSelf: 'flex-start' }}>
+                                                {part1}
+                                            </span>
+                                            {part2 && (
+                                                <span style={{ ...textStyle, alignSelf: 'flex-end', marginTop: '0.2rem' }}>
+                                                    {part2}
+                                                </span>
+                                            )}
+                                        </>
+                                    );
+                                })()}
+                            </div>
                         )}
                     </div>
 
