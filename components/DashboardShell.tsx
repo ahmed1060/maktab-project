@@ -132,10 +132,13 @@ export default function DashboardShell({ children, user }: DashboardShellProps) 
                                         background: 'linear-gradient(to right, #fff, #a5b4fc)',
                                         WebkitBackgroundClip: 'text',
                                         WebkitTextFillColor: 'transparent',
-                                        fontSize: (displayName.length > 15) ? '0.9rem' : '1.1rem',
+                                        fontSize: (displayName.length > 15)
+                                            ? 'clamp(0.8rem, 1.1vw, 1rem)'
+                                            : 'clamp(1rem, 1.4vw, 1.4rem)',
                                         fontWeight: '800',
                                         lineHeight: '1',
-                                        whiteSpace: 'nowrap'
+                                        whiteSpace: 'nowrap',
+                                        transition: 'font-size 0.2s ease'
                                     };
 
                                     return (
