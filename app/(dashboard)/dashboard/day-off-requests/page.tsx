@@ -39,6 +39,8 @@ export default function DayOffRequestsPage() {
     const [reqType, setReqType] = useState<'CASUAL' | 'REGULAR'>('REGULAR')
     const [reqReason, setReqReason] = useState('')
     const [submitting, setSubmitting] = useState(false)
+    const [alert, setAlert] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
+    const [isRejectModalOpen, setIsRejectModalOpen] = useState(false)
 
     // User Credit Info
     const [userCredit, setUserCredit] = useState(0)
@@ -78,6 +80,11 @@ export default function DayOffRequestsPage() {
         }
     }
 
+    const showAlert = (type: 'success' | 'error', message: string) => {
+        setAlert({ type, message })
+        setTimeout(() => setAlert(null), 3000)
+    }
+
     const handleSubmitRequest = async (e: React.FormEvent) => {
         e.preventDefault()
         setSubmitting(true)
@@ -92,7 +99,7 @@ export default function DayOffRequestsPage() {
                 })
             })
             if (res.ok) {
-                alert(t('request_submitted_success' as any))
+                showAlert('success', t('request_submitted_success' as any))
                 setIsRequestModalOpen(false)
                 fetchRequests()
                 // Reset form
@@ -100,24 +107,24 @@ export default function DayOffRequestsPage() {
                 setReqReason('')
             } else {
                 const err = await res.text()
-                alert(err || t('failed_submit_request' as any))
+                showAlert('error', err || t('failed_submit_request' as any))
             }
         } catch (error) {
-            alert(t('error_generic'))
+            showAlert('error', t('error_generic'))
         } finally {
             setSubmitting(false)
         }
     }
 
     const handleAction = async (requestId: string, status: 'APPROVED' | 'REJECTED') => {
-        if (status === 'APPROVED') {
-            const req = requests.find(r => r.id === requestId)
-            setSelectedRequest(req || null)
-            setIsApprovalModalOpen(true)
-            return
-        }
+        const req = requests.find(r => r.id === requestId)
+        setSelectedRequest(req || null)
 
-        await processAction(requestId, status)
+        if (status === 'APPROVED') {
+            setIsApprovalModalOpen(true)
+        } else {
+            setIsRejectModalOpen(true)
+        }
     }
 
     const processAction = async (requestId: string, status: 'APPROVED' | 'REJECTED', deduction?: string) => {
@@ -128,12 +135,15 @@ export default function DayOffRequestsPage() {
                 body: JSON.stringify({ status, daysToDeduct: deduction })
             })
             if (res.ok) {
-                alert(t('request_action_success' as any))
+                showAlert('success', t('request_action_success' as any))
                 setIsApprovalModalOpen(false)
+                setIsRejectModalOpen(false)
                 fetchRequests()
+            } else {
+                showAlert('error', t('error_generic'))
             }
         } catch (error) {
-            alert(t('error_generic'))
+            showAlert('error', t('error_generic'))
         }
     }
 
@@ -147,6 +157,34 @@ export default function DayOffRequestsPage() {
 
     return (
         <div style={{ direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
+            {alert && (
+                <div style={{
+                    position: 'fixed',
+                    top: '2rem',
+                    right: locale === 'ar' ? 'auto' : '2rem',
+                    left: locale === 'ar' ? '2rem' : 'auto',
+                    padding: '0.75rem 1.25rem',
+                    borderRadius: '0.5rem',
+                    background: alert.type === 'success' ? '#dcfce7' : '#fee2e2',
+                    color: alert.type === 'success' ? '#166534' : '#991b1b',
+                    border: `1px solid ${alert.type === 'success' ? '#86efac' : '#fca5a5'}`,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                    fontSize: '0.875rem',
+                    fontWeight: '500',
+                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+                    zIndex: 1000,
+                    minWidth: '250px',
+                    maxWidth: '350px',
+                    animation: 'slideInRight 0.3s ease-out'
+                }}>
+                    <span style={{ fontSize: '1rem' }}>
+                        {alert.type === 'success' ? '✓' : '✕'}
+                    </span>
+                    {alert.message}
+                </div>
+            )}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
                 <h1 className="text-3xl font-bold text-slate-800">{t('day_off_requests' as any)}</h1>
                 {!isAdmin && (
@@ -327,6 +365,29 @@ export default function DayOffRequestsPage() {
                                 {t('approve_button')}
                             </button>
                             <button type="button" onClick={() => setIsApprovalModalOpen(false)} className="btn">
+                                {t('cancel')}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+            {/* Rejection Confirmation Modal */}
+            {isRejectModalOpen && selectedRequest && (
+                <div className="modal-overlay" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
+                    <div className="card" style={{ width: '400px', maxWidth: '90%' }}>
+                        <h2 className="text-xl font-bold mb-4">{t('confirm_rejection_title' as any)}</h2>
+                        <p style={{ marginBottom: '1.5rem', color: '#64748b' }}>
+                            {t('are_you_sure_msg' as any)} {t('reject_button')} {selectedRequest.user?.firstName} {selectedRequest.user?.lastName}?
+                        </p>
+                        <div style={{ display: 'flex', gap: '1rem' }}>
+                            <button
+                                onClick={() => processAction(selectedRequest.id, 'REJECTED')}
+                                className="btn"
+                                style={{ background: '#ef4444', color: 'white' }}
+                            >
+                                {t('reject_button')}
+                            </button>
+                            <button type="button" onClick={() => setIsRejectModalOpen(false)} className="btn">
                                 {t('cancel')}
                             </button>
                         </div>

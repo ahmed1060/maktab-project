@@ -500,7 +500,13 @@ export const translations = {
         day_off_type: "Request Type",
         request_submitted_success: "Request submitted successfully!",
         failed_submit_request: "Failed to submit request",
-        request_action_success: "Request processed successfully!"
+        request_action_success: "Request processed successfully!",
+        manage_adjustments: "Manage Bonuses/Deductions",
+        rollback_adjustment: "Rollback",
+        adjustment_history: "Adjustment History",
+        no_adjustments_found: "No adjustments found",
+        rollback_success: "Adjustment rolled back successfully",
+        failed_rollback: "Failed to rollback adjustment"
     },
     ar: {
         welcome_back: "مرحباً بك مجدداً",
@@ -1001,7 +1007,13 @@ export const translations = {
         day_off_type: "نوع الطلب",
         request_submitted_success: "تم تقديم الطلب بنجاح!",
         failed_submit_request: "فشل تقديم الطلب",
-        request_action_success: "تم معالجة الطلب بنجاح!"
+        request_action_success: "تم معالجة الطلب بنجاح!",
+        manage_adjustments: "إدارة المكافآت/الخصومات",
+        rollback_adjustment: "تراجع",
+        adjustment_history: "سجل التعديلات",
+        no_adjustments_found: "لا توجد تعديلات",
+        rollback_success: "تم التراجع عن التعديل بنجاح",
+        failed_rollback: "فشل التراجع عن التعديل"
     }
 };
 

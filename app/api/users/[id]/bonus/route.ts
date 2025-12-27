@@ -38,23 +38,43 @@ export async function POST(req: Request, { params }: { params: { id: string } })
         })
 
         if (existingRecord) {
-            await prisma.salaryRecord.update({
-                where: { id: existingRecord.id },
-                data: { bonusDays: { increment: amount } }
-            })
+            await prisma.$transaction([
+                prisma.salaryRecord.update({
+                    where: { id: existingRecord.id },
+                    data: { bonusDays: { increment: amount } }
+                }),
+                prisma.salaryAdjustment.create({
+                    data: {
+                        userId,
+                        type: 'BONUS',
+                        amount,
+                        status: 'ACTIVE'
+                    }
+                })
+            ])
         } else {
             const daysInMonth = new Date(currentYear, currentMonth, 0).getDate()
-            await prisma.salaryRecord.create({
-                data: {
-                    userId,
-                    month: currentMonth,
-                    year: currentYear,
-                    totalDays: daysInMonth,
-                    deductions: 0,
-                    baseSalary: currentBase,
-                    bonusDays: amount
-                }
-            })
+            await prisma.$transaction([
+                prisma.salaryRecord.create({
+                    data: {
+                        userId,
+                        month: currentMonth,
+                        year: currentYear,
+                        totalDays: daysInMonth,
+                        deductions: 0,
+                        baseSalary: currentBase,
+                        bonusDays: amount
+                    }
+                }),
+                prisma.salaryAdjustment.create({
+                    data: {
+                        userId,
+                        type: 'BONUS',
+                        amount,
+                        status: 'ACTIVE'
+                    }
+                })
+            ])
         }
 
         return NextResponse.json({ success: true })

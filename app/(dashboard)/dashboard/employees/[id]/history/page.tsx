@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useLanguage } from '@/context/LanguageContext'
+import { useSession } from 'next-auth/react'
 
 interface SalaryRecord {
     id: string
@@ -12,6 +13,14 @@ interface SalaryRecord {
     deductions: number // Deductions in DAYS
     baseSalary: number
     bonusDays: number // Bonus in DAYS
+    createdAt: string
+}
+
+interface SalaryAdjustment {
+    id: string
+    type: 'BONUS' | 'DEDUCTION'
+    amount: number
+    status: 'ACTIVE' | 'ROLLED_BACK'
     createdAt: string
 }
 
@@ -26,9 +35,16 @@ export default function EmployeeHistoryPage() {
     const { t, locale } = useLanguage()
     const params = useParams()
     const router = useRouter()
+    const { data: session } = useSession()
+    const isAdmin = ['ADMIN', 'SUPER_ADMIN'].includes((session?.user as any)?.role || '')
+
     const [records, setRecords] = useState<SalaryRecord[]>([])
     const [employee, setEmployee] = useState<Employee | null>(null)
     const [loading, setLoading] = useState(true)
+    const [isAdjustmentsModalOpen, setIsAdjustmentsModalOpen] = useState(false)
+    const [adjustments, setAdjustments] = useState<SalaryAdjustment[]>([])
+    const [rollbackLoading, setRollbackLoading] = useState<string | null>(null)
+    const [alert, setAlert] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
 
     useEffect(() => {
         const fetchData = async () => {
@@ -57,6 +73,45 @@ export default function EmployeeHistoryPage() {
             fetchData()
         }
     }, [params.id])
+
+    const fetchAdjustments = async () => {
+        try {
+            const res = await fetch(`/api/users/${params.id}/adjustments`)
+            if (res.ok) {
+                const data = await res.json()
+                setAdjustments(data)
+            }
+        } catch (error) {
+            console.error('Error fetching adjustments:', error)
+        }
+    }
+
+    const handleRollback = async (adjId: string) => {
+        setRollbackLoading(adjId)
+        try {
+            const res = await fetch(`/api/users/${params.id}/adjustments/${adjId}/rollback`, {
+                method: 'POST'
+            })
+            if (res.ok) {
+                setAlert({ type: 'success', message: t('rollback_success' as any) })
+                fetchAdjustments()
+                // Refresh records too
+                const historyRes = await fetch(`/api/users/${params.id}/salary-history`)
+                if (historyRes.ok) {
+                    const historyData = await historyRes.json()
+                    setRecords(historyData)
+                }
+            } else {
+                setAlert({ type: 'error', message: t('failed_rollback' as any) })
+            }
+        } catch (error) {
+            console.error('Error rolling back:', error)
+            setAlert({ type: 'error', message: t('failed_rollback' as any) })
+        } finally {
+            setRollbackLoading(null)
+            setTimeout(() => setAlert(null), 3000)
+        }
+    }
 
     const getMonthName = (month: number) => {
         return new Date(2000, month - 1).toLocaleString(locale === 'ar' ? 'ar-EG' : 'en-US', { month: 'long' })
@@ -109,7 +164,36 @@ export default function EmployeeHistoryPage() {
                         )}
                     </div>
                 )}
+                {isAdmin && (
+                    <div style={{ position: 'absolute', top: '2rem', [locale === 'ar' ? 'left' : 'right']: '0' }}>
+                        <button
+                            onClick={() => { setIsAdjustmentsModalOpen(true); fetchAdjustments(); }}
+                            className="btn btn-primary"
+                        >
+                            {t('manage_adjustments' as any)}
+                        </button>
+                    </div>
+                )}
             </div>
+
+            {/* Alert Toast */}
+            {alert && (
+                <div style={{
+                    position: 'fixed',
+                    top: '2rem',
+                    right: '2rem',
+                    zIndex: 2000,
+                    padding: '1rem 1.5rem',
+                    borderRadius: '1rem',
+                    background: alert.type === 'success' ? '#dcfce7' : '#fee2e2',
+                    color: alert.type === 'success' ? '#166534' : '#991b1b',
+                    boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
+                    border: `1px solid ${alert.type === 'success' ? '#16653433' : '#991b1b33'}`,
+                    animation: 'slideInRight 0.3s ease-out'
+                }}>
+                    {alert.message}
+                </div>
+            )}
 
             <div className="card" style={{ overflowX: 'auto' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '800px' }}>
@@ -183,6 +267,113 @@ export default function EmployeeHistoryPage() {
                     </tbody>
                 </table>
             </div>
+
+            {/* Adjustments Modal */}
+            {isAdjustmentsModalOpen && (
+                <div style={{
+                    position: 'fixed',
+                    inset: 0,
+                    zIndex: 1000,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    background: 'rgba(0,0,0,0.4)',
+                    backdropFilter: 'blur(4px)',
+                    padding: '1rem'
+                }}>
+                    <div className="glass" style={{
+                        width: '100%',
+                        maxWidth: '600px',
+                        maxHeight: '80vh',
+                        overflowY: 'auto',
+                        padding: '2rem',
+                        position: 'relative',
+                        background: 'rgba(255, 255, 255, 0.95)'
+                    }}>
+                        <button
+                            onClick={() => setIsAdjustmentsModalOpen(false)}
+                            style={{
+                                position: 'absolute',
+                                top: '1rem',
+                                [locale === 'ar' ? 'left' : 'right']: '1rem',
+                                border: 'none',
+                                background: 'none',
+                                fontSize: '1.5rem',
+                                cursor: 'pointer',
+                                color: '#64748b'
+                            }}
+                        >
+                            ×
+                        </button>
+                        <h2 style={{ marginBottom: '1.5rem' }}>{t('adjustment_history' as any)}</h2>
+
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                            {adjustments.length === 0 ? (
+                                <p style={{ textAlign: 'center', color: '#64748b' }}>{t('no_adjustments_found' as any)}</p>
+                            ) : (
+                                adjustments.map(adj => (
+                                    <div key={adj.id} style={{
+                                        position: 'relative',
+                                        padding: '1.25rem',
+                                        borderRadius: '1rem',
+                                        background: 'white',
+                                        border: '1px solid #e2e8f0',
+                                        display: 'flex',
+                                        justifyContent: 'space-between',
+                                        alignItems: 'center'
+                                    }}>
+                                        {/* Strikethrough Line */}
+                                        {adj.status === 'ROLLED_BACK' && (
+                                            <div style={{
+                                                position: 'absolute',
+                                                top: '50%',
+                                                left: '-5px',
+                                                right: '-5px',
+                                                height: '2px',
+                                                background: '#ef4444',
+                                                transform: 'rotate(-2deg)',
+                                                zIndex: 5,
+                                                opacity: 0.8,
+                                                pointerEvents: 'none'
+                                            }} />
+                                        )}
+
+                                        <div style={{ opacity: adj.status === 'ROLLED_BACK' ? 0.6 : 1 }}>
+                                            <div style={{ fontWeight: 'bold', fontSize: '1.1rem', color: adj.type === 'BONUS' ? '#7c3aed' : '#dc2626' }}>
+                                                {adj.type === 'BONUS' ? `+${adj.amount}` : `-${adj.amount}`} {t('days_label')}
+                                            </div>
+                                            <div style={{ fontSize: '0.875rem', color: '#64748b' }}>
+                                                {new Date(adj.createdAt).toLocaleString(locale)}
+                                            </div>
+                                        </div>
+
+                                        {adj.status === 'ACTIVE' && (
+                                            <button
+                                                onClick={() => handleRollback(adj.id)}
+                                                disabled={!!rollbackLoading}
+                                                className="btn"
+                                                style={{
+                                                    background: '#fee2e2',
+                                                    color: '#991b1b',
+                                                    fontSize: '0.875rem',
+                                                    padding: '0.5rem 1rem'
+                                                }}
+                                            >
+                                                {rollbackLoading === adj.id ? '...' : t('rollback_adjustment' as any)}
+                                            </button>
+                                        )}
+                                        {adj.status === 'ROLLED_BACK' && (
+                                            <span style={{ fontSize: '0.8rem', color: '#ef4444', fontWeight: 'bold' }}>
+                                                {t('rollback_adjustment' as any)}
+                                            </span>
+                                        )}
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     )
 }
