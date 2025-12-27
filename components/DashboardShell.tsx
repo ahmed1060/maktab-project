@@ -89,8 +89,8 @@ export default function DashboardShell({ children, user }: DashboardShellProps) 
             }}>
                 <div style={{
                     height: (user?.role === 'SUPER_ADMIN') ? '80px' : '65px',
-                    paddingInlineStart: isCollapsed ? '1rem' : '2rem', // Reverted shift
-                    paddingInlineEnd: '4px', // Space for the 2px border to be visible
+                    paddingInlineStart: isCollapsed ? '1rem' : '2rem',
+                    paddingInlineEnd: 0, // Flush with the edge
                     paddingTop: (user?.role === 'SUPER_ADMIN' ? '0.5rem' : 0),
                     display: 'flex',
                     justifyContent: isCollapsed ? 'center' : 'flex-start',
