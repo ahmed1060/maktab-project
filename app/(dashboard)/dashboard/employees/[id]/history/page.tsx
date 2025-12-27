@@ -164,16 +164,6 @@ export default function EmployeeHistoryPage() {
                         )}
                     </div>
                 )}
-                {isAdmin && (
-                    <div style={{ position: 'absolute', top: '2rem', [locale === 'ar' ? 'left' : 'right']: '0' }}>
-                        <button
-                            onClick={() => { setIsAdjustmentsModalOpen(true); fetchAdjustments(); }}
-                            className="btn btn-primary"
-                        >
-                            {t('manage_adjustments' as any)}
-                        </button>
-                    </div>
-                )}
             </div>
 
             {/* Alert Toast */}
