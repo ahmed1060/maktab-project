@@ -112,12 +112,12 @@ export default function AllUsersPage() {
             case 'ACTIVE':
                 return { background: '#dcfce7', color: '#166534' }
             case 'OFFLINE':
-                return { background: '#f1f5f9', color: '#475569' }
+                return { background: '#fef9c3', color: '#854d0e' }
             case 'SUSPENDED':
             case 'BANNED':
                 return { background: '#fee2e2', color: '#991b1b' }
             default:
-                return { background: '#fef9c3', color: '#854d0e' }
+                return { background: '#f1f5f9', color: '#475569' }
         }
     }
 

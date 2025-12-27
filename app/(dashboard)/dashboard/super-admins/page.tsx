@@ -141,9 +141,23 @@ export default function SuperAdminsPage() {
 
     const getStatusKey = (status: string) => {
         switch (status) {
-            case 'ACTIVE': return 'status_active'
+            case 'ACTIVE': return 'status_online'
+            case 'OFFLINE': return 'status_offline'
             case 'BANNED': return 'status_banned'
             default: return 'status_pending'
+        }
+    }
+
+    const getStatusStyles = (status: string) => {
+        switch (status) {
+            case 'ACTIVE':
+                return { background: '#dcfce7', color: '#166534' }
+            case 'OFFLINE':
+                return { background: '#fef9c3', color: '#854d0e' }
+            case 'BANNED':
+                return { background: '#fee2e2', color: '#991b1b' }
+            default:
+                return { background: '#f1f5f9', color: '#475569' }
         }
     }
 
@@ -189,9 +203,8 @@ export default function SuperAdminsPage() {
                                             padding: '0.25rem 0.75rem',
                                             borderRadius: '999px',
                                             fontSize: '0.75rem',
-                                            background: admin.status === 'ACTIVE' ? '#dcfce7' : '#fef9c3',
-                                            color: admin.status === 'ACTIVE' ? '#166534' : '#854d0e',
-                                            fontWeight: '600'
+                                            fontWeight: '600',
+                                            ...getStatusStyles(admin.status)
                                         }}>
                                             {t(getStatusKey(admin.status) as any)}
                                         </span>
