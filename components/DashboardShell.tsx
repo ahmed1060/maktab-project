@@ -127,7 +127,7 @@ export default function DashboardShell({ children, user }: DashboardShellProps) 
                                 flex: 1,
                                 position: 'relative',
                                 border: '1px solid #ef4444', // 1px border for testing
-                                padding: '0.4rem 0.6rem 0.6rem 0.6rem', // Increased bottom padding for descenders
+                                padding: '0.4rem 0.6rem 0.8rem 0.6rem', // Even more bottom padding
                                 boxSizing: 'border-box',
                                 width: 'fit-content',
                                 maxWidth: '100%',
@@ -150,7 +150,7 @@ export default function DashboardShell({ children, user }: DashboardShellProps) 
                                                 ? 'clamp(1.1rem, 1.7vw, 1.5rem)'
                                                 : 'clamp(1.2rem, 1.8vw, 1.7rem)',
                                         fontWeight: '900',
-                                        lineHeight: '0.9',
+                                        lineHeight: '1.1', // Increased from 0.9 to fix descender clipping
                                         whiteSpace: 'nowrap',
                                         fontFamily: 'inherit',
                                         display: 'block',
