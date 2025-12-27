@@ -138,17 +138,24 @@ export default function DashboardShell({ children, user }: DashboardShellProps) 
                                     const part1 = words[0] || '';
                                     const part2 = words.slice(1).join(' ');
 
+                                    const nameLength = displayName.length;
                                     const textStyle: React.CSSProperties = {
                                         background: 'linear-gradient(to right, #ffffff, #a5b4fc)',
                                         WebkitBackgroundClip: 'text',
                                         WebkitTextFillColor: 'transparent',
-                                        fontSize: 'clamp(1.2rem, 1.8vw, 1.7rem)', // Balanced bold size
+                                        // Dynamic font size: shrinks as name gets longer to "flex" within the sidebar
+                                        fontSize: nameLength > 20
+                                            ? 'clamp(0.9rem, 1.4vw, 1.2rem)'
+                                            : nameLength > 12
+                                                ? 'clamp(1.1rem, 1.7vw, 1.5rem)'
+                                                : 'clamp(1.2rem, 1.8vw, 1.7rem)',
                                         fontWeight: '900',
                                         lineHeight: '0.9',
                                         whiteSpace: 'nowrap',
                                         fontFamily: 'inherit',
                                         display: 'block',
-                                        letterSpacing: '-0.02em'
+                                        letterSpacing: '-0.02em',
+                                        transition: 'font-size 0.2s ease'
                                     };
 
                                     if (!part2) {
@@ -156,18 +163,26 @@ export default function DashboardShell({ children, user }: DashboardShellProps) 
                                     }
 
                                     return (
-                                        <div style={{ display: 'flex', flexDirection: 'column', width: '100%' }}>
-                                            {/* Top Word: Starts Left */}
-                                            <span style={textStyle}>{part1}</span>
+                                        <div style={{
+                                            display: 'flex',
+                                            flexDirection: 'column',
+                                            width: '100%',
+                                            alignItems: 'center', // Center content horizontally
+                                            justifyContent: 'center'
+                                        }}>
+                                            <div style={{ width: 'fit-content', position: 'relative' }}>
+                                                {/* Top Word: Upper-left of text group */}
+                                                <span style={textStyle}>{part1}</span>
 
-                                            {/* Bottom Word: Compact intersection */}
-                                            <span style={{
-                                                ...textStyle,
-                                                marginInlineStart: `calc(${part1.length - 1}ch)`, // Compact shift
-                                                marginTop: '-0.1rem'
-                                            }}>
-                                                {part2}
-                                            </span>
+                                                {/* Bottom Word: Precise intersection (T under m) */}
+                                                <span style={{
+                                                    ...textStyle,
+                                                    marginInlineStart: `calc(${part1.length - 1}ch)`,
+                                                    marginTop: '-0.1rem'
+                                                }}>
+                                                    {part2}
+                                                </span>
+                                            </div>
                                         </div>
                                     );
                                 })()}
