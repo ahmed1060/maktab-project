@@ -109,18 +109,21 @@ export default function DashboardShell({ children, user }: DashboardShellProps) 
                             color: 'white',
                             whiteSpace: 'nowrap',
                             overflow: 'hidden',
-                            cursor: !isMobile ? 'pointer' : 'default'
+                            cursor: !isMobile ? 'pointer' : 'default',
+                            flex: isCollapsed ? '0' : '1'
                         }}
                         title={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
                     >
-                        <span style={{ fontSize: isCollapsed ? '2rem' : '1.75rem', transition: 'font-size 0.3s' }}>🚀</span>
+                        <span style={{ fontSize: isCollapsed ? '2rem' : '1.75rem', transition: 'font-size 0.3s', flexShrink: 0 }}>🚀</span>
                         {!isCollapsed && (
                             <div style={{
                                 display: 'flex',
                                 flexDirection: 'column',
                                 alignItems: 'flex-start',
                                 gap: '0.1rem',
-                                padding: '0.5rem 0'
+                                padding: '0.5rem 0',
+                                flex: 1,
+                                overflow: 'hidden'
                             }}>
                                 {(() => {
                                     const words = displayName.split(' ');
@@ -147,7 +150,7 @@ export default function DashboardShell({ children, user }: DashboardShellProps) 
 
                                     if (!isStaggered) {
                                         return (
-                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem', width: '100%' }}>
                                                 <span style={baseStyle}>{part1}</span>
                                                 {part2 && <span style={baseStyle}>{part2}</span>}
                                             </div>
@@ -157,7 +160,7 @@ export default function DashboardShell({ children, user }: DashboardShellProps) 
                                     return (
                                         <div style={{ position: 'relative', display: 'inline-block', width: '100%' }}>
                                             {/* First Line: Top-Start */}
-                                            <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
+                                            <div style={{ display: 'flex', justifyContent: 'flex-start', width: '100%' }}>
                                                 <span style={baseStyle}>{part1}</span>
                                             </div>
 
@@ -166,7 +169,8 @@ export default function DashboardShell({ children, user }: DashboardShellProps) 
                                                 display: 'flex',
                                                 justifyContent: 'flex-start',
                                                 marginInlineStart: `calc(${part1.length}ch - 1.2ch)`,
-                                                marginTop: '-0.1rem'
+                                                marginTop: '-0.1rem',
+                                                width: '100%'
                                             }}>
                                                 <span style={baseStyle}>{part2}</span>
                                             </div>
