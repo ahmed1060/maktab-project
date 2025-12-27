@@ -89,14 +89,15 @@ export default function DashboardShell({ children, user }: DashboardShellProps) 
             }}>
                 <div style={{
                     height: (user?.role === 'SUPER_ADMIN') ? '80px' : '65px',
-                    paddingInlineStart: isCollapsed ? '0.7rem' : '1.4rem', // Shifted left by 30%
-                    paddingInlineEnd: 0,
+                    paddingInlineStart: isCollapsed ? '1rem' : '2rem', // Reverted shift
+                    paddingInlineEnd: '4px', // Space for the 2px border to be visible
                     paddingTop: (user?.role === 'SUPER_ADMIN' ? '0.5rem' : 0),
                     display: 'flex',
                     justifyContent: isCollapsed ? 'center' : 'flex-start',
                     alignItems: 'center',
                     transition: 'all 0.4s ease',
-                    width: '100%'
+                    width: '100%',
+                    boxSizing: 'border-box'
                 }}>
                     <div
                         onClick={() => !isMobile && setIsCollapsed(!isCollapsed)}
@@ -106,13 +107,14 @@ export default function DashboardShell({ children, user }: DashboardShellProps) 
                             letterSpacing: '-0.025em',
                             display: 'flex',
                             alignItems: 'center',
-                            gap: '0.2rem', // Reduced gap further as requested
+                            gap: '0.4rem',
                             color: 'white',
                             whiteSpace: 'nowrap',
                             overflow: 'visible',
                             cursor: !isMobile ? 'pointer' : 'default',
                             flex: 1,
-                            width: '100%'
+                            minWidth: 0, // Allow shrinking to prevent overflow
+                            width: 'auto'
                         }}
                         title={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
                     >
