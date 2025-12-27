@@ -82,7 +82,7 @@ export default function DashboardShell({ children, user }: DashboardShellProps) 
                 zIndex: 50,
                 transition: 'width 0.4s cubic-bezier(0.16, 1, 0.3, 1), transform 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
                 [isRtl ? 'right' : 'left']: 0,
-                transform: (isMobile && !isSidebarOpen) ? (isRtl ? 'translateX(100%)' : 'translateX(-100%)') : 'translateX(0)',
+                transform: (isMobile && !isSidebarOpen) ? (isRtl ? 'translateX(100%)' : 'translateX(0)') : 'translateX(0)',
                 boxShadow: (isMobile && isSidebarOpen) ? (isRtl ? '-20px 0 50px rgba(0,0,0,0.2)' : '20px 0 50px rgba(0,0,0,0.2)') : 'none',
                 overflow: 'hidden',
                 direction: isRtl ? 'rtl' : 'ltr'
@@ -108,7 +108,7 @@ export default function DashboardShell({ children, user }: DashboardShellProps) 
                             gap: '0.75rem',
                             color: 'white',
                             whiteSpace: 'nowrap',
-                            overflow: 'hidden',
+                            overflow: 'visible',
                             cursor: !isMobile ? 'pointer' : 'default',
                             flex: isCollapsed ? '0' : '1'
                         }}
@@ -120,65 +120,46 @@ export default function DashboardShell({ children, user }: DashboardShellProps) 
                                 display: 'flex',
                                 flexDirection: 'column',
                                 alignItems: 'flex-start',
-                                gap: '0.1rem',
-                                padding: '0.5rem 0.75rem',
                                 flex: 1,
-                                overflow: 'hidden',
-                                border: '1px solid rgba(255, 255, 255, 0.15)',
-                                borderRadius: '0.75rem',
-                                background: 'rgba(255, 255, 255, 0.03)',
-                                backdropFilter: 'blur(4px)',
-                                marginInlineStart: '0.5rem'
+                                marginInlineStart: '0.25rem',
+                                position: 'relative',
+                                border: '2px solid #ef4444', // Visible red border for testing
+                                padding: '0.25rem'
                             }}>
                                 {(() => {
                                     const words = displayName.split(' ');
                                     const part1 = words[0] || '';
                                     const part2 = words.slice(1).join(' ');
 
-                                    const baseStyle: React.CSSProperties = {
-                                        background: 'linear-gradient(to right, #fff, #a5b4fc)',
+                                    const textStyle: React.CSSProperties = {
+                                        background: 'linear-gradient(to right, #ffffff, #a5b4fc)',
                                         WebkitBackgroundClip: 'text',
                                         WebkitTextFillColor: 'transparent',
-                                        fontSize: 'clamp(1.1rem, 1.6vw, 1.6rem)',
+                                        fontSize: 'clamp(1.5rem, 2.5vw, 2.2rem)',
                                         fontWeight: '900',
-                                        lineHeight: '1.1',
+                                        lineHeight: '0.9',
                                         whiteSpace: 'nowrap',
-                                        transition: 'all 0.3s ease',
                                         fontFamily: 'inherit',
-                                        display: 'inline-block',
-                                        textAlign: 'start'
+                                        display: 'block'
                                     };
 
-                                    // Check if we want staggered or left-aligned
-                                    // Default to Staggered if there are 2 parts and it's not too long
-                                    const isStaggered = !!part2 && displayName.length < 20;
-
-                                    if (!isStaggered) {
-                                        return (
-                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem', width: '100%' }}>
-                                                <span style={baseStyle}>{part1}</span>
-                                                {part2 && <span style={baseStyle}>{part2}</span>}
-                                            </div>
-                                        );
+                                    if (!part2) {
+                                        return <span style={textStyle}>{part1}</span>;
                                     }
 
                                     return (
-                                        <div style={{ position: 'relative', display: 'inline-block', width: '100%' }}>
-                                            {/* First Line: Top-Start */}
-                                            <div style={{ display: 'flex', justifyContent: 'flex-start', width: '100%' }}>
-                                                <span style={baseStyle}>{part1}</span>
-                                            </div>
+                                        <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                            {/* Top Word: Starts Left */}
+                                            <span style={textStyle}>{part1}</span>
 
-                                            {/* Second Line: Staggered Intersection */}
-                                            <div style={{
-                                                display: 'flex',
-                                                justifyContent: 'flex-start',
-                                                marginInlineStart: `calc(${part1.length}ch - 1.2ch)`,
-                                                marginTop: '-0.1rem',
-                                                width: '100%'
+                                            {/* Bottom Word: Staggered to intersect at the end of the top word */}
+                                            <span style={{
+                                                ...textStyle,
+                                                marginInlineStart: `calc(${part1.length}ch - 0.8ch)`,
+                                                marginTop: '-0.2rem'
                                             }}>
-                                                <span style={baseStyle}>{part2}</span>
-                                            </div>
+                                                {part2}
+                                            </span>
                                         </div>
                                     );
                                 })()}
