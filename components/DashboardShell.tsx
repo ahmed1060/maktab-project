@@ -54,8 +54,8 @@ export default function DashboardShell({ children, user }: DashboardShellProps) 
     const selectedCompanyName = searchParams.get('company')
 
     const displayName = user?.role === 'SUPER_ADMIN'
-        ? (selectedCompanyName || 'TaskManager')
-        : (user?.companyName || 'TaskManager')
+        ? (selectedCompanyName || 'Task Manager')
+        : (user?.companyName || 'Task Manager')
 
     return (
         <div style={{ display: 'flex', minHeight: '100vh', background: 'transparent' }}>
