@@ -456,6 +456,7 @@ export async function DELETE(req: Request) {
 
     const { searchParams } = new URL(req.url)
     const userId = searchParams.get('id')
+    const isPermanent = searchParams.get('permanent') === 'true'
 
     if (!userId) {
         return new NextResponse("User ID required", { status: 400 })
@@ -484,6 +485,18 @@ export async function DELETE(req: Request) {
     }
 
     try {
+        if (isPermanent) {
+            if (userToDelete.status !== 'DELETED') {
+                return new NextResponse("User must be soft-deleted first before permanent removal", { status: 400 })
+            }
+
+            // Hard Delete
+            await prisma.user.delete({
+                where: { id: userId }
+            })
+            return NextResponse.json({ success: true, message: 'User permanently removed' })
+        }
+
         // Soft Delete: Mark as DELETED and scramble email to release unique constraint
         const timestamp = new Date().getTime()
         const deletedEmail = `${userToDelete.email}_DELETED_${timestamp}`
@@ -497,8 +510,11 @@ export async function DELETE(req: Request) {
         })
 
         return NextResponse.json({ success: true })
-    } catch (error) {
+    } catch (error: any) {
         console.error('Delete error:', error)
+        if (error.code === 'P2003') {
+            return new NextResponse("Cannot permanently delete user because they have linked records (Tasks, Salary History, etc.). Please keep them soft-deleted.", { status: 400 })
+        }
         return new NextResponse("Failed to delete user", { status: 500 })
     }
 }

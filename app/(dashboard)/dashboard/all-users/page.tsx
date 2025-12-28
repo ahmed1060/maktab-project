@@ -131,6 +131,28 @@ export default function AllUsersPage() {
         }
     }
 
+    const handlePermanentDelete = async (user: User) => {
+        const confirmMsg = locale === 'ar'
+            ? `هل أنت متأكد أنك تريد حذف ${user.firstName} نهائياً؟ لا يمكن التراجع عن هذا الإجراء.`
+            : `Are you sure you want to PERMANENTLY delete ${user.firstName}? This action cannot be undone.`
+
+        if (!window.confirm(confirmMsg)) return
+
+        try {
+            const res = await fetch(`/api/users?id=${user.id}&permanent=true`, { method: 'DELETE' })
+            if (res.ok) {
+                alert(locale === 'ar' ? 'تم حذف المستخدم نهائياً' : 'User deleted permanently')
+                fetchData()
+            } else {
+                const errorText = await res.text()
+                alert(errorText || t('error_generic'))
+            }
+        } catch (error) {
+            console.error('Failed to delete user', error)
+            alert(t('error_generic'))
+        }
+    }
+
     return (
         <div style={{ direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
@@ -371,21 +393,47 @@ export default function AllUsersPage() {
                                                     </span>
                                                 </td>
                                                 <td style={{ padding: '1rem', textAlign: locale === 'ar' ? 'left' : 'right' }}>
-                                                    <button
-                                                        onClick={() => setViewingProfileId(user.id)}
-                                                        style={{
-                                                            background: '#eff6ff',
-                                                            color: '#2563eb',
-                                                            padding: '0.4rem 0.8rem',
-                                                            borderRadius: '0.5rem',
-                                                            fontWeight: '500',
-                                                            fontSize: '0.8rem',
-                                                            border: 'none',
-                                                            cursor: 'pointer'
-                                                        }}
-                                                    >
-                                                        {t('view_profile_button')}
-                                                    </button>
+                                                    <div style={{ display: 'flex', gap: '0.5rem', justifyContent: locale === 'ar' ? 'flex-start' : 'flex-end' }}>
+                                                        <button
+                                                            onClick={() => setViewingProfileId(user.id)}
+                                                            style={{
+                                                                background: '#eff6ff',
+                                                                color: '#2563eb',
+                                                                padding: '0.4rem 0.8rem',
+                                                                borderRadius: '0.5rem',
+                                                                fontWeight: '500',
+                                                                fontSize: '0.8rem',
+                                                                border: 'none',
+                                                                cursor: 'pointer'
+                                                            }}
+                                                        >
+                                                            {t('view_profile_button')}
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handlePermanentDelete(user)}
+                                                            title={t('delete')}
+                                                            style={{
+                                                                background: '#fee2e2',
+                                                                color: '#dc2626',
+                                                                padding: '0.4rem 0.6rem',
+                                                                borderRadius: '0.5rem',
+                                                                fontWeight: '600',
+                                                                fontSize: '0.8rem',
+                                                                border: 'none',
+                                                                cursor: 'pointer',
+                                                                display: 'flex',
+                                                                alignItems: 'center',
+                                                                justifyContent: 'center'
+                                                            }}
+                                                        >
+                                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                                <polyline points="3 6 5 6 21 6"></polyline>
+                                                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                                                                <line x1="10" y1="11" x2="10" y2="17"></line>
+                                                                <line x1="14" y1="11" x2="14" y2="17"></line>
+                                                            </svg>
+                                                        </button>
+                                                    </div>
                                                 </td>
                                             </tr>
                                         ))}
