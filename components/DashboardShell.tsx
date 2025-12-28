@@ -82,7 +82,7 @@ export default function DashboardShell({ children, user }: DashboardShellProps) 
                 zIndex: 50,
                 transition: 'width 0.4s cubic-bezier(0.16, 1, 0.3, 1), transform 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
                 [isRtl ? 'right' : 'left']: 0,
-                transform: (isMobile && !isSidebarOpen) ? (isRtl ? 'translateX(100%)' : 'translateX(0)') : 'translateX(0)',
+                transform: (isMobile && !isSidebarOpen) ? (isRtl ? 'translateX(100%)' : 'translateX(-100%)') : 'translateX(0)',
                 boxShadow: (isMobile && isSidebarOpen) ? (isRtl ? '-20px 0 50px rgba(0,0,0,0.2)' : '20px 0 50px rgba(0,0,0,0.2)') : 'none',
                 overflow: 'hidden',
                 direction: isRtl ? 'rtl' : 'ltr'
