@@ -174,10 +174,10 @@ export default function DashboardShell({ children, user }: DashboardShellProps) 
                                                 {/* Top Word: Upper-left of text group */}
                                                 <span style={textStyle}>{part1}</span>
 
-                                                {/* Bottom Word: Precise intersection (T under m) */}
+                                                {/* Bottom Word: Aligned vertical axis (Center of 1st char under Center of last char) */}
                                                 <span style={{
                                                     ...textStyle,
-                                                    marginInlineStart: `calc(${part1.length - 1}ch)`,
+                                                    marginInlineStart: `calc(${part1.length - 1}ch + 0.12ch)`, // Fine-tuned offset for axis alignment
                                                     marginTop: '-0.1rem'
                                                 }}>
                                                     {part2}
