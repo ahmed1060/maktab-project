@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import EmployeeProfileForm from '@/components/EmployeeProfileForm'
+import ConfirmModal from '@/components/ConfirmModal'
 import { useRouter } from 'next/navigation'
 import { useLanguage } from '@/context/LanguageContext'
 
@@ -34,6 +35,7 @@ export default function AllUsersPage() {
     const [companyFilter, setCompanyFilter] = useState('')
     const [showExUsersModal, setShowExUsersModal] = useState(false)
     const [viewingProfileId, setViewingProfileId] = useState<string | null>(null)
+    const [permanentDeleteConfirm, setPermanentDeleteConfirm] = useState<{ isOpen: boolean, user: User | null }>({ isOpen: false, user: null })
 
     const fetchData = async () => {
         try {
@@ -132,12 +134,6 @@ export default function AllUsersPage() {
     }
 
     const handlePermanentDelete = async (user: User) => {
-        const confirmMsg = locale === 'ar'
-            ? `هل أنت متأكد أنك تريد حذف ${user.firstName} نهائياً؟ لا يمكن التراجع عن هذا الإجراء.`
-            : `Are you sure you want to PERMANENTLY delete ${user.firstName}? This action cannot be undone.`
-
-        if (!window.confirm(confirmMsg)) return
-
         try {
             const res = await fetch(`/api/users?id=${user.id}&permanent=true`, { method: 'DELETE' })
             if (res.ok) {
@@ -150,6 +146,8 @@ export default function AllUsersPage() {
         } catch (error) {
             console.error('Failed to delete user', error)
             alert(t('error_generic'))
+        } finally {
+            setPermanentDeleteConfirm({ isOpen: false, user: null })
         }
     }
 
@@ -410,7 +408,7 @@ export default function AllUsersPage() {
                                                             {t('view_profile_button')}
                                                         </button>
                                                         <button
-                                                            onClick={() => handlePermanentDelete(user)}
+                                                            onClick={() => setPermanentDeleteConfirm({ isOpen: true, user })}
                                                             title={t('delete')}
                                                             style={{
                                                                 background: '#fee2e2',
@@ -454,6 +452,19 @@ export default function AllUsersPage() {
                     )}
                 </div>
             )}
+
+            <ConfirmModal
+                isOpen={permanentDeleteConfirm.isOpen}
+                title={locale === 'ar' ? 'حذف المستخدم نهائياً' : 'Permanent User Deletion'}
+                message={locale === 'ar'
+                    ? `هل أنت متأكد أنك تريد حذف ${permanentDeleteConfirm.user?.firstName} ${permanentDeleteConfirm.user?.lastName} نهائياً؟ لا يمكن التراجع عن هذا الإجراء وسيتم حذف جميع بياناته المرتبطة.`
+                    : `Are you sure you want to PERMANENTLY delete ${permanentDeleteConfirm.user?.firstName} ${permanentDeleteConfirm.user?.lastName}? This action cannot be undone and will remove all associated data.`
+                }
+                confirmText={t('delete')}
+                onConfirm={() => permanentDeleteConfirm.user && handlePermanentDelete(permanentDeleteConfirm.user)}
+                onCancel={() => setPermanentDeleteConfirm({ isOpen: false, user: null })}
+                variant="danger"
+            />
         </div>
     )
 }
