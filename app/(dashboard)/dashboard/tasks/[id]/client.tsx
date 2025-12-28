@@ -11,7 +11,11 @@ import { useLanguage } from '@/context/LanguageContext'
 export default function TaskDetailClient({ task: initialTask, userRole, userId, creatorName, currentUserName }: { task: any, userRole: string, userId: string, creatorName: string, currentUserName: string }) {
     const { t, locale } = useLanguage()
     const [task, setTask] = useState(initialTask)
-    const [existingAttachments, setExistingAttachments] = useState<any[]>(task.attachments || [])
+    const [existingAttachments, setExistingAttachments] = useState<any[]>(() => {
+        try {
+            return initialTask.attachments ? JSON.parse(initialTask.attachments) : []
+        } catch { return [] }
+    })
     const [note, setNote] = useState('')
     const [cost, setCost] = useState('')
     const [costDescription, setCostDescription] = useState('')
@@ -56,9 +60,11 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
         if (task.comments) {
             try {
                 const logs = JSON.parse(task.comments)
-                const lastEdit = [...logs].reverse().find((l: any) => l.type === 'TASK_EDITED')
-                if (lastEdit && lastEdit.changes) {
-                    setLatestChanges(lastEdit.changes)
+                if (Array.isArray(logs)) {
+                    const lastEdit = [...logs].reverse().find((l: any) => l.type === 'TASK_EDITED')
+                    if (lastEdit && lastEdit.changes) {
+                        setLatestChanges(lastEdit.changes)
+                    }
                 }
             } catch (e) { console.error('Error parsing changes:', e) }
         }
@@ -180,7 +186,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
 
         try {
             const comments = JSON.parse(task.comments || '[]')
-            const locationCount = comments.filter((c: any) => c.type === 'LOCATION_ADDED').length
+            const locationCount = Array.isArray(comments) ? comments.filter((c: any) => c.type === 'LOCATION_ADDED').length : 0
             if (locationCount >= 2) {
                 showToast(t('max_locations_error'), 'error')
                 return
@@ -308,7 +314,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
     const isTransferredTask = () => {
         try {
             const logs = JSON.parse(task.comments || '[]')
-            return logs.some((l: any) => l.type === 'TASK_TRANSFERRED')
+            return Array.isArray(logs) && logs.some((l: any) => l.type === 'TASK_TRANSFERRED')
         } catch { return false }
     }
 
@@ -460,8 +466,11 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                                 {t('task_updated_msg').replace('{author}', (() => {
                                     try {
                                         const logs = JSON.parse(task.comments || '[]')
-                                        const lastEdit = [...logs].reverse().find((l: any) => l.type === 'TASK_EDITED')
-                                        return lastEdit?.author || t('an_admin')
+                                        if (Array.isArray(logs)) {
+                                            const lastEdit = [...logs].reverse().find((l: any) => l.type === 'TASK_EDITED')
+                                            return lastEdit?.author || t('an_admin')
+                                        }
+                                        return t('an_admin')
                                     } catch { return locale === 'ar' ? 'مسؤول' : 'an admin' }
                                 })())}
                             </p>
@@ -524,9 +533,11 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
             </div>
 
             {/* Comments / Logs Section */}
-            {task.comments && (() => {
+            {(() => {
+                if (!task.comments) return null
                 try {
                     const logs = JSON.parse(task.comments)
+                    if (!Array.isArray(logs)) return null
                     const regularLogs = logs.filter((l: any) => l.type !== 'COST_ADDITION' && l.type !== 'LOCATION_ADDED')
                     if (regularLogs.length > 0) {
                         return (
@@ -570,9 +581,12 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
             </div>
 
             {/* Costs Section */}
-            {task.comments && (() => {
+            {(() => {
+                if (!task.comments) return null
                 try {
-                    const costs = JSON.parse(task.comments).filter((l: any) => l.type === 'COST_ADDITION')
+                    const logs = JSON.parse(task.comments)
+                    if (!Array.isArray(logs)) return null
+                    const costs = logs.filter((l: any) => l.type === 'COST_ADDITION')
                     if (costs.length > 0) {
                         return (
                             <div style={{ marginTop: '2rem', borderTop: '1px solid #e2e8f0', paddingTop: '1.5rem' }}>
@@ -607,9 +621,12 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
             })()}
 
             {/* Location History Section */}
-            {task.comments && (() => {
+            {(() => {
+                if (!task.comments) return null
                 try {
-                    const locations = JSON.parse(task.comments).filter((l: any) => l.type === 'LOCATION_ADDED')
+                    const logs = JSON.parse(task.comments)
+                    if (!Array.isArray(logs)) return null
+                    const locations = logs.filter((l: any) => l.type === 'LOCATION_ADDED')
                     if (locations.length > 0) {
                         return (
                             <div style={{ marginTop: '2rem', borderTop: '1px solid #e2e8f0', paddingTop: '1.5rem' }}>
