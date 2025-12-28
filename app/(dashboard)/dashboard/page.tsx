@@ -83,7 +83,23 @@ export default async function DashboardPage({ searchParams }: { searchParams: { 
         }
 
         // Regular Admin/Team Leader view
-        const baseWhere = companyId ? { assignee: { companyId } } : (userRole === 'TEAM_LEADER' ? { assignee: { companyId: (session?.user as any).companyId } } : {})
+        const userCompanyId = (session?.user as any).companyId
+
+        // Determine final company ID: Non-super admins are FORCED to their own company
+        const finalCompanyId = userRole === 'SUPER_ADMIN' ? companyId : userCompanyId
+
+        // If a non-super admin has no company, they see nothing
+        if (userRole !== 'SUPER_ADMIN' && !userCompanyId) {
+            // Return early or show empty dashboard
+            return (
+                <div className="flex flex-col items-center justify-center py-20">
+                    <h1 className="text-2xl font-bold text-slate-800">{t('unauthorized' as any)}</h1>
+                    <p className="text-slate-500">{t('no_company_assigned' as any)}</p>
+                </div>
+            )
+        }
+
+        const baseWhere = finalCompanyId ? { assignee: { companyId: finalCompanyId } } : {}
 
         const totalTasks = await prisma.task.count({ where: baseWhere })
         const completedTasks = await prisma.task.count({ where: { ...baseWhere, status: 'COMPLETED' } })
@@ -98,7 +114,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: { 
             where: {
                 month: currentMonth,
                 year: currentYear,
-                user: companyId ? { companyId } : (userRole === 'TEAM_LEADER' ? { companyId: (session?.user as any).companyId } : {})
+                user: finalCompanyId ? { companyId: finalCompanyId } : {}
             },
             _sum: {
                 bonusDays: true,

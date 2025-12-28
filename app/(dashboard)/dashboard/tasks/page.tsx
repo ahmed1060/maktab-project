@@ -14,11 +14,20 @@ export default async function TasksPage({ searchParams }: { searchParams: { comp
     }
 
     const whereClause: any = {}
+    const userCompanyId = (session?.user as any)?.companyId
 
     if (role === 'EMPLOYEE') {
         whereClause.assigneeId = (session?.user as any)?.id
-    } else {
-        // ADMIN, SUPER_ADMIN, TEAM_LEADER
+    } else if (['ADMIN', 'TEAM_LEADER'].includes(role)) {
+        // Strict isolation for Admin/Team Leader: Must match their company
+        if (!userCompanyId) {
+            // Unassigned Admins see nothing
+            const tasks: any[] = []
+            return <TasksClient tasks={tasks} role={role} currentUserId={(session?.user as any)?.id} />
+        }
+        whereClause.assignee = { companyId: userCompanyId }
+    } else if (role === 'SUPER_ADMIN') {
+        // Super Admin can filter by company or see everything
         if (companyId) {
             whereClause.assignee = { companyId }
         }

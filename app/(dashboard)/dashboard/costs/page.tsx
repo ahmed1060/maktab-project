@@ -10,17 +10,28 @@ export default async function CostsPage({ searchParams }: { searchParams: { comp
         redirect('/login')
     }
 
+    const userRole = (session.user as any)?.role
+
+    // Only allow ADMIN, SUPER_ADMIN, TEAM_LEADER
+    if (!['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole)) {
+        redirect('/dashboard')
+    }
+
     let companyId: string | undefined = undefined
     if (searchParams.company) {
         const comp = await prisma.company.findUnique({ where: { name: searchParams.company } })
         if (comp) companyId = comp.id
     }
 
-    const userRole = (session.user as any)?.role
+    // Determine strict company filter for non-Super Admins
+    const userCompanyId = (session.user as any).companyId
+    let finalCompanyId = companyId
 
-    // Only allow ADMIN, SUPER_ADMIN, TEAM_LEADER
-    if (!['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole)) {
-        redirect('/dashboard')
+    if (userRole !== 'SUPER_ADMIN') {
+        if (!userCompanyId) {
+            return <CostsClient tasksWithCosts={[]} userRole={userRole} />
+        }
+        finalCompanyId = userCompanyId
     }
 
     // Fetch all approved/completed tasks with totalCost > 0 and PENDING_PAYMENT status
@@ -42,7 +53,7 @@ export default async function CostsPage({ searchParams }: { searchParams: { comp
                 {
                     paymentStatus: 'PENDING_PAYMENT'
                 },
-                ...(companyId ? [{ assignee: { companyId } }] : [])
+                ...(finalCompanyId ? [{ assignee: { companyId: finalCompanyId } }] : [])
             ]
         },
         select: {

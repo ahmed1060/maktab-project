@@ -14,10 +14,20 @@ export default async function ObligationsPage({ searchParams }: { searchParams: 
     }
 
     const whereClause: any = {}
+    const userCompanyId = (session?.user as any)?.companyId
 
     if (role === 'EMPLOYEE') {
         whereClause.assigneeId = (session?.user as any)?.id
-    } else {
+    } else if (['ADMIN', 'TEAM_LEADER'].includes(role)) {
+        // Strict isolation for Admin/Team Leader: Must match their company
+        if (!userCompanyId) {
+            // Unassigned Admins see nothing
+            const obligations: any[] = []
+            return <ObligationsClient obligations={obligations} role={role} />
+        }
+        whereClause.assignee = { companyId: userCompanyId }
+    } else if (role === 'SUPER_ADMIN') {
+        // Super Admin can filter by company or see everything
         if (companyId) {
             whereClause.assignee = { companyId }
         }
