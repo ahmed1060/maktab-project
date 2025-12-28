@@ -1,12 +1,36 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { getServerSession } from "next-auth"
+import { authOptions } from "@/lib/auth"
+import { verifyResourceAccess } from "@/lib/security"
 
 export async function GET(request: Request, { params }: { params: { id: string } }) {
     try {
+        const session = await getServerSession(authOptions)
+        if (!session) return new NextResponse("Unauthorized", { status: 401 })
+
         const userId = params.id
+        const userRole = (session.user as any).role
+
+        // Security check: Only Admins, Super Admins, or Self
+        // And even then, check company isolation for non-Super Admins
+        const isSelf = (session.user as any).id === userId
+        const isAuthorizedRole = ['ADMIN', 'SUPER_ADMIN'].includes(userRole)
+
+        if (!isSelf && !isAuthorizedRole) {
+            return new NextResponse("Forbidden", { status: 403 })
+        }
+
+        // Company Isolation Check
+        const hasAccess = await verifyResourceAccess(session, userId, 'USER')
+        if (!hasAccess) {
+            return new NextResponse("Access Denied", { status: 403 })
+        }
+
         const now = new Date()
         const currentMonth = now.getMonth() + 1 // 1-12
         const currentYear = now.getFullYear()
+        // ... rest of the code remains the same but within the auth block
 
         // 1. Fetch User to get current salary
         const user = await prisma.user.findUnique({

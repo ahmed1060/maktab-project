@@ -2,11 +2,18 @@ import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
+import { verifyResourceAccess } from "@/lib/security"
 
 export async function PUT(req: Request, { params }: { params: { id: string } }) {
     const session = await getServerSession(authOptions)
     if (!session || !['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes((session.user as any).role)) {
         return new NextResponse("Unauthorized", { status: 401 })
+    }
+
+    // Company Isolation Check
+    const hasAccess = await verifyResourceAccess(session, params.id, 'TASK')
+    if (!hasAccess) {
+        return new NextResponse("Access Denied: Task belongs to a different company", { status: 403 })
     }
 
     try {
