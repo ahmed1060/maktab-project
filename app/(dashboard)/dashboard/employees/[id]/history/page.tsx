@@ -137,7 +137,8 @@ export default function EmployeeHistoryPage() {
                         transition: 'all 0.3s ease',
                         border: '1px solid rgba(255, 255, 255, 0.4)',
                         transform: `translateY(-2px)${locale === 'ar' ? ' scaleX(-1)' : ''}`,
-                        float: locale === 'ar' ? 'right' : 'left'
+                        float: locale === 'ar' ? 'right' : 'left',
+                        marginInlineEnd: '1.25rem'
                     }}
                     onMouseOver={(e) => {
                         e.currentTarget.style.transform = `translateY(-4px)${locale === 'ar' ? ' scaleX(-1)' : ''}`
