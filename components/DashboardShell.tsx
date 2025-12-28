@@ -88,10 +88,10 @@ export default function DashboardShell({ children, user }: DashboardShellProps) 
                 direction: isRtl ? 'rtl' : 'ltr'
             }}>
                 <div style={{
-                    height: (user?.role === 'SUPER_ADMIN') ? '80px' : '65px',
+                    height: (user?.role === 'SUPER_ADMIN') ? '70px' : '55px', // Reduced by 10-15px
                     paddingInlineStart: isCollapsed ? '1rem' : '2rem',
-                    paddingInlineEnd: '10px', // Align with the left edge of the scroller thumb
-                    paddingTop: (user?.role === 'SUPER_ADMIN' ? '0.5rem' : 0),
+                    paddingInlineEnd: '10px',
+                    paddingTop: (user?.role === 'SUPER_ADMIN' ? '0.25rem' : 0), // Tightened
                     display: 'flex',
                     justifyContent: isCollapsed ? 'center' : 'flex-start',
                     alignItems: 'center',
@@ -127,7 +127,7 @@ export default function DashboardShell({ children, user }: DashboardShellProps) 
                                 flex: 1,
                                 position: 'relative',
                                 border: 'none', // Removed testing border
-                                padding: '0.4rem 0.6rem 0.8rem 0.6rem',
+                                padding: '0.4rem 0.6rem 0.5rem 0.6rem', // Trimmed bottom padding slightly
                                 boxSizing: 'border-box',
                                 width: 'fit-content',
                                 maxWidth: '100%',
@@ -220,7 +220,7 @@ export default function DashboardShell({ children, user }: DashboardShellProps) 
                     display: 'flex',
                     flexDirection: 'column',
                     gap: '0.5rem',
-                    padding: (user?.role === 'SUPER_ADMIN') ? '1rem 1rem' : '0 1rem 1rem', // Standard for SA, Reduced for others
+                    padding: (user?.role === 'SUPER_ADMIN') ? '0.25rem 1rem 1rem' : '0 1rem 1rem', // Reduced top padding
                     overflowY: 'auto',
                     overflowX: 'hidden',
                     scrollbarGutter: 'stable'
