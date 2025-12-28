@@ -51,19 +51,31 @@ export default function ObligationDetailClient({ obligation, userRole }: { oblig
     const [isDragging, setIsDragging] = useState(false)
 
     const handleFiles = (files: File[]) => {
+        const allowedExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx']
         const validFiles: File[] = []
         let hasError = false
+        let errorMsg = ''
 
         files.forEach(file => {
+            // 1. Check Size
             if (file.size > 10 * 1024 * 1024) {
                 hasError = true
-            } else {
-                validFiles.push(file)
+                errorMsg = t('failed_upload_files') || `File ${file.name} is too large (max 10MB)`
+            }
+            // 2. Check Extension
+            else {
+                const ext = file.name.substring(file.name.lastIndexOf('.')).toLowerCase()
+                if (!allowedExtensions.includes(ext)) {
+                    hasError = true
+                    errorMsg = `${t('error_generic') || 'Invalid file type'}: ${file.name}`
+                } else {
+                    validFiles.push(file)
+                }
             }
         })
 
         if (hasError) {
-            setFeedbackMessage(t('failed_upload_files'))
+            setFeedbackMessage(errorMsg)
             setShowFeedback(true)
         }
 
@@ -332,7 +344,10 @@ export default function ObligationDetailClient({ obligation, userRole }: { oblig
                             multiple
                             accept=".jpg,.jpeg,.png,.gif,.webp,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx"
                             onChange={(e) => {
-                                if (e.target.files) handleFiles(Array.from(e.target.files))
+                                if (e.target.files) {
+                                    handleFiles(Array.from(e.target.files))
+                                    e.target.value = ''
+                                }
                             }}
                             disabled={uploading}
                             style={{

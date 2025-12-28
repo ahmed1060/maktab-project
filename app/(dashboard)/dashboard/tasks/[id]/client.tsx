@@ -86,11 +86,22 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
     }
 
     const handleFiles = (newFiles: File[]) => {
+        const allowedExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx']
+
         const validFiles = newFiles.filter(file => {
+            // 1. Check Size
             if (file.size > 10 * 1024 * 1024) {
-                showToast(`File ${file.name} is too large (max 10MB)`, 'error')
+                showToast(t('failed_upload_files') || `File ${file.name} is too large (max 10MB)`, 'error')
                 return false
             }
+
+            // 2. Check Extension
+            const ext = file.name.substring(file.name.lastIndexOf('.')).toLowerCase()
+            if (!allowedExtensions.includes(ext)) {
+                showToast(`${t('error_generic') || 'Invalid file type'}: ${file.name}`, 'error')
+                return false
+            }
+
             return true
         })
         setPendingFiles(prev => [...prev, ...validFiles])
@@ -707,7 +718,20 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                             onDrop={e => { e.preventDefault(); setIsDragging(false); if (e.dataTransfer.files.length) handleFiles(Array.from(e.dataTransfer.files)); }}
                             style={{ border: `2px dashed ${isDragging ? '#3b82f6' : '#cbd5e1'}`, borderRadius: '0.75rem', padding: '2.5rem', textAlign: 'center', background: isDragging ? '#eff6ff' : '#f8fafc', transition: 'all 0.2s', cursor: 'pointer', position: 'relative' }}
                         >
-                            <input type="file" multiple onChange={e => e.target.files && handleFiles(Array.from(e.target.files))} style={{ opacity: 0, position: 'absolute', inset: 0, cursor: 'pointer' }} disabled={uploading} />
+                            <input
+                                type="file"
+                                multiple
+                                accept=".jpg,.jpeg,.png,.gif,.webp,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx"
+                                onChange={e => {
+                                    if (e.target.files) {
+                                        handleFiles(Array.from(e.target.files))
+                                        // Reset input so the same file can be selected again if removed
+                                        e.target.value = ''
+                                    }
+                                }}
+                                style={{ opacity: 0, position: 'absolute', inset: 0, cursor: 'pointer' }}
+                                disabled={uploading}
+                            />
                             <div style={{ pointerEvents: 'none' }}>
                                 <div style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>☁️</div>
                                 <div style={{ fontWeight: '600', color: '#475569' }}>{t('upload_drag_files_msg')}</div>

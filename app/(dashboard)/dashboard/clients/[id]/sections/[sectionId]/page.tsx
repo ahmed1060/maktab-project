@@ -383,7 +383,33 @@ export default function SectionNotesPage() {
                                 </label>
                                 <input
                                     type="file"
-                                    onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
+                                    accept=".jpg,.jpeg,.png,.gif,.webp,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx"
+                                    onChange={(e) => {
+                                        const file = e.target.files?.[0]
+                                        if (file) {
+                                            const MAX_SIZE = 10 * 1024 * 1024
+                                            const allowedExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx']
+
+                                            if (file.size > MAX_SIZE) {
+                                                showToast(t('failed_upload_files') || `File ${file.name} is too large (max 10MB)`, 'error')
+                                                e.target.value = ''
+                                                setSelectedFile(null)
+                                                return
+                                            }
+
+                                            const ext = file.name.substring(file.name.lastIndexOf('.')).toLowerCase()
+                                            if (!allowedExtensions.includes(ext)) {
+                                                showToast(`${t('error_generic') || 'Invalid file type'}: ${file.name}`, 'error')
+                                                e.target.value = ''
+                                                setSelectedFile(null)
+                                                return
+                                            }
+
+                                            setSelectedFile(file)
+                                        } else {
+                                            setSelectedFile(null)
+                                        }
+                                    }}
                                     className="input"
                                     style={{
                                         width: '100%',

@@ -5,43 +5,64 @@ export async function POST(req: Request) {
     console.log('[UPLOAD_API] Request received')
     try {
         const data = await req.formData()
-        const file: File | null = data.get('file') as unknown as File
         const folder = (data.get('folder') as string) || 'misc'
 
-        console.log(`[UPLOAD_API] Processing file: ${file?.name}, size: ${file?.size}, folder: ${folder}`)
+        // Handle both 'files' (plural) and 'file' (singular) keys
+        const files: File[] = []
 
-        if (!file) {
-            return NextResponse.json({ success: false, error: 'No file provided' }, { status: 400 })
+        // Check for multiple files
+        const pluralFiles = data.getAll('files') as unknown as File[]
+        if (pluralFiles && pluralFiles.length > 0) {
+            files.push(...pluralFiles)
         }
 
-        // 1. Validate Size (10MB)
+        // Check for single file
+        const singularFile = data.get('file') as unknown as File
+        if (singularFile && singularFile instanceof File) {
+            files.push(singularFile)
+        }
+
+        console.log(`[UPLOAD_API] Processing ${files.length} files in folder: ${folder}`)
+
+        if (files.length === 0) {
+            return NextResponse.json({ success: false, error: 'No files provided' }, { status: 400 })
+        }
+
         const MAX_SIZE = 10 * 1024 * 1024 // 10MB
-        if (file.size > MAX_SIZE) {
-            return NextResponse.json({ success: false, error: 'File size exceeds 10MB limit' }, { status: 400 })
-        }
-
-        // 2. Validate Extension
         const allowedExtensions = [
-            // Images
-            '.jpg', '.jpeg', '.png', '.gif', '.webp',
-            // Documents
-            '.pdf',
-            // Office
-            '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx'
+            '.jpg', '.jpeg', '.png', '.gif', '.webp', // Images
+            '.pdf', // Documents
+            '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx' // Office
         ]
-        const ext = file.name.substring(file.name.lastIndexOf('.')).toLowerCase()
 
-        if (!allowedExtensions.includes(ext)) {
-            return NextResponse.json({
-                success: false,
-                error: 'Invalid file type. Only Images, PDFs, and Office documents are allowed.'
-            }, { status: 400 })
+        const publicUrls: string[] = []
+
+        for (const file of files) {
+            // 1. Validate Size
+            if (file.size > MAX_SIZE) {
+                return NextResponse.json({ success: false, error: `File ${file.name} exceeds 10MB limit` }, { status: 400 })
+            }
+
+            // 2. Validate Extension
+            const ext = file.name.substring(file.name.lastIndexOf('.')).toLowerCase()
+            if (!allowedExtensions.includes(ext)) {
+                return NextResponse.json({
+                    success: false,
+                    error: `Invalid file type for ${file.name}. Only Images, PDFs, and Office documents are allowed.`
+                }, { status: 400 })
+            }
+
+            // 3. Upload to Supabase via helper
+            const publicUrl = await uploadToCloud(file, folder)
+            publicUrls.push(publicUrl)
         }
 
-        // 3. Upload to Supabase via helper
-        const publicUrl = await uploadToCloud(file, folder)
-
-        return NextResponse.json({ success: true, url: publicUrl })
+        // Return single url for legacy single-file components, and urls array for multi-file components
+        return NextResponse.json({
+            success: true,
+            url: publicUrls[0], // For legacy support
+            urls: publicUrls    // For multi-file support
+        })
     } catch (error: any) {
         console.error('Upload route error:', error)
         return NextResponse.json({
