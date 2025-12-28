@@ -126,8 +126,8 @@ export default function DashboardShell({ children, user }: DashboardShellProps) 
                                 alignItems: 'flex-start',
                                 flex: 1,
                                 position: 'relative',
-                                border: '1px solid #ef4444', // 1px border for testing
-                                padding: '0.4rem 0.6rem 0.8rem 0.6rem', // Even more bottom padding
+                                border: 'none', // Removed testing border
+                                padding: '0.4rem 0.6rem 0.8rem 0.6rem',
                                 boxSizing: 'border-box',
                                 width: 'fit-content',
                                 maxWidth: '100%',
@@ -158,26 +158,41 @@ export default function DashboardShell({ children, user }: DashboardShellProps) 
                                         transition: 'font-size 0.2s ease'
                                     };
 
+                                    const isArabic = /[\u0600-\u06FF]/.test(displayName);
+                                    const textDirection = isArabic ? 'rtl' : 'ltr';
+
                                     if (!part2) {
-                                        return <span style={{ ...textStyle, fontSize: 'clamp(1.2rem, 1.8vw, 2rem)' }}>{part1}</span>;
+                                        return (
+                                            <span dir={textDirection} style={{
+                                                ...textStyle,
+                                                fontSize: 'clamp(1.2rem, 1.8vw, 2rem)',
+                                                textAlign: 'center'
+                                            }}>
+                                                {part1}
+                                            </span>
+                                        );
                                     }
 
                                     return (
-                                        <div style={{
-                                            display: 'flex',
-                                            flexDirection: 'column',
-                                            width: '100%',
-                                            alignItems: 'center', // Center content horizontally
-                                            justifyContent: 'center'
-                                        }}>
+                                        <div
+                                            dir={textDirection}
+                                            style={{
+                                                display: 'flex',
+                                                flexDirection: 'column',
+                                                width: '100%',
+                                                alignItems: 'center', // Center group as a whole
+                                                justifyContent: 'center'
+                                            }}
+                                        >
                                             <div style={{ width: 'fit-content', position: 'relative' }}>
-                                                {/* Top Word: Upper-left of text group */}
+                                                {/* Top Word */}
                                                 <span style={textStyle}>{part1}</span>
 
-                                                {/* Bottom Word: Pulled back significantly to align vertical axes (e.g. Center of M under Center of k) */}
+                                                {/* Bottom Word: Staggered logically. 
+                                                    In LTR, pushes Right. In RTL, pushes Left. */}
                                                 <span style={{
                                                     ...textStyle,
-                                                    marginInlineStart: `calc(${part1.length - 1}ch * 0.72)`, // Aggressive reduction for proportional fonts
+                                                    marginInlineStart: `calc(${part1.length - 1}ch * 0.72)`,
                                                     marginTop: '-0.3rem'
                                                 }}>
                                                     {part2}
