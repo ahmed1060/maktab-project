@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import EmployeeProfileForm from '@/components/EmployeeProfileForm'
 import ConfirmModal from '@/components/ConfirmModal'
+import Modal from '@/components/Modal'
 import { useRouter } from 'next/navigation'
 import { useLanguage } from '@/context/LanguageContext'
 
@@ -36,6 +37,7 @@ export default function AllUsersPage() {
     const [showExUsersModal, setShowExUsersModal] = useState(false)
     const [viewingProfileId, setViewingProfileId] = useState<string | null>(null)
     const [permanentDeleteConfirm, setPermanentDeleteConfirm] = useState<{ isOpen: boolean, user: User | null }>({ isOpen: false, user: null })
+    const [errorModal, setErrorModal] = useState<{ isOpen: boolean, title: string, message: string }>({ isOpen: false, title: '', message: '' })
 
     const fetchData = async () => {
         try {
@@ -137,15 +139,27 @@ export default function AllUsersPage() {
         try {
             const res = await fetch(`/api/users?id=${user.id}&permanent=true`, { method: 'DELETE' })
             if (res.ok) {
-                alert(locale === 'ar' ? 'تم حذف المستخدم نهائياً' : 'User deleted permanently')
+                setErrorModal({
+                    isOpen: true,
+                    title: locale === 'ar' ? 'نجاح' : 'Success',
+                    message: locale === 'ar' ? 'تم حذف المستخدم نهائياً' : 'User deleted permanently'
+                })
                 fetchData()
             } else {
                 const errorText = await res.text()
-                alert(errorText || t('error_generic'))
+                setErrorModal({
+                    isOpen: true,
+                    title: locale === 'ar' ? 'خطأ' : 'Error',
+                    message: errorText || t('error_generic')
+                })
             }
         } catch (error) {
             console.error('Failed to delete user', error)
-            alert(t('error_generic'))
+            setErrorModal({
+                isOpen: true,
+                title: locale === 'ar' ? 'خطأ' : 'Error',
+                message: t('error_generic')
+            })
         } finally {
             setPermanentDeleteConfirm({ isOpen: false, user: null })
         }
@@ -465,6 +479,19 @@ export default function AllUsersPage() {
                 onCancel={() => setPermanentDeleteConfirm({ isOpen: false, user: null })}
                 variant="danger"
             />
+
+            <Modal
+                isOpen={errorModal.isOpen}
+                onClose={() => setErrorModal({ ...errorModal, isOpen: false })}
+                title={errorModal.title}
+            >
+                <div style={{ textAlign: 'center', padding: '1rem' }}>
+                    <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>
+                        {errorModal.title === 'Success' || errorModal.title === 'نجاح' ? '✅' : '⛔'}
+                    </div>
+                    <p style={{ fontSize: '1.1rem', color: '#334155' }}>{errorModal.message}</p>
+                </div>
+            </Modal>
         </div>
     )
 }
