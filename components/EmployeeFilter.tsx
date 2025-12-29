@@ -86,7 +86,17 @@ export default function EmployeeFilter({
     const [employees, setEmployees] = useState<EmployeeType[]>([])
     const [loading, setLoading] = useState(true)
     const [isPopupOpen, setIsPopupOpen] = useState(false)
+    const [isMobile, setIsMobile] = useState(false)
     const { t, locale } = useLanguage()
+
+    useEffect(() => {
+        const checkMobile = () => {
+            setIsMobile(window.innerWidth < 768)
+        }
+        checkMobile()
+        window.addEventListener('resize', checkMobile)
+        return () => window.removeEventListener('resize', checkMobile)
+    }, [])
 
     useEffect(() => {
         if (!isEmployee && !hideEmployeeFilter) {
@@ -267,12 +277,25 @@ export default function EmployeeFilter({
                         {/* Popup / Modal */}
                         {isPopupOpen && (
                             <>
-                                <div onClick={() => setIsPopupOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 999 }} />
+                                <div
+                                    onClick={() => setIsPopupOpen(false)}
+                                    style={{
+                                        position: 'fixed',
+                                        inset: 0,
+                                        zIndex: 999,
+                                        backgroundColor: isMobile ? 'rgba(0,0,0,0.3)' : 'transparent',
+                                        backdropFilter: isMobile ? 'blur(4px)' : 'none'
+                                    }}
+                                />
                                 <div style={{
-                                    position: 'absolute',
-                                    top: 'calc(100% + 0.75rem)',
-                                    [locale === 'ar' ? 'left' : 'right']: 0,
-                                    width: '320px',
+                                    position: isMobile ? 'fixed' : 'absolute',
+                                    top: isMobile ? '50%' : 'calc(100% + 0.75rem)',
+                                    left: isMobile ? '50%' : (locale === 'ar' ? '0' : 'auto'),
+                                    right: isMobile ? 'auto' : (locale === 'ar' ? 'auto' : '0'),
+                                    transform: isMobile ? 'translate(-50%, -50%)' : 'none',
+                                    width: isMobile ? 'min(calc(100vw - 2rem), 400px)' : '320px',
+                                    maxHeight: isMobile ? 'calc(100vh - 4rem)' : 'auto',
+                                    overflowY: isMobile ? 'auto' : 'visible',
                                     backgroundColor: '#ffffff',
                                     borderRadius: '1.25rem',
                                     padding: '1.5rem',
@@ -285,7 +308,18 @@ export default function EmployeeFilter({
                                     animation: 'popIn 0.2s ease-out',
                                     opacity: 1
                                 }}>
-                                    <style>{`@keyframes popIn { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }`}</style>
+                                    <style>{`
+                                        @keyframes popIn { 
+                                            from { 
+                                                opacity: 0; 
+                                                transform: ${isMobile ? 'translate(-50%, -45%)' : 'translateY(-8px)'}; 
+                                            } 
+                                            to { 
+                                                opacity: 1; 
+                                                transform: ${isMobile ? 'translate(-50%, -50%)' : 'translateY(0)'}; 
+                                            } 
+                                        }
+                                    `}</style>
 
                                     {/* Sort controls at the top of filter popup */}
                                     {onSortChange && sortOptions && (
