@@ -337,7 +337,10 @@ export default function DayOffRequestsPage() {
                                                 background: 'rgba(0,0,0,0.02)',
                                                 padding: '0.75rem',
                                                 borderRadius: '0.75rem',
-                                                fontStyle: 'italic'
+                                                fontStyle: 'italic',
+                                                maxHeight: '100px',
+                                                overflowY: 'auto',
+                                                wordBreak: 'break-word'
                                             }}>
                                                 &quot;{req.reason}&quot;
                                             </p>
