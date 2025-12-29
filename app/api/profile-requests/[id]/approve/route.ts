@@ -20,6 +20,14 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     })
 
     if (!request) return new NextResponse("Request not found", { status: 404 })
+
+    // Company Isolation Check
+    const { verifyResourceAccess } = await import("@/lib/security")
+    const hasAccess = await verifyResourceAccess(session, request.userId, 'USER')
+    if (!hasAccess) {
+        return new NextResponse("Forbidden: Access Denied", { status: 403 })
+    }
+
     if (request.status !== 'PENDING') return new NextResponse("Request already processed", { status: 400 })
 
     // Update User

@@ -22,8 +22,20 @@ export async function GET(req: Request) {
     if (!isAdmin) {
         // Regular users can only see their own requests
         whereClause.userId = (session.user as any).id
-    } else if (targetUserId) {
-        whereClause.userId = targetUserId
+    } else {
+        // Admins and Team Leaders are restricted to their company
+        // Super Admin is exempt
+        if (userRole !== 'SUPER_ADMIN') {
+            const userCompanyId = (session.user as any).companyId
+            if (!userCompanyId) {
+                return NextResponse.json([], { status: 200 }) // No company, no results
+            }
+            whereClause.user = { companyId: userCompanyId }
+        }
+
+        if (targetUserId) {
+            whereClause.userId = targetUserId
+        }
     }
 
     const requests = await prisma.profileUpdateRequest.findMany({

@@ -21,10 +21,33 @@ export async function POST(req: Request) {
             return new NextResponse("Invalid task IDs", { status: 400 })
         }
 
+        const userCompanyId = (session.user as any).companyId
+        let finalTaskIds = taskIds
+
+        // For non-Super Admins, only allow tasks from their own company
+        if (role !== 'SUPER_ADMIN') {
+            if (!userCompanyId) {
+                return new NextResponse("Forbidden: No company assigned", { status: 403 })
+            }
+
+            const validTasks = await prisma.task.findMany({
+                where: {
+                    id: { in: taskIds },
+                    assignee: { companyId: userCompanyId }
+                },
+                select: { id: true }
+            })
+            finalTaskIds = validTasks.map(t => t.id)
+
+            if (finalTaskIds.length === 0) {
+                return new NextResponse("Forbidden: Tasks do not belong to your company", { status: 403 })
+            }
+        }
+
         // Update all tasks to PAID and COMPLETED
         const result = await prisma.task.updateMany({
             where: {
-                id: { in: taskIds },
+                id: { in: finalTaskIds },
                 paymentStatus: 'PENDING_PAYMENT'
             },
             data: {
@@ -39,7 +62,7 @@ export async function POST(req: Request) {
             entityType: 'TASK',
             entityId: 'BULK',
             details: JSON.stringify({
-                taskIds,
+                taskIds: finalTaskIds,
                 count: result.count,
                 paymentStatus: 'PAID'
             })

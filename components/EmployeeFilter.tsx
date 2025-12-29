@@ -31,8 +31,11 @@ export default function EmployeeFilter({ onFilterChange, selectedEmployeeId, dat
         fetch('/api/users')
             .then(res => res.json())
             .then(data => {
-                // Sort by role: EMPLOYEE -> TEAM_LEADER -> ADMIN -> SUPER_ADMIN
-                const sortedData = data.sort((a: EmployeeType, b: EmployeeType) => {
+                // Filter out ADMIN role
+                const filteredData = data.filter((emp: EmployeeType) => emp.role !== 'ADMIN')
+
+                // Sort by role: EMPLOYEE -> TEAM_LEADER -> SUPER_ADMIN
+                const sortedData = filteredData.sort((a: EmployeeType, b: EmployeeType) => {
                     const rolePriority: { [key: string]: number } = {
                         'EMPLOYEE': 1,
                         'TEAM_LEADER': 2,
