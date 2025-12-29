@@ -339,7 +339,7 @@ export default function DayOffRequestsPage() {
                                                 borderRadius: '0.75rem',
                                                 fontStyle: 'italic'
                                             }}>
-                                                "{req.reason}"
+                                                &quot;{req.reason}&quot;
                                             </p>
                                         ) : (
                                             <p style={{ margin: 0, fontSize: '0.9rem', color: '#94a3b8', fontStyle: 'italic' }}>
