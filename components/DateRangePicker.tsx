@@ -104,7 +104,7 @@ export default function DateRangePicker({ dateFrom, dateTo, onChange }: DateRang
 
     return (
         <div ref={containerRef} style={{ position: 'relative', direction: locale === 'ar' ? 'rtl' : 'ltr', textAlign: locale === 'ar' ? 'right' : 'left' }}>
-            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600', fontSize: '0.875rem' }}>
+            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '700', fontSize: '0.875rem' }}>
                 {t('filter_by_date_range' as any)}
             </label>
             <div

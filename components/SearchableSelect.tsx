@@ -87,18 +87,37 @@ export default function SearchableSelect({ options, value, onChange, placeholder
                         </svg>
                     </div>
 
-                    <div style={{ display: 'flex', flexDirection: 'column', lineHeight: '1.2' }}>
-                        {selectedOption ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', lineHeight: '1', flex: 1 }}>
+                        {isOpen ? (
+                            <input
+                                ref={inputRef}
+                                type="text"
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                placeholder={placeholder}
+                                onClick={(e) => e.stopPropagation()}
+                                style={{
+                                    width: '100%',
+                                    border: 'none',
+                                    outline: 'none',
+                                    padding: 0,
+                                    fontSize: '0.95rem',
+                                    fontWeight: 500,
+                                    background: 'transparent',
+                                    color: '#0f172a'
+                                }}
+                            />
+                        ) : selectedOption ? (
                             <>
                                 <span style={{ fontWeight: 600, color: '#0f172a' }}>{selectedOption.label}</span>
                                 {selectedOption.subLabel && (
-                                    <span style={{ color: '#64748b', fontSize: '0.75em' }}>
+                                    <span style={{ color: '#64748b', fontSize: '0.75em', marginTop: '2px' }}>
                                         {selectedOption.subLabel}
                                     </span>
                                 )}
                             </>
                         ) : (
-                            <span style={{ color: '#94a3b8' }}>{placeholder}</span>
+                            <span style={{ color: '#94a3b8', fontWeight: 500 }}>{placeholder}</span>
                         )}
                     </div>
                 </div>
@@ -151,36 +170,6 @@ export default function SearchableSelect({ options, value, onChange, placeholder
                     flexDirection: 'column',
                     animation: 'fadeIn 0.1s ease-out'
                 }}>
-                    <div style={{ padding: '0.75rem', borderBottom: '1px solid #f1f5f9', background: 'rgba(248, 250, 252, 0.5)' }}>
-                        <div style={{ position: 'relative' }}>
-                            <input
-                                ref={inputRef}
-                                type="text"
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                placeholder="Search employees..."
-                                style={{
-                                    width: '100%',
-                                    padding: '0.5rem 0.75rem 0.5rem 2.25rem',
-                                    border: '1px solid #e2e8f0',
-                                    borderRadius: '0.5rem',
-                                    fontSize: '0.875rem',
-                                    outline: 'none',
-                                    transition: 'border-color 0.2s',
-                                    background: 'white'
-                                }}
-                                onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
-                                onBlur={(e) => e.target.style.borderColor = '#e2e8f0'}
-                                onClick={(e) => e.stopPropagation()}
-                            />
-                            <div style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }}>
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                    <circle cx="11" cy="11" r="8"></circle>
-                                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-                                </svg>
-                            </div>
-                        </div>
-                    </div>
 
                     <div style={{ overflowY: 'auto', padding: '0.5rem' }}>
                         <div

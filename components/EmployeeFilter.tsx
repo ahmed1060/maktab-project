@@ -61,7 +61,7 @@ export default function EmployeeFilter({
             fetch('/api/users')
                 .then(res => res.json())
                 .then(data => {
-                    const filteredData = data.filter((emp: EmployeeType) => emp.role !== 'ADMIN')
+                    const filteredData = data.filter((emp: EmployeeType) => emp.role !== 'ADMIN' && emp.role !== 'SUPER_ADMIN')
                     const sortedData = filteredData.sort((a: EmployeeType, b: EmployeeType) => {
                         const rolePriority: { [key: string]: number } = {
                             'EMPLOYEE': 1,
@@ -237,6 +237,53 @@ export default function EmployeeFilter({
                                     opacity: 1
                                 }}>
                                     <style>{`@keyframes popIn { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }`}</style>
+
+                                    {/* Sort controls at the top of filter popup */}
+                                    {onSortChange && sortOptions && (
+                                        <div style={{ paddingBottom: '1.25rem', borderBottom: '1px solid #f1f5f9' }}>
+                                            <label style={{ display: 'block', marginBottom: '0.75rem', fontWeight: '800', fontSize: '0.75rem', textTransform: 'uppercase', color: '#64748b', letterSpacing: '0.05em' }}>{t('sort_by')}</label>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                <select
+                                                    value={sortBy}
+                                                    onChange={(e) => onSortChange(e.target.value, sortOrder || 'asc')}
+                                                    className="input"
+                                                    style={{
+                                                        flex: 1,
+                                                        padding: locale === 'ar' ? '0 0.75rem 0 2rem' : '0 2rem 0 0.75rem',
+                                                        borderRadius: '0.75rem',
+                                                        fontSize: '0.875rem',
+                                                        backgroundColor: '#f8fafc',
+                                                        border: '1px solid #e2e8f0',
+                                                        cursor: 'pointer',
+                                                        height: '42px',
+                                                        textAlign: locale === 'ar' ? 'right' : 'left'
+                                                    }}
+                                                >
+                                                    {sortOptions.map(opt => (
+                                                        <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                                    ))}
+                                                </select>
+                                                <button
+                                                    onClick={() => onSortChange(sortBy || '', sortOrder === 'asc' ? 'desc' : 'asc')}
+                                                    style={{
+                                                        height: '42px',
+                                                        width: '42px',
+                                                        borderRadius: '0.75rem',
+                                                        border: '1px solid #e2e8f0',
+                                                        background: 'white',
+                                                        cursor: 'pointer',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center',
+                                                        color: '#475569'
+                                                    }}
+                                                >
+                                                    {sortOrder === 'asc' ? '↑' : '↓'}
+                                                </button>
+                                            </div>
+                                        </div>
+                                    )}
+
                                     <div>
                                         <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '700', fontSize: '0.875rem' }}>{t('filter_by_employee')}</label>
                                         <SearchableSelect
@@ -264,7 +311,6 @@ export default function EmployeeFilter({
                                         </select>
                                     </div>
                                     <div>
-                                        <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '700', fontSize: '0.875rem' }}>{t('date_range')}</label>
                                         <DateRangePicker
                                             dateFrom={dateFrom}
                                             dateTo={dateTo}
@@ -281,48 +327,6 @@ export default function EmployeeFilter({
                     </div>
                 )}
 
-                {/* Sort Control Integration */}
-                {onSortChange && sortOptions && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <select
-                            value={sortBy}
-                            onChange={(e) => onSortChange(e.target.value, sortOrder || 'asc')}
-                            className="input"
-                            style={{
-                                padding: locale === 'ar' ? '0 0.75rem 0 2rem' : '0 2rem 0 0.75rem',
-                                borderRadius: '1.25rem',
-                                fontSize: '0.875rem',
-                                backgroundColor: 'white',
-                                border: '1px solid #e2e8f0',
-                                cursor: 'pointer',
-                                height: '48px',
-                                minWidth: '160px',
-                                textAlign: locale === 'ar' ? 'right' : 'left'
-                            }}
-                        >
-                            {sortOptions.map(opt => (
-                                <option key={opt.value} value={opt.value}>{opt.label}</option>
-                            ))}
-                        </select>
-                        <button
-                            onClick={() => onSortChange(sortBy || '', sortOrder === 'asc' ? 'desc' : 'asc')}
-                            style={{
-                                height: '48px',
-                                width: '48px',
-                                borderRadius: '1.25rem',
-                                border: '1px solid #e2e8f0',
-                                background: 'white',
-                                cursor: 'pointer',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                color: '#475569'
-                            }}
-                        >
-                            {sortOrder === 'asc' ? '↑' : '↓'}
-                        </button>
-                    </div>
-                )}
 
                 {/* Statistics Box */}
                 <div style={{
