@@ -223,15 +223,6 @@ export default function DayOffRequestsPage() {
                     {alert.message}
                 </div>
             )}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-                <h1 className="text-3xl font-bold text-slate-800">{t('day_off_requests' as any)}</h1>
-                {!isAdmin && (
-                    <button onClick={() => setIsRequestModalOpen(true)} className="btn btn-primary">
-                        {t('request_day_off' as any)}
-                    </button>
-                )}
-            </div>
-
             <EmployeeFilter
                 onFilterChange={(newFilters) => setFilters(prev => ({ ...prev, ...newFilters }))}
                 selectedEmployeeId={filters.employeeId}
@@ -241,6 +232,13 @@ export default function DayOffRequestsPage() {
                 searchQuery={filters.search}
                 isEmployee={!isAdmin}
                 totalCount={filteredRequests.length}
+                primaryAction={
+                    !isAdmin && (
+                        <button onClick={() => setIsRequestModalOpen(true)} className="btn btn-primary" style={{ height: '48px', display: 'flex', alignItems: 'center', borderRadius: '1.25rem' }}>
+                            {t('request_day_off' as any)}
+                        </button>
+                    )
+                }
             />
 
             <div style={{ display: 'grid', gridTemplateColumns: isAdmin ? '1fr' : '1fr 350px', gap: '2rem' }}>

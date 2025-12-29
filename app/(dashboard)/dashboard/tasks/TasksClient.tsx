@@ -106,14 +106,6 @@ export default function TasksClient({ tasks, role, currentUserId }: TasksClientP
 
     return (
         <div>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginBottom: '1.5rem' }}>
-                {['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(role) && (
-                    <Link href="/dashboard/tasks/new" className="btn btn-primary" style={{ textDecoration: 'none' }}>
-                        {t('create_new_task')}
-                    </Link>
-                )}
-            </div>
-
             <EmployeeFilter
                 onFilterChange={setFilters}
                 selectedEmployeeId={filters.employeeId}
@@ -123,21 +115,23 @@ export default function TasksClient({ tasks, role, currentUserId }: TasksClientP
                 selectedStatus={filters.status}
                 searchQuery={filters.search}
                 isEmployee={role === 'EMPLOYEE'}
+                sortBy={sortBy}
+                sortOrder={sortOrder}
+                onSortChange={(field, order) => { setSortBy(field); setSortOrder(order) }}
+                sortOptions={[
+                    { label: t('smart_sort'), value: 'smart' },
+                    { label: t('deadline_label'), value: 'deadline' },
+                    { label: t('difficulty'), value: 'difficulty' },
+                    { label: t('date_created'), value: 'createdAt' },
+                ]}
+                primaryAction={
+                    ['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(role) && (
+                        <Link href="/dashboard/tasks/new" className="btn btn-primary" style={{ textDecoration: 'none', height: '48px', display: 'flex', alignItems: 'center', borderRadius: '1.25rem' }}>
+                            {t('create_new_task')}
+                        </Link>
+                    )
+                }
             />
-
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '1rem' }}>
-                <SortControl
-                    options={[
-                        { label: t('smart_sort'), value: 'smart' },
-                        { label: t('deadline_label'), value: 'deadline' },
-                        { label: t('difficulty'), value: 'difficulty' },
-                        { label: t('date_created'), value: 'createdAt' },
-                    ]}
-                    sortBy={sortBy}
-                    sortOrder={sortOrder}
-                    onSortChange={(field, order) => { setSortBy(field); setSortOrder(order) }}
-                />
-            </div>
 
             <div style={{ display: 'grid', gap: '1rem' }}>
                 {sortedTasks.length > 0 ? (

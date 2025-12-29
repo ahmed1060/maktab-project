@@ -4,6 +4,11 @@ import { useLanguage } from '@/context/LanguageContext'
 import SearchableSelect from './SearchableSelect'
 import DateRangePicker from './DateRangePicker'
 
+interface SortOption {
+    label: string
+    value: string
+}
+
 interface EmployeeFilterProps {
     onFilterChange: (filters: { employeeId: string; dateFrom: string; dateTo: string; status: string; search: string }) => void
     selectedEmployeeId: string
@@ -14,6 +19,12 @@ interface EmployeeFilterProps {
     selectedStatus?: string
     searchQuery?: string
     isEmployee?: boolean
+    // New Props for Reorganization
+    sortBy?: string
+    sortOrder?: 'asc' | 'desc'
+    onSortChange?: (field: string, order: 'asc' | 'desc') => void
+    sortOptions?: SortOption[]
+    primaryAction?: React.ReactNode
 }
 
 // Define interface for Employee data locally since it's just for display
@@ -33,7 +44,12 @@ export default function EmployeeFilter({
     totalCost,
     selectedStatus = '',
     searchQuery = '',
-    isEmployee = false
+    isEmployee = false,
+    sortBy,
+    sortOrder,
+    onSortChange,
+    sortOptions,
+    primaryAction
 }: EmployeeFilterProps) {
     const [employees, setEmployees] = useState<EmployeeType[]>([])
     const [loading, setLoading] = useState(true)
@@ -92,7 +108,7 @@ export default function EmployeeFilter({
     ].reduce((a, b) => a + b, 0)
 
     if (loading) {
-        return <div style={{ fontSize: '0.875rem', color: '#64748b' }}>{t('loading_filters')}</div>
+        return <div style={{ fontSize: '0.875rem', color: '#64748b', marginBottom: '1.5rem' }}>{t('loading_filters')}</div>
     }
 
     return (
@@ -102,9 +118,20 @@ export default function EmployeeFilter({
             flexDirection: 'column',
             gap: '1rem'
         }}>
-            {/* Top row: Standalone Search and Filter Button */}
-            <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', position: 'relative' }}>
-                <div style={{ flex: 1, position: 'relative' }}>
+            {/* Unified Toolbar Row */}
+            <div style={{
+                display: 'flex',
+                gap: '1rem',
+                alignItems: 'center',
+                flexWrap: 'wrap',
+                background: 'rgba(255, 255, 255, 0.4)',
+                padding: '0.75rem',
+                borderRadius: '1.5rem',
+                border: '1px solid rgba(255, 255, 255, 0.5)',
+                backdropFilter: 'blur(8px)'
+            }}>
+                {/* Search - Flexible width */}
+                <div style={{ flex: 1, minWidth: '300px', position: 'relative' }}>
                     <div style={{ position: 'absolute', [locale === 'ar' ? 'right' : 'left']: '1.25rem', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', pointerEvents: 'none' }}>
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                             <circle cx="11" cy="11" r="8"></circle>
@@ -121,18 +148,17 @@ export default function EmployeeFilter({
                             width: '100%',
                             padding: locale === 'ar' ? '0.625rem 3.5rem 0.625rem 1.25rem' : '0.625rem 1.25rem 0.625rem 3.5rem',
                             borderRadius: '1.25rem',
-                            fontSize: '1rem',
+                            fontSize: '0.95rem',
                             border: '1px solid #e2e8f0',
-                            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                            boxShadow: '0 2px 4px rgba(0,0,0,0.02)',
                             textAlign: locale === 'ar' ? 'right' : 'left',
                             background: 'white',
-                            height: 'auto',
-                            minHeight: '42px'
+                            height: '48px',
+                            minHeight: '48px'
                         }}
                     />
                 </div>
 
+                {/* Filters Trigger */}
                 {!isEmployee && (
                     <div style={{ position: 'relative' }}>
                         <button
@@ -141,7 +167,7 @@ export default function EmployeeFilter({
                                 display: 'flex',
                                 alignItems: 'center',
                                 gap: '0.75rem',
-                                padding: '0.75rem 1.5rem',
+                                padding: '0 1.5rem',
                                 borderRadius: '1.25rem',
                                 background: activeFilterCount > 0 ? '#eff6ff' : 'white',
                                 border: `2px solid ${activeFilterCount > 0 ? '#3b82f6' : '#e2e8f0'}`,
@@ -151,9 +177,7 @@ export default function EmployeeFilter({
                                 cursor: 'pointer',
                                 transition: 'all 0.2s ease',
                                 position: 'relative',
-                                boxShadow: activeFilterCount > 0 ? '0 4px 6px -1px rgba(59, 130, 246, 0.1)' : '0 2px 4px rgba(0,0,0,0.02)',
-                                height: 'auto',
-                                minHeight: '42px'
+                                height: '48px'
                             }}
                         >
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -163,19 +187,18 @@ export default function EmployeeFilter({
                             {activeFilterCount > 0 && (
                                 <span style={{
                                     position: 'absolute',
-                                    top: '-8px',
-                                    [locale === 'ar' ? 'left' : 'right']: '-8px',
+                                    top: '-4px',
+                                    [locale === 'ar' ? 'left' : 'right']: '-4px',
                                     background: '#3b82f6',
                                     color: 'white',
-                                    width: '22px',
-                                    height: '22px',
+                                    width: '20px',
+                                    height: '20px',
                                     borderRadius: '50%',
-                                    fontSize: '0.75rem',
+                                    fontSize: '0.7rem',
                                     display: 'flex',
                                     alignItems: 'center',
                                     justifyContent: 'center',
-                                    border: '2px solid white',
-                                    boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                                    border: '2px solid white'
                                 }}>
                                     {activeFilterCount}
                                 </span>
@@ -185,93 +208,40 @@ export default function EmployeeFilter({
                         {/* Popup / Modal */}
                         {isPopupOpen && (
                             <>
-                                {/* Backdrop for closing */}
-                                <div
-                                    onClick={() => setIsPopupOpen(false)}
-                                    style={{
-                                        position: 'fixed',
-                                        top: 0,
-                                        left: 0,
-                                        right: 0,
-                                        bottom: 0,
-                                        zIndex: 999
-                                    }}
-                                />
-                                {/* Modal Content */}
+                                <div onClick={() => setIsPopupOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 999 }} />
                                 <div style={{
                                     position: 'absolute',
                                     top: 'calc(100% + 0.75rem)',
-                                    [locale === 'ar' ? 'right' : 'left']: 'auto',
                                     [locale === 'ar' ? 'left' : 'right']: 0,
-                                    width: '380px',
+                                    width: '320px',
                                     background: 'white',
-                                    borderRadius: '1.5rem',
-                                    padding: '1.75rem',
-                                    boxShadow: '0 25px 50px -12px rgba(15, 23, 42, 0.15)',
+                                    borderRadius: '1.25rem',
+                                    padding: '1.5rem',
+                                    boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)',
                                     border: '1px solid #f1f5f9',
                                     zIndex: 1000,
                                     display: 'flex',
                                     flexDirection: 'column',
-                                    gap: '1.5rem',
-                                    animation: 'popIn 0.2s cubic-bezier(0.16, 1, 0.3, 1)'
+                                    gap: '1.25rem',
+                                    animation: 'popIn 0.2s ease-out'
                                 }}>
-                                    <style>{`
-                                        @keyframes popIn {
-                                            from { opacity: 0; transform: translateY(-10px) scale(0.95); }
-                                            to { opacity: 1; transform: translateY(0) scale(1); }
-                                        }
-                                    `}</style>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                        <h3 style={{ margin: 0, fontSize: '1.125rem', fontWeight: '800', color: '#0f172a' }}>
-                                            {t('active_filters' as any) || 'Filter Options'}
-                                        </h3>
-                                        <button
-                                            onClick={() => setIsPopupOpen(false)}
-                                            style={{ background: '#f8fafc', border: 'none', cursor: 'pointer', color: '#94a3b8', padding: '0.5rem', borderRadius: '0.75rem', display: 'flex', alignItems: 'center' }}
-                                        >
-                                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                                                <line x1="18" y1="6" x2="6" y2="18"></line>
-                                                <line x1="6" y1="6" x2="18" y2="18"></line>
-                                            </svg>
-                                        </button>
-                                    </div>
-
+                                    <style>{`@keyframes popIn { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }`}</style>
                                     <div>
-                                        <label style={{ display: 'block', marginBottom: '0.625rem', fontWeight: '700', fontSize: '0.875rem', color: '#475569' }}>
-                                            {t('filter_by_employee')}
-                                        </label>
+                                        <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '700', fontSize: '0.875rem' }}>{t('filter_by_employee')}</label>
                                         <SearchableSelect
-                                            options={employees.map(emp => ({
-                                                label: `${emp.firstName} ${emp.lastName}`,
-                                                value: emp.id,
-                                                subLabel: emp.role
-                                            }))}
+                                            options={employees.map(emp => ({ label: `${emp.firstName} ${emp.lastName}`, value: emp.id, subLabel: emp.role }))}
                                             value={selectedEmployeeId}
                                             onChange={handleEmployeeChange}
                                             placeholder={t('placeholder_all_employees')}
                                         />
                                     </div>
-
                                     <div>
-                                        <label style={{ display: 'block', marginBottom: '0.625rem', fontWeight: '700', fontSize: '0.875rem', color: '#475569' }}>
-                                            {t('filter_by_status')}
-                                        </label>
+                                        <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '700', fontSize: '0.875rem' }}>{t('filter_by_status')}</label>
                                         <select
                                             value={selectedStatus}
                                             onChange={(e) => handleStatusChange(e.target.value)}
                                             className="input"
-                                            style={{
-                                                width: '100%',
-                                                padding: '0.625rem 1rem',
-                                                borderRadius: '1rem',
-                                                fontSize: '0.95rem',
-                                                background: '#f8fafc',
-                                                border: '1px solid #e2e8f0',
-                                                textAlign: locale === 'ar' ? 'right' : 'left',
-                                                cursor: 'pointer',
-                                                height: 'auto',
-                                                minHeight: '42px'
-                                            }}
+                                            style={{ width: '100%', padding: '0.5rem', borderRadius: '0.75rem', background: '#f8fafc', border: '1px solid #e2e8f0', height: '42px' }}
                                         >
                                             <option value="">{t('placeholder_all_statuses')}</option>
                                             <option value="COMPLETED">{t('status_completed')}</option>
@@ -282,58 +252,17 @@ export default function EmployeeFilter({
                                             <option value="PENDING">{t('status_pending')}</option>
                                         </select>
                                     </div>
-
                                     <div>
-                                        <label style={{ display: 'block', marginBottom: '0.625rem', fontWeight: '700', fontSize: '0.875rem', color: '#475569' }}>
-                                            {t('date_range')}
-                                        </label>
+                                        <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '700', fontSize: '0.875rem' }}>{t('date_range')}</label>
                                         <DateRangePicker
                                             dateFrom={dateFrom}
                                             dateTo={dateTo}
                                             onChange={(from, to) => onFilterChange({ employeeId: selectedEmployeeId, dateFrom: from, dateTo: to, status: selectedStatus, search: searchQuery })}
                                         />
                                     </div>
-
-                                    <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem', borderTop: '1px solid #f1f5f9', paddingTop: '1.25rem' }}>
-                                        <button
-                                            onClick={resetFilters}
-                                            style={{
-                                                flex: 1,
-                                                padding: '0.75rem',
-                                                borderRadius: '1rem',
-                                                border: '1px solid #e2e8f0',
-                                                background: 'white',
-                                                color: '#64748b',
-                                                fontWeight: '700',
-                                                fontSize: '0.875rem',
-                                                cursor: 'pointer',
-                                                transition: 'all 0.2s ease',
-                                                height: 'auto',
-                                                minHeight: '42px'
-                                            }}
-                                        >
-                                            {t('reset_filters' as any) || 'Reset'}
-                                        </button>
-                                        <button
-                                            onClick={() => setIsPopupOpen(false)}
-                                            style={{
-                                                flex: 2,
-                                                padding: '0.75rem',
-                                                borderRadius: '1rem',
-                                                border: 'none',
-                                                background: '#2563eb',
-                                                color: 'white',
-                                                fontWeight: '700',
-                                                fontSize: '0.875rem',
-                                                cursor: 'pointer',
-                                                boxShadow: '0 4px 12px rgba(37, 99, 235, 0.2)',
-                                                transition: 'all 0.2s ease',
-                                                height: 'auto',
-                                                minHeight: '42px'
-                                            }}
-                                        >
-                                            {t('show_results' as any) || 'Show Results'}
-                                        </button>
+                                    <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.5rem' }}>
+                                        <button onClick={resetFilters} style={{ flex: 1, padding: '0.625rem', borderRadius: '0.75rem', border: '1px solid #e2e8f0', background: 'white', fontWeight: '700', cursor: 'pointer' }}>{t('reset_filters' as any) || 'Reset'}</button>
+                                        <button onClick={() => setIsPopupOpen(false)} style={{ flex: 1, padding: '0.625rem', borderRadius: '0.75rem', border: 'none', background: '#2563eb', color: 'white', fontWeight: '700', cursor: 'pointer' }}>{t('show_results' as any) || 'Apply'}</button>
                                     </div>
                                 </div>
                             </>
@@ -341,52 +270,96 @@ export default function EmployeeFilter({
                     </div>
                 )}
 
-                {/* Totals Tooltip Style */}
-                <div style={{ display: 'flex', gap: '0.5rem' }}>
-                    <div style={{
-                        height: '48px',
-                        padding: '0 1.5rem',
-                        background: '#0f172a',
-                        borderRadius: '1.25rem',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        justifyContent: 'center',
-                        color: 'white',
-                        minWidth: '100px',
-                        boxShadow: '0 4px 6px -1px rgba(15, 23, 42, 0.2)'
-                    }}>
-                        <span style={{ fontSize: '0.65rem', fontWeight: '800', opacity: 0.6, letterSpacing: '0.05em' }}>{t('total_label')}</span>
-                        <span style={{ fontSize: '1.125rem', fontWeight: '800', marginTop: '-2px' }}>{totalCount}</span>
+                {/* Sort Control Integration */}
+                {onSortChange && sortOptions && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <select
+                            value={sortBy}
+                            onChange={(e) => onSortChange(e.target.value, sortOrder || 'asc')}
+                            className="input"
+                            style={{
+                                padding: locale === 'ar' ? '0 0.75rem 0 2rem' : '0 2rem 0 0.75rem',
+                                borderRadius: '1.25rem',
+                                fontSize: '0.875rem',
+                                backgroundColor: 'white',
+                                border: '1px solid #e2e8f0',
+                                cursor: 'pointer',
+                                height: '48px',
+                                minWidth: '160px',
+                                textAlign: locale === 'ar' ? 'right' : 'left'
+                            }}
+                        >
+                            {sortOptions.map(opt => (
+                                <option key={opt.value} value={opt.value}>{opt.label}</option>
+                            ))}
+                        </select>
+                        <button
+                            onClick={() => onSortChange(sortBy || '', sortOrder === 'asc' ? 'desc' : 'asc')}
+                            style={{
+                                height: '48px',
+                                width: '48px',
+                                borderRadius: '1.25rem',
+                                border: '1px solid #e2e8f0',
+                                background: 'white',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                color: '#475569'
+                            }}
+                        >
+                            {sortOrder === 'asc' ? '↑' : '↓'}
+                        </button>
                     </div>
+                )}
+
+                {/* Statistics Box */}
+                <div style={{
+                    height: '48px',
+                    padding: '0 1.25rem',
+                    background: '#0f172a',
+                    borderRadius: '1.25rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.75rem',
+                    color: 'white'
+                }}>
+                    <span style={{ fontSize: '0.7rem', fontWeight: '800', opacity: 0.5, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('total_label')}</span>
+                    <span style={{ fontSize: '1.25rem', fontWeight: '900' }}>{totalCount}</span>
                 </div>
+
+                {/* Primary Action Integration */}
+                {primaryAction && (
+                    <div style={{ marginLeft: locale === 'ar' ? '0' : 'auto', marginRight: locale === 'ar' ? 'auto' : '0' }}>
+                        {primaryAction}
+                    </div>
+                )}
             </div>
 
-            {/* Cost display if available (Premium Badge) */}
+            {/* Total Cost Badge - Below if present */}
             {totalCost !== undefined && (
-                <div style={{ display: 'flex', justifyContent: locale === 'ar' ? 'flex-start' : 'flex-end' }}>
+                <div style={{ display: 'flex', justifyContent: locale === 'ar' ? 'flex-start' : 'flex-end', marginTop: '-0.5rem' }}>
                     <div style={{
                         background: 'linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%)',
                         color: '#9a3412',
-                        padding: '0.75rem 1.5rem',
-                        borderRadius: '1.25rem',
+                        padding: '0.5rem 1.25rem',
+                        borderRadius: '1rem',
                         border: '1px solid #fed7aa',
                         display: 'flex',
                         alignItems: 'center',
-                        gap: '0.75rem',
+                        gap: '0.5rem',
                         boxShadow: '0 2px 4px rgba(251, 146, 60, 0.05)'
                     }}>
-                        <div style={{ background: '#fb923c', color: 'white', padding: '0.35rem', borderRadius: '0.75rem', display: 'flex', alignItems: 'center' }}>
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                        <div style={{ background: '#fb923c', color: 'white', padding: '0.25rem', borderRadius: '0.5rem', display: 'flex' }}>
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
                                 <line x1="12" y1="1" x2="12" y2="23"></line>
                                 <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
                             </svg>
                         </div>
-                        <div style={{ display: 'flex', flexDirection: 'column' }}>
-                            <span style={{ fontSize: '0.65rem', fontWeight: '800', opacity: 0.7, textTransform: 'uppercase' }}>{t('total_cost')}</span>
-                            <span style={{ fontSize: '1.25rem', fontWeight: '900', letterSpacing: '-0.02em' }}>
-                                {totalCost.toLocaleString(undefined, { minimumFractionDigits: 2 })} <span style={{ fontSize: '0.875rem' }}>EGP</span>
-                            </span>
-                        </div>
+                        <span style={{ fontSize: '0.7rem', fontWeight: '800', opacity: 0.8, textTransform: 'uppercase' }}>{t('total_cost')}:</span>
+                        <span style={{ fontSize: '1.125rem', fontWeight: '900' }}>
+                            {totalCost.toLocaleString(undefined, { minimumFractionDigits: 2 })} <span style={{ fontSize: '0.75rem' }}>EGP</span>
+                        </span>
                     </div>
                 </div>
             )}

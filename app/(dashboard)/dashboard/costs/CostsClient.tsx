@@ -124,29 +124,6 @@ export default function CostsClient({ tasksWithCosts, userRole }: CostsClientPro
             )}
 
 
-            <div style={{ display: 'flex', justifyContent: locale === 'ar' ? 'flex-start' : 'flex-end', alignItems: 'center', marginBottom: '2rem' }}>
-
-                {['ADMIN', 'SUPER_ADMIN'].includes(userRole) && sortedTasks.length > 0 && (
-                    <button
-                        onClick={handleMarkAllAsPaid}
-                        disabled={isUpdating}
-                        style={{
-                            background: '#10b981',
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: '0.5rem',
-                            padding: '0.75rem 1.5rem',
-                            cursor: isUpdating ? 'not-allowed' : 'pointer',
-                            fontSize: '0.875rem',
-                            fontWeight: '600',
-                            opacity: isUpdating ? 0.6 : 1
-                        }}
-                    >
-                        {isUpdating ? t('marking_as_paid') : `${t('mark_all_as_paid')} (${sortedTasks.length})`}
-                    </button>
-                )}
-            </div>
-
             <EmployeeFilter
                 onFilterChange={setFilters}
                 selectedEmployeeId={filters.employeeId}
@@ -156,19 +133,38 @@ export default function CostsClient({ tasksWithCosts, userRole }: CostsClientPro
                 totalCost={totalCost}
                 searchQuery={filters.search}
                 isEmployee={isEmployee}
+                sortBy={sortBy}
+                sortOrder={sortOrder}
+                onSortChange={(field, order) => { setSortBy(field); setSortOrder(order) }}
+                sortOptions={[
+                    { label: t('today'), value: 'date' },
+                    { label: t('amount_label'), value: 'amount' },
+                ]}
+                primaryAction={
+                    ['ADMIN', 'SUPER_ADMIN'].includes(userRole) && sortedTasks.length > 0 && (
+                        <button
+                            onClick={handleMarkAllAsPaid}
+                            disabled={isUpdating}
+                            style={{
+                                background: '#10b981',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '1.25rem',
+                                padding: '0 1.5rem',
+                                cursor: isUpdating ? 'not-allowed' : 'pointer',
+                                fontSize: '0.875rem',
+                                fontWeight: '700',
+                                opacity: isUpdating ? 0.6 : 1,
+                                height: '48px',
+                                display: 'flex',
+                                alignItems: 'center'
+                            }}
+                        >
+                            {isUpdating ? t('marking_as_paid') : `${t('mark_all_as_paid')} (${sortedTasks.length})`}
+                        </button>
+                    )
+                }
             />
-
-            <div style={{ display: 'flex', justifyContent: locale === 'ar' ? 'flex-start' : 'flex-end', marginBottom: '1rem' }}>
-                <SortControl
-                    options={[
-                        { label: t('today'), value: 'date' },
-                        { label: t('amount_label'), value: 'amount' },
-                    ]}
-                    sortBy={sortBy}
-                    sortOrder={sortOrder}
-                    onSortChange={(field, order) => { setSortBy(field); setSortOrder(order) }}
-                />
-            </div>
 
             {sortedTasks.length === 0 ? (
                 <div className="card" style={{ textAlign: 'center', padding: '3rem', color: '#64748b' }}>
