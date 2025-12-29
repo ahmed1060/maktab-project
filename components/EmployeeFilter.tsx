@@ -37,7 +37,12 @@ interface EmployeeFilterProps {
     onRoleChange?: (role: string) => void,
     hideFilterButton?: boolean,
     hideSearch?: boolean,
-    statusOptions?: SortOption[]
+    statusOptions?: SortOption[],
+    // Company filter support
+    showCompanyFilter?: boolean,
+    selectedCompanyId?: string,
+    onCompanyChange?: (id: string) => void,
+    companyOptions?: SortOption[]
 }
 
 // Define interface for Employee data locally since it's just for display
@@ -72,7 +77,11 @@ export default function EmployeeFilter({
     onRoleChange,
     hideFilterButton,
     hideSearch,
-    statusOptions
+    statusOptions,
+    showCompanyFilter,
+    selectedCompanyId = '',
+    onCompanyChange,
+    companyOptions
 }: EmployeeFilterProps) {
     const [employees, setEmployees] = useState<EmployeeType[]>([])
     const [loading, setLoading] = useState(true)
@@ -128,7 +137,8 @@ export default function EmployeeFilter({
         (!hideEmployeeFilter && selectedEmployeeId) ? 1 : 0,
         (!hideStatusFilter && selectedStatus) ? 1 : 0,
         (!hideDateFilter && (dateFrom || dateTo)) ? 1 : 0,
-        (showRoleFilter && selectedRole) ? 1 : 0
+        (showRoleFilter && selectedRole) ? 1 : 0,
+        (showCompanyFilter && selectedCompanyId) ? 1 : 0
     ].reduce((a, b) => a + b, 0)
 
     if (loading) {
@@ -362,6 +372,43 @@ export default function EmployeeFilter({
                                                     <option value="EMPLOYEE">{t('role_employee')}</option>
                                                     <option value="TEAM_LEADER">{t('role_team_leader')}</option>
                                                     <option value="ADMIN">{t('role_admin')}</option>
+                                                </select>
+                                                <div style={{ position: 'absolute', [locale === 'ar' ? 'left' : 'right']: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', pointerEvents: 'none' }}>
+                                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                                        <path d="M6 9l6 6 6-6"></path>
+                                                    </svg>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {showCompanyFilter && companyOptions && (
+                                        <div>
+                                            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '700', fontSize: '0.875rem' }}>{t('company_label')}</label>
+                                            <div style={{ position: 'relative' }}>
+                                                <select
+                                                    value={selectedCompanyId}
+                                                    onChange={(e) => onCompanyChange?.(e.target.value)}
+                                                    className="input"
+                                                    style={{
+                                                        width: '100%',
+                                                        padding: locale === 'ar' ? '0 0.75rem 0 2.25rem' : '0 2.25rem 0 0.75rem',
+                                                        borderRadius: '1.25rem',
+                                                        background: 'white',
+                                                        border: '1px solid #e2e8f0',
+                                                        height: '48px',
+                                                        appearance: 'none',
+                                                        backgroundImage: 'none',
+                                                        cursor: 'pointer',
+                                                        fontSize: '0.9rem',
+                                                        fontWeight: '500',
+                                                        textAlign: locale === 'ar' ? 'right' : 'left'
+                                                    }}
+                                                >
+                                                    <option value="">{t('all_companies')}</option>
+                                                    {companyOptions.map(opt => (
+                                                        <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                                    ))}
                                                 </select>
                                                 <div style={{ position: 'absolute', [locale === 'ar' ? 'left' : 'right']: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', pointerEvents: 'none' }}>
                                                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">

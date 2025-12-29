@@ -1,6 +1,5 @@
-'use client'
-
 import { useState, useEffect } from 'react'
+import EmployeeFilter from '@/components/EmployeeFilter'
 import EmployeeProfileForm from '@/components/EmployeeProfileForm'
 import ConfirmModal from '@/components/ConfirmModal'
 import Modal from '@/components/Modal'
@@ -33,7 +32,7 @@ export default function AllUsersPage() {
     const [companies, setCompanies] = useState<Company[]>([])
     const [superAdminsList, setSuperAdminsList] = useState<User[]>([])
     const [loading, setLoading] = useState(true)
-    const [companyFilter, setCompanyFilter] = useState('')
+    const [filters, setFilters] = useState({ search: '', status: '', companyId: '' })
     const [showExUsersModal, setShowExUsersModal] = useState(false)
     const [viewingProfileId, setViewingProfileId] = useState<string | null>(null)
     const [permanentDeleteConfirm, setPermanentDeleteConfirm] = useState<{ isOpen: boolean, user: User | null }>({ isOpen: false, user: null })
@@ -73,11 +72,24 @@ export default function AllUsersPage() {
     const superAdmins = superAdminsList
     const activeRegularUsers = users.filter(u => u.status !== 'DELETED' && u.role !== 'SUPER_ADMIN')
     const deletedUsers = users.filter(u => u.status === 'DELETED')
-    const regularUsers = activeRegularUsers
+
+    const filteredUsers = activeRegularUsers.filter(user => {
+        if (filters.companyId && user.company?.id !== filters.companyId) return false
+        if (filters.search) {
+            const query = filters.search.toLowerCase()
+            return (
+                user.firstName.toLowerCase().includes(query) ||
+                user.lastName.toLowerCase().includes(query) ||
+                user.email.toLowerCase().includes(query) ||
+                user.company?.name.toLowerCase().includes(query)
+            )
+        }
+        return true
+    })
 
     const usersByCompany: { [key: string]: { name: string, users: User[] } } = {}
 
-    regularUsers.forEach(user => {
+    filteredUsers.forEach(user => {
         const companyId = user.company?.id || 'unknown'
         const companyName = user.company?.name || t('no_data_available')
 
@@ -89,16 +101,9 @@ export default function AllUsersPage() {
 
     let companySections = Object.values(usersByCompany).sort((a, b) => a.name.localeCompare(b.name))
 
-    if (companyFilter) {
-        const query = companyFilter.toLowerCase()
-        companySections = companySections.filter(section =>
-            section.name.toLowerCase().includes(query)
-        )
-    }
-
-    const showSuperAdmins = !companyFilter ||
-        t('super_administrators_label').toLowerCase().includes(companyFilter.toLowerCase()) ||
-        "shsd".includes(companyFilter.toLowerCase())
+    const showSuperAdmins = !filters.companyId && (!filters.search ||
+        t('super_administrators_label').toLowerCase().includes(filters.search.toLowerCase()) ||
+        "shsd".includes(filters.search.toLowerCase()))
 
     const getStatusKey = (status: string) => {
         switch (status) {
@@ -173,40 +178,21 @@ export default function AllUsersPage() {
                 </div>
             </div>
 
-            {/* Filter Bar */}
-            <div style={{ marginBottom: '2rem', display: 'flex', gap: '1rem', alignItems: 'center', justifyContent: locale === 'ar' ? 'flex-start' : 'flex-start' }}>
-                <div style={{ position: 'relative', width: '300px' }}>
-                    <div style={{ position: 'absolute', [locale === 'ar' ? 'right' : 'left']: '1rem', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }}>
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <circle cx="11" cy="11" r="8"></circle>
-                            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-                        </svg>
-                    </div>
-                    <input
-                        type="text"
-                        placeholder={t('filter_by_company_placeholder')}
-                        value={companyFilter}
-                        onChange={(e) => setCompanyFilter(e.target.value)}
-                        list="company-list"
-                        style={{
-                            width: '100%',
-                            padding: locale === 'ar' ? '0.75rem 3rem 0.75rem 1rem' : '0.75rem 1rem 0.75rem 3rem',
-                            borderRadius: '0.75rem',
-                            border: '1px solid #e2e8f0',
-                            fontSize: '1rem',
-                            outline: 'none',
-                            background: 'white',
-                            boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
-                            textAlign: locale === 'ar' ? 'right' : 'left'
-                        }}
-                    />
-                    <datalist id="company-list">
-                        {companies.map(c => (
-                            <option key={c.id} value={c.name} />
-                        ))}
-                    </datalist>
-                </div>
-            </div>
+            <EmployeeFilter
+                onFilterChange={(newFilters) => setFilters(prev => ({ ...prev, ...newFilters }))}
+                selectedEmployeeId=""
+                hideEmployeeFilter={true}
+                hideStatusFilter={true}
+                hideDateFilter={true}
+                dateFrom=""
+                dateTo=""
+                totalCount={filteredUsers.length}
+                searchQuery={filters.search}
+                showCompanyFilter={true}
+                selectedCompanyId={filters.companyId}
+                onCompanyChange={(id) => setFilters(prev => ({ ...prev, companyId: id }))}
+                companyOptions={companies.map(c => ({ label: c.name, value: c.id }))}
+            />
 
             {loading ? <p style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('loading_filters')}</p> : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '3rem' }}>
@@ -327,7 +313,7 @@ export default function AllUsersPage() {
 
                     {companySections.length === 0 && !showSuperAdmins && (
                         <div style={{ textAlign: 'center', padding: '3rem', color: '#64748b' }}>
-                            {t('no_companies_found_matching')} &quot;{companyFilter}&quot;.
+                            {t('no_companies_found_matching')} &quot;{filters.search}&quot;.
                         </div>
                     )}
                 </div>
