@@ -17,10 +17,16 @@ export default function ObligationsClient({ obligations, role }: ObligationsClie
         employeeId: '',
         dateFrom: '',
         dateTo: '',
-        status: ''
+        status: '',
+        search: ''
     })
 
     const filteredObligations = obligations.filter(ob => {
+        // Filter by search query (title)
+        if (filters.search && !ob.title.toLowerCase().includes(filters.search.toLowerCase())) {
+            return false
+        }
+
         // Filter by employee
         if (filters.employeeId && ob.assigneeId !== filters.employeeId) {
             return false
@@ -97,16 +103,16 @@ export default function ObligationsClient({ obligations, role }: ObligationsClie
                 )}
             </div>
 
-            {['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(role) && (
-                <EmployeeFilter
-                    onFilterChange={setFilters}
-                    selectedEmployeeId={filters.employeeId}
-                    dateFrom={filters.dateFrom}
-                    dateTo={filters.dateTo}
-                    totalCount={filteredObligations.length}
-                    selectedStatus={filters.status}
-                />
-            )}
+            <EmployeeFilter
+                onFilterChange={setFilters}
+                selectedEmployeeId={filters.employeeId}
+                dateFrom={filters.dateFrom}
+                dateTo={filters.dateTo}
+                totalCount={filteredObligations.length}
+                selectedStatus={filters.status}
+                searchQuery={filters.search}
+                isEmployee={role === 'EMPLOYEE'}
+            />
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '1rem' }}>
                 <SortControl

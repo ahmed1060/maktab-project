@@ -18,10 +18,16 @@ export default function TasksClient({ tasks, role, currentUserId }: TasksClientP
         employeeId: '',
         dateFrom: '',
         dateTo: '',
-        status: ''
+        status: '',
+        search: ''
     })
 
     const filteredTasks = tasks.filter(task => {
+        // Filter by search query (title)
+        if (filters.search && !task.title.toLowerCase().includes(filters.search.toLowerCase())) {
+            return false
+        }
+
         // Filter by employee
         if (filters.employeeId && task.assigneeId !== filters.employeeId) {
             return false
@@ -108,16 +114,16 @@ export default function TasksClient({ tasks, role, currentUserId }: TasksClientP
                 )}
             </div>
 
-            {['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(role) && (
-                <EmployeeFilter
-                    onFilterChange={setFilters}
-                    selectedEmployeeId={filters.employeeId}
-                    dateFrom={filters.dateFrom}
-                    dateTo={filters.dateTo}
-                    totalCount={filteredTasks.length}
-                    selectedStatus={filters.status}
-                />
-            )}
+            <EmployeeFilter
+                onFilterChange={setFilters}
+                selectedEmployeeId={filters.employeeId}
+                dateFrom={filters.dateFrom}
+                dateTo={filters.dateTo}
+                totalCount={filteredTasks.length}
+                selectedStatus={filters.status}
+                searchQuery={filters.search}
+                isEmployee={role === 'EMPLOYEE'}
+            />
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '1rem' }}>
                 <SortControl

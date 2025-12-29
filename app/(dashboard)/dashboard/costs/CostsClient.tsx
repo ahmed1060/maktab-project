@@ -17,13 +17,20 @@ export default function CostsClient({ tasksWithCosts, userRole }: CostsClientPro
     const [filters, setFilters] = useState({
         employeeId: '',
         dateFrom: '',
-        dateTo: ''
+        dateTo: '',
+        search: ''
     })
+    const isEmployee = userRole === 'EMPLOYEE'
     const [isUpdating, setIsUpdating] = useState(false)
     const [showFeedback, setShowFeedback] = useState(false)
     const [feedbackMessage, setFeedbackMessage] = useState('')
 
     const filteredTasks = tasksWithCosts.filter(task => {
+        // Filter by search query (title)
+        if (filters.search && !task.title.toLowerCase().includes(filters.search.toLowerCase())) {
+            return false
+        }
+
         // Filter by employee
         if (filters.employeeId && task.assignee.id !== filters.employeeId) {
             return false
@@ -147,6 +154,8 @@ export default function CostsClient({ tasksWithCosts, userRole }: CostsClientPro
                 dateTo={filters.dateTo}
                 totalCount={filteredTasks.length}
                 totalCost={totalCost}
+                searchQuery={filters.search}
+                isEmployee={isEmployee}
             />
 
             <div style={{ display: 'flex', justifyContent: locale === 'ar' ? 'flex-start' : 'flex-end', marginBottom: '1rem' }}>
