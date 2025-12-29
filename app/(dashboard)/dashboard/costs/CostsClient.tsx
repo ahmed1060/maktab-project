@@ -131,13 +131,14 @@ export default function CostsClient({ tasksWithCosts, userRole }: CostsClientPro
                 dateTo={filters.dateTo}
                 totalCount={filteredTasks.length}
                 totalCost={totalCost}
-                searchQuery={filters.search}
                 isEmployee={isEmployee}
+                hideSearch={true}
+                hideStatusFilter={true}
                 sortBy={sortBy}
                 sortOrder={sortOrder}
                 onSortChange={(field, order) => { setSortBy(field); setSortOrder(order) }}
                 sortOptions={[
-                    { label: t('today'), value: 'date' },
+                    { label: t('date' as any), value: 'date' },
                     { label: t('amount_label'), value: 'amount' },
                 ]}
                 primaryAction={
