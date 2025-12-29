@@ -329,21 +329,23 @@ export default function DayOffRequestsPage() {
                                             )}
                                         </div>
                                         {req.reason ? (
-                                            <p style={{
+                                            <div style={{
                                                 margin: 0,
                                                 fontSize: '0.9rem',
                                                 color: '#475569',
                                                 lineHeight: '1.5',
-                                                background: 'rgba(0,0,0,0.02)',
+                                                background: 'rgba(0,0,0,0.03)',
                                                 padding: '0.75rem',
                                                 borderRadius: '0.75rem',
                                                 fontStyle: 'italic',
-                                                maxHeight: '100px',
+                                                maxHeight: '80px', // Lower threshold
                                                 overflowY: 'auto',
-                                                wordBreak: 'break-word'
+                                                wordBreak: 'break-all', // Better for long gibberish
+                                                scrollbarWidth: 'thin',
+                                                display: 'block'
                                             }}>
                                                 &quot;{req.reason}&quot;
-                                            </p>
+                                            </div>
                                         ) : (
                                             <p style={{ margin: 0, fontSize: '0.9rem', color: '#94a3b8', fontStyle: 'italic' }}>
                                                 {t('no_reason_provided' as any) || 'No reason provided'}
