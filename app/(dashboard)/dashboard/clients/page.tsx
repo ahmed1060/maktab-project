@@ -155,6 +155,7 @@ export default function ClientsPage() {
                     hideEmployeeFilter={true}
                     hideStatusFilter={true}
                     hideDateFilter={true}
+                    hideFilterButton={true}
                     dateFrom={''}
                     dateTo={''}
                     selectedStatus={''}

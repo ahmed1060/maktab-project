@@ -34,7 +34,8 @@ interface EmployeeFilterProps {
     // Role filter support
     showRoleFilter?: boolean,
     selectedRole?: string,
-    onRoleChange?: (role: string) => void
+    onRoleChange?: (role: string) => void,
+    hideFilterButton?: boolean
 }
 
 // Define interface for Employee data locally since it's just for display
@@ -66,7 +67,8 @@ export default function EmployeeFilter({
     allowedStatuses,
     showRoleFilter,
     selectedRole = '',
-    onRoleChange
+    onRoleChange,
+    hideFilterButton
 }: EmployeeFilterProps) {
     const [employees, setEmployees] = useState<EmployeeType[]>([])
     const [loading, setLoading] = useState(true)
@@ -187,7 +189,7 @@ export default function EmployeeFilter({
                 </div>
 
                 {/* Filters Trigger */}
-                {!isEmployee && (
+                {!isEmployee && !hideFilterButton && (
                     <div style={{ position: 'relative' }}>
                         <button
                             onClick={() => setIsPopupOpen(!isPopupOpen)}
