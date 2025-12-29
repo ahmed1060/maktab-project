@@ -1,3 +1,4 @@
+'use client'
 import { useState, useEffect } from 'react'
 import EmployeeFilter from '@/components/EmployeeFilter'
 import EmployeeProfileForm from '@/components/EmployeeProfileForm'
@@ -70,10 +71,10 @@ export default function AllUsersPage() {
     }, [])
 
     const superAdmins = superAdminsList
-    const activeRegularUsers = users.filter(u => u.status !== 'DELETED' && u.role !== 'SUPER_ADMIN')
-    const deletedUsers = users.filter(u => u.status === 'DELETED')
+    const activeRegularUsers = users.filter((u: User) => u.status !== 'DELETED' && u.role !== 'SUPER_ADMIN')
+    const deletedUsers = users.filter((u: User) => u.status === 'DELETED')
 
-    const filteredUsers = activeRegularUsers.filter(user => {
+    const filteredUsers = activeRegularUsers.filter((user: User) => {
         if (filters.companyId && user.company?.id !== filters.companyId) return false
         if (filters.search) {
             const query = filters.search.toLowerCase()
@@ -89,7 +90,7 @@ export default function AllUsersPage() {
 
     const usersByCompany: { [key: string]: { name: string, users: User[] } } = {}
 
-    filteredUsers.forEach(user => {
+    filteredUsers.forEach((user: User) => {
         const companyId = user.company?.id || 'unknown'
         const companyName = user.company?.name || t('no_data_available')
 
@@ -190,8 +191,8 @@ export default function AllUsersPage() {
                 searchQuery={filters.search}
                 showCompanyFilter={true}
                 selectedCompanyId={filters.companyId}
-                onCompanyChange={(id) => setFilters(prev => ({ ...prev, companyId: id }))}
-                companyOptions={companies.map(c => ({ label: c.name, value: c.id }))}
+                onCompanyChange={(id) => setFilters((prev: any) => ({ ...prev, companyId: id }))}
+                companyOptions={companies.map((c: Company) => ({ label: c.name, value: c.id }))}
             />
 
             {loading ? <p style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('loading_filters')}</p> : (
@@ -215,7 +216,7 @@ export default function AllUsersPage() {
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {superAdmins.map(user => (
+                                        {superAdmins.map((user: User) => (
                                             <tr key={user.id} style={{ borderBottom: '1px solid #fef3c7' }}>
                                                 <td style={{ padding: '1rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
                                                     <div style={{ fontWeight: '500' }}>{user.firstName} {user.lastName}</div>
@@ -267,7 +268,7 @@ export default function AllUsersPage() {
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {section.users.map(user => (
+                                        {section.users.map((user: User) => (
                                             <tr key={user.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
                                                 <td style={{ padding: '1rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
                                                     <div style={{ fontWeight: '500' }}>{user.firstName} {user.lastName}</div>
@@ -377,7 +378,7 @@ export default function AllUsersPage() {
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {deletedUsers.map(user => (
+                                        {deletedUsers.map((user: User) => (
                                             <tr key={user.id} style={{ borderBottom: '1px solid #e2e8f0' }}>
                                                 <td style={{ padding: '1rem', fontWeight: '500', textAlign: 'inherit' }}>
                                                     {user.firstName} {user.lastName}
