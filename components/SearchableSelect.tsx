@@ -66,12 +66,11 @@ export default function SearchableSelect({ options, value, onChange, placeholder
                     height: '48px',
                     boxShadow: isOpen ? '0 0 0 3px rgba(59, 130, 246, 0.1)' : '0 1px 2px rgba(0, 0, 0, 0.05)',
                     transition: 'all 0.2s ease',
-                    color: '#1e293b',
-                    flexDirection: locale === 'ar' ? 'row-reverse' : 'row'
+                    color: '#1e293b'
                 }}
                 className="group"
             >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', overflow: 'hidden', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', overflow: 'hidden' }}>
                     {/* User Icon or Generic Icon */}
                     <div style={{
                         width: '24px',
@@ -201,7 +200,7 @@ export default function SearchableSelect({ options, value, onChange, placeholder
                                 if (value) e.currentTarget.style.background = 'transparent'
                             }}
                         >
-                            <span style={{ display: 'flex', alignItems: 'center', gap: '8px', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
+                            <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                 <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'currentColor', opacity: 0.5 }}></span>
                                 {t('all_employees')}
                             </span>
@@ -229,8 +228,7 @@ export default function SearchableSelect({ options, value, onChange, placeholder
                                         display: 'flex',
                                         justifyContent: 'space-between',
                                         alignItems: 'center',
-                                        [locale === 'ar' ? 'borderRight' : 'borderLeft']: value === opt.value ? '3px solid #3b82f6' : '3px solid transparent',
-                                        flexDirection: locale === 'ar' ? 'row-reverse' : 'row'
+                                        [locale === 'ar' ? 'borderRight' : 'borderLeft']: value === opt.value ? '3px solid #3b82f6' : '3px solid transparent'
                                     }}
                                     onMouseEnter={(e) => {
                                         if (value !== opt.value) e.currentTarget.style.background = '#f8fafc'

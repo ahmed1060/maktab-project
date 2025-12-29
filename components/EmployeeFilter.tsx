@@ -560,7 +560,7 @@ export default function EmployeeFilter({
 
             {/* Total Cost Badge - Below if present */}
             {totalCost !== undefined && (
-                <div style={{ display: 'flex', justifyContent: locale === 'ar' ? 'flex-start' : 'flex-end', marginTop: '-0.5rem' }}>
+                <div style={{ display: 'flex', justifyContent: locale === 'ar' ? 'flex-end' : 'flex-end', marginTop: '-0.5rem' }}>
                     <div style={{
                         background: 'linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%)',
                         color: '#9a3412',
