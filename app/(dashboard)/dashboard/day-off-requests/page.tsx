@@ -231,6 +231,7 @@ export default function DayOffRequestsPage() {
                 selectedStatus={filters.status}
                 searchQuery={filters.search}
                 isEmployee={!isAdmin}
+                hideSearch={true}
                 totalCount={filteredRequests.length}
                 allowedStatuses={['PENDING', 'APPROVED', 'REJECTED']}
                 primaryAction={

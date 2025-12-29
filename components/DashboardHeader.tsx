@@ -141,6 +141,7 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
         if (path.startsWith('/dashboard/clients/')) return t('client_details')
         if (path === '/dashboard/companies') return t('companies')
         if (path === '/dashboard/super-admins') return t('super_admins')
+        if (path === '/dashboard/day-off-requests') return t('day_off_requests')
         return t('system')
     }
 

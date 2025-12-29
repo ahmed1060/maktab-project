@@ -35,7 +35,8 @@ interface EmployeeFilterProps {
     showRoleFilter?: boolean,
     selectedRole?: string,
     onRoleChange?: (role: string) => void,
-    hideFilterButton?: boolean
+    hideFilterButton?: boolean,
+    hideSearch?: boolean
 }
 
 // Define interface for Employee data locally since it's just for display
@@ -68,7 +69,8 @@ export default function EmployeeFilter({
     showRoleFilter,
     selectedRole = '',
     onRoleChange,
-    hideFilterButton
+    hideFilterButton,
+    hideSearch
 }: EmployeeFilterProps) {
     const [employees, setEmployees] = useState<EmployeeType[]>([])
     const [loading, setLoading] = useState(true)
@@ -161,32 +163,34 @@ export default function EmployeeFilter({
                     pointerEvents: 'none'
                 }} />
                 {/* Search - Flexible width */}
-                <div style={{ flex: 1, minWidth: '300px', position: 'relative' }}>
-                    <div style={{ position: 'absolute', [locale === 'ar' ? 'right' : 'left']: '1.25rem', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', pointerEvents: 'none' }}>
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                            <circle cx="11" cy="11" r="8"></circle>
-                            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-                        </svg>
+                {!hideSearch && (
+                    <div style={{ flex: 1, minWidth: '300px', position: 'relative' }}>
+                        <div style={{ position: 'absolute', [locale === 'ar' ? 'right' : 'left']: '1.25rem', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', pointerEvents: 'none' }}>
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                <circle cx="11" cy="11" r="8"></circle>
+                                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                            </svg>
+                        </div>
+                        <input
+                            type="text"
+                            value={searchQuery}
+                            onChange={(e) => handleSearchChange(e.target.value)}
+                            placeholder={t('search_placeholder')}
+                            className="input"
+                            style={{
+                                width: '100%',
+                                padding: locale === 'ar' ? '0.625rem 3.5rem 0.625rem 1.25rem' : '0.625rem 1.25rem 0.625rem 3.5rem',
+                                borderRadius: '1.25rem',
+                                fontSize: '0.95rem',
+                                border: '1px solid #e2e8f0',
+                                textAlign: locale === 'ar' ? 'right' : 'left',
+                                background: 'white',
+                                height: '48px',
+                                minHeight: '48px'
+                            }}
+                        />
                     </div>
-                    <input
-                        type="text"
-                        value={searchQuery}
-                        onChange={(e) => handleSearchChange(e.target.value)}
-                        placeholder={t('search_placeholder')}
-                        className="input"
-                        style={{
-                            width: '100%',
-                            padding: locale === 'ar' ? '0.625rem 3.5rem 0.625rem 1.25rem' : '0.625rem 1.25rem 0.625rem 3.5rem',
-                            borderRadius: '1.25rem',
-                            fontSize: '0.95rem',
-                            border: '1px solid #e2e8f0',
-                            textAlign: locale === 'ar' ? 'right' : 'left',
-                            background: 'white',
-                            height: '48px',
-                            minHeight: '48px'
-                        }}
-                    />
-                </div>
+                )}
 
                 {/* Filters Trigger */}
                 {!isEmployee && !hideFilterButton && (
