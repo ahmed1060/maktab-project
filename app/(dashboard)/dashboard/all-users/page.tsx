@@ -100,7 +100,7 @@ export default function AllUsersPage() {
         usersByCompany[companyId].users.push(user)
     })
 
-    let companySections = Object.values(usersByCompany).sort((a, b) => a.name.localeCompare(b.name))
+    const companySections = Object.values(usersByCompany).sort((a, b) => a.name.localeCompare(b.name))
 
     const showSuperAdmins = !filters.companyId && (!filters.search ||
         t('super_administrators_label').toLowerCase().includes(filters.search.toLowerCase()) ||
