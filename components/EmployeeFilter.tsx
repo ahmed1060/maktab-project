@@ -119,14 +119,16 @@ export default function EmployeeFilter({
                         className="input"
                         style={{
                             width: '100%',
-                            padding: locale === 'ar' ? '0.875rem 3.5rem 0.875rem 1.25rem' : '0.875rem 1.25rem 0.875rem 3.5rem',
+                            padding: locale === 'ar' ? '0.625rem 3.5rem 0.625rem 1.25rem' : '0.625rem 1.25rem 0.625rem 3.5rem',
                             borderRadius: '1.25rem',
                             fontSize: '1rem',
                             border: '1px solid #e2e8f0',
                             transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                             boxShadow: '0 2px 4px rgba(0,0,0,0.02)',
                             textAlign: locale === 'ar' ? 'right' : 'left',
-                            background: 'white'
+                            background: 'white',
+                            height: 'auto',
+                            minHeight: '42px'
                         }}
                     />
                 </div>
@@ -139,7 +141,7 @@ export default function EmployeeFilter({
                                 display: 'flex',
                                 alignItems: 'center',
                                 gap: '0.75rem',
-                                padding: '0.875rem 1.5rem',
+                                padding: '0.75rem 1.5rem',
                                 borderRadius: '1.25rem',
                                 background: activeFilterCount > 0 ? '#eff6ff' : 'white',
                                 border: `2px solid ${activeFilterCount > 0 ? '#3b82f6' : '#e2e8f0'}`,
@@ -149,7 +151,9 @@ export default function EmployeeFilter({
                                 cursor: 'pointer',
                                 transition: 'all 0.2s ease',
                                 position: 'relative',
-                                boxShadow: activeFilterCount > 0 ? '0 4px 6px -1px rgba(59, 130, 246, 0.1)' : '0 2px 4px rgba(0,0,0,0.02)'
+                                boxShadow: activeFilterCount > 0 ? '0 4px 6px -1px rgba(59, 130, 246, 0.1)' : '0 2px 4px rgba(0,0,0,0.02)',
+                                height: 'auto',
+                                minHeight: '42px'
                             }}
                         >
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -258,13 +262,15 @@ export default function EmployeeFilter({
                                             className="input"
                                             style={{
                                                 width: '100%',
-                                                padding: '0.875rem 1rem',
+                                                padding: '0.625rem 1rem',
                                                 borderRadius: '1rem',
                                                 fontSize: '0.95rem',
                                                 background: '#f8fafc',
                                                 border: '1px solid #e2e8f0',
                                                 textAlign: locale === 'ar' ? 'right' : 'left',
-                                                cursor: 'pointer'
+                                                cursor: 'pointer',
+                                                height: 'auto',
+                                                minHeight: '42px'
                                             }}
                                         >
                                             <option value="">{t('placeholder_all_statuses')}</option>
@@ -292,7 +298,7 @@ export default function EmployeeFilter({
                                             onClick={resetFilters}
                                             style={{
                                                 flex: 1,
-                                                padding: '0.875rem',
+                                                padding: '0.75rem',
                                                 borderRadius: '1rem',
                                                 border: '1px solid #e2e8f0',
                                                 background: 'white',
@@ -300,7 +306,9 @@ export default function EmployeeFilter({
                                                 fontWeight: '700',
                                                 fontSize: '0.875rem',
                                                 cursor: 'pointer',
-                                                transition: 'all 0.2s ease'
+                                                transition: 'all 0.2s ease',
+                                                height: 'auto',
+                                                minHeight: '42px'
                                             }}
                                         >
                                             {t('reset_filters' as any) || 'Reset'}
@@ -309,7 +317,7 @@ export default function EmployeeFilter({
                                             onClick={() => setIsPopupOpen(false)}
                                             style={{
                                                 flex: 2,
-                                                padding: '0.875rem',
+                                                padding: '0.75rem',
                                                 borderRadius: '1rem',
                                                 border: 'none',
                                                 background: '#2563eb',
@@ -318,7 +326,9 @@ export default function EmployeeFilter({
                                                 fontSize: '0.875rem',
                                                 cursor: 'pointer',
                                                 boxShadow: '0 4px 12px rgba(37, 99, 235, 0.2)',
-                                                transition: 'all 0.2s ease'
+                                                transition: 'all 0.2s ease',
+                                                height: 'auto',
+                                                minHeight: '42px'
                                             }}
                                         >
                                             {t('show_results' as any) || 'Show Results'}
