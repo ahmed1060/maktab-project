@@ -279,6 +279,7 @@ export default function EmployeeFilter({
                                             <option value="REJECTED">{t('status_rejected')}</option>
                                             <option value="PENDING_CONFIRMATION">{t('status_pending_approval')}</option>
                                             <option value="IN_PROGRESS">{t('status_pending')}</option>
+                                            <option value="PENDING">{t('status_pending')}</option>
                                         </select>
                                     </div>
 

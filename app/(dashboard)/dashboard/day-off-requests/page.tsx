@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
 import { useLanguage } from '@/context/LanguageContext'
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts'
+import EmployeeFilter from '@/components/EmployeeFilter'
 
 interface DayOffRequest {
     id: string
@@ -41,6 +42,15 @@ export default function DayOffRequestsPage() {
     const [submitting, setSubmitting] = useState(false)
     const [alert, setAlert] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
     const [isRejectModalOpen, setIsRejectModalOpen] = useState(false)
+
+    // Filter State
+    const [filters, setFilters] = useState({
+        employeeId: '',
+        dateFrom: '',
+        dateTo: '',
+        status: '',
+        search: ''
+    })
 
     // User Credit Info
     const [userCredit, setUserCredit] = useState(0)
@@ -149,6 +159,34 @@ export default function DayOffRequestsPage() {
 
     // Pie Chart Data
     const usedCredits = requests.filter(r => r.status === 'APPROVED').reduce((acc, r) => acc + (r.daysDeducted || 0), 0)
+
+    // Filter Logic
+    const filteredRequests = requests.filter(req => {
+        const matchesEmployee = !filters.employeeId || req.userId === filters.employeeId
+        const matchesStatus = !filters.status || req.status === filters.status
+        const matchesSearch = !filters.search ||
+            (req.user?.firstName + ' ' + req.user?.lastName).toLowerCase().includes(filters.search.toLowerCase()) ||
+            (req.reason || '').toLowerCase().includes(filters.search.toLowerCase())
+
+        let matchesDate = true
+        if (filters.dateFrom || filters.dateTo) {
+            const rDate = new Date(req.date)
+            rDate.setHours(0, 0, 0, 0)
+            if (filters.dateFrom) {
+                const fDate = new Date(filters.dateFrom)
+                fDate.setHours(0, 0, 0, 0)
+                if (rDate < fDate) matchesDate = false
+            }
+            if (filters.dateTo) {
+                const tDate = new Date(filters.dateTo)
+                tDate.setHours(0, 0, 0, 0)
+                if (rDate > tDate) matchesDate = false
+            }
+        }
+
+        return matchesEmployee && matchesStatus && matchesSearch && matchesDate
+    })
+
     const pieData = [
         { name: t('remaining_credit' as any), value: userCredit },
         { name: t('used_credit' as any), value: usedCredits }
@@ -185,7 +223,7 @@ export default function DayOffRequestsPage() {
                     {alert.message}
                 </div>
             )}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
                 <h1 className="text-3xl font-bold text-slate-800">{t('day_off_requests' as any)}</h1>
                 {!isAdmin && (
                     <button onClick={() => setIsRequestModalOpen(true)} className="btn btn-primary">
@@ -193,6 +231,17 @@ export default function DayOffRequestsPage() {
                     </button>
                 )}
             </div>
+
+            <EmployeeFilter
+                onFilterChange={(newFilters) => setFilters(prev => ({ ...prev, ...newFilters }))}
+                selectedEmployeeId={filters.employeeId}
+                dateFrom={filters.dateFrom}
+                dateTo={filters.dateTo}
+                selectedStatus={filters.status}
+                searchQuery={filters.search}
+                isEmployee={!isAdmin}
+                totalCount={filteredRequests.length}
+            />
 
             <div style={{ display: 'grid', gridTemplateColumns: isAdmin ? '1fr' : '1fr 350px', gap: '2rem' }}>
                 <div className="card">
@@ -213,7 +262,7 @@ export default function DayOffRequestsPage() {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {requests.map(req => (
+                                    {filteredRequests.map(req => (
                                         <tr key={req.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
                                             {isAdmin && <td style={{ padding: '1rem' }}>{req.user?.firstName} {req.user?.lastName}</td>}
                                             <td style={{ padding: '1rem' }}>{new Date(req.date).toLocaleDateString(locale)}</td>
@@ -244,7 +293,7 @@ export default function DayOffRequestsPage() {
                                             )}
                                         </tr>
                                     ))}
-                                    {requests.length === 0 && (
+                                    {filteredRequests.length === 0 && (
                                         <tr>
                                             <td colSpan={isAdmin ? 6 : 4} style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>
                                                 {t('no_records_found')}
