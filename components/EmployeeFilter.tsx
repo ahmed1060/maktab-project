@@ -251,14 +251,16 @@ export default function EmployeeFilter({
                                                         style={{
                                                             width: '100%',
                                                             padding: locale === 'ar' ? '0 0.75rem 0 2.25rem' : '0 2.25rem 0 0.75rem',
-                                                            borderRadius: '0.75rem',
-                                                            fontSize: '0.875rem',
-                                                            backgroundColor: '#f8fafc',
+                                                            borderRadius: '1.25rem',
+                                                            fontSize: '0.9rem',
+                                                            backgroundColor: 'white',
                                                             border: '1px solid #e2e8f0',
                                                             cursor: 'pointer',
-                                                            height: '42px',
+                                                            height: '48px',
                                                             textAlign: locale === 'ar' ? 'right' : 'left',
-                                                            appearance: 'none'
+                                                            appearance: 'none',
+                                                            backgroundImage: 'none',
+                                                            fontWeight: '500'
                                                         }}
                                                     >
                                                         {sortOptions.map(opt => (
@@ -274,9 +276,9 @@ export default function EmployeeFilter({
                                                 <button
                                                     onClick={() => onSortChange(sortBy || '', sortOrder === 'asc' ? 'desc' : 'asc')}
                                                     style={{
-                                                        height: '42px',
-                                                        width: '42px',
-                                                        borderRadius: '0.75rem',
+                                                        height: '48px',
+                                                        width: '48px',
+                                                        borderRadius: '1.25rem',
                                                         border: '1px solid #e2e8f0',
                                                         background: 'white',
                                                         cursor: 'pointer',
@@ -311,13 +313,15 @@ export default function EmployeeFilter({
                                                 style={{
                                                     width: '100%',
                                                     padding: locale === 'ar' ? '0 0.75rem 0 2.25rem' : '0 2.25rem 0 0.75rem',
-                                                    borderRadius: '0.75rem',
-                                                    background: '#f8fafc',
+                                                    borderRadius: '1.25rem',
+                                                    background: 'white',
                                                     border: '1px solid #e2e8f0',
-                                                    height: '42px',
+                                                    height: '48px',
                                                     appearance: 'none',
+                                                    backgroundImage: 'none',
                                                     cursor: 'pointer',
-                                                    fontSize: '0.875rem'
+                                                    fontSize: '0.9rem',
+                                                    fontWeight: '500'
                                                 }}
                                             >
                                                 <option value="">{t('placeholder_all_statuses')}</option>
@@ -342,9 +346,43 @@ export default function EmployeeFilter({
                                             onChange={(from, to) => onFilterChange({ employeeId: selectedEmployeeId, dateFrom: from, dateTo: to, status: selectedStatus, search: searchQuery })}
                                         />
                                     </div>
-                                    <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.5rem' }}>
-                                        <button onClick={resetFilters} style={{ flex: 1, padding: '0.625rem', borderRadius: '0.75rem', border: '1px solid #e2e8f0', background: 'white', fontWeight: '700', cursor: 'pointer' }}>{t('reset_filters' as any) || 'Reset'}</button>
-                                        <button onClick={() => setIsPopupOpen(false)} style={{ flex: 1, padding: '0.625rem', borderRadius: '0.75rem', border: 'none', background: '#2563eb', color: 'white', fontWeight: '700', cursor: 'pointer' }}>{t('show_results' as any) || 'Apply'}</button>
+                                    <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.75rem' }}>
+                                        <button
+                                            onClick={resetFilters}
+                                            style={{
+                                                flex: 1,
+                                                height: '48px',
+                                                borderRadius: '1.25rem',
+                                                border: '1px solid #e2e8f0',
+                                                background: 'white',
+                                                fontWeight: '700',
+                                                cursor: 'pointer',
+                                                fontSize: '0.875rem',
+                                                color: '#64748b',
+                                                transition: 'all 0.2s ease'
+                                            }}
+                                            onMouseOver={(e) => e.currentTarget.style.background = '#f8fafc'}
+                                            onMouseOut={(e) => e.currentTarget.style.background = 'white'}
+                                        >
+                                            {t('reset_filters' as any) || 'Reset'}
+                                        </button>
+                                        <button
+                                            onClick={() => setIsPopupOpen(false)}
+                                            style={{
+                                                flex: 1,
+                                                height: '48px',
+                                                borderRadius: '1.25rem',
+                                                border: 'none',
+                                                background: 'linear-gradient(135deg, #6366f1 0%, #a855f7 100%)',
+                                                color: 'white',
+                                                fontWeight: '700',
+                                                cursor: 'pointer',
+                                                fontSize: '0.875rem',
+                                                boxShadow: '0 4px 12px rgba(99, 102, 241, 0.2)'
+                                            }}
+                                        >
+                                            {t('show_results' as any) || 'Apply'}
+                                        </button>
                                     </div>
                                 </div>
                             </>

@@ -111,7 +111,7 @@ export default function DateRangePicker({ dateFrom, dateTo, onChange }: DateRang
                 onClick={() => setIsOpen(!isOpen)}
                 style={{
                     padding: '0 1rem',
-                    borderRadius: '0.75rem',
+                    borderRadius: '1.25rem',
                     border: '1px solid #e2e8f0',
                     fontSize: '0.875rem',
                     cursor: 'pointer',
