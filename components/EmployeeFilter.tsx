@@ -116,7 +116,8 @@ export default function EmployeeFilter({
             marginBottom: '2rem',
             display: 'flex',
             flexDirection: 'column',
-            gap: '1rem'
+            gap: '1rem',
+            position: 'relative'
         }}>
             {/* Unified Toolbar Row */}
             <div style={{
@@ -124,12 +125,21 @@ export default function EmployeeFilter({
                 gap: '1rem',
                 alignItems: 'center',
                 flexWrap: 'wrap',
-                background: 'rgba(255, 255, 255, 0.4)',
                 padding: '0.75rem',
-                borderRadius: '1.5rem',
-                border: '1px solid rgba(255, 255, 255, 0.5)',
-                backdropFilter: 'blur(8px)'
+                position: 'relative',
+                zIndex: 10
             }}>
+                {/* Background Layer - Isolated from children to prevent rendering artifacts */}
+                <div style={{
+                    position: 'absolute',
+                    inset: 0,
+                    background: 'rgba(255, 255, 255, 0.4)',
+                    backdropFilter: 'blur(8px)',
+                    borderRadius: '1.5rem',
+                    border: '1px solid rgba(255, 255, 255, 0.5)',
+                    zIndex: -1,
+                    pointerEvents: 'none'
+                }} />
                 {/* Search - Flexible width */}
                 <div style={{ flex: 1, minWidth: '300px', position: 'relative' }}>
                     <div style={{ position: 'absolute', [locale === 'ar' ? 'right' : 'left']: '1.25rem', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', pointerEvents: 'none' }}>
@@ -214,16 +224,17 @@ export default function EmployeeFilter({
                                     top: 'calc(100% + 0.75rem)',
                                     [locale === 'ar' ? 'left' : 'right']: 0,
                                     width: '320px',
-                                    background: 'white',
+                                    backgroundColor: '#ffffff',
                                     borderRadius: '1.25rem',
                                     padding: '1.5rem',
-                                    boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)',
-                                    border: '1px solid #f1f5f9',
+                                    boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.15), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+                                    border: '1px solid #e2e8f0',
                                     zIndex: 1000,
                                     display: 'flex',
                                     flexDirection: 'column',
                                     gap: '1.25rem',
-                                    animation: 'popIn 0.2s ease-out'
+                                    animation: 'popIn 0.2s ease-out',
+                                    opacity: 1
                                 }}>
                                     <style>{`@keyframes popIn { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }`}</style>
                                     <div>

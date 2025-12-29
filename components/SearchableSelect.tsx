@@ -60,7 +60,8 @@ export default function SearchableSelect({ options, value, onChange, placeholder
                     display: 'flex',
                     justifyContent: 'space-between',
                     alignItems: 'center',
-                    minHeight: '44px',
+                    minHeight: '48px',
+                    height: '48px',
                     boxShadow: isOpen ? '0 0 0 3px rgba(59, 130, 246, 0.1)' : '0 1px 2px rgba(0, 0, 0, 0.05)',
                     transition: 'all 0.2s ease',
                     color: '#1e293b'
