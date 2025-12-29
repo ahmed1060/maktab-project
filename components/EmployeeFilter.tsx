@@ -242,27 +242,35 @@ export default function EmployeeFilter({
                                     {onSortChange && sortOptions && (
                                         <div style={{ paddingBottom: '1.25rem', borderBottom: '1px solid #f1f5f9' }}>
                                             <label style={{ display: 'block', marginBottom: '0.75rem', fontWeight: '800', fontSize: '0.75rem', textTransform: 'uppercase', color: '#64748b', letterSpacing: '0.05em' }}>{t('sort_by')}</label>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                                <select
-                                                    value={sortBy}
-                                                    onChange={(e) => onSortChange(e.target.value, sortOrder || 'asc')}
-                                                    className="input"
-                                                    style={{
-                                                        flex: 1,
-                                                        padding: locale === 'ar' ? '0 0.75rem 0 2rem' : '0 2rem 0 0.75rem',
-                                                        borderRadius: '0.75rem',
-                                                        fontSize: '0.875rem',
-                                                        backgroundColor: '#f8fafc',
-                                                        border: '1px solid #e2e8f0',
-                                                        cursor: 'pointer',
-                                                        height: '42px',
-                                                        textAlign: locale === 'ar' ? 'right' : 'left'
-                                                    }}
-                                                >
-                                                    {sortOptions.map(opt => (
-                                                        <option key={opt.value} value={opt.value}>{opt.label}</option>
-                                                    ))}
-                                                </select>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: 1 }}>
+                                                <div style={{ position: 'relative', flex: 1 }}>
+                                                    <select
+                                                        value={sortBy}
+                                                        onChange={(e) => onSortChange(e.target.value, sortOrder || 'asc')}
+                                                        className="input"
+                                                        style={{
+                                                            width: '100%',
+                                                            padding: locale === 'ar' ? '0 0.75rem 0 2.25rem' : '0 2.25rem 0 0.75rem',
+                                                            borderRadius: '0.75rem',
+                                                            fontSize: '0.875rem',
+                                                            backgroundColor: '#f8fafc',
+                                                            border: '1px solid #e2e8f0',
+                                                            cursor: 'pointer',
+                                                            height: '42px',
+                                                            textAlign: locale === 'ar' ? 'right' : 'left',
+                                                            appearance: 'none'
+                                                        }}
+                                                    >
+                                                        {sortOptions.map(opt => (
+                                                            <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                                        ))}
+                                                    </select>
+                                                    <div style={{ position: 'absolute', [locale === 'ar' ? 'left' : 'right']: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', pointerEvents: 'none' }}>
+                                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                                            <path d="M6 9l6 6 6-6"></path>
+                                                        </svg>
+                                                    </div>
+                                                </div>
                                                 <button
                                                     onClick={() => onSortChange(sortBy || '', sortOrder === 'asc' ? 'desc' : 'asc')}
                                                     style={{
@@ -295,20 +303,37 @@ export default function EmployeeFilter({
                                     </div>
                                     <div>
                                         <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '700', fontSize: '0.875rem' }}>{t('filter_by_status')}</label>
-                                        <select
-                                            value={selectedStatus}
-                                            onChange={(e) => handleStatusChange(e.target.value)}
-                                            className="input"
-                                            style={{ width: '100%', padding: '0.5rem', borderRadius: '0.75rem', background: '#f8fafc', border: '1px solid #e2e8f0', height: '42px' }}
-                                        >
-                                            <option value="">{t('placeholder_all_statuses')}</option>
-                                            <option value="COMPLETED">{t('status_completed')}</option>
-                                            <option value="APPROVED">{t('status_approved')}</option>
-                                            <option value="REJECTED">{t('status_rejected')}</option>
-                                            <option value="PENDING_CONFIRMATION">{t('status_pending_approval')}</option>
-                                            <option value="IN_PROGRESS">{t('status_pending')}</option>
-                                            <option value="PENDING">{t('status_pending')}</option>
-                                        </select>
+                                        <div style={{ position: 'relative' }}>
+                                            <select
+                                                value={selectedStatus}
+                                                onChange={(e) => handleStatusChange(e.target.value)}
+                                                className="input"
+                                                style={{
+                                                    width: '100%',
+                                                    padding: locale === 'ar' ? '0 0.75rem 0 2.25rem' : '0 2.25rem 0 0.75rem',
+                                                    borderRadius: '0.75rem',
+                                                    background: '#f8fafc',
+                                                    border: '1px solid #e2e8f0',
+                                                    height: '42px',
+                                                    appearance: 'none',
+                                                    cursor: 'pointer',
+                                                    fontSize: '0.875rem'
+                                                }}
+                                            >
+                                                <option value="">{t('placeholder_all_statuses')}</option>
+                                                <option value="COMPLETED">{t('status_completed')}</option>
+                                                <option value="APPROVED">{t('status_approved')}</option>
+                                                <option value="REJECTED">{t('status_rejected')}</option>
+                                                <option value="PENDING_CONFIRMATION">{t('status_pending_approval')}</option>
+                                                <option value="IN_PROGRESS">{t('status_in_progress')}</option>
+                                                <option value="PENDING">{t('status_pending')}</option>
+                                            </select>
+                                            <div style={{ position: 'absolute', [locale === 'ar' ? 'left' : 'right']: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', pointerEvents: 'none' }}>
+                                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                                    <path d="M6 9l6 6 6-6"></path>
+                                                </svg>
+                                            </div>
+                                        </div>
                                     </div>
                                     <div>
                                         <DateRangePicker
