@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { signOut, useSession } from 'next-auth/react'
@@ -145,8 +145,15 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
         return t('system')
     }
 
-    const pathTitle = getPageTitle(pathname)
-    const title = contextTitle || pathTitle
+    const getRoleKey = (role: string) => {
+        switch (role) {
+            case 'EMPLOYEE': return 'role_employee'
+            case 'TEAM_LEADER': return 'role_team_leader'
+            case 'ADMIN': return 'role_admin'
+            case 'SUPER_ADMIN': return 'role_super_admin'
+            default: return 'role_employee'
+        }
+    }
 
     const getInitials = (text: string) => {
         if (!text) return ''
@@ -162,6 +169,9 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
         await signOut({ redirect: false })
         router.push('/login')
     }
+
+    const pathTitle = getPageTitle(pathname)
+    const title = contextTitle || pathTitle
 
     return (
         <header
@@ -253,47 +263,60 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
                                 fontSize: '0.9rem',
                                 outline: 'none',
                                 cursor: 'pointer',
+                                background: 'rgba(255,255,255,0.4)',
+                                border: '1px solid rgba(255,255,255,0.6)',
+                                transition: 'all 0.2s ease',
                                 color: 'var(--text-main)',
-                                flexShrink: 1,
-                                minWidth: 0,
-                                height: 'auto',
-                                textAlign: locale === 'ar' ? 'right' : 'left'
+                                minWidth: '130px',
+                                textAlign: 'center',
+                                fontWeight: '600',
+                                boxShadow: '0 2px 4px rgba(0,0,0,0.02)',
+                                appearance: 'none',
+                                backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23475569'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='3' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`,
+                                backgroundRepeat: 'no-repeat',
+                                backgroundPosition: locale === 'ar' ? 'left 0.75rem center' : 'right 0.75rem center',
+                                backgroundSize: '12px'
                             }}
                         >
                             <option value="">{t('all_companies')}</option>
-                            {companies.map(c => (
-                                <option key={c.id} value={c.id}>{c.name}</option>
+                            {companies.map((company) => (
+                                <option key={company.id} value={company.id}>
+                                    {company.name}
+                                </option>
                             ))}
                         </select>
                     </div>
                 )}
 
+                {/* Day Off Requests Counter (for admin/super_admin) */}
                 {['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role) && (
                     <Link
-                        href="/dashboard/profile-requests"
-                        title={t('profile_requests')}
+                        href="/dashboard/day-off-requests"
+                        title={t('day_off_requests')}
                         style={{
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            width: '40px',
-                            height: '40px',
-                            borderRadius: '12px',
-                            background: pathname === '/dashboard/profile-requests' ? 'rgba(99, 102, 241, 0.1)' : 'rgba(255,255,255,0.5)',
-                            border: '1px solid rgba(255,255,255,0.8)',
-                            color: pathname === '/dashboard/profile-requests' ? '#6366f1' : 'var(--text-main)',
-                            textDecoration: 'none',
-                            transition: 'all 0.2s',
-                            position: 'relative'
+                            width: '45px',
+                            height: '45px',
+                            borderRadius: '50%',
+                            background: 'rgba(255,255,255,0.5)',
+                            border: '2px solid rgba(255,255,255,0.8)',
+                            color: 'var(--text-main)',
+                            position: 'relative',
+                            transition: 'all 0.2s ease',
+                            boxShadow: '0 4px 6px rgba(0,0,0,0.05)'
                         }}
-                        onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.8)'}
-                        onMouseLeave={() => { }}
+                        onMouseEnter={(e) => {
+                            e.currentTarget.style.transform = 'scale(1.05)'
+                            e.currentTarget.style.background = 'white'
+                        }}
+                        onMouseLeave={(e) => {
+                            e.currentTarget.style.transform = 'scale(1)'
+                            e.currentTarget.style.background = 'rgba(255,255,255,0.5)'
+                        }}
                     >
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
-                            <circle cx="9" cy="7" r="4"></circle>
-                            <polyline points="16 11 18 13 22 9"></polyline>
-                        </svg>
+                        <span style={{ fontSize: '1.25rem' }}>📅</span>
                         {pendingRequestsCount > 0 && (
                             <span style={{
                                 position: 'absolute',
@@ -323,9 +346,9 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
                 {/* Avatar area - Grouped for desktop info, but direct child for mobile gap consistency */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                     {/* User Info - Hidden on mobile, grouped with avatar on desktop */}
-                    <div className="md-hidden" style={{ textAlign: 'right', flexShrink: 1, minWidth: 0 }}>
+                    <div className="md-hidden" style={{ textAlign: locale === 'ar' ? 'left' : 'right', flexShrink: 1, minWidth: 0 }}>
                         <div style={{ fontSize: '0.75rem', fontWeight: 'bold', color: 'var(--text-muted)', textTransform: 'uppercase', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                            {currentUser.role.replace('_', ' ')}
+                            {t(getRoleKey(currentUser.role) as any)}
                         </div>
                         <div style={{ fontSize: '0.9rem', fontWeight: '600', color: 'var(--text-main)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                             {currentUser.firstName} {currentUser.lastName}

@@ -125,6 +125,16 @@ export default function EmployeeFilter({
         onFilterChange({ employeeId: selectedEmployeeId, dateFrom, dateTo, status, search: searchQuery })
     }
 
+    const getRoleKey = (role: string) => {
+        switch (role) {
+            case 'EMPLOYEE': return 'role_employee'
+            case 'TEAM_LEADER': return 'role_team_leader'
+            case 'ADMIN': return 'role_admin'
+            case 'SUPER_ADMIN': return 'role_super_admin'
+            default: return 'role_employee'
+        }
+    }
+
     const handleSearchChange = (search: string) => {
         onFilterChange({ employeeId: selectedEmployeeId, dateFrom, dateTo, status: selectedStatus, search })
     }
@@ -337,7 +347,11 @@ export default function EmployeeFilter({
                                         <div>
                                             <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '700', fontSize: '0.875rem' }}>{t('filter_by_employee')}</label>
                                             <SearchableSelect
-                                                options={employees.map(emp => ({ label: `${emp.firstName} ${emp.lastName}`, value: emp.id, subLabel: emp.role }))}
+                                                options={employees.map(emp => ({
+                                                    label: `${emp.firstName} ${emp.lastName}`,
+                                                    value: emp.id,
+                                                    subLabel: t(getRoleKey(emp.role) as any)
+                                                }))}
                                                 value={selectedEmployeeId}
                                                 onChange={handleEmployeeChange}
                                                 placeholder={t('placeholder_all_employees')}
@@ -566,7 +580,7 @@ export default function EmployeeFilter({
                         </div>
                         <span style={{ fontSize: '0.7rem', fontWeight: '800', opacity: 0.8, textTransform: 'uppercase' }}>{t('total_cost')}:</span>
                         <span style={{ fontSize: '1.125rem', fontWeight: '900' }}>
-                            {totalCost.toLocaleString(undefined, { minimumFractionDigits: 2 })} <span style={{ fontSize: '0.75rem' }}>EGP</span>
+                            {totalCost.toLocaleString(undefined, { minimumFractionDigits: 2 })} <span style={{ fontSize: '0.75rem' }}>{locale === 'ar' ? 'ج.م' : 'EGP'}</span>
                         </span>
                     </div>
                 </div>

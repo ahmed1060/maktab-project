@@ -1,5 +1,6 @@
 'use client'
 import { useState, useMemo, useRef, useEffect } from 'react'
+import { useLanguage } from '@/context/LanguageContext'
 
 interface Option {
     label: string
@@ -15,6 +16,7 @@ interface SearchableSelectProps {
 }
 
 export default function SearchableSelect({ options, value, onChange, placeholder = 'Select...' }: SearchableSelectProps) {
+    const { t, locale } = useLanguage()
     const [isOpen, setIsOpen] = useState(false)
     const [searchTerm, setSearchTerm] = useState('')
     const wrapperRef = useRef<HTMLDivElement>(null)
@@ -64,11 +66,12 @@ export default function SearchableSelect({ options, value, onChange, placeholder
                     height: '48px',
                     boxShadow: isOpen ? '0 0 0 3px rgba(59, 130, 246, 0.1)' : '0 1px 2px rgba(0, 0, 0, 0.05)',
                     transition: 'all 0.2s ease',
-                    color: '#1e293b'
+                    color: '#1e293b',
+                    flexDirection: locale === 'ar' ? 'row-reverse' : 'row'
                 }}
                 className="group"
             >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', overflow: 'hidden' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', overflow: 'hidden', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
                     {/* User Icon or Generic Icon */}
                     <div style={{
                         width: '24px',
@@ -104,18 +107,19 @@ export default function SearchableSelect({ options, value, onChange, placeholder
                                     fontSize: '0.95rem',
                                     fontWeight: 500,
                                     background: 'transparent',
-                                    color: '#0f172a'
+                                    color: '#0f172a',
+                                    textAlign: locale === 'ar' ? 'right' : 'left'
                                 }}
                             />
                         ) : selectedOption ? (
-                            <>
+                            <div style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>
                                 <span style={{ fontWeight: 600, color: '#0f172a' }}>{selectedOption.label}</span>
                                 {selectedOption.subLabel && (
-                                    <span style={{ color: '#64748b', fontSize: '0.75em', marginTop: '2px' }}>
+                                    <div style={{ color: '#64748b', fontSize: '0.75em', marginTop: '2px' }}>
                                         {selectedOption.subLabel}
-                                    </span>
+                                    </div>
                                 )}
-                            </>
+                            </div>
                         ) : (
                             <span style={{ color: '#94a3b8', fontWeight: 500 }}>{placeholder}</span>
                         )}
@@ -129,7 +133,7 @@ export default function SearchableSelect({ options, value, onChange, placeholder
                                 e.stopPropagation()
                                 onChange('')
                             }}
-                            title="Clear selection"
+                            title={t('clear_search')}
                             style={{
                                 color: '#94a3b8',
                                 padding: '4px',
@@ -197,15 +201,15 @@ export default function SearchableSelect({ options, value, onChange, placeholder
                                 if (value) e.currentTarget.style.background = 'transparent'
                             }}
                         >
-                            <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <span style={{ display: 'flex', alignItems: 'center', gap: '8px', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
                                 <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'currentColor', opacity: 0.5 }}></span>
-                                All Employees
+                                {t('all_employees')}
                             </span>
                         </div>
 
                         {filteredOptions.length === 0 ? (
                             <div style={{ padding: '1.5rem', textAlign: 'center', color: '#94a3b8', fontSize: '0.875rem' }}>
-                                No results found
+                                {t('no_matches_found')}
                             </div>
                         ) : (
                             filteredOptions.map(opt => (
@@ -225,7 +229,8 @@ export default function SearchableSelect({ options, value, onChange, placeholder
                                         display: 'flex',
                                         justifyContent: 'space-between',
                                         alignItems: 'center',
-                                        borderLeft: value === opt.value ? '3px solid #3b82f6' : '3px solid transparent'
+                                        [locale === 'ar' ? 'borderRight' : 'borderLeft']: value === opt.value ? '3px solid #3b82f6' : '3px solid transparent',
+                                        flexDirection: locale === 'ar' ? 'row-reverse' : 'row'
                                     }}
                                     onMouseEnter={(e) => {
                                         if (value !== opt.value) e.currentTarget.style.background = '#f8fafc'
@@ -234,7 +239,7 @@ export default function SearchableSelect({ options, value, onChange, placeholder
                                         if (value !== opt.value) e.currentTarget.style.background = 'transparent'
                                     }}
                                 >
-                                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                    <div style={{ display: 'flex', flexDirection: 'column', textAlign: locale === 'ar' ? 'right' : 'left' }}>
                                         <span style={{ fontWeight: value === opt.value ? 600 : 500, color: value === opt.value ? '#1e293b' : '#334155' }}>
                                             {opt.label}
                                         </span>
