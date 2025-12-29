@@ -62,7 +62,7 @@ export default function DateRangePicker({ dateFrom, dateTo, onChange }: DateRang
         const dateStr = formatToLocalISO(date)
 
         if (selectingFrom) {
-            onChange(dateStr, '')
+            onChange(dateStr, dateStr)
             setSelectingFrom(false)
         } else {
             if (dateStr < dateFrom) {
