@@ -288,11 +288,11 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
                     </div>
                 )}
 
-                {/* Day Off Requests Counter (for admin/super_admin) */}
+                {/* Profile Name Requests Counter (for admin/super_admin) */}
                 {['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role) && (
                     <Link
-                        href="/dashboard/day-off-requests"
-                        title={t('day_off_requests')}
+                        href="/dashboard/profile-requests"
+                        title={t('profile_name_requests')}
                         style={{
                             display: 'flex',
                             alignItems: 'center',
@@ -316,7 +316,11 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
                             e.currentTarget.style.background = 'rgba(255,255,255,0.5)'
                         }}
                     >
-                        <span style={{ fontSize: '1.25rem' }}>📅</span>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                            <circle cx="8.5" cy="7" r="4"></circle>
+                            <polyline points="17 11 19 13 23 9"></polyline>
+                        </svg>
                         {pendingRequestsCount > 0 && (
                             <span style={{
                                 position: 'absolute',
