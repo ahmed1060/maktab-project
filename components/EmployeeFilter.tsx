@@ -162,6 +162,9 @@ export default function EmployeeFilter({
                     zIndex: -1,
                     pointerEvents: 'none'
                 }} />
+                {/* Spacer to push items to the right if search is hidden */}
+                {hideSearch && <div style={{ flex: 1 }} />}
+
                 {/* Search - Flexible width */}
                 {!hideSearch && (
                     <div style={{ flex: 1, minWidth: '300px', position: 'relative' }}>
