@@ -36,7 +36,8 @@ interface EmployeeFilterProps {
     selectedRole?: string,
     onRoleChange?: (role: string) => void,
     hideFilterButton?: boolean,
-    hideSearch?: boolean
+    hideSearch?: boolean,
+    statusOptions?: SortOption[]
 }
 
 // Define interface for Employee data locally since it's just for display
@@ -70,7 +71,8 @@ export default function EmployeeFilter({
     selectedRole = '',
     onRoleChange,
     hideFilterButton,
-    hideSearch
+    hideSearch,
+    statusOptions
 }: EmployeeFilterProps) {
     const [employees, setEmployees] = useState<EmployeeType[]>([])
     const [loading, setLoading] = useState(true)
@@ -394,12 +396,20 @@ export default function EmployeeFilter({
                                                     }}
                                                 >
                                                     <option value="">{t('placeholder_all_statuses')}</option>
-                                                    {(!allowedStatuses || allowedStatuses.includes('COMPLETED')) && <option value="COMPLETED">{t('status_completed')}</option>}
-                                                    {(!allowedStatuses || allowedStatuses.includes('APPROVED')) && <option value="APPROVED">{t('status_approved')}</option>}
-                                                    {(!allowedStatuses || allowedStatuses.includes('REJECTED')) && <option value="REJECTED">{t('status_rejected')}</option>}
-                                                    {(!allowedStatuses || allowedStatuses.includes('PENDING_CONFIRMATION')) && <option value="PENDING_CONFIRMATION">{t('status_pending_approval')}</option>}
-                                                    {(!allowedStatuses || allowedStatuses.includes('IN_PROGRESS')) && <option value="IN_PROGRESS">{t('status_in_progress')}</option>}
-                                                    {(!allowedStatuses || allowedStatuses.includes('PENDING')) && <option value="PENDING">{t('status_pending')}</option>}
+                                                    {statusOptions ? (
+                                                        statusOptions.map(opt => (
+                                                            <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                                        ))
+                                                    ) : (
+                                                        <>
+                                                            {(!allowedStatuses || allowedStatuses.includes('COMPLETED')) && <option value="COMPLETED">{t('status_completed')}</option>}
+                                                            {(!allowedStatuses || allowedStatuses.includes('APPROVED')) && <option value="APPROVED">{t('status_approved')}</option>}
+                                                            {(!allowedStatuses || allowedStatuses.includes('REJECTED')) && <option value="REJECTED">{t('status_rejected')}</option>}
+                                                            {(!allowedStatuses || allowedStatuses.includes('PENDING_CONFIRMATION')) && <option value="PENDING_CONFIRMATION">{t('status_pending_approval')}</option>}
+                                                            {(!allowedStatuses || allowedStatuses.includes('IN_PROGRESS')) && <option value="IN_PROGRESS">{t('status_in_progress')}</option>}
+                                                            {(!allowedStatuses || allowedStatuses.includes('PENDING')) && <option value="PENDING">{t('status_pending')}</option>}
+                                                        </>
+                                                    )}
                                                 </select>
                                                 <div style={{ position: 'absolute', [locale === 'ar' ? 'left' : 'right']: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', pointerEvents: 'none' }}>
                                                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">

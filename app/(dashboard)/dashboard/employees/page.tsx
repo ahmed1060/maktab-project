@@ -52,6 +52,7 @@ export default function EmployeesPage() {
 
     const filteredEmployees = employees.filter(emp => {
         if (roleFilter && emp.role !== roleFilter) return false
+        if (filters.status && emp.status !== filters.status) return false
         if (searchQuery) {
             const query = searchQuery.toLowerCase()
             return (
@@ -245,8 +246,13 @@ export default function EmployeesPage() {
                 onSortChange={(field, order) => { setSortBy(field); setSortOrder(order) }}
                 sortOptions={[
                     { label: t('name_label'), value: 'name' },
-                    { label: t('role_admin'), value: 'role' },
+                    { label: t('role_label' as any) || 'Role', value: 'role' },
                     { label: t('points_label'), value: 'points' },
+                ]}
+                statusOptions={[
+                    { label: t('status_online'), value: 'ACTIVE' },
+                    { label: t('status_offline'), value: 'OFFLINE' },
+                    ...(userRole === 'SUPER_ADMIN' ? [{ label: t('status_suspended'), value: 'SUSPENDED' }] : [])
                 ]}
                 primaryAction={
                     ['ADMIN', 'SUPER_ADMIN'].includes(userRole) && (
