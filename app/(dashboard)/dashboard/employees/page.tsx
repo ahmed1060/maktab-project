@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useSession } from 'next-auth/react'
-import SortControl from '@/components/SortControl'
+import EmployeeFilter from '@/components/EmployeeFilter'
 import { useCompany } from '@/context/CompanyContext'
 import AccessDenied from '@/components/AccessDenied'
 import Modal from '@/components/Modal'
@@ -43,6 +43,7 @@ export default function EmployeesPage() {
     const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc')
     const [searchQuery, setSearchQuery] = useState('')
     const [roleFilter, setRoleFilter] = useState('')
+    const [filters, setFilters] = useState({ search: '', status: '', dateFrom: '', dateTo: '', employeeId: '' })
     const [alert, setAlert] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
     const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; name: string } | null>(null)
     const [resettingPoints, setResettingPoints] = useState<string | null>(null)
@@ -223,254 +224,231 @@ export default function EmployeesPage() {
                 </div>
             )}
 
-            <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginBottom: '1.5rem' }}>
-                {['ADMIN', 'SUPER_ADMIN'].includes(userRole) && (
-                    <Link href="/dashboard/employees/new" className="btn btn-primary" style={{ textDecoration: 'none' }}>
-                        {t('add_employee')}
-                    </Link>
-                )}
-            </div>
+            <EmployeeFilter
+                onFilterChange={(newFilters) => {
+                    setFilters(prev => ({ ...prev, ...newFilters }))
+                    setSearchQuery(newFilters.search)
+                }}
+                selectedEmployeeId={''}
+                hideEmployeeFilter={true}
+                hideDateFilter={true}
+                dateFrom={''}
+                dateTo={''}
+                selectedStatus={''}
+                searchQuery={searchQuery}
+                totalCount={sortedEmployees.length}
+                showRoleFilter={true}
+                selectedRole={roleFilter}
+                onRoleChange={setRoleFilter}
+                sortBy={sortBy}
+                sortOrder={sortOrder}
+                onSortChange={(field, order) => { setSortBy(field); setSortOrder(order) }}
+                sortOptions={[
+                    { label: t('name_label'), value: 'name' },
+                    { label: t('role_admin'), value: 'role' },
+                    { label: t('points_label'), value: 'points' },
+                ]}
+                primaryAction={
+                    ['ADMIN', 'SUPER_ADMIN'].includes(userRole) && (
+                        <Link href="/dashboard/employees/new" className="btn btn-primary" style={{ height: '48px', display: 'flex', alignItems: 'center', borderRadius: '1.25rem', textDecoration: 'none' }}>
+                            {t('add_employee')}
+                        </Link>
+                    )
+                }
+            />
 
-            <div style={{
-                marginBottom: '2rem',
-                display: 'flex',
-                gap: '1rem',
-                flexWrap: 'wrap',
-                alignItems: 'center'
-            }}>
-                <div style={{
-                    background: 'white',
-                    padding: '0.5rem',
-                    borderRadius: '1rem',
-                    border: '1px solid #e2e8f0',
-                    boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
-                    width: '300px',
-                    position: 'relative'
-                }}>
-                    <div style={{ position: 'absolute', [locale === 'ar' ? 'right' : 'left']: '1rem', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }}>
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <circle cx="11" cy="11" r="8"></circle>
-                            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-                        </svg>
-                    </div>
-                    <input
-                        type="text"
-                        placeholder={t('search_employees')}
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        style={{
-                            width: '100%',
-                            padding: locale === 'ar' ? '0.75rem 3rem 0.75rem 1rem' : '0.75rem 1rem 0.75rem 3rem',
-                            borderRadius: '0.75rem',
-                            border: 'none',
-                            fontSize: '1rem',
-                            outline: 'none',
-                            background: 'transparent',
-                            textAlign: locale === 'ar' ? 'right' : 'left'
-                        }}
-                    />
-                </div>
-
-                <div style={{
-                    background: 'white',
-                    padding: '0.5rem',
-                    borderRadius: '1rem',
-                    border: '1px solid #e2e8f0',
-                    boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
-                    position: 'relative',
-                    minWidth: '200px'
-                }}>
-                    <div style={{ position: 'absolute', [locale === 'ar' ? 'right' : 'left']: '1rem', top: '50%', transform: 'translateY(-50%)', color: '#64748b' }}>
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                            <circle cx="12" cy="7" r="4"></circle>
-                        </svg>
-                    </div>
-                    <select
-                        value={roleFilter}
-                        onChange={(e) => setRoleFilter(e.target.value)}
-                        style={{
-                            width: '100%',
-                            padding: locale === 'ar' ? '0.75rem 3rem 0.75rem 2.5rem' : '0.75rem 2.5rem 0.75rem 3rem',
-                            borderRadius: '0.75rem',
-                            border: 'none',
-                            fontSize: '0.875rem',
-                            outline: 'none',
-                            backgroundColor: 'transparent',
-                            cursor: 'pointer',
-                            appearance: 'none',
-                            backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2364748b'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`,
-                            backgroundRepeat: 'no-repeat',
-                            backgroundPosition: locale === 'ar' ? 'left 1rem center' : 'right 1rem center',
-                            backgroundSize: '1.25rem',
-                            textAlign: locale === 'ar' ? 'right' : 'left'
-                        }}
-                    >
-                        <option value="">{t('all_roles')}</option>
-                        <option value="EMPLOYEE">{t('role_employee')}</option>
-                        <option value="TEAM_LEADER">{t('role_team_leader')}</option>
-                        <option value="ADMIN">{t('role_admin')}</option>
-                    </select>
-                </div>
-            </div>
-
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '1.5rem' }}>
-                <SortControl
-                    options={[
-                        { label: t('name_label'), value: 'name' },
-                        { label: t('role_admin'), value: 'role' },
-                        { label: t('points_label'), value: 'points' },
-                    ]}
-                    sortBy={sortBy}
-                    sortOrder={sortOrder}
-                    onSortChange={(field, order) => { setSortBy(field); setSortOrder(order) }}
-                />
-            </div>
-
-            <div style={{ display: 'grid', gap: '1rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
                 {sortedEmployees.length === 0 ? (
-                    <p>{t('no_employees_found')}</p>
+                    <div className="glass-card flex flex-col items-center justify-center py-16 text-center text-slate-500 col-span-full">
+                        <span className="text-5xl mb-4">👥</span>
+                        <h3 className="text-xl font-bold text-slate-800">{t('no_employees_found')}</h3>
+                    </div>
                 ) : (
-                    sortedEmployees.map(emp => (
-                        <div key={emp.id} className="card">
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <div style={{ flex: 1 }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                                        <div
-                                            onClick={() => userRole === 'SUPER_ADMIN' && handleStatusToggle(emp.id, emp.status || 'OFFLINE')}
-                                            title={userRole === 'SUPER_ADMIN' ? (emp.status === 'SUSPENDED' ? t('status_suspended_msg') : emp.status === 'ACTIVE' ? t('status_online_msg') : t('status_offline_msg')) : (emp.status === 'SUSPENDED' ? t('status_suspended_msg') : emp.status === 'ACTIVE' ? t('status_online_msg') : t('status_offline_msg'))}
-                                            style={{
-                                                width: '12px',
-                                                height: '12px',
-                                                borderRadius: '50%',
-                                                background: emp.status === 'SUSPENDED' ? '#ef4444' : emp.status === 'ACTIVE' ? '#22c55e' : emp.status === 'OFFLINE' ? '#f59e0b' : '#94a3b8',
-                                                cursor: userRole === 'SUPER_ADMIN' ? 'pointer' : 'default',
-                                                flexShrink: 0,
-                                                boxShadow: `0 0 0 2px ${emp.status === 'SUSPENDED' ? '#fecaca' : emp.status === 'ACTIVE' ? '#bbf7d0' : emp.status === 'OFFLINE' ? '#fef9c3' : '#e2e8f0'}`
-                                            }}
-                                        />
+                    sortedEmployees.map((emp, index) => (
+                        <div
+                            key={emp.id}
+                            className="glass-card hover:bg-white/60 transition-all duration-300 p-5 border border-white/40 shadow-sm relative overflow-hidden flex flex-col gap-4"
+                            style={{
+                                animation: 'fadeIn 0.4s ease-out forwards',
+                                animationDelay: `${index * 50}ms`
+                            }}
+                        >
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                    <div
+                                        onClick={() => userRole === 'SUPER_ADMIN' && handleStatusToggle(emp.id, emp.status || 'OFFLINE')}
+                                        title={emp.status === 'SUSPENDED' ? t('status_suspended_msg') : emp.status === 'ACTIVE' ? t('status_online_msg') : t('status_offline_msg')}
+                                        style={{
+                                            width: '12px',
+                                            height: '12px',
+                                            borderRadius: '50%',
+                                            background: emp.status === 'SUSPENDED' ? '#ef4444' : emp.status === 'ACTIVE' ? '#22c55e' : emp.status === 'OFFLINE' ? '#f59e0b' : '#94a3b8',
+                                            cursor: userRole === 'SUPER_ADMIN' ? 'pointer' : 'default',
+                                            flexShrink: 0,
+                                            boxShadow: `0 0 0 2px ${emp.status === 'SUSPENDED' ? '#fecaca' : emp.status === 'ACTIVE' ? '#bbf7d0' : emp.status === 'OFFLINE' ? '#fef9c3' : '#e2e8f0'}`
+                                        }}
+                                    />
+                                    <div style={{ display: 'flex', flexDirection: 'column' }}>
                                         <Link href={`/dashboard/employees/${emp.id}?mode=view`} style={{ textDecoration: 'none', color: 'inherit' }}>
-                                            <h3 style={{ margin: 0, cursor: 'pointer' }} className="hover:text-blue-600 transition-colors">
+                                            <h3 className="text-lg font-bold text-slate-800 leading-tight hover:text-blue-600 transition-colors">
                                                 {emp.firstName} {emp.lastName}
                                             </h3>
                                         </Link>
-                                        <span style={{
-                                            padding: '0.25rem 0.75rem',
-                                            borderRadius: '9999px',
-                                            background: '#dbeafe',
-                                            color: '#1e40af',
-                                            fontSize: '0.875rem',
-                                            fontWeight: '600'
-                                        }}>
-                                            {emp.totalDifficultyPoints || 0} {t('pts')}
-                                        </span>
+                                        <p style={{ margin: 0, color: '#64748b', fontSize: '0.85rem' }}>{emp.email}</p>
                                     </div>
-                                    <p style={{ margin: '0.5rem 0 0 0', color: '#64748b', fontSize: '0.875rem' }}>{emp.email}</p>
-                                    {emp.role && (
-                                        <span style={{
-                                            display: 'inline-block',
-                                            marginTop: '0.25rem',
-                                            padding: '0.125rem 0.5rem',
-                                            borderRadius: '0.25rem',
-                                            fontSize: '0.75rem',
-                                            fontWeight: 'bold',
-                                            ...getRoleStyles(emp.role)
-                                        }}>
-                                            {t(`role_${emp.role.toLowerCase()}` as any) || emp.role}
-                                        </span>
-                                    )}
                                 </div>
-                                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                                    {['ADMIN', 'SUPER_ADMIN'].includes(userRole) && (
-                                        <>
-                                            <Link
-                                                href={`/dashboard/employees/${emp.id}`}
-                                                className="btn"
-                                                style={{
-                                                    background: '#dbeafe',
-                                                    color: '#1e40af',
-                                                    padding: '0.5rem 1rem',
-                                                    fontSize: '0.875rem',
-                                                    textDecoration: 'none'
-                                                }}
-                                            >
-                                                {t('edit')}
-                                            </Link>
-                                            <Link
-                                                href={`/dashboard/employees/${emp.id}/history`}
-                                                className="btn"
-                                                style={{
-                                                    background: '#dcfce7',
-                                                    color: '#166534',
-                                                    padding: '0.5rem 1rem',
-                                                    fontSize: '0.875rem',
-                                                    textDecoration: 'none'
-                                                }}
-                                            >
-                                                {t('history')}
-                                            </Link>
-                                            <Link
-                                                href={`/dashboard/employees/${emp.id}/bonus`}
-                                                className="btn"
-                                                style={{
-                                                    background: '#ede9fe',
-                                                    color: '#5b21b6',
-                                                    padding: '0.5rem 1rem',
-                                                    fontSize: '0.875rem',
-                                                    textDecoration: 'none'
-                                                }}
-                                            >
-                                                {t('add_bonus')}
-                                            </Link>
-                                            <Link
-                                                href={`/dashboard/employees/${emp.id}/deduction`}
-                                                className="btn"
-                                                style={{
-                                                    background: '#fee2e2',
-                                                    color: '#991b1b',
-                                                    padding: '0.5rem 1rem',
-                                                    fontSize: '0.875rem',
-                                                    textDecoration: 'none'
-                                                }}
-                                            >
-                                                {t('add_deduction')}
-                                            </Link>
-                                            <button
-                                                onClick={() => handleResetPoints(emp.id)}
-                                                disabled={resettingPoints === emp.id}
-                                                className="btn"
-                                                style={{
-                                                    background: resettingPoints === emp.id ? '#fde68a' : '#fef3c7',
-                                                    color: '#92400e',
-                                                    padding: '0.5rem 1rem',
-                                                    fontSize: '0.875rem',
-                                                    cursor: resettingPoints === emp.id ? 'not-allowed' : 'pointer',
-                                                    opacity: resettingPoints === emp.id ? 0.7 : 1
-                                                }}
-                                            >
-                                                {resettingPoints === emp.id ? t('resetting') : t('reset_points')}
-                                            </button>
-                                            {emp.role !== 'SUPER_ADMIN' && (
-                                                <button
-                                                    onClick={() => handleDelete(emp.id, `${emp.firstName} ${emp.lastName}`)}
-                                                    disabled={deletingUser === emp.id}
-                                                    className="btn"
-                                                    style={{
-                                                        background: deletingUser === emp.id ? '#fca5a5' : '#fee2e2',
-                                                        color: '#991b1b',
-                                                        padding: '0.5rem 1rem',
-                                                        fontSize: '0.875rem',
-                                                        cursor: deletingUser === emp.id ? 'not-allowed' : 'pointer',
-                                                        opacity: deletingUser === emp.id ? 0.7 : 1
-                                                    }}
-                                                >
-                                                    {deletingUser === emp.id ? t('deleting') : t('delete')}
-                                                </button>
-                                            )}
-                                        </>
-                                    )}
-                                </div>
+                                <span style={{
+                                    padding: '0.375rem 0.75rem',
+                                    borderRadius: '1rem',
+                                    background: '#eff6ff',
+                                    color: '#1e40af',
+                                    fontSize: '0.85rem',
+                                    fontWeight: '800'
+                                }}>
+                                    {emp.totalDifficultyPoints || 0} {t('pts')}
+                                </span>
                             </div>
+
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                <span style={{
+                                    display: 'inline-block',
+                                    padding: '0.25rem 0.625rem',
+                                    borderRadius: '0.5rem',
+                                    fontSize: '0.75rem',
+                                    fontWeight: '800',
+                                    textTransform: 'uppercase',
+                                    letterSpacing: '0.025em',
+                                    ...getRoleStyles(emp.role)
+                                }}>
+                                    {t(`role_${emp.role.toLowerCase()}` as any) || emp.role}
+                                </span>
+                                {emp.status === 'SUSPENDED' && (
+                                    <span style={{
+                                        padding: '0.25rem 0.625rem',
+                                        borderRadius: '0.5rem',
+                                        fontSize: '0.75rem',
+                                        fontWeight: '800',
+                                        background: '#fee2e2',
+                                        color: '#991b1b',
+                                        textTransform: 'uppercase'
+                                    }}>
+                                        {t('suspended' as any)}
+                                    </span>
+                                )}
+                            </div>
+
+                            {['ADMIN', 'SUPER_ADMIN'].includes(userRole) && (
+                                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: 'auto', paddingTop: '1rem', borderTop: '1px dashed #e2e8f0' }}>
+                                    <Link
+                                        href={`/dashboard/employees/${emp.id}`}
+                                        className="btn"
+                                        style={{
+                                            background: '#f8fafc',
+                                            color: '#475569',
+                                            padding: '0.5rem 0.75rem',
+                                            fontSize: '0.8rem',
+                                            fontWeight: '700',
+                                            textDecoration: 'none',
+                                            borderRadius: '0.75rem',
+                                            border: '1px solid #e2e8f0',
+                                            flex: 1,
+                                            textAlign: 'center'
+                                        }}
+                                    >
+                                        {t('edit')}
+                                    </Link>
+                                    <Link
+                                        href={`/dashboard/employees/${emp.id}/history`}
+                                        className="btn"
+                                        style={{
+                                            background: '#f8fafc',
+                                            color: '#475569',
+                                            padding: '0.5rem 0.75rem',
+                                            fontSize: '0.8rem',
+                                            fontWeight: '700',
+                                            textDecoration: 'none',
+                                            borderRadius: '0.75rem',
+                                            border: '1px solid #e2e8f0',
+                                            flex: 1,
+                                            textAlign: 'center'
+                                        }}
+                                    >
+                                        {t('history')}
+                                    </Link>
+                                    <div style={{ display: 'flex', gap: '0.5rem', width: '100%' }}>
+                                        <Link
+                                            href={`/dashboard/employees/${emp.id}/bonus`}
+                                            className="btn"
+                                            style={{
+                                                background: '#f0fdf4',
+                                                color: '#166534',
+                                                padding: '0.5rem 0.75rem',
+                                                fontSize: '0.8rem',
+                                                fontWeight: '800',
+                                                textDecoration: 'none',
+                                                borderRadius: '0.75rem',
+                                                flex: 1,
+                                                textAlign: 'center'
+                                            }}
+                                        >
+                                            + {t('add_bonus')}
+                                        </Link>
+                                        <Link
+                                            href={`/dashboard/employees/${emp.id}/deduction`}
+                                            className="btn"
+                                            style={{
+                                                background: '#fef2f2',
+                                                color: '#991b1b',
+                                                padding: '0.5rem 0.75rem',
+                                                fontSize: '0.8rem',
+                                                fontWeight: '800',
+                                                textDecoration: 'none',
+                                                borderRadius: '0.75rem',
+                                                flex: 1,
+                                                textAlign: 'center'
+                                            }}
+                                        >
+                                            - {t('add_deduction')}
+                                        </Link>
+                                    </div>
+                                    <button
+                                        onClick={() => handleResetPoints(emp.id)}
+                                        disabled={resettingPoints === emp.id}
+                                        className="btn"
+                                        style={{
+                                            background: '#fffbeb',
+                                            color: '#92400e',
+                                            padding: '0.5rem 0.75rem',
+                                            fontSize: '0.8rem',
+                                            fontWeight: '700',
+                                            borderRadius: '0.75rem',
+                                            flex: 1,
+                                            opacity: resettingPoints === emp.id ? 0.7 : 1
+                                        }}
+                                    >
+                                        {resettingPoints === emp.id ? t('resetting') : t('reset_points')}
+                                    </button>
+                                    {emp.role !== 'SUPER_ADMIN' && (
+                                        <button
+                                            onClick={() => handleDelete(emp.id, `${emp.firstName} ${emp.lastName}`)}
+                                            disabled={deletingUser === emp.id}
+                                            className="btn"
+                                            style={{
+                                                background: '#fee2e2',
+                                                color: '#dc2626',
+                                                padding: '0.5rem 0.75rem',
+                                                fontSize: '0.8rem',
+                                                fontWeight: '700',
+                                                borderRadius: '0.75rem',
+                                                flex: 1,
+                                                opacity: deletingUser === emp.id ? 0.7 : 1
+                                            }}
+                                        >
+                                            {deletingUser === emp.id ? t('deleting') : t('delete')}
+                                        </button>
+                                    )}
+                                </div>
+                            )}
                         </div>
                     ))
                 )}

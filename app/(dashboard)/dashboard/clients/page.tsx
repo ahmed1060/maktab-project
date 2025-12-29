@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { createPortal } from 'react-dom'
 import ConfirmModal from '@/components/ConfirmModal'
+import EmployeeFilter from '@/components/EmployeeFilter'
 import { useLanguage } from '@/context/LanguageContext'
 import { useToast } from '@/context/ToastContext'
 
@@ -148,203 +149,126 @@ export default function ClientsPage() {
     return (
         <>
             <div className="space-y-6 animate-in fade-in duration-500">
-                <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginBottom: '1.5rem' }}>
-                    <button
-                        onClick={() => setIsModalOpen(true)}
-                        className="btn btn-primary"
-                    >
-                        {t('add_client')}
-                    </button>
-                </div>
-
-                <div style={{
-                    marginBottom: '1.5rem',
-                    display: 'flex',
-                    gap: '1rem',
-                    alignItems: 'flex-end',
-                    justifyContent: 'space-between',
-                    flexWrap: 'wrap'
-                }}>
-                    <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-end', flex: 1, flexWrap: 'wrap' }}>
-                        <div style={{ position: 'relative', width: '100%', maxWidth: '400px' }}>
-                            <label style={{
-                                display: 'block',
-                                marginBottom: '0.5rem',
-                                fontWeight: '600',
-                                fontSize: '0.875rem',
-                                textAlign: locale === 'ar' ? 'right' : 'left'
-                            }}>
-                                {t('search_clients')}
-                            </label>
-                            <input
-                                type="text"
-                                placeholder={t('client_placeholder')}
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                                onFocus={() => setShowSuggestions(true)}
-                                onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
-                                style={{
-                                    padding: '0.5rem 1rem',
-                                    borderRadius: '0.5rem',
-                                    border: '1px solid #cbd5e1',
-                                    fontSize: '0.875rem',
-                                    outline: 'none',
-                                    width: '100%',
-                                    textAlign: locale === 'ar' ? 'right' : 'left'
-                                }}
-                            />
-                            {showSuggestions && (
-                                <div style={{
-                                    position: 'absolute',
-                                    top: '100%',
-                                    left: 0,
-                                    right: 0,
-                                    background: 'white',
-                                    border: '1px solid #e2e8f0',
-                                    borderRadius: '0.5rem',
-                                    marginTop: '0.25rem',
-                                    zIndex: 50,
-                                    maxHeight: '200px',
-                                    overflowY: 'auto',
-                                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
-                                }}>
-                                    {clients
-                                        .filter(c => c.name.toLowerCase().includes(searchQuery.toLowerCase()))
-                                        .map(client => (
-                                            <div
-                                                key={client.id}
-                                                onClick={() => {
-                                                    setSearchQuery(client.name)
-                                                    setShowSuggestions(false)
-                                                }}
-                                                style={{
-                                                    padding: '0.5rem 1rem',
-                                                    cursor: 'pointer',
-                                                    fontSize: '0.875rem',
-                                                    color: '#334155',
-                                                    borderBottom: '1px solid #f1f5f9',
-                                                    textAlign: locale === 'ar' ? 'right' : 'left'
-                                                }}
-                                                className="hover:bg-slate-50"
-                                            >
-                                                {client.name}
-                                            </div>
-                                        ))}
-                                    {clients.filter(c => c.name.toLowerCase().includes(searchQuery.toLowerCase())).length === 0 && (
-                                        <div style={{ padding: '0.5rem 1rem', fontSize: '0.875rem', color: '#94a3b8', textAlign: locale === 'ar' ? 'right' : 'left' }}>
-                                            {t('no_clients_found')}
-                                        </div>
-                                    )}
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                </div>
+                <EmployeeFilter
+                    onFilterChange={(newFilters: any) => setSearchQuery(newFilters.search)}
+                    selectedEmployeeId={''}
+                    hideEmployeeFilter={true}
+                    hideStatusFilter={true}
+                    hideDateFilter={true}
+                    dateFrom={''}
+                    dateTo={''}
+                    selectedStatus={''}
+                    searchQuery={searchQuery}
+                    totalCount={filteredClients.length}
+                    primaryAction={
+                        <button
+                            onClick={() => setIsModalOpen(true)}
+                            className="btn btn-primary"
+                            style={{ height: '48px', display: 'flex', alignItems: 'center', borderRadius: '1.25rem' }}
+                        >
+                            {t('add_client')}
+                        </button>
+                    }
+                />
 
                 {isLoading ? (
-                    <div className="flex flex-col items-center justify-center py-20 space-y-4">
-                        <div className="w-12 h-12 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></div>
-                        <p className="text-slate-500 font-medium animate-pulse">{t('loading_clients')}</p>
+                    <div className="glass-card p-12 flex flex-col items-center justify-center animate-pulse">
+                        <div className="w-12 h-12 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin mb-4"></div>
+                        <p className="text-slate-500 font-medium">{t('loading_filters')}</p>
                     </div>
                 ) : filteredClients.length === 0 ? (
-                    <div className="glass-card flex flex-col items-center justify-center py-12 text-center text-slate-500">
-                        <span className="text-4xl mb-2">🏢</span>
-                        <h3 className="text-lg font-bold text-slate-800">{t('no_clients_found')}</h3>
-                        <p className="max-w-xs mx-auto mt-1 mb-4">
-                            {searchQuery ? `${t('no_tasks_found')}` : t('get_started_client')}
-                        </p>
-                        {searchQuery && (
-                            <button
-                                onClick={() => setSearchQuery('')}
-                                className="text-indigo-600 hover:underline"
-                            >
-                                {t('clear_search')}
-                            </button>
-                        )}
+                    <div className="glass-card flex flex-col items-center justify-center py-16 text-center text-slate-500">
+                        <span className="text-5xl mb-4">🏢</span>
+                        <h3 className="text-xl font-bold text-slate-800">{t('no_clients_found')}</h3>
                     </div>
                 ) : (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
                         {filteredClients.map((client, index) => (
                             <div
                                 key={client.id}
-                                className="glass-card hover:bg-white/60 transition-all duration-300 p-4 border border-white/40 shadow-sm relative overflow-hidden"
+                                className="glass-card hover:bg-white/60 transition-all duration-300 p-5 border border-white/40 shadow-sm relative overflow-hidden flex flex-col gap-4"
                                 style={{
-                                    animationDelay: `${index * 50}ms`,
-                                    marginBottom: '0.5rem'
+                                    animation: 'fadeIn 0.4s ease-out forwards',
+                                    animationDelay: `${index * 50}ms`
                                 }}
                             >
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', gap: '1rem' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                                        <h3 className="text-lg font-semibold text-slate-800 leading-tight" style={{ margin: 0 }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                                        <h3 className="text-lg font-bold text-slate-800 leading-tight">
                                             {client.name}
                                         </h3>
-                                        <span style={{
-                                            padding: '0.25rem 0.75rem',
-                                            borderRadius: '9999px',
-                                            background: '#dbeafe',
-                                            color: '#1e40af',
-                                            fontSize: '0.875rem',
-                                            fontWeight: '600',
-                                            whiteSpace: 'nowrap'
-                                        }}>
-                                            {client._count.sections} {client._count.sections === 1 ? t('section_label') : t('sections_label')}
-                                        </span>
-                                    </div>
-
-                                    <div style={{ [locale === 'ar' ? 'marginRight' : 'marginLeft']: 'auto', display: 'flex', gap: '0.5rem' }}>
-                                        <Link
-                                            href={`/dashboard/clients/${client.id}`}
-                                            className="btn btn-primary"
-                                            style={{
-                                                textDecoration: 'none',
-                                                fontSize: '0.875rem',
-                                                padding: '0.5rem 1rem',
-                                                display: 'inline-block'
-                                            }}
-                                        >
-                                            {t('view_client')}
-                                        </Link>
-                                        <button
-                                            onClick={() => {
-                                                setEditingClientId(client.id)
-                                                setEditClientName(client.name)
-                                                setIsEditClientModalOpen(true)
-                                            }}
-                                            className="btn"
-                                            style={{
-                                                background: '#dbeafe',
-                                                color: '#1e40af',
-                                                padding: '0.5rem 1rem',
-                                                fontSize: '0.875rem',
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                gap: '0.25rem'
-                                            }}
-                                        >
-                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
-                                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#64748b', fontSize: '0.85rem', fontWeight: '600' }}>
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                                                <circle cx="9" cy="7" r="4"></circle>
+                                                <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                                                <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
                                             </svg>
-                                            {t('edit')}
-                                        </button>
-                                        <button
-                                            onClick={(e) => {
-                                                e.preventDefault()
-                                                setDeleteConfirm({ isOpen: true, client })
-                                            }}
-                                            className="btn"
-                                            style={{
-                                                background: '#fee2e2',
-                                                color: '#b91c1c',
-                                                padding: '0.5rem 1rem',
-                                                fontSize: '0.875rem',
-                                                border: 'none',
-                                                cursor: 'pointer'
-                                            }}
-                                        >
-                                            {t('delete')}
-                                        </button>
+                                            {client._count.sections} {client._count.sections === 1 ? t('section_label') : t('sections_label')}
+                                        </div>
                                     </div>
+                                    <Link
+                                        href={`/dashboard/clients/${client.id}`}
+                                        className="btn btn-primary"
+                                        style={{
+                                            textDecoration: 'none',
+                                            fontSize: '0.8rem',
+                                            padding: '0.5rem 0.875rem',
+                                            borderRadius: '0.75rem',
+                                            fontWeight: '700'
+                                        }}
+                                    >
+                                        {t('view_client')}
+                                    </Link>
+                                </div>
+
+                                <div style={{ display: 'flex', gap: '0.5rem', marginTop: 'auto', paddingTop: '1rem', borderTop: '1px dashed #e2e8f0' }}>
+                                    <button
+                                        onClick={() => {
+                                            setEditingClientId(client.id)
+                                            setEditClientName(client.name)
+                                            setIsEditClientModalOpen(true)
+                                        }}
+                                        className="btn"
+                                        style={{
+                                            flex: 1,
+                                            background: '#f8fafc',
+                                            color: '#475569',
+                                            padding: '0.5rem',
+                                            fontSize: '0.875rem',
+                                            fontWeight: '700',
+                                            borderRadius: '0.75rem',
+                                            border: '1px solid #e2e8f0',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            gap: '0.375rem'
+                                        }}
+                                    >
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                                        </svg>
+                                        {t('edit')}
+                                    </button>
+                                    <button
+                                        onClick={(e) => {
+                                            e.preventDefault()
+                                            setDeleteConfirm({ isOpen: true, client })
+                                        }}
+                                        className="btn"
+                                        style={{
+                                            flex: 1,
+                                            background: '#fee2e2',
+                                            color: '#dc2626',
+                                            padding: '0.5rem',
+                                            fontSize: '0.875rem',
+                                            fontWeight: '700',
+                                            borderRadius: '0.75rem'
+                                        }}
+                                    >
+                                        {t('delete')}
+                                    </button>
                                 </div>
                             </div>
                         ))}

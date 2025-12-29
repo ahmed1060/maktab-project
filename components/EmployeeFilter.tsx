@@ -24,7 +24,17 @@ interface EmployeeFilterProps {
     sortOrder?: 'asc' | 'desc'
     onSortChange?: (field: string, order: 'asc' | 'desc') => void
     sortOptions?: SortOption[]
-    primaryAction?: React.ReactNode
+    primaryAction?: React.ReactNode,
+    // Visibility toggles
+    hideEmployeeFilter?: boolean,
+    hideStatusFilter?: boolean,
+    hideDateFilter?: boolean,
+    // Restricted options
+    allowedStatuses?: string[],
+    // Role filter support
+    showRoleFilter?: boolean,
+    selectedRole?: string,
+    onRoleChange?: (role: string) => void
 }
 
 // Define interface for Employee data locally since it's just for display
@@ -49,7 +59,14 @@ export default function EmployeeFilter({
     sortOrder,
     onSortChange,
     sortOptions,
-    primaryAction
+    primaryAction,
+    hideEmployeeFilter,
+    hideStatusFilter,
+    hideDateFilter,
+    allowedStatuses,
+    showRoleFilter,
+    selectedRole = '',
+    onRoleChange
 }: EmployeeFilterProps) {
     const [employees, setEmployees] = useState<EmployeeType[]>([])
     const [loading, setLoading] = useState(true)
@@ -57,7 +74,7 @@ export default function EmployeeFilter({
     const { t, locale } = useLanguage()
 
     useEffect(() => {
-        if (!isEmployee) {
+        if (!isEmployee && !hideEmployeeFilter) {
             fetch('/api/users')
                 .then(res => res.json())
                 .then(data => {
@@ -83,7 +100,7 @@ export default function EmployeeFilter({
         } else {
             setLoading(false)
         }
-    }, [isEmployee])
+    }, [isEmployee, hideEmployeeFilter])
 
     const handleEmployeeChange = (employeeId: string) => {
         onFilterChange({ employeeId, dateFrom, dateTo, status: selectedStatus, search: searchQuery })
@@ -102,9 +119,10 @@ export default function EmployeeFilter({
     }
 
     const activeFilterCount = [
-        selectedEmployeeId ? 1 : 0,
-        selectedStatus ? 1 : 0,
-        dateFrom || dateTo ? 1 : 0
+        (!hideEmployeeFilter && selectedEmployeeId) ? 1 : 0,
+        (!hideStatusFilter && selectedStatus) ? 1 : 0,
+        (!hideDateFilter && (dateFrom || dateTo)) ? 1 : 0,
+        (showRoleFilter && selectedRole) ? 1 : 0
     ].reduce((a, b) => a + b, 0)
 
     if (loading) {
@@ -294,58 +312,104 @@ export default function EmployeeFilter({
                                         </div>
                                     )}
 
-                                    <div>
-                                        <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '700', fontSize: '0.875rem' }}>{t('filter_by_employee')}</label>
-                                        <SearchableSelect
-                                            options={employees.map(emp => ({ label: `${emp.firstName} ${emp.lastName}`, value: emp.id, subLabel: emp.role }))}
-                                            value={selectedEmployeeId}
-                                            onChange={handleEmployeeChange}
-                                            placeholder={t('placeholder_all_employees')}
-                                        />
-                                    </div>
-                                    <div>
-                                        <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '700', fontSize: '0.875rem' }}>{t('filter_by_status')}</label>
-                                        <div style={{ position: 'relative' }}>
-                                            <select
-                                                value={selectedStatus}
-                                                onChange={(e) => handleStatusChange(e.target.value)}
-                                                className="input"
-                                                style={{
-                                                    width: '100%',
-                                                    padding: locale === 'ar' ? '0 0.75rem 0 2.25rem' : '0 2.25rem 0 0.75rem',
-                                                    borderRadius: '1.25rem',
-                                                    background: 'white',
-                                                    border: '1px solid #e2e8f0',
-                                                    height: '48px',
-                                                    appearance: 'none',
-                                                    backgroundImage: 'none',
-                                                    cursor: 'pointer',
-                                                    fontSize: '0.9rem',
-                                                    fontWeight: '500'
-                                                }}
-                                            >
-                                                <option value="">{t('placeholder_all_statuses')}</option>
-                                                <option value="COMPLETED">{t('status_completed')}</option>
-                                                <option value="APPROVED">{t('status_approved')}</option>
-                                                <option value="REJECTED">{t('status_rejected')}</option>
-                                                <option value="PENDING_CONFIRMATION">{t('status_pending_approval')}</option>
-                                                <option value="IN_PROGRESS">{t('status_in_progress')}</option>
-                                                <option value="PENDING">{t('status_pending')}</option>
-                                            </select>
-                                            <div style={{ position: 'absolute', [locale === 'ar' ? 'left' : 'right']: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', pointerEvents: 'none' }}>
-                                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                                    <path d="M6 9l6 6 6-6"></path>
-                                                </svg>
+                                    {!hideEmployeeFilter && (
+                                        <div>
+                                            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '700', fontSize: '0.875rem' }}>{t('filter_by_employee')}</label>
+                                            <SearchableSelect
+                                                options={employees.map(emp => ({ label: `${emp.firstName} ${emp.lastName}`, value: emp.id, subLabel: emp.role }))}
+                                                value={selectedEmployeeId}
+                                                onChange={handleEmployeeChange}
+                                                placeholder={t('placeholder_all_employees')}
+                                            />
+                                        </div>
+                                    )}
+
+                                    {showRoleFilter && onRoleChange && (
+                                        <div>
+                                            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '700', fontSize: '0.875rem' }}>{t('role_label' as any) || 'Role'}</label>
+                                            <div style={{ position: 'relative' }}>
+                                                <select
+                                                    value={selectedRole}
+                                                    onChange={(e) => onRoleChange(e.target.value)}
+                                                    className="input"
+                                                    style={{
+                                                        width: '100%',
+                                                        padding: locale === 'ar' ? '0 0.75rem 0 2.25rem' : '0 2.25rem 0 0.75rem',
+                                                        borderRadius: '1.25rem',
+                                                        background: 'white',
+                                                        border: '1px solid #e2e8f0',
+                                                        height: '48px',
+                                                        appearance: 'none',
+                                                        backgroundImage: 'none',
+                                                        cursor: 'pointer',
+                                                        fontSize: '0.9rem',
+                                                        fontWeight: '500',
+                                                        textAlign: locale === 'ar' ? 'right' : 'left'
+                                                    }}
+                                                >
+                                                    <option value="">{t('all_roles')}</option>
+                                                    <option value="EMPLOYEE">{t('role_employee')}</option>
+                                                    <option value="TEAM_LEADER">{t('role_team_leader')}</option>
+                                                    <option value="ADMIN">{t('role_admin')}</option>
+                                                </select>
+                                                <div style={{ position: 'absolute', [locale === 'ar' ? 'left' : 'right']: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', pointerEvents: 'none' }}>
+                                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                                        <path d="M6 9l6 6 6-6"></path>
+                                                    </svg>
+                                                </div>
                                             </div>
                                         </div>
-                                    </div>
-                                    <div>
-                                        <DateRangePicker
-                                            dateFrom={dateFrom}
-                                            dateTo={dateTo}
-                                            onChange={(from, to) => onFilterChange({ employeeId: selectedEmployeeId, dateFrom: from, dateTo: to, status: selectedStatus, search: searchQuery })}
-                                        />
-                                    </div>
+                                    )}
+
+                                    {!hideStatusFilter && (
+                                        <div>
+                                            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '700', fontSize: '0.875rem' }}>{t('filter_by_status')}</label>
+                                            <div style={{ position: 'relative' }}>
+                                                <select
+                                                    value={selectedStatus}
+                                                    onChange={(e) => handleStatusChange(e.target.value)}
+                                                    className="input"
+                                                    style={{
+                                                        width: '100%',
+                                                        padding: locale === 'ar' ? '0 0.75rem 0 2.25rem' : '0 2.25rem 0 0.75rem',
+                                                        borderRadius: '1.25rem',
+                                                        background: 'white',
+                                                        border: '1px solid #e2e8f0',
+                                                        height: '48px',
+                                                        appearance: 'none',
+                                                        backgroundImage: 'none',
+                                                        cursor: 'pointer',
+                                                        fontSize: '0.9rem',
+                                                        fontWeight: '500',
+                                                        textAlign: locale === 'ar' ? 'right' : 'left'
+                                                    }}
+                                                >
+                                                    <option value="">{t('placeholder_all_statuses')}</option>
+                                                    {(!allowedStatuses || allowedStatuses.includes('COMPLETED')) && <option value="COMPLETED">{t('status_completed')}</option>}
+                                                    {(!allowedStatuses || allowedStatuses.includes('APPROVED')) && <option value="APPROVED">{t('status_approved')}</option>}
+                                                    {(!allowedStatuses || allowedStatuses.includes('REJECTED')) && <option value="REJECTED">{t('status_rejected')}</option>}
+                                                    {(!allowedStatuses || allowedStatuses.includes('PENDING_CONFIRMATION')) && <option value="PENDING_CONFIRMATION">{t('status_pending_approval')}</option>}
+                                                    {(!allowedStatuses || allowedStatuses.includes('IN_PROGRESS')) && <option value="IN_PROGRESS">{t('status_in_progress')}</option>}
+                                                    {(!allowedStatuses || allowedStatuses.includes('PENDING')) && <option value="PENDING">{t('status_pending')}</option>}
+                                                </select>
+                                                <div style={{ position: 'absolute', [locale === 'ar' ? 'left' : 'right']: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', pointerEvents: 'none' }}>
+                                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                                        <path d="M6 9l6 6 6-6"></path>
+                                                    </svg>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {!hideDateFilter && (
+                                        <div>
+                                            <DateRangePicker
+                                                dateFrom={dateFrom}
+                                                dateTo={dateTo}
+                                                onChange={(from, to) => onFilterChange({ employeeId: selectedEmployeeId, dateFrom: from, dateTo: to, status: selectedStatus, search: searchQuery })}
+                                            />
+                                        </div>
+                                    )}
                                     <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.75rem' }}>
                                         <button
                                             onClick={resetFilters}

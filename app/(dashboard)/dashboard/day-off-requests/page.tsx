@@ -232,74 +232,159 @@ export default function DayOffRequestsPage() {
                 searchQuery={filters.search}
                 isEmployee={!isAdmin}
                 totalCount={filteredRequests.length}
+                allowedStatuses={['PENDING', 'APPROVED', 'REJECTED']}
                 primaryAction={
-                    !isAdmin && (
+                    !isAdmin ? (
                         <button onClick={() => setIsRequestModalOpen(true)} className="btn btn-primary" style={{ height: '48px', display: 'flex', alignItems: 'center', borderRadius: '1.25rem' }}>
                             {t('request_day_off' as any)}
                         </button>
-                    )
+                    ) : null
                 }
             />
 
-            <div style={{ display: 'grid', gridTemplateColumns: isAdmin ? '1fr' : '1fr 350px', gap: '2rem' }}>
-                <div className="card">
-                    <h2 className="text-xl font-semibold mb-4">{isAdmin ? t('all_users' as any) : t('requests_history' as any)}</h2>
+            <div style={{ display: 'grid', gridTemplateColumns: isAdmin ? '1fr' : '1fr 320px', gap: '1.5rem', marginBottom: '2rem' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                     {loading ? (
-                        <p>{t('loading_filters')}</p>
+                        <div className="glass-card p-12 flex flex-col items-center justify-center animate-pulse">
+                            <div className="w-12 h-12 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin mb-4"></div>
+                            <p className="text-slate-500 font-medium">{t('loading_filters')}</p>
+                        </div>
+                    ) : filteredRequests.length === 0 ? (
+                        <div className="glass-card flex flex-col items-center justify-center py-16 text-center text-slate-500">
+                            <span className="text-5xl mb-4">🌴</span>
+                            <h3 className="text-xl font-bold text-slate-800">{t('no_records_found')}</h3>
+                            <p className="max-w-xs mx-auto mt-2 text-slate-500">
+                                {filters.search || filters.status || filters.employeeId ? t('no_search_results' as any) || 'No results match your filters' : t('get_started_day_off' as any) || 'No day off requests yet.'}
+                            </p>
+                        </div>
                     ) : (
-                        <div style={{ overflowX: 'auto' }}>
-                            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                                <thead>
-                                    <tr style={{ borderBottom: '1px solid #e2e8f0', textAlign: locale === 'ar' ? 'right' : 'left' }}>
-                                        {isAdmin && <th style={{ padding: '1rem' }}>{t('name_label')}</th>}
-                                        <th style={{ padding: '1rem' }}>{t('select_date' as any)}</th>
-                                        <th style={{ padding: '1rem' }}>{t('day_off_type' as any)}</th>
-                                        <th style={{ padding: '1rem' }}>{t('status_label')}</th>
-                                        <th style={{ padding: '1rem' }}>{t('reason_label' as any)}</th>
-                                        {isAdmin && <th style={{ padding: '1rem' }}>{t('edit')}</th>}
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {filteredRequests.map(req => (
-                                        <tr key={req.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                                            {isAdmin && <td style={{ padding: '1rem' }}>{req.user?.firstName} {req.user?.lastName}</td>}
-                                            <td style={{ padding: '1rem' }}>{new Date(req.date).toLocaleDateString(locale)}</td>
-                                            <td style={{ padding: '1rem' }}>{t(req.type === 'CASUAL' ? 'casual_day_off' : 'regular_day_off' as any)}</td>
-                                            <td style={{ padding: '1rem' }}>
-                                                <span style={{
-                                                    padding: '0.25rem 0.75rem',
-                                                    borderRadius: '1rem',
-                                                    fontSize: '0.85rem',
-                                                    background: req.status === 'APPROVED' ? '#dcfce7' : req.status === 'REJECTED' ? '#fee2e2' : '#fef9c3',
-                                                    color: req.status === 'APPROVED' ? '#166534' : req.status === 'REJECTED' ? '#991b1b' : '#854d0e'
-                                                }}>
-                                                    {t(`status_${req.status.toLowerCase()}` as any)}
-                                                </span>
-                                            </td>
-                                            <td style={{ padding: '1rem', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={req.reason || ''}>
-                                                {req.reason || '-'}
-                                            </td>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: '1rem' }}>
+                            {filteredRequests.map((req, index) => (
+                                <div
+                                    key={req.id}
+                                    className="glass-card hover:bg-white/60 transition-all duration-300 p-5 border border-white/40 shadow-sm relative overflow-hidden flex flex-col gap-4"
+                                    style={{
+                                        animation: 'fadeIn 0.4s ease-out forwards',
+                                        animationDelay: `${index * 50}ms`
+                                    }}
+                                >
+                                    {/* Card Header */}
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
                                             {isAdmin && (
-                                                <td style={{ padding: '1rem' }}>
-                                                    {req.status === 'PENDING' && (
-                                                        <div style={{ display: 'flex', gap: '0.5rem' }}>
-                                                            <button onClick={() => handleAction(req.id, 'APPROVED')} className="btn" style={{ padding: '0.25rem 0.5rem', fontSize: '0.8rem', background: '#10b981', color: 'white' }}>{t('approve_button')}</button>
-                                                            <button onClick={() => handleAction(req.id, 'REJECTED')} className="btn" style={{ padding: '0.25rem 0.5rem', fontSize: '0.8rem', background: '#ef4444', color: 'white' }}>{t('reject_button')}</button>
-                                                        </div>
-                                                    )}
-                                                </td>
+                                                <h3 className="text-lg font-bold text-slate-800 leading-tight">
+                                                    {req.user?.firstName} {req.user?.lastName}
+                                                </h3>
                                             )}
-                                        </tr>
-                                    ))}
-                                    {filteredRequests.length === 0 && (
-                                        <tr>
-                                            <td colSpan={isAdmin ? 6 : 4} style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>
-                                                {t('no_records_found')}
-                                            </td>
-                                        </tr>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#64748b', fontSize: '0.85rem', fontWeight: '600' }}>
+                                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                                                    <line x1="16" y1="2" x2="16" y2="6"></line>
+                                                    <line x1="8" y1="2" x2="8" y2="6"></line>
+                                                    <line x1="3" y1="10" x2="21" y2="10"></line>
+                                                </svg>
+                                                {new Date(req.date).toLocaleDateString(locale, { day: 'numeric', month: 'short', year: 'numeric' })}
+                                            </div>
+                                        </div>
+                                        <span style={{
+                                            padding: '0.375rem 0.875rem',
+                                            borderRadius: '1rem',
+                                            fontSize: '0.8rem',
+                                            fontWeight: '800',
+                                            textTransform: 'uppercase',
+                                            letterSpacing: '0.025em',
+                                            background: req.status === 'APPROVED' ? '#dcfce7' : req.status === 'REJECTED' ? '#fee2e2' : '#fef9c3',
+                                            color: req.status === 'APPROVED' ? '#166534' : req.status === 'REJECTED' ? '#991b1b' : '#854d0e',
+                                            boxShadow: '0 2px 4px rgba(0,0,0,0.02)'
+                                        }}>
+                                            {t(`status_${req.status.toLowerCase()}` as any)}
+                                        </span>
+                                    </div>
+
+                                    {/* Card Content */}
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                                        <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                            <span style={{
+                                                padding: '0.25rem 0.625rem',
+                                                borderRadius: '0.5rem',
+                                                fontSize: '0.75rem',
+                                                fontWeight: '700',
+                                                background: req.type === 'CASUAL' ? '#ede9fe' : '#e0f2fe',
+                                                color: req.type === 'CASUAL' ? '#5b21b6' : '#0369a1'
+                                            }}>
+                                                {t(req.type === 'CASUAL' ? 'casual_day_off' : 'regular_day_off' as any)}
+                                            </span>
+                                            {req.status === 'APPROVED' && (
+                                                <span style={{
+                                                    padding: '0.25rem 0.625rem',
+                                                    borderRadius: '0.5rem',
+                                                    fontSize: '0.75rem',
+                                                    fontWeight: '700',
+                                                    background: '#f8fafc',
+                                                    color: '#64748b',
+                                                    border: '1px solid #e2e8f0'
+                                                }}>
+                                                    {req.daysDeducted} {t('days_label')}
+                                                </span>
+                                            )}
+                                        </div>
+                                        {req.reason ? (
+                                            <p style={{
+                                                margin: 0,
+                                                fontSize: '0.9rem',
+                                                color: '#475569',
+                                                lineHeight: '1.5',
+                                                background: 'rgba(0,0,0,0.02)',
+                                                padding: '0.75rem',
+                                                borderRadius: '0.75rem',
+                                                fontStyle: 'italic'
+                                            }}>
+                                                "{req.reason}"
+                                            </p>
+                                        ) : (
+                                            <p style={{ margin: 0, fontSize: '0.9rem', color: '#94a3b8', fontStyle: 'italic' }}>
+                                                {t('no_reason_provided' as any) || 'No reason provided'}
+                                            </p>
+                                        )}
+                                    </div>
+
+                                    {/* Card Actions (Admin only) */}
+                                    {isAdmin && req.status === 'PENDING' && (
+                                        <div style={{ display: 'flex', gap: '0.75rem', marginTop: 'auto', paddingTop: '1rem', borderTop: '1px dashed #e2e8f0' }}>
+                                            <button
+                                                onClick={() => handleAction(req.id, 'APPROVED')}
+                                                className="btn"
+                                                style={{
+                                                    flex: 1,
+                                                    background: '#10b981',
+                                                    color: 'white',
+                                                    fontSize: '0.875rem',
+                                                    fontWeight: '700',
+                                                    height: '40px',
+                                                    borderRadius: '0.75rem'
+                                                }}
+                                            >
+                                                {t('approve_button')}
+                                            </button>
+                                            <button
+                                                onClick={() => handleAction(req.id, 'REJECTED')}
+                                                className="btn"
+                                                style={{
+                                                    flex: 1,
+                                                    background: '#ef4444',
+                                                    color: 'white',
+                                                    fontSize: '0.875rem',
+                                                    fontWeight: '700',
+                                                    height: '40px',
+                                                    borderRadius: '0.75rem'
+                                                }}
+                                            >
+                                                {t('reject_button')}
+                                            </button>
+                                        </div>
                                     )}
-                                </tbody>
-                            </table>
+                                </div>
+                            ))}
                         </div>
                     )}
                 </div>
