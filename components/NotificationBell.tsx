@@ -125,7 +125,7 @@ export default function NotificationBell() {
                     position: 'absolute',
                     [locale === 'ar' ? 'left' : 'right']: 0,
                     top: '100%',
-                    width: '300px',
+                    width: 'min(300px, calc(100vw - 2rem))',
                     background: 'white',
                     border: '1px solid #ddd',
                     borderRadius: '8px',

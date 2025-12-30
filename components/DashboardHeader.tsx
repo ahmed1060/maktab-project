@@ -404,7 +404,7 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
                                     position: 'absolute',
                                     top: '120%',
                                     [locale === 'ar' ? 'left' : 'right']: 0,
-                                    width: '200px',
+                                    width: 'min(200px, calc(100vw - 2rem))',
                                     zIndex: 100,
                                     padding: '0.5rem',
                                     display: 'flex',

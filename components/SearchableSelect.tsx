@@ -160,8 +160,9 @@ export default function SearchableSelect({ options, value, onChange, placeholder
                 <div style={{
                     position: 'absolute',
                     top: 'calc(100% + 8px)',
-                    left: 0,
-                    right: 0,
+                    left: '0',
+                    right: '0',
+                    margin: '0',
                     background: 'white',
                     border: '1px solid #e2e8f0',
                     borderRadius: '0.75rem',

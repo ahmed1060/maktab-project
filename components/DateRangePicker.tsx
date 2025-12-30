@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { useLanguage } from '@/context/LanguageContext'
 
 interface DateRangePickerProps {
@@ -10,20 +11,32 @@ interface DateRangePickerProps {
 export default function DateRangePicker({ dateFrom, dateTo, onChange }: DateRangePickerProps) {
     const { t, locale } = useLanguage()
     const [isOpen, setIsOpen] = useState(false)
+    const [mounted, setMounted] = useState(false)
+    const [isMobile, setIsMobile] = useState(false)
     const [currentMonth, setCurrentMonth] = useState(new Date())
     const [selectingFrom, setSelectingFrom] = useState(true)
     const containerRef = useRef<HTMLDivElement>(null)
+
+    useEffect(() => {
+        setMounted(true)
+        const checkMobile = () => {
+            setIsMobile(window.innerWidth <= 768)
+        }
+        checkMobile()
+        window.addEventListener('resize', checkMobile)
+        return () => window.removeEventListener('resize', checkMobile)
+    }, [])
 
     // Close dropdown when clicking outside
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
             if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
-                setIsOpen(false)
+                if (!isMobile) setIsOpen(false)
             }
         }
         document.addEventListener('mousedown', handleClickOutside)
         return () => document.removeEventListener('mousedown', handleClickOutside)
-    }, [])
+    }, [isMobile])
 
     const formatDate = (dateStr: string) => {
         if (!dateStr) return ''
@@ -102,6 +115,137 @@ export default function DateRangePicker({ dateFrom, dateTo, onChange }: DateRang
     const weekdaysEn = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa']
     const weekdays = locale === 'ar' ? weekdaysAr : weekdaysEn
 
+    const pickerContent = (
+        <div
+            onClick={(e) => isMobile && e.stopPropagation()}
+            style={{
+                position: isMobile ? 'fixed' : 'absolute',
+                top: isMobile ? '50%' : '100%',
+                [locale === 'ar' ? (isMobile ? 'left' : 'right') : (isMobile ? 'right' : 'left')]: isMobile ? '50%' : 0,
+                transform: isMobile ? 'translate(50%, -50%)' : 'none',
+                marginTop: isMobile ? 0 : '0.5rem',
+                background: 'white',
+                border: '1px solid #e2e8f0',
+                borderRadius: '0.75rem',
+                boxShadow: '0 10px 25px rgba(0, 0, 0, 0.1)',
+                padding: '1rem',
+                zIndex: isMobile ? 10001 : 1000,
+                width: isMobile ? 'min(calc(100vw - 2rem), 400px)' : '320px',
+                animation: isMobile ? 'fadeIn 0.2s ease-out' : 'slideUp 0.2s ease-out',
+                direction: locale === 'ar' ? 'rtl' : 'ltr'
+            }}>
+            {/* Month Navigation */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexDirection: 'row' }}>
+                <button
+                    onClick={(e) => { e.stopPropagation(); setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - (locale === 'ar' ? -1 : 1))); }}
+                    style={{
+                        background: 'none',
+                        border: 'none',
+                        fontSize: '1.25rem',
+                        cursor: 'pointer',
+                        padding: '0.25rem 0.5rem',
+                        color: '#64748b'
+                    }}
+                >
+                    {locale === 'ar' ? '›' : '‹'}
+                </button>
+                <div style={{ fontWeight: '600', fontSize: '0.95rem', color: '#64748b' }}>
+                    {monthYear}
+                </div>
+                <button
+                    onClick={(e) => { e.stopPropagation(); setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + (locale === 'ar' ? -1 : 1))); }}
+                    style={{
+                        background: 'none',
+                        border: 'none',
+                        fontSize: '1.25rem',
+                        cursor: 'pointer',
+                        padding: '0.25rem 0.5rem',
+                        color: '#64748b'
+                    }}
+                >
+                    {locale === 'ar' ? '‹' : '›'}
+                </button>
+            </div>
+
+            {/* Weekday Headers */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '0.25rem', marginBottom: '0.5rem' }}>
+                {weekdays.map(day => (
+                    <div key={day} style={{ textAlign: 'center', fontSize: '0.75rem', color: '#94a3b8', fontWeight: '600', padding: '0.25rem' }}>
+                        {day}
+                    </div>
+                ))}
+            </div>
+
+            {/* Calendar Days */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '0.25rem' }}>
+                {days.map((date, index) => {
+                    if (!date) {
+                        return <div key={`empty-${index}`} />
+                    }
+
+                    const inRange = isInRange(date)
+                    const isStart = isStartDate(date)
+                    const isEnd = isEndDate(date)
+                    const isToday = date.toDateString() === new Date().toDateString()
+
+                    return (
+                        <button
+                            key={index}
+                            onClick={(e) => { e.stopPropagation(); handleDateClick(date); }}
+                            style={{
+                                padding: '0.5rem',
+                                border: 'none',
+                                borderRadius: '50%',
+                                background: isStart || isEnd ? '#3b82f6' : inRange ? '#dbeafe' : 'transparent',
+                                color: isStart || isEnd ? 'white' : inRange ? '#1e40af' : isToday ? '#f59e0b' : '#1e293b',
+                                fontSize: '0.875rem',
+                                cursor: 'pointer',
+                                fontWeight: isStart || isEnd || isToday ? '600' : '400',
+                                transition: 'all 0.2s',
+                                outline: isToday && !isStart && !isEnd ? '2px solid #f59e0b' : 'none'
+                            }}
+                        >
+                            {date.getDate()}
+                        </button>
+                    )
+                })}
+            </div>
+
+            {/* Instructions & Reset */}
+            <div style={{
+                marginTop: '1.25rem',
+                paddingTop: '0.75rem',
+                borderTop: '1px solid #f1f5f9',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                flexDirection: 'row'
+            }}>
+                <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                    {selectingFrom ? t('select_start_date' as any) : t('select_end_date' as any)}
+                </div>
+                {(dateFrom || dateTo) && (
+                    <button
+                        onClick={(e) => { e.stopPropagation(); handleReset(); }}
+                        style={{
+                            background: '#fef2f2',
+                            color: '#ef4444',
+                            border: 'none',
+                            padding: '0.25rem 0.75rem',
+                            borderRadius: '0.375rem',
+                            fontSize: '0.75rem',
+                            fontWeight: '600',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s'
+                        }}
+                    >
+                        {t('reset' as any)}
+                    </button>
+                )}
+            </div>
+        </div>
+    )
+
     return (
         <div ref={containerRef} style={{ position: 'relative', direction: locale === 'ar' ? 'rtl' : 'ltr', textAlign: locale === 'ar' ? 'right' : 'left' }}>
             <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '700', fontSize: '0.875rem' }}>
@@ -138,143 +282,23 @@ export default function DateRangePicker({ dateFrom, dateTo, onChange }: DateRang
                 <span style={{ color: '#94a3b8', fontSize: '0.7rem' }}>{isOpen ? '▲' : '▼'}</span>
             </div>
 
-            {isOpen && (
-                <div style={{
-                    position: 'absolute',
-                    top: '100%',
-                    [locale === 'ar' ? 'right' : 'left']: 0,
-                    marginTop: '0.5rem',
-                    background: 'white',
-                    border: '1px solid #e2e8f0',
-                    borderRadius: '0.75rem',
-                    boxShadow: '0 10px 25px rgba(0, 0, 0, 0.1)',
-                    padding: '1rem',
-                    zIndex: 1000,
-                    minWidth: '320px',
-                    animation: 'slideUp 0.2s ease-out'
-                }}>
-                    {/* Month Navigation */}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexDirection: 'row' }}>
-                        <button
-                            onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - (locale === 'ar' ? -1 : 1)))}
-                            style={{
-                                background: 'none',
-                                border: 'none',
-                                fontSize: '1.25rem',
-                                cursor: 'pointer',
-                                padding: '0.25rem 0.5rem',
-                                color: '#64748b'
-                            }}
-                        >
-                            {locale === 'ar' ? '›' : '‹'}
-                        </button>
-                        <div style={{ fontWeight: '600', fontSize: '0.95rem', color: '#64748b' }}>
-                            {monthYear}
-                        </div>
-                        <button
-                            onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + (locale === 'ar' ? -1 : 1)))}
-                            style={{
-                                background: 'none',
-                                border: 'none',
-                                fontSize: '1.25rem',
-                                cursor: 'pointer',
-                                padding: '0.25rem 0.5rem',
-                                color: '#64748b'
-                            }}
-                        >
-                            {locale === 'ar' ? '‹' : '›'}
-                        </button>
-                    </div>
-
-                    {/* Weekday Headers */}
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '0.25rem', marginBottom: '0.5rem', direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
-                        {weekdays.map(day => (
-                            <div key={day} style={{ textAlign: 'center', fontSize: '0.75rem', color: '#94a3b8', fontWeight: '600', padding: '0.25rem' }}>
-                                {day}
-                            </div>
-                        ))}
-                    </div>
-
-                    {/* Calendar Days */}
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '0.25rem', direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
-                        {days.map((date, index) => {
-                            if (!date) {
-                                return <div key={`empty-${index}`} />
-                            }
-
-                            const inRange = isInRange(date)
-                            const isStart = isStartDate(date)
-                            const isEnd = isEndDate(date)
-                            const isToday = date.toDateString() === new Date().toDateString()
-
-                            return (
-                                <button
-                                    key={index}
-                                    onClick={() => handleDateClick(date)}
-                                    style={{
-                                        padding: '0.5rem',
-                                        border: 'none',
-                                        borderRadius: '50%',
-                                        background: isStart || isEnd ? '#3b82f6' : inRange ? '#dbeafe' : 'transparent',
-                                        color: isStart || isEnd ? 'white' : inRange ? '#1e40af' : isToday ? '#f59e0b' : '#1e293b',
-                                        fontSize: '0.875rem',
-                                        cursor: 'pointer',
-                                        fontWeight: isStart || isEnd || isToday ? '600' : '400',
-                                        transition: 'all 0.2s',
-                                        outline: isToday && !isStart && !isEnd ? '2px solid #f59e0b' : 'none'
-                                    }}
-                                    onMouseEnter={(e) => {
-                                        if (!isStart && !isEnd) {
-                                            e.currentTarget.style.background = '#f1f5f9'
-                                        }
-                                    }}
-                                    onMouseLeave={(e) => {
-                                        if (!isStart && !isEnd) {
-                                            e.currentTarget.style.background = inRange ? '#dbeafe' : 'transparent'
-                                        }
-                                    }}
-                                >
-                                    {date.getDate()}
-                                </button>
-                            )
-                        })}
-                    </div>
-
-                    {/* Instructions & Reset */}
-                    <div style={{
-                        marginTop: '1.25rem',
-                        paddingTop: '0.75rem',
-                        borderTop: '1px solid #f1f5f9',
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        flexDirection: 'row'
-                    }}>
-                        <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
-                            {selectingFrom ? t('select_start_date' as any) : t('select_end_date' as any)}
-                        </div>
-                        {(dateFrom || dateTo) && (
-                            <button
-                                onClick={handleReset}
-                                style={{
-                                    background: '#fef2f2',
-                                    color: '#ef4444',
-                                    border: 'none',
-                                    padding: '0.25rem 0.75rem',
-                                    borderRadius: '0.375rem',
-                                    fontSize: '0.75rem',
-                                    fontWeight: '600',
-                                    cursor: 'pointer',
-                                    transition: 'all 0.2s'
-                                }}
-                                onMouseEnter={(e) => e.currentTarget.style.background = '#fee2e2'}
-                                onMouseLeave={(e) => e.currentTarget.style.background = '#fef2f2'}
-                            >
-                                {t('reset' as any)}
-                            </button>
-                        )}
-                    </div>
-                </div>
+            {isOpen && mounted && (
+                isMobile ? createPortal(
+                    <div
+                        onClick={() => setIsOpen(false)}
+                        style={{
+                            position: 'fixed',
+                            inset: 0,
+                            background: 'rgba(0,0,0,0.4)',
+                            zIndex: 10000,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
+                        }}>
+                        {pickerContent}
+                    </div>,
+                    document.body
+                ) : pickerContent
             )}
         </div>
     )

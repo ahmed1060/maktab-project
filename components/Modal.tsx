@@ -53,8 +53,8 @@ export default function Modal({ isOpen, onClose, title, children, hideFooter = f
                 style={{
                     padding: '2rem',
                     borderRadius: '1.5rem',
-                    maxWidth: '800px', // Increased size
-                    width: '90%',
+                    maxWidth: 'min(calc(100vw - 2rem), 800px)',
+                    width: '100%',
                     maxHeight: '90vh',
                     overflowY: 'auto',
                     position: 'relative',
