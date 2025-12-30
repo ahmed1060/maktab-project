@@ -275,7 +275,7 @@ export default function DateRangePicker({ dateFrom, dateTo, onChange }: DateRang
                     <span style={{ color: '#94a3b8' }}>📅</span>
                     <span style={{ color: dateFrom || dateTo ? '#1e293b' : '#94a3b8' }}>
                         {dateFrom && dateTo
-                            ? (locale === 'ar' ? `${formatDate(dateTo)} ← ${formatDate(dateFrom)}` : `${formatDate(dateFrom)} → ${formatDate(dateTo)}`)
+                            ? (locale === 'ar' ? `${formatDate(dateFrom)} ← ${formatDate(dateTo)}` : `${formatDate(dateFrom)} → ${formatDate(dateTo)}`)
                             : dateFrom
                                 ? `${formatDate(dateFrom)} → ...`
                                 : t('select_date_range' as any)}
