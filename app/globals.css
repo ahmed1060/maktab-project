@@ -1,6 +1,8 @@
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600&display=swap');
 
-*, *::before, *::after {
+*,
+*::before,
+*::after {
   box-sizing: border-box;
 }
 
@@ -153,6 +155,7 @@ body::before {
     padding: 0.35rem 0.5rem !important;
     font-size: 0.75rem !important;
     max-width: 50px !important;
+    min-width: unset !important;
     height: 36px !important;
     color: transparent !important;
     background-image: none !important;
