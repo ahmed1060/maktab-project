@@ -11,9 +11,11 @@ interface DateTimePickerProps {
 }
 
 export default function DateTimePicker({ value, onChange, label, min }: DateTimePickerProps) {
+
     const { t, locale } = useLanguage()
     const [isOpen, setIsOpen] = useState(false)
     const [mounted, setMounted] = useState(false)
+    const [isMobile, setIsMobile] = useState(false)
     const [currentMonth, setCurrentMonth] = useState(new Date())
     const containerRef = useRef<HTMLDivElement>(null)
 
@@ -22,6 +24,13 @@ export default function DateTimePicker({ value, onChange, label, min }: DateTime
 
     useEffect(() => {
         setMounted(true)
+        const checkMobile = () => setIsMobile(window.innerWidth <= 768)
+        checkMobile()
+        window.addEventListener('resize', checkMobile)
+        return () => window.removeEventListener('resize', checkMobile)
+    }, [])
+
+    useEffect(() => {
         if (selectedDate && isOpen) {
             setCurrentMonth(new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1))
         }
@@ -201,7 +210,9 @@ export default function DateTimePicker({ value, onChange, label, min }: DateTime
                             borderRadius: '1.5rem',
                             boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
                             padding: '1.25rem',
-                            width: 'min(calc(100vw - 2rem), 400px)',
+                            width: 'min(calc(100vw - 3rem), 400px)',
+                            maxHeight: '90vh',
+                            overflowY: 'auto',
                             display: 'flex',
                             flexDirection: 'column',
                             gap: '1rem',
@@ -211,9 +222,9 @@ export default function DateTimePicker({ value, onChange, label, min }: DateTime
                         }}
                     >
 
-                        <div style={{ display: 'flex', gap: '1.25rem', alignItems: 'flex-start' }}>
+                        <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: '1.25rem', alignItems: isMobile ? 'center' : 'flex-start' }}>
                             {/* Date Picker Section */}
-                            <div style={{ width: '260px' }}>
+                            <div style={{ width: isMobile ? '100%' : '260px' }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
                                     <button
                                         type="button"
@@ -274,7 +285,13 @@ export default function DateTimePicker({ value, onChange, label, min }: DateTime
                             </div>
 
                             {/* Time Picker Section */}
-                            <div style={{ width: '140px', [locale === 'ar' ? 'borderRight' : 'borderLeft']: '1px solid #f1f5f9', [locale === 'ar' ? 'paddingRight' : 'paddingLeft']: '1.25rem' }}>
+                            <div style={{
+                                width: isMobile ? '100%' : '140px',
+                                [locale === 'ar' ? 'borderRight' : 'borderLeft']: isMobile ? 'none' : '1px solid #f1f5f9',
+                                [locale === 'ar' ? 'paddingRight' : 'paddingLeft']: isMobile ? '0' : '1.25rem',
+                                borderTop: isMobile ? '1px solid #f1f5f9' : 'none',
+                                paddingTop: isMobile ? '1rem' : '0'
+                            }}>
                                 <div style={{ fontSize: '0.85rem', fontWeight: '800', marginBottom: '1rem', color: '#1e293b', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                                     <span>🕒</span> {t('time_label' as any) || 'Time'}
                                 </div>

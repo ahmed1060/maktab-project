@@ -213,7 +213,7 @@ export default function DayOffRequestsPage() {
                     fontWeight: '500',
                     boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
                     zIndex: 1000,
-                    width: 'calc(100vw - 2rem)',
+                    width: 'calc(100vw - 3rem)',
                     minWidth: '200px',
                     maxWidth: '350px',
                     animation: 'slideInRight 0.3s ease-out'
@@ -433,7 +433,7 @@ export default function DayOffRequestsPage() {
             {/* Request Modal */}
             {isRequestModalOpen && (
                 <div className="modal-overlay" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
-                    <div className="card" style={{ width: 'min(calc(100vw - 2rem), 400px)' }}>
+                    <div className="card" style={{ width: 'min(calc(100vw - 3rem), 400px)' }}>
                         <h2 className="text-xl font-bold mb-4">{t('request_day_off' as any)}</h2>
                         <form onSubmit={handleSubmitRequest}>
                             <div style={{ marginBottom: '1rem' }}>
@@ -480,7 +480,7 @@ export default function DayOffRequestsPage() {
             {/* Approval Modal (Deduction Popup) */}
             {isApprovalModalOpen && selectedRequest && (
                 <div className="modal-overlay" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
-                    <div className="card" style={{ width: 'min(calc(100vw - 2rem), 400px)' }}>
+                    <div className="card" style={{ width: 'min(calc(100vw - 3rem), 400px)' }}>
                         <h2 className="text-xl font-bold mb-4">{t('approve_deduction_title' as any)}</h2>
                         <p style={{ marginBottom: '1rem', fontSize: '0.9rem', color: '#64748b' }}>
                             {selectedRequest.user?.firstName} {selectedRequest.user?.lastName} - {t('day_off_credit')}: {selectedRequest.user?.dayOffCredit}
@@ -513,7 +513,7 @@ export default function DayOffRequestsPage() {
             {/* Rejection Confirmation Modal */}
             {isRejectModalOpen && selectedRequest && (
                 <div className="modal-overlay" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
-                    <div className="card" style={{ width: 'min(calc(100vw - 2rem), 400px)' }}>
+                    <div className="card" style={{ width: 'min(calc(100vw - 3rem), 400px)' }}>
                         <h2 className="text-xl font-bold mb-4">{t('confirm_rejection_title' as any)}</h2>
                         <p style={{ marginBottom: '1.5rem', color: '#64748b' }}>
                             {t('are_you_sure_msg' as any)} {t('reject_button')} {selectedRequest.user?.firstName} {selectedRequest.user?.lastName}?

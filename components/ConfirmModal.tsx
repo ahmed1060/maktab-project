@@ -82,7 +82,7 @@ export default function ConfirmModal({
                 background: 'white',
                 padding: '2rem',
                 borderRadius: '12px',
-                width: 'min(calc(100vw - 2.5rem), 450px)',
+                width: 'min(calc(100vw - 3rem), 450px)',
                 position: 'relative',
                 zIndex: 10,
                 boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',

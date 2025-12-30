@@ -118,7 +118,7 @@ export default function CostsClient({ tasksWithCosts, userRole }: CostsClientPro
                     boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
                     zIndex: 1000,
                     fontWeight: '600',
-                    width: 'calc(100vw - 2rem)',
+                    width: 'calc(100vw - 3rem)',
                     maxWidth: '350px'
                 }}>
                     {feedbackMessage}

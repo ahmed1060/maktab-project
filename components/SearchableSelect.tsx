@@ -32,6 +32,15 @@ export default function SearchableSelect({ options, value, onChange, placeholder
         )
     }, [options, searchTerm])
 
+    const [isMobile, setIsMobile] = useState(false)
+
+    useEffect(() => {
+        const checkMobile = () => setIsMobile(window.innerWidth <= 768)
+        checkMobile()
+        window.addEventListener('resize', checkMobile)
+        return () => window.removeEventListener('resize', checkMobile)
+    }, [])
+
     useEffect(() => {
         function handleClickOutside(event: MouseEvent) {
             if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) {
@@ -162,7 +171,7 @@ export default function SearchableSelect({ options, value, onChange, placeholder
                     top: 'calc(100% + 8px)',
                     left: '0',
                     right: '0',
-                    margin: '0',
+                    margin: isMobile ? '0 1.5rem' : '0',
                     background: 'white',
                     border: '1px solid #e2e8f0',
                     borderRadius: '0.75rem',

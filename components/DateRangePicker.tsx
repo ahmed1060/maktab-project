@@ -130,7 +130,7 @@ export default function DateRangePicker({ dateFrom, dateTo, onChange }: DateRang
                 boxShadow: '0 10px 25px rgba(0, 0, 0, 0.1)',
                 padding: '1rem',
                 zIndex: isMobile ? 10001 : 1000,
-                width: isMobile ? 'min(calc(100vw - 2rem), 400px)' : '320px',
+                width: isMobile ? 'min(calc(100vw - 3rem), 400px)' : '320px',
                 animation: isMobile ? 'fadeIn 0.2s ease-out' : 'slideUp 0.2s ease-out',
                 direction: locale === 'ar' ? 'rtl' : 'ltr'
             }}>

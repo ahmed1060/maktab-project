@@ -293,7 +293,7 @@ export default function EmployeeFilter({
                                     left: isMobile ? '50%' : (locale === 'ar' ? '0' : 'auto'),
                                     right: isMobile ? 'auto' : (locale === 'ar' ? 'auto' : '0'),
                                     transform: isMobile ? 'translate(-50%, -50%)' : 'none',
-                                    width: isMobile ? 'min(calc(100vw - 2rem), 400px)' : '320px',
+                                    width: isMobile ? 'min(calc(100vw - 3rem), 400px)' : '320px',
                                     maxHeight: isMobile ? 'calc(100vh - 4rem)' : 'auto',
                                     overflowY: isMobile ? 'auto' : 'visible',
                                     backgroundColor: '#ffffff',

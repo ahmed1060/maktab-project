@@ -376,7 +376,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                         background: 'white',
                         padding: '2rem',
                         borderRadius: '12px',
-                        width: 'min(calc(100vw - 2rem), 450px)',
+                        width: 'min(calc(100vw - 3rem), 450px)',
                         textAlign: 'center',
                         position: 'relative',
                         zIndex: 10,
