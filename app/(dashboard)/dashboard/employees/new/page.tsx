@@ -243,7 +243,7 @@ export default function NewEmployeePage() {
                     )}
                 </div>
 
-                {role !== 'SUPER_ADMIN' && role !== '' && (
+                {!['ADMIN', 'SUPER_ADMIN'].includes(role) && role !== '' && (
                     <div style={{ marginBottom: '1rem' }}>
                         <label style={{ display: 'block', marginBottom: '0.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('monthly_base_salary_label')}</label>
                         <input

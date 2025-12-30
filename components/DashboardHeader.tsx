@@ -429,7 +429,7 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
                                     >
                                         {t('my_profile')}
                                     </Link>
-                                    {currentUser.role !== 'SUPER_ADMIN' && (
+                                    {!['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role) && (
                                         <Link
                                             href={`/dashboard/employees/${currentUser.id}/history`}
                                             onClick={() => setIsMenuOpen(false)}

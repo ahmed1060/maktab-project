@@ -122,8 +122,8 @@ export default function EmployeeHistoryPage() {
     return (
         <div style={{ direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
             <div style={{ marginBottom: '2rem' }}>
-                <Link
-                    href="/dashboard/employees"
+                <button
+                    onClick={() => router.back()}
                     className="glass"
                     style={{
                         width: '40px',
@@ -138,7 +138,9 @@ export default function EmployeeHistoryPage() {
                         border: '1px solid rgba(255, 255, 255, 0.4)',
                         transform: `translateY(-2px)${locale === 'ar' ? ' scaleX(-1)' : ''}`,
                         float: locale === 'ar' ? 'right' : 'left',
-                        marginInlineEnd: '1.25rem'
+                        marginInlineEnd: '1.25rem',
+                        cursor: 'pointer',
+                        padding: 0
                     }}
                     onMouseOver={(e) => {
                         e.currentTarget.style.transform = `translateY(-4px)${locale === 'ar' ? ' scaleX(-1)' : ''}`
@@ -154,7 +156,7 @@ export default function EmployeeHistoryPage() {
                         <line x1="19" y1="12" x2="5" y2="12"></line>
                         <polyline points="12 19 5 12 12 5"></polyline>
                     </svg>
-                </Link>
+                </button>
                 <div style={{
                     display: 'flex',
                     justifyContent: 'space-between',
