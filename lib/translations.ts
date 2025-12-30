@@ -515,7 +515,12 @@ export const translations = {
         adjustment_history: "Adjustment History",
         no_adjustments_found: "No adjustments found",
         rollback_success: "Adjustment rolled back successfully",
-        failed_rollback: "Failed to rollback adjustment"
+        failed_rollback: "Failed to rollback adjustment",
+        select_deadline: "Select deadline...",
+        hour_label: "HOUR",
+        minute_label: "MIN",
+        am_pm_label: "AM/PM",
+        min_selection_error: "⚠️ Minimum selection: 3 hours from now"
     },
     ar: {
         welcome_back: "مرحباً بك مجدداً",
@@ -1031,7 +1036,12 @@ export const translations = {
         adjustment_history: "سجل التعديلات",
         no_adjustments_found: "لا توجد تعديلات",
         rollback_success: "تم التراجع عن التعديل بنجاح",
-        failed_rollback: "فشل التراجع عن التعديل"
+        failed_rollback: "فشل التراجع عن التعديل",
+        select_deadline: "اختر الموعد النهائي...",
+        hour_label: "الساعة",
+        minute_label: "الدقيقة",
+        am_pm_label: "صباحاً/مساءً",
+        min_selection_error: "⚠️ الحد الأدنى للاختيار: 3 ساعات من الآن"
     }
 };
 

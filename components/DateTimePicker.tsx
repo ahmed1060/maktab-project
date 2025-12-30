@@ -164,7 +164,7 @@ export default function DateTimePicker({ value, onChange, label, min }: DateTime
                 }}
             >
                 <span style={{ color: value ? 'var(--text-main)' : '#94a3b8', fontWeight: value ? '600' : '400' }}>
-                    {selectedDate ? `${formatDate(selectedDate)} - ${formatTime(selectedDate)}` : 'Select deadline...'}
+                    {selectedDate ? `${formatDate(selectedDate)} - ${formatTime(selectedDate)}` : t('select_deadline')}
                 </span>
                 <span style={{ color: '#6366f1', fontSize: '1.2rem' }}>📅</span>
             </div>
@@ -281,7 +281,7 @@ export default function DateTimePicker({ value, onChange, label, min }: DateTime
 
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                                     <div>
-                                        <label style={{ fontSize: '0.65rem', color: '#94a3b8', fontWeight: 'bold', display: 'block', marginBottom: '0.2rem' }}>HOUR</label>
+                                        <label style={{ fontSize: '0.65rem', color: '#94a3b8', fontWeight: 'bold', display: 'block', marginBottom: '0.2rem' }}>{t('hour_label')}</label>
                                         <select
                                             className="input"
                                             value={currentH12}
@@ -299,7 +299,7 @@ export default function DateTimePicker({ value, onChange, label, min }: DateTime
                                     </div>
 
                                     <div>
-                                        <label style={{ fontSize: '0.65rem', color: '#94a3b8', fontWeight: 'bold', display: 'block', marginBottom: '0.2rem' }}>MIN</label>
+                                        <label style={{ fontSize: '0.65rem', color: '#94a3b8', fontWeight: 'bold', display: 'block', marginBottom: '0.2rem' }}>{t('minute_label')}</label>
                                         <select
                                             className="input"
                                             value={selectedDate?.getMinutes() || 0}
@@ -313,7 +313,7 @@ export default function DateTimePicker({ value, onChange, label, min }: DateTime
                                     </div>
 
                                     <div>
-                                        <label style={{ fontSize: '0.65rem', color: '#94a3b8', fontWeight: 'bold', display: 'block', marginBottom: '0.2rem' }}>AM/PM</label>
+                                        <label style={{ fontSize: '0.65rem', color: '#94a3b8', fontWeight: 'bold', display: 'block', marginBottom: '0.2rem' }}>{t('am_pm_label')}</label>
                                         <select
                                             className="input"
                                             value={currentPeriod}
@@ -331,7 +331,7 @@ export default function DateTimePicker({ value, onChange, label, min }: DateTime
                         {/* Validation Feedback */}
                         {min && selectedDate && selectedDate < new Date(min) && (
                             <div style={{ color: '#ef4444', fontSize: '0.75rem', fontWeight: '600', textAlign: 'center' }}>
-                                ⚠️ Minimum selection: 3 hours from now
+                                {t('min_selection_error')}
                             </div>
                         )}
 
