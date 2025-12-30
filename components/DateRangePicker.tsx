@@ -119,10 +119,10 @@ export default function DateRangePicker({ dateFrom, dateTo, onChange }: DateRang
         <div
             onClick={(e) => isMobile && e.stopPropagation()}
             style={{
-                position: isMobile ? 'fixed' : 'absolute',
-                top: isMobile ? '50%' : '100%',
-                [locale === 'ar' ? (isMobile ? 'left' : 'right') : (isMobile ? 'right' : 'left')]: isMobile ? '50%' : 0,
-                transform: isMobile ? 'translate(50%, -50%)' : 'none',
+                position: isMobile ? 'relative' : 'absolute',
+                top: isMobile ? 'auto' : '100%',
+                [locale === 'ar' ? 'right' : 'left']: isMobile ? 'auto' : 0,
+                transform: 'none',
                 marginTop: isMobile ? 0 : '0.5rem',
                 background: 'white',
                 border: '1px solid #e2e8f0',
@@ -131,6 +131,8 @@ export default function DateRangePicker({ dateFrom, dateTo, onChange }: DateRang
                 padding: '1rem',
                 zIndex: isMobile ? 10001 : 1000,
                 width: isMobile ? 'min(calc(100vw - 3rem), 400px)' : '320px',
+                maxHeight: isMobile ? '90vh' : 'auto',
+                overflowY: isMobile ? 'auto' : 'visible',
                 animation: isMobile ? 'fadeIn 0.2s ease-out' : 'slideUp 0.2s ease-out',
                 direction: locale === 'ar' ? 'rtl' : 'ltr'
             }}>
