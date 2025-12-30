@@ -520,7 +520,9 @@ export const translations = {
         hour_label: "HOUR",
         minute_label: "MIN",
         am_pm_label: "AM/PM",
-        min_selection_error: "⚠️ Minimum selection: 3 hours from now"
+        min_selection_error: "⚠️ Minimum selection: 3 hours from now",
+        am: "AM",
+        pm: "PM"
     },
     ar: {
         welcome_back: "مرحباً بك مجدداً",
@@ -1041,7 +1043,9 @@ export const translations = {
         hour_label: "الساعة",
         minute_label: "الدقيقة",
         am_pm_label: "صباحاً/مساءً",
-        min_selection_error: "⚠️ الحد الأدنى للاختيار: 3 ساعات من الآن"
+        min_selection_error: "⚠️ الحد الأدنى للاختيار: 3 ساعات من الآن",
+        am: "صباحاً",
+        pm: "مساءً"
     }
 };
 

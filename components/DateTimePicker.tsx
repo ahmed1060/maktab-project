@@ -320,8 +320,8 @@ export default function DateTimePicker({ value, onChange, label, min }: DateTime
                                             onChange={(e) => handleTimeChange('period', e.target.value)}
                                             style={{ width: '100%', textAlign: 'center', height: '32px', fontSize: '0.8rem', padding: locale === 'ar' ? '0 1.25rem 0 0' : '0 0 0 1.25rem' }}
                                         >
-                                            <option value="AM">AM</option>
-                                            <option value="PM">PM</option>
+                                            <option value="AM">{t('am')}</option>
+                                            <option value="PM">{t('pm')}</option>
                                         </select>
                                     </div>
                                 </div>
