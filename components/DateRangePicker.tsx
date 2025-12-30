@@ -119,21 +119,21 @@ export default function DateRangePicker({ dateFrom, dateTo, onChange }: DateRang
         <div
             onClick={(e) => isMobile && e.stopPropagation()}
             style={{
-                position: isMobile ? 'relative' : 'absolute',
-                top: isMobile ? 'auto' : '100%',
-                [locale === 'ar' ? 'right' : 'left']: isMobile ? 'auto' : 0,
+                position: 'relative',
+                top: 'auto',
+                [locale === 'ar' ? 'right' : 'left']: 'auto',
                 transform: 'none',
-                marginTop: isMobile ? 0 : '0.5rem',
+                marginTop: 0,
                 background: 'white',
                 border: '1px solid #e2e8f0',
                 borderRadius: '0.75rem',
                 boxShadow: '0 10px 25px rgba(0, 0, 0, 0.1)',
                 padding: '1rem',
-                zIndex: isMobile ? 10001 : 1000,
-                width: isMobile ? 'min(calc(100vw - 3rem), 400px)' : '320px',
-                maxHeight: isMobile ? '90vh' : 'auto',
-                overflowY: isMobile ? 'auto' : 'visible',
-                animation: isMobile ? 'fadeIn 0.2s ease-out' : 'slideUp 0.2s ease-out',
+                zIndex: 10001,
+                width: isMobile ? 'min(calc(100vw - 3rem), 400px)' : '350px',
+                maxHeight: '90vh',
+                overflowY: 'auto',
+                animation: 'fadeIn 0.2s ease-out',
                 direction: locale === 'ar' ? 'rtl' : 'ltr'
             }}>
             {/* Month Navigation */}
@@ -284,23 +284,21 @@ export default function DateRangePicker({ dateFrom, dateTo, onChange }: DateRang
                 <span style={{ color: '#94a3b8', fontSize: '0.7rem' }}>{isOpen ? '▲' : '▼'}</span>
             </div>
 
-            {isOpen && mounted && (
-                isMobile ? createPortal(
-                    <div
-                        onClick={() => setIsOpen(false)}
-                        style={{
-                            position: 'fixed',
-                            inset: 0,
-                            background: 'rgba(0,0,0,0.4)',
-                            zIndex: 10000,
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center'
-                        }}>
-                        {pickerContent}
-                    </div>,
-                    document.body
-                ) : pickerContent
+            {isOpen && mounted && createPortal(
+                <div
+                    onClick={() => setIsOpen(false)}
+                    style={{
+                        position: 'fixed',
+                        inset: 0,
+                        background: 'rgba(0,0,0,0.4)',
+                        zIndex: 10000,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                    }}>
+                    {pickerContent}
+                </div>,
+                document.body
             )}
         </div>
     )

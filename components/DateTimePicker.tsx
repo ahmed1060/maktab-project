@@ -210,7 +210,7 @@ export default function DateTimePicker({ value, onChange, label, min }: DateTime
                             borderRadius: '1.5rem',
                             boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
                             padding: '1.25rem',
-                            width: 'min(calc(100vw - 3rem), 400px)',
+                            width: isMobile ? 'min(calc(100vw - 3rem), 400px)' : '480px',
                             maxHeight: '90vh',
                             overflowY: 'auto',
                             display: 'flex',
