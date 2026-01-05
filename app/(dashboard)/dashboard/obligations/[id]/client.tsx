@@ -438,7 +438,7 @@ export default function ObligationDetailClient({ obligation, userRole }: { oblig
                             onClick={() => handleUpload(false)}
                             disabled={uploading}
                         >
-                            {loadingType === 'SUBMIT' ? t('signing_in').split(' ')[0] + '...' : t('status_completed')}
+                            {loadingType === 'SUBMIT' ? t('submitting') : t('status_completed')}
                         </button>
                     </div>
                 </div>

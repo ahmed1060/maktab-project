@@ -23,6 +23,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
     const [role, setRole] = useState('')
     const [gender, setGender] = useState('MALE')
     const [salary, setSalary] = useState<string>('')
+    const [dayOffCredit, setDayOffCredit] = useState<string>('')
     const [companyId, setCompanyId] = useState('')
     const [companies, setCompanies] = useState<{ id: string, name: string }[]>([])
     const [loading, setLoading] = useState(true)
@@ -80,6 +81,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                 setRole(employee.role)
                 setGender(employee.gender || 'MALE')
                 setSalary(employee.salary !== undefined && employee.salary !== null ? employee.salary.toString() : '')
+                setDayOffCredit(employee.dayOffCredit !== undefined && employee.dayOffCredit !== null ? employee.dayOffCredit.toString() : '0')
                 setCompanyId(employee.companyId || '')
                 setAvatarUrl(employee.avatar || null)
 
@@ -173,7 +175,8 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                     gender,
                     avatar: avatarUrl,
                     companyId: userRole === 'SUPER_ADMIN' ? companyId : undefined,
-                    salary: (userRole === 'ADMIN' || userRole === 'SUPER_ADMIN') && userId !== session?.user?.id ? parseFloat(salary) || 0 : undefined
+                    salary: (userRole === 'ADMIN' || userRole === 'SUPER_ADMIN') && userId !== session?.user?.id ? parseFloat(salary) || 0 : undefined,
+                    dayOffCredit: (userRole === 'ADMIN' || userRole === 'SUPER_ADMIN') && userId !== session?.user?.id ? parseFloat(dayOffCredit) || 0 : undefined
                 }),
                 headers: { 'Content-Type': 'application/json' }
             })
@@ -626,6 +629,22 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                             max={1000000000}
                             style={(isViewMode || userId === session?.user?.id || !['ADMIN', 'SUPER_ADMIN'].includes(userRole)) ? { background: '#f1f5f9', cursor: 'not-allowed', textAlign: locale === 'ar' ? 'right' : 'left' } : { textAlign: locale === 'ar' ? 'right' : 'left' }}
                             placeholder={userId === session?.user?.id && !salary ? t('no_data_available') : (locale === 'ar' ? 'أدخل الراتب' : 'Enter salary')}
+                        />
+                    </div>
+                )}
+
+                {/* Day Off Credit Field - Visible to Admins and Self, Editable only by Admins (not self). Hidden for Admins and Super Admins. */}
+                {(['ADMIN', 'SUPER_ADMIN'].includes(userRole) || userId === session?.user?.id) && !['ADMIN', 'SUPER_ADMIN'].includes(role) && role !== '' && (
+                    <div style={{ marginBottom: '1rem' }}>
+                        <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('day_off_credit')}</label>
+                        <input
+                            type="number"
+                            className="input"
+                            value={dayOffCredit}
+                            onChange={e => setDayOffCredit(e.target.value)}
+                            disabled={isViewMode || userId === session?.user?.id || !['ADMIN', 'SUPER_ADMIN'].includes(userRole)}
+                            step="0.5"
+                            style={(isViewMode || userId === session?.user?.id || !['ADMIN', 'SUPER_ADMIN'].includes(userRole)) ? { background: '#f1f5f9', cursor: 'not-allowed', textAlign: locale === 'ar' ? 'right' : 'left' } : { textAlign: locale === 'ar' ? 'right' : 'left' }}
                         />
                     </div>
                 )}

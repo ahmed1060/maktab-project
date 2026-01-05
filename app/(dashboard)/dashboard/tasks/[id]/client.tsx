@@ -820,7 +820,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
 
                     <div style={{ display: 'flex', gap: '1rem', flexDirection: 'row' }}>
                         <button onClick={() => handleUpload(true)} disabled={uploading} className="btn" style={{ background: '#e2e8f0', color: '#1e293b', fontWeight: '600', flex: 1 }}>{loadingType === 'DRAFT' ? t('saving') : t('save_draft_button')}</button>
-                        <button onClick={handleUploadRequest} disabled={uploading} className="btn btn-primary" style={{ fontWeight: '700', flex: 2 }}>{loadingType === 'SUBMIT' ? t('signing_in').split(' ')[0] + '...' : t('submit_task_button')}</button>
+                        <button onClick={handleUploadRequest} disabled={uploading} className="btn btn-primary" style={{ fontWeight: '700', flex: 2 }}>{loadingType === 'SUBMIT' ? t('submitting') : t('submit_task_button')}</button>
                     </div>
                 </div>
             )}
