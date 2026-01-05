@@ -22,6 +22,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
     const [location, setLocation] = useState('')
     const [locationStatus, setLocationStatus] = useState('')
     const [uploading, setUploading] = useState(false)
+    const [loadingType, setLoadingType] = useState<'DRAFT' | 'SUBMIT' | null>(null)
     const [capturingLocation, setCapturingLocation] = useState(false)
     const [pendingFiles, setPendingFiles] = useState<File[]>([])
     const [inputKey, setInputKey] = useState(Date.now())
@@ -153,6 +154,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
     const handleUpload = async (isDraft: boolean) => {
         if (uploading) return
         setUploading(true)
+        setLoadingType(isDraft ? 'DRAFT' : 'SUBMIT')
         console.log('handleUpload started, isDraft:', isDraft)
 
         try {
@@ -189,22 +191,23 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                 throw new Error(data.message || 'Submission failed')
             }
 
+            // Clear form fields even for drafts to avoid duplication on next save
+            setNote('')
+            setCost('')
+            setCostDescription('')
+            setLocation('')
+            setLocationStatus('')
+            setPendingFiles([])
+            setCostEntries([])
+
             showToast(isDraft ? t('draft_saved_success') : t('task_submitted_success'), 'success')
-            if (!isDraft) {
-                setNote('')
-                setCost('')
-                setCostDescription('')
-                setLocation('')
-                setLocationStatus('')
-                setPendingFiles([])
-                setCostEntries([])
-            }
             router.refresh()
         } catch (error: any) {
             console.error('handleUpload error:', error)
             showToast(error.message || t('failed_save_generic') as any, 'error')
         } finally {
             setUploading(false)
+            setLoadingType(null)
         }
     }
 
@@ -816,8 +819,8 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                     </div>
 
                     <div style={{ display: 'flex', gap: '1rem', flexDirection: 'row' }}>
-                        <button onClick={() => handleUpload(true)} disabled={uploading} className="btn" style={{ background: '#e2e8f0', color: '#1e293b', fontWeight: '600', flex: 1 }}>{uploading ? t('saving') : t('save_draft_button')}</button>
-                        <button onClick={handleUploadRequest} disabled={uploading} className="btn btn-primary" style={{ fontWeight: '700', flex: 2 }}>{uploading ? t('signing_in').split(' ')[0] + '...' : t('submit_task_button')}</button>
+                        <button onClick={() => handleUpload(true)} disabled={uploading} className="btn" style={{ background: '#e2e8f0', color: '#1e293b', fontWeight: '600', flex: 1 }}>{loadingType === 'DRAFT' ? t('saving') : t('save_draft_button')}</button>
+                        <button onClick={handleUploadRequest} disabled={uploading} className="btn btn-primary" style={{ fontWeight: '700', flex: 2 }}>{loadingType === 'SUBMIT' ? t('signing_in').split(' ')[0] + '...' : t('submit_task_button')}</button>
                     </div>
                 </div>
             )}

@@ -7,6 +7,7 @@ import { useLanguage } from '@/context/LanguageContext'
 export default function ObligationDetailClient({ obligation, userRole }: { obligation: any, userRole: string }) {
     const { t, locale } = useLanguage()
     const [uploading, setUploading] = useState(false)
+    const [loadingType, setLoadingType] = useState<'DRAFT' | 'SUBMIT' | null>(null)
     const [pendingFiles, setPendingFiles] = useState<File[]>([])
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
     const [showFeedback, setShowFeedback] = useState(false)
@@ -89,6 +90,7 @@ export default function ObligationDetailClient({ obligation, userRole }: { oblig
 
     const handleUpload = async (isDraft: boolean) => {
         setUploading(true)
+        setLoadingType(isDraft ? 'DRAFT' : 'SUBMIT')
         const uploadedAttachments: any[] = []
 
         try {
@@ -138,6 +140,7 @@ export default function ObligationDetailClient({ obligation, userRole }: { oblig
             setShowFeedback(true)
         } finally {
             setUploading(false)
+            setLoadingType(null)
         }
     }
 
@@ -428,14 +431,14 @@ export default function ObligationDetailClient({ obligation, userRole }: { oblig
                             onClick={() => handleUpload(true)}
                             disabled={uploading}
                         >
-                            {uploading ? t('saving') : t('save_draft_button').replace(t('tasks'), t('obligations'))}
+                            {loadingType === 'DRAFT' ? t('saving') : t('save_draft_button').replace(t('tasks'), t('obligations'))}
                         </button>
                         <button
                             className="btn btn-primary"
                             onClick={() => handleUpload(false)}
                             disabled={uploading}
                         >
-                            {uploading ? t('signing_in').split(' ')[0] + '...' : t('status_completed')}
+                            {loadingType === 'SUBMIT' ? t('signing_in').split(' ')[0] + '...' : t('status_completed')}
                         </button>
                     </div>
                 </div>
