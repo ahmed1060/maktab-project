@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
 import { useLanguage } from '@/context/LanguageContext'
+import DateRangePicker from '@/components/DateRangePicker'
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts'
 import EmployeeFilter from '@/components/EmployeeFilter'
 
@@ -42,6 +43,7 @@ export default function DayOffRequestsPage() {
     const [reqType, setReqType] = useState<'CASUAL' | 'REGULAR'>('REGULAR')
     const [reqReason, setReqReason] = useState('')
     const [submitting, setSubmitting] = useState(false)
+    const [serverToday, setServerToday] = useState<string>('')
     const [alert, setAlert] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
     const [isRejectModalOpen, setIsRejectModalOpen] = useState(false)
 
@@ -62,6 +64,13 @@ export default function DayOffRequestsPage() {
         if (!isAdmin) {
             fetchUserCredit()
         }
+        // Sync with Egypt server time
+        fetch('/api/time').then(res => res.json()).then(data => {
+            setServerToday(data.today);
+        }).catch(err => {
+            console.error('Failed to sync time:', err);
+            setServerToday(new Date().toISOString().split('T')[0]);
+        });
     }, [isAdmin])
 
     const fetchRequests = async () => {
@@ -473,39 +482,33 @@ export default function DayOffRequestsPage() {
                                     <option value="CASUAL">{t('casual_day_off' as any)}</option>
                                 </select>
                             </div>
-                            <div style={{ marginBottom: '1rem' }}>
-                                <label style={{ display: 'block', marginBottom: '0.5rem' }}>{reqType === 'REGULAR' ? (locale === 'ar' ? 'تاريخ البدء' : 'Start Date') : t('select_date' as any)}</label>
-                                <input
-                                    type="date"
-                                    className="input"
-                                    required
-                                    value={reqDate}
-                                    onChange={e => {
-                                        setReqDate(e.target.value);
-                                        if (reqType === 'REGULAR' && (!reqEndDate || reqEndDate < e.target.value)) {
-                                            setReqEndDate(e.target.value);
-                                        }
-                                    }}
-                                    min={reqType === 'REGULAR'
-                                        ? new Date(Date.now() + 86400000).toISOString().split('T')[0] // Tomorrow or later
-                                        : new Date(Date.now() - 86400000).toISOString().split('T')[0] // Yesterday or later
-                                    }
-                                    max={reqType === 'CASUAL'
-                                        ? new Date(Date.now() + 86400000).toISOString().split('T')[0] // Until tomorrow
-                                        : undefined
-                                    }
-                                />
-                            </div>
-                            {reqType === 'REGULAR' && (
+                            {reqType === 'REGULAR' ? (
                                 <div style={{ marginBottom: '1rem' }}>
-                                    <label style={{ display: 'block', marginBottom: '0.5rem' }}>{locale === 'ar' ? 'تاريخ الانتهاء' : 'End Date'}</label>
+                                    <DateRangePicker
+                                        label={locale === 'ar' ? 'تاريخ الإجازة' : 'Date Range'}
+                                        dateFrom={reqDate}
+                                        dateTo={reqEndDate}
+                                        onChange={(from, to) => {
+                                            setReqDate(from);
+                                            setReqEndDate(to);
+                                        }}
+                                        minDate={serverToday ? new Date(new Date(serverToday).getTime() + 86400000).toISOString().split('T')[0] : ''}
+                                    />
+                                </div>
+                            ) : (
+                                <div style={{ marginBottom: '1rem' }}>
+                                    <label style={{ display: 'block', marginBottom: '0.5rem' }}>{t('select_date' as any)}</label>
                                     <input
                                         type="date"
                                         className="input"
                                         required
-                                        value={reqEndDate}
-                                        onChange={e => setReqEndDate(e.target.value)}
-                                        min={reqDate || new Date(Date.now() + 86400000).toISOString().split('T')[0]}
+                                        value={reqDate}
+                                        onChange={e => {
+                                            setReqDate(e.target.value);
+                                            setReqEndDate(e.target.value);
+                                        }}
+                                        min={serverToday ? new Date(new Date(serverToday).getTime() - 86400000).toISOString().split('T')[0] : ''}
+                                        max={serverToday ? new Date(new Date(serverToday).getTime() + 86400000).toISOString().split('T')[0] : ''}
                                     />
                                 </div>
                             )}

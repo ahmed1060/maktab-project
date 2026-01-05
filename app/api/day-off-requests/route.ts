@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { getServerSession } from "next-auth"
+import { getServerSession } from "next-auth/next"
 import { authOptions } from "@/lib/auth"
+import { getEgyptTodayStr, getEgyptTomorrowStr, getEgyptYesterdayStr } from "@/lib/time"
 
 export async function GET(request: NextRequest) {
     const session = await getServerSession(authOptions)
@@ -31,41 +32,31 @@ export async function POST(request: NextRequest) {
             return new NextResponse("Missing required fields", { status: 400 })
         }
 
-        const requestDate = new Date(date)
-        requestDate.setHours(0, 0, 0, 0)
+        const todayStr = getEgyptTodayStr();
+        const tomorrowStr = getEgyptTomorrowStr();
+        const yesterdayStr = getEgyptYesterdayStr();
 
-        const finalEndDate = endDate ? new Date(endDate) : new Date(date)
-        finalEndDate.setHours(23, 59, 59, 999)
-
-        const today = new Date()
-        today.setHours(0, 0, 0, 0)
-
-        const tomorrow = new Date(today)
-        tomorrow.setDate(today.getDate() + 1)
-
-        const yesterday = new Date(today)
-        yesterday.setDate(today.getDate() - 1)
+        const requestDateStr = new Date(date).toISOString().split('T')[0];
+        const finalEndDateStr = endDate ? new Date(endDate).toISOString().split('T')[0] : requestDateStr;
 
         if (type === 'REGULAR') {
-            if (requestDate < tomorrow) {
+            if (requestDateStr < tomorrowStr) {
                 return new NextResponse("Regular day off must start from tomorrow or later", { status: 400 })
             }
-            if (finalEndDate < requestDate) {
+            if (finalEndDateStr < requestDateStr) {
                 return new NextResponse("End date cannot be before start date", { status: 400 })
             }
         } else if (type === 'CASUAL') {
-            // Casual must be yesterday, today, or tomorrow
-            if (requestDate < yesterday || requestDate > tomorrow) {
+            if (requestDateStr < yesterdayStr || requestDateStr > tomorrowStr) {
                 return new NextResponse("Casual day off must be for yesterday, today, or tomorrow only", { status: 400 })
             }
-            // Casual is usually single day, so we ignore endDate or enforce it's same as date
         }
 
         const newRequest = await prisma.dayOffRequest.create({
             data: {
                 userId: session.user.id,
-                date: requestDate,
-                endDate: type === 'REGULAR' ? finalEndDate : null,
+                date: new Date(requestDateStr),
+                endDate: type === 'REGULAR' ? new Date(finalEndDateStr) : null,
                 type,
                 reason: reason || null,
                 status: 'PENDING'
@@ -88,7 +79,7 @@ export async function POST(request: NextRequest) {
                 data: {
                     userId: admin.id,
                     type: 'DAY_OFF_REQUEST',
-                    message: `${session.user.name} has requested a ${type.toLowerCase()} day off on ${requestDate.toLocaleDateString()}.`,
+                    message: `${session.user.name} has requested a ${type.toLowerCase()} day off on ${new Date(requestDateStr).toLocaleDateString()}.`,
                     relatedId: newRequest.id
                 }
             })

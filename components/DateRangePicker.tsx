@@ -6,9 +6,12 @@ interface DateRangePickerProps {
     dateFrom: string
     dateTo: string
     onChange: (from: string, to: string) => void
+    label?: string
+    minDate?: string
+    maxDate?: string
 }
 
-export default function DateRangePicker({ dateFrom, dateTo, onChange }: DateRangePickerProps) {
+export default function DateRangePicker({ dateFrom, dateTo, onChange, label, minDate, maxDate }: DateRangePickerProps) {
     const { t, locale } = useLanguage()
     const [isOpen, setIsOpen] = useState(false)
     const [mounted, setMounted] = useState(false)
@@ -189,22 +192,26 @@ export default function DateRangePicker({ dateFrom, dateTo, onChange }: DateRang
                     const isStart = isStartDate(date)
                     const isEnd = isEndDate(date)
                     const isToday = date.toDateString() === new Date().toDateString()
+                    const dateStr = formatToLocalISO(date)
+                    const isDisabled = (minDate && dateStr < minDate) || (maxDate && dateStr > maxDate)
 
                     return (
                         <button
                             key={index}
+                            disabled={!!isDisabled}
                             onClick={(e) => { e.stopPropagation(); handleDateClick(date); }}
                             style={{
                                 padding: '0.5rem',
                                 border: 'none',
                                 borderRadius: '50%',
                                 background: isStart || isEnd ? '#3b82f6' : inRange ? '#dbeafe' : 'transparent',
-                                color: isStart || isEnd ? 'white' : inRange ? '#1e40af' : isToday ? '#f59e0b' : '#1e293b',
+                                color: isStart || isEnd ? 'white' : inRange ? '#1e40af' : isToday ? '#f59e0b' : isDisabled ? '#e2e8f0' : '#1e293b',
                                 fontSize: '0.875rem',
-                                cursor: 'pointer',
+                                cursor: isDisabled ? 'not-allowed' : 'pointer',
                                 fontWeight: isStart || isEnd || isToday ? '600' : '400',
                                 transition: 'all 0.2s',
-                                outline: isToday && !isStart && !isEnd ? '2px solid #f59e0b' : 'none'
+                                outline: isToday && !isStart && !isEnd ? '2px solid #f59e0b' : 'none',
+                                opacity: isDisabled ? 0.5 : 1
                             }}
                         >
                             {date.getDate()}
@@ -251,7 +258,7 @@ export default function DateRangePicker({ dateFrom, dateTo, onChange }: DateRang
     return (
         <div ref={containerRef} style={{ position: 'relative', direction: locale === 'ar' ? 'rtl' : 'ltr', textAlign: locale === 'ar' ? 'right' : 'left' }}>
             <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '700', fontSize: '0.875rem' }}>
-                {t('filter_by_date_range' as any)}
+                {label || t('filter_by_date_range' as any)}
             </label>
             <div
                 onClick={() => setIsOpen(!isOpen)}
