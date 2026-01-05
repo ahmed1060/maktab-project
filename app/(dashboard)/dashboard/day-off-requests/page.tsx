@@ -13,6 +13,7 @@ interface DayOffRequest {
     status: 'PENDING' | 'APPROVED' | 'REJECTED'
     reason: string | null
     date: string
+    endDate?: string | null
     daysDeducted: number
     createdAt: string
     user?: {
@@ -37,6 +38,7 @@ export default function DayOffRequestsPage() {
 
     // New Request Form State
     const [reqDate, setReqDate] = useState('')
+    const [reqEndDate, setReqEndDate] = useState('')
     const [reqType, setReqType] = useState<'CASUAL' | 'REGULAR'>('REGULAR')
     const [reqReason, setReqReason] = useState('')
     const [submitting, setSubmitting] = useState(false)
@@ -104,6 +106,7 @@ export default function DayOffRequestsPage() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     date: reqDate,
+                    endDate: reqType === 'REGULAR' ? reqEndDate : null,
                     type: reqType,
                     reason: reqReason
                 })
@@ -114,6 +117,7 @@ export default function DayOffRequestsPage() {
                 fetchRequests()
                 // Reset form
                 setReqDate('')
+                setReqEndDate('')
                 setReqReason('')
             } else {
                 const err = await res.text()
@@ -126,13 +130,32 @@ export default function DayOffRequestsPage() {
         }
     }
 
+    const calculateWorkDays = (start: string, end?: string | null) => {
+        const startDate = new Date(start)
+        startDate.setHours(0, 0, 0, 0)
+        const endDate = end ? new Date(end) : new Date(start)
+        endDate.setHours(0, 0, 0, 0)
+
+        let count = 0
+        const current = new Date(startDate)
+        while (current <= endDate) {
+            if (current.getDay() !== 5) { // 5 is Friday
+                count++
+            }
+            current.setDate(current.getDate() + 1)
+        }
+        return count
+    }
+
     const handleAction = async (requestId: string, status: 'APPROVED' | 'REJECTED') => {
         const req = requests.find(r => r.id === requestId)
         setSelectedRequest(req || null)
 
-        if (status === 'APPROVED') {
+        if (status === 'APPROVED' && req) {
+            const days = calculateWorkDays(req.date, req.endDate)
+            setDaysToDeduct(days.toString())
             setIsApprovalModalOpen(true)
-        } else {
+        } else if (status === 'REJECTED') {
             setIsRejectModalOpen(true)
         }
     }
@@ -286,6 +309,9 @@ export default function DayOffRequestsPage() {
                                                     <line x1="3" y1="10" x2="21" y2="10"></line>
                                                 </svg>
                                                 {new Date(req.date).toLocaleDateString(locale, { day: 'numeric', month: 'short', year: 'numeric' })}
+                                                {req.endDate && new Date(req.endDate).getTime() > new Date(req.date).getTime() + 86400000 && (
+                                                    <> - {new Date(req.endDate).toLocaleDateString(locale, { day: 'numeric', month: 'short', year: 'numeric' })}</>
+                                                )}
                                             </div>
                                         </div>
                                         <span style={{
@@ -437,23 +463,52 @@ export default function DayOffRequestsPage() {
                         <h2 className="text-xl font-bold mb-4">{t('request_day_off' as any)}</h2>
                         <form onSubmit={handleSubmitRequest}>
                             <div style={{ marginBottom: '1rem' }}>
-                                <label style={{ display: 'block', marginBottom: '0.5rem' }}>{t('select_date' as any)}</label>
+                                <label style={{ display: 'block', marginBottom: '0.5rem' }}>{t('day_off_type' as any)}</label>
+                                <select className="input" value={reqType} onChange={e => {
+                                    setReqType(e.target.value as any);
+                                    setReqDate('');
+                                    setReqEndDate('');
+                                }}>
+                                    <option value="REGULAR">{t('regular_day_off' as any)}</option>
+                                    <option value="CASUAL">{t('casual_day_off' as any)}</option>
+                                </select>
+                            </div>
+                            <div style={{ marginBottom: '1rem' }}>
+                                <label style={{ display: 'block', marginBottom: '0.5rem' }}>{reqType === 'REGULAR' ? (locale === 'ar' ? 'تاريخ البدء' : 'Start Date') : t('select_date' as any)}</label>
                                 <input
                                     type="date"
                                     className="input"
                                     required
                                     value={reqDate}
-                                    onChange={e => setReqDate(e.target.value)}
-                                    min={new Date(Date.now() + 86400000).toISOString().split('T')[0]}
+                                    onChange={e => {
+                                        setReqDate(e.target.value);
+                                        if (reqType === 'REGULAR' && (!reqEndDate || reqEndDate < e.target.value)) {
+                                            setReqEndDate(e.target.value);
+                                        }
+                                    }}
+                                    min={reqType === 'REGULAR'
+                                        ? new Date(Date.now() + 86400000).toISOString().split('T')[0] // Tomorrow or later
+                                        : new Date(Date.now() - 86400000).toISOString().split('T')[0] // Yesterday or later
+                                    }
+                                    max={reqType === 'CASUAL'
+                                        ? new Date(Date.now() + 86400000).toISOString().split('T')[0] // Until tomorrow
+                                        : undefined
+                                    }
                                 />
                             </div>
-                            <div style={{ marginBottom: '1rem' }}>
-                                <label style={{ display: 'block', marginBottom: '0.5rem' }}>{t('day_off_type' as any)}</label>
-                                <select className="input" value={reqType} onChange={e => setReqType(e.target.value as any)}>
-                                    <option value="REGULAR">{t('regular_day_off' as any)}</option>
-                                    <option value="CASUAL">{t('casual_day_off' as any)}</option>
-                                </select>
-                            </div>
+                            {reqType === 'REGULAR' && (
+                                <div style={{ marginBottom: '1rem' }}>
+                                    <label style={{ display: 'block', marginBottom: '0.5rem' }}>{locale === 'ar' ? 'تاريخ الانتهاء' : 'End Date'}</label>
+                                    <input
+                                        type="date"
+                                        className="input"
+                                        required
+                                        value={reqEndDate}
+                                        onChange={e => setReqEndDate(e.target.value)}
+                                        min={reqDate || new Date(Date.now() + 86400000).toISOString().split('T')[0]}
+                                    />
+                                </div>
+                            )}
                             <div style={{ marginBottom: '1.5rem' }}>
                                 <label style={{ display: 'block', marginBottom: '0.5rem' }}>{t('reason_label' as any)}</label>
                                 <textarea

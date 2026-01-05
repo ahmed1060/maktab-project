@@ -532,7 +532,7 @@ export const translations = {
         password: "كلمة المرور",
         sign_in: "تسجيل الدخول",
         signing_in: "جاري تسجيل الدخول...",
-        submitting: "جاري الإرسال...",
+        submitting: "جاري التسليم...",
         error_invalid_credentials: "البريد الإلكتروني أو كلمة المرور غير صحيحة",
         error_suspended: "تم تعليق حسابك. يرجى الاتصال بالمسؤول.",
         error_banned: "تم حظر الشركة. تم رفض الوصول.",

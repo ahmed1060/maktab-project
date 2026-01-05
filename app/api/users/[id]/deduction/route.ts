@@ -56,6 +56,14 @@ export async function POST(req: Request, { params }: { params: { id: string } })
                         amount,
                         status: 'ACTIVE'
                     }
+                }),
+                prisma.notification.create({
+                    data: {
+                        userId,
+                        type: 'DEDUCTION_ADDED',
+                        message: `A deduction of ${amount} days has been applied to your record.`,
+                        relatedId: userId
+                    }
                 })
             ])
         } else {
@@ -78,6 +86,14 @@ export async function POST(req: Request, { params }: { params: { id: string } })
                         type: 'DEDUCTION',
                         amount,
                         status: 'ACTIVE'
+                    }
+                }),
+                prisma.notification.create({
+                    data: {
+                        userId,
+                        type: 'DEDUCTION_ADDED',
+                        message: `A deduction of ${amount} days has been applied to your record.`,
+                        relatedId: userId
                     }
                 })
             ])

@@ -59,6 +59,14 @@ export async function POST(req: Request, { params }: { params: { id: string } })
                         amount,
                         status: 'ACTIVE'
                     }
+                }),
+                prisma.notification.create({
+                    data: {
+                        userId,
+                        type: 'BONUS_ADDED',
+                        message: `Congratulations! You have received a bonus of ${amount} days.`,
+                        relatedId: userId
+                    }
                 })
             ])
         } else {
@@ -81,6 +89,14 @@ export async function POST(req: Request, { params }: { params: { id: string } })
                         type: 'BONUS',
                         amount,
                         status: 'ACTIVE'
+                    }
+                }),
+                prisma.notification.create({
+                    data: {
+                        userId,
+                        type: 'BONUS_ADDED',
+                        message: `Congratulations! You have received a bonus of ${amount} days.`,
+                        relatedId: userId
                     }
                 })
             ])

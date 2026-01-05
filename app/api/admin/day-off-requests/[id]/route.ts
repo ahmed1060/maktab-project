@@ -63,6 +63,16 @@ export async function PATCH(
                 data: updateData
             })
 
+            // Notification for user
+            await tx.notification.create({
+                data: {
+                    userId: requestToUpdate.userId,
+                    type: 'DAY_OFF_RESULT',
+                    message: `Your day off request for ${new Date(requestToUpdate.date).toLocaleDateString()} has been ${status.toLowerCase()}.`,
+                    relatedId: params.id
+                }
+            })
+
             return updatedRequest
         })
 
