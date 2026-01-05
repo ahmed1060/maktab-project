@@ -29,7 +29,14 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
         }
 
         // Server-side Deadline Validation
+        if (!deadline) {
+            return new NextResponse("Deadline is required", { status: 400 })
+        }
         const deadlineDate = new Date(deadline)
+        if (isNaN(deadlineDate.getTime())) {
+            return new NextResponse("Invalid deadline date format", { status: 400 })
+        }
+
         const today = new Date()
         today.setHours(0, 0, 0, 0)
 

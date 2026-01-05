@@ -186,7 +186,7 @@ export default function SectionNotesPage() {
                 setSelectedFile(null)
                 setIsModalOpen(false)
                 fetchData() // Refresh
-                showToast(t('note_created_success' as any) || 'Note created successfully', 'success')
+                showToast('Note Created Successfully', 'success')
             } else {
                 const err = await res.json()
                 showToast(`${t('failed_save_generic')}: ${err.error}`, 'error')
@@ -222,7 +222,7 @@ export default function SectionNotesPage() {
                 setIsEditModalOpen(false)
                 setEditingNote(null)
                 fetchData() // Refresh
-                showToast(t('note_updated_success' as any) || 'Note updated successfully', 'success')
+                showToast('Note Updated Successfully', 'success')
             } else {
                 const err = await res.json()
                 showToast(`${t('failed_save_generic')}: ${err.error}`, 'error')
@@ -356,7 +356,7 @@ export default function SectionNotesPage() {
                                             </span>
                                             {note.lastEditedAt && note.lastEditedBy && (
                                                 <div style={{ marginTop: '4px', fontSize: '0.75rem', color: '#64748b', fontStyle: 'italic' }}>
-                                                    {t('edited_by' as any) || 'Edited by'} {t(`role_${note.lastEditedBy.role.toLowerCase()}` as any) || note.lastEditedBy.role} {note.lastEditedBy.firstName} {note.lastEditedBy.lastName} - {new Date(note.lastEditedAt).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' })} {new Date(note.lastEditedAt).toLocaleDateString(locale === 'ar' ? 'ar-EG' : 'en-GB')}
+                                                    Edited by {t(`role_${note.lastEditedBy.role.toLowerCase()}` as any) || note.lastEditedBy.role} {note.lastEditedBy.firstName} {note.lastEditedBy.lastName} - {new Date(note.lastEditedAt).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' })} {new Date(note.lastEditedAt).toLocaleDateString(locale === 'ar' ? 'ar-EG' : 'en-GB')}
                                                 </div>
                                             )}
                                         </div>

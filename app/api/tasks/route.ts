@@ -93,16 +93,19 @@ export async function POST(req: Request) {
     }
 
     // Server-side Deadline Validation
-    if (difficulty < 0 || difficulty > 10) {
-        return new NextResponse(JSON.stringify({ message: "Difficulty must be between 0 and 10" }), { status: 400 })
+    if (!deadline) {
+        return new NextResponse("Deadline is required", { status: 400 })
     }
-    // ...
     const deadlineDate = new Date(deadline)
+    if (isNaN(deadlineDate.getTime())) {
+        return new NextResponse("Invalid deadline date format", { status: 400 })
+    }
+
     const today = new Date()
     today.setHours(0, 0, 0, 0)
     // We allow "today" so we check strict less than
     if (deadlineDate < today) {
-        return new NextResponse(JSON.stringify({ message: "Deadline cannot be in the past" }), { status: 400 })
+        return new NextResponse("Deadline cannot be in the past", { status: 400 })
     }
 
     try {

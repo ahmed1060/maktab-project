@@ -63,6 +63,9 @@ export default function NewTaskPage() {
         if (!description || description.length < 10 || description.length > 1000) {
             errors.description = t('task_description_validation' as any)
         }
+        if (!deadline) {
+            errors.deadline = t('select_deadline')
+        }
 
         if (Object.keys(errors).length > 0) {
             setFieldErrors(errors)
@@ -168,9 +171,14 @@ export default function NewTaskPage() {
                     <DateTimePicker
                         label={t('deadline_label')}
                         value={deadline}
-                        onChange={setDeadline}
+                        onChange={v => { setDeadline(v); if (fieldErrors.deadline) setFieldErrors({ ...fieldErrors, deadline: '' }) }}
                         min={new Date(Date.now() + 3 * 60 * 60 * 1000).toISOString()}
                     />
+                    {fieldErrors.deadline && (
+                        <div style={{ color: '#ef4444', fontSize: '0.85rem', marginTop: '0.25rem' }}>
+                            {fieldErrors.deadline}
+                        </div>
+                    )}
                 </div>
                 <div style={{ marginBottom: '1.5rem' }}>
                     <label style={{ display: 'block', marginBottom: '0.5rem' }}>{t('difficulty')}</label>

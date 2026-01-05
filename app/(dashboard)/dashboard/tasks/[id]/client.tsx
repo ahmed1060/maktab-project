@@ -161,14 +161,17 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                 body: JSON.stringify({
                     newAttachments: uploadedUrls,
                     note,
-                    costEntries,
+                    costs: costEntries,
                     location,
                     isDraft
                 }),
                 headers: { 'Content-Type': 'application/json' }
             })
 
-            if (!res.ok) throw new Error('Submission failed')
+            if (!res.ok) {
+                const data = await res.json().catch(() => ({}))
+                throw new Error(data.message || 'Submission failed')
+            }
 
             showToast(isDraft ? t('draft_saved_success') : t('task_submitted_success'), 'success')
             if (!isDraft) {
@@ -181,9 +184,9 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                 setCostEntries([])
             }
             router.refresh()
-        } catch (error) {
+        } catch (error: any) {
             console.error('handleUpload error:', error)
-            showToast(t('failed_save_generic') as any, 'error')
+            showToast(error.message || t('failed_save_generic') as any, 'error')
         } finally {
             setUploading(false)
         }

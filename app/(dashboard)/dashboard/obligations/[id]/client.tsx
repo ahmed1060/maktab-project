@@ -113,7 +113,7 @@ export default function ObligationDetailClient({ obligation, userRole }: { oblig
                 }
             }
 
-            await fetch(`/api/obligations/${obligation.id}`, {
+            const res = await fetch(`/api/obligations/${obligation.id}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -122,14 +122,19 @@ export default function ObligationDetailClient({ obligation, userRole }: { oblig
                 })
             })
 
+            if (!res.ok) {
+                const data = await res.json().catch(() => ({}))
+                throw new Error(data.message || 'Update failed')
+            }
+
             setPendingFiles([])
             router.refresh()
             setFeedbackMessage(isDraft ? t('draft_saved_success') : t('task_submitted_success'))
             setShowFeedback(true)
             setTimeout(() => setShowFeedback(false), 3000)
-        } catch (error) {
+        } catch (error: any) {
             console.error("Update failed", error)
-            setFeedbackMessage(t('failed_save_generic'))
+            setFeedbackMessage(error.message || t('failed_save_generic'))
             setShowFeedback(true)
         } finally {
             setUploading(false)
@@ -145,12 +150,13 @@ export default function ObligationDetailClient({ obligation, userRole }: { oblig
                 router.push('/dashboard/obligations')
                 router.refresh()
             } else {
-                setFeedbackMessage(t('failed_save_generic'))
+                const data = await res.json().catch(() => ({}))
+                setFeedbackMessage(data.message || t('failed_save_generic'))
                 setShowFeedback(true)
             }
-        } catch (error) {
+        } catch (error: any) {
             console.error('Delete error:', error)
-            setFeedbackMessage(t('failed_save_generic'))
+            setFeedbackMessage(error.message || t('failed_save_generic'))
             setShowFeedback(true)
         }
         setShowDeleteConfirm(false)

@@ -14,225 +14,250 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
         return new NextResponse("Access Denied: Task belongs to a different company", { status: 403 })
     }
 
-    const json = await req.json()
-    const { newAttachments, note, cost, costDescription, isDraft, location } = json
+    try {
+        const json = await req.json()
+        const { newAttachments, note, cost, costDescription, isDraft, location } = json
 
-    if (note && note.length > 500) {
-        return new NextResponse("Note cannot exceed 500 characters", { status: 400 })
-    }
-    if (costDescription && costDescription.length > 200) {
-        return new NextResponse("Cost description cannot exceed 200 characters", { status: 400 })
-    }
-    if (location && location.length > 200) {
-        return new NextResponse("Location cannot exceed 200 characters", { status: 400 })
-    }
-    // Force parse cost to number
-    const costValue = cost ? Number(cost) : 0
-    console.log(`[API] Submit Task ${params.id}: cost=${costValue}, attachments=${newAttachments?.length || 0}, isDraft=${isDraft}, location=${location}`)
+        // Support both 'costs' and 'costEntries'
+        const inputCosts = json.costs || json.costEntries
 
-    const userId = (session.user as any).id
-
-    const result = await prisma.$transaction(async (tx) => {
-        // 1. Get current task to read existing comments and attachments
-        const currentTask = await tx.task.findUnique({ where: { id: params.id } })
-        if (!currentTask) throw new Error("Task not found")
-
-        // Parse existing attachments
-        let finalAttachments: any[] = []
-        if (currentTask.attachments) {
-            try {
-                const parsed = JSON.parse(currentTask.attachments)
-                if (Array.isArray(parsed)) {
-                    finalAttachments = parsed
-                } else if (parsed.url) {
-                    // Convert legacy single to array
-                    finalAttachments = [parsed]
-                }
-            } catch {
-                finalAttachments = []
-            }
+        if (note && note.length > 500) {
+            return new NextResponse("Note cannot exceed 500 characters", { status: 400 })
         }
-
-        // Add new attachments if provided
-        if (newAttachments && Array.isArray(newAttachments)) {
-            finalAttachments = [...finalAttachments, ...newAttachments]
+        if (costDescription && costDescription.length > 200) {
+            return new NextResponse("Cost description cannot exceed 200 characters", { status: 400 })
         }
-
-        let comments = []
-        if (currentTask.comments) {
-            try {
-                comments = JSON.parse(currentTask.comments)
-            } catch {
-                comments = []
-            }
+        if (location && location.length > 200) {
+            return new NextResponse("Location cannot exceed 200 characters", { status: 400 })
         }
+        // Force parse cost to number
+        const costValue = cost ? Number(cost) : 0
+        console.log(`[API] Submit Task ${params.id}: cost=${costValue}, attachments=${newAttachments?.length || 0}, isDraft=${isDraft}, location=${location}`)
 
-        if (note) {
-            comments.push({
-                text: note,
-                author: (session.user as any).name || 'Employee',
-                date: new Date().toISOString(),
-                type: 'SUBMISSION_NOTE'
+        const userId = (session.user as any).id
+
+        const result = await prisma.$transaction(async (tx) => {
+            // 1. Get current task to read existing comments and attachments
+            const currentTask = await tx.task.findUnique({
+                where: { id: params.id },
+                include: { assignee: true }
             })
-        }
+            if (!currentTask) throw new Error("Task not found")
 
-        // Add cost to note if provided (Legacy single cost)
-        let totalAdded = 0
-        if (costValue > 0) {
-            comments.push({
-                text: `Added cost: ${costValue.toFixed(2)} EGP`,
-                description: costDescription || `Added cost: ${costValue.toFixed(2)} EGP`,
-                amount: costValue,
-                author: (session.user as any).name || 'Employee',
-                date: new Date().toISOString(),
-                type: 'COST_ADDITION'
-            })
-            totalAdded += costValue
-        }
-
-        // Handle multiple costs array
-        if (json.costs && Array.isArray(json.costs)) {
-            for (const c of json.costs) {
-                const cVal = Number(c.amount)
-                if (cVal > 0) {
-                    if (c.description && c.description.length > 200) {
-                        // Skip invalid or throw error? Better to fail fast for security.
-                        throw new Error("Cost description cannot exceed 200 characters")
+            // Parse existing attachments
+            let finalAttachments: any[] = []
+            if (currentTask.attachments) {
+                try {
+                    const parsed = JSON.parse(currentTask.attachments)
+                    if (Array.isArray(parsed)) {
+                        finalAttachments = parsed
+                    } else if (parsed && typeof parsed === 'object' && (parsed as any).url) {
+                        // Convert legacy single to array
+                        finalAttachments = [parsed]
                     }
-                    comments.push({
-                        text: `Added cost: ${cVal.toFixed(2)} EGP`,
-                        description: c.description || `Added cost: ${cVal.toFixed(2)} EGP`,
-                        amount: cVal,
-                        author: (session.user as any).name || 'Employee',
-                        date: new Date().toISOString(),
-                        type: 'COST_ADDITION'
-                    })
-                    totalAdded += cVal
+                } catch {
+                    finalAttachments = []
                 }
             }
-        }
 
-        // Add location to comments if provided
-        if (location) {
-            comments.push({
-                text: `Location: ${location}`,
-                location: location,
-                author: (session.user as any).name || 'Employee',
-                date: new Date().toISOString(),
-                type: 'LOCATION_ADDED'
-            })
-
-            // AUTOMATIC LATENESS DEDUCTION
-            // Check if this is the FIRST location being added
-            const previousLocations = comments.filter((c: any) => c.type === 'LOCATION_ADDED')
-            if (previousLocations.length === 1) { // 1 because we just pushed it
-                const now = new Date()
-                const deadline = new Date(currentTask.deadline)
-
-                // Check if today is the deadline day (ignoring time)
-                const isDeadlineDay = now.toDateString() === deadline.toDateString()
-
-                if (isDeadlineDay) {
-                    const currentHour = now.getHours()
-                    let penaltyDays = 0
-
-                    if (currentHour >= 11) {
-                        penaltyDays = 1.0
-                    } else if (currentHour >= 10) {
-                        penaltyDays = 0.5
-                    } else if (currentHour >= 9) {
-                        penaltyDays = 0.25
+            // Add new attachments if provided
+            if (newAttachments && Array.isArray(newAttachments)) {
+                // Ensure new attachments are in the correct object format
+                const formattedNew = newAttachments.map(att => {
+                    if (typeof att === 'string') {
+                        return {
+                            url: att,
+                            name: att.split('/').pop() || 'Attachment',
+                            uploadedBy: (session.user as any).name || 'Unknown',
+                            uploadedAt: new Date().toISOString()
+                        }
                     }
+                    return att
+                })
+                finalAttachments = [...finalAttachments, ...formattedNew]
+            }
 
-                    const isSuperAdmin = (session.user as any).role === 'SUPER_ADMIN'
-                    if (penaltyDays > 0 && !isSuperAdmin) {
-                        // Apply Deduction to Salary Record
-                        const currentMonth = now.getMonth() + 1
-                        const currentYear = now.getFullYear()
+            let comments = []
+            if (currentTask.comments) {
+                try {
+                    comments = JSON.parse(currentTask.comments)
+                } catch {
+                    comments = []
+                }
+            }
 
-                        // Find or Create Salary Record
-                        const salaryRecord = await tx.salaryRecord.findUnique({
-                            where: { userId_month_year: { userId: userId, month: currentMonth, year: currentYear } }
+            if (note) {
+                comments.push({
+                    text: note,
+                    author: (session.user as any).name || 'Employee',
+                    date: new Date().toISOString(),
+                    type: 'SUBMISSION_NOTE'
+                })
+            }
+
+            // Add cost to note if provided (Legacy single cost)
+            let totalAdded = 0
+            if (costValue > 0) {
+                comments.push({
+                    text: `Added cost: ${costValue.toFixed(2)} EGP`,
+                    description: costDescription || `Added cost: ${costValue.toFixed(2)} EGP`,
+                    amount: costValue,
+                    author: (session.user as any).name || 'Employee',
+                    date: new Date().toISOString(),
+                    type: 'COST_ADDITION'
+                })
+                totalAdded += costValue
+            }
+
+            // Handle multiple costs array
+            if (inputCosts && Array.isArray(inputCosts)) {
+                for (const c of inputCosts) {
+                    const cVal = Number(c.amount)
+                    if (cVal > 0) {
+                        if (c.description && c.description.length > 200) {
+                            throw new Error("Cost description cannot exceed 200 characters")
+                        }
+                        comments.push({
+                            text: `Added cost: ${cVal.toFixed(2)} EGP`,
+                            description: c.description || `Added cost: ${cVal.toFixed(2)} EGP`,
+                            amount: cVal,
+                            author: (session.user as any).name || 'Employee',
+                            date: new Date().toISOString(),
+                            type: 'COST_ADDITION'
                         })
+                        totalAdded += cVal
+                    }
+                }
+            }
 
-                        if (salaryRecord) {
-                            await tx.salaryRecord.update({
-                                where: { id: salaryRecord.id },
-                                data: { deductions: { increment: penaltyDays } }
-                            })
-                        } else {
-                            const daysInMonth = new Date(currentYear, currentMonth, 0).getDate()
-                            // Get user's base salary to initialize record correctly
-                            const user = await tx.user.findUnique({ where: { id: userId } })
-                            await tx.salaryRecord.create({
-                                data: {
-                                    userId: userId,
-                                    month: currentMonth,
-                                    year: currentYear,
-                                    totalDays: daysInMonth,
-                                    deductions: penaltyDays,
-                                    baseSalary: user?.salary || 0
-                                }
-                            })
+            // Add location to comments if provided
+            if (location) {
+                comments.push({
+                    text: `Location: ${location}`,
+                    location: location,
+                    author: (session.user as any).name || 'Employee',
+                    date: new Date().toISOString(),
+                    type: 'LOCATION_ADDED'
+                })
+
+                // AUTOMATIC LATENESS DEDUCTION
+                // Check if this is the FIRST location being added
+                const previousLocations = comments.filter((c: any) => c.type === 'LOCATION_ADDED')
+                if (previousLocations.length === 1) { // 1 because we just pushed it
+                    const now = new Date()
+                    const deadline = new Date(currentTask.deadline)
+
+                    // Check if today is the deadline day (ignoring time)
+                    const isDeadlineDay = now.toDateString() === deadline.toDateString()
+
+                    if (isDeadlineDay) {
+                        const currentHour = now.getHours()
+                        let penaltyDays = 0
+
+                        if (currentHour >= 11) {
+                            penaltyDays = 1.0
+                        } else if (currentHour >= 10) {
+                            penaltyDays = 0.5
+                        } else if (currentHour >= 9) {
+                            penaltyDays = 0.25
                         }
 
-                        // Add System Comment about Penalty
-                        comments.push({
-                            text: `⚠️ Automatic Lateness Penalty: ${penaltyDays} day(s) deducted for late check-in on deadline day (Time: ${now.toLocaleTimeString()}).`,
-                            author: 'System',
-                            date: new Date().toISOString(),
-                            type: 'SYSTEM_DEDUCTION'
-                        })
+                        const isSuperAdmin = (session.user as any).role === 'SUPER_ADMIN'
+                        if (penaltyDays > 0 && !isSuperAdmin) {
+                            // Apply Deduction to Salary Record
+                            const currentMonth = now.getMonth() + 1
+                            const currentYear = now.getFullYear()
+
+                            // Use the compound unique key for SalaryRecord
+                            const salaryRecord = await tx.salaryRecord.findUnique({
+                                where: { userId_month_year: { userId: userId, month: currentMonth, year: currentYear } }
+                            })
+
+                            if (salaryRecord) {
+                                await tx.salaryRecord.update({
+                                    where: { id: salaryRecord.id },
+                                    data: { deductions: { increment: penaltyDays } }
+                                })
+                            } else {
+                                const daysInMonth = new Date(currentYear, currentMonth, 0).getDate()
+                                // Get user's base salary to initialize record correctly
+                                const user = await tx.user.findUnique({ where: { id: userId } })
+                                await tx.salaryRecord.create({
+                                    data: {
+                                        userId: userId,
+                                        month: currentMonth,
+                                        year: currentYear,
+                                        totalDays: daysInMonth,
+                                        deductions: penaltyDays,
+                                        baseSalary: user?.salary || 0
+                                    }
+                                })
+                            }
+
+                            // Add System Comment about Penalty
+                            comments.push({
+                                text: `⚠️ Automatic Lateness Penalty: ${penaltyDays} day(s) deducted for late check-in on deadline day (Time: ${now.toLocaleTimeString()}).`,
+                                author: 'System',
+                                date: new Date().toISOString(),
+                                type: 'SYSTEM_DEDUCTION'
+                            })
+                        }
                     }
                 }
             }
-        }
 
-        // Prepare update data
-        const updateData: any = {
-            status: isDraft ? 'IN_PROGRESS' : 'PENDING_CONFIRMATION',
-            attachments: JSON.stringify(finalAttachments),
-            comments: JSON.stringify(comments)
-        }
-
-        // Add cost to totalCost if cost > 0 (even for drafts)
-        if (totalAdded > 0) {
-            updateData.totalCost = {
-                increment: totalAdded
+            // Prepare update data
+            const updateData: any = {
+                status: isDraft ? 'IN_PROGRESS' : 'PENDING_CONFIRMATION',
+                attachments: JSON.stringify(finalAttachments),
+                comments: JSON.stringify(comments)
             }
-        }
 
-        const task = await tx.task.update({
-            where: { id: params.id },
-            data: updateData
-        })
+            // Add cost to totalCost if cost > 0 (even for drafts)
+            if (totalAdded > 0) {
+                updateData.totalCost = {
+                    increment: totalAdded
+                }
+            }
 
-        // Notify the creator (Admin) only if submitted and creator exists
-        if (!isDraft && task.createdBy) {
-            await tx.notification.create({
+            const task = await tx.task.update({
+                where: { id: params.id },
+                data: updateData
+            })
+
+            // Notify the creator (Admin) only if submitted and creator exists
+            if (!isDraft && task.createdBy) {
+                await tx.notification.create({
+                    data: {
+                        userId: task.createdBy,
+                        type: 'TASK_SUBMITTED',
+                        message: `Task "${task.title}" has been submitted by ${(session.user as any).name || 'Employee'}`,
+                        relatedId: task.id
+                    }
+                })
+            }
+
+            // Audit log
+            await tx.auditLog.create({
                 data: {
-                    userId: task.createdBy,
-                    type: 'TASK_SUBMITTED',
-                    message: `Task "${task.title}" has been submitted by ${(session.user as any).name || 'Employee'}`,
-                    relatedId: task.id
+                    action: isDraft ? 'UPDATE_TASK_PROGRESS' : 'SUBMIT_TASK',
+                    entityType: 'TASK',
+                    entityId: task.id,
+                    userId: (session.user as any).role === 'SUPER_ADMIN' ? null : userId,
+                    superAdminId: (session.user as any).role === 'SUPER_ADMIN' ? userId : null,
+                    details: JSON.stringify({ newAttachments, note, cost: costValue, isDraft, location })
                 }
             })
-        }
 
-        // Audit log
-        await tx.auditLog.create({
-            data: {
-                action: isDraft ? 'UPDATE_TASK_PROGRESS' : 'SUBMIT_TASK',
-                entityType: 'TASK',
-                entityId: task.id,
-                userId: (session.user as any).role === 'SUPER_ADMIN' ? null : userId,
-                superAdminId: (session.user as any).role === 'SUPER_ADMIN' ? userId : null,
-                details: JSON.stringify({ newAttachments, note, cost: costValue, isDraft, location })
-            }
+            return task
         })
 
-        return task
-    })
-
-    return NextResponse.json(result)
+        return NextResponse.json(result)
+    } catch (error: any) {
+        console.error("Task submission error:", error)
+        return new NextResponse(JSON.stringify({
+            message: error.message || "Failed to save task progress",
+            details: error.toString()
+        }), { status: 500 })
+    }
 }
