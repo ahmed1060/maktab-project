@@ -19,6 +19,7 @@ export default function DateRangePicker({ dateFrom, dateTo, onChange, label, min
     const [currentMonth, setCurrentMonth] = useState(new Date())
     const [selectingFrom, setSelectingFrom] = useState(true)
     const containerRef = useRef<HTMLDivElement>(null)
+    const portalRef = useRef<HTMLDivElement>(null)
 
     useEffect(() => {
         setMounted(true)
@@ -30,10 +31,13 @@ export default function DateRangePicker({ dateFrom, dateTo, onChange, label, min
         return () => window.removeEventListener('resize', checkMobile)
     }, [])
 
-    // Close dropdown when clicking outside
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
-            if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+            const target = event.target as Node;
+            const isClickInsideTrigger = containerRef.current?.contains(target);
+            const isClickInsidePortal = portalRef.current?.contains(target);
+
+            if (!isClickInsideTrigger && !isClickInsidePortal) {
                 if (!isMobile) setIsOpen(false)
             }
         }
@@ -120,7 +124,8 @@ export default function DateRangePicker({ dateFrom, dateTo, onChange, label, min
 
     const pickerContent = (
         <div
-            onClick={(e) => isMobile && e.stopPropagation()}
+            ref={portalRef}
+            onClick={(e) => e.stopPropagation()}
             style={{
                 position: 'relative',
                 top: 'auto',
