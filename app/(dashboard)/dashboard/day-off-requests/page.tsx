@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
 import { useLanguage } from '@/context/LanguageContext'
 import DateRangePicker from '@/components/DateRangePicker'
+import DatePickerSingle from '@/components/DatePickerSingle'
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts'
 import EmployeeFilter from '@/components/EmployeeFilter'
 
@@ -322,6 +323,12 @@ export default function DayOffRequestsPage() {
                                                     <> - {new Date(req.endDate).toLocaleDateString(locale, { day: 'numeric', month: 'short', year: 'numeric' })}</>
                                                 )}
                                             </div>
+                                            <div style={{ fontSize: '0.75rem', color: '#94a3b8', fontStyle: 'italic', display: 'flex', gap: '0.35rem' }}>
+                                                <span>{locale === 'ar' ? 'تم الطلب في:' : 'Requested on:'}</span>
+                                                <span>
+                                                    {new Date(req.createdAt).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit', hour12: true })}, {new Date(req.createdAt).toLocaleDateString(locale, { day: 'numeric', month: 'short', year: 'numeric' })}
+                                                </span>
+                                            </div>
                                         </div>
                                         <span style={{
                                             padding: '0.375rem 0.875rem',
@@ -497,18 +504,15 @@ export default function DayOffRequestsPage() {
                                 </div>
                             ) : (
                                 <div style={{ marginBottom: '1rem' }}>
-                                    <label style={{ display: 'block', marginBottom: '0.5rem' }}>{t('select_date' as any)}</label>
-                                    <input
-                                        type="date"
-                                        className="input"
-                                        required
+                                    <DatePickerSingle
+                                        label={t('select_date' as any)}
                                         value={reqDate}
-                                        onChange={e => {
-                                            setReqDate(e.target.value);
-                                            setReqEndDate(e.target.value);
+                                        onChange={date => {
+                                            setReqDate(date);
+                                            setReqEndDate(date);
                                         }}
-                                        min={serverToday ? new Date(new Date(serverToday).getTime() - 86400000).toISOString().split('T')[0] : ''}
-                                        max={serverToday ? new Date(new Date(serverToday).getTime() + 86400000).toISOString().split('T')[0] : ''}
+                                        minDate={serverToday ? new Date(new Date(serverToday).getTime() - 86400000).toISOString().split('T')[0] : ''}
+                                        maxDate={serverToday ? new Date(new Date(serverToday).getTime() + 86400000).toISOString().split('T')[0] : ''}
                                     />
                                 </div>
                             )}
