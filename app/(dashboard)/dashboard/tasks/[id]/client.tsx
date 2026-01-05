@@ -56,6 +56,22 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
     const router = useRouter()
     const { showToast } = useToast()
 
+    // Sync state when props change (after router.refresh)
+    useEffect(() => {
+        setTask(initialTask)
+        try {
+            setExistingAttachments(initialTask.attachments ? JSON.parse(initialTask.attachments) : [])
+        } catch { setExistingAttachments([]) }
+        setEditForm({
+            title: initialTask.title,
+            description: initialTask.description,
+            assigneeId: initialTask.assigneeId,
+            deadline: initialTask.deadline,
+            difficulty: initialTask.difficulty
+        })
+        setReviewDifficulty(initialTask.difficulty)
+    }, [initialTask])
+
     useEffect(() => {
         if (task.comments) {
             try {
