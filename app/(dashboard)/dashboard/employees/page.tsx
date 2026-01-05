@@ -303,16 +303,18 @@ export default function EmployeesPage() {
                                         <p style={{ margin: 0, color: '#64748b', fontSize: '0.85rem' }}>{emp.email}</p>
                                     </div>
                                 </div>
-                                <span style={{
-                                    padding: '0.375rem 0.75rem',
-                                    borderRadius: '1rem',
-                                    background: '#eff6ff',
-                                    color: '#1e40af',
-                                    fontSize: '0.85rem',
-                                    fontWeight: '800'
-                                }}>
-                                    {emp.totalDifficultyPoints || 0} {t('pts')}
-                                </span>
+                                {emp.role !== 'ADMIN' && (
+                                    <span style={{
+                                        padding: '0.375rem 0.75rem',
+                                        borderRadius: '1rem',
+                                        background: '#eff6ff',
+                                        color: '#1e40af',
+                                        fontSize: '0.85rem',
+                                        fontWeight: '800'
+                                    }}>
+                                        {emp.totalDifficultyPoints || 0} {t('pts')}
+                                    </span>
+                                )}
                             </div>
 
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -345,24 +347,26 @@ export default function EmployeesPage() {
 
                             {['ADMIN', 'SUPER_ADMIN'].includes(userRole) && (
                                 <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: 'auto', paddingTop: '1rem', borderTop: '1px dashed #e2e8f0' }}>
-                                    <Link
-                                        href={`/dashboard/employees/${emp.id}`}
-                                        className="btn"
-                                        style={{
-                                            background: '#f8fafc',
-                                            color: '#475569',
-                                            padding: '0.5rem 0.75rem',
-                                            fontSize: '0.8rem',
-                                            fontWeight: '700',
-                                            textDecoration: 'none',
-                                            borderRadius: '0.75rem',
-                                            border: '1px solid #e2e8f0',
-                                            flex: 1,
-                                            textAlign: 'center'
-                                        }}
-                                    >
-                                        {t('edit')}
-                                    </Link>
+                                    {(emp.role !== 'ADMIN' || userRole === 'SUPER_ADMIN') && (
+                                        <Link
+                                            href={`/dashboard/employees/${emp.id}`}
+                                            className="btn"
+                                            style={{
+                                                background: '#f8fafc',
+                                                color: '#475569',
+                                                padding: '0.5rem 0.75rem',
+                                                fontSize: '0.8rem',
+                                                fontWeight: '700',
+                                                textDecoration: 'none',
+                                                borderRadius: '0.75rem',
+                                                border: '1px solid #e2e8f0',
+                                                flex: 1,
+                                                textAlign: 'center'
+                                            }}
+                                        >
+                                            {t('edit')}
+                                        </Link>
+                                    )}
                                     <Link
                                         href={`/dashboard/employees/${emp.id}/history`}
                                         className="btn"
@@ -381,59 +385,63 @@ export default function EmployeesPage() {
                                     >
                                         {t('history')}
                                     </Link>
-                                    <div style={{ display: 'flex', gap: '0.5rem', width: '100%' }}>
-                                        <Link
-                                            href={`/dashboard/employees/${emp.id}/bonus`}
-                                            className="btn"
-                                            style={{
-                                                background: '#f0fdf4',
-                                                color: '#166534',
-                                                padding: '0.5rem 0.75rem',
-                                                fontSize: '0.8rem',
-                                                fontWeight: '800',
-                                                textDecoration: 'none',
-                                                borderRadius: '0.75rem',
-                                                flex: 1,
-                                                textAlign: 'center'
-                                            }}
-                                        >
-                                            + {t('add_bonus')}
-                                        </Link>
-                                        <Link
-                                            href={`/dashboard/employees/${emp.id}/deduction`}
-                                            className="btn"
-                                            style={{
-                                                background: '#fef2f2',
-                                                color: '#991b1b',
-                                                padding: '0.5rem 0.75rem',
-                                                fontSize: '0.8rem',
-                                                fontWeight: '800',
-                                                textDecoration: 'none',
-                                                borderRadius: '0.75rem',
-                                                flex: 1,
-                                                textAlign: 'center'
-                                            }}
-                                        >
-                                            - {t('add_deduction')}
-                                        </Link>
-                                    </div>
-                                    <button
-                                        onClick={() => handleResetPoints(emp.id)}
-                                        disabled={resettingPoints === emp.id}
-                                        className="btn"
-                                        style={{
-                                            background: '#fffbeb',
-                                            color: '#92400e',
-                                            padding: '0.5rem 0.75rem',
-                                            fontSize: '0.8rem',
-                                            fontWeight: '700',
-                                            borderRadius: '0.75rem',
-                                            flex: 1,
-                                            opacity: resettingPoints === emp.id ? 0.7 : 1
-                                        }}
-                                    >
-                                        {resettingPoints === emp.id ? t('resetting') : t('reset_points')}
-                                    </button>
+                                    {emp.role !== 'ADMIN' && (
+                                        <>
+                                            <div style={{ display: 'flex', gap: '0.5rem', width: '100%' }}>
+                                                <Link
+                                                    href={`/dashboard/employees/${emp.id}/bonus`}
+                                                    className="btn"
+                                                    style={{
+                                                        background: '#f0fdf4',
+                                                        color: '#166534',
+                                                        padding: '0.5rem 0.75rem',
+                                                        fontSize: '0.8rem',
+                                                        fontWeight: '800',
+                                                        textDecoration: 'none',
+                                                        borderRadius: '0.75rem',
+                                                        flex: 1,
+                                                        textAlign: 'center'
+                                                    }}
+                                                >
+                                                    + {t('add_bonus')}
+                                                </Link>
+                                                <Link
+                                                    href={`/dashboard/employees/${emp.id}/deduction`}
+                                                    className="btn"
+                                                    style={{
+                                                        background: '#fef2f2',
+                                                        color: '#991b1b',
+                                                        padding: '0.5rem 0.75rem',
+                                                        fontSize: '0.8rem',
+                                                        fontWeight: '800',
+                                                        textDecoration: 'none',
+                                                        borderRadius: '0.75rem',
+                                                        flex: 1,
+                                                        textAlign: 'center'
+                                                    }}
+                                                >
+                                                    - {t('add_deduction')}
+                                                </Link>
+                                            </div>
+                                            <button
+                                                onClick={() => handleResetPoints(emp.id)}
+                                                disabled={resettingPoints === emp.id}
+                                                className="btn"
+                                                style={{
+                                                    background: '#fffbeb',
+                                                    color: '#92400e',
+                                                    padding: '0.5rem 0.75rem',
+                                                    fontSize: '0.8rem',
+                                                    fontWeight: '700',
+                                                    borderRadius: '0.75rem',
+                                                    flex: 1,
+                                                    opacity: resettingPoints === emp.id ? 0.7 : 1
+                                                }}
+                                            >
+                                                {resettingPoints === emp.id ? t('resetting') : t('reset_points')}
+                                            </button>
+                                        </>
+                                    )}
                                     {emp.role !== 'SUPER_ADMIN' && (
                                         <button
                                             onClick={() => handleDelete(emp.id, `${emp.firstName} ${emp.lastName}`)}
