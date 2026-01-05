@@ -658,7 +658,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                         >
                             <option value="EMPLOYEE">{t('role_employee')}</option>
                             <option value="TEAM_LEADER">{t('role_team_leader')}</option>
-                            {userRole === 'SUPER_ADMIN' && <option value="ADMIN">{t('role_admin')}</option>}
+                            {(userRole === 'SUPER_ADMIN' || role === 'ADMIN') && <option value="ADMIN">{t('role_admin')}</option>}
                             {role === 'SUPER_ADMIN' && <option value="SUPER_ADMIN">{t('super_admins')}</option>}
                         </select>
                     </div>
