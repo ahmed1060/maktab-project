@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
             data: {
                 userId: session.user.id,
                 date: new Date(requestDateStr),
-                endDate: type === 'REGULAR' ? new Date(finalEndDateStr) : null,
+                endDate: (type === 'REGULAR' && finalEndDateStr !== requestDateStr) ? new Date(finalEndDateStr) : null,
                 type,
                 reason: reason || null,
                 status: 'PENDING'
@@ -74,12 +74,16 @@ export async function POST(request: NextRequest) {
             select: { id: true }
         })
 
+        const dateDisplay = finalEndDateStr === requestDateStr
+            ? new Date(requestDateStr).toLocaleDateString()
+            : `${new Date(requestDateStr).toLocaleDateString()} to ${new Date(finalEndDateStr).toLocaleDateString()}`;
+
         for (const admin of admins) {
             await prisma.notification.create({
                 data: {
                     userId: admin.id,
                     type: 'DAY_OFF_REQUEST',
-                    message: `${session.user.name} has requested a ${type.toLowerCase()} day off on ${new Date(requestDateStr).toLocaleDateString()}.`,
+                    message: `${session.user.name} has requested a ${type.toLowerCase()} day off on ${dateDisplay}.`,
                     relatedId: newRequest.id
                 }
             })

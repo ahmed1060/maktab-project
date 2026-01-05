@@ -323,12 +323,6 @@ export default function DayOffRequestsPage() {
                                                     <> - {new Date(req.endDate).toLocaleDateString(locale, { day: 'numeric', month: 'short', year: 'numeric' })}</>
                                                 )}
                                             </div>
-                                            <div style={{ fontSize: '0.75rem', color: '#94a3b8', fontStyle: 'italic', display: 'flex', gap: '0.35rem' }}>
-                                                <span>{locale === 'ar' ? 'تم الطلب في:' : 'Requested on:'}</span>
-                                                <span>
-                                                    {new Date(req.createdAt).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit', hour12: true })}, {new Date(req.createdAt).toLocaleDateString(locale, { day: 'numeric', month: 'short', year: 'numeric' })}
-                                                </span>
-                                            </div>
                                         </div>
                                         <span style={{
                                             padding: '0.375rem 0.875rem',
@@ -395,6 +389,20 @@ export default function DayOffRequestsPage() {
                                                 {t('no_reason_provided' as any) || 'No reason provided'}
                                             </p>
                                         )}
+                                        <div style={{
+                                            fontSize: '0.75rem',
+                                            color: '#94a3b8',
+                                            fontStyle: 'italic',
+                                            display: 'flex',
+                                            gap: '0.35rem',
+                                            marginTop: '0.25rem',
+                                            justifyContent: 'flex-start'
+                                        }}>
+                                            <span>{locale === 'ar' ? 'تم الطلب في:' : 'Requested on:'}</span>
+                                            <span>
+                                                {new Date(req.createdAt).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit', hour12: true })}, {new Date(req.createdAt).toLocaleDateString(locale, { day: 'numeric', month: 'short', year: 'numeric' })}
+                                            </span>
+                                        </div>
                                     </div>
 
                                     {/* Card Actions (Admin only) */}

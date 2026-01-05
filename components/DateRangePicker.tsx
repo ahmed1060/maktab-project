@@ -238,24 +238,42 @@ export default function DateRangePicker({ dateFrom, dateTo, onChange, label, min
                 <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
                     {selectingFrom ? t('select_start_date' as any) : t('select_end_date' as any)}
                 </div>
-                {(dateFrom || dateTo) && (
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    {(dateFrom || dateTo) && (
+                        <button
+                            onClick={(e) => { e.stopPropagation(); handleReset(); }}
+                            style={{
+                                background: '#fef2f2',
+                                color: '#ef4444',
+                                border: 'none',
+                                padding: '0.25rem 0.75rem',
+                                borderRadius: '0.375rem',
+                                fontSize: '0.75rem',
+                                fontWeight: '600',
+                                cursor: 'pointer',
+                                transition: 'all 0.25s'
+                            }}
+                        >
+                            {t('reset' as any)}
+                        </button>
+                    )}
                     <button
-                        onClick={(e) => { e.stopPropagation(); handleReset(); }}
+                        onClick={(e) => { e.stopPropagation(); setIsOpen(false); }}
                         style={{
-                            background: '#fef2f2',
-                            color: '#ef4444',
+                            background: '#3b82f6',
+                            color: 'white',
                             border: 'none',
                             padding: '0.25rem 0.75rem',
                             borderRadius: '0.375rem',
                             fontSize: '0.75rem',
                             fontWeight: '600',
                             cursor: 'pointer',
-                            transition: 'all 0.2s'
+                            transition: 'all 0.25s'
                         }}
                     >
-                        {t('reset' as any)}
+                        {locale === 'ar' ? 'تم' : 'Done'}
                     </button>
-                )}
+                </div>
             </div>
         </div>
     )
@@ -287,7 +305,9 @@ export default function DateRangePicker({ dateFrom, dateTo, onChange, label, min
                     <span style={{ color: '#94a3b8' }}>📅</span>
                     <span style={{ color: dateFrom || dateTo ? '#1e293b' : '#94a3b8' }}>
                         {dateFrom && dateTo
-                            ? (locale === 'ar' ? `${formatDate(dateFrom)} ← ${formatDate(dateTo)}` : `${formatDate(dateFrom)} → ${formatDate(dateTo)}`)
+                            ? (dateFrom === dateTo
+                                ? formatDate(dateFrom)
+                                : (locale === 'ar' ? `${formatDate(dateFrom)} ← ${formatDate(dateTo)}` : `${formatDate(dateFrom)} → ${formatDate(dateTo)}`))
                             : dateFrom
                                 ? `${formatDate(dateFrom)} → ...`
                                 : t('select_date_range' as any)}
