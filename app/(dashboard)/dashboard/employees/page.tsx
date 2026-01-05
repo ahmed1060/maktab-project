@@ -367,24 +367,26 @@ export default function EmployeesPage() {
                                             {t('edit')}
                                         </Link>
                                     )}
-                                    <Link
-                                        href={`/dashboard/employees/${emp.id}/history`}
-                                        className="btn"
-                                        style={{
-                                            background: '#f8fafc',
-                                            color: '#475569',
-                                            padding: '0.5rem 0.75rem',
-                                            fontSize: '0.8rem',
-                                            fontWeight: '700',
-                                            textDecoration: 'none',
-                                            borderRadius: '0.75rem',
-                                            border: '1px solid #e2e8f0',
-                                            flex: 1,
-                                            textAlign: 'center'
-                                        }}
-                                    >
-                                        {t('history')}
-                                    </Link>
+                                    {emp.role !== 'ADMIN' && (
+                                        <Link
+                                            href={`/dashboard/employees/${emp.id}/history`}
+                                            className="btn"
+                                            style={{
+                                                background: '#f8fafc',
+                                                color: '#475569',
+                                                padding: '0.5rem 0.75rem',
+                                                fontSize: '0.8rem',
+                                                fontWeight: '700',
+                                                textDecoration: 'none',
+                                                borderRadius: '0.75rem',
+                                                border: '1px solid #e2e8f0',
+                                                flex: 1,
+                                                textAlign: 'center'
+                                            }}
+                                        >
+                                            {t('history')}
+                                        </Link>
+                                    )}
                                     {emp.role !== 'ADMIN' && (
                                         <>
                                             <div style={{ display: 'flex', gap: '0.5rem', width: '100%' }}>
