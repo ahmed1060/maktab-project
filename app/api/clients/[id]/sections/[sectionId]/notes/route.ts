@@ -57,6 +57,9 @@ export async function GET(
             include: {
                 createdBy: {
                     select: { firstName: true, lastName: true, avatar: true, role: true }
+                },
+                lastEditedBy: {
+                    select: { firstName: true, lastName: true, role: true }
                 }
             },
             orderBy: {
@@ -231,5 +234,63 @@ export async function DELETE(
     } catch (error) {
         console.error('Error deleting note:', error)
         return NextResponse.json({ error: 'Failed to delete note' }, { status: 500 })
+    }
+}
+
+export async function PUT(
+    request: NextRequest,
+    { params }: { params: { id: string, sectionId: string } }
+) {
+    try {
+        const session = await getServerSession(authOptions)
+        const userId = (session?.user as any)?.id
+
+        if (!session?.user || (session.user.role !== 'SUPER_ADMIN' && session.user.role !== 'ADMIN')) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+        }
+
+        const body = await request.json()
+        const { noteId, content, expiryDate, reminderDays } = body
+
+        if (!noteId) return NextResponse.json({ error: 'Note ID required' }, { status: 400 })
+
+        const note = await prisma.businessClientNote.findUnique({
+            where: { id: noteId },
+            include: {
+                section: {
+                    include: {
+                        client: {
+                            select: { companyId: true }
+                        }
+                    }
+                }
+            }
+        })
+
+        if (!note) return NextResponse.json({ error: 'Note not found' }, { status: 404 })
+
+        // Auth Logic: Super Admin OR Matching Company
+        if (session.user.role !== 'SUPER_ADMIN') {
+            if (note.section.client.companyId !== session.user.companyId) {
+                return NextResponse.json({ error: 'Access denied' }, { status: 403 })
+            }
+        }
+
+        const updatedNote = await prisma.businessClientNote.update({
+            where: { id: noteId },
+            data: {
+                content,
+                expiryDate: expiryDate ? new Date(expiryDate) : null,
+                reminderDays: reminderDays ? parseInt(reminderDays) : null,
+                lastEditedById: userId,
+                lastEditedAt: new Date()
+            }
+        })
+
+        return NextResponse.json(updatedNote)
+
+    } catch (error) {
+        console.error('Error updating note:', error)
+        return NextResponse.json({ error: 'Failed to update note' }, { status: 500 })
     }
 }

@@ -25,6 +25,12 @@ interface Note {
         avatar: string | null
         role: string
     }
+    lastEditedBy?: {
+        firstName: string
+        lastName: string
+        role: string
+    } | null
+    lastEditedAt?: string | null
 }
 
 interface SectionData {
@@ -55,6 +61,14 @@ export default function SectionNotesPage() {
     const [isEditingSection, setIsEditingSection] = useState(false)
 
     const canEdit = session?.user?.role === 'SUPER_ADMIN' || session?.user?.role === 'ADMIN' || session?.user?.role === 'TEAM_LEADER'
+    const isAuthorized = session?.user?.role === 'SUPER_ADMIN' || session?.user?.role === 'ADMIN'
+
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false)
+    const [editingNote, setEditingNote] = useState<Note | null>(null)
+    const [editNoteContent, setEditNoteContent] = useState('')
+    const [editExpiryDate, setEditExpiryDate] = useState('')
+    const [editReminderDays, setEditReminderDays] = useState('')
+
 
     // New Fields
     const [expiryDate, setExpiryDate] = useState('')
@@ -172,18 +186,55 @@ export default function SectionNotesPage() {
                 setSelectedFile(null)
                 setIsModalOpen(false)
                 fetchData() // Refresh
+                showToast(t('note_created_success' as any) || 'Note created successfully', 'success')
             } else {
                 const err = await res.json()
-                alert(`${t('failed_save_generic')}: ${err.error}`)
+                showToast(`${t('failed_save_generic')}: ${err.error}`, 'error')
             }
         } catch (error) {
             console.error('Failed to create note', error)
-            alert(t('failed_save_generic'))
+            showToast(t('failed_save_generic'), 'error')
         } finally {
             setIsSubmitting(false)
             setUploading(false)
         }
     }
+
+    const handleUpdateNote = async (e: React.FormEvent) => {
+        e.preventDefault()
+        if (!editNoteContent.trim() || !editingNote) return
+
+        setIsSubmitting(true)
+
+        try {
+            const res = await fetch(`/api/clients/${clientId}/sections/${sectionId}/notes`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    noteId: editingNote.id,
+                    content: editNoteContent,
+                    expiryDate: editExpiryDate || null,
+                    reminderDays: editReminderDays || null
+                })
+            })
+
+            if (res.ok) {
+                setIsEditModalOpen(false)
+                setEditingNote(null)
+                fetchData() // Refresh
+                showToast(t('note_updated_success' as any) || 'Note updated successfully', 'success')
+            } else {
+                const err = await res.json()
+                showToast(`${t('failed_save_generic')}: ${err.error}`, 'error')
+            }
+        } catch (error) {
+            console.error('Failed to update note', error)
+            showToast(t('failed_save_generic'), 'error')
+        } finally {
+            setIsSubmitting(false)
+        }
+    }
+
 
     const MAX_CHARS = 500
 
@@ -303,25 +354,59 @@ export default function SectionNotesPage() {
                                             <span className="text-slate-500">
                                                 {new Date(note.createdAt).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' })} - {new Date(note.createdAt).toLocaleDateString(locale === 'ar' ? 'ar-EG' : 'en-GB')}
                                             </span>
+                                            {note.lastEditedAt && note.lastEditedBy && (
+                                                <div style={{ marginTop: '4px', fontSize: '0.75rem', color: '#64748b', fontStyle: 'italic' }}>
+                                                    {t('edited_by' as any) || 'Edited by'} {t(`role_${note.lastEditedBy.role.toLowerCase()}` as any) || note.lastEditedBy.role} {note.lastEditedBy.firstName} {note.lastEditedBy.lastName} - {new Date(note.lastEditedAt).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' })} {new Date(note.lastEditedAt).toLocaleDateString(locale === 'ar' ? 'ar-EG' : 'en-GB')}
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
-                                    <button
-                                        onClick={() => {
-                                            setDeleteConfirm({ isOpen: true, note })
-                                        }}
-                                        className="btn"
-                                        style={{
-                                            background: '#fee2e2',
-                                            color: '#b91c1c',
-                                            padding: '0.5rem 1rem',
-                                            fontSize: '0.875rem',
-                                            border: 'none',
-                                            cursor: 'pointer',
-                                            flexShrink: 0
-                                        }}
-                                    >
-                                        {t('delete')}
-                                    </button>
+
+                                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                        {isAuthorized && (
+                                            <button
+                                                onClick={() => {
+                                                    setEditingNote(note)
+                                                    setEditNoteContent(note.content)
+                                                    setEditExpiryDate(note.expiryDate ? new Date(note.expiryDate).toISOString().split('T')[0] : '')
+                                                    setEditReminderDays(note.reminderDays ? note.reminderDays.toString() : '')
+                                                    setIsEditModalOpen(true)
+                                                }}
+                                                className="btn"
+                                                style={{
+                                                    background: '#f1f5f9',
+                                                    color: '#475569',
+                                                    padding: '0.5rem 1rem',
+                                                    fontSize: '0.875rem',
+                                                    border: 'none',
+                                                    cursor: 'pointer',
+                                                    flexShrink: 0
+                                                }}
+                                            >
+                                                {t('edit')}
+                                            </button>
+                                        )}
+                                        {isAuthorized && (
+                                            <button
+                                                onClick={() => {
+                                                    setDeleteConfirm({ isOpen: true, note })
+                                                }}
+                                                className="btn"
+                                                style={{
+                                                    background: '#fee2e2',
+                                                    color: '#b91c1c',
+                                                    padding: '0.5rem 1rem',
+                                                    fontSize: '0.875rem',
+                                                    border: 'none',
+                                                    cursor: 'pointer',
+                                                    flexShrink: 0
+                                                }}
+                                            >
+                                                {t('delete')}
+                                            </button>
+                                        )}
+                                    </div>
+
                                 </div>
                             </div>
                         ))}
@@ -538,6 +623,105 @@ export default function SectionNotesPage() {
                     </div>
                 </form>
             </Modal>
+
+            {/* Edit Note Modal - Portal */}
+            {isEditModalOpen && mounted && createPortal(
+                <div style={{
+                    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                    background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center',
+                    alignItems: 'center', zIndex: 9999
+                }}>
+                    <div
+                        className="absolute inset-0"
+                        onClick={() => !isSubmitting && setIsEditModalOpen(false)}
+                    />
+                    <div style={{ background: 'white', padding: '2rem', borderRadius: '12px', width: '100%', maxWidth: '500px', position: 'relative', zIndex: 10, direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                            <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#1e293b', margin: 0 }}>{t('edit_note_title' as any) || 'Edit Note'}</h2>
+                            <span style={{ fontSize: '0.75rem', color: editNoteContent.length > MAX_CHARS ? '#ef4444' : '#64748b' }}>
+                                {editNoteContent.length}/{MAX_CHARS}
+                            </span>
+                        </div>
+                        <form onSubmit={handleUpdateNote}>
+                            <div style={{ marginBottom: '1.5rem' }}>
+                                <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', color: '#64748b', textAlign: locale === 'ar' ? 'right' : 'left' }}>
+                                    {t('note_content_label' as any)}
+                                </label>
+                                <textarea
+                                    value={editNoteContent}
+                                    onChange={(e) => setEditNoteContent(e.target.value)}
+                                    className="input"
+                                    style={{
+                                        width: '100%',
+                                        padding: '0.75rem',
+                                        border: `1px solid ${editNoteContent.length > MAX_CHARS ? '#ef4444' : '#e2e8f0'}`,
+                                        borderRadius: '0.5rem',
+                                        minHeight: '120px',
+                                        lineHeight: '1.5',
+                                        outline: 'none',
+                                        marginBottom: '0.5rem',
+                                        textAlign: locale === 'ar' ? 'right' : 'left'
+                                    }}
+                                    placeholder={t('note_placeholder' as any)}
+                                    autoFocus
+                                />
+                                {editNoteContent.length > MAX_CHARS && (
+                                    <p style={{ color: '#ef4444', fontSize: '0.75rem', marginTop: '0.5rem' }}>
+                                        {t('note_limit_exceeded' as any)}
+                                    </p>
+                                )}
+                            </div>
+
+                            <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem' }}>
+                                <div style={{ flex: 1 }}>
+                                    <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', color: '#64748b', textAlign: locale === 'ar' ? 'right' : 'left' }}>
+                                        {t('expiry_date_label' as any)}
+                                    </label>
+                                    <input
+                                        type="date"
+                                        value={editExpiryDate}
+                                        onChange={(e) => setEditExpiryDate(e.target.value)}
+                                        className="input"
+                                        style={{ width: '100%', padding: '0.5rem', borderRadius: '0.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}
+                                    />
+                                </div>
+                                <div style={{ flex: 1 }}>
+                                    <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', color: '#64748b', textAlign: locale === 'ar' ? 'right' : 'left' }}>
+                                        {t('reminder_days_label' as any)}
+                                    </label>
+                                    <input
+                                        type="number"
+                                        value={editReminderDays}
+                                        onChange={(e) => setEditReminderDays(e.target.value)}
+                                        placeholder={t('days_label')}
+                                        min="1"
+                                        className="input"
+                                        style={{ width: '100%', padding: '0.5rem', borderRadius: '0.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}
+                                    />
+                                </div>
+                            </div>
+                            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
+                                <button
+                                    type="button"
+                                    onClick={() => setIsEditModalOpen(false)}
+                                    style={{ padding: '0.75rem 1.5rem', border: '1px solid #e2e8f0', borderRadius: '0.5rem', background: 'transparent', cursor: 'pointer' }}
+                                >
+                                    {t('cancel')}
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={!editNoteContent.trim() || isSubmitting || editNoteContent.length > MAX_CHARS}
+                                    className="btn btn-primary"
+                                    style={{ opacity: (!editNoteContent.trim() || isSubmitting || editNoteContent.length > MAX_CHARS) ? 0.5 : 1 }}
+                                >
+                                    {isSubmitting ? t('saving') : t('save')}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>,
+                document.body
+            )}
         </div>
     )
 }
