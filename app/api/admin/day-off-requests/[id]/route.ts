@@ -14,7 +14,7 @@ export async function PATCH(
 
     try {
         const body = await request.json()
-        const { status, daysToDeduct } = body
+        const { status, daysToDeduct, deductionType } = body
 
         if (!['APPROVED', 'REJECTED'].includes(status)) {
             return new NextResponse("Invalid status", { status: 400 })
@@ -47,15 +47,56 @@ export async function PATCH(
                 }
 
                 updateData.daysDeducted = deduction
+                updateData.deductionType = deductionType || 'CREDIT'
 
-                await tx.user.update({
-                    where: { id: requestToUpdate.userId },
-                    data: {
-                        dayOffCredit: {
-                            decrement: deduction
-                        }
+                if (deductionType === 'SALARY') {
+                    const now = new Date()
+                    const currentMonth = now.getMonth() + 1
+                    const currentYear = now.getFullYear()
+
+                    const existingRecord = await tx.salaryRecord.findUnique({
+                        where: { userId_month_year: { userId: requestToUpdate.userId, month: currentMonth, year: currentYear } }
+                    })
+
+                    if (existingRecord) {
+                        await tx.salaryRecord.update({
+                            where: { id: existingRecord.id },
+                            data: { deductions: { increment: deduction } }
+                        })
+                    } else {
+                        const daysInMonth = new Date(currentYear, currentMonth, 0).getDate()
+                        await tx.salaryRecord.create({
+                            data: {
+                                userId: requestToUpdate.userId,
+                                month: currentMonth,
+                                year: currentYear,
+                                totalDays: daysInMonth,
+                                deductions: deduction,
+                                baseSalary: requestToUpdate.user.salary || 0,
+                                bonusDays: 0
+                            }
+                        })
                     }
-                })
+
+                    await tx.salaryAdjustment.create({
+                        data: {
+                            userId: requestToUpdate.userId,
+                            type: 'DEDUCTION',
+                            amount: deduction,
+                            reason: `Day off deduction for request #${params.id}`,
+                            status: 'ACTIVE'
+                        }
+                    })
+                } else {
+                    await tx.user.update({
+                        where: { id: requestToUpdate.userId },
+                        data: {
+                            dayOffCredit: {
+                                decrement: deduction
+                            }
+                        }
+                    })
+                }
             }
 
             const updatedRequest = await tx.dayOffRequest.update({
@@ -68,7 +109,7 @@ export async function PATCH(
                 data: {
                     userId: requestToUpdate.userId,
                     type: 'DAY_OFF_RESULT',
-                    message: `Your day off request for ${new Date(requestToUpdate.date).toLocaleDateString()} has been ${status.toLowerCase()}.`,
+                    message: `Your day off request for ${new Date(requestToUpdate.date).toLocaleDateString()} has been ${status.toLowerCase()}${deductionType === 'SALARY' ? ' (deducted from salary)' : ''}.`,
                     relatedId: params.id
                 }
             })

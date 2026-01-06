@@ -33,10 +33,12 @@ export default function DayOffRequestsPage() {
 
     const [requests, setRequests] = useState<DayOffRequest[]>([])
     const [loading, setLoading] = useState(true)
-    const [isRequestModalOpen, setIsRequestModalOpen] = useState(false)
+    const [selectedRequest, setSelectedRequest] = useState<any | null>(null)
     const [isApprovalModalOpen, setIsApprovalModalOpen] = useState(false)
-    const [selectedRequest, setSelectedRequest] = useState<DayOffRequest | null>(null)
-    const [daysToDeduct, setDaysToDeduct] = useState('1')
+    const [isRejectModalOpen, setIsRejectModalOpen] = useState(false)
+    const [isRequestModalOpen, setIsRequestModalOpen] = useState(false)
+    const [daysToDeduct, setDaysToDeduct] = useState('')
+    const [deductionType, setDeductionType] = useState<'CREDIT' | 'SALARY'>('CREDIT')
 
     // New Request Form State
     const [reqDate, setReqDate] = useState('')
@@ -46,7 +48,6 @@ export default function DayOffRequestsPage() {
     const [submitting, setSubmitting] = useState(false)
     const [serverToday, setServerToday] = useState<string>('')
     const [alert, setAlert] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
-    const [isRejectModalOpen, setIsRejectModalOpen] = useState(false)
 
     // Filter State
     const [filters, setFilters] = useState({
@@ -160,6 +161,7 @@ export default function DayOffRequestsPage() {
     const handleAction = async (requestId: string, status: 'APPROVED' | 'REJECTED') => {
         const req = requests.find(r => r.id === requestId)
         setSelectedRequest(req || null)
+        setDeductionType('CREDIT')
 
         if (status === 'APPROVED' && req) {
             const days = calculateWorkDays(req.date, req.endDate)
@@ -170,12 +172,12 @@ export default function DayOffRequestsPage() {
         }
     }
 
-    const processAction = async (requestId: string, status: 'APPROVED' | 'REJECTED', deduction?: string) => {
+    const processAction = async (requestId: string, status: 'APPROVED' | 'REJECTED', deduction?: string, type?: 'CREDIT' | 'SALARY') => {
         try {
             const res = await fetch(`/api/admin/day-off-requests/${requestId}`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ status, daysToDeduct: deduction })
+                body: JSON.stringify({ status, daysToDeduct: deduction, deductionType: type })
             })
             if (res.ok) {
                 showAlert('success', t('request_action_success' as any))
@@ -353,17 +355,29 @@ export default function DayOffRequestsPage() {
                                                 {t(req.type === 'CASUAL' ? 'casual_day_off' : 'regular_day_off' as any)}
                                             </span>
                                             {req.status === 'APPROVED' && (
-                                                <span style={{
-                                                    padding: '0.25rem 0.625rem',
-                                                    borderRadius: '0.5rem',
-                                                    fontSize: '0.75rem',
-                                                    fontWeight: '700',
-                                                    background: '#f8fafc',
-                                                    color: '#64748b',
-                                                    border: '1px solid #e2e8f0'
-                                                }}>
-                                                    {req.daysDeducted} {t('days_label')}
-                                                </span>
+                                                <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
+                                                    <span style={{
+                                                        padding: '0.25rem 0.625rem',
+                                                        borderRadius: '0.5rem',
+                                                        fontSize: '0.75rem',
+                                                        fontWeight: '700',
+                                                        background: '#f8fafc',
+                                                        color: '#64748b',
+                                                        border: '1px solid #e2e8f0'
+                                                    }}>
+                                                        {req.daysDeducted} {t('days_label')}
+                                                    </span>
+                                                    <span style={{
+                                                        fontSize: '0.65rem',
+                                                        padding: '0.15rem 0.4rem',
+                                                        borderRadius: '0.4rem',
+                                                        background: (req as any).deductionType === 'SALARY' ? '#fee2e2' : '#dcfce7',
+                                                        color: (req as any).deductionType === 'SALARY' ? '#991b1b' : '#166534',
+                                                        fontWeight: '600'
+                                                    }}>
+                                                        {(req as any).deductionType === 'SALARY' ? t('deduct_from_salary' as any) : t('deduct_from_credit' as any)}
+                                                    </span>
+                                                </div>
                                             )}
                                         </div>
                                         {req.reason ? (
@@ -575,9 +589,56 @@ export default function DayOffRequestsPage() {
                                 step="0.5"
                             />
                         </div>
+                        <div style={{ marginBottom: '1.5rem' }}>
+                            <label style={{ display: 'block', marginBottom: '0.5rem' }}>{t('deduct_from_label' as any)}</label>
+                            <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                <button
+                                    onClick={() => setDeductionType('CREDIT')}
+                                    style={{
+                                        flex: 1,
+                                        padding: '0.625rem',
+                                        borderRadius: '0.75rem',
+                                        border: '1px solid #e2e8f0',
+                                        background: deductionType === 'CREDIT' ? '#3b82f6' : 'white',
+                                        color: deductionType === 'CREDIT' ? 'white' : '#64748b',
+                                        cursor: 'pointer',
+                                        fontWeight: '700',
+                                        fontSize: '0.875rem',
+                                        transition: 'all 0.2s',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        gap: '0.5rem'
+                                    }}
+                                >
+                                    <span>📅</span> {t('deduct_from_credit' as any)}
+                                </button>
+                                <button
+                                    onClick={() => setDeductionType('SALARY')}
+                                    style={{
+                                        flex: 1,
+                                        padding: '0.625rem',
+                                        borderRadius: '0.75rem',
+                                        border: '1px solid #e2e8f0',
+                                        background: deductionType === 'SALARY' ? '#3b82f6' : 'white',
+                                        color: deductionType === 'SALARY' ? 'white' : '#64748b',
+                                        cursor: 'pointer',
+                                        fontWeight: '700',
+                                        fontSize: '0.875rem',
+                                        transition: 'all 0.2s',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        gap: '0.5rem'
+                                    }}
+                                >
+                                    <span>💵</span> {t('deduct_from_salary' as any)}
+                                </button>
+                            </div>
+                        </div>
                         <div style={{ display: 'flex', gap: '1rem' }}>
                             <button
-                                onClick={() => processAction(selectedRequest.id, 'APPROVED', daysToDeduct)}
+                                onClick={() => processAction(selectedRequest.id, 'APPROVED', daysToDeduct, deductionType)}
                                 className="btn btn-primary"
                             >
                                 {t('approve_button')}
