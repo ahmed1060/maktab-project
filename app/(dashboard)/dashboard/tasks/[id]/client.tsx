@@ -102,6 +102,19 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
         } catch (e) { console.error(e) }
     }
 
+    // Listen for suspension auto-save event
+    useEffect(() => {
+        const handleSuspendSave = () => {
+            console.log('Suspension detected, auto-saving task progress...')
+            // Only auto-save if employee interaction is active and not already submitted or finalized
+            if ((userRole === 'EMPLOYEE' || userId === task.assigneeId) && !['PENDING_CONFIRMATION', 'APPROVED', 'COMPLETED', 'REJECTED'].includes(task.status)) {
+                handleUpload(true)
+            }
+        }
+        window.addEventListener('app:suspend-detected', handleSuspendSave)
+        return () => window.removeEventListener('app:suspend-detected', handleSuspendSave)
+    }, [task.status, userRole, userId, task.assigneeId, pendingFiles, note, costEntries, location])
+
     const handleFiles = (newFiles: File[]) => {
         const allowedExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx']
 
@@ -212,6 +225,11 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
     }
 
     const handleCaptureLocation = async () => {
+        if (['PENDING_CONFIRMATION', 'APPROVED', 'COMPLETED', 'REJECTED'].includes(task.status)) {
+            showToast(t('cannot_edit_submitted_task'), 'error')
+            return
+        }
+
         if (!navigator.geolocation) {
             setLocationStatus('Geolocation not supported')
             return
@@ -822,6 +840,17 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                         <button onClick={() => handleUpload(true)} disabled={uploading} className="btn" style={{ background: '#e2e8f0', color: '#1e293b', fontWeight: '600', flex: 1 }}>{loadingType === 'DRAFT' ? t('saving') : t('save_draft_button')}</button>
                         <button onClick={handleUploadRequest} disabled={uploading} className="btn btn-primary" style={{ fontWeight: '700', flex: 2 }}>{loadingType === 'SUBMIT' ? t('submitting') : t('submit_task_button')}</button>
                     </div>
+                </div>
+            )}
+
+            {/* Finalized/Pending Message for Employees */}
+            {(userRole === 'EMPLOYEE' || userId === task.assigneeId) && ['PENDING_CONFIRMATION', 'APPROVED', 'COMPLETED', 'REJECTED'].includes(task.status) && (
+                <div style={{ marginTop: '2rem', padding: '1.5rem', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '0.5rem', textAlign: 'center' }}>
+                    <p style={{ margin: 0, color: '#475569', fontWeight: '500' }}>
+                        {task.status === 'PENDING_CONFIRMATION'
+                            ? t('pending_confirmation_msg' as any) || "Submitted and awaiting review"
+                            : t('task_finalized_msg' as any) || "This task has been finalized and cannot be modified."}
+                    </p>
                 </div>
             )}
 
