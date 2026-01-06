@@ -81,6 +81,11 @@ export default function NotificationBell() {
                 router.push(`/dashboard/tasks/${notification.relatedId}`)
             } else if (notification.type.includes('OBLIGATION')) {
                 router.push(`/dashboard/obligations/${notification.relatedId}`)
+            } else if (notification.type.includes('NOTE')) {
+                // For notes, relatedId contains the full dashboard path
+                if (notification.relatedId && notification.relatedId.startsWith('/')) {
+                    router.push(notification.relatedId)
+                }
             }
             setIsOpen(false)
         }

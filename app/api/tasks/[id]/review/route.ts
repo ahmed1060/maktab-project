@@ -4,7 +4,7 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { verifyResourceAccess } from "@/lib/security"
 
-export async function PUT(req: Request, { params }: { params: { id: string } }) {
+export async function POST(req: Request, { params }: { params: { id: string } }) {
     const session = await getServerSession(authOptions)
     if (!session) return new NextResponse("Unauthorized", { status: 401 })
 
@@ -15,7 +15,8 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
     }
 
     const json = await req.json()
-    const { status, difficulty } = json // APPROVED or REJECTED, optional difficulty
+    const { status: statusProp, action, difficulty } = json // APPROVED or REJECTED
+    const status = statusProp || action
     const userId = (session.user as any).id
 
     const result = await prisma.$transaction(async (tx) => {

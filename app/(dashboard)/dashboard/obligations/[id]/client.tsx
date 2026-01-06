@@ -119,7 +119,7 @@ export default function ObligationDetailClient({ obligation, userRole }: { oblig
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    status: isDraft ? 'IN_PROGRESS' : 'COMPLETED',
+                    status: isDraft ? 'IN_PROGRESS' : 'PENDING_CONFIRMATION',
                     newAttachments: uploadedAttachments // Send only new ones
                 })
             })
@@ -142,6 +142,36 @@ export default function ObligationDetailClient({ obligation, userRole }: { oblig
             setUploading(false)
             setLoadingType(null)
         }
+    }
+
+    const handleApprove = async () => {
+        try {
+            const res = await fetch(`/api/obligations/${obligation.id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status: 'APPROVED' })
+            })
+            if (res.ok) {
+                router.refresh()
+                setFeedbackMessage(t('obligation_approved_success' as any))
+                setShowFeedback(true)
+            }
+        } catch (error) { console.error(error) }
+    }
+
+    const handleReject = async () => {
+        try {
+            const res = await fetch(`/api/obligations/${obligation.id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status: 'REJECTED' })
+            })
+            if (res.ok) {
+                router.refresh()
+                setFeedbackMessage(t('obligation_rejected_success' as any))
+                setShowFeedback(true)
+            }
+        } catch (error) { console.error(error) }
     }
 
     const handleDelete = async () => {
@@ -276,6 +306,23 @@ export default function ObligationDetailClient({ obligation, userRole }: { oblig
                     }}>
                         {t(`status_${obligation.status.toLowerCase()}` as any)}
                     </span>
+                    <span style={{
+                        padding: '0.25rem 0.75rem',
+                        borderRadius: '9999px',
+                        background: '#3b82f6',
+                        color: 'white',
+                        fontWeight: 'bold',
+                        fontSize: '0.9rem',
+                        display: 'inline-flex',
+                        alignItems: 'center'
+                    }}>
+                        {obligation.difficulty} {t('points_label_plural')}
+                    </span>
+                    {obligation.lastStatusUpdateBy && (['APPROVED', 'REJECTED', 'COMPLETED'].includes(obligation.status)) && (
+                        <span style={{ fontSize: '0.75rem', color: '#64748b', fontStyle: 'italic' }}>
+                            {t('by')} {obligation.lastStatusUpdateBy}
+                        </span>
+                    )}
                 </div>
                 <div style={{ display: 'flex', gap: '0.5rem', flexDirection: 'row' }}>
                     <button
@@ -438,9 +485,17 @@ export default function ObligationDetailClient({ obligation, userRole }: { oblig
                             onClick={() => handleUpload(false)}
                             disabled={uploading}
                         >
-                            {loadingType === 'SUBMIT' ? t('submitting') : t('status_completed')}
+                            {loadingType === 'SUBMIT' ? t('submitting_obligation' as any) : t('submit_obligation' as any)}
                         </button>
                     </div>
+                </div>
+            )}
+
+            {/* Approve/Reject Buttons (Admins only) */}
+            {['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole) && obligation.status === 'PENDING_CONFIRMATION' && userId !== obligation.assigneeId && (
+                <div style={{ marginTop: '2.5rem', display: 'flex', gap: '1.25rem', borderTop: '2px solid #e2e8f0', paddingTop: '2rem', flexDirection: 'row' }}>
+                    <button onClick={handleApprove} className="btn btn-primary" style={{ flex: 1, padding: '1rem', fontSize: '1.1rem', fontWeight: '700' }}>{t('approve_button')}</button>
+                    <button onClick={handleReject} className="btn" style={{ flex: 1, padding: '1rem', fontSize: '1.1rem', fontWeight: '700', background: '#ef4444', color: 'white' }}>{t('reject_button')}</button>
                 </div>
             )}
 

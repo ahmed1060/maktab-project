@@ -41,7 +41,7 @@ export async function POST(req: Request) {
                         userId: note.createdById,
                         type: 'NOTE_EXPIRING',
                         message: `Note "${note.content.substring(0, 20)}..." in ${note.section.client.name} expires today!`,
-                        relatedId: note.id
+                        relatedId: `/dashboard/clients/${note.section.clientId}/sections/${note.sectionId}`
                     }
                 })
             }
@@ -77,7 +77,7 @@ export async function POST(req: Request) {
                             userId: note.createdById,
                             type: 'NOTE_REMINDER',
                             message: `Note "${note.content.substring(0, 20)}..." in ${note.section.client.name} is expiring in ${note.reminderDays} days!`,
-                            relatedId: note.id
+                            relatedId: `/dashboard/clients/${note.section.clientId}/sections/${note.sectionId}`
                         }
                     })
                 }

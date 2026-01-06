@@ -32,6 +32,10 @@ export async function POST(request: NextRequest) {
             return new NextResponse("Missing required fields", { status: 400 })
         }
 
+        if (reason && reason.length > 100) {
+            return new NextResponse("Reason must be 100 characters or less", { status: 400 })
+        }
+
         const todayStr = getEgyptTodayStr();
         const tomorrowStr = getEgyptTomorrowStr();
         const yesterdayStr = getEgyptYesterdayStr();

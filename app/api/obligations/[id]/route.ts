@@ -56,7 +56,11 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
                 attachments: JSON.stringify(finalAttachments)
             }
             if (status) updateData.status = status
-            if (status === 'COMPLETED') updateData.lastStatusUpdateBy = `${(session.user as any).role} ${(session.user as any).name}`
+
+            // Set update author
+            if (status === 'APPROVED' || status === 'REJECTED' || status === 'COMPLETED') {
+                updateData.lastStatusUpdateBy = `${(session.user as any).role} ${(session.user as any).name}`
+            }
 
             // Handle Reassignment
             if (assigneeId && isManager) {
@@ -69,14 +73,38 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
                 include: { assignee: true }
             })
 
-            // Add difficulty points to assignee if completed (AND if status actually changed to completed)
-            if (status === 'COMPLETED' && currentObligation.status !== 'COMPLETED') {
+            // Calculate point delta
+            // Points are added if status changes to APPROVED or COMPLETED
+            const hasPoints = (s: string) => ['APPROVED', 'COMPLETED'].includes(s)
+
+            const oldHasPoints = hasPoints(currentObligation.status)
+            const newHasPoints = hasPoints(status || currentObligation.status)
+
+            if (!oldHasPoints && newHasPoints) {
+                // Add points
                 await tx.user.update({
                     where: { id: obligation.assigneeId },
+                    data: { totalDifficultyPoints: { increment: obligation.difficulty } }
+                })
+            } else if (oldHasPoints && !newHasPoints) {
+                // Remove points (e.g. if rejected after being approved)
+                await tx.user.update({
+                    where: { id: obligation.assigneeId },
+                    data: { totalDifficultyPoints: { decrement: obligation.difficulty } }
+                })
+            }
+
+            // Notifications
+            if (status === 'PENDING_CONFIRMATION') {
+                // Notify admins? Usually notifications go to users.
+                // For now, let's notify the user when admin approves/rejects
+            } else if (status === 'APPROVED' || status === 'REJECTED') {
+                await tx.notification.create({
                     data: {
-                        totalDifficultyPoints: {
-                            increment: obligation.difficulty
-                        }
+                        userId: obligation.assigneeId,
+                        type: status === 'APPROVED' ? 'OBLIGATION_APPROVED' : 'OBLIGATION_REJECTED',
+                        message: `Your obligation "${obligation.title}" has been ${status === 'APPROVED' ? 'approved' : 'rejected'}.`,
+                        relatedId: obligation.id
                     }
                 })
             }
@@ -121,7 +149,7 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
             })
 
             // If obligation was completed, deduct points from assignee
-            if (obligation && obligation.status === 'COMPLETED') {
+            if (obligation && ['APPROVED', 'COMPLETED'].includes(obligation.status)) {
                 try {
                     await tx.user.update({
                         where: { id: obligation.assigneeId },

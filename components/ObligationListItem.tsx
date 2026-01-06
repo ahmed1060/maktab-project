@@ -17,6 +17,7 @@ interface ObligationListItemProps {
         }
         createdAt: Date | string
         lastStatusUpdateBy?: string
+        difficulty: number
     }
 }
 
@@ -38,15 +39,27 @@ export default function ObligationListItem({ obligation }: ObligationListItemPro
     return (
         <div className="card">
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <h3
-                    style={{ margin: 0, cursor: 'pointer', transition: 'color 0.2s', color: 'inherit' }}
-                    title={obligation.title}
-                    onClick={() => setIsModalOpen(true)}
-                    onMouseEnter={(e) => e.currentTarget.style.color = '#2563eb'}
-                    onMouseLeave={(e) => e.currentTarget.style.color = 'inherit'}
-                >
-                    {obligation.title.length > 50 ? obligation.title.substring(0, 50) + '...' : obligation.title}
-                </h3>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                    <h3
+                        style={{ margin: 0, cursor: 'pointer', transition: 'color 0.2s', color: 'inherit' }}
+                        title={obligation.title}
+                        onClick={() => setIsModalOpen(true)}
+                        onMouseEnter={(e) => e.currentTarget.style.color = '#2563eb'}
+                        onMouseLeave={(e) => e.currentTarget.style.color = 'inherit'}
+                    >
+                        {obligation.title.length > 50 ? obligation.title.substring(0, 50) + '...' : obligation.title}
+                    </h3>
+                    <span style={{
+                        padding: '0.15rem 0.5rem',
+                        borderRadius: '0.5rem',
+                        background: '#3b82f6',
+                        color: 'white',
+                        fontWeight: 'bold',
+                        fontSize: '0.7rem'
+                    }}>
+                        {obligation.difficulty} {t('pts')}
+                    </span>
+                </div>
                 <span style={{
                     fontSize: '0.75rem',
                     fontWeight: '600',

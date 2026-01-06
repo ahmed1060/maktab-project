@@ -528,11 +528,20 @@ export default function DayOffRequestsPage() {
                                 <label style={{ display: 'block', marginBottom: '0.5rem' }}>{t('reason_label' as any)}</label>
                                 <textarea
                                     className="input"
-                                    style={{ height: '100px', resize: 'none' }}
+                                    style={{ height: '80px', resize: 'none' }}
                                     placeholder={t('reason_placeholder' as any)}
                                     value={reqReason}
                                     onChange={e => setReqReason(e.target.value)}
+                                    maxLength={100}
                                 />
+                                <div style={{
+                                    fontSize: '0.75rem',
+                                    color: reqReason.length >= 100 ? '#ef4444' : '#94a3b8',
+                                    textAlign: locale === 'ar' ? 'left' : 'right',
+                                    marginTop: '0.25rem'
+                                }}>
+                                    {reqReason.length}/100
+                                </div>
                             </div>
                             <div style={{ display: 'flex', gap: '1rem' }}>
                                 <button type="submit" className="btn btn-primary" disabled={submitting}>

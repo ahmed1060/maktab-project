@@ -286,7 +286,19 @@ export default async function DashboardPage({ searchParams }: { searchParams: { 
                                 <Link key={task.id} href={`/dashboard/tasks/${task.id}`} style={{ textDecoration: 'none', color: 'inherit', display: 'block' }}>
                                     <div className="glass-card" style={{ height: '100%', boxSizing: 'border-box', [locale === 'ar' ? 'borderRight' : 'borderLeft']: '6px solid #ef4444', padding: '1.75rem' }}>
                                         <div style={{ marginBottom: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
-                                            <h3 style={{ fontSize: '1.25rem', fontWeight: '700', lineHeight: '1.3', color: '#1e293b' }}>{task.title}</h3>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                                <h3 style={{ fontSize: '1.25rem', fontWeight: '700', lineHeight: '1.3', color: '#1e293b' }}>{task.title}</h3>
+                                                <span style={{
+                                                    padding: '0.15rem 0.5rem',
+                                                    borderRadius: '0.5rem',
+                                                    background: '#3b82f6',
+                                                    color: 'white',
+                                                    fontWeight: 'bold',
+                                                    fontSize: '0.7rem'
+                                                }}>
+                                                    {task.difficulty} {t('pts')}
+                                                </span>
+                                            </div>
                                             <span className="badge" style={{ background: '#fee2e2', color: '#b91c1c' }}>{t('today')}</span>
                                         </div>
                                         <p style={{ color: '#64748b', fontSize: '0.95rem', lineHeight: '1.6', marginBottom: '1.5rem', overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
@@ -320,7 +332,19 @@ export default async function DashboardPage({ searchParams }: { searchParams: { 
                                     <Link key={ob.id} href={`/dashboard/obligations/${ob.id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
                                         <div className="glass-card" style={{ padding: '1.25rem', [locale === 'ar' ? 'borderRight' : 'borderLeft']: '4px solid #0ea5e9' }}>
                                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '0.5rem' }}>
-                                                <h3 style={{ fontSize: '1rem', fontWeight: '600', margin: 0 }}>{ob.title}</h3>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                    <h3 style={{ fontSize: '1rem', fontWeight: '600', margin: 0 }}>{ob.title}</h3>
+                                                    <span style={{
+                                                        padding: '0.1rem 0.4rem',
+                                                        borderRadius: '0.4rem',
+                                                        background: '#3b82f6',
+                                                        color: 'white',
+                                                        fontWeight: 'bold',
+                                                        fontSize: '0.65rem'
+                                                    }}>
+                                                        {ob.difficulty} {t('pts')}
+                                                    </span>
+                                                </div>
                                                 <span className="badge" style={{
                                                     background: ob.status === 'COMPLETED' ? '#dcfce7' : '#f0f9ff',
                                                     color: ob.status === 'COMPLETED' ? '#166534' : '#0369a1',
