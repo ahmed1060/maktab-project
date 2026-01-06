@@ -299,12 +299,18 @@ export default function ObligationDetailClient({ obligation, userRole }: { oblig
                         fontWeight: '600',
                         padding: '0.25rem 0.75rem',
                         borderRadius: '9999px',
-                        background: obligation.status === 'COMPLETED' ? '#dcfce7' : obligation.status === 'REJECTED' ? '#fee2e2' : '#f1f5f9',
-                        color: obligation.status === 'COMPLETED' ? '#166534' : obligation.status === 'REJECTED' ? '#991b1b' : '#475569',
+                        background: obligation.status === 'COMPLETED' ? '#dcfce7' : obligation.status === 'REJECTED' || obligation.status === 'APPROVED' ? (obligation.status === 'APPROVED' ? '#dcfce7' : '#fee2e2') : '#f1f5f9',
+                        color: obligation.status === 'COMPLETED' ? '#166534' : obligation.status === 'REJECTED' || obligation.status === 'APPROVED' ? (obligation.status === 'APPROVED' ? '#166534' : '#991b1b') : '#475569',
                         display: 'inline-flex',
-                        alignItems: 'center'
+                        alignItems: 'center',
+                        gap: '0.35rem'
                     }}>
                         {t(`status_${obligation.status.toLowerCase()}` as any)}
+                        {obligation.lastStatusUpdateBy && (['APPROVED', 'REJECTED', 'COMPLETED'].includes(obligation.status)) && (
+                            <span style={{ fontWeight: 'normal', opacity: 0.8, fontSize: '0.7rem' }}>
+                                • {obligation.lastStatusUpdateBy}
+                            </span>
+                        )}
                     </span>
                     <span style={{
                         padding: '0.25rem 0.75rem',
@@ -318,11 +324,6 @@ export default function ObligationDetailClient({ obligation, userRole }: { oblig
                     }}>
                         {obligation.difficulty} {t('points_label_plural')}
                     </span>
-                    {obligation.lastStatusUpdateBy && (['APPROVED', 'REJECTED', 'COMPLETED'].includes(obligation.status)) && (
-                        <span style={{ fontSize: '0.75rem', color: '#64748b', fontStyle: 'italic' }}>
-                            {t('by')} {obligation.lastStatusUpdateBy}
-                        </span>
-                    )}
                 </div>
                 <div style={{ display: 'flex', gap: '0.5rem', flexDirection: 'row' }}>
                     <button

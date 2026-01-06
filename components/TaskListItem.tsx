@@ -81,9 +81,9 @@ export default function TaskListItem({ task, currentUserId }: TaskListItemProps)
                     alignItems: 'center'
                 }}>
                     {t(`status_${task.status.toLowerCase()}` as any)}
-                    {task.lastStatusUpdateBy && (task.status === 'APPROVED' || task.status === 'COMPLETED' || task.status === 'REJECTED') && (
-                        <span style={{ [locale === 'ar' ? 'marginRight' : 'marginLeft']: '0.25rem', fontSize: '0.65rem', opacity: 0.8 }}>
-                            {t('by')} {task.lastStatusUpdateBy}
+                    {task.lastStatusUpdateBy && (['APPROVED', 'COMPLETED', 'REJECTED'].includes(task.status)) && (
+                        <span style={{ [locale === 'ar' ? 'marginRight' : 'marginLeft']: '0.25rem', fontSize: '0.65rem', opacity: 0.8, fontWeight: 'normal' }}>
+                            • {task.lastStatusUpdateBy}
                         </span>
                     )}
                 </span>

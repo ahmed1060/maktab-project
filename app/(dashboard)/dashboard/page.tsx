@@ -351,6 +351,11 @@ export default async function DashboardPage({ searchParams }: { searchParams: { 
                                                     fontSize: '0.7rem'
                                                 }}>
                                                     {t(`status_${ob.status.toLowerCase()}` as any)}
+                                                    {(ob as any).lastStatusUpdateBy && (['COMPLETED', 'APPROVED', 'REJECTED'].includes(ob.status)) && (
+                                                        <span style={{ fontSize: '0.65rem', opacity: 0.8, fontWeight: 'normal' }}>
+                                                            • {(ob as any).lastStatusUpdateBy}
+                                                        </span>
+                                                    )}
                                                 </span>
                                             </div>
                                             <div style={{ fontSize: '0.85rem', color: '#64748b' }}>{t('due_by')} {new Date(ob.deadline).toLocaleDateString(locale === 'ar' ? 'ar-EG' : 'en-US')}</div>

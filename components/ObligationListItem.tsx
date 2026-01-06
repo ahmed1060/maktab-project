@@ -65,15 +65,15 @@ export default function ObligationListItem({ obligation }: ObligationListItemPro
                     fontWeight: '600',
                     padding: '0.25rem 0.75rem',
                     borderRadius: '9999px',
-                    background: obligation.status === 'COMPLETED' ? '#dcfce7' : obligation.status === 'REJECTED' ? '#fee2e2' : '#f1f5f9',
-                    color: obligation.status === 'COMPLETED' ? '#166534' : obligation.status === 'REJECTED' ? '#991b1b' : '#475569',
+                    background: obligation.status === 'COMPLETED' || obligation.status === 'APPROVED' ? '#dcfce7' : obligation.status === 'REJECTED' ? '#fee2e2' : '#f1f5f9',
+                    color: obligation.status === 'COMPLETED' || obligation.status === 'APPROVED' ? '#166534' : obligation.status === 'REJECTED' ? '#991b1b' : '#475569',
                     display: 'inline-flex',
                     alignItems: 'center'
                 }}>
                     {t(`status_${obligation.status.toLowerCase()}` as any)}
-                    {obligation.lastStatusUpdateBy && obligation.status === 'COMPLETED' && (
-                        <span style={{ [locale === 'ar' ? 'marginRight' : 'marginLeft']: '0.25rem', fontSize: '0.65rem', opacity: 0.8 }}>
-                            {t('by')} {obligation.lastStatusUpdateBy}
+                    {obligation.lastStatusUpdateBy && (['COMPLETED', 'REJECTED', 'APPROVED'].includes(obligation.status)) && (
+                        <span style={{ [locale === 'ar' ? 'marginRight' : 'marginLeft']: '0.25rem', fontSize: '0.65rem', opacity: 0.8, fontWeight: 'normal' }}>
+                            • {obligation.lastStatusUpdateBy}
                         </span>
                     )}
                 </span>

@@ -549,8 +549,22 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                         )}
                     </div>
                     <span style={{ padding: '0.25rem 0.75rem', borderRadius: '9999px', background: '#3b82f6', color: 'white', fontWeight: 'bold', fontSize: '0.9rem' }}>{task.difficulty} {t('points_label_plural')}</span>
-                    <span style={{ padding: '0.5rem', borderRadius: '0.5rem', background: task.status === 'COMPLETED' ? '#e0f2fe' : task.status === 'APPROVED' ? '#dcfce7' : task.status === 'PENDING_CONFIRMATION' ? '#fef9c3' : task.status === 'REJECTED' ? '#fee2e2' : '#e2e8f0', color: task.status === 'COMPLETED' ? '#0369a1' : task.status === 'APPROVED' ? '#166534' : task.status === 'PENDING_CONFIRMATION' ? '#854d0e' : task.status === 'REJECTED' ? '#991b1b' : '#0f172a' }}>
+                    <span style={{
+                        padding: '0.5rem',
+                        borderRadius: '0.5rem',
+                        background: task.status === 'COMPLETED' ? '#e0f2fe' : task.status === 'APPROVED' ? '#dcfce7' : task.status === 'PENDING_CONFIRMATION' ? '#fef9c3' : task.status === 'REJECTED' ? '#fee2e2' : '#e2e8f0',
+                        color: task.status === 'COMPLETED' ? '#0369a1' : task.status === 'APPROVED' ? '#166534' : task.status === 'PENDING_CONFIRMATION' ? '#854d0e' : task.status === 'REJECTED' ? '#991b1b' : '#0f172a',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '0.35rem',
+                        fontSize: (task as any).lastStatusUpdateBy && ['APPROVED', 'REJECTED', 'COMPLETED'].includes(task.status) ? '0.75rem' : 'inherit'
+                    }}>
                         {t(`status_${task.status.toLowerCase()}` as any)}
+                        {(task as any).lastStatusUpdateBy && ['APPROVED', 'REJECTED', 'COMPLETED'].includes(task.status) && (
+                            <span style={{ fontWeight: 'normal', opacity: 0.8, fontSize: '0.7rem' }}>
+                                • {(task as any).lastStatusUpdateBy}
+                            </span>
+                        )}
                     </span>
                     {task.totalCost > 0 && (task.status === 'APPROVED' || task.status === 'COMPLETED') && (
                         <span style={{ padding: '0.5rem', borderRadius: '0.5rem', background: task.paymentStatus === 'PAID' ? '#d1fae5' : '#fed7aa', color: task.paymentStatus === 'PAID' ? '#065f46' : '#9a3412', fontSize: '0.875rem', fontWeight: '600' }}>
