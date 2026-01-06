@@ -26,8 +26,8 @@ export default function ObligationDetailClient({ obligation, userRole }: { oblig
     useEffect(() => {
         const handleSuspendSave = () => {
             console.log('Suspension detected, auto-saving obligation progress...')
-            // Only auto-save if employee interaction is active
-            if (userRole === 'EMPLOYEE' && obligation.status !== 'COMPLETED') {
+            // Only auto-save if employee interaction is active and not already submitted or finalized
+            if (userRole === 'EMPLOYEE' && !['PENDING_CONFIRMATION', 'APPROVED', 'COMPLETED', 'REJECTED'].includes(obligation.status)) {
                 handleUpload(true)
             }
         }
@@ -131,7 +131,7 @@ export default function ObligationDetailClient({ obligation, userRole }: { oblig
 
             setPendingFiles([])
             router.refresh()
-            setFeedbackMessage(isDraft ? t('draft_saved_success') : t('task_submitted_success'))
+            setFeedbackMessage(isDraft ? t('draft_saved_success') : t('obligation_submitted_success' as any))
             setShowFeedback(true)
             setTimeout(() => setShowFeedback(false), 3000)
         } catch (error: any) {
@@ -369,7 +369,7 @@ export default function ObligationDetailClient({ obligation, userRole }: { oblig
                 )}
             </div>
 
-            {userRole === 'EMPLOYEE' && obligation.status !== 'COMPLETED' && (
+            {userRole === 'EMPLOYEE' && !['PENDING_CONFIRMATION', 'APPROVED', 'COMPLETED', 'REJECTED'].includes(obligation.status) && (
                 <div style={{ marginTop: '2rem', borderTop: '1px solid #e2e8f0', paddingTop: '1rem' }}>
                     <h3>{t('attachments_optional_label').split(' ')[0]}</h3>
                     <div
@@ -488,6 +488,17 @@ export default function ObligationDetailClient({ obligation, userRole }: { oblig
                             {loadingType === 'SUBMIT' ? t('submitting_obligation' as any) : t('submit_obligation' as any)}
                         </button>
                     </div>
+                </div>
+            )}
+
+            {/* Finalized/Pending Message for Employees */}
+            {userRole === 'EMPLOYEE' && ['PENDING_CONFIRMATION', 'APPROVED', 'COMPLETED'].includes(obligation.status) && (
+                <div style={{ marginTop: '2rem', padding: '1.5rem', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '0.5rem', textAlign: 'center' }}>
+                    <p style={{ margin: 0, color: '#475569', fontWeight: '500' }}>
+                        {obligation.status === 'PENDING_CONFIRMATION'
+                            ? t('pending_confirmation_msg' as any) || "Submitted and awaiting review"
+                            : t('obligation_finalized_msg' as any) || "This obligation has been finalized and cannot be modified."}
+                    </p>
                 </div>
             )}
 
