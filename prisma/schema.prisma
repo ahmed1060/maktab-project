@@ -244,18 +244,18 @@ model CompanyPayment {
 }
 
 model DayOffRequest {
-  id           String   @id @default(uuid())
-  userId       String
-  type         String   // CASUAL, REGULAR
-  status       String   @default("PENDING") // PENDING, APPROVED, REJECTED
-  reason       String?
-  date         DateTime
-  endDate      DateTime?
-  daysDeducted  Float?   @default(0)
-  deductionType String?  @default("CREDIT") // CREDIT, SALARY
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-  user         User     @relation(fields: [userId], references: [id])
+  id            String    @id @default(uuid())
+  userId        String
+  type          String    // CASUAL, REGULAR
+  status        String    @default("PENDING") // PENDING, APPROVED, REJECTED
+  reason        String?
+  date          DateTime
+  endDate       DateTime?
+  daysDeducted  Float?    @default(0)
+  deductionType String?   @default("CREDIT") // CREDIT, SALARY
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  user          User      @relation(fields: [userId], references: [id])
 
   @@index([userId])
   @@index([status])
