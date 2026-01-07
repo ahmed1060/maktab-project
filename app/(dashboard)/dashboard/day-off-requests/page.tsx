@@ -17,6 +17,7 @@ interface DayOffRequest {
     date: string
     endDate?: string | null
     daysDeducted: number
+    deductionType?: 'CREDIT' | 'SALARY' | null
     createdAt: string
     user?: {
         firstName: string
@@ -337,7 +338,7 @@ export default function DayOffRequestsPage() {
 
                                     {/* Card Content */}
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                                        <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                                             <span style={{
                                                 padding: '0.25rem 0.625rem',
                                                 borderRadius: '0.5rem',
@@ -348,28 +349,30 @@ export default function DayOffRequestsPage() {
                                             }}>
                                                 {t(req.type === 'CASUAL' ? 'casual_day_off' : 'regular_day_off' as any)}
                                             </span>
+                                            {/* Applied Days Badge - Always Visible */}
+                                            <span style={{
+                                                padding: '0.25rem 0.625rem',
+                                                borderRadius: '0.5rem',
+                                                fontSize: '0.75rem',
+                                                fontWeight: '700',
+                                                background: '#f8fafc',
+                                                color: '#64748b',
+                                                border: '1px solid #e2e8f0'
+                                            }}>
+                                                {calculateWorkDays(req.date, req.endDate)} {t('days_label')}
+                                            </span>
                                             {req.status === 'APPROVED' && (
                                                 <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
                                                     <span style={{
+                                                        fontSize: '0.75rem',
                                                         padding: '0.25rem 0.625rem',
                                                         borderRadius: '0.5rem',
-                                                        fontSize: '0.75rem',
+                                                        background: req.deductionType === 'SALARY' ? '#fee2e2' : '#dcfce7',
+                                                        color: req.deductionType === 'SALARY' ? '#991b1b' : '#166534',
                                                         fontWeight: '700',
-                                                        background: '#f8fafc',
-                                                        color: '#64748b',
-                                                        border: '1px solid #e2e8f0'
+                                                        border: `1px solid ${req.deductionType === 'SALARY' ? '#fca5a5' : '#86efac'}`
                                                     }}>
-                                                        {req.daysDeducted} {t('days_label')}
-                                                    </span>
-                                                    <span style={{
-                                                        fontSize: '0.65rem',
-                                                        padding: '0.15rem 0.4rem',
-                                                        borderRadius: '0.4rem',
-                                                        background: (req as any).deductionType === 'SALARY' ? '#fee2e2' : '#dcfce7',
-                                                        color: (req as any).deductionType === 'SALARY' ? '#991b1b' : '#166534',
-                                                        fontWeight: '600'
-                                                    }}>
-                                                        {(req as any).deductionType === 'SALARY' ? t('deduct_from_salary' as any) : t('deduct_from_credit' as any)}
+                                                        {t('deduct_from_label' as any)} {req.deductionType === 'SALARY' ? t('deduct_from_salary' as any) : t('deduct_from_credit' as any)} ({req.daysDeducted} {t('days_label')})
                                                     </span>
                                                 </div>
                                             )}
