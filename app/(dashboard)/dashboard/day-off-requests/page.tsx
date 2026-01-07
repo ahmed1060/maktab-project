@@ -372,7 +372,7 @@ export default function DayOffRequestsPage() {
                                                         fontWeight: '700',
                                                         border: `1px solid ${req.deductionType === 'SALARY' ? '#fca5a5' : '#86efac'}`
                                                     }}>
-                                                        {t('deduct_from_label' as any)} {req.deductionType === 'SALARY' ? t('deduct_from_salary' as any) : t('deduct_from_credit' as any)} ({req.daysDeducted} {t('days_label')})
+                                                        {req.daysDeducted} {t('days_label')} {t('deduct_from_label' as any)} {req.deductionType === 'SALARY' ? t('deduct_from_salary' as any) : t('deduct_from_credit' as any)}
                                                     </span>
                                                 </div>
                                             )}
