@@ -62,11 +62,11 @@ export default function DayOffRequestsPage() {
 
     useEffect(() => {
         fetchRequests()
-        if (!isAdmin) {
+        if (!isAdmin && user?.id) {
             fetchUserCredit()
         }
         // Sync with Egypt server time (no longer needed for date restrictions)
-    }, [isAdmin])
+    }, [isAdmin, user?.id])
 
     const fetchRequests = async () => {
         setLoading(true)
@@ -85,8 +85,9 @@ export default function DayOffRequestsPage() {
     }
 
     const fetchUserCredit = async () => {
+        if (!user?.id) return
         try {
-            const res = await fetch(`/api/users?id=${user?.id}`)
+            const res = await fetch(`/api/users?id=${user.id}`)
             if (res.ok) {
                 const data = await res.json()
                 setUserCredit(data.dayOffCredit || 0)
