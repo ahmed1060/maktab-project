@@ -37,22 +37,13 @@ export async function POST(request: NextRequest) {
         }
 
         const todayStr = getEgyptTodayStr();
-        const tomorrowStr = getEgyptTomorrowStr();
-        const yesterdayStr = getEgyptYesterdayStr();
 
         const requestDateStr = new Date(date).toISOString().split('T')[0];
         const finalEndDateStr = endDate ? new Date(endDate).toISOString().split('T')[0] : requestDateStr;
 
         if (type === 'REGULAR') {
-            if (requestDateStr < tomorrowStr) {
-                return new NextResponse("Regular day off must start from tomorrow or later", { status: 400 })
-            }
             if (finalEndDateStr < requestDateStr) {
                 return new NextResponse("End date cannot be before start date", { status: 400 })
-            }
-        } else if (type === 'CASUAL') {
-            if (requestDateStr < yesterdayStr || requestDateStr > tomorrowStr) {
-                return new NextResponse("Casual day off must be for yesterday, today, or tomorrow only", { status: 400 })
             }
         }
 

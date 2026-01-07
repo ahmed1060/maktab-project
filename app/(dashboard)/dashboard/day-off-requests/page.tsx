@@ -46,7 +46,6 @@ export default function DayOffRequestsPage() {
     const [reqType, setReqType] = useState<'CASUAL' | 'REGULAR'>('REGULAR')
     const [reqReason, setReqReason] = useState('')
     const [submitting, setSubmitting] = useState(false)
-    const [serverToday, setServerToday] = useState<string>('')
     const [alert, setAlert] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
 
     // Filter State
@@ -66,13 +65,7 @@ export default function DayOffRequestsPage() {
         if (!isAdmin) {
             fetchUserCredit()
         }
-        // Sync with Egypt server time
-        fetch('/api/time').then(res => res.json()).then(data => {
-            setServerToday(data.today);
-        }).catch(err => {
-            console.error('Failed to sync time:', err);
-            setServerToday(new Date().toISOString().split('T')[0]);
-        });
+        // Sync with Egypt server time (no longer needed for date restrictions)
     }, [isAdmin])
 
     const fetchRequests = async () => {
@@ -521,7 +514,6 @@ export default function DayOffRequestsPage() {
                                             setReqDate(from);
                                             setReqEndDate(to);
                                         }}
-                                        minDate={serverToday ? new Date(new Date(serverToday).getTime() + 86400000).toISOString().split('T')[0] : ''}
                                     />
                                 </div>
                             ) : (
@@ -533,8 +525,6 @@ export default function DayOffRequestsPage() {
                                             setReqDate(date);
                                             setReqEndDate(date);
                                         }}
-                                        minDate={serverToday ? new Date(new Date(serverToday).getTime() - 86400000).toISOString().split('T')[0] : ''}
-                                        maxDate={serverToday ? new Date(new Date(serverToday).getTime() + 86400000).toISOString().split('T')[0] : ''}
                                     />
                                 </div>
                             )}
