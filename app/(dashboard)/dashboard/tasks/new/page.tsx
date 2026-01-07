@@ -21,11 +21,8 @@ export default function NewTaskPage() {
         fetch('/api/users')
             .then(res => res.json())
             .then(data => {
-                // Filter out current user first
-                const otherUsers = data.filter((u: any) => u.email !== session?.user?.email)
-
                 // Sort by role: EMPLOYEE -> TEAM_LEADER -> ADMIN -> SUPER_ADMIN
-                const sortedData = otherUsers.sort((a: any, b: any) => {
+                const sortedData = data.sort((a: any, b: any) => {
                     const rolePriority: { [key: string]: number } = {
                         'EMPLOYEE': 1,
                         'TEAM_LEADER': 2,
@@ -41,7 +38,12 @@ export default function NewTaskPage() {
                     // Secondary sort by name if same role
                     return a.firstName.localeCompare(b.firstName)
                 })
-                setUsers(sortedData)
+                // TEAM_LEADER Restriction: Hide ADMIN and SUPER_ADMIN from assignee list
+                const userRole = (session?.user as any)?.role
+                const filteredData = userRole === 'TEAM_LEADER'
+                    ? sortedData.filter((u: any) => !['ADMIN', 'SUPER_ADMIN'].includes(u.role))
+                    : sortedData
+                setUsers(filteredData)
             })
     }, [session])
 

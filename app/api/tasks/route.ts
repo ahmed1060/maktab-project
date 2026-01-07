@@ -84,12 +84,23 @@ export async function POST(req: Request) {
         // Check if assignee is in the same company
         const assigneeUser = await prisma.user.findUnique({
             where: { id: assigneeId },
-            select: { companyId: true }
+            select: { companyId: true, role: true }
         })
 
         if (!assigneeUser || assigneeUser.companyId !== creatorCompanyId) {
             return new NextResponse("Cannot assign task to user in a different company", { status: 403 })
         }
+
+        // TEAM_LEADER Restriction: Cannot assign to ADMIN or SUPER_ADMIN
+        if (userRole === 'TEAM_LEADER' && ['ADMIN', 'SUPER_ADMIN'].includes(assigneeUser.role)) {
+            return new NextResponse("Team Leaders cannot assign tasks to Admins or Super Admins", { status: 403 })
+        }
+    } else if (userRole === 'SUPER_ADMIN') {
+        const assigneeUser = await prisma.user.findUnique({
+            where: { id: assigneeId },
+            select: { role: true }
+        })
+        if (!assigneeUser) return new NextResponse("Assignee not found", { status: 404 })
     }
 
     // Server-side Deadline Validation

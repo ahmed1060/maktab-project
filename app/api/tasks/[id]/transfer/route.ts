@@ -36,6 +36,17 @@ export async function POST(req: Request, { params }: { params: { id: string } })
                 throw new Error("Unauthorized to transfer this task")
             }
 
+            // TEAM_LEADER Restriction: Cannot transfer to ADMIN or SUPER_ADMIN
+            if (userRole === 'TEAM_LEADER') {
+                const newAssignee = await tx.user.findUnique({
+                    where: { id: newAssigneeId },
+                    select: { role: true }
+                })
+                if (newAssignee && ['ADMIN', 'SUPER_ADMIN'].includes(newAssignee.role)) {
+                    throw new Error("Team Leaders cannot transfer tasks to Admins or Super Admins")
+                }
+            }
+
             // 2. Update original task to SUBMITTED
             // We append a comment to indicate it was transferred
             let existingComments: any[] = []

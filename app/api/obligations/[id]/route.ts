@@ -32,6 +32,13 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
                 throw new Error("Unauthorized to update this obligation")
             }
 
+            // Self-approval restriction for ADMIN and SUPER_ADMIN
+            const userRole = (session.user as any).role
+            if (status && (status === 'APPROVED' || status === 'REJECTED') && ['ADMIN', 'SUPER_ADMIN'].includes(userRole) && currentObligation.assigneeId === userId) {
+                throw new Error("Admins cannot approve or reject their own obligations")
+            }
+            // TEAM_LEADER is allowed to approve/reject their own obligations
+
             // Parse existing attachments
             let finalAttachments: any[] = []
             if (currentObligation.attachments) {
@@ -64,6 +71,16 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
 
             // Handle Reassignment
             if (assigneeId && isManager) {
+                // TEAM_LEADER Restriction: Cannot reassign to ADMIN or SUPER_ADMIN
+                if (userRole === 'TEAM_LEADER') {
+                    const newAssignee = await tx.user.findUnique({
+                        where: { id: assigneeId },
+                        select: { role: true }
+                    })
+                    if (newAssignee && ['ADMIN', 'SUPER_ADMIN'].includes(newAssignee.role)) {
+                        throw new Error("Team Leaders cannot reassign obligations to Admins or Super Admins")
+                    }
+                }
                 updateData.assigneeId = assigneeId
             }
 
@@ -136,7 +153,10 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
 
 export async function DELETE(req: Request, { params }: { params: { id: string } }) {
     const session = await getServerSession(authOptions)
-    if (!session || !['ADMIN', 'SUPER_ADMIN'].includes((session.user as any).role)) {
+    if (!session) return new NextResponse("Unauthorized", { status: 401 })
+    const role = (session.user as any).role
+    const userId = (session.user as any).id
+    if (!['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(role)) {
         return new NextResponse("Unauthorized", { status: 401 })
     }
 
@@ -147,6 +167,14 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
                 where: { id: params.id },
                 select: { status: true, difficulty: true, assigneeId: true }
             })
+
+            if (!obligation) throw new Error("Obligation not found")
+
+            // Self-deletion restriction for ADMIN and SUPER_ADMIN
+            if (['ADMIN', 'SUPER_ADMIN'].includes(role) && obligation.assigneeId === userId) {
+                throw new Error("Admins cannot delete their own obligations")
+            }
+            // TEAM_LEADER is allowed to delete their own obligations
 
             // If obligation was completed, deduct points from assignee
             if (obligation && ['APPROVED', 'COMPLETED'].includes(obligation.status)) {

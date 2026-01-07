@@ -28,6 +28,13 @@ export async function POST(req: Request, { params }: { params: { id: string } })
 
         if (!oldTask) throw new Error("Task not found")
 
+        // Role-based self-approval restriction
+        const userRole = (session.user as any).role
+        if (['ADMIN', 'SUPER_ADMIN'].includes(userRole) && oldTask.assigneeId === userId) {
+            throw new Error("Admins cannot approve or reject their own tasks")
+        }
+        // TEAM_LEADER is allowed to approve/reject their own tasks
+
         // 2. Prepare new values
         let newStatus = ['APPROVED', 'REJECTED', 'COMPLETED'].includes(status) ? status : 'REJECTED'
 

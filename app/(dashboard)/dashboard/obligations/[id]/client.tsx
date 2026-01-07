@@ -204,7 +204,8 @@ export default function ObligationDetailClient({ obligation, userRole }: { oblig
         const res = await fetch('/api/users')
         if (res.ok) {
             const data = await res.json()
-            setAllUsers(data)
+            const filtered = userRole === 'TEAM_LEADER' ? data.filter((u: any) => !['ADMIN', 'SUPER_ADMIN'].includes(u.role)) : data
+            setAllUsers(filtered)
         }
     }
 
@@ -332,7 +333,7 @@ export default function ObligationDetailClient({ obligation, userRole }: { oblig
                     >
                         {t('close_button')}
                     </button>
-                    {['ADMIN', 'SUPER_ADMIN'].includes(userRole) && (
+                    {['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole) && (userRole === 'TEAM_LEADER' || userId !== obligation.assigneeId) && (
                         <button
                             onClick={() => setShowDeleteConfirm(true)}
                             style={{ background: '#fee2e2', color: '#991b1b', border: 'none', borderRadius: '0.25rem', padding: '0.5rem 1rem', cursor: 'pointer' }}
@@ -504,7 +505,7 @@ export default function ObligationDetailClient({ obligation, userRole }: { oblig
             )}
 
             {/* Approve/Reject Buttons (Admins only) */}
-            {['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole) && obligation.status === 'PENDING_CONFIRMATION' && userId !== obligation.assigneeId && (
+            {['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole) && obligation.status === 'PENDING_CONFIRMATION' && (userRole === 'TEAM_LEADER' || userId !== obligation.assigneeId) && (
                 <div style={{ marginTop: '2.5rem', display: 'flex', gap: '1.25rem', borderTop: '2px solid #e2e8f0', paddingTop: '2rem', flexDirection: 'row' }}>
                     <button onClick={handleApprove} className="btn btn-primary" style={{ flex: 1, padding: '1rem', fontSize: '1.1rem', fontWeight: '700' }}>{t('approve_button')}</button>
                     <button onClick={handleReject} className="btn" style={{ flex: 1, padding: '1rem', fontSize: '1.1rem', fontWeight: '700', background: '#ef4444', color: 'white' }}>{t('reject_button')}</button>
@@ -534,41 +535,15 @@ export default function ObligationDetailClient({ obligation, userRole }: { oblig
             )}
 
             {/* Delete Confirmation Modal */}
-            {showDeleteConfirm && (
-                <div style={{
-                    position: 'fixed',
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    background: 'rgba(0, 0, 0, 0.5)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    zIndex: 3000
-                }}>
-                    <div className="card" style={{ maxWidth: '400px', padding: '1.5rem', direction: locale === 'ar' ? 'rtl' : 'ltr', textAlign: locale === 'ar' ? 'right' : 'left' }}>
-                        <h3 style={{ marginTop: 0 }}>{t('confirm_delete')}</h3>
-                        <p>{t('delete_task_warning').replace(t('tasks'), t('obligations'))}</p>
-                        <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem', flexDirection: 'row' }}>
-                            <button
-                                onClick={handleDelete}
-                                className="btn"
-                                style={{ background: '#991b1b', color: 'white', flex: 1 }}
-                            >
-                                {t('delete')}
-                            </button>
-                            <button
-                                onClick={() => setShowDeleteConfirm(false)}
-                                className="btn"
-                                style={{ background: '#e2e8f0', color: '#0f172a', flex: 1 }}
-                            >
-                                {t('cancel')}
-                            </button>
-                        </div>
+            <Modal isOpen={showDeleteConfirm} onClose={() => setShowDeleteConfirm(false)} title={t('delete_task_title').replace(t('tasks'), t('obligations'))} hideFooter>
+                <div style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>
+                    <p>{t('delete_task_warning').replace(t('tasks'), t('obligations'))}</p>
+                    <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem', justifyContent: 'flex-end', flexDirection: 'row' }}>
+                        <button onClick={() => setShowDeleteConfirm(false)} className="btn" style={{ background: '#e2e8f0' }}>{t('cancel')}</button>
+                        <button onClick={handleDelete} className="btn" style={{ background: '#dc2626', color: 'white' }}>{t('delete')}</button>
                     </div>
                 </div>
-            )}
+            </Modal>
             {/* Reassign Modal */}
             <Modal isOpen={isReassigning} onClose={() => setIsReassigning(false)} title={t('reassign_button')} hideFooter={true}>
                 <div style={{ padding: '0.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>

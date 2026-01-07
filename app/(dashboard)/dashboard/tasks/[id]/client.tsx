@@ -330,7 +330,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
 
     const handleDelete = async () => {
         try {
-            const res = await fetch(`/api/tasks/${task.id}`, { method: 'DELETE' })
+            const res = await fetch(`/api/tasks/${task.id}/delete`, { method: 'DELETE' })
             if (!res.ok) throw new Error('Delete failed')
             showToast(t('task_deleted_success'), 'success')
             router.push('/dashboard/tasks')
@@ -500,7 +500,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                     </div>
                     <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', flexDirection: 'row' }}>
                         <button onClick={() => submitReview('COMPLETED', task.difficulty)} className="btn" style={{ background: '#166534', color: 'white' }}>{t('mark_as_completed')}</button>
-                        <button onClick={() => { if (allUsers.length === 0) fetch('/api/users').then(r => r.json()).then(setAllUsers); setIsTransferModalOpen(true); }} className="btn" style={{ background: '#2563eb', color: 'white' }}>{t('reassign_button')}</button>
+                        <button onClick={() => { if (allUsers.length === 0) fetch('/api/users').then(r => r.json()).then(data => { const filtered = userRole === 'TEAM_LEADER' ? data.filter((u: any) => !['ADMIN', 'SUPER_ADMIN'].includes(u.role)) : data; setAllUsers(filtered); }); setIsTransferModalOpen(true); }} className="btn" style={{ background: '#2563eb', color: 'white' }}>{t('reassign_button')}</button>
                         <button onClick={() => router.push('/dashboard/tasks')} className="btn" style={{ background: 'white', border: '1px solid #b91c1c', color: '#b91c1c' }}>{t('dismiss_decide_later')}</button>
                     </div>
                 </div>
@@ -579,8 +579,8 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                         </button>
                     )}
                     <button onClick={() => router.back()} style={{ background: 'none', border: '1px solid #cbd5e1', borderRadius: '0.25rem', padding: '0.5rem 1rem', cursor: 'pointer', color: '#64748b' }}>{t('close_button')}</button>
-                    {['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole) && userId !== task.assigneeId && (<button onClick={handleEditClick} style={{ background: '#e0f2fe', color: '#0369a1', border: 'none', borderRadius: '0.25rem', padding: '0.5rem 1rem', cursor: 'pointer' }}>{t('edit_task_button')}</button>)}
-                    {['ADMIN', 'SUPER_ADMIN'].includes(userRole) && (<button onClick={() => setShowDeleteConfirm(true)} style={{ background: '#fee2e2', color: '#991b1b', border: 'none', borderRadius: '0.25rem', padding: '0.5rem 1rem', cursor: 'pointer' }}>{t('delete_task_button')}</button>)}
+                    {(['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole) && (userRole === 'TEAM_LEADER' || userId !== task.assigneeId)) && (<button onClick={handleEditClick} style={{ background: '#e0f2fe', color: '#0369a1', border: 'none', borderRadius: '0.25rem', padding: '0.5rem 1rem', cursor: 'pointer' }}>{t('edit_task_button')}</button>)}
+                    {(['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole) && (userRole === 'TEAM_LEADER' || userId !== task.assigneeId)) && (<button onClick={() => setShowDeleteConfirm(true)} style={{ background: '#fee2e2', color: '#991b1b', border: 'none', borderRadius: '0.25rem', padding: '0.5rem 1rem', cursor: 'pointer' }}>{t('delete_task_button')}</button>)}
                 </div>
             </div>
 
@@ -871,12 +871,12 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
             {/* Transfer Link (Admins only) */}
             {['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole) && ['IN_PROGRESS', 'PENDING'].includes(task.status) && (
                 <div style={{ marginTop: '2rem', textAlign: locale === 'ar' ? 'left' : 'right' }}>
-                    <button onClick={() => { if (allUsers.length === 0) fetch('/api/users').then(r => r.json()).then(setAllUsers); setIsTransferModalOpen(true); }} style={{ background: 'none', border: 'none', color: '#64748b', textDecoration: 'underline', cursor: 'pointer', fontSize: '0.875rem' }}>{t('transfer_to_another_employee')}</button>
+                    <button onClick={() => { if (allUsers.length === 0) fetch('/api/users').then(r => r.json()).then(data => { const filtered = userRole === 'TEAM_LEADER' ? data.filter((u: any) => !['ADMIN', 'SUPER_ADMIN'].includes(u.role)) : data; setAllUsers(filtered); }); setIsTransferModalOpen(true); }} style={{ background: 'none', border: 'none', color: '#64748b', textDecoration: 'underline', cursor: 'pointer', fontSize: '0.875rem' }}>{t('transfer_to_another_employee')}</button>
                 </div>
             )}
 
             {/* Approve/Reject Buttons (Admins only) */}
-            {['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole) && task.status === 'PENDING_CONFIRMATION' && userId !== task.assigneeId && (
+            {['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole) && task.status === 'PENDING_CONFIRMATION' && (userRole === 'TEAM_LEADER' || userId !== task.assigneeId) && (
                 <div style={{ marginTop: '2.5rem', display: 'flex', gap: '1.25rem', borderTop: '2px solid #e2e8f0', paddingTop: '2rem', flexDirection: 'row' }}>
                     <button onClick={handleApprove} className="btn btn-primary" style={{ flex: 1, padding: '1rem', fontSize: '1.1rem', fontWeight: '700' }}>{t('approve_button')}</button>
                     <button onClick={handleReject} className="btn" style={{ flex: 1, padding: '1rem', fontSize: '1.1rem', fontWeight: '700', background: '#ef4444', color: 'white' }}>{t('reject_button')}</button>

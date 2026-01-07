@@ -19,9 +19,10 @@ export async function DELETE(
     }
 
     const userRole = (session?.user as any)?.role
+    const currentUserId = (session?.user as any).id
 
-    // Only ADMIN and SUPER_ADMIN can delete tasks
-    if (!['ADMIN', 'SUPER_ADMIN'].includes(userRole)) {
+    // Only ADMIN, SUPER_ADMIN and TEAM_LEADER can delete tasks
+    if (!['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole)) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 403 })
     }
 
@@ -31,6 +32,14 @@ export async function DELETE(
                 where: { id: params.id },
                 select: { status: true, difficulty: true, assigneeId: true, attachments: true }
             })
+
+            if (!task) throw new Error("Task not found")
+
+            // Self-deletion restriction for ADMIN and SUPER_ADMIN
+            if (['ADMIN', 'SUPER_ADMIN'].includes(userRole) && task.assigneeId === currentUserId) {
+                throw new Error("Admins cannot delete their own tasks")
+            }
+            // TEAM_LEADER is allowed to delete their own tasks (per user request)
 
             if (task && ['APPROVED', 'COMPLETED'].includes(task.status)) {
                 try {
