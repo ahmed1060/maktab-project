@@ -11,6 +11,18 @@ import { useToast } from '@/context/ToastContext'
 interface Client {
     id: string
     name: string
+    createdAt: string
+    updatedAt: string
+    createdBy?: {
+        firstName: string
+        lastName: string
+        role: string
+    }
+    lastEditedBy?: {
+        firstName: string
+        lastName: string
+        role: string
+    }
     _count: {
         sections: number
     }
@@ -221,6 +233,41 @@ export default function ClientsPage() {
                                     >
                                         {t('view_client')}
                                     </Link>
+                                </div>
+
+                                <div style={{ fontSize: '0.75rem', color: '#94a3b8', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                                        <span style={{
+                                            padding: '0.15rem 0.4rem',
+                                            background: '#f1f5f9',
+                                            borderRadius: '0.4rem',
+                                            fontWeight: '700',
+                                            fontSize: '0.65rem',
+                                            color: '#64748b'
+                                        }}>
+                                            {client.createdBy?.role || 'SYSTEM'}
+                                        </span>
+                                        <span>
+                                            {t('created_by' as any) || 'Created by'} {client.createdBy ? `${client.createdBy.firstName} ${client.createdBy.lastName}` : 'System'} {t('at' as any) || 'at'} {new Date(client.createdAt).toLocaleString(locale === 'ar' ? 'ar-EG' : 'en-US', { dateStyle: 'medium', timeStyle: 'short' })}
+                                        </span>
+                                    </div>
+                                    {client.lastEditedBy && (
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                                            <span style={{
+                                                padding: '0.15rem 0.4rem',
+                                                background: '#f0f9ff',
+                                                borderRadius: '0.4rem',
+                                                fontWeight: '700',
+                                                fontSize: '0.65rem',
+                                                color: '#0ea5e9'
+                                            }}>
+                                                {client.lastEditedBy.role}
+                                            </span>
+                                            <span>
+                                                {t('updated_by' as any) || 'Updated by'} {client.lastEditedBy.firstName} {client.lastEditedBy.lastName} {t('at' as any) || 'at'} {new Date(client.updatedAt).toLocaleString(locale === 'ar' ? 'ar-EG' : 'en-US', { dateStyle: 'medium', timeStyle: 'short' })}
+                                            </span>
+                                        </div>
+                                    )}
                                 </div>
 
                                 <div style={{ display: 'flex', gap: '0.5rem', marginTop: 'auto', paddingTop: '1rem', borderTop: '1px dashed #e2e8f0' }}>

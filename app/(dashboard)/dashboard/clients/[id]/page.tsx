@@ -14,6 +14,18 @@ import { useToast } from '@/context/ToastContext'
 interface Section {
     id: string
     title: string
+    createdAt: string
+    updatedAt: string
+    createdBy?: {
+        firstName: string
+        lastName: string
+        role: string
+    }
+    lastEditedBy?: {
+        firstName: string
+        lastName: string
+        role: string
+    }
     _count: {
         notes: number
     }
@@ -22,6 +34,18 @@ interface Section {
 interface ClientData {
     id: string
     name: string
+    createdAt: string
+    updatedAt: string
+    createdBy?: {
+        firstName: string
+        lastName: string
+        role: string
+    }
+    lastEditedBy?: {
+        firstName: string
+        lastName: string
+        role: string
+    }
 }
 
 export default function ClientDetailsPage() {
@@ -382,8 +406,8 @@ export default function ClientDetailsPage() {
                                         </span>
                                     </div>
 
-                                    {/* Right Side: Action Button */}
-                                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                    {/* Action Buttons Container */}
+                                    <div style={{ display: 'flex', gap: '0.5rem', marginLeft: locale === 'ar' ? '0' : 'auto', marginRight: locale === 'ar' ? 'auto' : '0' }}>
                                         <Link
                                             href={`/dashboard/clients/${clientId}/sections/${section.id}`}
                                             className="btn btn-primary"
@@ -432,6 +456,50 @@ export default function ClientDetailsPage() {
                                             {t('delete')}
                                         </button>
                                     </div>
+                                </div>
+
+                                <div style={{
+                                    fontSize: '0.75rem',
+                                    color: '#94a3b8',
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    gap: '0.25rem',
+                                    marginTop: '0.75rem',
+                                    paddingTop: '0.75rem',
+                                    borderTop: '1px dashed #f1f5f9'
+                                }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                                        <span style={{
+                                            padding: '0.15rem 0.4rem',
+                                            background: '#f1f5f9',
+                                            borderRadius: '0.4rem',
+                                            fontWeight: '700',
+                                            fontSize: '0.65rem',
+                                            color: '#64748b'
+                                        }}>
+                                            {section.createdBy?.role || 'SYSTEM'}
+                                        </span>
+                                        <span>
+                                            {t('created_by' as any) || 'Created by'} {section.createdBy ? `${section.createdBy.firstName} ${section.createdBy.lastName}` : 'System'} {t('at' as any) || 'at'} {new Date(section.createdAt).toLocaleString(locale === 'ar' ? 'ar-EG' : 'en-US', { dateStyle: 'medium', timeStyle: 'short' })}
+                                        </span>
+                                    </div>
+                                    {section.lastEditedBy && (
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                                            <span style={{
+                                                padding: '0.15rem 0.4rem',
+                                                background: '#f0f9ff',
+                                                borderRadius: '0.4rem',
+                                                fontWeight: '700',
+                                                fontSize: '0.65rem',
+                                                color: '#0ea5e9'
+                                            }}>
+                                                {section.lastEditedBy.role}
+                                            </span>
+                                            <span>
+                                                {t('updated_by' as any) || 'Updated by'} {section.lastEditedBy.firstName} {section.lastEditedBy.lastName} {t('at' as any) || 'at'} {new Date(section.updatedAt).toLocaleString(locale === 'ar' ? 'ar-EG' : 'en-US', { dateStyle: 'medium', timeStyle: 'short' })}
+                                            </span>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         ))}

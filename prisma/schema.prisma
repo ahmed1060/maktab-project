@@ -51,6 +51,10 @@ model User {
   auditLogs                  AuditLog[]
   createdBusinessClientNotes BusinessClientNote[] @relation("CreatedNotes")
   editedBusinessClientNotes  BusinessClientNote[] @relation("EditedNotes")
+  createdClients             BusinessClient[]       @relation("CreatedClients")
+  editedClients              BusinessClient[]       @relation("EditedClients")
+  createdSections            BusinessClientSection[] @relation("CreatedSections")
+  editedSections             BusinessClientSection[] @relation("EditedSections")
   notifications              Notification[]
   obligations                Obligation[]
   profileUpdateRequests      ProfileUpdateRequest[]
@@ -162,26 +166,34 @@ model SalaryRecord {
 }
 
 model BusinessClient {
-  id        String                  @id @default(uuid())
-  name      String
-  companyId String
-  createdAt DateTime                @default(now())
-  updatedAt DateTime                @updatedAt
-  company   Company                 @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  sections  BusinessClientSection[]
+  id             String                  @id @default(uuid())
+  name           String
+  companyId      String
+  createdById    String?
+  lastEditedById String?
+  createdAt      DateTime                @default(now())
+  updatedAt      DateTime                @updatedAt
+  company        Company                 @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  createdBy      User?                   @relation("CreatedClients", fields: [createdById], references: [id])
+  lastEditedBy   User?                   @relation("EditedClients", fields: [lastEditedById], references: [id])
+  sections       BusinessClientSection[]
 
   @@unique([name, companyId])
   @@map("Client")
 }
 
 model BusinessClientSection {
-  id        String               @id @default(uuid())
-  title     String
-  clientId  String
-  createdAt DateTime             @default(now())
-  updatedAt DateTime             @updatedAt
-  notes     BusinessClientNote[]
-  client    BusinessClient       @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  id             String               @id @default(uuid())
+  title          String
+  clientId       String
+  createdById    String?
+  lastEditedById String?
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+  notes          BusinessClientNote[]
+  client         BusinessClient       @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  createdBy      User?                @relation("CreatedSections", fields: [createdById], references: [id])
+  lastEditedBy   User?                @relation("EditedSections", fields: [lastEditedById], references: [id])
 
   @@unique([title, clientId])
   @@map("ClientSection")

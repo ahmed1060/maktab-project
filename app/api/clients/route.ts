@@ -56,6 +56,12 @@ export async function GET() {
                 createdAt: 'desc'
             },
             include: {
+                createdBy: {
+                    select: { firstName: true, lastName: true, role: true }
+                },
+                lastEditedBy: {
+                    select: { firstName: true, lastName: true, role: true }
+                },
                 _count: {
                     select: { sections: true }
                 }
@@ -132,7 +138,8 @@ export async function POST(request: Request) {
         const client = await prisma.businessClient.create({
             data: {
                 name,
-                companyId: targetCompanyId!
+                companyId: targetCompanyId!,
+                createdById: userId
             }
         })
         console.log('[API] Client Created:', client)
@@ -182,8 +189,9 @@ export async function DELETE(request: Request) {
 export async function PUT(request: Request) {
     try {
         const session = await getServerSession(authOptions)
+        const userId = (session?.user as any)?.id
 
-        if (!session?.user || (session.user.role !== 'SUPER_ADMIN' && session.user.role !== 'ADMIN' && session.user.role !== 'TEAM_LEADER')) {
+        if (!userId || !session?.user || (session.user.role !== 'SUPER_ADMIN' && session.user.role !== 'ADMIN' && session.user.role !== 'TEAM_LEADER')) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
         }
 
@@ -205,7 +213,10 @@ export async function PUT(request: Request) {
 
         const updatedClient = await prisma.businessClient.update({
             where: { id },
-            data: { name }
+            data: {
+                name,
+                lastEditedById: userId
+            }
         })
 
         return NextResponse.json(updatedClient)

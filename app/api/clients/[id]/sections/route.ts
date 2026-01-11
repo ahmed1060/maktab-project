@@ -62,6 +62,12 @@ export async function GET(
                 clientId: params.id
             },
             include: {
+                createdBy: {
+                    select: { firstName: true, lastName: true, role: true }
+                },
+                lastEditedBy: {
+                    select: { firstName: true, lastName: true, role: true }
+                },
                 _count: { select: { notes: true } }
             },
             orderBy: { createdAt: 'asc' }
@@ -122,7 +128,8 @@ export async function POST(
         const section = await prisma.businessClientSection.create({
             data: {
                 title,
-                clientId: params.id
+                clientId: params.id,
+                createdById: userId
             }
         })
 
@@ -178,8 +185,9 @@ export async function PUT(
 ) {
     try {
         const session = await getServerSession(authOptions)
+        const userId = (session?.user as any)?.id
 
-        if (!session?.user || (session.user.role !== 'SUPER_ADMIN' && session.user.role !== 'ADMIN' && session.user.role !== 'TEAM_LEADER')) {
+        if (!userId || !session?.user || (session.user.role !== 'SUPER_ADMIN' && session.user.role !== 'ADMIN' && session.user.role !== 'TEAM_LEADER')) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
         }
 
@@ -205,7 +213,10 @@ export async function PUT(
 
         const updatedSection = await prisma.businessClientSection.update({
             where: { id },
-            data: { title }
+            data: {
+                title,
+                lastEditedById: userId
+            }
         })
 
         return NextResponse.json(updatedSection)
