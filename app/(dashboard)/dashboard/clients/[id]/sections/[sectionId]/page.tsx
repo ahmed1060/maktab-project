@@ -186,7 +186,7 @@ export default function SectionNotesPage() {
                 setSelectedFile(null)
                 setIsModalOpen(false)
                 fetchData() // Refresh
-                showToast('Note Created Successfully', 'success')
+                showToast(t('note_created_success' as any) || 'Note Created Successfully', 'success')
             } else {
                 const err = await res.json()
                 showToast(`${t('failed_save_generic')}: ${err.error}`, 'error')
@@ -222,7 +222,7 @@ export default function SectionNotesPage() {
                 setIsEditModalOpen(false)
                 setEditingNote(null)
                 fetchData() // Refresh
-                showToast('Note Updated Successfully', 'success')
+                showToast(t('note_updated_success' as any) || 'Note Updated Successfully', 'success')
             } else {
                 const err = await res.json()
                 showToast(`${t('failed_save_generic')}: ${err.error}`, 'error')
@@ -345,21 +345,39 @@ export default function SectionNotesPage() {
 
                                 {/* Author info and Delete button at the bottom */}
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                    <div className="flex items-center gap-2">
-                                        <div className="text-sm" style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>
-                                            <span className="font-semibold text-slate-800">
-                                                {note.createdBy?.firstName} {note.createdBy?.lastName}
+                                    <div style={{ fontSize: '0.75rem', color: '#94a3b8', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                                            <span style={{
+                                                padding: '0.15rem 0.4rem',
+                                                background: '#f1f5f9',
+                                                borderRadius: '0.4rem',
+                                                fontWeight: '700',
+                                                fontSize: '0.65rem',
+                                                color: '#64748b'
+                                            }}>
+                                                {(note.createdBy?.role || 'SYSTEM').replace(/_/g, ' ')}
                                             </span>
-                                            <span className="text-slate-400" style={{ margin: '0 0.5rem' }}>•</span>
-                                            <span className="text-slate-500">
-                                                {new Date(note.createdAt).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' })} - {new Date(note.createdAt).toLocaleDateString(locale === 'ar' ? 'ar-EG' : 'en-GB')}
+                                            <span>
+                                                {t('created_by' as any) || 'Created by'} {note.createdBy ? `${note.createdBy.firstName} ${note.createdBy.lastName}` : 'System'} {t('at' as any) || 'at'} {new Date(note.createdAt).toLocaleDateString(locale === 'ar' ? 'ar-EG' : 'en-GB', { day: 'numeric', month: 'short' }) + ', ' + new Date(note.createdAt).toLocaleDateString(locale === 'ar' ? 'ar-EG' : 'en-GB', { year: 'numeric' }) + ', ' + new Date(note.createdAt).toLocaleTimeString(locale === 'ar' ? 'ar-EG' : 'en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}
                                             </span>
-                                            {note.lastEditedAt && note.lastEditedBy && (
-                                                <div style={{ marginTop: '4px', fontSize: '0.75rem', color: '#64748b', fontStyle: 'italic' }}>
-                                                    Edited by {t(`role_${note.lastEditedBy.role.toLowerCase()}` as any) || note.lastEditedBy.role} {note.lastEditedBy.firstName} {note.lastEditedBy.lastName} - {new Date(note.lastEditedAt).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' })} {new Date(note.lastEditedAt).toLocaleDateString(locale === 'ar' ? 'ar-EG' : 'en-GB')}
-                                                </div>
-                                            )}
                                         </div>
+                                        {note.lastEditedBy && note.lastEditedAt && (
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                                                <span style={{
+                                                    padding: '0.15rem 0.4rem',
+                                                    background: '#f0f9ff',
+                                                    borderRadius: '0.4rem',
+                                                    fontWeight: '700',
+                                                    fontSize: '0.65rem',
+                                                    color: '#0ea5e9'
+                                                }}>
+                                                    {note.lastEditedBy.role.replace(/_/g, ' ')}
+                                                </span>
+                                                <span>
+                                                    {t('updated_by' as any) || 'Updated by'} {note.lastEditedBy.firstName} {note.lastEditedBy.lastName} {t('at' as any) || 'at'} {new Date(note.lastEditedAt).toLocaleDateString(locale === 'ar' ? 'ar-EG' : 'en-GB', { day: 'numeric', month: 'short' }) + ', ' + new Date(note.lastEditedAt).toLocaleDateString(locale === 'ar' ? 'ar-EG' : 'en-GB', { year: 'numeric' }) + ', ' + new Date(note.lastEditedAt).toLocaleTimeString(locale === 'ar' ? 'ar-EG' : 'en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}
+                                                </span>
+                                            </div>
+                                        )}
                                     </div>
 
                                     <div style={{ display: 'flex', gap: '0.5rem' }}>

@@ -245,10 +245,10 @@ export default function ClientsPage() {
                                             fontSize: '0.65rem',
                                             color: '#64748b'
                                         }}>
-                                            {client.createdBy?.role || 'SYSTEM'}
+                                            {(client.createdBy?.role || 'SYSTEM').replace(/_/g, ' ')}
                                         </span>
                                         <span>
-                                            {t('created_by' as any) || 'Created by'} {client.createdBy ? `${client.createdBy.firstName} ${client.createdBy.lastName}` : 'System'} {t('at' as any) || 'at'} {new Date(client.createdAt).toLocaleString(locale === 'ar' ? 'ar-EG' : 'en-US', { dateStyle: 'medium', timeStyle: 'short' })}
+                                            {t('Created by' as any) || 'Created by'} {client.createdBy ? `${client.createdBy.firstName} ${client.createdBy.lastName}` : 'System'} {t('at' as any) || 'at'} {new Date(client.createdAt).toLocaleDateString(locale === 'ar' ? 'ar-EG' : 'en-GB', { day: 'numeric', month: 'short' }) + ', ' + new Date(client.createdAt).toLocaleDateString(locale === 'ar' ? 'ar-EG' : 'en-GB', { year: 'numeric' }) + ', ' + new Date(client.createdAt).toLocaleTimeString(locale === 'ar' ? 'ar-EG' : 'en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}
                                         </span>
                                     </div>
                                     {client.lastEditedBy && (
@@ -261,10 +261,10 @@ export default function ClientsPage() {
                                                 fontSize: '0.65rem',
                                                 color: '#0ea5e9'
                                             }}>
-                                                {client.lastEditedBy.role}
+                                                {client.lastEditedBy.role.replace(/_/g, ' ')}
                                             </span>
                                             <span>
-                                                {t('updated_by' as any) || 'Updated by'} {client.lastEditedBy.firstName} {client.lastEditedBy.lastName} {t('at' as any) || 'at'} {new Date(client.updatedAt).toLocaleString(locale === 'ar' ? 'ar-EG' : 'en-US', { dateStyle: 'medium', timeStyle: 'short' })}
+                                                {t('Updated by' as any) || 'Updated by'} {client.lastEditedBy.firstName} {client.lastEditedBy.lastName} {t('at' as any) || 'at'} {new Date(client.updatedAt).toLocaleDateString(locale === 'ar' ? 'ar-EG' : 'en-GB', { day: 'numeric', month: 'short' }) + ', ' + new Date(client.updatedAt).toLocaleDateString(locale === 'ar' ? 'ar-EG' : 'en-GB', { year: 'numeric' }) + ', ' + new Date(client.updatedAt).toLocaleTimeString(locale === 'ar' ? 'ar-EG' : 'en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}
                                             </span>
                                         </div>
                                     )}
