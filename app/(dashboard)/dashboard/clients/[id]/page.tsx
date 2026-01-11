@@ -6,6 +6,7 @@ import { useParams, useRouter } from 'next/navigation'
 import { useHeader } from '@/context/HeaderContext'
 import { createPortal } from 'react-dom'
 import ConfirmModal from '@/components/ConfirmModal'
+import EmployeeFilter from '@/components/EmployeeFilter'
 import { useLanguage } from '@/context/LanguageContext'
 import { useSession } from 'next-auth/react'
 import Modal from '@/components/Modal'
@@ -210,9 +211,11 @@ export default function ClientDetailsPage() {
         }
     }
 
-    const filteredSections = sections.filter(section =>
-        section.title.toLowerCase().includes(searchQuery.toLowerCase())
-    )
+    const filteredSections = sections.filter(section => {
+        const matchesQuery = section.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            (section.createdBy && `${section.createdBy.firstName} ${section.createdBy.lastName}`.toLowerCase().includes(searchQuery.toLowerCase()))
+        return matchesQuery
+    })
 
     if (error) {
         return (
@@ -236,8 +239,7 @@ export default function ClientDetailsPage() {
     return (
         <div style={containerStyle}>
             <div className="space-y-6 animate-in fade-in duration-500">
-                {/* Header Row */}
-                <div style={{ marginBottom: '1.5rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
                     <Link
                         href="/dashboard/clients"
                         className="glass"
@@ -247,21 +249,11 @@ export default function ClientDetailsPage() {
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            marginBottom: '0.75rem',
                             color: 'var(--primary)',
                             textDecoration: 'none',
                             transition: 'all 0.3s ease',
                             border: '1px solid rgba(255, 255, 255, 0.4)',
-                            transform: `translateY(-2px)${locale === 'ar' ? ' scaleX(-1)' : ''}`,
-                            float: locale === 'ar' ? 'right' : 'left'
-                        }}
-                        onMouseOver={(e) => {
-                            e.currentTarget.style.transform = `translateY(-4px)${locale === 'ar' ? ' scaleX(-1)' : ''}`
-                            e.currentTarget.style.background = 'rgba(255, 255, 255, 0.9)'
-                        }}
-                        onMouseOut={(e) => {
-                            e.currentTarget.style.transform = `translateY(-2px)${locale === 'ar' ? ' scaleX(-1)' : ''}`
-                            e.currentTarget.style.background = 'rgba(255, 255, 255, 0.7)'
+                            transform: `translateY(-2px)${locale === 'ar' ? ' scaleX(-1)' : ''}`
                         }}
                         title={t('back_to_clients' as any)}
                     >
@@ -270,97 +262,31 @@ export default function ClientDetailsPage() {
                             <polyline points="12 19 5 12 12 5"></polyline>
                         </svg>
                     </Link>
-                    <div style={{ clear: 'both' }}></div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                            <h1 className="text-3xl font-bold text-slate-800 tracking-tight">{t('sections_title' as any)}</h1>
-                        </div>
+                    <h1 className="text-3xl font-bold text-slate-800 tracking-tight">{t('sections_title' as any)}</h1>
+                </div>
+
+                <EmployeeFilter
+                    onFilterChange={(newFilters: any) => setSearchQuery(newFilters.search)}
+                    selectedEmployeeId={''}
+                    hideEmployeeFilter={true}
+                    hideStatusFilter={true}
+                    hideDateFilter={true}
+                    hideFilterButton={true}
+                    dateFrom={''}
+                    dateTo={''}
+                    selectedStatus={''}
+                    searchQuery={searchQuery}
+                    totalCount={filteredSections.length}
+                    primaryAction={
                         <button
                             onClick={() => setIsModalOpen(true)}
                             className="btn btn-primary"
+                            style={{ height: '48px', display: 'flex', alignItems: 'center', borderRadius: '1.25rem' }}
                         >
                             {t('add_section_button' as any)}
                         </button>
-                    </div>
-                </div>
-
-                {/* Filter/Search Row */}
-                <div style={{
-                    marginBottom: '1.5rem',
-                    display: 'flex',
-                    gap: '1rem',
-                    alignItems: 'flex-end',
-                    justifyContent: 'space-between',
-                }}>
-                    <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-end', flex: 1, flexWrap: 'wrap' }}>
-                        <div style={{ position: 'relative', width: '100%', maxWidth: '400px' }}>
-                            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600', fontSize: '0.875rem' }}>
-                                {t('search_sections_label' as any)}
-                            </label>
-                            <input
-                                type="text"
-                                placeholder={t('search_placeholder')}
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                                onFocus={() => setShowSuggestions(true)}
-                                onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
-                                style={{
-                                    padding: '0.5rem 1rem',
-                                    borderRadius: '0.5rem',
-                                    border: '1px solid #cbd5e1',
-                                    fontSize: '0.875rem',
-                                    outline: 'none',
-                                    width: '100%',
-                                    textAlign: locale === 'ar' ? 'right' : 'left'
-                                }}
-                            />
-                            {showSuggestions && (
-                                <div style={{
-                                    position: 'absolute',
-                                    top: '100%',
-                                    left: 0,
-                                    right: 0,
-                                    background: 'white',
-                                    border: '1px solid #e2e8f0',
-                                    borderRadius: '0.5rem',
-                                    marginTop: '0.25rem',
-                                    zIndex: 50,
-                                    maxHeight: '200px',
-                                    overflowY: 'auto',
-                                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
-                                }}>
-                                    {sections
-                                        .filter(s => s.title.toLowerCase().includes(searchQuery.toLowerCase()))
-                                        .map(section => (
-                                            <div
-                                                key={section.id}
-                                                onClick={() => {
-                                                    setSearchQuery(section.title)
-                                                    setShowSuggestions(false)
-                                                }}
-                                                style={{
-                                                    padding: '0.5rem 1rem',
-                                                    cursor: 'pointer',
-                                                    fontSize: '0.875rem',
-                                                    color: '#334155',
-                                                    borderBottom: '1px solid #f1f5f9',
-                                                    textAlign: locale === 'ar' ? 'right' : 'left'
-                                                }}
-                                                className="hover:bg-slate-50"
-                                            >
-                                                {section.title}
-                                            </div>
-                                        ))}
-                                    {sections.filter(s => s.title.toLowerCase().includes(searchQuery.toLowerCase())).length === 0 && (
-                                        <div style={{ padding: '0.5rem 1rem', fontSize: '0.875rem', color: '#94a3b8', textAlign: locale === 'ar' ? 'right' : 'left' }}>
-                                            {t('no_sections_found' as any)}
-                                        </div>
-                                    )}
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                </div>
+                    }
+                />
 
                 {/* List View */}
                 {isLoading ? (
@@ -480,7 +406,7 @@ export default function ClientDetailsPage() {
                                             {(section.createdBy?.role || 'SYSTEM').replace(/_/g, ' ')}
                                         </span>
                                         <span>
-                                            {t('Created by' as any) || 'Created by'} {section.createdBy ? `${section.createdBy.firstName} ${section.createdBy.lastName}` : 'System'} {t('at' as any) || 'at'} {new Date(section.createdAt).toLocaleDateString(locale === 'ar' ? 'ar-EG' : 'en-GB', { day: 'numeric', month: 'short' }) + ', ' + new Date(section.createdAt).toLocaleDateString(locale === 'ar' ? 'ar-EG' : 'en-GB', { year: 'numeric' }) + ', ' + new Date(section.createdAt).toLocaleTimeString(locale === 'ar' ? 'ar-EG' : 'en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}
+                                            {t('created_by' as any) || 'Created by'} {section.createdBy ? `${section.createdBy.firstName} ${section.createdBy.lastName}` : 'System'} {t('at' as any) || 'at'} {new Date(section.createdAt).toLocaleDateString(locale === 'ar' ? 'ar-EG' : 'en-GB', { day: 'numeric', month: 'short' }) + ', ' + new Date(section.createdAt).toLocaleDateString(locale === 'ar' ? 'ar-EG' : 'en-GB', { year: 'numeric' }) + ', ' + new Date(section.createdAt).toLocaleTimeString(locale === 'ar' ? 'ar-EG' : 'en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}
                                         </span>
                                     </div>
                                     {section.lastEditedBy && (
@@ -496,7 +422,7 @@ export default function ClientDetailsPage() {
                                                 {section.lastEditedBy.role.replace(/_/g, ' ')}
                                             </span>
                                             <span>
-                                                {t('Updated by' as any) || 'Updated by'} {section.lastEditedBy.firstName} {section.lastEditedBy.lastName} {t('at' as any) || 'at'} {new Date(section.updatedAt).toLocaleDateString(locale === 'ar' ? 'ar-EG' : 'en-GB', { day: 'numeric', month: 'short' }) + ', ' + new Date(section.updatedAt).toLocaleDateString(locale === 'ar' ? 'ar-EG' : 'en-GB', { year: 'numeric' }) + ', ' + new Date(section.updatedAt).toLocaleTimeString(locale === 'ar' ? 'ar-EG' : 'en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}
+                                                {t('updated_by' as any) || 'Updated by'} {section.lastEditedBy.firstName} {section.lastEditedBy.lastName} {t('at' as any) || 'at'} {new Date(section.updatedAt).toLocaleDateString(locale === 'ar' ? 'ar-EG' : 'en-GB', { day: 'numeric', month: 'short' }) + ', ' + new Date(section.updatedAt).toLocaleDateString(locale === 'ar' ? 'ar-EG' : 'en-GB', { year: 'numeric' }) + ', ' + new Date(section.updatedAt).toLocaleTimeString(locale === 'ar' ? 'ar-EG' : 'en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}
                                             </span>
                                         </div>
                                     )}
@@ -523,17 +449,24 @@ export default function ClientDetailsPage() {
 
                         <form onSubmit={handleCreateSection}>
                             <div style={{ marginBottom: '1.5rem' }}>
-                                <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', color: '#64748b', textAlign: locale === 'ar' ? 'right' : 'left' }}>
+                                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '600', color: '#64748b', marginBottom: '0.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
                                     {t('section_title_label' as any)}
                                 </label>
                                 <input
                                     type="text"
+                                    required
                                     value={newSectionTitle}
                                     onChange={(e) => setNewSectionTitle(e.target.value)}
-                                    className="input"
-                                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #e2e8f0', borderRadius: '0.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}
                                     placeholder={t('section_title_placeholder' as any)}
-                                    autoFocus
+                                    style={{
+                                        width: '100%',
+                                        padding: '0.75rem 1rem',
+                                        borderRadius: '0.5rem',
+                                        border: '1px solid #e2e8f0',
+                                        outline: 'none',
+                                        fontSize: '0.875rem',
+                                        textAlign: locale === 'ar' ? 'right' : 'left'
+                                    }}
                                 />
                             </div>
 
@@ -541,7 +474,16 @@ export default function ClientDetailsPage() {
                                 <button
                                     type="button"
                                     onClick={() => setIsModalOpen(false)}
-                                    style={{ padding: '0.75rem 1.5rem', border: '1px solid #e2e8f0', borderRadius: '0.5rem', background: 'transparent', cursor: 'pointer' }}
+                                    style={{
+                                        padding: '0.625rem 1.25rem',
+                                        borderRadius: '0.5rem',
+                                        fontSize: '0.875rem',
+                                        fontWeight: '600',
+                                        color: '#64748b',
+                                        background: '#f1f5f9',
+                                        border: 'none',
+                                        cursor: 'pointer'
+                                    }}
                                 >
                                     {t('cancel')}
                                 </button>
@@ -549,8 +491,22 @@ export default function ClientDetailsPage() {
                                     type="submit"
                                     disabled={!newSectionTitle.trim() || isSubmitting}
                                     className="btn btn-primary"
+                                    style={{
+                                        padding: '0.625rem 1.25rem',
+                                        borderRadius: '0.5rem',
+                                        fontSize: '0.875rem',
+                                        fontWeight: '600',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '0.5rem'
+                                    }}
                                 >
-                                    {isSubmitting ? t('creating') : t('create_section_button' as any)}
+                                    {isSubmitting ? (
+                                        <>
+                                            <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                                            {t('creating_task' as any)}
+                                        </>
+                                    ) : t('create_section_button' as any)}
                                 </button>
                             </div>
                         </form>
@@ -559,114 +515,133 @@ export default function ClientDetailsPage() {
                 document.body
             )}
 
-            <ConfirmModal
-                isOpen={deleteConfirm.isOpen}
-                title={t('delete_section_title' as any)}
-                message={t('delete_section_msg' as any).replace('{title}', deleteConfirm.section?.title || '')}
-                confirmText={t('delete')}
-                onConfirm={async () => {
-                    if (deleteConfirm.section) {
+            {/* Delete Section Confirm */}
+            {deleteConfirm.isOpen && (
+                <ConfirmModal
+                    isOpen={deleteConfirm.isOpen}
+                    title={t('confirm_delete')}
+                    message={(t('delete_section_warning' as any) || 'Are you sure you want to delete this section?') + (locale === 'ar' ? '؟' : '?')}
+                    confirmText={t('delete')}
+                    cancelText={t('cancel')}
+                    onConfirm={async () => {
+                        if (!deleteConfirm.section) return
+                        setIsSubmitting(true)
                         try {
-                            const res = await fetch(`/api/clients/${clientId}/sections?sectionId=${deleteConfirm.section.id}`, { method: 'DELETE' })
+                            const res = await fetch(`/api/clients/${clientId}/sections?id=${deleteConfirm.section.id}`, {
+                                method: 'DELETE'
+                            })
                             if (res.ok) {
                                 fetchData()
                                 setDeleteConfirm({ isOpen: false, section: null })
                             } else {
                                 const err = await res.json()
-                                alert(`${t('failed_save_generic')}: ${err.error}`)
+                                showToast(`${t('error_generic')}: ${err.error}`, 'error')
                             }
-                        } catch (error) {
-                            alert(t('failed_save_generic'))
+                        } catch (e) {
+                            showToast(t('error_generic'), 'error')
+                        } finally {
+                            setIsSubmitting(false)
                         }
-                    }
-                }}
-                onCancel={() => setDeleteConfirm({ isOpen: false, section: null })}
-                variant="danger"
-            />
+                    }}
+                    onCancel={() => setDeleteConfirm({ isOpen: false, section: null })}
+                />
+            )}
 
             {/* Edit Client Modal */}
-            <Modal
-                isOpen={isEditClientModalOpen}
-                onClose={() => setIsEditClientModalOpen(false)}
-                title={t('edit_client_title' as any) || 'Edit Client Name'}
-            >
-                <form onSubmit={handleEditClient} style={{ direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
-                    <div style={{ marginBottom: '1.5rem' }}>
-                        <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', color: '#64748b', textAlign: locale === 'ar' ? 'right' : 'left' }}>
-                            {t('client_company_name' as any)}
-                        </label>
-                        <input
-                            type="text"
-                            value={editClientName}
-                            onChange={(e) => setEditClientName(e.target.value)}
-                            className="input"
-                            style={{ width: '100%', padding: '0.5rem', border: '1px solid #e2e8f0', borderRadius: '0.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}
-                            placeholder={t('client_placeholder' as any)}
-                            autoFocus
-                        />
-                    </div>
-
-                    <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
-                        <button
-                            type="button"
-                            onClick={() => setIsEditClientModalOpen(false)}
-                            className="btn"
-                            style={{ background: '#f1f5f9' }}
-                        >
-                            {t('cancel')}
-                        </button>
-                        <button
-                            type="submit"
-                            disabled={!editClientName.trim() || isEditingClient}
-                            className="btn btn-primary"
-                        >
-                            {isEditingClient ? t('saving') : t('save')}
-                        </button>
-                    </div>
-                </form>
-            </Modal>
+            {isEditClientModalOpen && (
+                <Modal
+                    isOpen={isEditClientModalOpen}
+                    onClose={() => setIsEditClientModalOpen(false)}
+                    title={t('edit_client_name' as any)}
+                >
+                    <form onSubmit={handleEditClient} style={{ direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
+                        <div style={{ marginBottom: '1.25rem' }}>
+                            <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '600', color: '#64748b', marginBottom: '0.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
+                                {t('client_name_label' as any)}
+                            </label>
+                            <input
+                                type="text"
+                                required
+                                value={editClientName}
+                                onChange={(e) => setEditClientName(e.target.value)}
+                                style={{
+                                    width: '100%',
+                                    padding: '0.75rem 1rem',
+                                    borderRadius: '0.5rem',
+                                    border: '1px solid #e2e8f0',
+                                    outline: 'none',
+                                    fontSize: '0.875rem',
+                                    textAlign: locale === 'ar' ? 'right' : 'left'
+                                }}
+                            />
+                        </div>
+                        <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
+                            <button
+                                type="button"
+                                onClick={() => setIsEditClientModalOpen(false)}
+                                className="btn btn-outline"
+                            >
+                                {t('cancel')}
+                            </button>
+                            <button
+                                type="submit"
+                                disabled={!editClientName.trim() || isEditingClient}
+                                className="btn btn-primary"
+                            >
+                                {isEditingClient ? t('submitting') : t('save')}
+                            </button>
+                        </div>
+                    </form>
+                </Modal>
+            )}
 
             {/* Edit Section Modal */}
-            <Modal
-                isOpen={isEditSectionModalOpen}
-                onClose={() => setIsEditSectionModalOpen(false)}
-                title={t('edit_section_title' as any) || 'Edit Section Name'}
-            >
-                <form onSubmit={handleEditSection} style={{ direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
-                    <div style={{ marginBottom: '1.5rem' }}>
-                        <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', color: '#64748b', textAlign: locale === 'ar' ? 'right' : 'left' }}>
-                            {t('section_title_label' as any)}
-                        </label>
-                        <input
-                            type="text"
-                            value={editSectionTitle}
-                            onChange={(e) => setEditSectionTitle(e.target.value)}
-                            className="input"
-                            style={{ width: '100%', padding: '0.5rem', border: '1px solid #e2e8f0', borderRadius: '0.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}
-                            placeholder={t('section_title_placeholder' as any)}
-                            autoFocus
-                        />
-                    </div>
-
-                    <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
-                        <button
-                            type="button"
-                            onClick={() => setIsEditSectionModalOpen(false)}
-                            className="btn"
-                            style={{ background: '#f1f5f9' }}
-                        >
-                            {t('cancel')}
-                        </button>
-                        <button
-                            type="submit"
-                            disabled={!editSectionTitle.trim() || isEditingSection}
-                            className="btn btn-primary"
-                        >
-                            {isEditingSection ? t('saving') : t('save')}
-                        </button>
-                    </div>
-                </form>
-            </Modal>
+            {isEditSectionModalOpen && (
+                <Modal
+                    isOpen={isEditSectionModalOpen}
+                    onClose={() => setIsEditSectionModalOpen(false)}
+                    title={t('edit_section_title' as any)}
+                >
+                    <form onSubmit={handleEditSection} style={{ direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
+                        <div style={{ marginBottom: '1.25rem' }}>
+                            <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '600', color: '#64748b', marginBottom: '0.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
+                                {t('section_title_label' as any)}
+                            </label>
+                            <input
+                                type="text"
+                                required
+                                value={editSectionTitle}
+                                onChange={(e) => setEditSectionTitle(e.target.value)}
+                                style={{
+                                    width: '100%',
+                                    padding: '0.75rem 1rem',
+                                    borderRadius: '0.5rem',
+                                    border: '1px solid #e2e8f0',
+                                    outline: 'none',
+                                    fontSize: '0.875rem',
+                                    textAlign: locale === 'ar' ? 'right' : 'left'
+                                }}
+                            />
+                        </div>
+                        <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
+                            <button
+                                type="button"
+                                onClick={() => setIsEditSectionModalOpen(false)}
+                                className="btn btn-outline"
+                            >
+                                {t('cancel')}
+                            </button>
+                            <button
+                                type="submit"
+                                disabled={!editSectionTitle.trim() || isEditingSection}
+                                className="btn btn-primary"
+                            >
+                                {isEditingSection ? t('submitting') : t('save')}
+                            </button>
+                        </div>
+                    </form>
+                </Modal>
+            )}
         </div>
     )
 }

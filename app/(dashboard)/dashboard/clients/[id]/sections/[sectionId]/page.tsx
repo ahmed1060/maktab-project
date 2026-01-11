@@ -10,6 +10,7 @@ import { useLanguage } from '@/context/LanguageContext'
 import { useSession } from 'next-auth/react'
 import { useToast } from '@/context/ToastContext'
 import Modal from '@/components/Modal'
+import EmployeeFilter from '@/components/EmployeeFilter'
 
 interface Note {
     id: string
@@ -75,6 +76,14 @@ export default function SectionNotesPage() {
     const [reminderDays, setReminderDays] = useState('')
     const [selectedFile, setSelectedFile] = useState<File | null>(null)
     const [uploading, setUploading] = useState(false)
+    const [searchQuery, setSearchQuery] = useState('')
+
+    const filteredNotes = notes.filter(note => {
+        const query = searchQuery.toLowerCase()
+        const contentMatch = note.content.toLowerCase().includes(query)
+        const creatorMatch = note.createdBy ? `${note.createdBy.firstName} ${note.createdBy.lastName}`.toLowerCase().includes(query) : false
+        return contentMatch || creatorMatch
+    })
 
     useEffect(() => {
         setMounted(true)
@@ -257,7 +266,7 @@ export default function SectionNotesPage() {
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            marginBottom: '0.75rem',
+                            marginBottom: '1rem',
                             color: 'var(--primary)',
                             textDecoration: 'none',
                             transition: 'all 0.3s ease',
@@ -273,7 +282,6 @@ export default function SectionNotesPage() {
                             e.currentTarget.style.transform = `translateY(-2px)${locale === 'ar' ? ' scaleX(-1)' : ''}`
                             e.currentTarget.style.background = 'rgba(255, 255, 255, 0.7)'
                         }}
-                        title={t('back_to_sections' as any)}
                     >
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                             <line x1="19" y1="12" x2="5" y2="12"></line>
@@ -282,149 +290,160 @@ export default function SectionNotesPage() {
                     </Link>
                     <div style={{ clear: 'both' }}></div>
 
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                            <h1 className="text-3xl font-bold text-slate-800 tracking-tight">{t('notes_label' as any)}</h1>
-                        </div>
-                        <button
-                            onClick={() => setIsModalOpen(true)}
-                            className="btn btn-primary"
-                        >
-                            {t('add_note_button' as any)}
-                        </button>
-                    </div>
+                    <EmployeeFilter
+                        onFilterChange={(newFilters: any) => setSearchQuery(newFilters.search)}
+                        selectedEmployeeId={''}
+                        hideEmployeeFilter={true}
+                        hideStatusFilter={true}
+                        hideDateFilter={true}
+                        hideFilterButton={true}
+                        dateFrom={''}
+                        dateTo={''}
+                        selectedStatus={''}
+                        searchQuery={searchQuery}
+                        totalCount={filteredNotes.length}
+                        primaryAction={
+                            <button
+                                onClick={() => setIsModalOpen(true)}
+                                className="btn btn-primary"
+                                style={{ height: '48px', display: 'flex', alignItems: 'center', borderRadius: '1.25rem' }}
+                            >
+                                {t('add_note_button' as any)}
+                            </button>
+                        }
+                    />
                 </div>
 
                 {isLoading ? (
                     <div className="text-center py-10 text-slate-500">{t('loading_filters')}</div>
-                ) : notes.length === 0 ? (
+                ) : filteredNotes.length === 0 ? (
                     <div className="glass-card flex flex-col items-center justify-center py-12 text-center text-slate-500">
                         <span className="text-4xl mb-2">📝</span>
-                        <h3 className="text-lg font-bold text-slate-800">{t('no_notes_found' as any)}</h3>
+                        <h3 className="text-lg font-bold text-slate-800">
+                            {searchQuery ? t('no_search_results' as any) || 'No matching notes found' : t('no_notes_found' as any)}
+                        </h3>
                         <p className="max-w-xs mx-auto mt-1 mb-4">
-                            {t('start_documenting_msg' as any)}
+                            {searchQuery ? t('try_different_search_msg' as any) || 'Try searching for different content or creator.' : t('start_documenting_msg' as any)}
                         </p>
                     </div>
                 ) : (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                        {notes.map((note, index) => (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {filteredNotes.map((note, index) => (
                             <div
                                 key={note.id}
-                                className="glass-card hover:bg-white/60 transition-all duration-300 p-6 border border-white/40 shadow-sm relative overflow-hidden"
+                                className="glass-card group relative flex flex-col h-full hover:shadow-xl hover:-translate-y-1 transition-all duration-300"
                                 style={{
                                     animationDelay: `${index * 50}ms`,
-                                    marginBottom: '0.5rem',
-                                    textAlign: locale === 'ar' ? 'right' : 'left'
+                                    background: 'rgba(255, 255, 255, 0.7)',
+                                    backdropFilter: 'blur(10px)',
+                                    border: '1px solid rgba(255, 255, 255, 0.5)',
+                                    borderRadius: '1.25rem',
+                                    padding: '1.5rem'
                                 }}
                             >
-                                {/* Note Content at the top */}
-                                <div className="text-slate-700 whitespace-pre-wrap mb-3" style={{ fontSize: '0.9rem', lineHeight: '1.6' }}>
-                                    {note.content}
+                                {/* Header: Icons & Expiry */}
+                                <div className="flex justify-between items-start mb-4">
+                                    <div className="flex gap-2">
+                                        <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary group-hover:scale-110 transition-transform duration-300">
+                                            {note.attachment ? (
+                                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                    <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"></path>
+                                                </svg>
+                                            ) : (
+                                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                    <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"></path>
+                                                    <polyline points="14 2 14 8 20 8"></polyline>
+                                                    <line x1="16" y1="13" x2="8" y2="13"></line>
+                                                    <line x1="16" y1="17" x2="8" y2="17"></line>
+                                                    <polyline points="10 9 9 9 8 9"></polyline>
+                                                </svg>
+                                            )}
+                                        </div>
+                                    </div>
+                                    {note.expiryDate && (
+                                        <div className="px-3 py-1 bg-amber-50 rounded-full text-[11px] font-bold text-amber-600 flex items-center gap-1.5 border border-amber-100/50">
+                                            <div className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+                                            {new Date(note.expiryDate).toLocaleDateString(locale === 'ar' ? 'ar-EG' : 'en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                        </div>
+                                    )}
                                 </div>
 
-                                {/* Render Attachment and Expiry if they exist */}
-                                {(note.attachment || note.expiryDate) && (
-                                    <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem', fontSize: '0.8rem', color: '#64748b', alignItems: 'center', flexWrap: 'wrap' }}>
-                                        {note.attachment && (
-                                            <a href={note.attachment} target="_blank" rel="noopener noreferrer" className="hover:underline" style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', color: '#4f46e5', fontWeight: '600', textDecoration: 'none' }}>
-                                                <span>📎</span>
-                                                {t('attachment_label' as any)}
-                                            </a>
-                                        )}
-                                        {note.expiryDate && (
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                                                <span>📅</span>
-                                                {t('expires_label' as any)}: {new Date(note.expiryDate).toLocaleDateString(locale === 'ar' ? 'ar-EG' : 'en-GB')}
-                                                {note.reminderDays && note.reminderDays > 0 && (
-                                                    <span style={{ [locale === 'ar' ? 'marginRight' : 'marginLeft']: '0.25rem' }}>({t('reminder_label' as any)}: {note.reminderDays}{t('days_label').split('')[0]} {t('by').split('')[0]} {t('deadline_label').split('')[0]})</span>
-                                                )}
-                                            </div>
-                                        )}
-                                    </div>
-                                )}
+                                {/* Content */}
+                                <div className="flex-grow mb-6">
+                                    <p className="text-slate-700 text-sm leading-relaxed whitespace-pre-wrap line-clamp-6 group-hover:line-clamp-none transition-all duration-300">
+                                        {note.content}
+                                    </p>
+                                </div>
 
-                                {/* Author info and Delete button at the bottom */}
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                    <div style={{ fontSize: '0.75rem', color: '#94a3b8', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                                            <span style={{
-                                                padding: '0.15rem 0.4rem',
-                                                background: '#f1f5f9',
-                                                borderRadius: '0.4rem',
-                                                fontWeight: '700',
-                                                fontSize: '0.65rem',
-                                                color: '#64748b'
-                                            }}>
-                                                {(note.createdBy?.role || 'SYSTEM').replace(/_/g, ' ')}
-                                            </span>
-                                            <span>
-                                                {t('created_by' as any) || 'Created by'} {note.createdBy ? `${note.createdBy.firstName} ${note.createdBy.lastName}` : 'System'} {t('at' as any) || 'at'} {new Date(note.createdAt).toLocaleDateString(locale === 'ar' ? 'ar-EG' : 'en-GB', { day: 'numeric', month: 'short' }) + ', ' + new Date(note.createdAt).toLocaleDateString(locale === 'ar' ? 'ar-EG' : 'en-GB', { year: 'numeric' }) + ', ' + new Date(note.createdAt).toLocaleTimeString(locale === 'ar' ? 'ar-EG' : 'en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}
-                                            </span>
+                                {/* Divider */}
+                                <div className="h-px w-full bg-gradient-to-r from-transparent via-slate-200 to-transparent mb-4 opacity-50" />
+
+                                {/* Footer: Audit & Actions */}
+                                <div className="space-y-4">
+                                    {/* Audit Trail */}
+                                    <div className="flex flex-col gap-2">
+                                        <div className="flex items-center gap-2">
+                                            <div className="px-2 py-0.5 bg-slate-100 rounded text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                                                {(note.createdBy?.role || 'USER').replace(/_/g, ' ')}
+                                            </div>
+                                            <div className="text-[11px] text-slate-500">
+                                                <span className="font-semibold text-slate-700">{note.createdBy ? `${note.createdBy.firstName} ${note.createdBy.lastName}` : 'System'}</span>
+                                                <span className="mx-1">•</span>
+                                                {new Date(note.createdAt).toLocaleDateString(locale === 'ar' ? 'ar-EG' : 'en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                            </div>
                                         </div>
                                         {note.lastEditedBy && note.lastEditedAt && (
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                                                <span style={{
-                                                    padding: '0.15rem 0.4rem',
-                                                    background: '#f0f9ff',
-                                                    borderRadius: '0.4rem',
-                                                    fontWeight: '700',
-                                                    fontSize: '0.65rem',
-                                                    color: '#0ea5e9'
-                                                }}>
-                                                    {note.lastEditedBy.role.replace(/_/g, ' ')}
-                                                </span>
-                                                <span>
-                                                    {t('updated_by' as any) || 'Updated by'} {note.lastEditedBy.firstName} {note.lastEditedBy.lastName} {t('at' as any) || 'at'} {new Date(note.lastEditedAt).toLocaleDateString(locale === 'ar' ? 'ar-EG' : 'en-GB', { day: 'numeric', month: 'short' }) + ', ' + new Date(note.lastEditedAt).toLocaleDateString(locale === 'ar' ? 'ar-EG' : 'en-GB', { year: 'numeric' }) + ', ' + new Date(note.lastEditedAt).toLocaleTimeString(locale === 'ar' ? 'ar-EG' : 'en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}
-                                                </span>
+                                            <div className="flex items-center gap-2">
+                                                <div className="px-2 py-0.5 bg-sky-50 rounded text-[10px] font-bold text-sky-600 uppercase tracking-wider">
+                                                    {(note.lastEditedBy.role || 'USER').replace(/_/g, ' ')}
+                                                </div>
+                                                <div className="text-[11px] text-slate-400 italic">
+                                                    {t('updated_by' as any)} <span className="font-medium text-slate-500">{note.lastEditedBy.firstName} {note.lastEditedBy.lastName}</span>
+                                                </div>
                                             </div>
                                         )}
                                     </div>
 
-                                    <div style={{ display: 'flex', gap: '0.5rem' }}>
-                                        {isAuthorized && (
-                                            <button
-                                                onClick={() => {
-                                                    setEditingNote(note)
-                                                    setEditNoteContent(note.content)
-                                                    setEditExpiryDate(note.expiryDate ? new Date(note.expiryDate).toISOString().split('T')[0] : '')
-                                                    setEditReminderDays(note.reminderDays ? note.reminderDays.toString() : '')
-                                                    setIsEditModalOpen(true)
-                                                }}
-                                                className="btn"
-                                                style={{
-                                                    background: '#f1f5f9',
-                                                    color: '#475569',
-                                                    padding: '0.5rem 1rem',
-                                                    fontSize: '0.875rem',
-                                                    border: 'none',
-                                                    cursor: 'pointer',
-                                                    flexShrink: 0
-                                                }}
+                                    {/* Action Buttons */}
+                                    <div className="flex gap-2">
+                                        {note.attachment && (
+                                            <a
+                                                href={note.attachment}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="flex-grow flex items-center justify-center gap-2 px-3 py-2 bg-primary/5 hover:bg-primary/10 text-primary text-xs font-bold rounded-xl transition-all duration-200 border border-primary/10"
                                             >
-                                                {t('edit')}
-                                            </button>
+                                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                                    <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"></path>
+                                                </svg>
+                                                {t('view_attachment' as any) || 'View File'}
+                                            </a>
                                         )}
                                         {isAuthorized && (
-                                            <button
-                                                onClick={() => {
-                                                    setDeleteConfirm({ isOpen: true, note })
-                                                }}
-                                                className="btn"
-                                                style={{
-                                                    background: '#fee2e2',
-                                                    color: '#b91c1c',
-                                                    padding: '0.5rem 1rem',
-                                                    fontSize: '0.875rem',
-                                                    border: 'none',
-                                                    cursor: 'pointer',
-                                                    flexShrink: 0
-                                                }}
-                                            >
-                                                {t('delete')}
-                                            </button>
+                                            <div className="flex gap-1.5 ml-auto">
+                                                <button
+                                                    onClick={() => {
+                                                        setEditingNote(note)
+                                                        setEditNoteContent(note.content)
+                                                        setEditExpiryDate(note.expiryDate ? new Date(note.expiryDate).toISOString().split('T')[0] : '')
+                                                        setEditReminderDays(note.reminderDays ? note.reminderDays.toString() : '')
+                                                        setIsEditModalOpen(true)
+                                                    }}
+                                                    className="w-9 h-9 flex items-center justify-center rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-all border border-slate-200/50"
+                                                    title={t('edit')}
+                                                >
+                                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                                                </button>
+                                                <button
+                                                    onClick={() => setDeleteConfirm({ isOpen: true, note })}
+                                                    className="w-9 h-9 flex items-center justify-center rounded-xl bg-red-50 hover:bg-red-100 text-red-400 hover:text-red-500 transition-all border border-red-200/50"
+                                                    title={t('delete')}
+                                                >
+                                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                                                </button>
+                                            </div>
                                         )}
                                     </div>
-
                                 </div>
                             </div>
                         ))}

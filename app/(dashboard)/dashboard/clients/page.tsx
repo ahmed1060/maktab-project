@@ -195,22 +195,35 @@ export default function ClientsPage() {
                         <h3 className="text-xl font-bold text-slate-800">{t('no_clients_found')}</h3>
                     </div>
                 ) : (
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                         {filteredClients.map((client, index) => (
                             <div
                                 key={client.id}
-                                className="glass-card hover:bg-white/60 transition-all duration-300 p-5 border border-white/40 shadow-sm relative overflow-hidden flex flex-col gap-4"
+                                className="glass-card hover:bg-white/60 transition-all duration-300 p-4 border border-white/40 shadow-sm relative overflow-hidden"
                                 style={{
                                     animation: 'fadeIn 0.4s ease-out forwards',
-                                    animationDelay: `${index * 50}ms`
+                                    animationDelay: `${index * 50}ms`,
+                                    marginBottom: '0.5rem'
                                 }}
                             >
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                                        <h3 className="text-lg font-bold text-slate-800 leading-tight">
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', gap: '1rem' }}>
+                                    {/* Left Side: Title & Info */}
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                        <h3 className="text-lg font-bold text-slate-800 leading-tight" style={{ margin: 0 }}>
                                             {client.name}
                                         </h3>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#64748b', fontSize: '0.85rem', fontWeight: '600' }}>
+                                        <span style={{
+                                            padding: '0.25rem 0.75rem',
+                                            borderRadius: '9999px',
+                                            background: '#dbeafe',
+                                            color: '#1e40af',
+                                            fontSize: '0.875rem',
+                                            fontWeight: '600',
+                                            whiteSpace: 'nowrap',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '0.375rem'
+                                        }}>
                                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                                                 <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
                                                 <circle cx="9" cy="7" r="4"></circle>
@@ -218,24 +231,72 @@ export default function ClientsPage() {
                                                 <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
                                             </svg>
                                             {client._count.sections} {client._count.sections === 1 ? t('section_label') : t('sections_label')}
-                                        </div>
+                                        </span>
                                     </div>
-                                    <Link
-                                        href={`/dashboard/clients/${client.id}`}
-                                        className="btn btn-primary"
-                                        style={{
-                                            textDecoration: 'none',
-                                            fontSize: '0.8rem',
-                                            padding: '0.5rem 0.875rem',
-                                            borderRadius: '0.75rem',
-                                            fontWeight: '700'
-                                        }}
-                                    >
-                                        {t('view_client')}
-                                    </Link>
+
+                                    {/* Action Buttons Container */}
+                                    <div style={{ display: 'flex', gap: '0.5rem', marginLeft: locale === 'ar' ? '0' : 'auto', marginRight: locale === 'ar' ? 'auto' : '0' }}>
+                                        <Link
+                                            href={`/dashboard/clients/${client.id}`}
+                                            className="btn btn-primary"
+                                            style={{
+                                                textDecoration: 'none',
+                                                fontSize: '0.875rem',
+                                                padding: '0.5rem 1rem',
+                                                display: 'inline-block'
+                                            }}
+                                        >
+                                            {t('view_client')}
+                                        </Link>
+                                        <button
+                                            onClick={() => {
+                                                setEditingClientId(client.id)
+                                                setEditClientName(client.name)
+                                                setIsEditClientModalOpen(true)
+                                            }}
+                                            className="btn"
+                                            style={{
+                                                background: '#dbeafe',
+                                                color: '#1e40af',
+                                                padding: '0.5rem 1rem',
+                                                fontSize: '0.875rem',
+                                                border: 'none',
+                                                cursor: 'pointer'
+                                            }}
+                                        >
+                                            {t('edit')}
+                                        </button>
+                                        <button
+                                            onClick={(e) => {
+                                                e.preventDefault()
+                                                setDeleteConfirm({ isOpen: true, client })
+                                            }}
+                                            className="btn"
+                                            style={{
+                                                background: '#fee2e2',
+                                                color: '#b91c1c',
+                                                padding: '0.5rem 1rem',
+                                                fontSize: '0.875rem',
+                                                border: 'none',
+                                                cursor: 'pointer'
+                                            }}
+                                        >
+                                            {t('delete')}
+                                        </button>
+                                    </div>
                                 </div>
 
-                                <div style={{ fontSize: '0.75rem', color: '#94a3b8', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                                {/* Audit Trail */}
+                                <div style={{
+                                    fontSize: '0.75rem',
+                                    color: '#94a3b8',
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    gap: '0.25rem',
+                                    marginTop: '0.75rem',
+                                    paddingTop: '0.75rem',
+                                    borderTop: '1px dashed #f1f5f9'
+                                }}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                                         <span style={{
                                             padding: '0.15rem 0.4rem',
@@ -248,7 +309,7 @@ export default function ClientsPage() {
                                             {(client.createdBy?.role || 'SYSTEM').replace(/_/g, ' ')}
                                         </span>
                                         <span>
-                                            {t('Created by' as any) || 'Created by'} {client.createdBy ? `${client.createdBy.firstName} ${client.createdBy.lastName}` : 'System'} {t('at' as any) || 'at'} {new Date(client.createdAt).toLocaleDateString(locale === 'ar' ? 'ar-EG' : 'en-GB', { day: 'numeric', month: 'short' }) + ', ' + new Date(client.createdAt).toLocaleDateString(locale === 'ar' ? 'ar-EG' : 'en-GB', { year: 'numeric' }) + ', ' + new Date(client.createdAt).toLocaleTimeString(locale === 'ar' ? 'ar-EG' : 'en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}
+                                            {t('created_by' as any) || 'Created by'} {client.createdBy ? `${client.createdBy.firstName} ${client.createdBy.lastName}` : 'System'} {t('at' as any) || 'at'} {new Date(client.createdAt).toLocaleDateString(locale === 'ar' ? 'ar-EG' : 'en-GB', { day: 'numeric', month: 'short' }) + ', ' + new Date(client.createdAt).toLocaleDateString(locale === 'ar' ? 'ar-EG' : 'en-GB', { year: 'numeric' }) + ', ' + new Date(client.createdAt).toLocaleTimeString(locale === 'ar' ? 'ar-EG' : 'en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}
                                         </span>
                                     </div>
                                     {client.lastEditedBy && (
@@ -264,59 +325,10 @@ export default function ClientsPage() {
                                                 {client.lastEditedBy.role.replace(/_/g, ' ')}
                                             </span>
                                             <span>
-                                                {t('Updated by' as any) || 'Updated by'} {client.lastEditedBy.firstName} {client.lastEditedBy.lastName} {t('at' as any) || 'at'} {new Date(client.updatedAt).toLocaleDateString(locale === 'ar' ? 'ar-EG' : 'en-GB', { day: 'numeric', month: 'short' }) + ', ' + new Date(client.updatedAt).toLocaleDateString(locale === 'ar' ? 'ar-EG' : 'en-GB', { year: 'numeric' }) + ', ' + new Date(client.updatedAt).toLocaleTimeString(locale === 'ar' ? 'ar-EG' : 'en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}
+                                                {t('updated_by' as any) || 'Updated by'} {client.lastEditedBy.firstName} {client.lastEditedBy.lastName} {t('at' as any) || 'at'} {new Date(client.updatedAt).toLocaleDateString(locale === 'ar' ? 'ar-EG' : 'en-GB', { day: 'numeric', month: 'short' }) + ', ' + new Date(client.updatedAt).toLocaleDateString(locale === 'ar' ? 'ar-EG' : 'en-GB', { year: 'numeric' }) + ', ' + new Date(client.updatedAt).toLocaleTimeString(locale === 'ar' ? 'ar-EG' : 'en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}
                                             </span>
                                         </div>
                                     )}
-                                </div>
-
-                                <div style={{ display: 'flex', gap: '0.5rem', marginTop: 'auto', paddingTop: '1rem', borderTop: '1px dashed #e2e8f0' }}>
-                                    <button
-                                        onClick={() => {
-                                            setEditingClientId(client.id)
-                                            setEditClientName(client.name)
-                                            setIsEditClientModalOpen(true)
-                                        }}
-                                        className="btn"
-                                        style={{
-                                            flex: 1,
-                                            background: '#f8fafc',
-                                            color: '#475569',
-                                            padding: '0.5rem',
-                                            fontSize: '0.875rem',
-                                            fontWeight: '700',
-                                            borderRadius: '0.75rem',
-                                            border: '1px solid #e2e8f0',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'center',
-                                            gap: '0.375rem'
-                                        }}
-                                    >
-                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
-                                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-                                        </svg>
-                                        {t('edit')}
-                                    </button>
-                                    <button
-                                        onClick={(e) => {
-                                            e.preventDefault()
-                                            setDeleteConfirm({ isOpen: true, client })
-                                        }}
-                                        className="btn"
-                                        style={{
-                                            flex: 1,
-                                            background: '#fee2e2',
-                                            color: '#dc2626',
-                                            padding: '0.5rem',
-                                            fontSize: '0.875rem',
-                                            fontWeight: '700',
-                                            borderRadius: '0.75rem'
-                                        }}
-                                    >
-                                        {t('delete')}
-                                    </button>
                                 </div>
                             </div>
                         ))}
