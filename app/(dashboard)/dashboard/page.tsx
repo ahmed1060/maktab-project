@@ -183,10 +183,10 @@ export default async function DashboardPage({ searchParams }: { searchParams: { 
         })
 
         const totalTasks = myTasks.length
-        const completedTasks = myTasks.filter(t => t.status === 'COMPLETED').length
-        const pendingTasks = myTasks.filter(t => t.status === 'PENDING' || t.status === 'IN_PROGRESS').length
-        const reviewTasks = myTasks.filter(t => t.status === 'PENDING_CONFIRMATION').length
-        const rejectedTasks = myTasks.filter(t => t.status === 'REJECTED').length
+        const completedTasks = myTasks.filter((t: any) => t.status === 'COMPLETED').length
+        const pendingTasks = myTasks.filter((t: any) => t.status === 'PENDING' || t.status === 'IN_PROGRESS').length
+        const reviewTasks = myTasks.filter((t: any) => t.status === 'PENDING_CONFIRMATION').length
+        const rejectedTasks = myTasks.filter((t: any) => t.status === 'REJECTED').length
 
         const completionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0
 
@@ -226,7 +226,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: { 
         const today = new Date()
         today.setHours(0, 0, 0, 0)
 
-        const todayTasks = myTasks.filter(task => {
+        const todayTasks = myTasks.filter((task: any) => {
             const deadline = new Date(task.deadline)
             deadline.setHours(0, 0, 0, 0)
             return deadline.getTime() === today.getTime() && task.status !== 'APPROVED' && task.status !== 'COMPLETED'
@@ -292,7 +292,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: { 
                                 </div>
                             </div>
                         ) : (
-                            todayTasks.map((task, idx) => (
+                            todayTasks.map((task: any, idx: number) => (
                                 <Link key={task.id} href={`/dashboard/tasks/${task.id}`} style={{ textDecoration: 'none', color: 'inherit', display: 'block' }}>
                                     <div className="glass-card" style={{ height: '100%', boxSizing: 'border-box', [locale === 'ar' ? 'borderRight' : 'borderLeft']: '6px solid #ef4444', padding: '1.75rem' }}>
                                         <div style={{ marginBottom: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>

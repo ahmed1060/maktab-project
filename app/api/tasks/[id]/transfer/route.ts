@@ -27,7 +27,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     try {
         const result = await prisma.$transaction(async (tx) => {
             // 1. Fetch original task with assignees
-            const originalTask = await tx.task.findUnique({
+            const originalTask = await (tx.task as any).findUnique({
                 where: { id: params.id },
                 include: { assignees: true }
             })
@@ -75,7 +75,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
                 type: 'TASK_TRANSFERRED'
             }
 
-            await tx.task.update({
+            await (tx.task as any).update({
                 where: { id: params.id },
                 data: {
                     status: 'PENDING_CONFIRMATION',
@@ -102,7 +102,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
 
             const createdTasks = []
             for (const newId of addedIds) {
-                const newTask = await tx.task.create({
+                const newTask = await (tx.task as any).create({
                     data: {
                         title: originalTask.title + " (Transfer Copy)",
                         description: originalTask.description,

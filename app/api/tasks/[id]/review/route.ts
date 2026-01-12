@@ -21,7 +21,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
 
     const result = await prisma.$transaction(async (tx) => {
         // 1. Fetch current task state to calculate point delta
-        const oldTask = await tx.task.findUnique({
+        const oldTask = await (tx.task as any).findUnique({
             where: { id: params.id },
             select: { status: true, difficulty: true, assigneeId: true, totalCost: true, assignees: { select: { id: true } } }
         })
@@ -66,7 +66,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
         }
 
         // 4. Update Task
-        const task = await tx.task.update({
+        const task = await (tx.task as any).update({
             where: { id: params.id },
             data: {
                 status: newStatus,
@@ -79,7 +79,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
         // 5. Apply Point Delta to ALL Assignees
         if (pointDelta !== 0) {
             const allAssigneeIds = Array.from(new Set([
-                ...(oldTask.assignees?.map((a: { id: string }) => a.id) || []),
+                ...((oldTask as any).assignees?.map((a: { id: string }) => a.id) || []),
                 oldTask.assigneeId
             ])).filter(Boolean)
 
@@ -101,13 +101,13 @@ export async function POST(req: Request, { params }: { params: { id: string } })
         }
 
         // Notify all assignees
-        const allAssigneeIds = Array.from(new Set([
-            ...(task.assignees?.map((a: { id: string }) => a.id) || []),
+        const allAssigneeIdsForNotification = Array.from(new Set([
+            ...((task as any).assignees?.map((a: { id: string }) => a.id) || []),
             task.assigneeId
         ])).filter(Boolean)
 
         await tx.notification.createMany({
-            data: allAssigneeIds.map(aId => ({
+            data: allAssigneeIdsForNotification.map(aId => ({
                 userId: aId,
                 type: newStatus === 'APPROVED' ? 'TASK_APPROVED' : newStatus === 'COMPLETED' ? 'TASK_COMPLETED' : 'TASK_REJECTED',
                 message: `Your task "${task.title}" has been ${newStatus === 'APPROVED' ? 'approved' : newStatus === 'COMPLETED' ? 'marked as completed' : 'rejected'}`,
