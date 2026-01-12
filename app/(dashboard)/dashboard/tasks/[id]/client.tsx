@@ -216,7 +216,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
         console.log('handleUpload started, isDraft:', isDraft)
 
         try {
-            let uploadedUrls: string[] = []
+            const uploadedUrls: string[] = []
             if (pendingFiles.length > 0) {
                 for (const file of pendingFiles) {
                     const formData = new FormData()
