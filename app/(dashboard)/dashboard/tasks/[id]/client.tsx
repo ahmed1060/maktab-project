@@ -38,9 +38,12 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
     const [inputKey, setInputKey] = useState(Date.now())
     const [isDragging, setIsDragging] = useState(false)
     const [costEntries, setCostEntries] = useState<any[]>([])
+    const [transferAssigneeIds, setTransferAssigneeIds] = useState<string[]>([])
     const [isTransferModalOpen, setIsTransferModalOpen] = useState(false)
-    const [transferAssigneeId, setTransferAssigneeId] = useState('')
     const [allUsers, setAllUsers] = useState<any[]>([])
+    const [userFetchError, setUserFetchError] = useState(false)
+    const [searchTermEdit, setSearchTermEdit] = useState('')
+    const [searchTermTransfer, setSearchTermTransfer] = useState('')
     const [transferring, setTransferring] = useState(false)
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
     const [showRevertConfirm, setShowRevertConfirm] = useState(false)
@@ -108,6 +111,24 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
             // Logic to track if they've seen it could be here
         }
     }, [userId, task.assigneeId, task.assignees, task.isEdited, isEditedPersistent])
+
+    // Load users once for search/filter efficiency
+    useEffect(() => {
+        if (['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole)) {
+            fetch('/api/users')
+                .then(r => {
+                    if (!r.ok) throw new Error()
+                    return r.json()
+                })
+                .then(data => {
+                    const filtered = userRole === 'TEAM_LEADER'
+                        ? data.filter((u: any) => !['ADMIN', 'SUPER_ADMIN'].includes(u.role))
+                        : data
+                    setAllUsers(filtered)
+                })
+                .catch(() => setUserFetchError(true))
+        }
+    }, [userRole])
 
     const handleDismiss = async () => {
         try {
@@ -358,21 +379,24 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
     }
 
     const handleTransfer = async () => {
-        if (!transferAssigneeId || transferring) return
+        if (transferAssigneeIds.length === 0 || transferring) return
         setTransferring(true)
         try {
             const res = await fetch(`/api/tasks/${task.id}/transfer`, {
                 method: 'POST',
-                body: JSON.stringify({ newAssigneeId: transferAssigneeId }),
+                body: JSON.stringify({ newAssigneeIds: transferAssigneeIds }),
                 headers: { 'Content-Type': 'application/json' }
             })
-            if (!res.ok) throw new Error('Transfer failed')
+            if (!res.ok) {
+                const data = await res.json().catch(() => ({}))
+                throw new Error(data.message || 'Transfer failed')
+            }
             showToast(t('task_transfer_success'), 'success')
             setIsTransferModalOpen(false)
             router.refresh()
-        } catch (e) {
+        } catch (e: any) {
             console.error(e)
-            showToast(t('failed_transfer_task'), 'error')
+            showToast(e.message || t('failed_transfer_task'), 'error')
         } finally {
             setTransferring(false)
         }
@@ -974,7 +998,11 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
             {/* Transfer Link (Admins only) */}
             {['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole) && ['IN_PROGRESS', 'PENDING'].includes(task.status) && (
                 <div style={{ marginTop: '2rem', textAlign: locale === 'ar' ? 'left' : 'right' }}>
-                    <button onClick={() => { if (allUsers.length === 0) fetch('/api/users').then(r => r.json()).then(data => { const filtered = userRole === 'TEAM_LEADER' ? data.filter((u: any) => !['ADMIN', 'SUPER_ADMIN'].includes(u.role)) : data; setAllUsers(filtered); }); setIsTransferModalOpen(true); }} style={{ background: 'none', border: 'none', color: '#64748b', textDecoration: 'underline', cursor: 'pointer', fontSize: '0.875rem' }}>{t('transfer_to_another_employee')}</button>
+                    <button onClick={() => {
+                        const currentIds = task.assignees?.map((a: any) => a.id) || (task.assigneeId ? [task.assigneeId] : [])
+                        setTransferAssigneeIds(currentIds)
+                        setIsTransferModalOpen(true)
+                    }} style={{ background: 'none', border: 'none', color: '#64748b', textDecoration: 'underline', cursor: 'pointer', fontSize: '0.875rem' }}>{t('transfer_to_another_employee')}</button>
                 </div>
             )}
 
@@ -995,8 +1023,8 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                     <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem', justifyContent: 'flex-end', flexDirection: 'row' }}>
                         <button onClick={() => setShowDeleteConfirm(false)} className="btn" style={{ background: '#e2e8f0' }}>{t('cancel')}</button>
                         <button onClick={() => {
-                            if (allUsers.length === 0) fetch('/api/users').then(r => r.json()).then(data => { const filtered = userRole === 'TEAM_LEADER' ? data.filter((u: any) => !['ADMIN', 'SUPER_ADMIN'].includes(u.role)) : data; setAllUsers(filtered); });
-                            handleEditClick();
+                            setShowDeleteConfirm(false)
+                            handleEditClick()
                         }} className="btn" style={{ background: '#2563eb', color: 'white' }}>{t('edit')}</button>
                     </div>
                 </div>
@@ -1022,6 +1050,14 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                     </div>
                     <div style={{ marginBottom: '1.25rem' }}>
                         <label className="label">{t('assignee_label')}</label>
+                        <input
+                            type="text"
+                            className="input"
+                            placeholder={t('search_placeholder')}
+                            value={searchTermEdit}
+                            onChange={e => setSearchTermEdit(e.target.value)}
+                            style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}
+                        />
                         <div style={{
                             maxHeight: '150px',
                             overflowY: 'auto',
@@ -1030,32 +1066,39 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                             padding: '0.75rem',
                             background: '#f8fafc'
                         }}>
-                            {allUsers.length > 0 ? allUsers.map(u => (
-                                <label key={u.id} style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '0.5rem',
-                                    marginBottom: '0.5rem',
-                                    cursor: 'pointer',
-                                    padding: '0.25rem'
-                                }}>
-                                    <input
-                                        type="checkbox"
-                                        checked={editForm.assigneeIds?.includes(u.id)}
-                                        onChange={e => {
-                                            const currentIds = editForm.assigneeIds || []
-                                            if (e.target.checked) {
-                                                setEditForm(prev => ({ ...prev, assigneeIds: [...(prev.assigneeIds || []), u.id] }))
-                                            } else {
-                                                setEditForm(prev => ({ ...prev, assigneeIds: (prev.assigneeIds || []).filter((id: string) => id !== u.id) }))
-                                            }
-                                        }}
-                                    />
-                                    <span>
-                                        {u.firstName} {u.lastName} <small>({u.role})</small>
-                                    </span>
-                                </label>
-                            )) : (
+                            {allUsers.length > 0 ? (
+                                allUsers.filter(u => `${u.firstName} ${u.lastName}`.toLowerCase().includes(searchTermEdit.toLowerCase())).length > 0 ? (
+                                    allUsers.filter(u => `${u.firstName} ${u.lastName}`.toLowerCase().includes(searchTermEdit.toLowerCase())).map(u => (
+                                        <label key={u.id} style={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '0.5rem',
+                                            marginBottom: '0.5rem',
+                                            cursor: 'pointer',
+                                            padding: '0.25rem'
+                                        }}>
+                                            <input
+                                                type="checkbox"
+                                                checked={editForm.assigneeIds?.includes(u.id)}
+                                                onChange={e => {
+                                                    if (e.target.checked) {
+                                                        setEditForm(prev => ({ ...prev, assigneeIds: [...(prev.assigneeIds || []), u.id] }))
+                                                    } else {
+                                                        setEditForm(prev => ({ ...prev, assigneeIds: (prev.assigneeIds || []).filter((id: string) => id !== u.id) }))
+                                                    }
+                                                }}
+                                            />
+                                            <span style={{ fontSize: '0.9rem' }}>
+                                                {u.firstName} {u.lastName} <small style={{ color: '#64748b' }}>({t(`role_${u.role?.toLowerCase()}` as any)})</small>
+                                            </span>
+                                        </label>
+                                    ))
+                                ) : (
+                                    <div style={{ fontSize: '0.9rem', color: '#64748b', textAlign: 'center' }}>{t('no_data_available')}</div>
+                                )
+                            ) : userFetchError ? (
+                                <div style={{ fontSize: '0.9rem', color: '#ef4444' }}>{t('failed_fetch_data')}</div>
+                            ) : (
                                 <div style={{ fontSize: '0.9rem', color: '#64748b' }}>{locale === 'ar' ? 'جاري التحميل...' : 'Loading...'}</div>
                             )}
                         </div>
@@ -1078,15 +1121,65 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
             <Modal isOpen={isTransferModalOpen} onClose={() => setIsTransferModalOpen(false)} title={t('transfer_task_title')} hideFooter>
                 <div style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>
                     <p style={{ marginBottom: '1.25rem', lineHeight: '1.5' }}>{t('transfer_task_msg')}</p>
-                    <select className="input" style={{ width: '100%', marginBottom: '1.5rem' }} value={transferAssigneeId} onChange={e => setTransferAssigneeId(e.target.value)}>
-                        <option value="">{t('select_employee_placeholder')}...</option>
-                        {allUsers.filter(u => u.id !== task.assigneeId && u.id !== userId).map(u => (
-                            <option key={u.id} value={u.id}>{u.firstName} {u.lastName} ({u.role})</option>
-                        ))}
-                    </select>
+
+                    <input
+                        type="text"
+                        className="input"
+                        placeholder={t('search_placeholder')}
+                        value={searchTermTransfer}
+                        onChange={e => setSearchTermTransfer(e.target.value)}
+                        style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}
+                    />
+
+                    <div style={{
+                        maxHeight: '200px',
+                        overflowY: 'auto',
+                        border: '1px solid #e2e8f0',
+                        borderRadius: '0.5rem',
+                        padding: '0.75rem',
+                        background: '#f8fafc',
+                        marginBottom: '1.5rem'
+                    }}>
+                        {allUsers.length > 0 ? (
+                            allUsers.filter(u => `${u.firstName} ${u.lastName}`.toLowerCase().includes(searchTermTransfer.toLowerCase())).length > 0 ? (
+                                allUsers.filter(u => `${u.firstName} ${u.lastName}`.toLowerCase().includes(searchTermTransfer.toLowerCase())).map(u => (
+                                    <label key={u.id} style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '0.5rem',
+                                        marginBottom: '0.5rem',
+                                        cursor: 'pointer',
+                                        padding: '0.25rem'
+                                    }}>
+                                        <input
+                                            type="checkbox"
+                                            checked={transferAssigneeIds.includes(u.id)}
+                                            onChange={e => {
+                                                if (e.target.checked) {
+                                                    setTransferAssigneeIds([...transferAssigneeIds, u.id])
+                                                } else {
+                                                    setTransferAssigneeIds(transferAssigneeIds.filter(id => id !== u.id))
+                                                }
+                                            }}
+                                        />
+                                        <span style={{ fontSize: '0.9rem' }}>
+                                            {u.firstName} {u.lastName} <small style={{ color: '#64748b' }}>({t(`role_${u.role?.toLowerCase()}` as any)})</small>
+                                        </span>
+                                    </label>
+                                ))
+                            ) : (
+                                <div style={{ fontSize: '0.9rem', color: '#64748b', textAlign: 'center' }}>{t('no_data_available')}</div>
+                            )
+                        ) : userFetchError ? (
+                            <div style={{ fontSize: '0.9rem', color: '#ef4444' }}>{t('failed_fetch_data')}</div>
+                        ) : (
+                            <div style={{ fontSize: '0.9rem', color: '#64748b' }}>{locale === 'ar' ? 'جاري التحميل...' : 'Loading...'}</div>
+                        )}
+                    </div>
+
                     <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', flexDirection: 'row' }}>
                         <button onClick={() => setIsTransferModalOpen(false)} className="btn" style={{ background: '#e2e8f0' }}>{t('cancel')}</button>
-                        <button onClick={handleTransfer} disabled={!transferAssigneeId || transferring} className="btn btn-primary">{transferring ? '...' : t('confirm_transfer_button')}</button>
+                        <button onClick={handleTransfer} disabled={transferAssigneeIds.length === 0 || transferring} className="btn btn-primary">{transferring ? '...' : t('confirm_transfer_button')}</button>
                     </div>
                 </div>
             </Modal>

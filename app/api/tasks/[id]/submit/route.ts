@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { verifyResourceAccess } from "@/lib/security"
+import { translations, Locale } from "@/lib/translations"
 
 export async function PUT(req: Request, { params }: { params: { id: string } }) {
     const session = await getServerSession(authOptions)
@@ -196,8 +197,15 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
                             }
 
                             // Add System Comment about Penalty
+                            const userLang = ((session.user as any).language || 'en') as Locale
+                            const timeStr = now.toLocaleTimeString(userLang === 'ar' ? 'ar-EG' : 'en-US')
+                            const msgTemplate = translations[userLang].lateness_penalty_msg
+                            const msg = msgTemplate
+                                .replace('{days}', penaltyDays.toString())
+                                .replace('{time}', timeStr)
+
                             comments.push({
-                                text: `⚠️ Automatic Lateness Penalty: ${penaltyDays} day(s) deducted for late check-in on deadline day (Time: ${now.toLocaleTimeString()}).`,
+                                text: msg,
                                 author: 'System',
                                 date: new Date().toISOString(),
                                 type: 'SYSTEM_DEDUCTION'

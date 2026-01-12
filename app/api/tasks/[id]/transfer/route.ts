@@ -16,138 +16,125 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     }
 
     const json = await req.json()
-    const { newAssigneeId } = json
+    const { newAssigneeIds } = json
     const userId = (session.user as any).id
     const userRole = (session.user as any).role
 
-    if (!newAssigneeId) return new NextResponse("New Assignee ID required", { status: 400 })
+    if (!newAssigneeIds || !Array.isArray(newAssigneeIds) || newAssigneeIds.length === 0) {
+        return new NextResponse("New Assignee IDs array required", { status: 400 })
+    }
 
     try {
         const result = await prisma.$transaction(async (tx) => {
-            // 1. Fetch original task
+            // 1. Fetch original task with assignees
             const originalTask = await tx.task.findUnique({
-                where: { id: params.id }
+                where: { id: params.id },
+                include: { assignees: true }
             })
 
             if (!originalTask) throw new Error("Task not found")
 
-            // Permission check: assignee or admin/team leader
-            if (originalTask.assigneeId !== userId && !['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole)) {
+            // Permission check
+            const currentAssigneeIds = originalTask.assignees.map((a: any) => a.id)
+            if (!currentAssigneeIds.includes(originalTask.assigneeId)) {
+                currentAssigneeIds.push(originalTask.assigneeId)
+            }
+
+            const isAssignee = currentAssigneeIds.includes(userId)
+            if (!isAssignee && !['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole)) {
                 throw new Error("Unauthorized to transfer this task")
             }
 
-            // TEAM_LEADER Restriction: Cannot transfer to ADMIN or SUPER_ADMIN
-            if (userRole === 'TEAM_LEADER') {
-                const newAssignee = await tx.user.findUnique({
-                    where: { id: newAssigneeId },
+            // Identify changes
+            const keptIds = newAssigneeIds.filter((id: string) => currentAssigneeIds.includes(id))
+            const addedIds = newAssigneeIds.filter((id: string) => !currentAssigneeIds.includes(id))
+            const removedIds = currentAssigneeIds.filter((id: string) => !newAssigneeIds.includes(id))
+
+            // TEAM_LEADER Restriction check for ADDED users
+            if (userRole === 'TEAM_LEADER' && addedIds.length > 0) {
+                const targetUsers = await tx.user.findMany({
+                    where: { id: { in: addedIds } },
                     select: { role: true }
                 })
-                if (newAssignee && ['ADMIN', 'SUPER_ADMIN'].includes(newAssignee.role)) {
+                if (targetUsers.some(u => ['ADMIN', 'SUPER_ADMIN'].includes(u.role))) {
                     throw new Error("Team Leaders cannot transfer tasks to Admins or Super Admins")
                 }
             }
 
-            // 2. Update original task to SUBMITTED
-            // We append a comment to indicate it was transferred
+            // 2. Prepare original task update
             let existingComments: any[] = []
             try {
                 existingComments = originalTask.comments ? JSON.parse(originalTask.comments) : []
                 if (!Array.isArray(existingComments)) existingComments = []
-            } catch {
-                existingComments = []
-            }
+            } catch { existingComments = [] }
 
             const transferComment = {
-                text: "Task transferred to new employee. (Auto-submitted for review)",
+                text: `Task transfer processed. (Updated assignees, added ${addedIds.length} new copies).`,
                 author: "System",
-                date: new Date().toISOString()
+                date: new Date().toISOString(),
+                type: 'TASK_TRANSFERRED'
             }
 
             await tx.task.update({
                 where: { id: params.id },
                 data: {
                     status: 'PENDING_CONFIRMATION',
-                    difficulty: originalTask.difficulty,
+                    assignees: {
+                        set: keptIds.map(id => ({ id }))
+                    },
+                    // If the primary assignee was removed, pick the first kept one as primary
+                    assigneeId: keptIds.includes(originalTask.assigneeId) ? originalTask.assigneeId : (keptIds[0] || originalTask.assigneeId),
                     comments: JSON.stringify([...existingComments, transferComment]),
                     lastStatusUpdateBy: `${(session.user as any).role} ${(session.user as any).name}`
                 }
             })
 
-            // The point awarding logic for 'APPROVED' or 'COMPLETED' status is typically handled
-            // in the endpoint responsible for approving/completing tasks, not transferring them.
-            // When a task is transferred, its status is set to 'PENDING_CONFIRMATION'.
-            // If this logic is intended to be applied here, it would need a 'status' variable
-            // representing the *new* status of the original task, which is 'PENDING_CONFIRMATION',
-            // and thus the 'if (status === 'APPROVED' || status === 'COMPLETED')' condition
-            // would never be met in this transfer context.
-            //
-            // For faithful adherence to the instruction, if the intent was to add this logic
-            // *somewhere* in the transaction, but it's syntactically incorrect and logically
-            // misplaced here, I will place it as a comment to indicate where it *would* go
-            // if the context were different (e.g., in a status update endpoint).
-            //
-            // // Add difficulty points to assignee if approved or completed
-            // if (originalTask.status === 'APPROVED' || originalTask.status === 'COMPLETED') { // Assuming 'status' refers to the *new* status of the original task, which is 'PENDING_CONFIRMATION' here. This condition would not be met.
-            //     try {
-            //         await tx.user.update({
-            //             where: { id: originalTask.assigneeId }, // Use originalTask.assigneeId for the original task
-            //             data: {
-            //                 totalDifficultyPoints: {
-            //                     increment: originalTask.difficulty
-            //                 }
-            //             }
-            //         })
-            //     } catch (error) {
-            //         console.error("Failed to update user points (ignoring):", error)
-            //         // Ignore point update failure (e.g. user deleted) so we can still complete the task
-            //     }
-            // }
-
-
-            // 3. Create new task (Clone)
-            // We copy Description, Title, Deadline, etc.
-            // Status starts as PENDING for the new guy.
+            // 3. Create Clones for NEW assignees
             let commentsToClone: any[] = []
             try {
                 if (originalTask.comments) {
                     const parsed = JSON.parse(originalTask.comments)
                     if (Array.isArray(parsed)) {
-                        commentsToClone = parsed.filter((c: any) => c.type !== 'COST_ADDITION' && c.type !== 'LOCATION_ADDED')
+                        commentsToClone = parsed.filter((c: any) => c.type !== 'COST_ADDITION' && c.type !== 'LOCATION_ADDED' && c.type !== 'TASK_TRANSFERRED')
                     }
                 }
             } catch { commentsToClone = [] }
 
-            const newTask = await tx.task.create({
-                data: {
-                    title: originalTask.title + " (Transfer Copy)",
-                    description: originalTask.description,
-                    assigneeId: newAssigneeId,
-                    deadline: originalTask.deadline,
-                    difficulty: originalTask.difficulty,
-                    status: 'PENDING',
-                    createdBy: originalTask.createdBy,
-                    attachments: originalTask.attachments,
-                    // Exclude totalCost and location explicitly (let defaults take over)
-                    comments: JSON.stringify([...commentsToClone, {
-                        text: `Transferred from task "${originalTask.title}".`,
-                        author: "System",
-                        date: new Date().toISOString()
-                    }])
-                }
-            })
+            const createdTasks = []
+            for (const newId of addedIds) {
+                const newTask = await tx.task.create({
+                    data: {
+                        title: originalTask.title + " (Transfer Copy)",
+                        description: originalTask.description,
+                        assigneeId: newId,
+                        assignees: { connect: [{ id: newId }] },
+                        deadline: originalTask.deadline,
+                        difficulty: originalTask.difficulty,
+                        status: 'PENDING',
+                        createdBy: originalTask.createdBy,
+                        attachments: originalTask.attachments,
+                        location: originalTask.location,
+                        comments: JSON.stringify([...commentsToClone, {
+                            text: `Transferred from task "${originalTask.title}".`,
+                            author: "System",
+                            date: new Date().toISOString(),
+                            type: 'TASK_CREATED'
+                        }])
+                    }
+                })
 
-            // 4. Notifications
-            // Notify new assignee
-            await tx.notification.create({
-                data: {
-                    userId: newAssigneeId,
-                    type: 'TASK_ASSIGNED',
-                    message: `You have been assigned a transferred task: ${newTask.title}`,
-                    relatedId: newTask.id
-                }
-            })
+                await tx.notification.create({
+                    data: {
+                        userId: newId,
+                        type: 'TASK_ASSIGNED',
+                        message: `You have been assigned a transferred task: ${newTask.title}`,
+                        relatedId: newTask.id
+                    }
+                })
+                createdTasks.push(newTask)
+            }
 
-            // Audit
+            // 4. Audit
             await tx.auditLog.create({
                 data: {
                     action: 'TRANSFER_TASK',
@@ -155,11 +142,16 @@ export async function POST(req: Request, { params }: { params: { id: string } })
                     entityId: originalTask.id,
                     userId: userRole === 'SUPER_ADMIN' ? null : userId,
                     superAdminId: userRole === 'SUPER_ADMIN' ? userId : null,
-                    details: JSON.stringify({ newTaskId: newTask.id, newAssigneeId })
+                    details: JSON.stringify({
+                        addedCount: addedIds.length,
+                        removedCount: removedIds.length,
+                        keptCount: keptIds.length,
+                        newAssigneeIds: addedIds
+                    })
                 }
             })
 
-            return newTask
+            return { originalId: originalTask.id, clones: createdTasks.length }
         })
 
         return NextResponse.json(result)

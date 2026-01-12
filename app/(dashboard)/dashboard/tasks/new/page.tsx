@@ -113,6 +113,13 @@ export default function NewTaskPage() {
         textAlign: locale === 'ar' ? 'right' : 'left'
     }
 
+    const [searchTerm, setSearchTerm] = useState('')
+
+    const filteredUsers = users.filter(u => {
+        const fullName = `${u.firstName} ${u.lastName}`.toLowerCase()
+        return fullName.includes(searchTerm.toLowerCase())
+    })
+
     return (
         <div className="card" style={{ maxWidth: '600px', margin: '0 auto', ...containerStyle }}>
             <h1 style={{ marginBottom: '1.5rem' }}>{t('create_new_task')}</h1>
@@ -182,6 +189,14 @@ export default function NewTaskPage() {
                 </div>
                 <div style={{ marginBottom: '1.25rem' }}>
                     <label style={{ display: 'block', marginBottom: '0.5rem' }}>{t('assignee_label')}</label>
+                    <input
+                        type="text"
+                        className="input"
+                        placeholder={t('search_placeholder')}
+                        value={searchTerm}
+                        onChange={e => setSearchTerm(e.target.value)}
+                        style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}
+                    />
                     <div style={{
                         maxHeight: '200px',
                         overflowY: 'auto',
@@ -190,7 +205,7 @@ export default function NewTaskPage() {
                         padding: '0.75rem',
                         background: '#fff'
                     }}>
-                        {users.map(u => (
+                        {filteredUsers.length > 0 ? filteredUsers.map(u => (
                             <label key={u.id} style={{
                                 display: 'flex',
                                 alignItems: 'center',
@@ -217,7 +232,11 @@ export default function NewTaskPage() {
                                     {u.firstName} {u.lastName} <small style={{ color: '#64748b' }}>({t(`role_${u.role?.toLowerCase().replace('team_leader', 'team_leader').replace('employee', 'employee').replace('admin', 'admin')}` as any)})</small>
                                 </span>
                             </label>
-                        ))}
+                        )) : (
+                            <div style={{ color: '#64748b', fontSize: '0.9rem', textAlign: 'center', padding: '1rem' }}>
+                                {t('no_data_available')}
+                            </div>
+                        )}
                     </div>
                     {fieldErrors.assigneeIds && (
                         <div style={{ color: '#ef4444', fontSize: '0.85rem', marginTop: '0.25rem' }}>
