@@ -13,6 +13,7 @@ export default function ObligationDetailClient({ obligation, userRole }: { oblig
     const [showFeedback, setShowFeedback] = useState(false)
     const [feedbackMessage, setFeedbackMessage] = useState('')
     const [userId, setUserId] = useState<string | null>(null) // We need this to check if user is the assignee
+    const [isReverting, setIsReverting] = useState(false)
     const router = useRouter()
 
     useEffect(() => {
@@ -228,14 +229,28 @@ export default function ObligationDetailClient({ obligation, userRole }: { oblig
     }
 
     const handleForceComplete = async () => {
+        // ... (existing code)
+    }
+
+    const handleRevert = async () => {
+        if (!confirm(t('confirm_action_button') + '?')) return
+        setIsReverting(true)
         try {
-            await fetch(`/api/obligations/${obligation.id}`, {
-                method: 'PUT',
-                body: JSON.stringify({ status: 'COMPLETED' }),
-                headers: { 'Content-Type': 'application/json' }
-            })
+            const res = await fetch(`/api/obligations/${obligation.id}/revert`, { method: 'POST' })
+            if (!res.ok) {
+                const data = await res.json()
+                throw new Error(data.message || 'Revert failed')
+            }
+            setFeedbackMessage(t('obligation_reverted_success'))
+            setShowFeedback(true)
             router.refresh()
-        } catch (error) { console.error(error) }
+        } catch (e: any) {
+            console.error(e)
+            setFeedbackMessage(t('failed_revert_obligation'))
+            setShowFeedback(true)
+        } finally {
+            setIsReverting(false)
+        }
     }
 
     const containerStyle: React.CSSProperties = {
@@ -333,6 +348,23 @@ export default function ObligationDetailClient({ obligation, userRole }: { oblig
                     >
                         {t('close_button')}
                     </button>
+                    {userRole === 'SUPER_ADMIN' && ['APPROVED', 'COMPLETED', 'REJECTED'].includes(obligation.status) && (
+                        <button
+                            onClick={handleRevert}
+                            disabled={isReverting}
+                            style={{
+                                background: '#f8fafc',
+                                color: '#475569',
+                                border: '1px solid #cbd5e1',
+                                borderRadius: '0.25rem',
+                                padding: '0.5rem 1rem',
+                                cursor: 'pointer',
+                                fontWeight: '600'
+                            }}
+                        >
+                            {isReverting ? t('reverting') : t('return_to_in_progress')}
+                        </button>
+                    )}
                     {['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole) && (userRole === 'TEAM_LEADER' || userId !== obligation.assigneeId) && (
                         <button
                             onClick={() => setShowDeleteConfirm(true)}

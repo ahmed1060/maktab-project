@@ -61,6 +61,7 @@ model User {
   salaryRecords              SalaryRecord[]
   salaryAdjustments          SalaryAdjustment[]
   tasks                      Task[]                 @relation("AssignedTasks")
+  assignedTasks              Task[]                 @relation("TaskAssignees")
   createdTasks               Task[]                 @relation("CreatedTasks")
   dayOffCredit               Float                  @default(0)
   dayOffRequests             DayOffRequest[]
@@ -93,6 +94,7 @@ model Task {
   lastStatusUpdateBy String?
   lastEditBy         String?
   assignee           User     @relation("AssignedTasks", fields: [assigneeId], references: [id])
+  assignees          User[]   @relation("TaskAssignees")
   creator            User?    @relation("CreatedTasks", fields: [createdBy], references: [id])
 
   @@index([assigneeId])

@@ -47,7 +47,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
     const [editForm, setEditForm] = useState({
         title: initialTask.title,
         description: initialTask.description,
-        assigneeId: initialTask.assigneeId,
+        assigneeIds: initialTask.assignees?.map((a: any) => a.id) || [initialTask.assigneeId],
         deadline: initialTask.deadline,
         difficulty: initialTask.difficulty,
         location: initialTask.location || ''
@@ -65,6 +65,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
     const [showSubmitConfirm, setShowSubmitConfirm] = useState(false)
     const [itemToDelete, setItemToDelete] = useState<{ type: 'ATTACHMENT' | 'COST_ADDITION' | 'SUBMISSION_NOTE', itemId: string } | null>(null)
     const [locationToDelete, setLocationToDelete] = useState<{ index?: number, date?: string } | null>(null)
+    const [isReverting, setIsReverting] = useState(false)
 
     const router = useRouter()
     const { showToast } = useToast()
@@ -78,7 +79,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
         setEditForm({
             title: initialTask.title,
             description: initialTask.description,
-            assigneeId: initialTask.assigneeId,
+            assigneeIds: initialTask.assignees?.map((a: any) => a.id) || [initialTask.assigneeId],
             deadline: initialTask.deadline,
             difficulty: initialTask.difficulty,
             location: initialTask.location || ''
@@ -101,10 +102,11 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
     }, [task.comments])
 
     useEffect(() => {
-        if (userId === task.assigneeId && (task.isEdited || isEditedPersistent)) {
+        const isUserAssignee = task.assigneeId === userId || task.assignees?.some((a: any) => a.id === userId)
+        if (isUserAssignee && (task.isEdited || isEditedPersistent)) {
             // Logic to track if they've seen it could be here
         }
-    }, [userId, task.assigneeId, task.isEdited, isEditedPersistent])
+    }, [userId, task.assigneeId, task.assignees, task.isEdited, isEditedPersistent])
 
     const handleDismiss = async () => {
         try {
@@ -120,7 +122,8 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
         const handleSuspendSave = () => {
             console.log('Suspension detected, auto-saving task progress...')
             // Only auto-save if employee interaction is active and not already submitted or finalized
-            if ((userRole === 'EMPLOYEE' || userId === task.assigneeId) && !['PENDING_CONFIRMATION', 'APPROVED', 'COMPLETED', 'REJECTED'].includes(task.status)) {
+            const isUserAssignee = task.assigneeId === userId || task.assignees?.some((a: any) => a.id === userId)
+            if ((userRole === 'EMPLOYEE' || isUserAssignee) && !['PENDING_CONFIRMATION', 'APPROVED', 'COMPLETED', 'REJECTED'].includes(task.status)) {
                 handleUpload(true)
             }
         }
@@ -389,7 +392,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
         setEditForm({
             title: task.title,
             description: task.description,
-            assigneeId: task.assigneeId,
+            assigneeIds: task.assignees?.map((a: any) => a.id) || [task.assigneeId],
             deadline: task.deadline,
             difficulty: task.difficulty,
             location: task.location || ''
@@ -433,18 +436,25 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
     }
 
     const handlePaymentStatusChange = async (newStatus: string) => {
+        // ... (existing code)
+    }
+
+    const handleRevert = async () => {
+        if (!confirm(t('confirm_action_button') + '?')) return
+        setIsReverting(true)
         try {
-            const res = await fetch(`/api/tasks/${task.id}/payment-status`, {
-                method: 'PUT',
-                body: JSON.stringify({ paymentStatus: newStatus }),
-                headers: { 'Content-Type': 'application/json' }
-            })
-            if (!res.ok) throw new Error('Update failed')
-            showToast(t('payment_status_updated_prefix') + newStatus, 'success')
+            const res = await fetch(`/api/tasks/${task.id}/revert`, { method: 'POST' })
+            if (!res.ok) {
+                const data = await res.json()
+                throw new Error(data.message || 'Revert failed')
+            }
+            showToast(t('task_reverted_success'), 'success')
             router.refresh()
-        } catch (e) {
+        } catch (e: any) {
             console.error(e)
-            showToast(t('failed_update_payment_status'), 'error')
+            showToast(t('failed_revert_task'), 'error')
+        } finally {
+            setIsReverting(false)
         }
     }
 
@@ -523,7 +533,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
 
     return (
         <div className="card" style={containerStyle}>
-            {/* Deleted Assignee Alert */}
+            {/* Deleted Assignee Alert - Check if primary is deleted */}
             {task.assignee?.status === 'DELETED' && ['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole) && !['COMPLETED', 'APPROVED', 'REJECTED'].includes(task.status) && (
                 <div style={{ ...alertStyle, background: '#fee2e2', border: '1px solid #ef4444', color: '#991b1b', flexDirection: 'column', gap: '1rem', alignItems: 'stretch' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexDirection: 'row' }}>
@@ -534,11 +544,6 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                                 {t('assignee_deleted_msg').replace('{name}', `${task.assignee.firstName} ${task.assignee.lastName}`)}
                             </p>
                         </div>
-                    </div>
-                    <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', flexDirection: 'row' }}>
-                        <button onClick={() => submitReview('COMPLETED', task.difficulty)} className="btn" style={{ background: '#166534', color: 'white' }}>{t('mark_as_completed')}</button>
-                        <button onClick={() => { if (allUsers.length === 0) fetch('/api/users').then(r => r.json()).then(data => { const filtered = userRole === 'TEAM_LEADER' ? data.filter((u: any) => !['ADMIN', 'SUPER_ADMIN'].includes(u.role)) : data; setAllUsers(filtered); }); setIsTransferModalOpen(true); }} className="btn" style={{ background: '#2563eb', color: 'white' }}>{t('reassign_button')}</button>
-                        <button onClick={() => router.push('/dashboard/tasks')} className="btn" style={{ background: 'white', border: '1px solid #b91c1c', color: '#b91c1c' }}>{t('dismiss_decide_later')}</button>
                     </div>
                 </div>
             )}
@@ -615,6 +620,23 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                             {task.paymentStatus === 'PAID' ? t('mark_as_pending_button') : t('mark_as_paid')}
                         </button>
                     )}
+                    {userRole === 'SUPER_ADMIN' && ['APPROVED', 'COMPLETED', 'REJECTED'].includes(task.status) && task.paymentStatus === 'PENDING_PAYMENT' && (
+                        <button
+                            onClick={handleRevert}
+                            disabled={isReverting}
+                            style={{
+                                background: '#f8fafc',
+                                color: '#475569',
+                                border: '1px solid #cbd5e1',
+                                borderRadius: '0.25rem',
+                                padding: '0.5rem 1rem',
+                                cursor: 'pointer',
+                                fontWeight: '600'
+                            }}
+                        >
+                            {isReverting ? t('reverting') : t('return_to_in_progress')}
+                        </button>
+                    )}
                     <button onClick={() => router.back()} style={{ background: 'none', border: '1px solid #cbd5e1', borderRadius: '0.25rem', padding: '0.5rem 1rem', cursor: 'pointer', color: '#64748b' }}>{t('close_button')}</button>
                     {(['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole) && (userRole === 'TEAM_LEADER' || userId !== task.assigneeId)) && (<button onClick={handleEditClick} style={{ background: '#e0f2fe', color: '#0369a1', border: 'none', borderRadius: '0.25rem', padding: '0.5rem 1rem', cursor: 'pointer' }}>{t('edit_task_button')}</button>)}
                     {(['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole) && (userRole === 'TEAM_LEADER' || userId !== task.assigneeId)) && (<button onClick={() => setShowDeleteConfirm(true)} style={{ background: '#fee2e2', color: '#991b1b', border: 'none', borderRadius: '0.25rem', padding: '0.5rem 1rem', cursor: 'pointer' }}>{t('delete_task_button')}</button>)}
@@ -637,6 +659,18 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
 
             <div style={{ marginTop: '1rem', color: '#64748b', fontSize: '0.9rem' }}>
                 {t('assigned_by')}: <strong>{creatorName}</strong> | {t('deadline_label')}: <strong>{new Date(task.deadline).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' }) + ' ' + new Date(task.deadline).toLocaleDateString(locale === 'ar' ? 'ar-EG' : 'en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</strong>
+            </div>
+            <div style={{ marginTop: '0.5rem', color: '#64748b', fontSize: '0.9rem' }}>
+                {t('assignee_label')}: {task.assignees?.length > 0 ? (
+                    task.assignees.map((a: any, idx: number) => (
+                        <span key={a.id}>
+                            <strong>{a.firstName} {a.lastName}</strong>
+                            {idx < task.assignees.length - 1 ? ', ' : ''}
+                        </span>
+                    ))
+                ) : (
+                    <strong>{task.assignee?.firstName} {task.assignee?.lastName}</strong>
+                )}
             </div>
 
             {/* Comments / Logs Section */}
@@ -960,7 +994,10 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                     <p>{t('delete_task_warning')}</p>
                     <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem', justifyContent: 'flex-end', flexDirection: 'row' }}>
                         <button onClick={() => setShowDeleteConfirm(false)} className="btn" style={{ background: '#e2e8f0' }}>{t('cancel')}</button>
-                        <button onClick={handleDelete} className="btn" style={{ background: '#dc2626', color: 'white' }}>{t('delete')}</button>
+                        <button onClick={() => {
+                            if (allUsers.length === 0) fetch('/api/users').then(r => r.json()).then(data => { const filtered = userRole === 'TEAM_LEADER' ? data.filter((u: any) => !['ADMIN', 'SUPER_ADMIN'].includes(u.role)) : data; setAllUsers(filtered); });
+                            handleEditClick();
+                        }} className="btn" style={{ background: '#2563eb', color: 'white' }}>{t('edit')}</button>
                     </div>
                 </div>
             </Modal>
@@ -985,9 +1022,43 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                     </div>
                     <div style={{ marginBottom: '1.25rem' }}>
                         <label className="label">{t('assignee_label')}</label>
-                        <select className="input" value={editForm.assigneeId} disabled style={{ background: '#f8fafc', width: '100%' }}>
-                            <option value={task.assigneeId}>{task.assignee?.firstName} {task.assignee?.lastName}</option>
-                        </select>
+                        <div style={{
+                            maxHeight: '150px',
+                            overflowY: 'auto',
+                            border: '1px solid #e2e8f0',
+                            borderRadius: '0.5rem',
+                            padding: '0.75rem',
+                            background: '#f8fafc'
+                        }}>
+                            {allUsers.length > 0 ? allUsers.map(u => (
+                                <label key={u.id} style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '0.5rem',
+                                    marginBottom: '0.5rem',
+                                    cursor: 'pointer',
+                                    padding: '0.25rem'
+                                }}>
+                                    <input
+                                        type="checkbox"
+                                        checked={editForm.assigneeIds?.includes(u.id)}
+                                        onChange={e => {
+                                            const currentIds = editForm.assigneeIds || []
+                                            if (e.target.checked) {
+                                                setEditForm(prev => ({ ...prev, assigneeIds: [...(prev.assigneeIds || []), u.id] }))
+                                            } else {
+                                                setEditForm(prev => ({ ...prev, assigneeIds: (prev.assigneeIds || []).filter(id => id !== u.id) }))
+                                            }
+                                        }}
+                                    />
+                                    <span>
+                                        {u.firstName} {u.lastName} <small>({u.role})</small>
+                                    </span>
+                                </label>
+                            )) : (
+                                <div style={{ fontSize: '0.9rem', color: '#64748b' }}>{locale === 'ar' ? 'جاري التحميل...' : 'Loading...'}</div>
+                            )}
+                        </div>
                     </div>
                     <div style={{ marginBottom: '1.25rem' }}>
                         <DateTimePicker label={t('deadline_label')} value={editForm.deadline} onChange={v => setEditForm({ ...editForm, deadline: v })} min={new Date().toISOString()} />

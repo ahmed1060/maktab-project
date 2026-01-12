@@ -36,14 +36,20 @@ export async function GET(req: Request) {
         whereClause.assignee = { companyId: userCompanyId }
     } else {
         // Employee seeing their own tasks is safe
-        whereClause.assigneeId = userId
+        whereClause.OR = [
+            { assigneeId: userId },
+            { assignees: { some: { id: userId } } }
+        ]
     }
 
-    const tasks = await prisma.task.findMany({
+    const tasks = await (prisma.task as any).findMany({
         where: whereClause,
         include: {
             assignee: {
-                select: { firstName: true, lastName: true, email: true }
+                select: { id: true, firstName: true, lastName: true, email: true }
+            },
+            assignees: {
+                select: { id: true, firstName: true, lastName: true, email: true }
             },
             creator: {
                 select: { firstName: true, lastName: true }
@@ -64,7 +70,11 @@ export async function POST(req: Request) {
     }
 
     const json = await req.json()
-    const { title, description, assigneeId, deadline, difficulty = 0, location } = json
+    const { title, description, assigneeId, assigneeIds, deadline, difficulty = 0, location } = json
+
+    // Support plural assigneeIds, fallback to assigneeId for backward compatibility
+    const finalAssigneeIds: string[] = assigneeIds || (assigneeId ? [assigneeId] : [])
+    const primaryAssigneeId = finalAssigneeIds[0] || assigneeId
 
     if (!title || title.length < 3 || title.length > 100) {
         return new NextResponse(JSON.stringify({ message: "Title must be between 3 and 100 characters" }), { status: 400 })
@@ -81,26 +91,33 @@ export async function POST(req: Request) {
             return new NextResponse("You are not part of a company", { status: 403 })
         }
 
-        // Check if assignee is in the same company
-        const assigneeUser = await prisma.user.findUnique({
-            where: { id: assigneeId },
-            select: { companyId: true, role: true }
+        // Check if all assignees are in the same company
+        const assigneeUsers = await prisma.user.findMany({
+            where: { id: { in: finalAssigneeIds } },
+            select: { id: true, companyId: true, role: true }
         })
 
-        if (!assigneeUser || assigneeUser.companyId !== creatorCompanyId) {
+        if (assigneeUsers.length !== finalAssigneeIds.length) {
+            return new NextResponse("One or more assignees not found", { status: 404 })
+        }
+
+        const externalAssignee = assigneeUsers.find(u => u.companyId !== creatorCompanyId)
+        if (externalAssignee) {
             return new NextResponse("Cannot assign task to user in a different company", { status: 403 })
         }
 
         // TEAM_LEADER Restriction: Cannot assign to ADMIN or SUPER_ADMIN
-        if (userRole === 'TEAM_LEADER' && ['ADMIN', 'SUPER_ADMIN'].includes(assigneeUser.role)) {
-            return new NextResponse("Team Leaders cannot assign tasks to Admins or Super Admins", { status: 403 })
+        if (userRole === 'TEAM_LEADER') {
+            const adminAssignee = assigneeUsers.find(u => ['ADMIN', 'SUPER_ADMIN'].includes(u.role))
+            if (adminAssignee) {
+                return new NextResponse("Team Leaders cannot assign tasks to Admins or Super Admins", { status: 403 })
+            }
         }
     } else if (userRole === 'SUPER_ADMIN') {
-        const assigneeUser = await prisma.user.findUnique({
-            where: { id: assigneeId },
-            select: { role: true }
+        const assigneeUsersCount = await prisma.user.count({
+            where: { id: { in: finalAssigneeIds } }
         })
-        if (!assigneeUser) return new NextResponse("Assignee not found", { status: 404 })
+        if (assigneeUsersCount !== finalAssigneeIds.length) return new NextResponse("One or more assignees not found", { status: 404 })
     }
 
     // Server-side Deadline Validation
@@ -121,11 +138,14 @@ export async function POST(req: Request) {
 
     try {
         const result = await prisma.$transaction(async (tx) => {
-            const task = await tx.task.create({
+            const task = await (tx.task as any).create({
                 data: {
                     title,
                     description,
-                    assigneeId,
+                    assigneeId: primaryAssigneeId,
+                    assignees: {
+                        connect: finalAssigneeIds.map(id => ({ id }))
+                    },
                     deadline: new Date(deadline),
                     difficulty: Math.min(Math.max(difficulty, 0), 10), // Ensure 0-10 range
                     status: 'PENDING',
@@ -140,14 +160,14 @@ export async function POST(req: Request) {
                 }
             })
 
-            // Create notification for assignee
-            await tx.notification.create({
-                data: {
-                    userId: assigneeId,
+            // Create notifications for all assignees
+            await tx.notification.createMany({
+                data: finalAssigneeIds.map(id => ({
+                    userId: id,
                     type: 'TASK_ASSIGNED',
                     message: `You have been assigned a new task: ${title}`,
                     relatedId: task.id
-                }
+                }))
             })
 
             // Create audit log
@@ -158,7 +178,7 @@ export async function POST(req: Request) {
                     entityId: task.id,
                     userId: userRole === 'SUPER_ADMIN' ? null : creatorId,
                     superAdminId: userRole === 'SUPER_ADMIN' ? creatorId : null,
-                    details: JSON.stringify({ title, assigneeId, location })
+                    details: JSON.stringify({ title, assigneeIds: finalAssigneeIds, location })
                 }
             })
 

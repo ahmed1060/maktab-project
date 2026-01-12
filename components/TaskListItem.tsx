@@ -17,6 +17,10 @@ interface TaskListItemProps {
             firstName: string
             lastName: string
         }
+        assignees?: {
+            firstName: string
+            lastName: string
+        }[]
         creator?: {
             firstName: string
             lastName: string
@@ -95,7 +99,11 @@ export default function TaskListItem({ task, currentUserId }: TaskListItemProps)
                         {currentUserId === task.assigneeId && task.creator ? (
                             <span>{t('assigned_by')}: <strong>{task.creator.firstName} {task.creator.lastName}</strong></span>
                         ) : (
-                            <span>{t('assignee_label')}: {task.assignee.firstName} {task.assignee.lastName}</span>
+                            <span>
+                                {t('assignee_label')}: {task.assignees && task.assignees.length > 1
+                                    ? `${task.assignees[0].firstName} + ${task.assignees.length - 1}`
+                                    : `${task.assignee.firstName} ${task.assignee.lastName}`}
+                            </span>
                         )}
                     </div>
                     <div>

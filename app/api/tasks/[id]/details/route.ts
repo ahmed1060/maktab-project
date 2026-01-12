@@ -18,8 +18,11 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
 
     try {
         const json = await req.json()
-        console.log("Received update payload:", json) // Debug log
-        const { title, description, assigneeId, deadline, difficulty, location } = json
+        const { title, description, assigneeId, assigneeIds, deadline, difficulty, location } = json
+
+        // Handle multiple assignees
+        const finalAssigneeIds: string[] = assigneeIds || (assigneeId ? [assigneeId] : [])
+        const primaryAssigneeId = finalAssigneeIds[0] || assigneeId
 
         if (title && (title.length < 3 || title.length > 100)) {
             return new NextResponse("Title must be between 3 and 100 characters", { status: 400 })
@@ -57,12 +60,16 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
             if (existingTask.title !== title) changes.title = { from: existingTask.title, to: title }
             if (existingTask.description !== description) changes.description = { from: existingTask.description, to: description }
             if (existingTask.location !== location) changes.location = { from: existingTask.location, to: location }
+            // Optional: detect assignee changes if needed, but the array comparison is complex for a simple audit log
         }
 
         const updateData: any = {
             title,
             description,
-            assignee: { connect: { id: assigneeId } },
+            assigneeId: primaryAssigneeId,
+            assignees: {
+                set: finalAssigneeIds.map(id => ({ id }))
+            },
             deadline: new Date(deadline),
             difficulty,
             location,
@@ -93,14 +100,14 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
             }
         })
 
-        // Create notification for assignee
-        await prisma.notification.create({
-            data: {
-                userId: assigneeId, // Notify the (potentially new) assignee
+        // Create notifications for all assignees
+        await prisma.notification.createMany({
+            data: finalAssigneeIds.map(id => ({
+                userId: id,
                 type: 'TASK_UPDATED',
                 message: `Task "${title}" details have been updated by ${(session.user as any).role} ${(session.user as any).name}. Please review.`,
                 relatedId: task.id
-            }
+            }))
         })
 
         return NextResponse.json(task)

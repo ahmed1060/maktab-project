@@ -9,7 +9,7 @@ export default function NewTaskPage() {
     const { t, locale } = useLanguage()
     const [title, setTitle] = useState('')
     const [description, setDescription] = useState('')
-    const [assigneeId, setAssigneeId] = useState('')
+    const [assigneeIds, setAssigneeIds] = useState<string[]>([])
     const [deadline, setDeadline] = useState('')
     const [difficulty, setDifficulty] = useState('')
     const [location, setLocation] = useState('')
@@ -69,6 +69,9 @@ export default function NewTaskPage() {
         if (!deadline) {
             errors.deadline = t('select_deadline')
         }
+        if (assigneeIds.length === 0) {
+            errors.assigneeIds = t('select_employee_placeholder')
+        }
 
         if (Object.keys(errors).length > 0) {
             setFieldErrors(errors)
@@ -82,7 +85,7 @@ export default function NewTaskPage() {
                 body: JSON.stringify({
                     title,
                     description,
-                    assigneeId,
+                    assigneeIds,
                     deadline,
                     difficulty: parseInt(difficulty) || 0,
                     location
@@ -179,10 +182,48 @@ export default function NewTaskPage() {
                 </div>
                 <div style={{ marginBottom: '1.25rem' }}>
                     <label style={{ display: 'block', marginBottom: '0.5rem' }}>{t('assignee_label')}</label>
-                    <select className="input" value={assigneeId} onChange={e => setAssigneeId(e.target.value)} required style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>
-                        <option value="">{t('select_employee_placeholder')}</option>
-                        {users.map(u => <option key={u.id} value={u.id}>{u.firstName} {u.lastName} - {t(`role_${u.role?.toLowerCase().replace('team_leader', 'team_leader').replace('employee', 'employee').replace('admin', 'admin')}` as any)}</option>)}
-                    </select>
+                    <div style={{
+                        maxHeight: '200px',
+                        overflowY: 'auto',
+                        border: '1px solid #e2e8f0',
+                        borderRadius: '0.5rem',
+                        padding: '0.75rem',
+                        background: '#fff'
+                    }}>
+                        {users.map(u => (
+                            <label key={u.id} style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '0.5rem',
+                                marginBottom: '0.5rem',
+                                cursor: 'pointer',
+                                padding: '0.25rem',
+                                borderRadius: '0.25rem',
+                                background: assigneeIds.includes(u.id) ? '#f0f9ff' : 'transparent'
+                            }}>
+                                <input
+                                    type="checkbox"
+                                    checked={assigneeIds.includes(u.id)}
+                                    onChange={e => {
+                                        if (e.target.checked) {
+                                            setAssigneeIds([...assigneeIds, u.id])
+                                        } else {
+                                            setAssigneeIds(assigneeIds.filter(id => id !== u.id))
+                                        }
+                                        if (fieldErrors.assigneeIds) setFieldErrors({ ...fieldErrors, assigneeIds: '' })
+                                    }}
+                                />
+                                <span style={{ fontSize: '0.9rem' }}>
+                                    {u.firstName} {u.lastName} <small style={{ color: '#64748b' }}>({t(`role_${u.role?.toLowerCase().replace('team_leader', 'team_leader').replace('employee', 'employee').replace('admin', 'admin')}` as any)})</small>
+                                </span>
+                            </label>
+                        ))}
+                    </div>
+                    {fieldErrors.assigneeIds && (
+                        <div style={{ color: '#ef4444', fontSize: '0.85rem', marginTop: '0.25rem' }}>
+                            {fieldErrors.assigneeIds}
+                        </div>
+                    )}
                 </div>
                 <div style={{ marginBottom: '1.25rem' }}>
                     <DateTimePicker
