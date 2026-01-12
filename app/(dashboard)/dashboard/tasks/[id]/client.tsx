@@ -1047,7 +1047,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                                             if (e.target.checked) {
                                                 setEditForm(prev => ({ ...prev, assigneeIds: [...(prev.assigneeIds || []), u.id] }))
                                             } else {
-                                                setEditForm(prev => ({ ...prev, assigneeIds: (prev.assigneeIds || []).filter(id => id !== u.id) }))
+                                                setEditForm(prev => ({ ...prev, assigneeIds: (prev.assigneeIds || []).filter((id: string) => id !== u.id) }))
                                             }
                                         }}
                                     />

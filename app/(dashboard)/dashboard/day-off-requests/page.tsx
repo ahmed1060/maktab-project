@@ -7,6 +7,7 @@ import DateRangePicker from '@/components/DateRangePicker'
 import DatePickerSingle from '@/components/DatePickerSingle'
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts'
 import EmployeeFilter from '@/components/EmployeeFilter'
+import { useCompany } from '@/context/CompanyContext'
 
 interface DayOffRequest {
     id: string
@@ -31,6 +32,7 @@ export default function DayOffRequestsPage() {
     const { data: session } = useSession()
     const user = session?.user
     const isAdmin = ['ADMIN', 'SUPER_ADMIN'].includes(user?.role || '')
+    const { selectedCompanyId: contextCompanyId } = useCompany()
 
     const [requests, setRequests] = useState<DayOffRequest[]>([])
     const [loading, setLoading] = useState(true)
@@ -66,13 +68,15 @@ export default function DayOffRequestsPage() {
         if (!isAdmin && user?.id) {
             fetchUserCredit()
         }
-        // Sync with Egypt server time (no longer needed for date restrictions)
-    }, [isAdmin, user?.id])
+    }, [isAdmin, user?.id, contextCompanyId])
 
     const fetchRequests = async () => {
         setLoading(true)
         try {
-            const endpoint = isAdmin ? '/api/admin/day-off-requests' : '/api/day-off-requests'
+            let endpoint = isAdmin ? '/api/admin/day-off-requests' : '/api/day-off-requests'
+            if (isAdmin && contextCompanyId) {
+                endpoint += `?companyId=${contextCompanyId}`
+            }
             const res = await fetch(endpoint)
             if (res.ok) {
                 const data = await res.json()

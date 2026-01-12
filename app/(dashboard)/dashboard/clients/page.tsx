@@ -7,6 +7,7 @@ import ConfirmModal from '@/components/ConfirmModal'
 import EmployeeFilter from '@/components/EmployeeFilter'
 import { useLanguage } from '@/context/LanguageContext'
 import { useToast } from '@/context/ToastContext'
+import { useCompany } from '@/context/CompanyContext'
 
 interface Client {
     id: string
@@ -45,6 +46,7 @@ export default function ClientsPage() {
     const [editingClientId, setEditingClientId] = useState<string | null>(null)
     const [isEditingClient, setIsEditingClient] = useState(false)
     const { showToast } = useToast()
+    const { selectedCompanyId: contextCompanyId } = useCompany()
 
     useEffect(() => {
         setMounted(true)
@@ -69,7 +71,8 @@ export default function ClientsPage() {
 
     const fetchClients = async () => {
         try {
-            const res = await fetch('/api/clients')
+            const url = contextCompanyId ? `/api/clients?companyId=${contextCompanyId}` : '/api/clients'
+            const res = await fetch(url)
             if (res.ok) {
                 const data = await res.json()
                 setClients(data)
@@ -85,7 +88,7 @@ export default function ClientsPage() {
     useEffect(() => {
         fetchClients()
         checkSuperAdmin()
-    }, [])
+    }, [contextCompanyId])
 
     useEffect(() => {
         if (!clients.length) return

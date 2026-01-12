@@ -16,8 +16,10 @@ import { authOptions } from "@/lib/auth"
 // However, looking at `api / users / route.ts` or `api / tasks / route.ts` would be best.
 // I'll assume standard robust pattern:
 
-export async function GET() {
+export async function GET(request: Request) {
     try {
+        const { searchParams } = new URL(request.url)
+        const companyId = searchParams.get('companyId')
         const session = await getServerSession(authOptions)
         const userId = (session?.user as any)?.id
 
@@ -46,7 +48,11 @@ export async function GET() {
         }
 
         const where: any = {}
-        if (user.role !== 'SUPER_ADMIN') {
+        if (user.role === 'SUPER_ADMIN') {
+            if (companyId) {
+                where.companyId = companyId
+            }
+        } else {
             where.companyId = user.companyId
         }
 
