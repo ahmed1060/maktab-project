@@ -37,7 +37,7 @@ export async function DELETE(
             return NextResponse.json({ error: 'Individual item deletion is only allowed when task is IN_PROGRESS' }, { status: 403 })
         }
 
-        let updateData: any = {}
+        const updateData: any = {}
 
         if (type === 'ATTACHMENT') {
             const attachments = task.attachments ? JSON.parse(task.attachments) : []
