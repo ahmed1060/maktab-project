@@ -126,19 +126,9 @@ export default function TaskListItem({ task, currentUserId }: TaskListItemProps)
                 </div>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', alignItems: 'flex-end' }}>
-                    {isMultiAssignee && (task.totalCost || 0) > 0 && (
-                        <div style={{ display: 'flex', gap: '0.5rem' }}>
-                            <div style={{ background: '#3b82f6', color: 'white', padding: '0.2rem 0.6rem', borderRadius: '0.5rem', fontSize: '0.75rem', fontWeight: 'bold', minWidth: '80px', textAlign: 'center' }}>
-                                {locale === 'ar' ? 'أنت' : 'Personal'}: {userCost.toFixed(2)}
-                            </div>
-                            <div style={{ background: '#64748b', color: 'white', padding: '0.2rem 0.6rem', borderRadius: '0.5rem', fontSize: '0.75rem', fontWeight: 'bold', minWidth: '80px', textAlign: 'center' }}>
-                                Task: {(task.totalCost || 0).toFixed(2)}
-                            </div>
-                        </div>
-                    )}
-                    {(!isMultiAssignee) && (task.totalCost || 0) > 0 && (
-                        <div style={{ background: '#f59e0b', color: 'white', padding: '0.2rem 0.6rem', borderRadius: '0.5rem', fontSize: '0.75rem', fontWeight: 'bold' }}>
-                            {t('total_cost')}: {(task.totalCost || 0).toFixed(2)}
+                    {isMultiAssignee && userCost > 0 && (
+                        <div style={{ background: '#3b82f6', color: 'white', padding: '0.2rem 0.6rem', borderRadius: '0.5rem', fontSize: '0.75rem', fontWeight: 'bold' }}>
+                            {locale === 'ar' ? 'تكلفني' : 'My Cost'}: {userCost.toFixed(2)}
                         </div>
                     )}
                     <Link href={`/dashboard/tasks/${task.id}`} className="btn btn-primary" style={{ textDecoration: 'none', fontSize: '0.875rem' }}>

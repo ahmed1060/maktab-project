@@ -825,23 +825,32 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                                             </div>
                                         </div>
                                     ))}
-                                    {(task.assignees?.length > 1) ? (
-                                        <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '0.5rem', flexDirection: 'row' }}>
-                                            <div style={{ flex: 1, background: '#3b82f6', color: 'white', padding: '0.75rem', borderRadius: '0.5rem', textAlign: 'center' }}>
-                                                <div style={{ fontSize: '0.7rem', fontWeight: '600', opacity: 0.9, textTransform: 'uppercase' }}>{currentUserName}</div>
-                                                <div style={{ fontSize: '1.1rem', fontWeight: 'bold' }}>{(getMemberCosts(task)[userId] || 0).toFixed(2)} {t('egp')}</div>
+                                    {(() => {
+                                        const isAssignee = task.assigneeId === userId || task.assignees?.some((a: any) => a.id === userId)
+                                        const isMulti = (task.assignees?.length || 0) > 1
+
+                                        if (isMulti && isAssignee) {
+                                            return (
+                                                <div style={{ display: 'flex', gap: '1rem', marginBottom: '0.5rem', flexDirection: 'row' }}>
+                                                    <div style={{ flex: 1, background: '#3b82f6', color: 'white', padding: '1rem', borderRadius: '0.5rem', textAlign: 'center', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }}>
+                                                        <div style={{ fontSize: '0.875rem', fontWeight: '600', opacity: 0.9 }}>{currentUserName}</div>
+                                                        <div style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>{(getMemberCosts(task)[userId] || 0).toFixed(2)} {t('egp')}</div>
+                                                    </div>
+                                                    <div style={{ flex: 1, background: '#f59e0b', color: 'white', padding: '1rem', borderRadius: '0.5rem', textAlign: 'center', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }}>
+                                                        <div style={{ fontSize: '0.875rem', fontWeight: '600', opacity: 0.9 }}>{t('total_cost')}</div>
+                                                        <div style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>{(task.totalCost || 0).toFixed(2)} {t('egp')}</div>
+                                                    </div>
+                                                </div>
+                                            )
+                                        }
+
+                                        return (
+                                            <div style={{ background: '#f59e0b', color: 'white', padding: '1rem', borderRadius: '0.5rem', textAlign: 'center', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }}>
+                                                <div style={{ fontSize: '0.875rem', fontWeight: '600', opacity: 0.9 }}>{t('total_cost')}</div>
+                                                <div style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>{(task.totalCost || 0).toFixed(2)} {t('egp')}</div>
                                             </div>
-                                            <div style={{ flex: 1, background: '#64748b', color: 'white', padding: '0.75rem', borderRadius: '0.5rem', textAlign: 'center' }}>
-                                                <div style={{ fontSize: '0.7rem', fontWeight: '600', opacity: 0.9, textTransform: 'uppercase' }}>Task</div>
-                                                <div style={{ fontSize: '1.1rem', fontWeight: 'bold' }}>{(task.totalCost || 0).toFixed(2)} {t('egp')}</div>
-                                            </div>
-                                        </div>
-                                    ) : (
-                                        <div style={{ background: '#f59e0b', color: 'white', padding: '1rem', borderRadius: '0.5rem', textAlign: 'center', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }}>
-                                            <div style={{ fontSize: '0.875rem', fontWeight: '600', opacity: 0.9 }}>{t('total_cost')}</div>
-                                            <div style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>{(task.totalCost || 0).toFixed(2)} {t('egp')}</div>
-                                        </div>
-                                    )}
+                                        )
+                                    })()}
                                 </div>
                             </div>
                         )
