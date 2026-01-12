@@ -61,9 +61,9 @@ export default function ObligationDetailClient({ obligation, userRole }: { oblig
 
         files.forEach(file => {
             // 1. Check Size
-            if (file.size > 10 * 1024 * 1024) {
+            if (file.size > 4 * 1024 * 1024) {
                 hasError = true
-                errorMsg = t('failed_upload_files') || `File ${file.name} is too large (max 10MB)`
+                errorMsg = t('failed_upload_files') || `File ${file.name} is too large (max 4MB)`
             }
             // 2. Check Extension
             else {

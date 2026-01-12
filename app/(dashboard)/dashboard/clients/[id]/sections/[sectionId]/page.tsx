@@ -509,11 +509,11 @@ export default function SectionNotesPage() {
                                     onChange={(e) => {
                                         const file = e.target.files?.[0]
                                         if (file) {
-                                            const MAX_SIZE = 10 * 1024 * 1024
+                                            const MAX_SIZE = 4 * 1024 * 1024
                                             const allowedExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx']
 
                                             if (file.size > MAX_SIZE) {
-                                                showToast(t('failed_upload_files') || `File ${file.name} is too large (max 10MB)`, 'error')
+                                                showToast(t('failed_upload_files') || `File ${file.name} is too large (max 4MB)`, 'error')
                                                 e.target.value = ''
                                                 setSelectedFile(null)
                                                 return

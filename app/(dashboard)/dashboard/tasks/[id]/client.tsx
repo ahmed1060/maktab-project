@@ -165,8 +165,8 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
 
         const validFiles = newFiles.filter(file => {
             // 1. Check Size
-            if (file.size > 10 * 1024 * 1024) {
-                showToast(t('failed_upload_files') || `File ${file.name} is too large (max 10MB)`, 'error')
+            if (file.size > 4 * 1024 * 1024) {
+                showToast(t('failed_upload_files') || `File ${file.name} is too large (max 4MB)`, 'error')
                 return false
             }
 
@@ -218,18 +218,33 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
         try {
             let uploadedUrls: string[] = []
             if (pendingFiles.length > 0) {
-                const formData = new FormData()
-                pendingFiles.forEach(file => formData.append('files', file))
-                formData.append('taskId', task.id)
+                for (const file of pendingFiles) {
+                    const formData = new FormData()
+                    formData.append('file', file)
+                    formData.append('taskId', task.id)
 
-                const uploadRes = await fetch('/api/upload', {
-                    method: 'POST',
-                    body: formData
-                })
+                    try {
+                        const uploadRes = await fetch('/api/upload', {
+                            method: 'POST',
+                            body: formData
+                        })
 
-                if (!uploadRes.ok) throw new Error('Upload failed')
-                const data = await uploadRes.json()
-                uploadedUrls = data.urls
+                        if (uploadRes.ok) {
+                            const data = await uploadRes.json()
+                            if (data.success && data.url) {
+                                uploadedUrls.push(data.url)
+                            }
+                        } else {
+                            console.error(`Upload failed for ${file.name}`)
+                        }
+                    } catch (err) {
+                        console.error(`Upload error for ${file.name}:`, err)
+                    }
+                }
+
+                if (uploadedUrls.length === 0 && pendingFiles.length > 0) {
+                    throw new Error('All uploads failed')
+                }
             }
 
             const res = await fetch(`/api/tasks/${task.id}/submit`, {
@@ -833,11 +848,11 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                                             return (
                                                 <div style={{ display: 'flex', gap: '1rem', marginBottom: '0.5rem', flexDirection: 'row' }}>
                                                     <div style={{ flex: 1, background: '#3b82f6', color: 'white', padding: '1rem', borderRadius: '0.5rem', textAlign: 'center', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }}>
-                                                        <div style={{ fontSize: '0.875rem', fontWeight: '600', opacity: 0.9 }}>{currentUserName}</div>
+                                                        <div style={{ fontSize: '0.875rem', fontWeight: '600', opacity: 0.9 }}>{t('my_total_cost' as any)}</div>
                                                         <div style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>{(getMemberCosts(task)[userId] || 0).toFixed(2)} {t('egp')}</div>
                                                     </div>
                                                     <div style={{ flex: 1, background: '#f59e0b', color: 'white', padding: '1rem', borderRadius: '0.5rem', textAlign: 'center', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }}>
-                                                        <div style={{ fontSize: '0.875rem', fontWeight: '600', opacity: 0.9 }}>{t('total_cost')}</div>
+                                                        <div style={{ fontSize: '0.875rem', fontWeight: '600', opacity: 0.9 }}>{t('grand_total_cost' as any)}</div>
                                                         <div style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>{(task.totalCost || 0).toFixed(2)} {t('egp')}</div>
                                                     </div>
                                                 </div>

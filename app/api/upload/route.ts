@@ -28,7 +28,7 @@ export async function POST(req: Request) {
             return NextResponse.json({ success: false, error: 'No files provided' }, { status: 400 })
         }
 
-        const MAX_SIZE = 10 * 1024 * 1024 // 10MB
+        const MAX_SIZE = 4 * 1024 * 1024 // 4MB
         const allowedExtensions = [
             '.jpg', '.jpeg', '.png', '.gif', '.webp', // Images
             '.pdf', // Documents
@@ -40,7 +40,7 @@ export async function POST(req: Request) {
         for (const file of files) {
             // 1. Validate Size
             if (file.size > MAX_SIZE) {
-                return NextResponse.json({ success: false, error: `File ${file.name} exceeds 10MB limit` }, { status: 400 })
+                return NextResponse.json({ success: false, error: `File ${file.name} exceeds 4MB limit` }, { status: 400 })
             }
 
             // 2. Validate Extension
