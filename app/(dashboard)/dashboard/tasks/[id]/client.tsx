@@ -1150,6 +1150,19 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                 </div>
             </Modal>
 
+            {/* Revert Confirmation Modal */}
+            <Modal isOpen={showRevertConfirm} onClose={() => setShowRevertConfirm(false)} title={t('return_to_in_progress')} hideFooter>
+                <div style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>
+                    <p>{t('confirm_action_button') + '?'}</p>
+                    <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem', justifyContent: 'flex-end', flexDirection: 'row' }}>
+                        <button onClick={() => setShowRevertConfirm(false)} className="btn" style={{ background: '#e2e8f0' }}>{t('cancel')}</button>
+                        <button onClick={handleRevert} className="btn" style={{ background: '#2563eb', color: 'white' }}>
+                            {isReverting ? '...' : t('confirm_action_button')}
+                        </button>
+                    </div>
+                </div>
+            </Modal>
+
         </div>
     )
 }
