@@ -15,8 +15,8 @@ model Company {
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
   businessClients BusinessClient[]
-  users           User[]
   payments        CompanyPayment[]
+  users           User[]
 }
 
 model SuperAdmin {
@@ -27,45 +27,45 @@ model SuperAdmin {
   lastName  String
   avatar    String?
   gender    String     @default("MALE")
-  language  String     @default("en")
   createdAt DateTime   @default(now())
   updatedAt DateTime   @updatedAt
+  language  String     @default("en")
   auditLogs AuditLog[]
 }
 
 model User {
-  id                         String                 @id @default(uuid())
-  email                      String                 @unique
+  id                         String                  @id @default(uuid())
+  email                      String                  @unique
   password                   String
   firstName                  String
   lastName                   String
   role                       String
   avatar                     String?
-  gender                     String                 @default("MALE")
-  language                   String                 @default("en")
+  gender                     String                  @default("MALE")
   companyId                  String?
-  status                     String                 @default("OFFLINE")
-  lastActivity               DateTime               @default(now())
-  totalDifficultyPoints      Int                    @default(0)
-  salary                     Float?                 @default(0)
+  status                     String                  @default("OFFLINE")
+  lastActivity               DateTime                @default(now())
+  totalDifficultyPoints      Int                     @default(0)
+  salary                     Float?                  @default(0)
+  language                   String                  @default("en")
+  dayOffCredit               Float                   @default(0)
   auditLogs                  AuditLog[]
-  createdBusinessClientNotes BusinessClientNote[] @relation("CreatedNotes")
-  editedBusinessClientNotes  BusinessClientNote[] @relation("EditedNotes")
-  createdClients             BusinessClient[]       @relation("CreatedClients")
-  editedClients              BusinessClient[]       @relation("EditedClients")
+  createdClients             BusinessClient[]        @relation("CreatedClients")
+  editedClients              BusinessClient[]        @relation("EditedClients")
+  createdBusinessClientNotes BusinessClientNote[]    @relation("CreatedNotes")
+  editedBusinessClientNotes  BusinessClientNote[]    @relation("EditedNotes")
   createdSections            BusinessClientSection[] @relation("CreatedSections")
   editedSections             BusinessClientSection[] @relation("EditedSections")
+  dayOffRequests             DayOffRequest[]
   notifications              Notification[]
   obligations                Obligation[]
   profileUpdateRequests      ProfileUpdateRequest[]
-  salaryRecords              SalaryRecord[]
   salaryAdjustments          SalaryAdjustment[]
-  tasks                      Task[]                 @relation("AssignedTasks")
-  assignedTasks              Task[]                 @relation("TaskAssignees")
-  createdTasks               Task[]                 @relation("CreatedTasks")
-  dayOffCredit               Float                  @default(0)
-  dayOffRequests             DayOffRequest[]
-  company                    Company?               @relation(fields: [companyId], references: [id])
+  salaryRecords              SalaryRecord[]
+  tasks                      Task[]                  @relation("AssignedTasks")
+  createdTasks               Task[]                  @relation("CreatedTasks")
+  company                    Company?                @relation(fields: [companyId], references: [id])
+  assignedTasks              Task[]                  @relation("TaskAssignees")
 
   @@index([email])
   @@index([companyId])
@@ -94,8 +94,8 @@ model Task {
   lastStatusUpdateBy String?
   lastEditBy         String?
   assignee           User     @relation("AssignedTasks", fields: [assigneeId], references: [id])
-  assignees          User[]   @relation("TaskAssignees")
   creator            User?    @relation("CreatedTasks", fields: [createdBy], references: [id])
+  assignees          User[]   @relation("TaskAssignees")
 
   @@index([assigneeId])
   @@index([createdBy])
@@ -171,10 +171,10 @@ model BusinessClient {
   id             String                  @id @default(uuid())
   name           String
   companyId      String
-  createdById    String?
-  lastEditedById String?
   createdAt      DateTime                @default(now())
   updatedAt      DateTime                @updatedAt
+  createdById    String?
+  lastEditedById String?
   company        Company                 @relation(fields: [companyId], references: [id], onDelete: Cascade)
   createdBy      User?                   @relation("CreatedClients", fields: [createdById], references: [id])
   lastEditedBy   User?                   @relation("EditedClients", fields: [lastEditedById], references: [id])
@@ -188,10 +188,10 @@ model BusinessClientSection {
   id             String               @id @default(uuid())
   title          String
   clientId       String
-  createdById    String?
-  lastEditedById String?
   createdAt      DateTime             @default(now())
   updatedAt      DateTime             @updatedAt
+  createdById    String?
+  lastEditedById String?
   notes          BusinessClientNote[]
   client         BusinessClient       @relation(fields: [clientId], references: [id], onDelete: Cascade)
   createdBy      User?                @relation("CreatedSections", fields: [createdById], references: [id])
@@ -206,16 +206,16 @@ model BusinessClientNote {
   content            String
   sectionId          String
   createdById        String?
-  attachment         String?
-  expiryDate         DateTime?
-  reminderDays       Int?
-  notifiedDaysBefore Boolean               @default(false)
-  notifiedOnExpiry   Boolean               @default(false)
   createdAt          DateTime              @default(now())
   updatedAt          DateTime              @updatedAt
-  createdBy          User?                 @relation("CreatedNotes", fields: [createdById], references: [id])
-  lastEditedById     String?
+  attachment         String?
+  expiryDate         DateTime?
+  notifiedDaysBefore Boolean               @default(false)
+  notifiedOnExpiry   Boolean               @default(false)
+  reminderDays       Int?
   lastEditedAt       DateTime?
+  lastEditedById     String?
+  createdBy          User?                 @relation("CreatedNotes", fields: [createdById], references: [id])
   lastEditedBy       User?                 @relation("EditedNotes", fields: [lastEditedById], references: [id])
   section            BusinessClientSection @relation(fields: [sectionId], references: [id], onDelete: Cascade)
 
@@ -240,15 +240,15 @@ model ProfileUpdateRequest {
 }
 
 model CompanyPayment {
-  id               String    @id @default(uuid())
-  companyId        String
-  cost             Float
-  subscriptionType String // MONTHLY, ANNUALLY
-  status           String    @default("UNPAID") // PAID, UNPAID
-  paidAt           DateTime?
-  startDate        DateTime?
-  endDate          DateTime?
-  createdAt        DateTime  @default(now())
+  id                     String    @id @default(uuid())
+  companyId              String
+  cost                   Float
+  subscriptionType       String
+  status                 String    @default("UNPAID")
+  paidAt                 DateTime?
+  startDate              DateTime?
+  endDate                DateTime?
+  createdAt              DateTime  @default(now())
   updatedAt              DateTime  @updatedAt
   notifiedExpiryReminder Boolean   @default(false)
   company                Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
@@ -260,15 +260,15 @@ model CompanyPayment {
 model DayOffRequest {
   id            String    @id @default(uuid())
   userId        String
-  type          String    // CASUAL, REGULAR
-  status        String    @default("PENDING") // PENDING, APPROVED, REJECTED
+  type          String
+  status        String    @default("PENDING")
   reason        String?
   date          DateTime
-  endDate       DateTime?
-  daysDeducted  Float?    @default(0)
-  deductionType String?   @default("CREDIT") // CREDIT, SALARY
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
+  daysDeducted  Float?    @default(0)
+  endDate       DateTime?
+  deductionType String?   @default("CREDIT")
   user          User      @relation(fields: [userId], references: [id])
 
   @@index([userId])
@@ -278,10 +278,10 @@ model DayOffRequest {
 model SalaryAdjustment {
   id        String   @id @default(uuid())
   userId    String
-  type      String   // BONUS, DEDUCTION
-  amount    Float    // in days
+  type      String
+  amount    Float
   reason    String?
-  status    String   @default("ACTIVE") // ACTIVE, ROLLED_BACK
+  status    String   @default("ACTIVE")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   user      User     @relation(fields: [userId], references: [id])
