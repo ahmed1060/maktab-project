@@ -63,6 +63,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
     const [isEditedPersistent, setIsEditedPersistent] = useState(initialTask.isEdited)
     const [latestChanges, setLatestChanges] = useState<{ title?: any, description?: any } | null>(null)
     const [showSubmitConfirm, setShowSubmitConfirm] = useState(false)
+    const [itemToDelete, setItemToDelete] = useState<{ type: 'ATTACHMENT' | 'COST_ADDITION' | 'SUBMISSION_NOTE', itemId: string } | null>(null)
     const [locationToDelete, setLocationToDelete] = useState<{ index?: number, date?: string } | null>(null)
 
     const router = useRouter()
@@ -447,19 +448,23 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
         }
     }
 
-    const handleDeleteItem = async (type: 'ATTACHMENT' | 'COST_ADDITION' | 'SUBMISSION_NOTE' | 'LOCATION', itemId: string) => {
-        if (!confirm(t('confirm_item_delete'))) return
+    const handleDeleteItem = (type: 'ATTACHMENT' | 'COST_ADDITION' | 'SUBMISSION_NOTE', itemId: string) => {
+        setItemToDelete({ type, itemId })
+    }
 
+    const confirmDeleteItem = async () => {
+        if (!itemToDelete) return
+        const { type, itemId } = itemToDelete
         try {
-            const endpoint = `/api/tasks/${task.id}/${type === 'LOCATION' ? 'locations' : 'items'}`
-            const res = await fetch(endpoint, {
+            const res = await fetch(`/api/tasks/${task.id}/items`, {
                 method: 'DELETE',
-                body: JSON.stringify(type === 'LOCATION' ? { date: itemId } : { type, itemId }),
+                body: JSON.stringify({ type, itemId }),
                 headers: { 'Content-Type': 'application/json' }
             })
 
             if (!res.ok) throw new Error('Delete failed')
             showToast(t('item_deleted_success') || 'Deleted successfully', 'success')
+            setItemToDelete(null)
             router.refresh()
         } catch (e) {
             console.error(e)
@@ -1044,6 +1049,21 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                     <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem', justifyContent: 'flex-end', flexDirection: 'row' }}>
                         <button onClick={() => setShowSubmitConfirm(false)} className="btn" style={{ background: '#e2e8f0' }}>{t('cancel')}</button>
                         <button onClick={() => { setShowSubmitConfirm(false); handleUpload(false); }} className="btn btn-primary">{t('confirm_submit_button')}</button>
+                    </div>
+                </div>
+            </Modal>
+
+            {/* Delete Item Modal */}
+            <Modal isOpen={!!itemToDelete} onClose={() => setItemToDelete(null)} title={
+                itemToDelete?.type === 'COST_ADDITION' ? t('delete_cost_title') :
+                    itemToDelete?.type === 'ATTACHMENT' ? t('delete_attachment_title') :
+                        t('delete_note_title')
+            } hideFooter>
+                <div style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>
+                    <p>{t('confirm_item_delete')}</p>
+                    <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem', justifyContent: 'flex-end', flexDirection: 'row' }}>
+                        <button onClick={() => setItemToDelete(null)} className="btn" style={{ background: '#e2e8f0' }}>{t('cancel')}</button>
+                        <button onClick={confirmDeleteItem} className="btn" style={{ background: '#dc2626', color: 'white' }}>{t('delete')}</button>
                     </div>
                 </div>
             </Modal>
