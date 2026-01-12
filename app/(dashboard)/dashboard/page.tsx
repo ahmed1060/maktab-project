@@ -43,7 +43,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: { 
                 { label: t('status_completed'), value: taskStats.find(s => s.status === 'COMPLETED')?._count || 0, color: '#10b981' },
                 { label: t('status_pending'), value: (taskStats.find(s => s.status === 'PENDING')?._count || 0) + (taskStats.find(s => s.status === 'IN_PROGRESS')?._count || 0), color: '#3b82f6' },
                 { label: t('status_review'), value: taskStats.find(s => s.status === 'PENDING_CONFIRMATION')?._count || 0, color: '#f59e0b' },
-                { label: t('status_others' as any), value: taskStats.filter(s => !['COMPLETED', 'PENDING', 'IN_PROGRESS', 'PENDING_CONFIRMATION'].includes(s.status)).reduce((acc, s) => acc + s._count, 0), color: '#94a3b8' }
+                { label: t('status_others' as any), value: taskStats.filter((s: any) => !['COMPLETED', 'PENDING', 'IN_PROGRESS', 'PENDING_CONFIRMATION'].includes(s.status)).reduce((acc: any, s: any) => acc + s._count, 0), color: '#94a3b8' }
             ]
 
             return (
@@ -167,8 +167,18 @@ export default async function DashboardPage({ searchParams }: { searchParams: { 
         )
     } else {
         // Employee View
-        const myTasks = await prisma.task.findMany({
-            where: { assigneeId: userId },
+        const myTasks = await (prisma.task as any).findMany({
+            where: {
+                OR: [
+                    { assigneeId: userId },
+                    { assignees: { some: { id: userId } } }
+                ]
+            },
+            include: {
+                assignee: { select: { firstName: true, lastName: true } },
+                assignees: { select: { id: true, firstName: true, lastName: true } },
+                creator: { select: { firstName: true, lastName: true } }
+            },
             orderBy: { deadline: 'asc' }
         })
 

@@ -35,7 +35,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
             if (!originalTask) throw new Error("Task not found")
 
             // Permission check
-            const currentAssigneeIds = originalTask.assignees.map((a: any) => a.id)
+            const currentAssigneeIds = (originalTask as any).assignees.map((a: any) => a.id)
             if (!currentAssigneeIds.includes(originalTask.assigneeId)) {
                 currentAssigneeIds.push(originalTask.assigneeId)
             }
@@ -61,7 +61,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
                 }
             }
 
-            // 2. Update task assignees
+            // 2. Prepare original task update
             let existingComments: any[] = []
             try {
                 existingComments = originalTask.comments ? JSON.parse(originalTask.comments) : []
@@ -69,36 +69,70 @@ export async function POST(req: Request, { params }: { params: { id: string } })
             } catch { existingComments = [] }
 
             const transferComment = {
-                text: `Task assignees updated via transfer.`,
+                text: `Task transfer processed. (Added ${addedIds.length} new copies).`,
                 author: "System",
                 date: new Date().toISOString(),
                 type: 'TASK_TRANSFERRED'
             }
 
-            const updatedTask = await tx.task.update({
+            await tx.task.update({
                 where: { id: params.id },
                 data: {
                     status: 'PENDING_CONFIRMATION',
                     assignees: {
-                        set: newAssigneeIds.map((id: string) => ({ id }))
+                        set: keptIds.map(id => ({ id }))
                     },
-                    // If the primary assignee was removed, pick the first new one as primary
-                    assigneeId: newAssigneeIds.includes(originalTask.assigneeId) ? originalTask.assigneeId : (newAssigneeIds[0] || originalTask.assigneeId),
+                    // If the primary assignee was removed, pick the first kept one as primary
+                    assigneeId: keptIds.includes(originalTask.assigneeId) ? originalTask.assigneeId : (keptIds[0] || originalTask.assigneeId),
                     comments: JSON.stringify([...existingComments, transferComment]),
                     lastStatusUpdateBy: `${(session.user as any).role} ${(session.user as any).name}`
-                },
-                include: { assignees: true }
+                }
             })
 
-            // 3. Notify NEW assignees who weren't already on the task
-            await tx.notification.createMany({
-                data: addedIds.map((newId: string) => ({
-                    userId: newId,
-                    type: 'TASK_ASSIGNED',
-                    message: `You have been assigned to the task: ${originalTask.title}`,
-                    relatedId: originalTask.id
-                }))
-            })
+            // 3. Create Clones for NEW assignees
+            let commentsToClone: any[] = []
+            try {
+                if (originalTask.comments) {
+                    const parsed = JSON.parse(originalTask.comments)
+                    if (Array.isArray(parsed)) {
+                        commentsToClone = parsed.filter((c: any) => c.type !== 'COST_ADDITION' && c.type !== 'LOCATION_ADDED' && c.type !== 'TASK_TRANSFERRED')
+                    }
+                }
+            } catch { commentsToClone = [] }
+
+            const createdTasks = []
+            for (const newId of addedIds) {
+                const newTask = await tx.task.create({
+                    data: {
+                        title: originalTask.title + " (Transfer Copy)",
+                        description: originalTask.description,
+                        assigneeId: newId,
+                        assignees: { connect: [{ id: newId }] },
+                        deadline: originalTask.deadline,
+                        difficulty: originalTask.difficulty,
+                        status: 'PENDING',
+                        createdBy: originalTask.createdBy,
+                        attachments: originalTask.attachments,
+                        location: originalTask.location,
+                        comments: JSON.stringify([...commentsToClone, {
+                            text: `Transferred from task "${originalTask.title}".`,
+                            author: "System",
+                            date: new Date().toISOString(),
+                            type: 'TASK_CREATED'
+                        }])
+                    }
+                })
+
+                await tx.notification.create({
+                    data: {
+                        userId: newId,
+                        type: 'TASK_ASSIGNED',
+                        message: `You have been assigned a transferred task: ${newTask.title}`,
+                        relatedId: newTask.id
+                    }
+                })
+                createdTasks.push(newTask)
+            }
 
             // 4. Audit
             await tx.auditLog.create({
@@ -112,12 +146,12 @@ export async function POST(req: Request, { params }: { params: { id: string } })
                         addedCount: addedIds.length,
                         removedCount: removedIds.length,
                         keptCount: keptIds.length,
-                        newAssigneeIds: newAssigneeIds
+                        newAssigneeIds: addedIds
                     })
                 }
             })
 
-            return updatedTask
+            return { originalId: originalTask.id, clones: createdTasks.length }
         })
 
         return NextResponse.json(result)

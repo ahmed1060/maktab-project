@@ -37,10 +37,11 @@ export default async function TasksPage({ searchParams }: { searchParams: { comp
         }
     }
 
-    const tasks = await prisma.task.findMany({
+    const tasks = await (prisma.task as any).findMany({
         where: whereClause,
         include: {
             assignee: { select: { firstName: true, lastName: true } },
+            assignees: { select: { id: true, firstName: true, lastName: true } },
             creator: { select: { firstName: true, lastName: true } }
         },
         orderBy: { createdAt: 'desc' }

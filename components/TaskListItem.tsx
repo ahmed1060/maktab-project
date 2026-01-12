@@ -18,6 +18,7 @@ interface TaskListItemProps {
             lastName: string
         }
         assignees?: {
+            id: string
             firstName: string
             lastName: string
         }[]
@@ -96,12 +97,14 @@ export default function TaskListItem({ task, currentUserId }: TaskListItemProps)
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1rem' }}>
                 <div style={{ fontSize: '0.875rem', color: '#64748b' }}>
                     <div style={{ marginBottom: '0.25rem' }}>
-                        {currentUserId === task.assigneeId && task.creator ? (
+                        {(currentUserId === task.assigneeId || (task.assignees as any)?.some((a: any) => a.id === currentUserId)) && task.creator ? (
                             <span>{t('assigned_by')}: <strong>{task.creator.firstName} {task.creator.lastName}</strong></span>
                         ) : (
                             <span>
-                                {t('assignee_label')}: {task.assignees && task.assignees.length > 1
-                                    ? `${task.assignees[0].firstName} + ${task.assignees.length - 1}`
+                                {task.assignees && task.assignees.length > 1 ? (t('assignees_label' as any) || 'Assignees') : t('assignee_label')}: {task.assignees && task.assignees.length > 1
+                                    ? task.assignees.length <= 2
+                                        ? task.assignees.map(a => `${a.firstName} ${a.lastName}`).join(', ')
+                                        : `${task.assignees[0].firstName} ${task.assignees[0].lastName} + ${task.assignees.length - 1}`
                                     : `${task.assignee.firstName} ${task.assignee.lastName}`}
                             </span>
                         )}

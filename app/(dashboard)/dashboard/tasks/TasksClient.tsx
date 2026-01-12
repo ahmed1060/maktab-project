@@ -29,8 +29,10 @@ export default function TasksClient({ tasks, role, currentUserId }: TasksClientP
         }
 
         // Filter by employee
-        if (filters.employeeId && task.assigneeId !== filters.employeeId) {
-            return false
+        if (filters.employeeId) {
+            const isPrimary = task.assigneeId === filters.employeeId
+            const isSecondary = task.assignees?.some((a: any) => a.id === filters.employeeId)
+            if (!isPrimary && !isSecondary) return false
         }
 
         // Filter by status
