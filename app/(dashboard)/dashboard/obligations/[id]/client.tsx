@@ -14,6 +14,7 @@ export default function ObligationDetailClient({ obligation, userRole }: { oblig
     const [feedbackMessage, setFeedbackMessage] = useState('')
     const [userId, setUserId] = useState<string | null>(null) // We need this to check if user is the assignee
     const [isReverting, setIsReverting] = useState(false)
+    const [showRevertConfirm, setShowRevertConfirm] = useState(false)
     const router = useRouter()
 
     useEffect(() => {
@@ -233,12 +234,12 @@ export default function ObligationDetailClient({ obligation, userRole }: { oblig
     }
 
     const handleRevert = async () => {
-        if (!confirm(t('confirm_action_button') + '?')) return
         setIsReverting(true)
+        setShowRevertConfirm(false)
         try {
             const res = await fetch(`/api/obligations/${obligation.id}/revert`, { method: 'POST' })
             if (!res.ok) {
-                const data = await res.json()
+                const data = await res.json().catch(() => ({}))
                 throw new Error(data.message || 'Revert failed')
             }
             setFeedbackMessage(t('obligation_reverted_success'))
@@ -246,7 +247,7 @@ export default function ObligationDetailClient({ obligation, userRole }: { oblig
             router.refresh()
         } catch (e: any) {
             console.error(e)
-            setFeedbackMessage(t('failed_revert_obligation'))
+            setFeedbackMessage(e.message || t('failed_revert_obligation'))
             setShowFeedback(true)
         } finally {
             setIsReverting(false)
@@ -350,8 +351,7 @@ export default function ObligationDetailClient({ obligation, userRole }: { oblig
                     </button>
                     {userRole === 'SUPER_ADMIN' && ['APPROVED', 'COMPLETED', 'REJECTED'].includes(obligation.status) && (
                         <button
-                            onClick={handleRevert}
-                            disabled={isReverting}
+                            onClick={() => setShowRevertConfirm(true)}
                             style={{
                                 background: '#f8fafc',
                                 color: '#475569',
@@ -596,6 +596,18 @@ export default function ObligationDetailClient({ obligation, userRole }: { oblig
                         <button className="btn" onClick={() => setIsReassigning(false)}>{t('cancel')}</button>
                         <button className="btn btn-primary" onClick={handleReassign} disabled={!newAssigneeId}>
                             {t('confirm_transfer_button')}
+                        </button>
+                    </div>
+                </div>
+            </Modal>
+            {/* Revert Confirmation Modal */}
+            <Modal isOpen={showRevertConfirm} onClose={() => setShowRevertConfirm(false)} title={t('return_to_in_progress')} hideFooter>
+                <div style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>
+                    <p>{t('confirm_action_button') + '?'}</p>
+                    <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem', justifyContent: 'flex-end', flexDirection: 'row' }}>
+                        <button onClick={() => setShowRevertConfirm(false)} className="btn" style={{ background: '#e2e8f0' }}>{t('cancel')}</button>
+                        <button onClick={handleRevert} className="btn" style={{ background: '#2563eb', color: 'white' }}>
+                            {isReverting ? '...' : t('confirm_action_button')}
                         </button>
                     </div>
                 </div>

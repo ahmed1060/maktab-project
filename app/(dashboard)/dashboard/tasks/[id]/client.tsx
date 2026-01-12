@@ -43,6 +43,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
     const [allUsers, setAllUsers] = useState<any[]>([])
     const [transferring, setTransferring] = useState(false)
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+    const [showRevertConfirm, setShowRevertConfirm] = useState(false)
     const [isEditing, setIsEditing] = useState(false)
     const [editForm, setEditForm] = useState({
         title: initialTask.title,
@@ -440,19 +441,19 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
     }
 
     const handleRevert = async () => {
-        if (!confirm(t('confirm_action_button') + '?')) return
         setIsReverting(true)
+        setShowRevertConfirm(false)
         try {
             const res = await fetch(`/api/tasks/${task.id}/revert`, { method: 'POST' })
             if (!res.ok) {
-                const data = await res.json()
+                const data = await res.json().catch(() => ({}))
                 throw new Error(data.message || 'Revert failed')
             }
             showToast(t('task_reverted_success'), 'success')
             router.refresh()
         } catch (e: any) {
             console.error(e)
-            showToast(t('failed_revert_task'), 'error')
+            showToast(e.message || t('failed_revert_task'), 'error')
         } finally {
             setIsReverting(false)
         }
@@ -622,8 +623,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                     )}
                     {userRole === 'SUPER_ADMIN' && ['APPROVED', 'COMPLETED', 'REJECTED'].includes(task.status) && task.paymentStatus === 'PENDING_PAYMENT' && (
                         <button
-                            onClick={handleRevert}
-                            disabled={isReverting}
+                            onClick={() => setShowRevertConfirm(true)}
                             style={{
                                 background: '#f8fafc',
                                 color: '#475569',

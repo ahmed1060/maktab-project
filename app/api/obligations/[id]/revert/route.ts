@@ -69,13 +69,18 @@ export async function POST(req: Request, { params }: { params: { id: string } })
                 }
             })
 
+            // Determine if user exists in SuperAdmin or User table for AuditLog
+            const currentUserId = (session.user as any).id
+            const isSuperAdminEntity = await tx.superAdmin.findUnique({ where: { id: currentUserId } })
+
             // Audit log
             await tx.auditLog.create({
                 data: {
                     action: 'REVERT_OBLIGATION',
                     entityType: 'OBLIGATION',
                     entityId: obligation.id,
-                    superAdminId: (session.user as any).id,
+                    superAdminId: isSuperAdminEntity ? currentUserId : null,
+                    userId: isSuperAdminEntity ? null : currentUserId,
                     details: JSON.stringify({
                         oldStatus: obligation.status,
                         newStatus: 'IN_PROGRESS',
