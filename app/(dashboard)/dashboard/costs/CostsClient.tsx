@@ -65,12 +65,20 @@ export default function CostsClient({ tasksWithCosts, userRole }: CostsClientPro
         if (sortBy === 'date') {
             comparison = new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime()
         } else if (sortBy === 'amount') {
-            comparison = a.totalCost - b.totalCost
+            const costA = filters.employeeId ? (typeof a.memberCosts === 'string' ? JSON.parse(a.memberCosts)[filters.employeeId] : (a.memberCosts?.[filters.employeeId] || 0)) : a.totalCost
+            const costB = filters.employeeId ? (typeof b.memberCosts === 'string' ? JSON.parse(b.memberCosts)[filters.employeeId] : (b.memberCosts?.[filters.employeeId] || 0)) : b.totalCost
+            comparison = costA - costB
         }
         return sortOrder === 'asc' ? comparison : -comparison
     })
 
-    const totalCost = sortedTasks.reduce((sum, task) => sum + task.totalCost, 0)
+    const totalCost = sortedTasks.reduce((sum, task) => {
+        if (filters.employeeId) {
+            const mCosts = typeof task.memberCosts === 'string' ? JSON.parse(task.memberCosts) : (task.memberCosts || {})
+            return sum + (mCosts[filters.employeeId] || 0)
+        }
+        return sum + task.totalCost
+    }, 0)
 
     const handleMarkAllAsPaid = async () => {
         if (sortedTasks.length === 0) return
@@ -184,9 +192,20 @@ export default function CostsClient({ tasksWithCosts, userRole }: CostsClientPro
                     gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
                     gap: '1.5rem'
                 }}>
-                    {sortedTasks.map(task => (
-                        <CostCard key={task.id} task={task} />
-                    ))}
+                    {sortedTasks.map(task => {
+                        let displayCost = task.totalCost
+                        let displayAssignee = task.assignee
+                        if (filters.employeeId) {
+                            const mCosts = typeof task.memberCosts === 'string' ? JSON.parse(task.memberCosts) : (task.memberCosts || {})
+                            displayCost = mCosts[filters.employeeId] || 0
+
+                            if (task.assignee.id !== filters.employeeId) {
+                                const matched = task.assignees?.find((a: any) => a.id === filters.employeeId)
+                                if (matched) displayAssignee = matched
+                            }
+                        }
+                        return <CostCard key={task.id} task={{ ...task, totalCost: displayCost, assignee: displayAssignee }} />
+                    })}
                 </div>
             )}
         </div>

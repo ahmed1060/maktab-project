@@ -231,6 +231,23 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
                 comments: JSON.stringify(comments)
             }
 
+            // Update memberCosts
+            if (totalAdded > 0) {
+                let currentMemberCosts: Record<string, number> = {}
+                if ((currentTask as any).memberCosts) {
+                    try {
+                        const rawCosts = (currentTask as any).memberCosts
+                        currentMemberCosts = typeof rawCosts === 'string'
+                            ? JSON.parse(rawCosts)
+                            : (rawCosts as Record<string, number>)
+                    } catch { currentMemberCosts = {} }
+                }
+
+                const currentVal = currentMemberCosts[userId] || 0
+                currentMemberCosts[userId] = currentVal + totalAdded
+                updateData.memberCosts = currentMemberCosts
+            }
+
             // Add cost to totalCost if cost > 0 (even for drafts)
             if (totalAdded > 0) {
                 updateData.totalCost = {

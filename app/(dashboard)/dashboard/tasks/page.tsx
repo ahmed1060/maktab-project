@@ -44,6 +44,10 @@ export default async function TasksPage({ searchParams }: { searchParams: { comp
             assignees: { select: { id: true, firstName: true, lastName: true } },
             creator: { select: { firstName: true, lastName: true } }
         },
+        // We select these manually since they are not in the include or we can just let include fetch all and use select
+        // Actually findMany with include/select is common. I'll just rely on the default findMany for those fields.
+        // Prisma include adds relations, but scalar fields are included by default.
+        // So I just need to make sure I don't use 'select' which would exclude them.
         orderBy: { createdAt: 'desc' }
     })
 

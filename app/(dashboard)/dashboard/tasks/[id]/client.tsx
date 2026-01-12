@@ -20,6 +20,14 @@ const TrashIcon = ({ size = 18, color = "#ef4444" }: { size?: number, color?: st
 
 export default function TaskDetailClient({ task: initialTask, userRole, userId, creatorName, currentUserName }: { task: any, userRole: string, userId: string, creatorName: string, currentUserName: string }) {
     const { t, locale } = useLanguage()
+
+    // Parse member costs
+    const getMemberCosts = (taskObj: any) => {
+        if (!taskObj.memberCosts) return {}
+        try {
+            return typeof taskObj.memberCosts === 'string' ? JSON.parse(taskObj.memberCosts) : taskObj.memberCosts
+        } catch { return {} }
+    }
     const [task, setTask] = useState(initialTask)
     const [existingAttachments, setExistingAttachments] = useState<any[]>(() => {
         try {
@@ -817,10 +825,23 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                                             </div>
                                         </div>
                                     ))}
-                                    <div style={{ background: '#f59e0b', color: 'white', padding: '1rem', borderRadius: '0.5rem', textAlign: 'center', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }}>
-                                        <div style={{ fontSize: '0.875rem', fontWeight: '600', opacity: 0.9 }}>{t('total_cost')}</div>
-                                        <div style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>{(task.totalCost || 0).toFixed(2)} {t('egp')}</div>
-                                    </div>
+                                    {(task.assignees?.length > 1) ? (
+                                        <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '0.5rem', flexDirection: 'row' }}>
+                                            <div style={{ flex: 1, background: '#3b82f6', color: 'white', padding: '0.75rem', borderRadius: '0.5rem', textAlign: 'center' }}>
+                                                <div style={{ fontSize: '0.7rem', fontWeight: '600', opacity: 0.9, textTransform: 'uppercase' }}>{currentUserName}</div>
+                                                <div style={{ fontSize: '1.1rem', fontWeight: 'bold' }}>{(getMemberCosts(task)[userId] || 0).toFixed(2)} {t('egp')}</div>
+                                            </div>
+                                            <div style={{ flex: 1, background: '#64748b', color: 'white', padding: '0.75rem', borderRadius: '0.5rem', textAlign: 'center' }}>
+                                                <div style={{ fontSize: '0.7rem', fontWeight: '600', opacity: 0.9, textTransform: 'uppercase' }}>Task</div>
+                                                <div style={{ fontSize: '1.1rem', fontWeight: 'bold' }}>{(task.totalCost || 0).toFixed(2)} {t('egp')}</div>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div style={{ background: '#f59e0b', color: 'white', padding: '1rem', borderRadius: '0.5rem', textAlign: 'center', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }}>
+                                            <div style={{ fontSize: '0.875rem', fontWeight: '600', opacity: 0.9 }}>{t('total_cost')}</div>
+                                            <div style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>{(task.totalCost || 0).toFixed(2)} {t('egp')}</div>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         )

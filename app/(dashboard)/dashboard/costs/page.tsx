@@ -35,7 +35,7 @@ export default async function CostsPage({ searchParams }: { searchParams: { comp
     }
 
     // Fetch all approved/completed tasks with totalCost > 0 and PENDING_PAYMENT status
-    const tasksWithCosts = await prisma.task.findMany({
+    const tasksWithCosts = await (prisma.task as any).findMany({
         where: {
             AND: [
                 {
@@ -60,9 +60,17 @@ export default async function CostsPage({ searchParams }: { searchParams: { comp
             id: true,
             title: true,
             totalCost: true,
+            memberCosts: true,
             status: true,
             updatedAt: true,
             assignee: {
+                select: {
+                    id: true,
+                    firstName: true,
+                    lastName: true
+                }
+            },
+            assignees: {
                 select: {
                     id: true,
                     firstName: true,

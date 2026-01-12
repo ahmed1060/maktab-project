@@ -93,6 +93,7 @@ model Task {
   location           String?
   lastStatusUpdateBy String?
   lastEditBy         String?
+  memberCosts        Json?
   assignee           User     @relation("AssignedTasks", fields: [assigneeId], references: [id])
   creator            User?    @relation("CreatedTasks", fields: [createdBy], references: [id])
   assignees          User[]   @relation("TaskAssignees")

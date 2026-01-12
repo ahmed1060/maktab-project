@@ -29,8 +29,11 @@ interface TaskListItemProps {
         createdAt: Date | string
         lastStatusUpdateBy?: string
         difficulty: number
+        totalCost?: number
+        memberCosts?: any
     }
     currentUserId: string
+    currentUserName?: string
 }
 
 export default function TaskListItem({ task, currentUserId }: TaskListItemProps) {
@@ -48,6 +51,10 @@ export default function TaskListItem({ task, currentUserId }: TaskListItemProps)
         if (task.status === 'IN_PROGRESS') return t('continue_task')
         return t('open_task')
     }
+
+    const memberCostsArr = task.memberCosts ? (typeof task.memberCosts === 'string' ? JSON.parse(task.memberCosts) : task.memberCosts) : {}
+    const userCost = memberCostsArr[currentUserId] || 0
+    const isMultiAssignee = (task.assignees?.length || 0) > 1
 
     return (
         <div className="glass-card" style={{ marginBottom: '1rem' }}>
@@ -109,17 +116,35 @@ export default function TaskListItem({ task, currentUserId }: TaskListItemProps)
                             </span>
                         )}
                     </div>
-                    <div>
+                    <div style={{ fontSize: '0.75rem', opacity: 0.7, marginTop: '0.25rem' }}>
                         {mounted && (
                             <>
-                                {t('created_label')}: {new Date(task.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} {new Date(task.createdAt).toLocaleDateString(locale === 'ar' ? 'ar-EG' : 'en-GB')} | {t('deadline_label')}: {new Date(task.deadline).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} {new Date(task.deadline).toLocaleDateString(locale === 'ar' ? 'ar-EG' : 'en-GB')}
+                                {t('created_label')}: {new Date(task.createdAt).toLocaleDateString(locale === 'ar' ? 'ar-EG' : 'en-GB')} | {t('deadline_label')}: {new Date(task.deadline).toLocaleDateString(locale === 'ar' ? 'ar-EG' : 'en-GB')}
                             </>
                         )}
                     </div>
                 </div>
-                <Link href={`/dashboard/tasks/${task.id}`} className="btn btn-primary" style={{ textDecoration: 'none', fontSize: '0.875rem' }}>
-                    {getButtonLabel()}
-                </Link>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', alignItems: 'flex-end' }}>
+                    {isMultiAssignee && (task.totalCost || 0) > 0 && (
+                        <div style={{ display: 'flex', gap: '0.5rem' }}>
+                            <div style={{ background: '#3b82f6', color: 'white', padding: '0.2rem 0.6rem', borderRadius: '0.5rem', fontSize: '0.75rem', fontWeight: 'bold', minWidth: '80px', textAlign: 'center' }}>
+                                {locale === 'ar' ? 'أنت' : 'Personal'}: {userCost.toFixed(2)}
+                            </div>
+                            <div style={{ background: '#64748b', color: 'white', padding: '0.2rem 0.6rem', borderRadius: '0.5rem', fontSize: '0.75rem', fontWeight: 'bold', minWidth: '80px', textAlign: 'center' }}>
+                                Task: {(task.totalCost || 0).toFixed(2)}
+                            </div>
+                        </div>
+                    )}
+                    {(!isMultiAssignee) && (task.totalCost || 0) > 0 && (
+                        <div style={{ background: '#f59e0b', color: 'white', padding: '0.2rem 0.6rem', borderRadius: '0.5rem', fontSize: '0.75rem', fontWeight: 'bold' }}>
+                            {t('total_cost')}: {(task.totalCost || 0).toFixed(2)}
+                        </div>
+                    )}
+                    <Link href={`/dashboard/tasks/${task.id}`} className="btn btn-primary" style={{ textDecoration: 'none', fontSize: '0.875rem' }}>
+                        {getButtonLabel()}
+                    </Link>
+                </div>
             </div>
 
             <Modal
