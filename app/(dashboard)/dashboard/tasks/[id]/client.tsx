@@ -8,6 +8,16 @@ import { useToast } from '@/context/ToastContext'
 import DateTimePicker from '@/components/DateTimePicker'
 import { useLanguage } from '@/context/LanguageContext'
 
+const TrashIcon = ({ size = 18, color = "#ef4444" }: { size?: number, color?: string }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M5 8H19L18.1 20.2C18.05 20.65 17.65 21 17.2 21H6.8C6.35 21 5.95 20.65 5.9 20.2L5 8Z" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+        <path d="M10 11V18" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" strokeDasharray="1 2" />
+        <path d="M14 11V18" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" strokeDasharray="1 2" />
+        <path d="M8 5V3H16V5" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+        <path d="M4 8H20" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+)
+
 export default function TaskDetailClient({ task: initialTask, userRole, userId, creatorName, currentUserName }: { task: any, userRole: string, userId: string, creatorName: string, currentUserName: string }) {
     const { t, locale } = useLanguage()
     const [task, setTask] = useState(initialTask)
@@ -39,7 +49,8 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
         description: initialTask.description,
         assigneeId: initialTask.assigneeId,
         deadline: initialTask.deadline,
-        difficulty: initialTask.difficulty
+        difficulty: initialTask.difficulty,
+        location: initialTask.location || ''
     })
     const [editFieldErrors, setEditFieldErrors] = useState({ title: '', description: '' })
     const [isReviewModalOpen, setIsReviewModalOpen] = useState(false)
@@ -68,7 +79,8 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
             description: initialTask.description,
             assigneeId: initialTask.assigneeId,
             deadline: initialTask.deadline,
-            difficulty: initialTask.difficulty
+            difficulty: initialTask.difficulty,
+            location: initialTask.location || ''
         })
         setReviewDifficulty(initialTask.difficulty)
     }, [initialTask])
@@ -258,7 +270,6 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                     const res = await fetch(`/api/tasks/${task.id}/submit`, {
                         method: 'PUT',
                         body: JSON.stringify({
-                            newAttachments: [],
                             note: '',
                             costEntries: [],
                             location: locationString,
@@ -379,7 +390,8 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
             description: task.description,
             assigneeId: task.assigneeId,
             deadline: task.deadline,
-            difficulty: task.difficulty
+            difficulty: task.difficulty,
+            location: task.location || ''
         })
         setIsEditing(true)
     }
@@ -432,6 +444,26 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
         } catch (e) {
             console.error(e)
             showToast(t('failed_update_payment_status'), 'error')
+        }
+    }
+
+    const handleDeleteItem = async (type: 'ATTACHMENT' | 'COST_ADDITION' | 'SUBMISSION_NOTE' | 'LOCATION', itemId: string) => {
+        if (!confirm(t('confirm_item_delete'))) return
+
+        try {
+            const endpoint = `/api/tasks/${task.id}/${type === 'LOCATION' ? 'locations' : 'items'}`
+            const res = await fetch(endpoint, {
+                method: 'DELETE',
+                body: JSON.stringify(type === 'LOCATION' ? { date: itemId } : { type, itemId }),
+                headers: { 'Content-Type': 'application/json' }
+            })
+
+            if (!res.ok) throw new Error('Delete failed')
+            showToast(t('item_deleted_success') || 'Deleted successfully', 'success')
+            router.refresh()
+        } catch (e) {
+            console.error(e)
+            showToast(t('error_generic'), 'error')
         }
     }
 
@@ -591,6 +623,11 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                     )}
                 </div>
                 <p style={{ fontSize: '1.1rem', margin: 0, whiteSpace: 'pre-wrap' }}>{task.description}</p>
+                {task.location && (
+                    <div style={{ marginTop: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#0369a1', fontSize: '0.95rem', fontWeight: '500' }}>
+                        <span>📍</span> {task.location}
+                    </div>
+                )}
             </div>
 
             <div style={{ marginTop: '1rem', color: '#64748b', fontSize: '0.9rem' }}>
@@ -612,7 +649,14 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                                     {[...regularLogs].reverse().map((log: any, i: number) => (
                                         <div key={i} style={{ padding: '1rem', background: '#f8fafc', borderRadius: '0.5rem', border: '1px solid #e2e8f0' }}>
                                             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', flexDirection: 'row' }}>
-                                                <span style={{ fontWeight: 'bold', color: '#1e293b' }}>{log.author}</span>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                    <span style={{ fontWeight: 'bold', color: '#1e293b' }}>{log.author}</span>
+                                                    {log.type === 'SUBMISSION_NOTE' && task.status === 'IN_PROGRESS' && (
+                                                        <button onClick={() => handleDeleteItem('SUBMISSION_NOTE', log.date)} className="btn-icon" style={{ padding: '2px', border: 'none', background: 'none', cursor: 'pointer', display: 'flex' }} title={t('delete_note_title')}>
+                                                            <TrashIcon size={14} />
+                                                        </button>
+                                                    )}
+                                                </div>
                                                 <span style={{ fontSize: '0.75rem', color: '#64748b' }}>{new Date(log.date || log.createdAt).toLocaleString(locale)}</span>
                                             </div>
                                             <p style={{ margin: 0, fontSize: '0.95rem', color: '#334155', whiteSpace: 'pre-wrap' }}>{log.text}</p>
@@ -631,13 +675,24 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                 {existingAttachments.length > 0 ? (
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '1rem' }}>
                         {existingAttachments.map((att: any, idx: number) => (
-                            <a key={idx} href={att.url} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.75rem', background: 'white', border: '1px solid #e2e8f0', borderRadius: '0.5rem', textDecoration: 'none', color: '#334155', transition: 'all 0.2s', flexDirection: 'row' }}>
-                                <span style={{ fontSize: '1.5rem' }}>📄</span>
-                                <div style={{ overflow: 'hidden', textAlign: locale === 'ar' ? 'right' : 'left' }}>
-                                    <div style={{ fontSize: '0.9rem', fontWeight: '500', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>{att.name || t('attachment')}</div>
-                                    <div style={{ fontSize: '0.7rem', color: '#64748b' }}>{att.uploadedBy} • {new Date(att.uploadedAt).toLocaleDateString(locale)}</div>
-                                </div>
-                            </a>
+                            <div key={idx} style={{ position: 'relative' }}>
+                                <a href={att.url} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.75rem', background: 'white', border: '1px solid #e2e8f0', borderRadius: '0.5rem', textDecoration: 'none', color: '#334155', transition: 'all 0.2s', flexDirection: 'row' }}>
+                                    <span style={{ fontSize: '1.5rem' }}>📄</span>
+                                    <div style={{ overflow: 'hidden', textAlign: locale === 'ar' ? 'right' : 'left' }}>
+                                        <div style={{ fontSize: '0.9rem', fontWeight: '500', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>{att.name || t('attachment')}</div>
+                                        <div style={{ fontSize: '0.7rem', color: '#64748b' }}>{att.uploadedBy} • {new Date(att.uploadedAt).toLocaleDateString(locale)}</div>
+                                    </div>
+                                </a>
+                                {task.status === 'IN_PROGRESS' && (
+                                    <button
+                                        onClick={(e) => { e.preventDefault(); handleDeleteItem('ATTACHMENT', att.url); }}
+                                        style={{ position: 'absolute', top: '5px', right: locale === 'ar' ? 'auto' : '5px', left: locale === 'ar' ? '5px' : 'auto', background: 'white', border: '1px solid #fee2e2', borderRadius: '50%', padding: '4px', cursor: 'pointer', display: 'flex' }}
+                                        title={t('delete_attachment_title')}
+                                    >
+                                        <TrashIcon size={14} />
+                                    </button>
+                                )}
+                            </div>
                         ))}
                     </div>
                 ) : (
@@ -661,7 +716,14 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                                         <div key={i} style={{ display: 'flex', flexDirection: 'column', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: '0.5rem', padding: '1rem' }}>
                                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexDirection: 'row' }}>
                                                 <div style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>
-                                                    <div style={{ fontSize: '0.75rem', color: '#92400e', textTransform: 'uppercase', fontWeight: '600', marginBottom: '0.25rem' }}>{t('cost_description_placeholder').split(' ')[0]}</div>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                        <div style={{ fontSize: '0.75rem', color: '#92400e', textTransform: 'uppercase', fontWeight: '600', marginBottom: '0.25rem' }}>{t('cost_description_placeholder').split(' ')[0]}</div>
+                                                        {task.status === 'IN_PROGRESS' && (
+                                                            <button onClick={() => handleDeleteItem('COST_ADDITION', c.date)} style={{ background: 'none', border: 'none', padding: '2px', cursor: 'pointer', display: 'flex' }} title={t('delete_cost_title')}>
+                                                                <TrashIcon size={14} />
+                                                            </button>
+                                                        )}
+                                                    </div>
                                                     <div style={{ fontSize: '1rem', fontWeight: '600', color: '#78350f' }}>{c.description || t('no_description')}</div>
                                                 </div>
                                                 <div style={{ textAlign: 'center', background: '#fef3c7', padding: '0.5rem 1rem', borderRadius: '0.375rem', border: '1px solid #fcd34d' }}>
@@ -742,8 +804,10 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                                                                 <button onClick={() => handleVerify('WRONG')} style={{ background: '#fee2e2', border: '1px solid #ef4444', color: '#991b1b', width: '32px', height: '32px', borderRadius: '50%', cursor: 'pointer' }} title={t('mark_wrong_title')}>✕</button>
                                                             </div>
                                                         )}
-                                                        {canDelete && (
-                                                            <button onClick={() => setLocationToDelete({ date: loc.date })} style={{ background: '#fee2e2', color: '#dc2626', border: 'none', borderRadius: '0.25rem', padding: '0.4rem', cursor: 'pointer' }} title={t('delete_location_title')}>🗑️</button>
+                                                        {canDelete && task.status === 'IN_PROGRESS' && (
+                                                            <button onClick={() => setLocationToDelete({ date: loc.date })} style={{ background: '#fee2e2', color: '#dc2626', border: 'none', borderRadius: '0.25rem', padding: '0.4rem', cursor: 'pointer', display: 'flex' }} title={t('delete_location_title')}>
+                                                                <TrashIcon size={16} />
+                                                            </button>
                                                         )}
                                                     </div>
                                                 </div>
@@ -906,8 +970,13 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                     </div>
                     <div style={{ marginBottom: '1.25rem' }}>
                         <label className="label">{t('description_changes_title').split(' ')[0]}</label>
-                        <textarea className="input" rows={4} value={editForm.description} onChange={e => { setEditForm({ ...editForm, description: e.target.value }); setEditFieldErrors({ ...editFieldErrors, description: '' }); }} style={{ borderColor: editFieldErrors.description ? '#ef4444' : undefined }} maxLength={500} required />
-                        <div style={{ textAlign: locale === 'ar' ? 'left' : 'right', fontSize: '0.7rem', color: '#94a3b8', marginTop: '0.25rem' }}>{editForm.description.length}/500</div>
+                        <textarea className="input" rows={4} value={editForm.description} onChange={e => { setEditForm({ ...editForm, description: e.target.value }); setEditFieldErrors({ ...editFieldErrors, description: '' }); }} style={{ borderColor: editFieldErrors.description ? '#ef4444' : undefined }} maxLength={1000} required />
+                        <div style={{ textAlign: locale === 'ar' ? 'left' : 'right', fontSize: '0.7rem', color: '#94a3b8', marginTop: '0.25rem' }}>{editForm.description.length}/1000</div>
+                    </div>
+                    <div style={{ marginBottom: '1.25rem' }}>
+                        <label className="label">{t('location_name_label')}</label>
+                        <input className="input" value={editForm.location} onChange={e => { setEditForm({ ...editForm, location: e.target.value.slice(0, 100) }); }} maxLength={100} />
+                        <div style={{ textAlign: locale === 'ar' ? 'left' : 'right', fontSize: '0.7rem', color: '#94a3b8', marginTop: '0.25rem' }}>{editForm.location.length}/100</div>
                     </div>
                     <div style={{ marginBottom: '1.25rem' }}>
                         <label className="label">{t('assignee_label')}</label>

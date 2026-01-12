@@ -64,7 +64,7 @@ export async function POST(req: Request) {
     }
 
     const json = await req.json()
-    const { title, description, assigneeId, deadline, difficulty = 0 } = json
+    const { title, description, assigneeId, deadline, difficulty = 0, location } = json
 
     if (!title || title.length < 3 || title.length > 100) {
         return new NextResponse(JSON.stringify({ message: "Title must be between 3 and 100 characters" }), { status: 400 })
@@ -129,6 +129,7 @@ export async function POST(req: Request) {
                     deadline: new Date(deadline),
                     difficulty: Math.min(Math.max(difficulty, 0), 10), // Ensure 0-10 range
                     status: 'PENDING',
+                    location: location,
                     createdBy: userRole === 'SUPER_ADMIN' ? null : creatorId,
                     // Store Super Admin creator info in comments since there is no FK relationship
                     comments: userRole === 'SUPER_ADMIN' ? JSON.stringify([{
@@ -157,7 +158,7 @@ export async function POST(req: Request) {
                     entityId: task.id,
                     userId: userRole === 'SUPER_ADMIN' ? null : creatorId,
                     superAdminId: userRole === 'SUPER_ADMIN' ? creatorId : null,
-                    details: JSON.stringify({ title, assigneeId })
+                    details: JSON.stringify({ title, assigneeId, location })
                 }
             })
 

@@ -19,7 +19,7 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
     try {
         const json = await req.json()
         console.log("Received update payload:", json) // Debug log
-        const { title, description, assigneeId, deadline, difficulty } = json
+        const { title, description, assigneeId, deadline, difficulty, location } = json
 
         if (title && (title.length < 3 || title.length > 100)) {
             return new NextResponse("Title must be between 3 and 100 characters", { status: 400 })
@@ -47,7 +47,7 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
         // Fetch existing comments and details first
         const existingTask = await prisma.task.findUnique({
             where: { id: params.id },
-            select: { comments: true, title: true, description: true }
+            select: { comments: true, title: true, description: true, location: true }
         })
         const existingComments = existingTask?.comments ? JSON.parse(existingTask.comments) : []
 
@@ -56,6 +56,7 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
         if (existingTask) {
             if (existingTask.title !== title) changes.title = { from: existingTask.title, to: title }
             if (existingTask.description !== description) changes.description = { from: existingTask.description, to: description }
+            if (existingTask.location !== location) changes.location = { from: existingTask.location, to: location }
         }
 
         const updateData: any = {
@@ -64,6 +65,7 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
             assignee: { connect: { id: assigneeId } },
             deadline: new Date(deadline),
             difficulty,
+            location,
             isEdited: true,
             comments: JSON.stringify([...existingComments, {
                 text: "Task details updated",

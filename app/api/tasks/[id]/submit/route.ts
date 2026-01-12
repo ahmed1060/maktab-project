@@ -16,7 +16,7 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
 
     try {
         const json = await req.json()
-        const { newAttachments, note, cost, costDescription, isDraft, location } = json
+        const { newAttachments, note, cost, costDescription, isDraft, location, locationName } = json
 
         // Support both 'costs' and 'costEntries'
         const inputCosts = json.costs || json.costEntries
@@ -133,8 +133,9 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
             // Add location to comments if provided
             if (location) {
                 comments.push({
-                    text: `Location: ${location}`,
+                    text: locationName ? `Location: ${locationName}` : `Location: ${location}`,
                     location: location,
+                    locationName: locationName,
                     author: (session.user as any).name || 'Employee',
                     date: new Date().toISOString(),
                     type: 'LOCATION_ADDED'

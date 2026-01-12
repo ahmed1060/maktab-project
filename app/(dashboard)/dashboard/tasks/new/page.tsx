@@ -12,6 +12,7 @@ export default function NewTaskPage() {
     const [assigneeId, setAssigneeId] = useState('')
     const [deadline, setDeadline] = useState('')
     const [difficulty, setDifficulty] = useState('')
+    const [location, setLocation] = useState('')
     const [users, setUsers] = useState<any[]>([])
     const router = useRouter()
 
@@ -83,7 +84,8 @@ export default function NewTaskPage() {
                     description,
                     assigneeId,
                     deadline,
-                    difficulty: parseInt(difficulty) || 0
+                    difficulty: parseInt(difficulty) || 0,
+                    location
                 }),
                 headers: { 'Content-Type': 'application/json' }
             })
@@ -160,6 +162,19 @@ export default function NewTaskPage() {
                     )}
                     <div style={{ fontSize: '0.75rem', color: description.length >= 1000 ? '#ef4444' : '#94a3b8', textAlign: locale === 'ar' ? 'left' : 'right', marginTop: '0.25rem' }}>
                         {description.length}/1000
+                    </div>
+                </div>
+                <div style={{ marginBottom: '1.25rem' }}>
+                    <label style={{ display: 'block', marginBottom: '0.5rem' }}>{t('location_name_label')}</label>
+                    <input
+                        className="input"
+                        value={location}
+                        onChange={e => setLocation(e.target.value.slice(0, 100))}
+                        placeholder={t('location_name_placeholder')}
+                        maxLength={100}
+                    />
+                    <div style={{ fontSize: '0.75rem', color: location.length >= 100 ? '#ef4444' : '#94a3b8', textAlign: locale === 'ar' ? 'left' : 'right', marginTop: '0.25rem' }}>
+                        {location.length}/100
                     </div>
                 </div>
                 <div style={{ marginBottom: '1.25rem' }}>

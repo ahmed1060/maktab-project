@@ -111,17 +111,10 @@ export async function DELETE(
             return NextResponse.json({ error: 'Location entry not found' }, { status: 404 })
         }
 
-        // Check permissions for delete
-        // User can delete if they are the author AND task is editable
-        // OR if they are ADMIN/SUPER_ADMIN/TEAM_LEADER
-        const isAuthor = (comments[locationIndex].authorId === (session.user as any).id) || (comments[locationIndex].author === session.user.name)
-        const canEditTask = ['PENDING', 'IN_PROGRESS', 'REJECTED'].includes(task.status)
-        const isAdmin = ['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(session.user.role)
-
-        if (isAdmin || (isAuthor && canEditTask)) {
+        if (task.status === 'IN_PROGRESS') {
             comments.splice(locationIndex, 1)
         } else {
-            return NextResponse.json({ error: 'Not authorized to delete this location' }, { status: 403 })
+            return NextResponse.json({ error: 'Location deletion is only allowed when task is IN_PROGRESS' }, { status: 403 })
         }
 
         await prisma.task.update({
