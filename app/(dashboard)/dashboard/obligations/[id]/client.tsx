@@ -349,7 +349,7 @@ export default function ObligationDetailClient({ obligation, userRole }: { oblig
                     >
                         {t('close_button')}
                     </button>
-                    {userRole === 'SUPER_ADMIN' && ['APPROVED', 'COMPLETED', 'REJECTED'].includes(obligation.status) && (
+                    {userRole === 'SUPER_ADMIN' && ['APPROVED', 'COMPLETED', 'REJECTED', 'PENDING_CONFIRMATION'].includes(obligation.status) && (
                         <button
                             onClick={() => setShowRevertConfirm(true)}
                             style={{

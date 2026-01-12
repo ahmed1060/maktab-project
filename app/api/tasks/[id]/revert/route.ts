@@ -30,6 +30,11 @@ export async function POST(req: Request, { params }: { params: { id: string } })
 
             if (!task) throw new Error("Task not found")
 
+            const validStatuses = ['APPROVED', 'COMPLETED', 'REJECTED', 'PENDING_CONFIRMATION']
+            if (!validStatuses.includes(task.status)) {
+                throw new Error(`Cannot revert task with status: ${task.status}`)
+            }
+
             // Payment check
             if (task.paymentStatus !== 'PENDING_PAYMENT') {
                 throw new Error("Cannot revert task that has been paid")

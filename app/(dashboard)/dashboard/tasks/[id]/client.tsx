@@ -621,7 +621,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                             {task.paymentStatus === 'PAID' ? t('mark_as_pending_button') : t('mark_as_paid')}
                         </button>
                     )}
-                    {userRole === 'SUPER_ADMIN' && ['APPROVED', 'COMPLETED', 'REJECTED'].includes(task.status) && task.paymentStatus === 'PENDING_PAYMENT' && (
+                    {userRole === 'SUPER_ADMIN' && ['APPROVED', 'COMPLETED', 'REJECTED', 'PENDING_CONFIRMATION'].includes(task.status) && task.paymentStatus === 'PENDING_PAYMENT' && (
                         <button
                             onClick={() => setShowRevertConfirm(true)}
                             style={{

@@ -34,6 +34,11 @@ export async function POST(req: Request, { params }: { params: { id: string } })
 
             if (!obligation) throw new Error("Obligation not found")
 
+            const validStatuses = ['APPROVED', 'COMPLETED', 'REJECTED', 'PENDING_CONFIRMATION']
+            if (!validStatuses.includes(obligation.status)) {
+                throw new Error(`Cannot revert obligation with status: ${obligation.status}`)
+            }
+
             // Points were awarded if status was APPROVED or COMPLETED
             const hadPoints = ['APPROVED', 'COMPLETED'].includes(obligation.status)
             const pointDeduction = hadPoints ? obligation.difficulty : 0
