@@ -7,7 +7,7 @@ export default async function TaskDetailPage({ params }: { params: { id: string 
     const session = await getServerSession(authOptions)
     const task = await prisma.task.findUnique({
         where: { id: params.id },
-        include: { assignee: true }
+        include: { assignee: true, assignees: true }
     })
 
     if (!task) return <div>Task not found</div>

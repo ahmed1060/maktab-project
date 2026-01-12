@@ -23,7 +23,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
         // 1. Fetch current task state to calculate point delta
         const oldTask = await tx.task.findUnique({
             where: { id: params.id },
-            select: { status: true, difficulty: true, assigneeId: true, totalCost: true }
+            select: { status: true, difficulty: true, assigneeId: true, totalCost: true, assignees: { select: { id: true } } }
         })
 
         if (!oldTask) throw new Error("Task not found")
@@ -73,37 +73,46 @@ export async function POST(req: Request, { params }: { params: { id: string } })
                 difficulty: newDifficulty,
                 lastStatusUpdateBy: `${(session.user as any).role} ${(session.user as any).name}`
             },
-            include: { assignee: true }
+            include: { assignee: true, assignees: true }
         })
 
-        // 5. Apply Point Delta to User
+        // 5. Apply Point Delta to ALL Assignees
         if (pointDelta !== 0) {
-            try {
-                await tx.user.update({
-                    where: { id: task.assigneeId },
-                    data: {
-                        totalDifficultyPoints: {
-                            increment: pointDelta
+            const allAssigneeIds = Array.from(new Set([
+                ...(oldTask.assignees?.map((a: { id: string }) => a.id) || []),
+                oldTask.assigneeId
+            ])).filter(Boolean)
+
+            for (const aId of allAssigneeIds) {
+                try {
+                    await tx.user.update({
+                        where: { id: aId },
+                        data: {
+                            totalDifficultyPoints: {
+                                increment: pointDelta
+                            }
                         }
-                    }
-                })
-            } catch (error) {
-                console.error("Failed to update user points:", error)
-                // We don't rollback the task update if points fail, but in a transaction it's all or nothing usually. 
-                // Since this is inside tx, throwing here would rollback. 
-                // Given points are critical for this feature, we SHOULD let it fail.
-                throw error
+                    })
+                } catch (error) {
+                    console.error(`Failed to update points for user ${aId}:`, error)
+                    throw error
+                }
             }
         }
 
-        // Notify the assignee
-        await tx.notification.create({
-            data: {
-                userId: task.assigneeId,
+        // Notify all assignees
+        const allAssigneeIds = Array.from(new Set([
+            ...(task.assignees?.map((a: { id: string }) => a.id) || []),
+            task.assigneeId
+        ])).filter(Boolean)
+
+        await tx.notification.createMany({
+            data: allAssigneeIds.map(aId => ({
+                userId: aId,
                 type: newStatus === 'APPROVED' ? 'TASK_APPROVED' : newStatus === 'COMPLETED' ? 'TASK_COMPLETED' : 'TASK_REJECTED',
                 message: `Your task "${task.title}" has been ${newStatus === 'APPROVED' ? 'approved' : newStatus === 'COMPLETED' ? 'marked as completed' : 'rejected'}`,
                 relatedId: task.id
-            }
+            }))
         })
 
         // Audit log

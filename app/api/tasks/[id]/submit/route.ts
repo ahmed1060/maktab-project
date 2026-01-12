@@ -91,6 +91,7 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
                 comments.push({
                     text: note,
                     author: (session.user as any).name || 'Employee',
+                    authorId: userId,
                     date: new Date().toISOString(),
                     type: 'SUBMISSION_NOTE'
                 })
@@ -104,6 +105,7 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
                     description: costDescription || `Added cost: ${costValue.toFixed(2)} EGP`,
                     amount: costValue,
                     author: (session.user as any).name || 'Employee',
+                    authorId: userId,
                     date: new Date().toISOString(),
                     type: 'COST_ADDITION'
                 })
@@ -123,6 +125,7 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
                             description: c.description || `Added cost: ${cVal.toFixed(2)} EGP`,
                             amount: cVal,
                             author: (session.user as any).name || 'Employee',
+                            authorId: userId,
                             date: new Date().toISOString(),
                             type: 'COST_ADDITION'
                         })
@@ -133,19 +136,25 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
 
             // Add location to comments if provided
             if (location) {
+                // Per-user location limit: 2 per user
+                const userLocations = comments.filter((c: any) => c.type === 'LOCATION_ADDED' && c.authorId === userId)
+                if (userLocations.length >= 2) {
+                    throw new Error("You have reached the limit of 2 locations for this task.")
+                }
+
                 comments.push({
                     text: locationName ? `Location: ${locationName}` : `Location: ${location}`,
                     location: location,
                     locationName: locationName,
                     author: (session.user as any).name || 'Employee',
+                    authorId: userId,
                     date: new Date().toISOString(),
                     type: 'LOCATION_ADDED'
                 })
 
                 // AUTOMATIC LATENESS DEDUCTION
-                // Check if this is the FIRST location being added
-                const previousLocations = comments.filter((c: any) => c.type === 'LOCATION_ADDED')
-                if (previousLocations.length === 1) { // 1 because we just pushed it
+                // Check if this is the FIRST location being added by THIS user
+                if (userLocations.length === 0) {
                     const now = new Date()
                     const deadline = new Date(currentTask.deadline)
 

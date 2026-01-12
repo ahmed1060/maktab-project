@@ -274,8 +274,8 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
 
         try {
             const comments = JSON.parse(task.comments || '[]')
-            const locationCount = Array.isArray(comments) ? comments.filter((c: any) => c.type === 'LOCATION_ADDED').length : 0
-            if (locationCount >= 2) {
+            const userLocationCount = Array.isArray(comments) ? comments.filter((c: any) => c.type === 'LOCATION_ADDED' && c.authorId === userId).length : 0
+            if (userLocationCount >= 2) {
                 showToast(t('max_locations_error'), 'error')
                 return
             }
@@ -712,7 +712,12 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                                         <div key={i} style={{ padding: '1rem', background: '#f8fafc', borderRadius: '0.5rem', border: '1px solid #e2e8f0' }}>
                                             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', flexDirection: 'row' }}>
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                                    <span style={{ fontWeight: 'bold', color: '#1e293b' }}>{log.author}</span>
+                                                    {(task.assignees?.length > 1) && (
+                                                        <span style={{ background: '#f1f5f9', border: '1px solid #cbd5e1', color: '#475569', padding: '0.1rem 0.4rem', borderRadius: '1rem', fontSize: '0.65rem', fontWeight: 'bold' }}>
+                                                            {locale === 'ar' ? 'بواسطة:' : 'By:'} {log.author}
+                                                        </span>
+                                                    )}
+                                                    {!((task.assignees?.length > 1)) && <span style={{ fontWeight: 'bold', color: '#1e293b' }}>{log.author}</span>}
                                                     {log.type === 'SUBMISSION_NOTE' && task.status === 'IN_PROGRESS' && (
                                                         <button onClick={() => handleDeleteItem('SUBMISSION_NOTE', log.date)} className="btn-icon" style={{ padding: '2px', border: 'none', background: 'none', cursor: 'pointer', display: 'flex' }} title={t('delete_note_title')}>
                                                             <TrashIcon size={14} />
@@ -742,7 +747,15 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                                     <span style={{ fontSize: '1.5rem' }}>📄</span>
                                     <div style={{ overflow: 'hidden', textAlign: locale === 'ar' ? 'right' : 'left' }}>
                                         <div style={{ fontSize: '0.9rem', fontWeight: '500', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>{att.name || t('attachment')}</div>
-                                        <div style={{ fontSize: '0.7rem', color: '#64748b' }}>{att.uploadedBy} • {new Date(att.uploadedAt).toLocaleDateString(locale)}</div>
+                                        <div style={{ fontSize: '0.7rem', color: '#64748b' }}>
+                                            {(task.assignees?.length > 1) && (
+                                                <span style={{ background: '#f1f5f9', border: '1px solid #cbd5e1', color: '#475569', padding: '0.05rem 0.3rem', borderRadius: '1rem', fontSize: '0.6rem', fontWeight: 'bold', marginRight: locale === 'ar' ? '0' : '0.25rem', marginLeft: locale === 'ar' ? '0.25rem' : '0' }}>
+                                                    {locale === 'ar' ? 'بواسطة:' : 'By:'} {att.uploadedBy}
+                                                </span>
+                                            )}
+                                            {!((task.assignees?.length > 1)) && <span>{att.uploadedBy}</span>}
+                                            <span> • {new Date(att.uploadedAt).toLocaleDateString(locale)}</span>
+                                        </div>
                                     </div>
                                 </a>
                                 {task.status === 'IN_PROGRESS' && (
@@ -793,8 +806,14 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                                                     <div style={{ fontSize: '1.1rem', fontWeight: 'bold', color: '#92400e' }}>{(c.amount || 0).toFixed(2)} {t('egp')}</div>
                                                 </div>
                                             </div>
-                                            <div style={{ fontSize: '0.75rem', color: '#b45309', marginTop: '0.5rem', borderTop: '1px dashed #fcd34d', paddingTop: '0.5rem' }}>
-                                                {c.author} • {new Date(c.date).toLocaleString(locale)}
+                                            <div style={{ fontSize: '0.75rem', color: '#b45309', marginTop: '0.5rem', borderTop: '1px dashed #fcd34d', paddingTop: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                {(task.assignees?.length > 1) && (
+                                                    <span style={{ background: '#fef3c7', border: '1px solid #f59e0b', color: '#b45309', padding: '0.1rem 0.4rem', borderRadius: '1rem', fontSize: '0.65rem', fontWeight: 'bold' }}>
+                                                        {locale === 'ar' ? 'بواسطة:' : 'By:'} {c.author}
+                                                    </span>
+                                                )}
+                                                {!((task.assignees?.length > 1)) && <span>{c.author}</span>}
+                                                <span>• {new Date(c.date).toLocaleString(locale)}</span>
                                             </div>
                                         </div>
                                     ))}
@@ -851,7 +870,15 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                                                         <span style={{ fontSize: '1.25rem' }}>📍</span>
                                                         <div style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>
                                                             {mapsLink ? <a href={mapsLink} target="_blank" rel="noreferrer" style={{ fontWeight: '600', color: '#0369a1', textDecoration: 'underline' }}>{displayLoc}</a> : <span style={{ fontWeight: '600', color: '#0c4a6e' }}>{displayLoc}</span>}
-                                                            <div style={{ fontSize: '0.75rem', color: '#0369a1', marginTop: '0.25rem' }}>{loc.author} • {new Date(loc.date).toLocaleString(locale)}</div>
+                                                            <div style={{ fontSize: '0.75rem', color: '#0369a1', marginTop: '0.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                                {(task.assignees?.length > 1) && (
+                                                                    <span style={{ background: '#e0f2fe', border: '1px solid #38bdf8', color: '#0369a1', padding: '0.1rem 0.4rem', borderRadius: '1rem', fontSize: '0.65rem', fontWeight: 'bold' }}>
+                                                                        {locale === 'ar' ? 'بواسطة:' : 'By:'} {loc.author}
+                                                                    </span>
+                                                                )}
+                                                                {!((task.assignees?.length > 1)) && <span>{loc.author}</span>}
+                                                                <span>• {new Date(loc.date).toLocaleString(locale)}</span>
+                                                            </div>
                                                         </div>
                                                     </div>
                                                     <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexDirection: 'row' }}>
@@ -1043,8 +1070,8 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                         <button onClick={() => setShowDeleteConfirm(false)} className="btn" style={{ background: '#e2e8f0' }}>{t('cancel')}</button>
                         <button onClick={() => {
                             setShowDeleteConfirm(false)
-                            handleEditClick()
-                        }} className="btn" style={{ background: '#2563eb', color: 'white' }}>{t('edit')}</button>
+                            handleDelete()
+                        }} className="btn" style={{ background: '#ef4444', color: 'white' }}>{t('delete')}</button>
                     </div>
                 </div>
             </Modal>

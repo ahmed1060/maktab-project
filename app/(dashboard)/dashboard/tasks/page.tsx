@@ -17,7 +17,11 @@ export default async function TasksPage({ searchParams }: { searchParams: { comp
     const userCompanyId = (session?.user as any)?.companyId
 
     if (role === 'EMPLOYEE') {
-        whereClause.assigneeId = (session?.user as any)?.id
+        const userId = (session?.user as any)?.id
+        whereClause.OR = [
+            { assigneeId: userId },
+            { assignees: { some: { id: userId } } }
+        ]
     } else if (['ADMIN', 'TEAM_LEADER'].includes(role)) {
         // Strict isolation for Admin/Team Leader: Must match their company
         if (!userCompanyId) {
