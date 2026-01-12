@@ -42,7 +42,6 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
     const [isTransferModalOpen, setIsTransferModalOpen] = useState(false)
     const [allUsers, setAllUsers] = useState<any[]>([])
     const [userFetchError, setUserFetchError] = useState(false)
-    const [searchTermEdit, setSearchTermEdit] = useState('')
     const [searchTermTransfer, setSearchTermTransfer] = useState('')
     const [transferring, setTransferring] = useState(false)
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
@@ -995,14 +994,34 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                 </div>
             )}
 
-            {/* Transfer Link (Admins only) */}
+            {/* Transfer Button (Admins only) */}
             {['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole) && ['IN_PROGRESS', 'PENDING'].includes(task.status) && (
                 <div style={{ marginTop: '2rem', textAlign: locale === 'ar' ? 'left' : 'right' }}>
-                    <button onClick={() => {
-                        const currentIds = task.assignees?.map((a: any) => a.id) || (task.assigneeId ? [task.assigneeId] : [])
-                        setTransferAssigneeIds(currentIds)
-                        setIsTransferModalOpen(true)
-                    }} style={{ background: 'none', border: 'none', color: '#64748b', textDecoration: 'underline', cursor: 'pointer', fontSize: '0.875rem' }}>{t('transfer_to_another_employee')}</button>
+                    <button
+                        onClick={() => {
+                            const currentIds = task.assignees?.map((a: any) => a.id) || (task.assigneeId ? [task.assigneeId] : [])
+                            setTransferAssigneeIds(currentIds)
+                            setIsTransferModalOpen(true)
+                        }}
+                        className="btn"
+                        style={{
+                            background: '#f8fafc',
+                            color: '#475569',
+                            border: '1px solid #cbd5e1',
+                            borderRadius: '0.5rem',
+                            padding: '0.6rem 1.25rem',
+                            fontSize: '0.875rem',
+                            fontWeight: '600',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '0.5rem',
+                            boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+                            transition: 'all 0.2s ease',
+                            cursor: 'pointer'
+                        }}
+                    >
+                        <span>🔄</span> {t('transfer_to_another_employee')}
+                    </button>
                 </div>
             )}
 
@@ -1050,58 +1069,49 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                     </div>
                     <div style={{ marginBottom: '1.25rem' }}>
                         <label className="label">{t('assignee_label')}</label>
-                        <input
-                            type="text"
-                            className="input"
-                            placeholder={t('search_placeholder')}
-                            value={searchTermEdit}
-                            onChange={e => setSearchTermEdit(e.target.value)}
-                            style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}
-                        />
                         <div style={{
                             maxHeight: '150px',
                             overflowY: 'auto',
                             border: '1px solid #e2e8f0',
                             borderRadius: '0.5rem',
-                            padding: '0.75rem',
-                            background: '#f8fafc'
+                            padding: '1rem',
+                            background: '#f8fafc',
+                            display: 'flex',
+                            flexWrap: 'wrap',
+                            gap: '0.5rem'
                         }}>
-                            {allUsers.length > 0 ? (
-                                allUsers.filter(u => `${u.firstName} ${u.lastName}`.toLowerCase().includes(searchTermEdit.toLowerCase())).length > 0 ? (
-                                    allUsers.filter(u => `${u.firstName} ${u.lastName}`.toLowerCase().includes(searchTermEdit.toLowerCase())).map(u => (
-                                        <label key={u.id} style={{
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            gap: '0.5rem',
-                                            marginBottom: '0.5rem',
-                                            cursor: 'pointer',
-                                            padding: '0.25rem'
-                                        }}>
-                                            <input
-                                                type="checkbox"
-                                                checked={editForm.assigneeIds?.includes(u.id)}
-                                                onChange={e => {
-                                                    if (e.target.checked) {
-                                                        setEditForm(prev => ({ ...prev, assigneeIds: [...(prev.assigneeIds || []), u.id] }))
-                                                    } else {
-                                                        setEditForm(prev => ({ ...prev, assigneeIds: (prev.assigneeIds || []).filter((id: string) => id !== u.id) }))
-                                                    }
-                                                }}
-                                            />
-                                            <span style={{ fontSize: '0.9rem' }}>
-                                                {u.firstName} {u.lastName} <small style={{ color: '#64748b' }}>({t(`role_${u.role?.toLowerCase()}` as any)})</small>
-                                            </span>
-                                        </label>
-                                    ))
-                                ) : (
-                                    <div style={{ fontSize: '0.9rem', color: '#64748b', textAlign: 'center' }}>{t('no_data_available')}</div>
-                                )
-                            ) : userFetchError ? (
-                                <div style={{ fontSize: '0.9rem', color: '#ef4444' }}>{t('failed_fetch_data')}</div>
+                            {task.assignees && task.assignees.length > 0 ? (
+                                task.assignees.map((u: any) => (
+                                    <div key={u.id} style={{
+                                        background: 'white',
+                                        border: '1px solid #e2e8f0',
+                                        borderRadius: '2rem',
+                                        padding: '0.4rem 1rem',
+                                        fontSize: '0.9rem',
+                                        color: '#334155',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
+                                    }}>
+                                        {u.firstName} {u.lastName} <small style={{ color: '#64748b', marginLeft: locale === 'ar' ? 0 : '0.4rem', marginRight: locale === 'ar' ? '0.4rem' : 0 }}>({t(`role_${u.role?.toLowerCase()}` as any)})</small>
+                                    </div>
+                                ))
                             ) : (
-                                <div style={{ fontSize: '0.9rem', color: '#64748b' }}>{locale === 'ar' ? 'جاري التحميل...' : 'Loading...'}</div>
+                                <div style={{
+                                    background: 'white',
+                                    border: '1px solid #e2e8f0',
+                                    borderRadius: '2rem',
+                                    padding: '0.5rem 1rem',
+                                    fontSize: '0.9rem',
+                                    fontWeight: '600'
+                                }}>
+                                    {task.assignee?.firstName} {task.assignee?.lastName}
+                                </div>
                             )}
                         </div>
+                        <p style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.5rem' }}>
+                            {t('transfer_notice' as any) || (locale === 'ar' ? 'يرجى استخدام زر "التحويل" لتغيير الموظفين.' : 'Please use the "Transfer" button to change employees.')}
+                        </p>
                     </div>
                     <div style={{ marginBottom: '1.25rem' }}>
                         <DateTimePicker label={t('deadline_label')} value={editForm.deadline} onChange={v => setEditForm({ ...editForm, deadline: v })} min={new Date().toISOString()} />
