@@ -194,6 +194,15 @@ export default function DayOffRequestsPage() {
     // Pie Chart Data
     const usedCredits = requests.filter(r => r.status === 'APPROVED').reduce((acc, r) => acc + (r.daysDeducted || 0), 0)
 
+    const formatDays = (days: number) => {
+        if (locale === 'ar') {
+            if (days === 1) return t('day_singular' as any)
+            if (days === 2) return t('day_dual' as any)
+            return `${days} ${t('days_label')}`
+        }
+        return `${days} ${days === 1 ? t('day_singular' as any) : t('days_label')}`
+    }
+
     // Filter Logic
     const filteredRequests = requests.filter(req => {
         const matchesEmployee = !filters.employeeId || req.userId === filters.employeeId
@@ -363,7 +372,7 @@ export default function DayOffRequestsPage() {
                                                 color: '#64748b',
                                                 border: '1px solid #e2e8f0'
                                             }}>
-                                                {calculateWorkDays(req.date, req.endDate)} {t('days_label')}
+                                                {formatDays(calculateWorkDays(req.date, req.endDate))}
                                             </span>
                                             {req.status === 'APPROVED' && (
                                                 <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
@@ -376,7 +385,7 @@ export default function DayOffRequestsPage() {
                                                         fontWeight: '700',
                                                         border: `1px solid ${req.deductionType === 'SALARY' ? '#fca5a5' : '#86efac'}`
                                                     }}>
-                                                        {req.daysDeducted} {t('days_label')} {t('deduct_from_label' as any)} {req.deductionType === 'SALARY' ? t('deduct_from_salary' as any) : t('deduct_from_credit' as any)}
+                                                        {formatDays(req.daysDeducted || 0)} {t('deduct_from_label' as any)} {req.deductionType === 'SALARY' ? t('deduct_from_salary' as any) : t('deduct_from_credit' as any)}
                                                     </span>
                                                 </div>
                                             )}
@@ -487,7 +496,7 @@ export default function DayOffRequestsPage() {
                                 </ResponsiveContainer>
                             </div>
                             <div style={{ textAlign: 'center', marginTop: '1rem' }}>
-                                <p style={{ fontSize: '1.25rem', fontWeight: 'bold', color: '#10b981' }}>{userCredit} {t('days_label')}</p>
+                                <p style={{ fontSize: '1.25rem', fontWeight: 'bold', color: '#10b981' }}>{formatDays(userCredit)}</p>
                                 <p style={{ fontSize: '0.85rem', color: '#64748b' }}>{t('remaining_credit' as any)}</p>
                             </div>
                         </div>

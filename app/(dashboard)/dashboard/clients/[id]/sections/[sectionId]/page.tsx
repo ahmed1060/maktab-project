@@ -244,21 +244,19 @@ export default function SectionNotesPage() {
         }
     }
 
-
     const MAX_CHARS = 500
+
 
     const getRoleStyles = (role: string) => {
         switch (role) {
             case 'SUPER_ADMIN':
-                return { background: 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)', color: '#92400e', border: '1px solid #fcd34d' }
+                return { background: 'rgba(254, 243, 199, 0.5)', color: '#92400e', border: '1px solid rgba(251, 191, 36, 0.3)' }
             case 'ADMIN':
-                return { background: 'linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%)', color: '#075985', border: '1px solid #7dd3fc' }
+                return { background: 'rgba(224, 242, 254, 0.5)', color: '#075985', border: '1px solid rgba(56, 189, 248, 0.3)' }
             case 'TEAM_LEADER':
-                return { background: 'linear-gradient(135deg, #f5f3ff 0%, #ddd6fe 100%)', color: '#5b21b6', border: '1px solid #c4b5fd' }
-            case 'EMPLOYEE':
-                return { background: 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)', color: '#166534', border: '1px solid #86efac' }
+                return { background: 'rgba(245, 243, 199, 0.5)', color: '#5b21b6', border: '1px solid rgba(167, 139, 250, 0.3)' }
             default:
-                return { background: '#f1f5f9', color: '#475569', border: '1px solid #e2e8f0' }
+                return { background: 'rgba(241, 245, 249, 0.5)', color: '#475569', border: '1px solid rgba(148, 163, 184, 0.3)' }
         }
     }
 
@@ -346,151 +344,126 @@ export default function SectionNotesPage() {
                         {filteredNotes.map((note, index) => (
                             <div
                                 key={note.id}
-                                className="glass-card group relative flex flex-col h-full hover:shadow-xl hover:-translate-y-1 transition-all duration-300"
+                                className="glass-card group flex flex-col h-full hover:shadow-xl transition-all duration-300"
                                 style={{
                                     animationDelay: `${index * 50}ms`,
-                                    background: 'rgba(255, 255, 255, 0.7)',
-                                    backdropFilter: 'blur(10px)',
-                                    border: '1px solid rgba(255, 255, 255, 0.5)',
-                                    borderRadius: '1.25rem',
-                                    padding: '1.5rem'
+                                    padding: '1.25rem',
+                                    display: 'flex',
+                                    flexDirection: 'column'
                                 }}
                             >
-                                {/* Header: Icons & Expiry */}
-                                <div className="flex justify-between items-start mb-4">
-                                    <div className="flex gap-2">
-                                        <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary group-hover:scale-110 transition-transform duration-300">
-                                            {note.attachment ? (
-                                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                                    <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"></path>
-                                                </svg>
-                                            ) : (
-                                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                                    <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"></path>
-                                                    <polyline points="14 2 14 8 20 8"></polyline>
-                                                    <line x1="16" y1="13" x2="8" y2="13"></line>
-                                                    <line x1="16" y1="17" x2="8" y2="17"></line>
-                                                    <polyline points="10 9 9 9 8 9"></polyline>
-                                                </svg>
-                                            )}
+                                {/* Header: User & Role */}
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                        <div style={{
+                                            width: '36px',
+                                            height: '36px',
+                                            borderRadius: '50%',
+                                            background: 'var(--primary)',
+                                            color: 'white',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            fontSize: '0.8rem',
+                                            fontWeight: 'bold',
+                                            boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                                        }}>
+                                            {note.createdBy?.firstName?.[0]}{note.createdBy?.lastName?.[0]}
+                                        </div>
+                                        <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                            <span style={{ fontSize: '0.9rem', fontWeight: '700', color: 'var(--text-main)', lineHeight: '1.2' }}>
+                                                {note.createdBy ? `${note.createdBy.firstName} ${note.createdBy.lastName}` : 'System'}
+                                            </span>
+                                            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                                                {new Date(note.createdAt).toLocaleDateString(locale === 'ar' ? 'ar-EG' : 'en-GB', { day: 'numeric', month: 'short' })}
+                                            </span>
                                         </div>
                                     </div>
-                                    {note.expiryDate && (
-                                        <div className="px-3 py-1 bg-amber-50 rounded-full text-[11px] font-bold text-amber-600 flex items-center gap-1.5 border border-amber-100/50">
-                                            <div className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
-                                            {new Date(note.expiryDate).toLocaleDateString(locale === 'ar' ? 'ar-EG' : 'en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
-                                        </div>
-                                    )}
+                                    <div
+                                        style={{
+                                            ...getRoleStyles(note.createdBy?.role || ''),
+                                            padding: '0.2rem 0.6rem',
+                                            borderRadius: '0.75rem',
+                                            fontSize: '0.65rem',
+                                            fontWeight: '800',
+                                            textTransform: 'uppercase',
+                                            letterSpacing: '0.025em'
+                                        }}
+                                    >
+                                        {t(`role_${(note.createdBy?.role || 'USER').toLowerCase()}` as any) || (note.createdBy?.role || 'USER').replace(/_/g, ' ')}
+                                    </div>
                                 </div>
 
                                 {/* Content */}
-                                <div className="flex-grow mb-6">
-                                    <p className="text-slate-700 text-sm leading-relaxed whitespace-pre-wrap line-clamp-6 group-hover:line-clamp-none transition-all duration-300">
+                                <div style={{ flexGrow: 1, marginBottom: '1.25rem' }}>
+                                    <p style={{
+                                        fontSize: '0.95rem',
+                                        color: '#334155',
+                                        lineHeight: '1.6',
+                                        margin: 0,
+                                        display: '-webkit-box',
+                                        WebkitLineClamp: 4,
+                                        WebkitBoxOrient: 'vertical',
+                                        overflow: 'hidden',
+                                        transition: 'all 0.3s ease'
+                                    }} className="group-hover:line-clamp-none">
                                         {note.content}
                                     </p>
                                 </div>
 
                                 {/* Divider */}
-                                <div className="h-px w-full bg-gradient-to-r from-transparent via-slate-200 to-transparent mb-4 opacity-50" />
+                                <div style={{ height: '1px', width: '100%', background: 'rgba(226, 232, 240, 0.5)', marginBottom: '1rem' }} />
 
-                                {/* Footer: Audit & Actions */}
-                                <div className="space-y-4 mt-auto pt-4 border-t border-dashed border-slate-200">
-                                    {/* Audit Trail */}
-                                    <div className="space-y-2">
-                                        <div className="flex items-center justify-between">
-                                            <div className="flex items-center gap-2">
-                                                <div
-                                                    className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold border border-white shadow-sm"
-                                                    style={{
-                                                        backgroundColor: 'var(--primary)',
-                                                        color: 'white',
-                                                        textTransform: 'uppercase'
-                                                    }}
-                                                >
-                                                    {note.createdBy?.firstName?.[0]}{note.createdBy?.lastName?.[0]}
-                                                </div>
-                                                <div className="flex flex-col">
-                                                    <span className="text-[11px] font-bold text-slate-700 leading-none">
-                                                        {note.createdBy ? `${note.createdBy.firstName} ${note.createdBy.lastName}` : 'System'}
-                                                    </span>
-                                                    <span className="text-[9px] text-slate-400 mt-0.5">
-                                                        {new Date(note.createdAt).toLocaleDateString(locale === 'ar' ? 'ar-EG' : 'en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
-                                                    </span>
-                                                </div>
-                                            </div>
-                                            <div
-                                                className="px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider shadow-sm"
-                                                style={getRoleStyles(note.createdBy?.role || '')}
-                                            >
-                                                {t(`role_${(note.createdBy?.role || 'USER').toLowerCase()}` as any) || (note.createdBy?.role || 'USER').replace(/_/g, ' ')}
-                                            </div>
-                                        </div>
-
-                                        {note.lastEditedBy && (
-                                            <div className="flex items-center justify-between opacity-80 pt-1">
-                                                <div className="flex items-center gap-2">
-                                                    <div className="w-5 h-5 rounded-full bg-slate-100 flex items-center justify-center text-[8px] border border-white">
-                                                        <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
-                                                            <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"></path>
-                                                            <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-                                                        </svg>
-                                                    </div>
-                                                    <span className="text-[10px] text-slate-500 italic">
-                                                        {t('updated_by' as any)} {note.lastEditedBy.firstName}
-                                                    </span>
-                                                </div>
-                                                <div
-                                                    className="px-1.5 py-0.5 rounded text-[8px] font-bold uppercase tracking-tight opacity-70"
-                                                    style={getRoleStyles(note.lastEditedBy.role)}
-                                                >
-                                                    {t(`role_${note.lastEditedBy.role.toLowerCase()}` as any) || note.lastEditedBy.role.replace(/_/g, ' ')}
-                                                </div>
-                                            </div>
-                                        )}
-                                    </div>
-
-                                    {/* Action Buttons */}
-                                    <div className="flex gap-2">
-                                        {note.attachment ? (
+                                {/* Footer Actions */}
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 'auto' }}>
+                                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                        {note.attachment && (
                                             <a
                                                 href={note.attachment}
                                                 target="_blank"
                                                 rel="noopener noreferrer"
-                                                className="flex-grow flex items-center justify-center gap-2 px-3 py-2 bg-gradient-to-br from-primary/10 to-primary/5 hover:from-primary/20 hover:to-primary/10 text-primary text-[11px] font-bold rounded-xl transition-all duration-300 border border-primary/10 shadow-sm"
+                                                className="hover:scale-110 transition-transform"
+                                                style={{ color: 'var(--primary)' }}
                                             >
-                                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                                                     <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"></path>
                                                 </svg>
-                                                {t('view_attachment' as any) || 'View Attachment'}
                                             </a>
-                                        ) : (
-                                            <div className="flex-grow h-[34px]" /> // Spacer to keep alignment
                                         )}
-                                        {isAuthorized && (
-                                            <div className="flex gap-1.5">
-                                                <button
-                                                    onClick={() => {
-                                                        setEditingNote(note)
-                                                        setEditNoteContent(note.content)
-                                                        setEditExpiryDate(note.expiryDate ? new Date(note.expiryDate).toISOString().split('T')[0] : '')
-                                                        setEditReminderDays(note.reminderDays ? note.reminderDays.toString() : '')
-                                                        setIsEditModalOpen(true)
-                                                    }}
-                                                    className="w-[34px] h-[34px] flex items-center justify-center rounded-xl bg-white hover:bg-sky-50 text-slate-400 hover:text-sky-600 transition-all duration-300 border border-slate-100 hover:border-sky-200 shadow-sm hover:shadow"
-                                                    title={t('edit')}
-                                                >
-                                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
-                                                </button>
-                                                <button
-                                                    onClick={() => setDeleteConfirm({ isOpen: true, note })}
-                                                    className="w-[34px] h-[34px] flex items-center justify-center rounded-xl bg-white hover:bg-red-50 text-slate-400 hover:text-red-500 transition-all duration-300 border border-slate-100 hover:border-red-200 shadow-sm hover:shadow"
-                                                    title={t('delete')}
-                                                >
-                                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
-                                                </button>
-                                            </div>
+                                        {note.lastEditedBy && (
+                                            <span title={`${t('updated_by' as any)} ${note.lastEditedBy.firstName}`} style={{ color: '#94a3b8' }}>
+                                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                                    <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"></path>
+                                                    <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                                                </svg>
+                                            </span>
                                         )}
                                     </div>
+
+                                    {isAuthorized && (
+                                        <div style={{ display: 'flex', gap: '0.75rem' }}>
+                                            <button
+                                                onClick={() => {
+                                                    setEditingNote(note)
+                                                    setEditNoteContent(note.content)
+                                                    setEditExpiryDate(note.expiryDate ? new Date(note.expiryDate).toISOString().split('T')[0] : '')
+                                                    setEditReminderDays(note.reminderDays ? note.reminderDays.toString() : '')
+                                                    setIsEditModalOpen(true)
+                                                }}
+                                                style={{ padding: '0.4rem', color: '#64748b', background: 'none', border: 'none', cursor: 'pointer' }}
+                                                className="hover:text-blue-500 transition-colors"
+                                            >
+                                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                                            </button>
+                                            <button
+                                                onClick={() => setDeleteConfirm({ isOpen: true, note })}
+                                                style={{ padding: '0.4rem', color: '#64748b', background: 'none', border: 'none', cursor: 'pointer' }}
+                                                className="hover:text-red-500 transition-colors"
+                                            >
+                                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                                            </button>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         ))}
@@ -499,147 +472,149 @@ export default function SectionNotesPage() {
             </div>
 
             {/* Create Note Modal - Portal */}
-            {isModalOpen && mounted && createPortal(
-                <div style={{
-                    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-                    background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center',
-                    alignItems: 'center', zIndex: 9999
-                }}>
-                    <div
-                        className="absolute inset-0"
-                        onClick={() => !isSubmitting && setIsModalOpen(false)}
-                    />
-                    <div style={{ background: 'white', padding: '2rem', borderRadius: '12px', width: '100%', maxWidth: '500px', position: 'relative', zIndex: 10, direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-                            <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#1e293b', margin: 0 }}>{t('add_note_button' as any)}</h2>
-                            <span style={{ fontSize: '0.75rem', color: newNoteContent.length > MAX_CHARS ? '#ef4444' : '#64748b' }}>
-                                {newNoteContent.length}/{MAX_CHARS}
-                            </span>
+            {
+                isModalOpen && mounted && createPortal(
+                    <div style={{
+                        position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                        background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center',
+                        alignItems: 'center', zIndex: 9999
+                    }}>
+                        <div
+                            className="absolute inset-0"
+                            onClick={() => !isSubmitting && setIsModalOpen(false)}
+                        />
+                        <div style={{ background: 'white', padding: '2rem', borderRadius: '12px', width: '100%', maxWidth: '500px', position: 'relative', zIndex: 10, direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                                <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#1e293b', margin: 0 }}>{t('add_note_button' as any)}</h2>
+                                <span style={{ fontSize: '0.75rem', color: newNoteContent.length > MAX_CHARS ? '#ef4444' : '#64748b' }}>
+                                    {newNoteContent.length}/{MAX_CHARS}
+                                </span>
+                            </div>
+                            <form onSubmit={handleCreateNote}>
+                                <div style={{ marginBottom: '1.5rem' }}>
+                                    <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', color: '#64748b', textAlign: locale === 'ar' ? 'right' : 'left' }}>
+                                        {t('note_content_label' as any)}
+                                    </label>
+                                    <textarea
+                                        value={newNoteContent}
+                                        onChange={(e) => setNewNoteContent(e.target.value)}
+                                        className="input"
+                                        style={{
+                                            width: '100%',
+                                            padding: '0.75rem',
+                                            border: `1px solid ${newNoteContent.length > MAX_CHARS ? '#ef4444' : '#e2e8f0'}`,
+                                            borderRadius: '0.5rem',
+                                            minHeight: '120px',
+                                            lineHeight: '1.5',
+                                            outline: 'none',
+                                            marginBottom: '0.5rem',
+                                            textAlign: locale === 'ar' ? 'right' : 'left'
+                                        }}
+                                        placeholder={t('note_placeholder' as any)}
+                                        autoFocus
+                                    />
+                                    {newNoteContent.length > MAX_CHARS && (
+                                        <p style={{ color: '#ef4444', fontSize: '0.75rem', marginTop: '0.5rem' }}>
+                                            {t('note_limit_exceeded' as any)}
+                                        </p>
+                                    )}
+                                </div>
+
+                                <div style={{ marginBottom: '1.5rem' }}>
+                                    <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', color: '#64748b', textAlign: locale === 'ar' ? 'right' : 'left' }}>
+                                        {t('attachment_label' as any)}
+                                    </label>
+                                    <input
+                                        type="file"
+                                        accept=".jpg,.jpeg,.png,.gif,.webp,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx"
+                                        onChange={(e) => {
+                                            const file = e.target.files?.[0]
+                                            if (file) {
+                                                const MAX_SIZE = 4 * 1024 * 1024
+                                                const allowedExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx']
+
+                                                if (file.size > MAX_SIZE) {
+                                                    showToast(t('failed_upload_files') || `File ${file.name} is too large (max 4MB)`, 'error')
+                                                    e.target.value = ''
+                                                    setSelectedFile(null)
+                                                    return
+                                                }
+
+                                                const ext = file.name.substring(file.name.lastIndexOf('.')).toLowerCase()
+                                                if (!allowedExtensions.includes(ext)) {
+                                                    showToast(`${t('error_generic') || 'Invalid file type'}: ${file.name}`, 'error')
+                                                    e.target.value = ''
+                                                    setSelectedFile(null)
+                                                    return
+                                                }
+
+                                                setSelectedFile(file)
+                                            } else {
+                                                setSelectedFile(null)
+                                            }
+                                        }}
+                                        className="input"
+                                        style={{
+                                            width: '100%',
+                                            padding: '0.5rem',
+                                            borderRadius: '0.5rem',
+                                            fontSize: '0.875rem',
+                                            textAlign: locale === 'ar' ? 'right' : 'left'
+                                        }}
+                                    />
+                                </div>
+
+                                <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem' }}>
+                                    <div style={{ flex: 1 }}>
+                                        <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', color: '#64748b', textAlign: locale === 'ar' ? 'right' : 'left' }}>
+                                            {t('expiry_date_label' as any)}
+                                        </label>
+                                        <input
+                                            type="date"
+                                            value={expiryDate}
+                                            onChange={(e) => setExpiryDate(e.target.value)}
+                                            className="input"
+                                            style={{ width: '100%', padding: '0.5rem', borderRadius: '0.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}
+                                        />
+                                    </div>
+                                    <div style={{ flex: 1 }}>
+                                        <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', color: '#64748b', textAlign: locale === 'ar' ? 'right' : 'left' }}>
+                                            {t('reminder_days_label' as any)}
+                                        </label>
+                                        <input
+                                            type="number"
+                                            value={reminderDays}
+                                            onChange={(e) => setReminderDays(e.target.value)}
+                                            placeholder={t('days_label')}
+                                            min="1"
+                                            className="input"
+                                            style={{ width: '100%', padding: '0.5rem', borderRadius: '0.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}
+                                        />
+                                    </div>
+                                </div>
+                                <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
+                                    <button
+                                        type="button"
+                                        onClick={() => setIsModalOpen(false)}
+                                        style={{ padding: '0.75rem 1.5rem', border: '1px solid #e2e8f0', borderRadius: '0.5rem', background: 'transparent', cursor: 'pointer' }}
+                                    >
+                                        {t('cancel')}
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        disabled={!newNoteContent.trim() || isSubmitting || newNoteContent.length > MAX_CHARS}
+                                        className="btn btn-primary"
+                                        style={{ opacity: (!newNoteContent.trim() || isSubmitting || newNoteContent.length > MAX_CHARS) ? 0.5 : 1 }}
+                                    >
+                                        {isSubmitting ? (uploading ? t('uploading_photo') : t('saving')) : t('add_note_button' as any)}
+                                    </button>
+                                </div>
+                            </form>
                         </div>
-                        <form onSubmit={handleCreateNote}>
-                            <div style={{ marginBottom: '1.5rem' }}>
-                                <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', color: '#64748b', textAlign: locale === 'ar' ? 'right' : 'left' }}>
-                                    {t('note_content_label' as any)}
-                                </label>
-                                <textarea
-                                    value={newNoteContent}
-                                    onChange={(e) => setNewNoteContent(e.target.value)}
-                                    className="input"
-                                    style={{
-                                        width: '100%',
-                                        padding: '0.75rem',
-                                        border: `1px solid ${newNoteContent.length > MAX_CHARS ? '#ef4444' : '#e2e8f0'}`,
-                                        borderRadius: '0.5rem',
-                                        minHeight: '120px',
-                                        lineHeight: '1.5',
-                                        outline: 'none',
-                                        marginBottom: '0.5rem',
-                                        textAlign: locale === 'ar' ? 'right' : 'left'
-                                    }}
-                                    placeholder={t('note_placeholder' as any)}
-                                    autoFocus
-                                />
-                                {newNoteContent.length > MAX_CHARS && (
-                                    <p style={{ color: '#ef4444', fontSize: '0.75rem', marginTop: '0.5rem' }}>
-                                        {t('note_limit_exceeded' as any)}
-                                    </p>
-                                )}
-                            </div>
-
-                            <div style={{ marginBottom: '1.5rem' }}>
-                                <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', color: '#64748b', textAlign: locale === 'ar' ? 'right' : 'left' }}>
-                                    {t('attachment_label' as any)}
-                                </label>
-                                <input
-                                    type="file"
-                                    accept=".jpg,.jpeg,.png,.gif,.webp,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx"
-                                    onChange={(e) => {
-                                        const file = e.target.files?.[0]
-                                        if (file) {
-                                            const MAX_SIZE = 4 * 1024 * 1024
-                                            const allowedExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx']
-
-                                            if (file.size > MAX_SIZE) {
-                                                showToast(t('failed_upload_files') || `File ${file.name} is too large (max 4MB)`, 'error')
-                                                e.target.value = ''
-                                                setSelectedFile(null)
-                                                return
-                                            }
-
-                                            const ext = file.name.substring(file.name.lastIndexOf('.')).toLowerCase()
-                                            if (!allowedExtensions.includes(ext)) {
-                                                showToast(`${t('error_generic') || 'Invalid file type'}: ${file.name}`, 'error')
-                                                e.target.value = ''
-                                                setSelectedFile(null)
-                                                return
-                                            }
-
-                                            setSelectedFile(file)
-                                        } else {
-                                            setSelectedFile(null)
-                                        }
-                                    }}
-                                    className="input"
-                                    style={{
-                                        width: '100%',
-                                        padding: '0.5rem',
-                                        borderRadius: '0.5rem',
-                                        fontSize: '0.875rem',
-                                        textAlign: locale === 'ar' ? 'right' : 'left'
-                                    }}
-                                />
-                            </div>
-
-                            <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem' }}>
-                                <div style={{ flex: 1 }}>
-                                    <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', color: '#64748b', textAlign: locale === 'ar' ? 'right' : 'left' }}>
-                                        {t('expiry_date_label' as any)}
-                                    </label>
-                                    <input
-                                        type="date"
-                                        value={expiryDate}
-                                        onChange={(e) => setExpiryDate(e.target.value)}
-                                        className="input"
-                                        style={{ width: '100%', padding: '0.5rem', borderRadius: '0.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}
-                                    />
-                                </div>
-                                <div style={{ flex: 1 }}>
-                                    <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', color: '#64748b', textAlign: locale === 'ar' ? 'right' : 'left' }}>
-                                        {t('reminder_days_label' as any)}
-                                    </label>
-                                    <input
-                                        type="number"
-                                        value={reminderDays}
-                                        onChange={(e) => setReminderDays(e.target.value)}
-                                        placeholder={t('days_label')}
-                                        min="1"
-                                        className="input"
-                                        style={{ width: '100%', padding: '0.5rem', borderRadius: '0.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}
-                                    />
-                                </div>
-                            </div>
-                            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
-                                <button
-                                    type="button"
-                                    onClick={() => setIsModalOpen(false)}
-                                    style={{ padding: '0.75rem 1.5rem', border: '1px solid #e2e8f0', borderRadius: '0.5rem', background: 'transparent', cursor: 'pointer' }}
-                                >
-                                    {t('cancel')}
-                                </button>
-                                <button
-                                    type="submit"
-                                    disabled={!newNoteContent.trim() || isSubmitting || newNoteContent.length > MAX_CHARS}
-                                    className="btn btn-primary"
-                                    style={{ opacity: (!newNoteContent.trim() || isSubmitting || newNoteContent.length > MAX_CHARS) ? 0.5 : 1 }}
-                                >
-                                    {isSubmitting ? (uploading ? t('uploading_photo') : t('saving')) : t('add_note_button' as any)}
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>,
-                document.body
-            )}
+                    </div>,
+                    document.body
+                )
+            }
 
             <ConfirmModal
                 isOpen={deleteConfirm.isOpen}
@@ -709,103 +684,105 @@ export default function SectionNotesPage() {
             </Modal>
 
             {/* Edit Note Modal - Portal */}
-            {isEditModalOpen && mounted && createPortal(
-                <div style={{
-                    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-                    background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center',
-                    alignItems: 'center', zIndex: 9999
-                }}>
-                    <div
-                        className="absolute inset-0"
-                        onClick={() => !isSubmitting && setIsEditModalOpen(false)}
-                    />
-                    <div style={{ background: 'white', padding: '2rem', borderRadius: '12px', width: '100%', maxWidth: '500px', position: 'relative', zIndex: 10, direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-                            <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#1e293b', margin: 0 }}>{t('edit_note_title' as any) || 'Edit Note'}</h2>
-                            <span style={{ fontSize: '0.75rem', color: editNoteContent.length > MAX_CHARS ? '#ef4444' : '#64748b' }}>
-                                {editNoteContent.length}/{MAX_CHARS}
-                            </span>
-                        </div>
-                        <form onSubmit={handleUpdateNote}>
-                            <div style={{ marginBottom: '1.5rem' }}>
-                                <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', color: '#64748b', textAlign: locale === 'ar' ? 'right' : 'left' }}>
-                                    {t('note_content_label' as any)}
-                                </label>
-                                <textarea
-                                    value={editNoteContent}
-                                    onChange={(e) => setEditNoteContent(e.target.value)}
-                                    className="input"
-                                    style={{
-                                        width: '100%',
-                                        padding: '0.75rem',
-                                        border: `1px solid ${editNoteContent.length > MAX_CHARS ? '#ef4444' : '#e2e8f0'}`,
-                                        borderRadius: '0.5rem',
-                                        minHeight: '120px',
-                                        lineHeight: '1.5',
-                                        outline: 'none',
-                                        marginBottom: '0.5rem',
-                                        textAlign: locale === 'ar' ? 'right' : 'left'
-                                    }}
-                                    placeholder={t('note_placeholder' as any)}
-                                    autoFocus
-                                />
-                                {editNoteContent.length > MAX_CHARS && (
-                                    <p style={{ color: '#ef4444', fontSize: '0.75rem', marginTop: '0.5rem' }}>
-                                        {t('note_limit_exceeded' as any)}
-                                    </p>
-                                )}
+            {
+                isEditModalOpen && mounted && createPortal(
+                    <div style={{
+                        position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                        background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center',
+                        alignItems: 'center', zIndex: 9999
+                    }}>
+                        <div
+                            className="absolute inset-0"
+                            onClick={() => !isSubmitting && setIsEditModalOpen(false)}
+                        />
+                        <div style={{ background: 'white', padding: '2rem', borderRadius: '12px', width: '100%', maxWidth: '500px', position: 'relative', zIndex: 10, direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                                <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#1e293b', margin: 0 }}>{t('edit_note_title' as any) || 'Edit Note'}</h2>
+                                <span style={{ fontSize: '0.75rem', color: editNoteContent.length > MAX_CHARS ? '#ef4444' : '#64748b' }}>
+                                    {editNoteContent.length}/{MAX_CHARS}
+                                </span>
                             </div>
+                            <form onSubmit={handleUpdateNote}>
+                                <div style={{ marginBottom: '1.5rem' }}>
+                                    <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', color: '#64748b', textAlign: locale === 'ar' ? 'right' : 'left' }}>
+                                        {t('note_content_label' as any)}
+                                    </label>
+                                    <textarea
+                                        value={editNoteContent}
+                                        onChange={(e) => setEditNoteContent(e.target.value)}
+                                        className="input"
+                                        style={{
+                                            width: '100%',
+                                            padding: '0.75rem',
+                                            border: `1px solid ${editNoteContent.length > MAX_CHARS ? '#ef4444' : '#e2e8f0'}`,
+                                            borderRadius: '0.5rem',
+                                            minHeight: '120px',
+                                            lineHeight: '1.5',
+                                            outline: 'none',
+                                            marginBottom: '0.5rem',
+                                            textAlign: locale === 'ar' ? 'right' : 'left'
+                                        }}
+                                        placeholder={t('note_placeholder' as any)}
+                                        autoFocus
+                                    />
+                                    {editNoteContent.length > MAX_CHARS && (
+                                        <p style={{ color: '#ef4444', fontSize: '0.75rem', marginTop: '0.5rem' }}>
+                                            {t('note_limit_exceeded' as any)}
+                                        </p>
+                                    )}
+                                </div>
 
-                            <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem' }}>
-                                <div style={{ flex: 1 }}>
-                                    <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', color: '#64748b', textAlign: locale === 'ar' ? 'right' : 'left' }}>
-                                        {t('expiry_date_label' as any)}
-                                    </label>
-                                    <input
-                                        type="date"
-                                        value={editExpiryDate}
-                                        onChange={(e) => setEditExpiryDate(e.target.value)}
-                                        className="input"
-                                        style={{ width: '100%', padding: '0.5rem', borderRadius: '0.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}
-                                    />
+                                <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem' }}>
+                                    <div style={{ flex: 1 }}>
+                                        <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', color: '#64748b', textAlign: locale === 'ar' ? 'right' : 'left' }}>
+                                            {t('expiry_date_label' as any)}
+                                        </label>
+                                        <input
+                                            type="date"
+                                            value={editExpiryDate}
+                                            onChange={(e) => setEditExpiryDate(e.target.value)}
+                                            className="input"
+                                            style={{ width: '100%', padding: '0.5rem', borderRadius: '0.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}
+                                        />
+                                    </div>
+                                    <div style={{ flex: 1 }}>
+                                        <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', color: '#64748b', textAlign: locale === 'ar' ? 'right' : 'left' }}>
+                                            {t('reminder_days_label' as any)}
+                                        </label>
+                                        <input
+                                            type="number"
+                                            value={editReminderDays}
+                                            onChange={(e) => setEditReminderDays(e.target.value)}
+                                            placeholder={t('days_label')}
+                                            min="1"
+                                            className="input"
+                                            style={{ width: '100%', padding: '0.5rem', borderRadius: '0.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}
+                                        />
+                                    </div>
                                 </div>
-                                <div style={{ flex: 1 }}>
-                                    <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', color: '#64748b', textAlign: locale === 'ar' ? 'right' : 'left' }}>
-                                        {t('reminder_days_label' as any)}
-                                    </label>
-                                    <input
-                                        type="number"
-                                        value={editReminderDays}
-                                        onChange={(e) => setEditReminderDays(e.target.value)}
-                                        placeholder={t('days_label')}
-                                        min="1"
-                                        className="input"
-                                        style={{ width: '100%', padding: '0.5rem', borderRadius: '0.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}
-                                    />
+                                <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
+                                    <button
+                                        type="button"
+                                        onClick={() => setIsEditModalOpen(false)}
+                                        style={{ padding: '0.75rem 1.5rem', border: '1px solid #e2e8f0', borderRadius: '0.5rem', background: 'transparent', cursor: 'pointer' }}
+                                    >
+                                        {t('cancel')}
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        disabled={!editNoteContent.trim() || isSubmitting || editNoteContent.length > MAX_CHARS}
+                                        className="btn btn-primary"
+                                        style={{ opacity: (!editNoteContent.trim() || isSubmitting || editNoteContent.length > MAX_CHARS) ? 0.5 : 1 }}
+                                    >
+                                        {isSubmitting ? t('saving') : t('save')}
+                                    </button>
                                 </div>
-                            </div>
-                            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
-                                <button
-                                    type="button"
-                                    onClick={() => setIsEditModalOpen(false)}
-                                    style={{ padding: '0.75rem 1.5rem', border: '1px solid #e2e8f0', borderRadius: '0.5rem', background: 'transparent', cursor: 'pointer' }}
-                                >
-                                    {t('cancel')}
-                                </button>
-                                <button
-                                    type="submit"
-                                    disabled={!editNoteContent.trim() || isSubmitting || editNoteContent.length > MAX_CHARS}
-                                    className="btn btn-primary"
-                                    style={{ opacity: (!editNoteContent.trim() || isSubmitting || editNoteContent.length > MAX_CHARS) ? 0.5 : 1 }}
-                                >
-                                    {isSubmitting ? t('saving') : t('save')}
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>,
-                document.body
-            )}
-        </div>
+                            </form>
+                        </div>
+                    </div>,
+                    document.body
+                )
+            }
+        </div >
     )
 }

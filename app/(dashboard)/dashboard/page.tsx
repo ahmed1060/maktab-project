@@ -16,6 +16,15 @@ export default async function DashboardPage({ searchParams }: { searchParams: { 
     const locale = (cookieStore.get('NEXT_LOCALE')?.value || 'en') as Locale
     const t = (key: keyof typeof translations.en) => translations[locale][key] || translations.en[key]
 
+    const formatDays = (days: number) => {
+        if (locale === 'ar') {
+            if (days === 1) return translations.ar.day_singular
+            if (days === 2) return translations.ar.day_dual
+            return `${days} ${translations.ar.days_label}`
+        }
+        return `${days} ${days === 1 ? translations.en.day_singular : translations.en.days_label}`
+    }
+
     let companyId: string | undefined = undefined
     if (searchParams.company) {
         const comp = await prisma.company.findUnique({ where: { name: searchParams.company } })
@@ -144,8 +153,8 @@ export default async function DashboardPage({ searchParams }: { searchParams: { 
                     <div style={{ display: 'grid', gap: '1.5rem' }}>
                         <StatMetric label={t('task_completion')} value={`${completedTasks}/${totalTasks}`} icon="✅" color="#10b981" percentage={completionRate} subLabel={t('completion_rate')} />
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                            <StatMetric label={t('team_bonuses')} value={`${salaryStats._sum.bonusDays || 0}d`} icon="⭐" color="#f59e0b" subLabel={t('total_this_month')} />
-                            <StatMetric label={t('team_deductions')} value={`${salaryStats._sum.deductions || 0}d`} icon="📉" color="#ef4444" subLabel={t('total_this_month')} />
+                            <StatMetric label={t('team_bonuses')} value={formatDays(salaryStats._sum.bonusDays || 0)} icon="⭐" color="#f59e0b" subLabel={t('total_this_month')} />
+                            <StatMetric label={t('team_deductions')} value={formatDays(salaryStats._sum.deductions || 0)} icon="📉" color="#ef4444" subLabel={t('total_this_month')} />
                         </div>
                     </div>
                 </div>
@@ -270,8 +279,8 @@ export default async function DashboardPage({ searchParams }: { searchParams: { 
                     <div style={{ display: 'grid', gap: '1.5rem' }}>
                         <StatMetric label={t('overall_progress')} value={`${completedTasks}/${totalTasks}`} icon="🎯" color="#6366f1" percentage={completionRate} subLabel={t('completion_rate')} />
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                            <StatMetric label={t('bonus')} value={`${salaryRecord?.bonusDays || 0}d`} icon="🎁" color="#f59e0b" subLabel={t('extra_earnings')} />
-                            <StatMetric label={t('team_deductions')} value={`${salaryRecord?.deductions || 0}d`} icon="📉" color="#ef4444" subLabel={t('total_lost_days')} />
+                            <StatMetric label={t('bonus')} value={formatDays(salaryRecord?.bonusDays || 0)} icon="🎁" color="#f59e0b" subLabel={t('extra_earnings')} />
+                            <StatMetric label={t('team_deductions')} value={formatDays(salaryRecord?.deductions || 0)} icon="📉" color="#ef4444" subLabel={t('total_lost_days')} />
                         </div>
                     </div>
                 </div>

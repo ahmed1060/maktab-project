@@ -117,6 +117,15 @@ export default function EmployeeHistoryPage() {
         return new Date(2000, month - 1).toLocaleString(locale === 'ar' ? 'ar-EG' : 'en-US', { month: 'long' })
     }
 
+    const formatDays = (days: number) => {
+        if (locale === 'ar') {
+            if (days === 1) return t('day_singular' as any)
+            if (days === 2) return t('day_dual' as any)
+            return `${days} ${t('days_label')}`
+        }
+        return `${days} ${days === 1 ? t('day_singular' as any) : t('days_label')}`
+    }
+
     if (loading) return <div style={{ padding: '2rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('loading_filters')}</div>
 
     return (
@@ -258,10 +267,10 @@ export default function EmployeeHistoryPage() {
                                             <span style={{ color: '#94a3b8' }}> / {record.totalDays}</span>
                                         </td>
                                         <td style={{ padding: '1rem', color: '#dc2626', fontWeight: '500', textAlign: locale === 'ar' ? 'right' : 'left' }}>
-                                            {record.deductions > 0 ? `-${record.deductions} ${t('days_label')}` : '-'}
+                                            {record.deductions > 0 ? `-${formatDays(record.deductions)}` : '-'}
                                         </td>
                                         <td style={{ padding: '1rem', color: '#7c3aed', fontWeight: '500', textAlign: locale === 'ar' ? 'right' : 'left' }}>
-                                            {record.bonusDays ? `+${record.bonusDays} ${t('days_label')}` : '-'}
+                                            {record.bonusDays ? `+${formatDays(record.bonusDays)}` : '-'}
                                         </td>
                                         <td style={{ padding: '1rem', fontWeight: '600', color: '#166534', textAlign: locale === 'ar' ? 'right' : 'left' }}>
                                             {formattedCalculated}
@@ -349,7 +358,7 @@ export default function EmployeeHistoryPage() {
 
                                         <div style={{ opacity: adj.status === 'ROLLED_BACK' ? 0.6 : 1 }}>
                                             <div style={{ fontWeight: 'bold', fontSize: '1.1rem', color: adj.type === 'BONUS' ? '#7c3aed' : '#dc2626' }}>
-                                                {adj.type === 'BONUS' ? `+${adj.amount}` : `-${adj.amount}`} {t('days_label')}
+                                                {adj.type === 'BONUS' ? '+' : '-'}{formatDays(adj.amount)}
                                             </div>
                                             <div style={{ fontSize: '0.875rem', color: '#64748b' }}>
                                                 {new Date(adj.createdAt).toLocaleString(locale)}
