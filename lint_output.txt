@@ -1,0 +1,82 @@
+
+./app/(dashboard)/dashboard/clients/page.tsx
+66:18  Warning: 'err' is defined but never used.  @typescript-eslint/no-unused-vars
+437:34  Warning: 'error' is defined but never used.  @typescript-eslint/no-unused-vars
+
+./app/(dashboard)/dashboard/clients/[id]/page.tsx
+75:19  Warning: 'session' is assigned a value but never used.  @typescript-eslint/no-unused-vars
+548:34  Warning: 'e' is defined but never used.  @typescript-eslint/no-unused-vars
+
+./app/(dashboard)/dashboard/clients/[id]/sections/[sectionId]/page.tsx
+735:34  Warning: 'error' is defined but never used.  @typescript-eslint/no-unused-vars
+
+./app/(dashboard)/dashboard/companies/page.tsx
+366:34  Warning: 'e' is defined but never used.  @typescript-eslint/no-unused-vars
+
+./app/(dashboard)/dashboard/companies/[id]/payments/page.tsx
+54:18  Warning: 'error' is defined but never used.  @typescript-eslint/no-unused-vars
+66:18  Warning: 'error' is defined but never used.  @typescript-eslint/no-unused-vars
+78:8  Warning: React Hook useEffect has missing dependencies: 'fetchCompanyData' and 'fetchPayments'. Either include them or remove the dependency array.  react-hooks/exhaustive-deps
+98:18  Warning: 'error' is defined but never used.  @typescript-eslint/no-unused-vars
+119:18  Warning: 'error' is defined but never used.  @typescript-eslint/no-unused-vars
+143:18  Warning: 'error' is defined but never used.  @typescript-eslint/no-unused-vars
+
+./app/(dashboard)/dashboard/day-off-requests/page.tsx
+164:18  Warning: 'error' is defined but never used.  @typescript-eslint/no-unused-vars
+217:18  Warning: 'error' is defined but never used.  @typescript-eslint/no-unused-vars
+
+./app/(dashboard)/dashboard/employees/new/page.tsx
+96:18  Warning: 'err' is defined but never used.  @typescript-eslint/no-unused-vars
+
+./app/(dashboard)/dashboard/employees/page.tsx
+56:8  Warning: React Hook useCallback has a missing dependency: 'session.user'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+67:12  Warning: 'togglingStatus' is assigned a value but never used.  @typescript-eslint/no-unused-vars
+108:8  Warning: React Hook useEffect has a missing dependency: 'fetchEmployees'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+
+./app/(dashboard)/dashboard/employees/[id]/history/page.tsx
+4:8  Warning: 'Link' is defined but never used.  @typescript-eslint/no-unused-vars
+
+./app/(dashboard)/dashboard/obligations/ObligationsClient.tsx
+2:20  Warning: 'useEffect' is defined but never used.  @typescript-eslint/no-unused-vars
+7:8  Warning: 'SortControl' is defined but never used.  @typescript-eslint/no-unused-vars
+
+./app/(dashboard)/dashboard/obligations/[id]/client.tsx
+38:8  Warning: React Hook useEffect has a missing dependency: 'handleUpload'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+
+./app/(dashboard)/dashboard/page.tsx
+304:56  Warning: 'idx' is defined but never used.  @typescript-eslint/no-unused-vars
+
+./app/(dashboard)/dashboard/profile-requests/page.tsx
+86:18  Warning: 'e' is defined but never used.  @typescript-eslint/no-unused-vars
+
+./app/(dashboard)/dashboard/tasks/TasksClient.tsx
+2:20  Warning: 'useEffect' is defined but never used.  @typescript-eslint/no-unused-vars
+7:8  Warning: 'SortControl' is defined but never used.  @typescript-eslint/no-unused-vars
+
+./app/(dashboard)/dashboard/tasks/[id]/client.tsx
+3:31  Warning: 'useCallback' is defined but never used.  @typescript-eslint/no-unused-vars
+21:94  Warning: 'currentUserName' is defined but never used.  @typescript-eslint/no-unused-vars
+52:12  Warning: 'inputKey' is assigned a value but never used.  @typescript-eslint/no-unused-vars
+52:22  Warning: 'setInputKey' is assigned a value but never used.  @typescript-eslint/no-unused-vars
+167:8  Warning: React Hook useEffect has missing dependencies: 'handleUpload' and 'task.assignees'. Either include them or remove the dependency array.  react-hooks/exhaustive-deps
+
+./app/api/clients/[id]/sections/route.ts
+169:7  Warning: 'params' is defined but never used.  @typescript-eslint/no-unused-vars
+208:7  Warning: 'params' is defined but never used.  @typescript-eslint/no-unused-vars
+
+./app/api/clients/[id]/sections/[sectionId]/notes/route.ts
+204:7  Warning: 'params' is defined but never used.  @typescript-eslint/no-unused-vars
+280:7  Warning: 'params' is defined but never used.  @typescript-eslint/no-unused-vars
+
+./app/api/day-off-requests/route.ts
+5:28  Warning: 'getEgyptTomorrowStr' is defined but never used.  @typescript-eslint/no-unused-vars
+5:49  Warning: 'getEgyptYesterdayStr' is defined but never used.  @typescript-eslint/no-unused-vars
+54:15  Warning: 'todayStr' is assigned a value but never used.  @typescript-eslint/no-unused-vars
+
+./app/api/tasks/[id]/items/route.ts
+24:15  Warning: 'isAdmin' is assigned a value but never used.  @typescript-eslint/no-unused-vars
+
+./components/TaskListItem.tsx
+4:10  Warning: 'formatTaskStatus' is defined but never used.  @typescript-eslint/no-unused-vars
+
+info  - Need to disable some ESLint rules? Learn more here: https://nextjs.org/docs/basic-features/eslint#disabling-rules

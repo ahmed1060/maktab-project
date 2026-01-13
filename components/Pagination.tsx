@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import { useLanguage } from '@/context/LanguageContext'
 
 interface PaginationProps {
@@ -9,9 +10,19 @@ interface PaginationProps {
 }
 
 export default function Pagination({ currentPage, totalPages, onPageChange }: PaginationProps) {
-    const { t, locale } = useLanguage()
+    const { locale } = useLanguage()
+    const [jumpPage, setJumpPage] = useState('')
 
     if (totalPages <= 1) return null
+
+    const handleJumpSubmit = (e: React.FormEvent) => {
+        e.preventDefault()
+        const page = parseInt(jumpPage)
+        if (page >= 1 && page <= totalPages) {
+            onPageChange(page)
+            setJumpPage('')
+        }
+    }
 
     const renderPageNumbers = () => {
         const pages = []
@@ -30,56 +41,22 @@ export default function Pagination({ currentPage, totalPages, onPageChange }: Pa
                     key={i}
                     onClick={() => onPageChange(i)}
                     style={{
-                        width: '40px',
-                        height: '40px',
+                        width: '32px',
+                        height: '32px',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        borderRadius: '8px',
-                        fontSize: '0.875rem',
-                        fontWeight: '700',
+                        borderRadius: '50%',
+                        fontSize: '0.9rem',
+                        fontWeight: '600',
                         transition: 'all 0.2s',
-                        background: currentPage === i ? 'rgba(255, 255, 255, 0.1)' : 'transparent',
-                        color: currentPage === i ? 'white' : '#94a3b8',
-                        border: 'none',
+                        background: currentPage === i ? 'rgba(99, 102, 241, 0.2)' : 'transparent',
+                        color: currentPage === i ? '#6366f1' : '#475569',
+                        border: currentPage === i ? '1px solid #6366f1' : 'none',
                         cursor: 'pointer'
                     }}
-                    className={currentPage === i ? '' : 'hover:bg-white/5 hover:text-white'}
                 >
                     {i}
-                </button>
-            )
-        }
-
-        // Add '...' and last page if needed
-        if (endPage < totalPages) {
-            if (endPage < totalPages - 1) {
-                pages.push(
-                    <span key="dots" style={{ color: '#64748b', padding: '0 0.5rem' }}>...</span>
-                )
-            }
-            pages.push(
-                <button
-                    key={totalPages}
-                    onClick={() => onPageChange(totalPages)}
-                    style={{
-                        width: '40px',
-                        height: '40px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        borderRadius: '8px',
-                        fontSize: '0.875rem',
-                        fontWeight: '700',
-                        transition: 'all 0.2s',
-                        background: 'transparent',
-                        color: '#94a3b8',
-                        border: 'none',
-                        cursor: 'pointer'
-                    }}
-                    className="hover:bg-white/5 hover:text-white"
-                >
-                    {totalPages}
                 </button>
             )
         }
@@ -92,58 +69,100 @@ export default function Pagination({ currentPage, totalPages, onPageChange }: Pa
             display: 'flex',
             justifyContent: 'center',
             alignItems: 'center',
-            gap: '0.5rem',
+            gap: '2rem',
             marginTop: '2rem',
             marginBottom: '2rem',
-            direction: 'ltr' // Keep pagination controls consistent across languages
+            flexWrap: 'wrap'
         }}>
-            <button
-                disabled={currentPage === 1}
-                onClick={() => onPageChange(currentPage - 1)}
-                style={{
-                    padding: '0 1rem',
-                    height: '40px',
-                    borderRadius: '8px',
-                    fontSize: '0.875rem',
-                    fontWeight: '700',
-                    transition: 'all 0.2s',
-                    background: 'transparent',
-                    color: currentPage === 1 ? '#475569' : '#94a3b8',
-                    border: 'none',
-                    cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.5rem'
-                }}
-                className={currentPage === 1 ? '' : 'hover:bg-white/5 hover:text-white'}
-            >
-                {locale === 'ar' ? 'السابق' : 'Prev'}
-            </button>
+            {/* Main pagination capsule */}
+            <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.75rem',
+                background: 'white',
+                padding: '0.5rem 1rem',
+                borderRadius: '9999px',
+                boxShadow: '0 4px 15px rgba(0,0,0,0.05)',
+                border: '1px solid #f1f5f9',
+                direction: 'ltr'
+            }}>
+                <button
+                    disabled={currentPage === 1}
+                    onClick={() => onPageChange(currentPage - 1)}
+                    style={{
+                        padding: '0.25rem',
+                        background: 'transparent',
+                        border: 'none',
+                        cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
+                        color: currentPage === 1 ? '#cbd5e1' : '#64748b',
+                        display: 'flex',
+                        alignItems: 'center'
+                    }}
+                >
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="15 18 9 12 15 6"></polyline>
+                    </svg>
+                </button>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                {renderPageNumbers()}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    {renderPageNumbers()}
+                </div>
+
+                <button
+                    disabled={currentPage === totalPages}
+                    onClick={() => onPageChange(currentPage + 1)}
+                    style={{
+                        padding: '0.25rem',
+                        background: 'transparent',
+                        border: 'none',
+                        cursor: currentPage === totalPages ? 'not-allowed' : 'pointer',
+                        color: currentPage === totalPages ? '#cbd5e1' : '#64748b',
+                        display: 'flex',
+                        alignItems: 'center'
+                    }}
+                >
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="9 18 15 12 9 6"></polyline>
+                    </svg>
+                </button>
             </div>
 
-            <button
-                disabled={currentPage === totalPages}
-                onClick={() => onPageChange(currentPage + 1)}
+            {/* Go to page form */}
+            <form
+                onSubmit={handleJumpSubmit}
                 style={{
-                    padding: '0 1.5rem',
-                    height: '40px',
-                    borderRadius: '8px',
-                    fontSize: '0.875rem',
-                    fontWeight: '800',
-                    transition: 'all 0.2s',
-                    background: '#f59e0b', // Vibrant orange from screenshot
-                    color: '#000',
-                    border: 'none',
-                    cursor: currentPage === totalPages ? 'not-allowed' : 'pointer',
-                    opacity: currentPage === totalPages ? 0.5 : 1
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.75rem',
+                    color: '#64748b',
+                    fontSize: '0.9rem',
+                    fontWeight: '500'
                 }}
-                className={currentPage === totalPages ? '' : 'hover:bg-amber-400'}
             >
-                {locale === 'ar' ? 'التالي' : 'Next'}
-            </button>
+                <span>{locale === 'ar' ? 'الذهاب إلى' : 'Go to'}</span>
+                <input
+                    type="number"
+                    min="1"
+                    max={totalPages}
+                    value={jumpPage}
+                    onChange={(e) => setJumpPage(e.target.value)}
+                    style={{
+                        width: '50px',
+                        height: '32px',
+                        borderRadius: '1rem',
+                        border: '1px solid #e2e8f0',
+                        textAlign: 'center',
+                        fontSize: '0.85rem',
+                        color: '#1e293b',
+                        outline: 'none',
+                        transition: 'border-color 0.2s'
+                    }}
+                    onFocus={(e) => e.target.style.borderColor = '#6366f1'}
+                    onBlur={(e) => e.target.style.borderColor = '#e2e8f0'}
+                />
+                <span>{locale === 'ar' ? 'صفحة' : 'Page'}</span>
+            </form>
         </div>
     )
 }
+

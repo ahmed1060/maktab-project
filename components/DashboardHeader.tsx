@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, useMemo, useRef } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { signOut, useSession } from 'next-auth/react'
@@ -31,8 +31,11 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
     const [isMenuOpen, setIsMenuOpen] = useState(false)
     const { selectedCompanyId, setSelectedCompanyId, refreshTrigger } = useCompany()
     const { title: contextTitle } = useHeader()
-    const [companies, setCompanies] = useState<{ id: string, name: string }[]>([])
+    const [companies, setCompanies] = useState<any[]>([])
     const [pendingRequestsCount, setPendingRequestsCount] = useState(0)
+    const [isCompanyDropdownOpen, setIsCompanyDropdownOpen] = useState(false)
+    const [isMobile, setIsMobile] = useState(false)
+    const dropdownRef = useRef<HTMLDivElement>(null)
     const { t, locale } = useLanguage()
 
     // Use client-side session for live updates (e.g. avatar change), fall back to prop
@@ -111,12 +114,28 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
                 }
             }
         }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [searchParams, pathname, router, companies])
+    }, [searchParams, pathname, router, companies, selectedCompanyId, setSelectedCompanyId])
 
-    const handleCompanyChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-        const val = e.target.value
-        setSelectedCompanyId(val || null)
+    useEffect(() => {
+        const checkMobile = () => setIsMobile(window.innerWidth < 768)
+        checkMobile()
+        window.addEventListener('resize', checkMobile)
+        return () => window.removeEventListener('resize', checkMobile)
+    }, [])
+
+    useEffect(() => {
+        function handleClickOutside(event: MouseEvent) {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+                setIsCompanyDropdownOpen(false)
+            }
+        }
+        document.addEventListener('mousedown', handleClickOutside)
+        return () => document.removeEventListener('mousedown', handleClickOutside)
+    }, [])
+
+    const handleSelectCompany = (val: string | null) => {
+        setSelectedCompanyId(val)
+        setIsCompanyDropdownOpen(false)
 
         const params = new URLSearchParams(searchParams ? searchParams.toString() : '')
         if (val) {
@@ -234,37 +253,12 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
                 style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', minWidth: 0, flexShrink: 0 }}
             >
                 {currentUser.role === 'SUPER_ADMIN' && (
-                    <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-                        {/* Mobile Initials Mask */}
-                        <div className="lg-hidden" style={{
-                            position: 'absolute',
-                            left: '0',
-                            right: '0',
-                            top: '50%',
-                            transform: 'translateY(-50%)',
-                            fontSize: '0.75rem',
-                            fontWeight: '800',
-                            color: 'var(--text-main)',
-                            display: 'flex',
-                            justifyContent: 'center',
-                            alignItems: 'center',
-                            overflow: 'hidden',
-                            letterSpacing: '0.05em',
-                            zIndex: 2, /* Ensure it's above the select background */
-                            pointerEvents: 'none'
-                        }}>
-                            {selectedCompanyId
-                                ? getInitials(companies.find(c => c.id === selectedCompanyId)?.name || '')
-                                : getInitials(t('all_companies'))
-                            }
-                        </div>
-
-                        <select
-                            value={selectedCompanyId || ''}
-                            onChange={handleCompanyChange}
-                            className="glass sm-select input"
+                    <div ref={dropdownRef} style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                        <div
+                            onClick={() => setIsCompanyDropdownOpen(!isCompanyDropdownOpen)}
+                            className="glass sm-select"
                             style={{
-                                padding: locale === 'ar' ? '0.5rem 1rem 0.5rem 2.5rem' : '0.5rem 2.5rem 0.5rem 1rem',
+                                padding: locale === 'ar' ? '0.5rem 1.5rem 0.5rem 2.5rem' : '0.5rem 2.5rem 0.5rem 1.5rem',
                                 borderRadius: '1rem',
                                 fontSize: '0.9rem',
                                 outline: 'none',
@@ -274,23 +268,116 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
                                 transition: 'all 0.2s ease',
                                 color: 'var(--text-main)',
                                 minWidth: '130px',
+                                maxWidth: '200px',
                                 textAlign: 'center',
                                 fontWeight: '600',
                                 boxShadow: '0 2px 4px rgba(0,0,0,0.02)',
-                                appearance: 'none',
-                                backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23475569'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='3' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`,
-                                backgroundRepeat: 'no-repeat',
-                                backgroundPosition: locale === 'ar' ? 'left 0.75rem center' : 'right 0.75rem center',
-                                backgroundSize: '12px'
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                position: 'relative'
                             }}
                         >
-                            <option value="">{t('all_companies')}</option>
-                            {companies.map((company) => (
-                                <option key={company.id} value={company.id}>
-                                    {company.name}
-                                </option>
-                            ))}
-                        </select>
+                            <span style={{
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap',
+                                display: isMobile ? 'none' : 'block'
+                            }}>
+                                {selectedCompanyId
+                                    ? (companies.find(c => c.id === selectedCompanyId)?.name || t('all_companies'))
+                                    : t('all_companies')
+                                }
+                            </span>
+
+                            {/* Mobile Initials */}
+                            {isMobile && (
+                                <span style={{ fontSize: '0.75rem', fontWeight: '800' }}>
+                                    {selectedCompanyId
+                                        ? getInitials(companies.find(c => c.id === selectedCompanyId)?.name || '')
+                                        : getInitials(t('all_companies'))
+                                    }
+                                </span>
+                            )}
+
+                            <span style={{
+                                position: 'absolute',
+                                [locale === 'ar' ? 'left' : 'right']: '0.75rem',
+                                transform: isCompanyDropdownOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+                                transition: 'transform 0.2s',
+                                display: 'flex',
+                                alignItems: 'center'
+                            }}>
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                                    <polyline points="6 9 12 15 18 9"></polyline>
+                                </svg>
+                            </span>
+                        </div>
+
+                        {isCompanyDropdownOpen && (
+                            <div style={{
+                                position: 'absolute',
+                                top: 'calc(100% + 8px)',
+                                [locale === 'ar' ? 'left' : 'right']: 0,
+                                background: 'white',
+                                border: '1px solid #e2e8f0',
+                                borderRadius: '0.75rem',
+                                boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+                                zIndex: 1000,
+                                maxHeight: '300px',
+                                overflowY: 'auto',
+                                minWidth: '200px',
+                                padding: '0.5rem'
+                            }}>
+                                <div
+                                    onClick={() => handleSelectCompany(null)}
+                                    style={{
+                                        padding: '0.625rem 1rem',
+                                        cursor: 'pointer',
+                                        fontSize: '0.875rem',
+                                        borderRadius: '0.5rem',
+                                        color: !selectedCompanyId ? '#2563eb' : '#475569',
+                                        background: !selectedCompanyId ? '#eff6ff' : 'transparent',
+                                        fontWeight: !selectedCompanyId ? 600 : 500,
+                                        marginBottom: '2px'
+                                    }}
+                                    onMouseEnter={(e) => e.currentTarget.style.background = '#f1f5f9'}
+                                    onMouseLeave={(e) => e.currentTarget.style.background = !selectedCompanyId ? '#eff6ff' : 'transparent'}
+                                >
+                                    {t('all_companies')}
+                                </div>
+                                {companies.map((company) => (
+                                    <div
+                                        key={company.id}
+                                        onClick={() => handleSelectCompany(company.id)}
+                                        style={{
+                                            padding: '0.625rem 1rem',
+                                            cursor: 'pointer',
+                                            fontSize: '0.875rem',
+                                            borderRadius: '0.5rem',
+                                            color: selectedCompanyId === company.id ? '#2563eb' : '#475569',
+                                            background: selectedCompanyId === company.id ? '#eff6ff' : 'transparent',
+                                            fontWeight: selectedCompanyId === company.id ? 600 : 500,
+                                            marginBottom: '2px',
+                                            display: 'flex',
+                                            justifyContent: 'space-between',
+                                            alignItems: 'center'
+                                        }}
+                                        onMouseEnter={(e) => e.currentTarget.style.background = '#f1f5f9'}
+                                        onMouseLeave={(e) => e.currentTarget.style.background = selectedCompanyId === company.id ? '#eff6ff' : 'transparent'}
+                                    >
+                                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                            {company.name}
+                                        </span>
+                                        {selectedCompanyId === company.id && (
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                                                <polyline points="20 6 9 17 4 12"></polyline>
+                                            </svg>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        )}
                     </div>
                 )}
 

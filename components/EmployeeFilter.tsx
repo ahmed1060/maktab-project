@@ -1,6 +1,8 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { useLanguage } from '@/context/LanguageContext'
+import { useSession } from 'next-auth/react'
+import { useCompany } from '@/context/CompanyContext'
 import SearchableSelect from './SearchableSelect'
 import DateRangePicker from './DateRangePicker'
 
@@ -88,6 +90,8 @@ export default function EmployeeFilter({
     const [isPopupOpen, setIsPopupOpen] = useState(false)
     const [isMobile, setIsMobile] = useState(false)
     const { t, locale } = useLanguage()
+    const { data: session } = useSession()
+    const { selectedCompanyId: globalCompanyId } = useCompany()
 
     useEffect(() => {
         const checkMobile = () => {
@@ -100,9 +104,21 @@ export default function EmployeeFilter({
 
     useEffect(() => {
         if (!isEmployee && !hideEmployeeFilter) {
-            fetch('/api/users')
+            setLoading(true)
+            const role = session?.user?.role as string
+            let url = '/api/users?limit=1000'
+
+            // For Super Admins, respect the global company selection
+            if (role === 'SUPER_ADMIN' && globalCompanyId) {
+                url += `&companyId=${globalCompanyId}`
+            }
+
+            fetch(url)
                 .then(res => res.json())
-                .then(data => {
+                .then(responseData => {
+                    // Support both direct array and { data: [] } structure
+                    const data = Array.isArray(responseData) ? responseData : (responseData.data || [])
+
                     const filteredData = data.filter((emp: EmployeeType) => emp.role !== 'ADMIN' && emp.role !== 'SUPER_ADMIN')
                     const sortedData = filteredData.sort((a: EmployeeType, b: EmployeeType) => {
                         const rolePriority: { [key: string]: number } = {
@@ -125,7 +141,7 @@ export default function EmployeeFilter({
         } else {
             setLoading(false)
         }
-    }, [isEmployee, hideEmployeeFilter])
+    }, [isEmployee, hideEmployeeFilter, session?.user?.role, globalCompanyId])
 
     const handleEmployeeChange = (employeeId: string) => {
         onFilterChange({ employeeId, dateFrom, dateTo, status: selectedStatus, search: searchQuery })
