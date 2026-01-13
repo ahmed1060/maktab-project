@@ -29,7 +29,7 @@ interface DayOffRequest {
 
 export default function DayOffRequestsPage() {
     const { t, locale } = useLanguage()
-    const { data: session } = useSession()
+    const { data: session, status } = useSession()
     const user = session?.user
     const isAdmin = ['ADMIN', 'SUPER_ADMIN'].includes(user?.role || '')
     const { selectedCompanyId: contextCompanyId } = useCompany()
@@ -64,11 +64,13 @@ export default function DayOffRequestsPage() {
     const [userCredit, setUserCredit] = useState(0)
 
     useEffect(() => {
-        fetchRequests()
-        if (!isAdmin && user?.id) {
-            fetchUserCredit()
+        if (status === 'authenticated') {
+            fetchRequests()
+            if (!isAdmin && user?.id) {
+                fetchUserCredit()
+            }
         }
-    }, [isAdmin, user?.id, contextCompanyId])
+    }, [isAdmin, user?.id, contextCompanyId, status])
 
     // SECURE: Automatically switch deduction type if credit is insufficient
     useEffect(() => {
@@ -310,7 +312,7 @@ export default function DayOffRequestsPage() {
                             <span className="text-5xl mb-4">🌴</span>
                             <h3 className="text-xl font-bold text-slate-800">{t('no_records_found')}</h3>
                             <p className="max-w-xs mx-auto mt-2 text-slate-500">
-                                {filters.search || filters.status || filters.employeeId ? t('no_search_results' as any) || 'No results match your filters' : t('get_started_day_off' as any) || 'No day off requests yet.'}
+                                {(filters.search || filters.status || filters.employeeId) ? (t('no_search_results' as any) || 'No results match your filters') : ''}
                             </p>
                         </div>
                     ) : (
