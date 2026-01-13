@@ -424,16 +424,18 @@ export default function SectionNotesPage() {
                         </p>
                     </div>
                 ) : (
-                    <div className="flex flex-col gap-4">
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                         {filteredNotes.map((note, index) => (
                             <div
                                 key={note.id}
                                 className="glass-card group flex flex-col hover:shadow-xl transition-all duration-300"
                                 style={{
                                     animationDelay: `${index * 50}ms`,
-                                    padding: '1.25rem',
+                                    padding: '1.5rem',
                                     display: 'flex',
-                                    flexDirection: 'column'
+                                    flexDirection: 'column',
+                                    marginBottom: '0.25rem',
+                                    borderRadius: '1.5rem'
                                 }}
                             >
                                 {/* Header: User & Role */}
