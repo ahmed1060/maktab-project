@@ -424,11 +424,11 @@ export default function SectionNotesPage() {
                         </p>
                     </div>
                 ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <div className="flex flex-col gap-4">
                         {filteredNotes.map((note, index) => (
                             <div
                                 key={note.id}
-                                className="glass-card group flex flex-col h-full hover:shadow-xl transition-all duration-300"
+                                className="glass-card group flex flex-col hover:shadow-xl transition-all duration-300"
                                 style={{
                                     animationDelay: `${index * 50}ms`,
                                     padding: '1.25rem',
@@ -530,11 +530,8 @@ export default function SectionNotesPage() {
                                             </a>
                                         )}
                                         {note.lastEditedBy && (
-                                            <span title={`${t('updated_by' as any)} ${note.lastEditedBy.firstName}`} style={{ color: '#94a3b8' }}>
-                                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                                                    <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"></path>
-                                                    <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-                                                </svg>
+                                            <span style={{ fontSize: '0.7rem', color: '#94a3b8', fontStyle: 'italic', display: 'flex', alignItems: 'center' }}>
+                                                {t('updated_by' as any)} {t(`role_${(note.lastEditedBy.role || 'USER').toLowerCase()}` as any) || note.lastEditedBy.role}
                                             </span>
                                         )}
                                     </div>
