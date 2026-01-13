@@ -9,8 +9,8 @@ export async function POST(req: Request) {
 
     const role = (session.user as any)?.role
 
-    // Only allow ADMIN and SUPER_ADMIN to bulk update payment status
-    if (!['ADMIN', 'SUPER_ADMIN'].includes(role)) {
+    // Only allow ADMIN, SUPER_ADMIN and TEAM_LEADER to bulk update payment status
+    if (!['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(role)) {
         return new NextResponse("Forbidden", { status: 403 })
     }
 
