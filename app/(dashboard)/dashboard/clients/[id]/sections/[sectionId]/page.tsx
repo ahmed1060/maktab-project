@@ -11,6 +11,7 @@ import { useSession } from 'next-auth/react'
 import { useToast } from '@/context/ToastContext'
 import Modal from '@/components/Modal'
 import EmployeeFilter from '@/components/EmployeeFilter'
+import DatePickerSingle from '@/components/DatePickerSingle'
 
 interface Note {
     id: string
@@ -71,10 +72,10 @@ export default function SectionNotesPage() {
     const [editReminderDays, setEditReminderDays] = useState('')
 
 
-    // New Fields
     const [expiryDate, setExpiryDate] = useState('')
     const [reminderDays, setReminderDays] = useState('')
-    const [selectedFile, setSelectedFile] = useState<File | null>(null)
+    const [pendingFiles, setPendingFiles] = useState<File[]>([])
+    const [isDragging, setIsDragging] = useState(false)
     const [uploading, setUploading] = useState(false)
     const [searchQuery, setSearchQuery] = useState('')
 
@@ -138,7 +139,7 @@ export default function SectionNotesPage() {
             ])
 
             if (sectionsRes.ok && notesRes.ok) {
-                const sectionsData = await sectionsRes.ok ? await sectionsRes.json() : []
+                const sectionsData = await sectionsRes.json()
                 const notesData = await notesRes.json()
 
                 const foundSection = sectionsData.find((s: any) => s.id === sectionId)
@@ -155,23 +156,53 @@ export default function SectionNotesPage() {
         }
     }
 
+    const handleFiles = (files: File[]) => {
+        const MAX_SIZE = 4 * 1024 * 1024
+        const validFiles = files.filter(f => {
+            if (f.size > MAX_SIZE) {
+                showToast(`${t('failed_upload_files')}: ${f.name} is too large (max 4MB)`, 'error')
+                return false
+            }
+            return true
+        })
+        setPendingFiles(prev => [...prev, ...validFiles])
+    }
+
+    const removePendingFile = (index: number) => {
+        setPendingFiles(prev => prev.filter((_, i) => i !== index))
+    }
+
+    const getNoteAttachments = (attachment: string | null | undefined): string[] => {
+        if (!attachment) return []
+        if (attachment.startsWith('[')) {
+            try {
+                return JSON.parse(attachment)
+            } catch {
+                return [attachment]
+            }
+        }
+        return [attachment]
+    }
+
     const handleCreateNote = async (e: React.FormEvent) => {
         e.preventDefault()
-        if (!newNoteContent.trim()) return
+        if (!newNoteContent.trim() && pendingFiles.length === 0) return
 
         setIsSubmitting(true)
         setUploading(true)
 
         try {
-            let attachmentUrl = null
-            if (selectedFile) {
+            const attachmentUrls: string[] = []
+
+            // Upload multiple files
+            for (const file of pendingFiles) {
                 const formData = new FormData()
-                formData.append('file', selectedFile)
+                formData.append('file', file)
                 formData.append('folder', 'notes')
                 const uploadRes = await fetch('/api/upload', { method: 'POST', body: formData })
                 const uploadData = await uploadRes.json()
                 if (uploadData.success) {
-                    attachmentUrl = uploadData.url
+                    attachmentUrls.push(uploadData.url)
                 } else {
                     throw new Error(uploadData.error || t('photo_upload_failed'))
                 }
@@ -182,7 +213,7 @@ export default function SectionNotesPage() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     content: newNoteContent,
-                    attachment: attachmentUrl,
+                    attachment: attachmentUrls,
                     expiryDate: expiryDate || null,
                     reminderDays: reminderDays || null
                 })
@@ -192,7 +223,7 @@ export default function SectionNotesPage() {
                 setNewNoteContent('')
                 setExpiryDate('')
                 setReminderDays('')
-                setSelectedFile(null)
+                setPendingFiles([])
                 setIsModalOpen(false)
                 fetchData() // Refresh
                 showToast(t('note_created_success' as any) || 'Note Created Successfully', 'success')
@@ -214,14 +245,36 @@ export default function SectionNotesPage() {
         if (!editNoteContent.trim() || !editingNote) return
 
         setIsSubmitting(true)
+        setUploading(true)
 
         try {
+            const newAttachmentUrls: string[] = []
+
+            // Upload new pending files
+            for (const file of pendingFiles) {
+                const formData = new FormData()
+                formData.append('file', file)
+                formData.append('folder', 'notes')
+                const uploadRes = await fetch('/api/upload', { method: 'POST', body: formData })
+                const uploadData = await uploadRes.json()
+                if (uploadData.success) {
+                    newAttachmentUrls.push(uploadData.url)
+                } else {
+                    throw new Error(uploadData.error || t('photo_upload_failed'))
+                }
+            }
+
+            // Combine with existing attachments (legacy logic handled by getNoteAttachments helper)
+            const currentAttachments = getNoteAttachments(editingNote.attachment)
+            const finalAttachments = [...currentAttachments, ...newAttachmentUrls]
+
             const res = await fetch(`/api/clients/${clientId}/sections/${sectionId}/notes`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     noteId: editingNote.id,
                     content: editNoteContent,
+                    attachment: finalAttachments,
                     expiryDate: editExpiryDate || null,
                     reminderDays: editReminderDays || null
                 })
@@ -230,6 +283,7 @@ export default function SectionNotesPage() {
             if (res.ok) {
                 setIsEditModalOpen(false)
                 setEditingNote(null)
+                setPendingFiles([])
                 fetchData() // Refresh
                 showToast(t('note_updated_success' as any) || 'Note Updated Successfully', 'success')
             } else {
@@ -241,6 +295,36 @@ export default function SectionNotesPage() {
             showToast(t('failed_save_generic'), 'error')
         } finally {
             setIsSubmitting(false)
+            setUploading(false)
+        }
+    }
+
+    const handleRemoveExistingAttachment = async (note: Note, urlToRemove: string) => {
+        if (!note) return
+        const currentAttachments = getNoteAttachments(note.attachment)
+        const updatedAttachments = currentAttachments.filter(url => url !== urlToRemove)
+
+        try {
+            const res = await fetch(`/api/clients/${clientId}/sections/${sectionId}/notes`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    noteId: note.id,
+                    content: note.content,
+                    attachment: updatedAttachments,
+                    expiryDate: note.expiryDate,
+                    reminderDays: note.reminderDays
+                })
+            })
+
+            if (res.ok) {
+                // Update local state for immediate feedback
+                setEditingNote({ ...note, attachment: JSON.stringify(updatedAttachments) })
+                showToast(t('item_deleted_success' as any) || 'Attachment removed', 'success')
+                fetchData()
+            }
+        } catch (error) {
+            console.error('Failed to remove attachment', error)
         }
     }
 
@@ -416,8 +500,23 @@ export default function SectionNotesPage() {
 
                                 {/* Footer Actions */}
                                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 'auto' }}>
-                                    <div style={{ display: 'flex', gap: '0.5rem' }}>
-                                        {note.attachment && (
+                                    <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                                        {getNoteAttachments(note.attachment).map((url, i) => (
+                                            <a
+                                                key={i}
+                                                href={url}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="hover:scale-110 transition-transform"
+                                                style={{ color: 'var(--primary)', display: 'flex' }}
+                                                title={url.split('/').pop()}
+                                            >
+                                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                                    <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"></path>
+                                                </svg>
+                                            </a>
+                                        ))}
+                                        {note.attachment && getNoteAttachments(note.attachment).length === 0 && note.attachment.startsWith('http') && (
                                             <a
                                                 href={note.attachment}
                                                 target="_blank"
@@ -521,60 +620,51 @@ export default function SectionNotesPage() {
                                 </div>
 
                                 <div style={{ marginBottom: '1.5rem' }}>
-                                    <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', color: '#64748b', textAlign: locale === 'ar' ? 'right' : 'left' }}>
+                                    <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.75rem', color: '#64748b', textAlign: locale === 'ar' ? 'right' : 'left' }}>
                                         {t('attachment_label' as any)}
                                     </label>
-                                    <input
-                                        type="file"
-                                        accept=".jpg,.jpeg,.png,.gif,.webp,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx"
-                                        onChange={(e) => {
-                                            const file = e.target.files?.[0]
-                                            if (file) {
-                                                const MAX_SIZE = 4 * 1024 * 1024
-                                                const allowedExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx']
+                                    <div
+                                        onDragOver={e => { e.preventDefault(); setIsDragging(true); }}
+                                        onDragLeave={() => setIsDragging(false)}
+                                        onDrop={e => { e.preventDefault(); setIsDragging(false); if (e.dataTransfer.files.length) handleFiles(Array.from(e.dataTransfer.files)); }}
+                                        style={{ border: `2px dashed ${isDragging ? '#3b82f6' : '#cbd5e1'}`, borderRadius: '0.75rem', padding: '1.5rem', textAlign: 'center', background: isDragging ? '#eff6ff' : '#f8fafc', transition: 'all 0.2s', cursor: 'pointer', position: 'relative' }}
+                                    >
+                                        <input
+                                            type="file"
+                                            multiple
+                                            accept=".jpg,.jpeg,.png,.gif,.webp,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx"
+                                            onChange={e => { if (e.target.files) { handleFiles(Array.from(e.target.files)); e.target.value = ''; } }}
+                                            style={{ opacity: 0, position: 'absolute', inset: 0, cursor: 'pointer' }}
+                                            disabled={uploading}
+                                        />
+                                        <div style={{ pointerEvents: 'none' }}>
+                                            <div style={{ fontSize: '1.5rem', marginBottom: '0.25rem' }}>☁️</div>
+                                            <div style={{ fontSize: '0.85rem', fontWeight: '600', color: '#475569' }}>{t('upload_drag_files_msg')}</div>
+                                        </div>
+                                    </div>
 
-                                                if (file.size > MAX_SIZE) {
-                                                    showToast(t('failed_upload_files') || `File ${file.name} is too large (max 4MB)`, 'error')
-                                                    e.target.value = ''
-                                                    setSelectedFile(null)
-                                                    return
-                                                }
-
-                                                const ext = file.name.substring(file.name.lastIndexOf('.')).toLowerCase()
-                                                if (!allowedExtensions.includes(ext)) {
-                                                    showToast(`${t('error_generic') || 'Invalid file type'}: ${file.name}`, 'error')
-                                                    e.target.value = ''
-                                                    setSelectedFile(null)
-                                                    return
-                                                }
-
-                                                setSelectedFile(file)
-                                            } else {
-                                                setSelectedFile(null)
-                                            }
-                                        }}
-                                        className="input"
-                                        style={{
-                                            width: '100%',
-                                            padding: '0.5rem',
-                                            borderRadius: '0.5rem',
-                                            fontSize: '0.875rem',
-                                            textAlign: locale === 'ar' ? 'right' : 'left'
-                                        }}
-                                    />
+                                    {pendingFiles.length > 0 && (
+                                        <div style={{ marginTop: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                                            {pendingFiles.map((f, i) => (
+                                                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 0.75rem', background: 'white', border: '1px solid #e2e8f0', borderRadius: '0.5rem' }}>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', overflow: 'hidden' }}>
+                                                        <span style={{ fontSize: '1rem' }}>📄</span>
+                                                        <div style={{ fontSize: '0.75rem', fontWeight: '500', color: '#1e293b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{f.name}</div>
+                                                    </div>
+                                                    <button type="button" onClick={() => removePendingFile(i)} style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', fontSize: '1rem', fontWeight: 'bold' }}>×</button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
                                 </div>
 
                                 <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem' }}>
                                     <div style={{ flex: 1 }}>
-                                        <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', color: '#64748b', textAlign: locale === 'ar' ? 'right' : 'left' }}>
-                                            {t('expiry_date_label' as any)}
-                                        </label>
-                                        <input
-                                            type="date"
+                                        <DatePickerSingle
+                                            label={t('expiry_date_label' as any)}
                                             value={expiryDate}
-                                            onChange={(e) => setExpiryDate(e.target.value)}
-                                            className="input"
-                                            style={{ width: '100%', padding: '0.5rem', borderRadius: '0.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}
+                                            onChange={setExpiryDate}
+                                            minDate={new Date().toISOString().split('T')[0]}
                                         />
                                     </div>
                                     <div style={{ flex: 1 }}>
@@ -588,7 +678,7 @@ export default function SectionNotesPage() {
                                             placeholder={t('days_label')}
                                             min="1"
                                             className="input"
-                                            style={{ width: '100%', padding: '0.5rem', borderRadius: '0.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}
+                                            style={{ width: '100%', padding: '0 1rem', borderRadius: '1.25rem', height: '48px', textAlign: locale === 'ar' ? 'right' : 'left' }}
                                         />
                                     </div>
                                 </div>
@@ -732,17 +822,70 @@ export default function SectionNotesPage() {
                                     )}
                                 </div>
 
+                                <div style={{ marginBottom: '1.5rem' }}>
+                                    <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.75rem', color: '#64748b', textAlign: locale === 'ar' ? 'right' : 'left' }}>
+                                        {t('attachment_label' as any)}
+                                    </label>
+
+                                    {/* Existing Attachments */}
+                                    {editingNote && getNoteAttachments(editingNote.attachment).length > 0 && (
+                                        <div style={{ marginBottom: '1rem', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                                            {getNoteAttachments(editingNote.attachment).map((url, i) => (
+                                                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 0.75rem', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '0.5rem' }}>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', overflow: 'hidden' }}>
+                                                        <span style={{ fontSize: '1rem' }}>🔗</span>
+                                                        <div style={{ fontSize: '0.75rem', fontWeight: '500', color: '#0369a1', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                                            {url.split('/').pop()}
+                                                        </div>
+                                                    </div>
+                                                    <button type="button" onClick={() => handleRemoveExistingAttachment(editingNote, url)} style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', fontSize: '1rem', fontWeight: 'bold' }}>×</button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+
+                                    <div
+                                        onDragOver={e => { e.preventDefault(); setIsDragging(true); }}
+                                        onDragLeave={() => setIsDragging(false)}
+                                        onDrop={e => { e.preventDefault(); setIsDragging(false); if (e.dataTransfer.files.length) handleFiles(Array.from(e.dataTransfer.files)); }}
+                                        style={{ border: `2px dashed ${isDragging ? '#3b82f6' : '#cbd5e1'}`, borderRadius: '0.75rem', padding: '1.5rem', textAlign: 'center', background: isDragging ? '#eff6ff' : '#f8fafc', transition: 'all 0.2s', cursor: 'pointer', position: 'relative' }}
+                                    >
+                                        <input
+                                            type="file"
+                                            multiple
+                                            accept=".jpg,.jpeg,.png,.gif,.webp,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx"
+                                            onChange={e => { if (e.target.files) { handleFiles(Array.from(e.target.files)); e.target.value = ''; } }}
+                                            style={{ opacity: 0, position: 'absolute', inset: 0, cursor: 'pointer' }}
+                                            disabled={uploading}
+                                        />
+                                        <div style={{ pointerEvents: 'none' }}>
+                                            <div style={{ fontSize: '1.5rem', marginBottom: '0.25rem' }}>☁️</div>
+                                            <div style={{ fontSize: '0.85rem', fontWeight: '600', color: '#475569' }}>{t('upload_drag_files_msg')}</div>
+                                        </div>
+                                    </div>
+
+                                    {pendingFiles.length > 0 && (
+                                        <div style={{ marginTop: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                                            {pendingFiles.map((f, i) => (
+                                                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 0.75rem', background: 'white', border: '1px solid #e2e8f0', borderRadius: '0.5rem' }}>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', overflow: 'hidden' }}>
+                                                        <span style={{ fontSize: '1rem' }}>📄</span>
+                                                        <div style={{ fontSize: '0.75rem', fontWeight: '500', color: '#1e293b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{f.name}</div>
+                                                    </div>
+                                                    <button type="button" onClick={() => removePendingFile(i)} style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', fontSize: '1rem', fontWeight: 'bold' }}>×</button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+
                                 <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem' }}>
                                     <div style={{ flex: 1 }}>
-                                        <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', color: '#64748b', textAlign: locale === 'ar' ? 'right' : 'left' }}>
-                                            {t('expiry_date_label' as any)}
-                                        </label>
-                                        <input
-                                            type="date"
+                                        <DatePickerSingle
+                                            label={t('expiry_date_label' as any)}
                                             value={editExpiryDate}
-                                            onChange={(e) => setEditExpiryDate(e.target.value)}
-                                            className="input"
-                                            style={{ width: '100%', padding: '0.5rem', borderRadius: '0.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}
+                                            onChange={setEditExpiryDate}
+                                            minDate={new Date().toISOString().split('T')[0]}
                                         />
                                     </div>
                                     <div style={{ flex: 1 }}>
@@ -756,7 +899,7 @@ export default function SectionNotesPage() {
                                             placeholder={t('days_label')}
                                             min="1"
                                             className="input"
-                                            style={{ width: '100%', padding: '0.5rem', borderRadius: '0.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}
+                                            style={{ width: '100%', padding: '0 1rem', borderRadius: '1.25rem', height: '48px', textAlign: locale === 'ar' ? 'right' : 'left' }}
                                         />
                                     </div>
                                 </div>

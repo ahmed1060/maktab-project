@@ -161,7 +161,7 @@ export async function POST(
                 content,
                 sectionId: params.sectionId,
                 createdById: userId,
-                attachment,
+                attachment: Array.isArray(attachment) ? JSON.stringify(attachment) : attachment,
                 expiryDate: expiryDate ? new Date(expiryDate) : null,
                 reminderDays: reminderDays ? parseInt(reminderDays) : null
             }
@@ -215,15 +215,29 @@ export async function DELETE(
 
         if (note.attachment) {
             try {
-                // Extract file path from URL (e.g., "notes/filename.ext")
-                const urlParts = note.attachment.split('/app-assets/')
-                if (urlParts.length > 1) {
-                    const filePath = urlParts[1]
-                    await supabase.storage.from('app-assets').remove([filePath])
+                // Handle both single string and JSON array
+                let filesToDelete: string[] = []
+                if (note.attachment.startsWith('[')) {
+                    try {
+                        filesToDelete = JSON.parse(note.attachment)
+                    } catch {
+                        filesToDelete = [note.attachment]
+                    }
+                } else {
+                    filesToDelete = [note.attachment]
+                }
+
+                for (const fileUrl of filesToDelete) {
+                    if (!fileUrl) continue
+                    // Extract file path from URL (e.g., "notes/filename.ext")
+                    const urlParts = fileUrl.split('/app-assets/')
+                    if (urlParts.length > 1) {
+                        const filePath = urlParts[1]
+                        await supabase.storage.from('app-assets').remove([filePath])
+                    }
                 }
             } catch (storageError) {
                 console.error('Failed to delete attachment from storage:', storageError)
-                // We don't block note deletion if storage cleanup fails, but we log it
             }
         }
 
@@ -280,6 +294,7 @@ export async function PUT(
             where: { id: noteId },
             data: {
                 content,
+                attachment: Array.isArray(body.attachment) ? JSON.stringify(body.attachment) : body.attachment,
                 expiryDate: expiryDate ? new Date(expiryDate) : null,
                 reminderDays: reminderDays ? parseInt(reminderDays) : null,
                 lastEditedById: userId,
