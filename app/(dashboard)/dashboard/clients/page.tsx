@@ -32,7 +32,6 @@ interface Client {
 
 export default function ClientsPage() {
     const { t, locale } = useLanguage()
-    const [clients, setClients] = useState<Client[]>([])
     const [filteredClients, setFilteredClients] = useState<Client[]>([])
     const [searchQuery, setSearchQuery] = useState('')
     const [isLoading, setIsLoading] = useState(true)
@@ -82,7 +81,6 @@ export default function ClientsPage() {
             const res = await fetch(url)
             if (res.ok) {
                 const result = await res.json()
-                setClients(result.data)
                 setFilteredClients(result.data)
                 setTotalPages(result.totalPages)
             }

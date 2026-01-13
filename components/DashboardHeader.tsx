@@ -60,9 +60,15 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
 
     useEffect(() => {
         if (currentUser.role === 'SUPER_ADMIN') {
-            fetch('/api/companies', { cache: 'no-store' })
+            fetch('/api/companies?limit=1000', { cache: 'no-store' })
                 .then(res => res.json())
-                .then(data => setCompanies(data))
+                .then(data => {
+                    if (data && Array.isArray(data.data)) {
+                        setCompanies(data.data)
+                    } else if (Array.isArray(data)) {
+                        setCompanies(data)
+                    }
+                })
                 .catch(err => console.error('Failed to fetch companies', err))
         }
 
