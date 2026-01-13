@@ -11,6 +11,7 @@ import { useLanguage } from '@/context/LanguageContext'
 import { useSession } from 'next-auth/react'
 import Modal from '@/components/Modal'
 import { useToast } from '@/context/ToastContext'
+import Pagination from '@/components/Pagination'
 
 interface Section {
     id: string
@@ -61,6 +62,10 @@ export default function ClientDetailsPage() {
     const [isModalOpen, setIsModalOpen] = useState(false)
     const [newSectionTitle, setNewSectionTitle] = useState('')
     const [isSubmitting, setIsSubmitting] = useState(false)
+    const [page, setPage] = useState(1)
+    const [total, setTotal] = useState(0)
+    const [totalPages, setTotalPages] = useState(0)
+    const limit = 10
     const [error, setError] = useState<string | null>(null)
     const { setTitle } = useHeader()
 
@@ -89,7 +94,7 @@ export default function ClientDetailsPage() {
         if (clientId) {
             fetchData()
         }
-    }, [clientId])
+    }, [clientId, page, searchQuery])
 
     useEffect(() => {
         if (client?.name) {
@@ -103,7 +108,7 @@ export default function ClientDetailsPage() {
             setError(null)
             const [clientsRes, sectionsRes] = await Promise.all([
                 fetch('/api/clients'),
-                fetch(`/api/clients/${clientId}/sections`)
+                fetch(`/api/clients/${clientId}/sections?page=${page}&limit=${limit}&search=${encodeURIComponent(searchQuery)}`)
             ])
 
             if (clientsRes.ok && sectionsRes.ok) {
@@ -114,7 +119,9 @@ export default function ClientDetailsPage() {
                 if (foundClient) {
                     setClient(foundClient)
                 }
-                setSections(sectionsData)
+                setSections(sectionsData.data || [])
+                setTotal(sectionsData.total || 0)
+                setTotalPages(sectionsData.totalPages || 1)
             } else {
                 if (sectionsRes.status === 404) {
                     setError(t('failed_fetch_client_details' as any))
@@ -211,11 +218,8 @@ export default function ClientDetailsPage() {
         }
     }
 
-    const filteredSections = sections.filter(section => {
-        const matchesQuery = section.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            (section.createdBy && `${section.createdBy.firstName} ${section.createdBy.lastName}`.toLowerCase().includes(searchQuery.toLowerCase()))
-        return matchesQuery
-    })
+    // Server-side filtering is now implemented
+    const filteredSections = sections
 
     if (error) {
         return (
@@ -276,7 +280,7 @@ export default function ClientDetailsPage() {
                     dateTo={''}
                     selectedStatus={''}
                     searchQuery={searchQuery}
-                    totalCount={filteredSections.length}
+                    totalCount={total}
                     primaryAction={
                         <button
                             onClick={() => setIsModalOpen(true)}
@@ -431,6 +435,12 @@ export default function ClientDetailsPage() {
                         ))}
                     </div>
                 )}
+
+                <Pagination
+                    currentPage={page}
+                    totalPages={totalPages}
+                    onPageChange={(p) => setPage(p)}
+                />
             </div>
 
             {/* Create Section Modal - Portal */}

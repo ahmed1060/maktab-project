@@ -21,10 +21,21 @@ export async function GET(req: Request) {
             return NextResponse.json(company[0])
         }
 
-        // Use raw query to fetch isBanned since client is stale
-        const companies = await prisma.$queryRaw`SELECT id, name, "isBanned" FROM "Company" ORDER BY name ASC`
+        const page = parseInt(searchParams.get('page') || '1')
+        const limit = parseInt(searchParams.get('limit') || '10')
+        const skip = (page - 1) * limit
 
-        return NextResponse.json(companies)
+        // Use raw query to fetch isBanned since client is stale
+        const companies: any[] = await prisma.$queryRaw`SELECT id, name, "isBanned" FROM "Company" ORDER BY name ASC LIMIT ${limit} OFFSET ${skip}`
+        const totalCount: any[] = await prisma.$queryRaw`SELECT COUNT(*)::int as count FROM "Company"`
+        const total = totalCount[0]?.count || 0
+
+        return NextResponse.json({
+            data: companies,
+            total,
+            page,
+            totalPages: Math.ceil(total / limit)
+        })
     } catch (error) {
         console.error('Fetch error:', error)
         return NextResponse.json(

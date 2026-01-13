@@ -7,6 +7,7 @@ import EmployeeFilter from '@/components/EmployeeFilter'
 import { useCompany } from '@/context/CompanyContext'
 import AccessDenied from '@/components/AccessDenied'
 import Modal from '@/components/Modal'
+import Pagination from '@/components/Pagination'
 import { useLanguage } from '@/context/LanguageContext'
 
 interface Employee {
@@ -30,13 +31,31 @@ export default function EmployeesPage() {
     const userRole = session?.user?.role || ''
     const { selectedCompanyId } = useCompany()
 
+    const [page, setPage] = useState(1)
+    const [total, setTotal] = useState(0)
+    const [totalPages, setTotalPages] = useState(0)
+    const limit = 10
+
     const fetchEmployees = async () => {
-        const query = selectedCompanyId ? `?companyId=${selectedCompanyId}` : ''
-        const res = await fetch(`/api/users${query}`, { cache: 'no-store' })
-        const data = await res.json()
-        const filteredData = data.filter((u: Employee) => u.id !== (session?.user?.id || '') && u.role !== 'SUPER_ADMIN')
-        setEmployees(filteredData)
-        setLoading(false)
+        setLoading(true)
+        const queryParams = new URLSearchParams()
+        if (selectedCompanyId) queryParams.set('companyId', selectedCompanyId)
+        queryParams.set('page', page.toString())
+        queryParams.set('limit', limit.toString())
+        queryParams.set('excludeRole', 'SUPER_ADMIN')
+        if (session?.user?.id) queryParams.set('excludeUserId', (session.user as any).id)
+
+        try {
+            const res = await fetch(`/api/users?${queryParams.toString()}`, { cache: 'no-store' })
+            const result = await res.json()
+            setEmployees(result.data)
+            setTotal(result.total)
+            setTotalPages(result.totalPages)
+        } catch (error) {
+            console.error('Fetch error:', error)
+        } finally {
+            setLoading(false)
+        }
     }
 
     const [sortBy, setSortBy] = useState('name')
@@ -469,6 +488,12 @@ export default function EmployeesPage() {
                     ))
                 )}
             </div>
+
+            <Pagination
+                currentPage={page}
+                totalPages={totalPages}
+                onPageChange={(p) => setPage(p)}
+            />
 
             <Modal
                 isOpen={!!deleteConfirm}

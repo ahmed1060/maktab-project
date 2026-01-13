@@ -4,7 +4,19 @@ import { authOptions } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 import CostsClient from './CostsClient'
 
-export default async function CostsPage({ searchParams }: { searchParams: { company?: string } }) {
+export default async function CostsPage({
+    searchParams
+}: {
+    searchParams: {
+        company?: string,
+        page?: string,
+        limit?: string,
+        employeeId?: string,
+        dateFrom?: string,
+        dateTo?: string,
+        search?: string
+    }
+}) {
     const session = await getServerSession(authOptions)
     if (!session) {
         redirect('/login')
@@ -16,6 +28,10 @@ export default async function CostsPage({ searchParams }: { searchParams: { comp
     if (!['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole)) {
         redirect('/dashboard')
     }
+
+    const page = parseInt(searchParams.page || '1')
+    const limit = parseInt(searchParams.limit || '10')
+    const skip = (page - 1) * limit
 
     let companyId: string | undefined = undefined
     if (searchParams.company) {
@@ -29,59 +45,110 @@ export default async function CostsPage({ searchParams }: { searchParams: { comp
 
     if (userRole !== 'SUPER_ADMIN') {
         if (!userCompanyId) {
-            return <CostsClient tasksWithCosts={[]} userRole={userRole} />
+            return <CostsClient tasksWithCosts={[]} userRole={userRole} total={0} page={1} totalPages={0} />
         }
         finalCompanyId = userCompanyId
     }
 
-    // Fetch all approved/completed tasks with totalCost > 0 and PENDING_PAYMENT status
-    const tasksWithCosts = await (prisma.task as any).findMany({
-        where: {
-            AND: [
-                {
-                    OR: [
-                        { status: 'APPROVED' },
-                        { status: 'COMPLETED' },
-                        { status: 'REJECTED' }
-                    ]
-                },
-                {
-                    totalCost: {
-                        gt: 0
+    // Build Where Clause
+    const where: any = {
+        AND: [
+            {
+                OR: [
+                    { status: 'APPROVED' },
+                    { status: 'COMPLETED' },
+                    { status: 'REJECTED' }
+                ]
+            },
+            {
+                totalCost: { gt: 0 }
+            },
+            {
+                paymentStatus: 'PENDING_PAYMENT'
+            }
+        ]
+    }
+
+    if (finalCompanyId) {
+        where.AND.push({
+            OR: [
+                { assignee: { companyId: finalCompanyId } },
+                { assignees: { some: { companyId: finalCompanyId } } }
+            ]
+        })
+    }
+
+    if (searchParams.employeeId) {
+        where.AND.push({
+            OR: [
+                { assigneeId: searchParams.employeeId },
+                { assignees: { some: { id: searchParams.employeeId } } }
+            ]
+        })
+    }
+
+    if (searchParams.search) {
+        where.AND.push({
+            title: { contains: searchParams.search, mode: 'insensitive' }
+        })
+    }
+
+    if (searchParams.dateFrom) {
+        where.AND.push({ updatedAt: { gte: new Date(searchParams.dateFrom) } })
+    }
+
+    if (searchParams.dateTo) {
+        const toDate = new Date(searchParams.dateTo)
+        toDate.setHours(23, 59, 59, 999)
+        where.AND.push({ updatedAt: { lte: toDate } })
+    }
+
+    // Fetch tasks and total count
+    const [tasksWithCosts, total] = await Promise.all([
+        (prisma.task as any).findMany({
+            where,
+            select: {
+                id: true,
+                title: true,
+                totalCost: true,
+                memberCosts: true,
+                memberPaymentStatus: true,
+                status: true,
+                updatedAt: true,
+                assigneeId: true,
+                assignee: {
+                    select: {
+                        id: true,
+                        firstName: true,
+                        lastName: true
                     }
                 },
-                {
-                    paymentStatus: 'PENDING_PAYMENT'
-                },
-                ...(finalCompanyId ? [{ assignee: { companyId: finalCompanyId } }] : [])
-            ]
-        },
-        select: {
-            id: true,
-            title: true,
-            totalCost: true,
-            memberCosts: true,
-            status: true,
-            updatedAt: true,
-            assignee: {
-                select: {
-                    id: true,
-                    firstName: true,
-                    lastName: true
+                assignees: {
+                    select: {
+                        id: true,
+                        firstName: true,
+                        lastName: true
+                    }
                 }
             },
-            assignees: {
-                select: {
-                    id: true,
-                    firstName: true,
-                    lastName: true
-                }
-            }
-        },
-        orderBy: {
-            updatedAt: 'desc'
-        }
-    })
+            orderBy: {
+                updatedAt: 'desc'
+            },
+            skip,
+            take: limit
+        }),
+        (prisma.task as any).count({ where })
+    ])
 
-    return <CostsClient tasksWithCosts={tasksWithCosts} userRole={userRole} />
+    const totalPages = Math.ceil(total / limit)
+
+    return (
+        <CostsClient
+            tasksWithCosts={tasksWithCosts}
+            userRole={userRole}
+            total={total}
+            page={page}
+            totalPages={totalPages}
+        />
+    )
 }

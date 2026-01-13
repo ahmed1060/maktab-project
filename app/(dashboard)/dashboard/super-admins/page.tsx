@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import AccessDenied from '@/components/AccessDenied'
 import { useLanguage } from '@/context/LanguageContext'
+import Pagination from '@/components/Pagination'
 
 type Admin = {
     id: string
@@ -46,12 +47,20 @@ export default function SuperAdminsPage() {
     const [showPassword, setShowPassword] = useState(false)
     const [error, setError] = useState('')
 
+    const [page, setPage] = useState(1)
+    const [total, setTotal] = useState(0)
+    const [totalPages, setTotalPages] = useState(0)
+    const limit = 10
+
     const fetchAdmins = async () => {
+        setLoading(true)
         try {
-            const res = await fetch('/api/super-admins')
+            const res = await fetch(`/api/super-admins?page=${page}&limit=${limit}`)
             if (res.ok) {
-                const data = await res.json()
-                setAdmins(data)
+                const result = await res.json()
+                setAdmins(result.data)
+                setTotal(result.total)
+                setTotalPages(result.totalPages)
             }
         } catch (e) {
             console.error('Failed to fetch admins')
@@ -64,7 +73,7 @@ export default function SuperAdminsPage() {
         if (userRole === 'SUPER_ADMIN') {
             fetchAdmins()
         }
-    }, [userRole])
+    }, [userRole, page])
 
     if (userRole !== 'SUPER_ADMIN') {
         return <AccessDenied />
@@ -226,6 +235,12 @@ export default function SuperAdminsPage() {
                     </table>
                 </div>
             )}
+
+            <Pagination
+                currentPage={page}
+                totalPages={totalPages}
+                onPageChange={(p) => setPage(p)}
+            />
 
             {/* Create Modal */}
             {showCreateModal && (

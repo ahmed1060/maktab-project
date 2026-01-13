@@ -10,6 +10,7 @@ import Modal from '@/components/Modal'
 import { useToast } from '@/context/ToastContext'
 import ConfirmModal from '@/components/ConfirmModal'
 import { useLanguage } from '@/context/LanguageContext'
+import Pagination from '@/components/Pagination'
 
 type Company = {
     id: string
@@ -40,12 +41,20 @@ export default function CompaniesPage() {
     const [isDeleting, setIsDeleting] = useState(false)
     const [banConfirm, setBanConfirm] = useState<{ isOpen: boolean, company: Company | null, action: 'ban' | 'unban' | null }>({ isOpen: false, company: null, action: null })
 
+    const [page, setPage] = useState(1)
+    const [total, setTotal] = useState(0)
+    const [totalPages, setTotalPages] = useState(0)
+    const limit = 10
+
     const fetchCompanies = async () => {
+        setLoading(true)
         try {
-            const res = await fetch('/api/companies')
+            const res = await fetch(`/api/companies?page=${page}&limit=${limit}`)
             if (res.ok) {
-                const data = await res.json()
-                setCompanies(data)
+                const result = await res.json()
+                setCompanies(result.data)
+                setTotal(result.total)
+                setTotalPages(result.totalPages)
             }
         } catch (e) {
             console.error('Failed to fetch companies')
@@ -56,7 +65,7 @@ export default function CompaniesPage() {
 
     useEffect(() => {
         fetchCompanies()
-    }, [])
+    }, [page])
 
     const handleOpenModal = (company?: Company) => {
         setError('')
@@ -252,6 +261,12 @@ export default function CompaniesPage() {
                         </table>
                     </div>
                 )}
+
+                <Pagination
+                    currentPage={page}
+                    totalPages={totalPages}
+                    onPageChange={(p) => setPage(p)}
+                />
 
                 <Modal
                     isOpen={showModal}

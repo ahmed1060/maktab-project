@@ -12,6 +12,7 @@ import { useToast } from '@/context/ToastContext'
 import Modal from '@/components/Modal'
 import EmployeeFilter from '@/components/EmployeeFilter'
 import DatePickerSingle from '@/components/DatePickerSingle'
+import Pagination from '@/components/Pagination'
 
 interface Note {
     id: string
@@ -78,13 +79,13 @@ export default function SectionNotesPage() {
     const [isDragging, setIsDragging] = useState(false)
     const [uploading, setUploading] = useState(false)
     const [searchQuery, setSearchQuery] = useState('')
+    const [page, setPage] = useState(1)
+    const [total, setTotal] = useState(0)
+    const [totalPages, setTotalPages] = useState(0)
+    const limit = 10
 
-    const filteredNotes = notes.filter(note => {
-        const query = searchQuery.toLowerCase()
-        const contentMatch = note.content.toLowerCase().includes(query)
-        const creatorMatch = note.createdBy ? `${note.createdBy.firstName} ${note.createdBy.lastName}`.toLowerCase().includes(query) : false
-        return contentMatch || creatorMatch
-    })
+    // Server-side filtering is now implemented
+    const filteredNotes = notes
 
     useEffect(() => {
         setMounted(true)
@@ -94,7 +95,7 @@ export default function SectionNotesPage() {
         if (clientId && sectionId) {
             fetchData()
         }
-    }, [clientId, sectionId])
+    }, [clientId, sectionId, page, searchQuery])
 
     useEffect(() => {
         if (section?.title) {
@@ -134,18 +135,22 @@ export default function SectionNotesPage() {
     const fetchData = async () => {
         try {
             const [sectionsRes, notesRes] = await Promise.all([
-                fetch(`/api/clients/${clientId}/sections`),
-                fetch(`/api/clients/${clientId}/sections/${sectionId}/notes`)
+                fetch(`/api/clients/${clientId}/sections?limit=999`), // Fetch all sections for the title list
+                fetch(`/api/clients/${clientId}/sections/${sectionId}/notes?page=${page}&limit=${limit}&search=${encodeURIComponent(searchQuery)}`)
             ])
 
             if (sectionsRes.ok && notesRes.ok) {
                 const sectionsData = await sectionsRes.json()
                 const notesData = await notesRes.json()
 
-                const foundSection = sectionsData.find((s: any) => s.id === sectionId)
+                // sections API is now paginated too, so we need to handle that if it's used for the title
+                const sectionsList = sectionsData.data || sectionsData
+                const foundSection = sectionsList.find((s: any) => s.id === sectionId)
                 if (foundSection) setSection(foundSection)
 
-                setNotes(notesData)
+                setNotes(notesData.data || [])
+                setTotal(notesData.total || 0)
+                setTotalPages(notesData.totalPages || 1)
             } else {
                 if (notesRes.status === 404) router.push(`/dashboard/clients/${clientId}`)
             }
@@ -398,7 +403,7 @@ export default function SectionNotesPage() {
                         dateTo={''}
                         selectedStatus={''}
                         searchQuery={searchQuery}
-                        totalCount={filteredNotes.length}
+                        totalCount={total}
                         primaryAction={
                             <button
                                 onClick={() => setIsModalOpen(true)}
@@ -567,6 +572,12 @@ export default function SectionNotesPage() {
                         ))}
                     </div>
                 )}
+
+                <Pagination
+                    currentPage={page}
+                    totalPages={totalPages}
+                    onPageChange={(p) => setPage(p)}
+                />
             </div>
 
             {/* Create Note Modal - Portal */}

@@ -57,23 +57,47 @@ export async function GET(
             }
         }
 
-        const sections = await prisma.businessClientSection.findMany({
-            where: {
-                clientId: params.id
-            },
-            include: {
-                createdBy: {
-                    select: { firstName: true, lastName: true, role: true }
-                },
-                lastEditedBy: {
-                    select: { firstName: true, lastName: true, role: true }
-                },
-                _count: { select: { notes: true } }
-            },
-            orderBy: { createdAt: 'asc' }
-        })
+        const { searchParams } = new URL(request.url)
+        const page = parseInt(searchParams.get('page') || '1')
+        const limit = parseInt(searchParams.get('limit') || '10')
+        const search = searchParams.get('search') || ''
+        const skip = (page - 1) * limit
 
-        return NextResponse.json(sections)
+        const where: any = {
+            clientId: params.id
+        }
+
+        if (search) {
+            where.title = { contains: search, mode: 'insensitive' }
+        }
+
+        const [sections, total] = await Promise.all([
+            prisma.businessClientSection.findMany({
+                where,
+                include: {
+                    createdBy: {
+                        select: { firstName: true, lastName: true, role: true }
+                    },
+                    lastEditedBy: {
+                        select: { firstName: true, lastName: true, role: true }
+                    },
+                    _count: { select: { notes: true } }
+                },
+                orderBy: { createdAt: 'asc' },
+                skip,
+                take: limit
+            }),
+            prisma.businessClientSection.count({
+                where
+            })
+        ])
+
+        return NextResponse.json({
+            data: sections,
+            total,
+            page,
+            totalPages: Math.ceil(total / limit)
+        })
 
     } catch (error) {
         console.error('Error fetching sections:', error)

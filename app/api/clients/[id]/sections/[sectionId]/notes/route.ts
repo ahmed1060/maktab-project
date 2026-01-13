@@ -50,24 +50,48 @@ export async function GET(
             }
         }
 
-        const notes = await prisma.businessClientNote.findMany({
-            where: {
-                sectionId: params.sectionId
-            },
-            include: {
-                createdBy: {
-                    select: { firstName: true, lastName: true, avatar: true, role: true }
-                },
-                lastEditedBy: {
-                    select: { firstName: true, lastName: true, role: true }
-                }
-            },
-            orderBy: {
-                createdAt: 'desc'
-            }
-        })
+        const { searchParams } = new URL(request.url)
+        const page = parseInt(searchParams.get('page') || '1')
+        const limit = parseInt(searchParams.get('limit') || '10')
+        const search = searchParams.get('search') || ''
+        const skip = (page - 1) * limit
 
-        return NextResponse.json(notes)
+        const where: any = {
+            sectionId: params.sectionId
+        }
+
+        if (search) {
+            where.content = { contains: search, mode: 'insensitive' }
+        }
+
+        const [notes, total] = await Promise.all([
+            prisma.businessClientNote.findMany({
+                where,
+                include: {
+                    createdBy: {
+                        select: { firstName: true, lastName: true, avatar: true, role: true }
+                    },
+                    lastEditedBy: {
+                        select: { firstName: true, lastName: true, role: true }
+                    }
+                },
+                orderBy: {
+                    createdAt: 'desc'
+                },
+                skip,
+                take: limit
+            }),
+            prisma.businessClientNote.count({
+                where
+            })
+        ])
+
+        return NextResponse.json({
+            data: notes,
+            total,
+            page,
+            totalPages: Math.ceil(total / limit)
+        })
 
     } catch (error) {
         console.error('Error fetching notes:', error)

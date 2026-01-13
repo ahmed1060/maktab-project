@@ -8,6 +8,7 @@ import DatePickerSingle from '@/components/DatePickerSingle'
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts'
 import EmployeeFilter from '@/components/EmployeeFilter'
 import { useCompany } from '@/context/CompanyContext'
+import Pagination from '@/components/Pagination'
 
 interface DayOffRequest {
     id: string
@@ -63,6 +64,36 @@ export default function DayOffRequestsPage() {
     // User Credit Info
     const [userCredit, setUserCredit] = useState(0)
 
+    const [page, setPage] = useState(1)
+    const [total, setTotal] = useState(0)
+    const [totalPages, setTotalPages] = useState(0)
+    const limit = 10
+
+    const fetchRequests = async () => {
+        setLoading(true)
+        try {
+            let endpoint = isAdmin ? '/api/admin/day-off-requests' : '/api/day-off-requests'
+            const queryParams = new URLSearchParams()
+            if (isAdmin && contextCompanyId) {
+                queryParams.set('companyId', contextCompanyId)
+            }
+            queryParams.set('page', page.toString())
+            queryParams.set('limit', limit.toString())
+
+            const res = await fetch(`${endpoint}?${queryParams.toString()}`)
+            if (res.ok) {
+                const result = await res.json()
+                setRequests(result.data)
+                setTotal(result.total)
+                setTotalPages(result.totalPages)
+            }
+        } catch (error) {
+            console.error('Failed to fetch requests', error)
+        } finally {
+            setLoading(false)
+        }
+    }
+
     useEffect(() => {
         if (status === 'authenticated') {
             fetchRequests()
@@ -70,7 +101,7 @@ export default function DayOffRequestsPage() {
                 fetchUserCredit()
             }
         }
-    }, [isAdmin, user?.id, contextCompanyId, status])
+    }, [isAdmin, user?.id, contextCompanyId, status, page])
 
     // SECURE: Automatically switch deduction type if credit is insufficient
     useEffect(() => {
@@ -82,25 +113,6 @@ export default function DayOffRequestsPage() {
             }
         }
     }, [daysToDeduct, selectedRequest, isApprovalModalOpen, deductionType]);
-
-    const fetchRequests = async () => {
-        setLoading(true)
-        try {
-            let endpoint = isAdmin ? '/api/admin/day-off-requests' : '/api/day-off-requests'
-            if (isAdmin && contextCompanyId) {
-                endpoint += `?companyId=${contextCompanyId}`
-            }
-            const res = await fetch(endpoint)
-            if (res.ok) {
-                const data = await res.json()
-                setRequests(data)
-            }
-        } catch (error) {
-            console.error('Failed to fetch requests', error)
-        } finally {
-            setLoading(false)
-        }
-    }
 
     const fetchUserCredit = async () => {
         if (!user?.id) return
@@ -481,6 +493,12 @@ export default function DayOffRequestsPage() {
                             ))}
                         </div>
                     )}
+
+                    <Pagination
+                        currentPage={page}
+                        totalPages={totalPages}
+                        onPageChange={(p) => setPage(p)}
+                    />
                 </div>
 
                 {!isAdmin && (

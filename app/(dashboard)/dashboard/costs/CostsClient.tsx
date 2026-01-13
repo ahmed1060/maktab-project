@@ -1,25 +1,31 @@
 'use client'
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useMemo } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import CostCard from '@/components/CostCard'
 import EmployeeFilter from '@/components/EmployeeFilter'
-import SortControl from '@/components/SortControl'
 import { useLanguage } from '@/context/LanguageContext'
+import Pagination from '@/components/Pagination'
 
 interface CostsClientProps {
     tasksWithCosts: any[]
     userRole: string
+    total: number
+    page: number
+    totalPages: number
 }
 
-export default function CostsClient({ tasksWithCosts, userRole }: CostsClientProps) {
+export default function CostsClient({ tasksWithCosts, userRole, total, page, totalPages }: CostsClientProps) {
     const { t, locale } = useLanguage()
     const router = useRouter()
-    const [filters, setFilters] = useState({
-        employeeId: '',
-        dateFrom: '',
-        dateTo: '',
-        search: ''
-    })
+    const searchParams = useSearchParams()
+
+    const filters = {
+        employeeId: searchParams.get('employeeId') || '',
+        dateFrom: searchParams.get('dateFrom') || '',
+        dateTo: searchParams.get('dateTo') || '',
+        search: searchParams.get('search') || ''
+    }
+
     const isEmployee = userRole === 'EMPLOYEE'
     const [isUpdating, setIsUpdating] = useState(false)
     const [showFeedback, setShowFeedback] = useState(false)
@@ -30,7 +36,6 @@ export default function CostsClient({ tasksWithCosts, userRole }: CostsClientPro
         const userCosts = Object.entries(mCosts)
 
         if (userCosts.length === 0 && task.totalCost > 0) {
-            // Legacy or single assignee with totalCost but no memberCosts yet
             return [{
                 ...task,
                 displayCost: task.totalCost,
@@ -52,40 +57,16 @@ export default function CostsClient({ tasksWithCosts, userRole }: CostsClientPro
         })
     })
 
+    // Filter flattened entries locally to ensure only the selected employee's card shows if employeeId is set
     const filteredEntries = allCostEntries.filter(entry => {
-        // Filter by search query (title)
-        if (filters.search && !entry.title.toLowerCase().includes(filters.search.toLowerCase())) {
-            return false
-        }
-
-        // Filter by employee
         if (filters.employeeId && entry.displayAssignee.id !== filters.employeeId) {
             return false
         }
-
-        // Filter by date range (using updatedAt - when task was approved/completed)
-        if (filters.dateFrom) {
-            const taskDate = new Date(entry.updatedAt)
-            const fromDate = new Date(filters.dateFrom)
-            if (taskDate < fromDate) {
-                return false
-            }
-        }
-
-        if (filters.dateTo) {
-            const taskDate = new Date(entry.updatedAt)
-            const toDate = new Date(filters.dateTo)
-            toDate.setHours(23, 59, 59, 999)
-            if (taskDate > toDate) {
-                return false
-            }
-        }
-
         return true
     })
 
-    const [sortBy, setSortBy] = useState('date')
-    const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
+    const sortBy = searchParams.get('sortBy') || 'date'
+    const sortOrder = (searchParams.get('sortOrder') || 'desc') as 'asc' | 'desc'
 
     const sortedEntries = [...filteredEntries].sort((a, b) => {
         let comparison = 0
@@ -97,7 +78,36 @@ export default function CostsClient({ tasksWithCosts, userRole }: CostsClientPro
         return sortOrder === 'asc' ? comparison : -comparison
     })
 
-    const totalCost = sortedEntries.reduce((sum, entry) => sum + entry.displayCost, 0)
+    const handleFilterChange = (newFilters: any) => {
+        const params = new URLSearchParams(searchParams.toString())
+        if (newFilters.employeeId) params.set('employeeId', newFilters.employeeId)
+        else params.delete('employeeId')
+
+        if (newFilters.dateFrom) params.set('dateFrom', newFilters.dateFrom)
+        else params.delete('dateFrom')
+
+        if (newFilters.dateTo) params.set('dateTo', newFilters.dateTo)
+        else params.delete('dateTo')
+
+        if (newFilters.search) params.set('search', newFilters.search)
+        else params.delete('search')
+
+        params.set('page', '1') // Reset to first page on filter change
+        router.push(`/dashboard/costs?${params.toString()}`)
+    }
+
+    const handleSortChange = (field: string, order: 'asc' | 'desc') => {
+        const params = new URLSearchParams(searchParams.toString())
+        params.set('sortBy', field)
+        params.set('sortOrder', order)
+        router.push(`/dashboard/costs?${params.toString()}`)
+    }
+
+    const handlePageChange = (p: number) => {
+        const params = new URLSearchParams(searchParams.toString())
+        params.set('page', p.toString())
+        router.push(`/dashboard/costs?${params.toString()}`)
+    }
 
     const handleMarkAllAsPaid = async () => {
         if (sortedEntries.length === 0) return
@@ -154,24 +164,25 @@ export default function CostsClient({ tasksWithCosts, userRole }: CostsClientPro
 
 
             <EmployeeFilter
-                onFilterChange={setFilters}
+                onFilterChange={handleFilterChange}
                 selectedEmployeeId={filters.employeeId}
                 dateFrom={filters.dateFrom}
                 dateTo={filters.dateTo}
-                totalCount={filteredEntries.length}
-                totalCost={totalCost}
+                totalCount={total}
+                totalCost={0} // We can't easily calculate total cost across all pages without another count or complex query
                 isEmployee={isEmployee}
-                hideSearch={true}
+                hideSearch={false}
+                searchQuery={filters.search}
                 hideStatusFilter={true}
                 sortBy={sortBy}
                 sortOrder={sortOrder}
-                onSortChange={(field, order) => { setSortBy(field); setSortOrder(order) }}
+                onSortChange={handleSortChange}
                 sortOptions={[
                     { label: t('date' as any), value: 'date' },
                     { label: t('amount_label'), value: 'amount' },
                 ]}
                 primaryAction={
-                    ['ADMIN', 'SUPER_ADMIN'].includes(userRole) && sortedEntries.length > 0 && (
+                    ['ADMIN', 'SUPER_ADMIN'].includes(userRole) && tasksWithCosts.length > 0 && (
                         <button
                             onClick={handleMarkAllAsPaid}
                             disabled={isUpdating}
@@ -190,7 +201,7 @@ export default function CostsClient({ tasksWithCosts, userRole }: CostsClientPro
                                 alignItems: 'center'
                             }}
                         >
-                            {isUpdating ? t('marking_as_paid') : `${t('mark_all_as_paid')} (${sortedEntries.length})`}
+                            {isUpdating ? t('marking_as_paid') : `${t('mark_all_as_paid')} (${tasksWithCosts.length})`}
                         </button>
                     )
                 }
@@ -199,7 +210,7 @@ export default function CostsClient({ tasksWithCosts, userRole }: CostsClientPro
             {sortedEntries.length === 0 ? (
                 <div className="card" style={{ textAlign: 'center', padding: '3rem', color: '#64748b' }}>
                     <p style={{ fontSize: '1.1rem', marginBottom: '0.5rem' }}>
-                        {filters.employeeId || filters.dateFrom || filters.dateTo
+                        {filters.employeeId || filters.dateFrom || filters.dateTo || filters.search
                             ? t('no_costs_found_filters')
                             : t('no_costs_found_yet')}
                     </p>
@@ -224,6 +235,12 @@ export default function CostsClient({ tasksWithCosts, userRole }: CostsClientPro
                     ))}
                 </div>
             )}
+
+            <Pagination
+                currentPage={page}
+                totalPages={totalPages}
+                onPageChange={handlePageChange}
+            />
         </div>
     )
 }

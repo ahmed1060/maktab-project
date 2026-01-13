@@ -4,26 +4,36 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import bcrypt from "bcryptjs"
 
-export async function GET() {
+export async function GET(req: Request) {
     try {
         const session = await getServerSession(authOptions)
         if (!session?.user || session.user.role !== 'SUPER_ADMIN') {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
         }
 
-        const admins = await prisma.superAdmin.findMany({
-            select: {
-                id: true,
-                firstName: true,
-                lastName: true,
-                email: true,
-                gender: true,
-                avatar: true,
-            },
-            orderBy: {
-                firstName: 'asc'
-            }
-        })
+        const { searchParams } = new URL(req.url)
+        const page = parseInt(searchParams.get('page') || '1')
+        const limit = parseInt(searchParams.get('limit') || '10')
+        const skip = (page - 1) * limit
+
+        const [admins, total] = await Promise.all([
+            prisma.superAdmin.findMany({
+                select: {
+                    id: true,
+                    firstName: true,
+                    lastName: true,
+                    email: true,
+                    gender: true,
+                    avatar: true,
+                },
+                orderBy: {
+                    firstName: 'asc'
+                },
+                skip,
+                take: limit
+            }),
+            prisma.superAdmin.count()
+        ])
 
         // Format to match expected frontend Admin type
         const formattedAdmins = admins.map(admin => ({
@@ -33,7 +43,12 @@ export async function GET() {
             companyId: null
         }))
 
-        return NextResponse.json(formattedAdmins)
+        return NextResponse.json({
+            data: formattedAdmins,
+            total,
+            page,
+            totalPages: Math.ceil(total / limit)
+        })
     } catch {
         return NextResponse.json(
             { error: "Failed to fetch admins" },

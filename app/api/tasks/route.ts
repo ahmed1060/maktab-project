@@ -42,23 +42,37 @@ export async function GET(req: Request) {
         ]
     }
 
-    const tasks = await (prisma.task as any).findMany({
-        where: whereClause,
-        include: {
-            assignee: {
-                select: { id: true, firstName: true, lastName: true, email: true }
-            },
-            assignees: {
-                select: { id: true, firstName: true, lastName: true, email: true }
-            },
-            creator: {
-                select: { firstName: true, lastName: true }
-            }
-        },
-        orderBy: { deadline: 'asc' }
-    })
+    const page = parseInt(searchParams.get('page') || '1')
+    const limit = parseInt(searchParams.get('limit') || '10')
+    const skip = (page - 1) * limit
 
-    return NextResponse.json(tasks)
+    const [tasks, total] = await Promise.all([
+        (prisma.task as any).findMany({
+            where: whereClause,
+            include: {
+                assignee: {
+                    select: { id: true, firstName: true, lastName: true, email: true }
+                },
+                assignees: {
+                    select: { id: true, firstName: true, lastName: true, email: true }
+                },
+                creator: {
+                    select: { firstName: true, lastName: true }
+                }
+            },
+            orderBy: { deadline: 'asc' },
+            skip,
+            take: limit
+        }),
+        (prisma.task as any).count({ where: whereClause })
+    ])
+
+    return NextResponse.json({
+        data: tasks,
+        total,
+        page,
+        totalPages: Math.ceil(total / limit)
+    })
 }
 
 export async function POST(req: Request) {

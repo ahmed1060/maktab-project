@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
+import Pagination from '@/components/Pagination'
 import EmployeeFilter from '@/components/EmployeeFilter'
 import EmployeeProfileForm from '@/components/EmployeeProfileForm'
 import ConfirmModal from '@/components/ConfirmModal'
@@ -39,17 +40,38 @@ export default function AllUsersPage() {
     const [permanentDeleteConfirm, setPermanentDeleteConfirm] = useState<{ isOpen: boolean, user: User | null }>({ isOpen: false, user: null })
     const [errorModal, setErrorModal] = useState<{ isOpen: boolean, title: string, message: string }>({ isOpen: false, title: '', message: '' })
 
+    const [deletedUsersList, setDeletedUsersList] = useState<User[]>([])
+    const [deletedPage, setDeletedPage] = useState(1)
+    const [deletedTotal, setDeletedTotal] = useState(0)
+    const [deletedTotalPages, setDeletedTotalPages] = useState(0)
+    const [loadingDeleted, setLoadingDeleted] = useState(false)
+
+    const [page, setPage] = useState(1)
+    const [total, setTotal] = useState(0)
+    const [totalPages, setTotalPages] = useState(0)
+    const limit = 10
+
     const fetchData = async () => {
+        setLoading(true)
         try {
+            const queryParams = new URLSearchParams()
+            queryParams.set('includeDeleted', 'true')
+            queryParams.set('page', page.toString())
+            queryParams.set('limit', limit.toString())
+            if (filters.companyId) queryParams.set('companyId', filters.companyId)
+            if (filters.search) queryParams.set('search', filters.search)
+
             const [usersRes, companiesRes, superAdminsRes] = await Promise.all([
-                fetch('/api/users?includeDeleted=true'),
+                fetch(`/api/users?${queryParams.toString()}`),
                 fetch('/api/companies'),
                 fetch('/api/super-admins')
             ])
 
             if (usersRes.ok) {
                 const data = await usersRes.json()
-                setUsers(data)
+                setUsers(data.data || [])
+                setTotal(data.total || 0)
+                setTotalPages(data.totalPages || 0)
             }
             if (companiesRes.ok) {
                 const data = await companiesRes.json()
@@ -68,11 +90,39 @@ export default function AllUsersPage() {
 
     useEffect(() => {
         fetchData()
-    }, [])
+    }, [page, filters.companyId, filters.search])
+
+    const fetchDeletedUsers = async () => {
+        setLoadingDeleted(true)
+        try {
+            const queryParams = new URLSearchParams()
+            queryParams.set('status', 'DELETED')
+            queryParams.set('page', deletedPage.toString())
+            queryParams.set('limit', '10')
+
+            const res = await fetch(`/api/users?${queryParams.toString()}`)
+            if (res.ok) {
+                const data = await res.json()
+                setDeletedUsersList(data.data || [])
+                setDeletedTotal(data.total || 0)
+                setDeletedTotalPages(data.totalPages || 0)
+            }
+        } catch (e) {
+            console.error('Failed to fetch deleted users')
+        } finally {
+            setLoadingDeleted(false)
+        }
+    }
+
+    useEffect(() => {
+        if (showExUsersModal) {
+            fetchDeletedUsers()
+        }
+    }, [showExUsersModal, deletedPage])
 
     const superAdmins = superAdminsList
     const activeRegularUsers = users.filter((u: User) => u.status !== 'DELETED' && u.role !== 'SUPER_ADMIN')
-    const deletedUsers = users.filter((u: User) => u.status === 'DELETED')
+    const hasAnyDeleted = total > activeRegularUsers.length // Simple heuristic
 
     const filteredUsers = activeRegularUsers.filter((user: User) => {
         if (filters.companyId && user.company?.id !== filters.companyId) return false
@@ -319,6 +369,13 @@ export default function AllUsersPage() {
                     )}
                 </div>
             )}
+
+            <Pagination
+                currentPage={page}
+                totalPages={totalPages}
+                onPageChange={(p) => setPage(p)}
+            />
+
             {/* Ex Users Section */}
             {deletedUsers.length > 0 && (
                 <div style={{ marginTop: '2rem' }}>
@@ -378,7 +435,11 @@ export default function AllUsersPage() {
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {deletedUsers.map((user: User) => (
+                                        {loadingDeleted ? (
+                                            <tr>
+                                                <td colSpan={4} style={{ padding: '2rem', textAlign: 'center' }}>{t('loading_filters')}</td>
+                                            </tr>
+                                        ) : deletedUsersList.map((user: User) => (
                                             <tr key={user.id} style={{ borderBottom: '1px solid #e2e8f0' }}>
                                                 <td style={{ padding: '1rem', fontWeight: '500', textAlign: 'inherit' }}>
                                                     {user.firstName} {user.lastName}
@@ -439,6 +500,12 @@ export default function AllUsersPage() {
                                     </tbody>
                                 </table>
                             </div>
+
+                            <Pagination
+                                currentPage={deletedPage}
+                                totalPages={deletedTotalPages}
+                                onPageChange={(p) => setDeletedPage(p)}
+                            />
 
                             <div style={{ marginTop: '1.5rem', textAlign: locale === 'ar' ? 'left' : 'right' }}>
                                 <button

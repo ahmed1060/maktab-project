@@ -56,25 +56,39 @@ export async function GET(request: Request) {
             where.companyId = user.companyId
         }
 
-        const clients = await prisma.businessClient.findMany({
-            where,
-            orderBy: {
-                createdAt: 'desc'
-            },
-            include: {
-                createdBy: {
-                    select: { firstName: true, lastName: true, role: true }
-                },
-                lastEditedBy: {
-                    select: { firstName: true, lastName: true, role: true }
-                },
-                _count: {
-                    select: { sections: true }
-                }
-            }
-        })
+        const page = parseInt(searchParams.get('page') || '1')
+        const limit = parseInt(searchParams.get('limit') || '10')
+        const skip = (page - 1) * limit
 
-        return NextResponse.json(clients)
+        const [clients, total] = await Promise.all([
+            prisma.businessClient.findMany({
+                where,
+                orderBy: {
+                    createdAt: 'desc'
+                },
+                include: {
+                    createdBy: {
+                        select: { firstName: true, lastName: true, role: true }
+                    },
+                    lastEditedBy: {
+                        select: { firstName: true, lastName: true, role: true }
+                    },
+                    _count: {
+                        select: { sections: true }
+                    }
+                },
+                skip,
+                take: limit
+            }),
+            prisma.businessClient.count({ where })
+        ])
+
+        return NextResponse.json({
+            data: clients,
+            total,
+            page,
+            totalPages: Math.ceil(total / limit)
+        })
 
     } catch (error) {
         console.error('Error fetching clients:', error)

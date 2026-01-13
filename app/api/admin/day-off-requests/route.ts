@@ -20,22 +20,36 @@ export async function GET(request: NextRequest) {
         where.user = { companyId: session.user.companyId }
     }
 
-    const requests = await prisma.dayOffRequest.findMany({
-        where,
-        include: {
-            user: {
-                select: {
-                    id: true,
-                    firstName: true,
-                    lastName: true,
-                    email: true,
-                    role: true,
-                    dayOffCredit: true
-                }
-            }
-        },
-        orderBy: { createdAt: 'desc' }
-    })
+    const page = parseInt(searchParams.get('page') || '1')
+    const limit = parseInt(searchParams.get('limit') || '10')
+    const skip = (page - 1) * limit
 
-    return NextResponse.json(requests)
+    const [requests, total] = await Promise.all([
+        prisma.dayOffRequest.findMany({
+            where,
+            include: {
+                user: {
+                    select: {
+                        id: true,
+                        firstName: true,
+                        lastName: true,
+                        email: true,
+                        role: true,
+                        dayOffCredit: true
+                    }
+                }
+            },
+            orderBy: { createdAt: 'desc' },
+            skip,
+            take: limit
+        }),
+        prisma.dayOffRequest.count({ where })
+    ])
+
+    return NextResponse.json({
+        data: requests,
+        total,
+        page,
+        totalPages: Math.ceil(total / limit)
+    })
 }

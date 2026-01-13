@@ -92,10 +92,25 @@ export async function GET(req: Request) {
         whereClause.assigneeId = userId
     }
 
-    const obligations = await prisma.obligation.findMany({
-        where: whereClause,
-        include: { assignee: { select: { firstName: true, lastName: true } } },
-        orderBy: { deadline: 'asc' }
+    const page = parseInt(searchParams.get('page') || '1')
+    const limit = parseInt(searchParams.get('limit') || '10')
+    const skip = (page - 1) * limit
+
+    const [obligations, total] = await Promise.all([
+        prisma.obligation.findMany({
+            where: whereClause,
+            include: { assignee: { select: { firstName: true, lastName: true } } },
+            orderBy: { deadline: 'asc' },
+            skip,
+            take: limit
+        }),
+        prisma.obligation.count({ where: whereClause })
+    ])
+
+    return NextResponse.json({
+        data: obligations,
+        total,
+        page,
+        totalPages: Math.ceil(total / limit)
     })
-    return NextResponse.json(obligations)
 }

@@ -1,71 +1,61 @@
 'use client'
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import { useRouter, useSearchParams } from 'next/navigation'
 import TaskListItem from '@/components/TaskListItem'
 import EmployeeFilter from '@/components/EmployeeFilter'
 import SortControl from '@/components/SortControl'
+import Pagination from '@/components/Pagination'
 import { useLanguage } from '@/context/LanguageContext'
 
 interface TasksClientProps {
     tasks: any[]
+    total: number
+    page: number
+    totalPages: number
     role: string
     currentUserId: string
 }
 
-export default function TasksClient({ tasks, role, currentUserId }: TasksClientProps) {
+export default function TasksClient({ tasks, total, page, totalPages, role, currentUserId }: TasksClientProps) {
     const { t } = useLanguage()
+    const router = useRouter()
+    const searchParams = useSearchParams()
+
     const [filters, setFilters] = useState({
-        employeeId: '',
-        dateFrom: '',
-        dateTo: '',
-        status: '',
-        search: ''
+        employeeId: searchParams?.get('employeeId') || '',
+        dateFrom: searchParams?.get('dateFrom') || '', // Note: we should handle these in server component too if we want true filtering
+        dateTo: searchParams?.get('dateTo') || '',
+        status: searchParams?.get('status') || '',
+        search: searchParams?.get('search') || ''
     })
 
-    const filteredTasks = tasks.filter(task => {
-        // Filter by search query (title)
-        if (filters.search && !task.title.toLowerCase().includes(filters.search.toLowerCase())) {
-            return false
-        }
+    const [sortBy, setSortBy] = useState(searchParams?.get('sortBy') || 'smart')
+    const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>(searchParams?.get('sortOrder') as any || 'asc')
 
-        // Filter by employee
-        if (filters.employeeId) {
-            const isPrimary = task.assigneeId === filters.employeeId
-            const isSecondary = task.assignees?.some((a: any) => a.id === filters.employeeId)
-            if (!isPrimary && !isSecondary) return false
-        }
-
-        // Filter by status
-        if (filters.status && task.status !== filters.status) {
-            return false
-        }
-
-        // Filter by date range (using createdAt)
-        if (filters.dateFrom) {
-            const taskDate = new Date(task.createdAt)
-            const fromDate = new Date(filters.dateFrom)
-            if (taskDate < fromDate) {
-                return false
+    const updateQueryParams = (newFilters: any) => {
+        const params = new URLSearchParams(searchParams?.toString())
+        Object.keys(newFilters).forEach(key => {
+            if (newFilters[key]) {
+                params.set(key, newFilters[key])
+            } else {
+                params.delete(key)
             }
-        }
+        })
+        params.set('page', '1') // Reset to page 1 on filter change
+        router.push(`/dashboard/tasks?${params.toString()}`)
+    }
 
-        if (filters.dateTo) {
-            const taskDate = new Date(task.createdAt)
-            const toDate = new Date(filters.dateTo)
-            toDate.setHours(23, 59, 59, 999) // End of day
-            if (taskDate > toDate) {
-                return false
-            }
-        }
+    const handlePageChange = (newPage: number) => {
+        const params = new URLSearchParams(searchParams?.toString())
+        params.set('page', newPage.toString())
+        router.push(`/dashboard/tasks?${params.toString()}`)
+    }
 
-        return true
-    })
-
-    const [sortBy, setSortBy] = useState('smart')
-    const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc')
-
-    // Sorting Logic
-    const sortedTasks = [...filteredTasks].sort((a, b) => {
+    // Sorting Logic (Still client-side for the current 10 items, or we can move to server too)
+    // Given the smart sort logic is complex, keeping it client-side for the page results is okay, 
+    // but ideally sorting should also be server-side. For now, let's keep it consistent.
+    const sortedTasks = [...tasks].sort((a, b) => {
         let comparison = 0
 
         switch (sortBy) {
@@ -109,11 +99,14 @@ export default function TasksClient({ tasks, role, currentUserId }: TasksClientP
     return (
         <div>
             <EmployeeFilter
-                onFilterChange={setFilters}
+                onFilterChange={(newFilters) => {
+                    setFilters(prev => ({ ...prev, ...newFilters }))
+                    updateQueryParams(newFilters)
+                }}
                 selectedEmployeeId={filters.employeeId}
                 dateFrom={filters.dateFrom}
                 dateTo={filters.dateTo}
-                totalCount={filteredTasks.length}
+                totalCount={total}
                 selectedStatus={filters.status}
                 searchQuery={filters.search}
                 isEmployee={role === 'EMPLOYEE'}
@@ -146,6 +139,12 @@ export default function TasksClient({ tasks, role, currentUserId }: TasksClientP
                     </div>
                 )}
             </div>
+
+            <Pagination
+                currentPage={page}
+                totalPages={totalPages}
+                onPageChange={handlePageChange}
+            />
         </div>
     )
 }

@@ -38,25 +38,39 @@ export async function GET(req: Request) {
         }
     }
 
-    const requests = await prisma.profileUpdateRequest.findMany({
-        where: whereClause,
-        include: {
-            user: {
-                select: {
-                    firstName: true,
-                    lastName: true,
-                    email: true,
-                    role: true,
-                    company: {
-                        select: { name: true }
+    const page = parseInt(searchParams.get('page') || '1')
+    const limit = parseInt(searchParams.get('limit') || '10')
+    const skip = (page - 1) * limit
+
+    const [requests, total] = await Promise.all([
+        prisma.profileUpdateRequest.findMany({
+            where: whereClause,
+            include: {
+                user: {
+                    select: {
+                        firstName: true,
+                        lastName: true,
+                        email: true,
+                        role: true,
+                        company: {
+                            select: { name: true }
+                        }
                     }
                 }
-            }
-        },
-        orderBy: { createdAt: 'desc' }
-    })
+            },
+            orderBy: { createdAt: 'desc' },
+            skip,
+            take: limit
+        }),
+        prisma.profileUpdateRequest.count({ where: whereClause })
+    ])
 
-    return NextResponse.json(requests)
+    return NextResponse.json({
+        data: requests,
+        total,
+        page,
+        totalPages: Math.ceil(total / limit)
+    })
 }
 
 export async function POST(req: Request) {

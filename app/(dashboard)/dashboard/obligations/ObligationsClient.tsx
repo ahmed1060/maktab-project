@@ -1,68 +1,58 @@
 'use client'
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import { useRouter, useSearchParams } from 'next/navigation'
 import ObligationListItem from '@/components/ObligationListItem'
 import EmployeeFilter from '@/components/EmployeeFilter'
 import SortControl from '@/components/SortControl'
+import Pagination from '@/components/Pagination'
 import { useLanguage } from '@/context/LanguageContext'
 
 interface ObligationsClientProps {
     obligations: any[]
+    total: number
+    page: number
+    totalPages: number
     role: string
 }
 
-export default function ObligationsClient({ obligations, role }: ObligationsClientProps) {
+export default function ObligationsClient({ obligations, total, page, totalPages, role }: ObligationsClientProps) {
     const { t } = useLanguage()
+    const router = useRouter()
+    const searchParams = useSearchParams()
+
     const [filters, setFilters] = useState({
-        employeeId: '',
-        dateFrom: '',
-        dateTo: '',
-        status: '',
-        search: ''
+        employeeId: searchParams?.get('employeeId') || '',
+        status: searchParams?.get('status') || '',
+        search: searchParams?.get('search') || '',
+        dateFrom: searchParams?.get('dateFrom') || '',
+        dateTo: searchParams?.get('dateTo') || ''
     })
 
-    const filteredObligations = obligations.filter(ob => {
-        // Filter by search query (title)
-        if (filters.search && !ob.title.toLowerCase().includes(filters.search.toLowerCase())) {
-            return false
-        }
-
-        // Filter by employee
-        if (filters.employeeId && ob.assigneeId !== filters.employeeId) {
-            return false
-        }
-
-        // Filter by status
-        if (filters.status && ob.status !== filters.status) {
-            return false
-        }
-
-        // Filter by date range (using createdAt)
-        if (filters.dateFrom) {
-            const obDate = new Date(ob.createdAt)
-            const fromDate = new Date(filters.dateFrom)
-            if (obDate < fromDate) {
-                return false
+    const updateQueryParams = (newFilters: any) => {
+        const params = new URLSearchParams(searchParams?.toString())
+        Object.keys(newFilters).forEach(key => {
+            if (newFilters[key]) {
+                params.set(key, newFilters[key])
+            } else {
+                params.delete(key)
             }
-        }
+        })
+        params.set('page', '1')
+        router.push(`/dashboard/obligations?${params.toString()}`)
+    }
 
-        if (filters.dateTo) {
-            const obDate = new Date(ob.createdAt)
-            const toDate = new Date(filters.dateTo)
-            toDate.setHours(23, 59, 59, 999)
-            if (obDate > toDate) {
-                return false
-            }
-        }
+    const handlePageChange = (newPage: number) => {
+        const params = new URLSearchParams(searchParams?.toString())
+        params.set('page', newPage.toString())
+        router.push(`/dashboard/obligations?${params.toString()}`)
+    }
 
-        return true
-    })
+    const [sortBy, setSortBy] = useState(searchParams?.get('sortBy') || 'smart')
+    const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>(searchParams?.get('sortOrder') as any || 'asc')
 
-    const [sortBy, setSortBy] = useState('smart')
-    const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc')
-
-    // Sorting Logic
-    const sortedObligations = [...filteredObligations].sort((a, b) => {
+    // Sorting Logic (current page)
+    const sortedObligations = [...obligations].sort((a, b) => {
         let comparison = 0
 
         switch (sortBy) {
@@ -96,11 +86,14 @@ export default function ObligationsClient({ obligations, role }: ObligationsClie
     return (
         <div>
             <EmployeeFilter
-                onFilterChange={setFilters}
+                onFilterChange={(newFilters) => {
+                    setFilters(prev => ({ ...prev, ...newFilters }))
+                    updateQueryParams(newFilters)
+                }}
                 selectedEmployeeId={filters.employeeId}
                 dateFrom={filters.dateFrom}
                 dateTo={filters.dateTo}
-                totalCount={filteredObligations.length}
+                totalCount={total}
                 selectedStatus={filters.status}
                 searchQuery={filters.search}
                 isEmployee={role === 'EMPLOYEE'}
@@ -132,6 +125,12 @@ export default function ObligationsClient({ obligations, role }: ObligationsClie
                     </div>
                 )}
             </div>
+
+            <Pagination
+                currentPage={page}
+                totalPages={totalPages}
+                onPageChange={handlePageChange}
+            />
         </div>
     )
 }

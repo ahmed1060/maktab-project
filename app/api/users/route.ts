@@ -132,32 +132,55 @@ export async function GET(req: Request) {
     // Filter out DELETED users by default, unless requested
     const includeDeleted = searchParams.get('includeDeleted') === 'true'
 
-    if (!includeDeleted) {
+    const excludeRole = searchParams.get('excludeRole')
+    const excludeUserId = searchParams.get('excludeUserId')
+
+    if (excludeRole) {
+        whereClause.role = { not: excludeRole }
+    }
+    if (excludeUserId) {
+        whereClause.id = { not: excludeUserId }
+    }
+
+    const statusParam = searchParams.get('status')
+
+    if (statusParam) {
+        whereClause.status = statusParam
+    } else if (!includeDeleted) {
         whereClause.status = { not: 'DELETED' }
     }
 
-    const users = await prisma.user.findMany({
-        where: whereClause,
-        select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            email: true,
-            status: true,
-            lastActivity: true,
-            role: true,
-            gender: true,
-            company: {
-                select: {
-                    id: true,
-                    name: true
-                }
+    const page = parseInt(searchParams.get('page') || '1')
+    const limit = parseInt(searchParams.get('limit') || '10')
+    const skip = (page - 1) * limit
+
+    const [users, total] = await Promise.all([
+        prisma.user.findMany({
+            where: whereClause,
+            select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                email: true,
+                status: true,
+                lastActivity: true,
+                role: true,
+                gender: true,
+                company: {
+                    select: {
+                        id: true,
+                        name: true
+                    }
+                },
+                totalDifficultyPoints: true,
+                salary: false // Salary NOT needed in list view generally, keeps payload small/secure
             },
-            totalDifficultyPoints: true,
-            salary: false // Salary NOT needed in list view generally, keeps payload small/secure
-        },
-        orderBy: { firstName: 'asc' }
-    })
+            orderBy: { firstName: 'asc' },
+            skip,
+            take: limit
+        }),
+        prisma.user.count({ where: whereClause })
+    ])
 
     // Map users with effective status
     const usersWithStatus = users.map(user => {
@@ -188,7 +211,12 @@ export async function GET(req: Request) {
         }
     })
 
-    return NextResponse.json(usersWithStatus)
+    return NextResponse.json({
+        data: usersWithStatus,
+        total,
+        page,
+        totalPages: Math.ceil(total / limit)
+    })
 }
 
 

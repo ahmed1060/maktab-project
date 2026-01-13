@@ -10,12 +10,27 @@ export async function GET(request: NextRequest) {
         return new NextResponse("Unauthorized", { status: 401 })
     }
 
-    const requests = await prisma.dayOffRequest.findMany({
-        where: { userId: session.user.id },
-        orderBy: { createdAt: 'desc' }
-    })
+    const { searchParams } = new URL(request.url)
+    const page = parseInt(searchParams.get('page') || '1')
+    const limit = parseInt(searchParams.get('limit') || '10')
+    const skip = (page - 1) * limit
 
-    return NextResponse.json(requests)
+    const [requests, total] = await Promise.all([
+        prisma.dayOffRequest.findMany({
+            where: { userId: session.user.id },
+            orderBy: { createdAt: 'desc' },
+            skip,
+            take: limit
+        }),
+        prisma.dayOffRequest.count({ where: { userId: session.user.id } })
+    ])
+
+    return NextResponse.json({
+        data: requests,
+        total,
+        page,
+        totalPages: Math.ceil(total / limit)
+    })
 }
 
 export async function POST(request: NextRequest) {

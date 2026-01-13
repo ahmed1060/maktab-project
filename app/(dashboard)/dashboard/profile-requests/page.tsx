@@ -1,10 +1,10 @@
-'use client'
 import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
 import AccessDenied from '@/components/AccessDenied'
 import { useToast } from '@/context/ToastContext'
 import { useRouter } from 'next/navigation'
 import { useLanguage } from '@/context/LanguageContext'
+import Pagination from '@/components/Pagination'
 
 type Request = {
     id: string
@@ -33,12 +33,25 @@ export default function ProfileRequestsPage() {
     const router = useRouter()
     const [processingId, setProcessingId] = useState<string | null>(null)
 
+    const [page, setPage] = useState(1)
+    const [total, setTotal] = useState(0)
+    const [totalPages, setTotalPages] = useState(0)
+    const limit = 10
+
     const fetchRequests = async () => {
+        setLoading(true)
         try {
-            const res = await fetch('/api/profile-requests?status=PENDING')
+            const queryParams = new URLSearchParams()
+            queryParams.set('status', 'PENDING')
+            queryParams.set('page', page.toString())
+            queryParams.set('limit', limit.toString())
+
+            const res = await fetch(`/api/profile-requests?${queryParams.toString()}`)
             if (res.ok) {
                 const data = await res.json()
-                setRequests(data)
+                setRequests(data.data || [])
+                setTotal(data.total || 0)
+                setTotalPages(data.totalPages || 0)
             }
         } catch (e) {
             console.error('Failed to fetch requests', e)
@@ -51,7 +64,7 @@ export default function ProfileRequestsPage() {
         if (session?.user?.role === 'ADMIN' || session?.user?.role === 'SUPER_ADMIN') {
             fetchRequests()
         }
-    }, [session])
+    }, [session, page])
 
     const handleAction = async (id: string, action: 'approve' | 'reject') => {
         setProcessingId(id)
@@ -199,6 +212,12 @@ export default function ProfileRequestsPage() {
                     </table>
                 </div>
             )}
+
+            <Pagination
+                currentPage={page}
+                totalPages={totalPages}
+                onPageChange={(p) => setPage(p)}
+            />
         </div>
     )
 }
