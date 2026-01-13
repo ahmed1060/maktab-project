@@ -72,7 +72,7 @@ export default function DayOffRequestsPage() {
     const fetchRequests = async () => {
         setLoading(true)
         try {
-            let endpoint = isAdmin ? '/api/admin/day-off-requests' : '/api/day-off-requests'
+            const endpoint = isAdmin ? '/api/admin/day-off-requests' : '/api/day-off-requests'
             const queryParams = new URLSearchParams()
             if (isAdmin && contextCompanyId) {
                 queryParams.set('companyId', contextCompanyId)
