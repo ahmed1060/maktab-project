@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useSession } from 'next-auth/react'
 import { useLanguage } from '@/context/LanguageContext'
 import DateRangePicker from '@/components/DateRangePicker'
@@ -69,7 +69,7 @@ export default function DayOffRequestsPage() {
     const [totalPages, setTotalPages] = useState(0)
     const limit = 10
 
-    const fetchRequests = async () => {
+    const fetchRequests = useCallback(async () => {
         setLoading(true)
         try {
             const endpoint = isAdmin ? '/api/admin/day-off-requests' : '/api/day-off-requests'
@@ -92,7 +92,23 @@ export default function DayOffRequestsPage() {
         } finally {
             setLoading(false)
         }
-    }
+    }, [isAdmin, contextCompanyId, page, limit])
+
+    const fetchUserCredit = useCallback(async () => {
+        if (!user?.id) return
+        try {
+            const res = await fetch(`/api/users?id=${user.id}`)
+            if (res.ok) {
+                const data = await res.json()
+                const foundUser = Array.isArray(data.data) ? data.data[0] : (data.id ? data : null)
+                if (foundUser) {
+                    setUserCredit(foundUser.dayOffCredit)
+                }
+            }
+        } catch (error) {
+            console.error('Failed to fetch user credit', error)
+        }
+    }, [user?.id])
 
     useEffect(() => {
         if (status === 'authenticated') {
@@ -101,7 +117,7 @@ export default function DayOffRequestsPage() {
                 fetchUserCredit()
             }
         }
-    }, [isAdmin, user?.id, contextCompanyId, status, page])
+    }, [status, fetchRequests, fetchUserCredit, isAdmin, user?.id])
 
     // SECURE: Automatically switch deduction type if credit is insufficient
     useEffect(() => {
@@ -113,19 +129,6 @@ export default function DayOffRequestsPage() {
             }
         }
     }, [daysToDeduct, selectedRequest, isApprovalModalOpen, deductionType]);
-
-    const fetchUserCredit = async () => {
-        if (!user?.id) return
-        try {
-            const res = await fetch(`/api/users?id=${user.id}`)
-            if (res.ok) {
-                const data = await res.json()
-                setUserCredit(data.dayOffCredit || 0)
-            }
-        } catch (error) {
-            console.error('Failed to fetch user credit', error)
-        }
-    }
 
     const showAlert = (type: 'success' | 'error', message: string) => {
         setAlert({ type, message })
@@ -255,6 +258,8 @@ export default function DayOffRequestsPage() {
         return matchesEmployee && matchesStatus && matchesSearch && matchesDate
     })
 
+
+
     const pieData = [
         { name: t('remaining_credit' as any), value: userCredit },
         { name: t('used_credit' as any), value: usedCredits }
@@ -301,7 +306,7 @@ export default function DayOffRequestsPage() {
                 searchQuery={filters.search}
                 isEmployee={!isAdmin}
                 hideSearch={true}
-                totalCount={filteredRequests.length}
+                totalCount={total}
                 allowedStatuses={['PENDING', 'APPROVED', 'REJECTED']}
                 primaryAction={
                     !isAdmin ? (

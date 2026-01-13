@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { useCompany } from '@/context/CompanyContext'
 import { useSession } from 'next-auth/react'
@@ -42,30 +42,28 @@ export default function CompaniesPage() {
     const [banConfirm, setBanConfirm] = useState<{ isOpen: boolean, company: Company | null, action: 'ban' | 'unban' | null }>({ isOpen: false, company: null, action: null })
 
     const [page, setPage] = useState(1)
-    const [total, setTotal] = useState(0)
     const [totalPages, setTotalPages] = useState(0)
     const limit = 10
 
-    const fetchCompanies = async () => {
+    const fetchCompanies = useCallback(async () => {
         setLoading(true)
         try {
             const res = await fetch(`/api/companies?page=${page}&limit=${limit}`)
             if (res.ok) {
                 const result = await res.json()
                 setCompanies(result.data)
-                setTotal(result.total)
                 setTotalPages(result.totalPages)
             }
-        } catch (e) {
-            console.error('Failed to fetch companies')
+        } catch (err) {
+            console.error('Failed to fetch companies', err)
         } finally {
             setLoading(false)
         }
-    }
+    }, [page, limit])
 
     useEffect(() => {
         fetchCompanies()
-    }, [page])
+    }, [fetchCompanies])
 
     const handleOpenModal = (company?: Company) => {
         setError('')

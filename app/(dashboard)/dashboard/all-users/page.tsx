@@ -1,11 +1,11 @@
 'use client'
-import { useState, useEffect } from 'react'
+
+import { useState, useEffect, useCallback } from 'react'
 import Pagination from '@/components/Pagination'
 import EmployeeFilter from '@/components/EmployeeFilter'
 import EmployeeProfileForm from '@/components/EmployeeProfileForm'
 import ConfirmModal from '@/components/ConfirmModal'
 import Modal from '@/components/Modal'
-import { useRouter } from 'next/navigation'
 import { useLanguage } from '@/context/LanguageContext'
 
 type User = {
@@ -42,7 +42,6 @@ export default function AllUsersPage() {
 
     const [deletedUsersList, setDeletedUsersList] = useState<User[]>([])
     const [deletedPage, setDeletedPage] = useState(1)
-    const [deletedTotal, setDeletedTotal] = useState(0)
     const [deletedTotalPages, setDeletedTotalPages] = useState(0)
     const [loadingDeleted, setLoadingDeleted] = useState(false)
 
@@ -51,7 +50,7 @@ export default function AllUsersPage() {
     const [totalPages, setTotalPages] = useState(0)
     const limit = 10
 
-    const fetchData = async () => {
+    const fetchData = useCallback(async () => {
         setLoading(true)
         try {
             const queryParams = new URLSearchParams()
@@ -81,18 +80,18 @@ export default function AllUsersPage() {
                 const data = await superAdminsRes.json()
                 setSuperAdminsList(data)
             }
-        } catch (e) {
-            console.error('Failed to fetch data')
+        } catch (err) {
+            console.error('Failed to fetch data', err)
         } finally {
             setLoading(false)
         }
-    }
+    }, [page, filters.companyId, filters.search, limit])
 
     useEffect(() => {
         fetchData()
-    }, [page, filters.companyId, filters.search])
+    }, [fetchData])
 
-    const fetchDeletedUsers = async () => {
+    const fetchDeletedUsers = useCallback(async () => {
         setLoadingDeleted(true)
         try {
             const queryParams = new URLSearchParams()
@@ -104,25 +103,25 @@ export default function AllUsersPage() {
             if (res.ok) {
                 const data = await res.json()
                 setDeletedUsersList(data.data || [])
-                setDeletedTotal(data.total || 0)
                 setDeletedTotalPages(data.totalPages || 0)
             }
-        } catch (e) {
-            console.error('Failed to fetch deleted users')
+        } catch (err) {
+            console.error('Failed to fetch deleted users', err)
         } finally {
             setLoadingDeleted(false)
         }
-    }
+    }, [deletedPage])
 
     useEffect(() => {
         if (showExUsersModal) {
             fetchDeletedUsers()
         }
-    }, [showExUsersModal, deletedPage])
+    }, [showExUsersModal, fetchDeletedUsers])
 
     const superAdmins = superAdminsList
     const activeRegularUsers = users.filter((u: User) => u.status !== 'DELETED' && u.role !== 'SUPER_ADMIN')
-    const hasAnyDeleted = total > activeRegularUsers.length // Simple heuristic
+    const hasAnyDeletedCount = total - activeRegularUsers.length
+    const hasAnyDeleted = hasAnyDeletedCount > 0
 
     const filteredUsers = activeRegularUsers.filter((user: User) => {
         if (filters.companyId && user.company?.id !== filters.companyId) return false
@@ -377,13 +376,13 @@ export default function AllUsersPage() {
             />
 
             {/* Ex Users Section */}
-            {deletedUsers.length > 0 && (
+            {hasAnyDeleted && (
                 <div style={{ marginTop: '2rem' }}>
                     <div style={{ background: '#f8fafc', padding: '1.5rem', borderRadius: '12px', border: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <div style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>
                             <h2 style={{ fontSize: '1.2rem', fontWeight: 'bold', color: '#64748b' }}>{t('ex_users_label')}</h2>
                             <p style={{ margin: 0, color: '#94a3b8', fontSize: '0.9rem' }}>
-                                {deletedUsers.length} {t('deleted_users_archive_msg')}
+                                {hasAnyDeletedCount} {t('deleted_users_archive_msg')}
                             </p>
                         </div>
                         <button

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import { createPortal } from 'react-dom'
 import ConfirmModal from '@/components/ConfirmModal'
@@ -40,7 +40,6 @@ export default function ClientsPage() {
     const [newClientName, setNewClientName] = useState('')
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [mounted, setMounted] = useState(false)
-    const [showSuggestions, setShowSuggestions] = useState(false)
     const [deleteConfirm, setDeleteConfirm] = useState<{ isOpen: boolean, client: Client | null }>({ isOpen: false, client: null })
     const [isEditClientModalOpen, setIsEditClientModalOpen] = useState(false)
     const [editClientName, setEditClientName] = useState('')
@@ -57,7 +56,7 @@ export default function ClientsPage() {
     const [selectedCompanyId, setSelectedCompanyId] = useState('')
     const [showCompanySelect, setShowCompanySelect] = useState(false)
 
-    const checkSuperAdmin = async () => {
+    const checkSuperAdmin = useCallback(async () => {
         try {
             const res = await fetch('/api/companies')
             if (res.ok) {
@@ -65,17 +64,16 @@ export default function ClientsPage() {
                 setCompanies(data)
                 setShowCompanySelect(true)
             }
-        } catch (e) {
+        } catch (err) {
             // Not a super admin or failed to fetch companies
         }
-    }
+    }, [])
 
     const [page, setPage] = useState(1)
-    const [total, setTotal] = useState(0)
     const [totalPages, setTotalPages] = useState(0)
     const limit = 10
 
-    const fetchClients = async () => {
+    const fetchClients = useCallback(async () => {
         setIsLoading(true)
         try {
             const baseUrl = contextCompanyId ? `/api/clients?companyId=${contextCompanyId}` : '/api/clients'
@@ -86,7 +84,6 @@ export default function ClientsPage() {
                 const result = await res.json()
                 setClients(result.data)
                 setFilteredClients(result.data)
-                setTotal(result.total)
                 setTotalPages(result.totalPages)
             }
         } catch (error) {
@@ -94,21 +91,12 @@ export default function ClientsPage() {
         } finally {
             setIsLoading(false)
         }
-    }
+    }, [contextCompanyId, page, limit])
 
     useEffect(() => {
         fetchClients()
         checkSuperAdmin()
-    }, [contextCompanyId, page])
-
-    useEffect(() => {
-        // If there's a search query, we should probably handle it via the API for true pagination,
-        // but for now let's see if we can just update the fetch to include search or keep local for the current page.
-        // Given we want standard pagination, search should ideally refetch from page 1.
-        if (searchQuery) {
-            // In a real app, we'd add &search= to the fetchClients URL
-        }
-    }, [searchQuery])
+    }, [fetchClients, checkSuperAdmin])
 
     const handleCreateClient = async (e: React.FormEvent) => {
         e.preventDefault()

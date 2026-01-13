@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams } from 'next/navigation'
 import { useHeader } from '@/context/HeaderContext'
 import { createPortal } from 'react-dom'
 import ConfirmModal from '@/components/ConfirmModal'
@@ -53,7 +53,6 @@ interface ClientData {
 export default function ClientDetailsPage() {
     const { t, locale } = useLanguage()
     const params = useParams()
-    const router = useRouter()
     const clientId = params.id as string
 
     const [client, setClient] = useState<ClientData | null>(null)
@@ -71,7 +70,6 @@ export default function ClientDetailsPage() {
 
     // UI State
     const [searchQuery, setSearchQuery] = useState('')
-    const [showSuggestions, setShowSuggestions] = useState(false)
     const [mounted, setMounted] = useState(false)
     const [deleteConfirm, setDeleteConfirm] = useState<{ isOpen: boolean, section: Section | null }>({ isOpen: false, section: null })
     const { data: session } = useSession()
@@ -84,17 +82,11 @@ export default function ClientDetailsPage() {
     const [editingSectionId, setEditingSectionId] = useState<string | null>(null)
     const [isEditingSection, setIsEditingSection] = useState(false)
 
-    const canEdit = session?.user?.role === 'SUPER_ADMIN' || session?.user?.role === 'ADMIN' || session?.user?.role === 'TEAM_LEADER'
 
     useEffect(() => {
         setMounted(true)
     }, [])
 
-    useEffect(() => {
-        if (clientId) {
-            fetchData()
-        }
-    }, [clientId, page, searchQuery])
 
     useEffect(() => {
         if (client?.name) {
@@ -103,7 +95,7 @@ export default function ClientDetailsPage() {
         return () => setTitle(null) // Reset on unmount
     }, [client, setTitle])
 
-    const fetchData = async () => {
+    const fetchData = useCallback(async () => {
         try {
             setError(null)
             const [clientsRes, sectionsRes] = await Promise.all([
@@ -135,7 +127,13 @@ export default function ClientDetailsPage() {
         } finally {
             setIsLoading(false)
         }
-    }
+    }, [clientId, page, searchQuery, limit, t])
+
+    useEffect(() => {
+        if (clientId) {
+            fetchData()
+        }
+    }, [fetchData, clientId])
 
     const handleEditClient = async (e: React.FormEvent) => {
         e.preventDefault()

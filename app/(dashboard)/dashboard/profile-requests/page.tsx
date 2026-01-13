@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useSession } from 'next-auth/react'
 import AccessDenied from '@/components/AccessDenied'
 import { useToast } from '@/context/ToastContext'
@@ -36,11 +36,10 @@ export default function ProfileRequestsPage() {
     const [processingId, setProcessingId] = useState<string | null>(null)
 
     const [page, setPage] = useState(1)
-    const [total, setTotal] = useState(0)
     const [totalPages, setTotalPages] = useState(0)
     const limit = 10
 
-    const fetchRequests = async () => {
+    const fetchRequests = useCallback(async () => {
         setLoading(true)
         try {
             const queryParams = new URLSearchParams()
@@ -52,21 +51,21 @@ export default function ProfileRequestsPage() {
             if (res.ok) {
                 const data = await res.json()
                 setRequests(data.data || [])
-                setTotal(data.total || 0)
                 setTotalPages(data.totalPages || 0)
             }
-        } catch (e) {
-            console.error('Failed to fetch requests', e)
+        } catch (err) {
+            console.error('Failed to fetch requests', err)
         } finally {
             setLoading(false)
         }
-    }
+    }, [page, limit])
 
     useEffect(() => {
-        if (session?.user?.role === 'ADMIN' || session?.user?.role === 'SUPER_ADMIN') {
+        const role = session?.user?.role
+        if (role === 'ADMIN' || role === 'SUPER_ADMIN') {
             fetchRequests()
         }
-    }, [session, page])
+    }, [session, fetchRequests])
 
     const handleAction = async (id: string, action: 'approve' | 'reject') => {
         setProcessingId(id)

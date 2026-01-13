@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams } from 'next/navigation'
 import { useHeader } from '@/context/HeaderContext'
 import { createPortal } from 'react-dom'
 import ConfirmModal from '@/components/ConfirmModal'
@@ -44,7 +44,6 @@ interface SectionData {
 export default function SectionNotesPage() {
     const { t, locale } = useLanguage()
     const params = useParams()
-    const router = useRouter()
     const clientId = params.id as string
     const sectionId = params.sectionId as string
 
@@ -54,7 +53,6 @@ export default function SectionNotesPage() {
     const [isModalOpen, setIsModalOpen] = useState(false)
     const [newNoteContent, setNewNoteContent] = useState('')
     const [isSubmitting, setIsSubmitting] = useState(false)
-    const [mounted, setMounted] = useState(false)
     const [deleteConfirm, setDeleteConfirm] = useState<{ isOpen: boolean, note: Note | null }>({ isOpen: false, note: null })
     const { setTitle } = useHeader()
     const { data: session } = useSession()
@@ -63,7 +61,7 @@ export default function SectionNotesPage() {
     const [editSectionTitle, setEditSectionTitle] = useState('')
     const [isEditingSection, setIsEditingSection] = useState(false)
 
-    const canEdit = session?.user?.role === 'SUPER_ADMIN' || session?.user?.role === 'ADMIN' || session?.user?.role === 'TEAM_LEADER'
+
     const isAuthorized = session?.user?.role === 'SUPER_ADMIN' || session?.user?.role === 'ADMIN'
 
     const [isEditModalOpen, setIsEditModalOpen] = useState(false)
@@ -87,15 +85,8 @@ export default function SectionNotesPage() {
     // Server-side filtering is now implemented
     const filteredNotes = notes
 
-    useEffect(() => {
-        setMounted(true)
-    }, [])
 
-    useEffect(() => {
-        if (clientId && sectionId) {
-            fetchData()
-        }
-    }, [clientId, sectionId, page, searchQuery])
+
 
     useEffect(() => {
         if (section?.title) {
@@ -132,7 +123,7 @@ export default function SectionNotesPage() {
         }
     }
 
-    const fetchData = async () => {
+    const fetchData = useCallback(async () => {
         try {
             const [sectionsRes, notesRes] = await Promise.all([
                 fetch(`/api/clients/${clientId}/sections?limit=999`), // Fetch all sections for the title list
@@ -152,14 +143,23 @@ export default function SectionNotesPage() {
                 setTotal(notesData.total || 0)
                 setTotalPages(notesData.totalPages || 1)
             } else {
-                if (notesRes.status === 404) router.push(`/dashboard/clients/${clientId}`)
+                if (notesRes.status === 404) {
+                    // Using window.location instead of router since it's unused elsewhere and we removed it
+                    window.location.href = `/dashboard/clients/${clientId}`
+                }
             }
         } catch (error) {
             console.error('Failed to fetch data', error)
         } finally {
             setIsLoading(false)
         }
-    }
+    }, [clientId, sectionId, page, searchQuery, limit])
+
+    useEffect(() => {
+        if (clientId && sectionId) {
+            fetchData()
+        }
+    }, [fetchData, clientId, sectionId])
 
     const handleFiles = (files: File[]) => {
         const MAX_SIZE = 4 * 1024 * 1024
@@ -582,7 +582,7 @@ export default function SectionNotesPage() {
 
             {/* Create Note Modal - Portal */}
             {
-                isModalOpen && mounted && createPortal(
+                isModalOpen && createPortal(
                     <div style={{
                         position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
                         background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center',
@@ -785,7 +785,7 @@ export default function SectionNotesPage() {
 
             {/* Edit Note Modal - Portal */}
             {
-                isEditModalOpen && mounted && createPortal(
+                isEditModalOpen && createPortal(
                     <div style={{
                         position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
                         background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center',

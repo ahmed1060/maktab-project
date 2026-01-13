@@ -1,6 +1,6 @@
 'use client'
-import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+
+import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import { useSession } from 'next-auth/react'
 import EmployeeFilter from '@/components/EmployeeFilter'
@@ -26,17 +26,15 @@ export default function EmployeesPage() {
     const { t, locale } = useLanguage()
     const [employees, setEmployees] = useState<Employee[]>([])
     const [loading, setLoading] = useState(true)
-    const router = useRouter()
     const { data: session } = useSession()
     const userRole = session?.user?.role || ''
     const { selectedCompanyId } = useCompany()
 
     const [page, setPage] = useState(1)
-    const [total, setTotal] = useState(0)
     const [totalPages, setTotalPages] = useState(0)
     const limit = 10
 
-    const fetchEmployees = async () => {
+    const fetchEmployees = useCallback(async () => {
         setLoading(true)
         const queryParams = new URLSearchParams()
         if (selectedCompanyId) queryParams.set('companyId', selectedCompanyId)
@@ -49,14 +47,13 @@ export default function EmployeesPage() {
             const res = await fetch(`/api/users?${queryParams.toString()}`, { cache: 'no-store' })
             const result = await res.json()
             setEmployees(result.data)
-            setTotal(result.total)
             setTotalPages(result.totalPages)
         } catch (error) {
             console.error('Fetch error:', error)
         } finally {
             setLoading(false)
         }
-    }
+    }, [selectedCompanyId, page, limit, session?.user?.id])
 
     const [sortBy, setSortBy] = useState('name')
     const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc')
