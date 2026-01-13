@@ -13,6 +13,7 @@ interface CostCardProps {
             firstName: string
             lastName: string
         }
+        paymentStatus?: string
     }
 }
 
@@ -75,23 +76,44 @@ export default function CostCard({ task }: CostCardProps) {
 
                 <div style={{
                     marginTop: '1rem',
-                    padding: '0.5rem',
-                    borderRadius: '0.25rem',
-                    background: task.status === 'APPROVED'
-                        ? '#dcfce7'
-                        : task.status === 'COMPLETED'
-                            ? '#e0f2fe'
-                            : '#fee2e2', // REJECTED
-                    color: task.status === 'APPROVED'
-                        ? '#166534'
-                        : task.status === 'COMPLETED'
-                            ? '#0369a1'
-                            : '#991b1b', // REJECTED
-                    fontSize: '0.75rem',
-                    fontWeight: '600',
-                    textAlign: 'center'
+                    display: 'flex',
+                    gap: '0.5rem'
                 }}>
-                    {t(getStatusKey(task.status) as any)}
+                    <div style={{
+                        flex: 1,
+                        padding: '0.5rem',
+                        borderRadius: '0.25rem',
+                        background: task.status === 'APPROVED'
+                            ? '#dcfce7'
+                            : task.status === 'COMPLETED'
+                                ? '#e0f2fe'
+                                : '#fee2e2', // REJECTED
+                        color: task.status === 'APPROVED'
+                            ? '#166534'
+                            : task.status === 'COMPLETED'
+                                ? '#0369a1'
+                                : '#991b1b', // REJECTED
+                        fontSize: '0.75rem',
+                        fontWeight: '700',
+                        textAlign: 'center'
+                    }}>
+                        {t(getStatusKey(task.status) as any)}
+                    </div>
+                    {task.paymentStatus && (
+                        <div style={{
+                            flex: 1,
+                            padding: '0.5rem',
+                            borderRadius: '0.25rem',
+                            background: task.paymentStatus === 'PAID' ? '#dcfce7' : '#fee2e2',
+                            color: task.paymentStatus === 'PAID' ? '#166534' : '#991b1b',
+                            fontSize: '0.75rem',
+                            fontWeight: '700',
+                            textAlign: 'center',
+                            textTransform: 'uppercase'
+                        }}>
+                            {task.paymentStatus === 'PAID' ? t('payment_status_paid' as any) || 'PAID' : t('payment_status_pending' as any) || 'PENDING'}
+                        </div>
+                    )}
                 </div>
             </div>
         </Link>

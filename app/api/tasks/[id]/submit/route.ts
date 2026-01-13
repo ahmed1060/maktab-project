@@ -234,6 +234,8 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
             // Update memberCosts
             if (totalAdded > 0) {
                 let currentMemberCosts: Record<string, number> = {}
+                let currentMemberPaymentStatus: Record<string, string> = {}
+
                 if ((currentTask as any).memberCosts) {
                     try {
                         const rawCosts = (currentTask as any).memberCosts
@@ -243,9 +245,22 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
                     } catch { currentMemberCosts = {} }
                 }
 
+                if ((currentTask as any).memberPaymentStatus) {
+                    try {
+                        const rawPayment = (currentTask as any).memberPaymentStatus
+                        currentMemberPaymentStatus = typeof rawPayment === 'string'
+                            ? JSON.parse(rawPayment)
+                            : (rawPayment as Record<string, string>)
+                    } catch { currentMemberPaymentStatus = {} }
+                }
+
                 const currentVal = currentMemberCosts[userId] || 0
                 currentMemberCosts[userId] = currentVal + totalAdded
                 updateData.memberCosts = currentMemberCosts
+
+                // Force individual payment status to PENDING_PAYMENT when new costs are added
+                currentMemberPaymentStatus[userId] = 'PENDING_PAYMENT'
+                updateData.memberPaymentStatus = currentMemberPaymentStatus
             }
 
             // Add cost to totalCost if cost > 0 (even for drafts)

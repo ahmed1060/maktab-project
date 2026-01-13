@@ -25,20 +25,47 @@ export default function CostsClient({ tasksWithCosts, userRole }: CostsClientPro
     const [showFeedback, setShowFeedback] = useState(false)
     const [feedbackMessage, setFeedbackMessage] = useState('')
 
-    const filteredTasks = tasksWithCosts.filter(task => {
+    const allCostEntries = tasksWithCosts.flatMap(task => {
+        const mCosts = typeof task.memberCosts === 'string' ? JSON.parse(task.memberCosts) : (task.memberCosts || {})
+        const userCosts = Object.entries(mCosts)
+
+        if (userCosts.length === 0 && task.totalCost > 0) {
+            // Legacy or single assignee with totalCost but no memberCosts yet
+            return [{
+                ...task,
+                displayCost: task.totalCost,
+                displayAssignee: task.assignee,
+                individualPaymentStatus: task.paymentStatus
+            }]
+        }
+
+        return userCosts.map(([uid, amount]) => {
+            const assignee = task.assignees?.find((a: any) => a.id === uid) || (task.assigneeId === uid ? task.assignee : null)
+            const mPaymentStatus = typeof task.memberPaymentStatus === 'string' ? JSON.parse(task.memberPaymentStatus) : (task.memberPaymentStatus || {})
+
+            return {
+                ...task,
+                displayCost: Number(amount),
+                displayAssignee: assignee || { firstName: t('unknown_user' as any) || 'Unknown', lastName: '', id: uid },
+                individualPaymentStatus: mPaymentStatus[uid] || 'PENDING_PAYMENT'
+            }
+        })
+    })
+
+    const filteredEntries = allCostEntries.filter(entry => {
         // Filter by search query (title)
-        if (filters.search && !task.title.toLowerCase().includes(filters.search.toLowerCase())) {
+        if (filters.search && !entry.title.toLowerCase().includes(filters.search.toLowerCase())) {
             return false
         }
 
         // Filter by employee
-        if (filters.employeeId && task.assignee.id !== filters.employeeId) {
+        if (filters.employeeId && entry.displayAssignee.id !== filters.employeeId) {
             return false
         }
 
         // Filter by date range (using updatedAt - when task was approved/completed)
         if (filters.dateFrom) {
-            const taskDate = new Date(task.updatedAt)
+            const taskDate = new Date(entry.updatedAt)
             const fromDate = new Date(filters.dateFrom)
             if (taskDate < fromDate) {
                 return false
@@ -46,7 +73,7 @@ export default function CostsClient({ tasksWithCosts, userRole }: CostsClientPro
         }
 
         if (filters.dateTo) {
-            const taskDate = new Date(task.updatedAt)
+            const taskDate = new Date(entry.updatedAt)
             const toDate = new Date(filters.dateTo)
             toDate.setHours(23, 59, 59, 999)
             if (taskDate > toDate) {
@@ -60,32 +87,24 @@ export default function CostsClient({ tasksWithCosts, userRole }: CostsClientPro
     const [sortBy, setSortBy] = useState('date')
     const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
 
-    const sortedTasks = [...filteredTasks].sort((a, b) => {
+    const sortedEntries = [...filteredEntries].sort((a, b) => {
         let comparison = 0
         if (sortBy === 'date') {
             comparison = new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime()
         } else if (sortBy === 'amount') {
-            const costA = filters.employeeId ? (typeof a.memberCosts === 'string' ? JSON.parse(a.memberCosts)[filters.employeeId] : (a.memberCosts?.[filters.employeeId] || 0)) : a.totalCost
-            const costB = filters.employeeId ? (typeof b.memberCosts === 'string' ? JSON.parse(b.memberCosts)[filters.employeeId] : (b.memberCosts?.[filters.employeeId] || 0)) : b.totalCost
-            comparison = costA - costB
+            comparison = a.displayCost - b.displayCost
         }
         return sortOrder === 'asc' ? comparison : -comparison
     })
 
-    const totalCost = sortedTasks.reduce((sum, task) => {
-        if (filters.employeeId) {
-            const mCosts = typeof task.memberCosts === 'string' ? JSON.parse(task.memberCosts) : (task.memberCosts || {})
-            return sum + (mCosts[filters.employeeId] || 0)
-        }
-        return sum + task.totalCost
-    }, 0)
+    const totalCost = sortedEntries.reduce((sum, entry) => sum + entry.displayCost, 0)
 
     const handleMarkAllAsPaid = async () => {
-        if (sortedTasks.length === 0) return
+        if (sortedEntries.length === 0) return
 
         setIsUpdating(true)
         try {
-            const taskIds = sortedTasks.map(task => task.id)
+            const taskIds = Array.from(new Set(sortedEntries.map(entry => entry.id)))
             const res = await fetch('/api/tasks/payment/bulk', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -139,7 +158,7 @@ export default function CostsClient({ tasksWithCosts, userRole }: CostsClientPro
                 selectedEmployeeId={filters.employeeId}
                 dateFrom={filters.dateFrom}
                 dateTo={filters.dateTo}
-                totalCount={filteredTasks.length}
+                totalCount={filteredEntries.length}
                 totalCost={totalCost}
                 isEmployee={isEmployee}
                 hideSearch={true}
@@ -152,7 +171,7 @@ export default function CostsClient({ tasksWithCosts, userRole }: CostsClientPro
                     { label: t('amount_label'), value: 'amount' },
                 ]}
                 primaryAction={
-                    ['ADMIN', 'SUPER_ADMIN'].includes(userRole) && sortedTasks.length > 0 && (
+                    ['ADMIN', 'SUPER_ADMIN'].includes(userRole) && sortedEntries.length > 0 && (
                         <button
                             onClick={handleMarkAllAsPaid}
                             disabled={isUpdating}
@@ -171,13 +190,13 @@ export default function CostsClient({ tasksWithCosts, userRole }: CostsClientPro
                                 alignItems: 'center'
                             }}
                         >
-                            {isUpdating ? t('marking_as_paid') : `${t('mark_all_as_paid')} (${sortedTasks.length})`}
+                            {isUpdating ? t('marking_as_paid') : `${t('mark_all_as_paid')} (${sortedEntries.length})`}
                         </button>
                     )
                 }
             />
 
-            {sortedTasks.length === 0 ? (
+            {sortedEntries.length === 0 ? (
                 <div className="card" style={{ textAlign: 'center', padding: '3rem', color: '#64748b' }}>
                     <p style={{ fontSize: '1.1rem', marginBottom: '0.5rem' }}>
                         {filters.employeeId || filters.dateFrom || filters.dateTo
@@ -192,20 +211,17 @@ export default function CostsClient({ tasksWithCosts, userRole }: CostsClientPro
                     gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
                     gap: '1.5rem'
                 }}>
-                    {sortedTasks.map(task => {
-                        let displayCost = task.totalCost
-                        let displayAssignee = task.assignee
-                        if (filters.employeeId) {
-                            const mCosts = typeof task.memberCosts === 'string' ? JSON.parse(task.memberCosts) : (task.memberCosts || {})
-                            displayCost = mCosts[filters.employeeId] || 0
-
-                            if (task.assignee.id !== filters.employeeId) {
-                                const matched = task.assignees?.find((a: any) => a.id === filters.employeeId)
-                                if (matched) displayAssignee = matched
-                            }
-                        }
-                        return <CostCard key={task.id} task={{ ...task, totalCost: displayCost, assignee: displayAssignee }} />
-                    })}
+                    {sortedEntries.map((entry, index) => (
+                        <CostCard
+                            key={`${entry.id}-${entry.displayAssignee.id}-${index}`}
+                            task={{
+                                ...entry,
+                                totalCost: entry.displayCost,
+                                assignee: entry.displayAssignee,
+                                paymentStatus: entry.individualPaymentStatus // Pass individual status to card
+                            }}
+                        />
+                    ))}
                 </div>
             )}
         </div>
