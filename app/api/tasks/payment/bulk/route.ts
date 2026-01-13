@@ -55,7 +55,7 @@ export async function POST(req: Request) {
             })
 
             for (const task of tasks) {
-                let newMemberPaymentStatus: Record<string, string> = {}
+                const newMemberPaymentStatus: Record<string, string> = {}
 
                 // Fetch existing costs to know who to mark as PAID
                 const mCosts = typeof (task as any).memberCosts === 'string'
