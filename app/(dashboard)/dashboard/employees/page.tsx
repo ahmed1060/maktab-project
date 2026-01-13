@@ -235,7 +235,7 @@ export default function EmployeesPage() {
                 hideDateFilter={true}
                 dateFrom={''}
                 dateTo={''}
-                selectedStatus={''}
+                selectedStatus={filters.status}
                 searchQuery={searchQuery}
                 totalCount={sortedEmployees.length}
                 showRoleFilter={true}

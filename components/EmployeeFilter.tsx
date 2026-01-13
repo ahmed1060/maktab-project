@@ -151,6 +151,8 @@ export default function EmployeeFilter({
 
     const resetFilters = () => {
         onFilterChange({ employeeId: '', dateFrom: '', dateTo: '', status: '', search: searchQuery })
+        if (onRoleChange) onRoleChange('')
+        if (onCompanyChange) onCompanyChange('')
     }
 
     const activeFilterCount = [

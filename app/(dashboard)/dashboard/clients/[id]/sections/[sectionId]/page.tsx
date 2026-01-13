@@ -247,6 +247,21 @@ export default function SectionNotesPage() {
 
     const MAX_CHARS = 500
 
+    const getRoleStyles = (role: string) => {
+        switch (role) {
+            case 'SUPER_ADMIN':
+                return { background: 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)', color: '#92400e', border: '1px solid #fcd34d' }
+            case 'ADMIN':
+                return { background: 'linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%)', color: '#075985', border: '1px solid #7dd3fc' }
+            case 'TEAM_LEADER':
+                return { background: 'linear-gradient(135deg, #f5f3ff 0%, #ddd6fe 100%)', color: '#5b21b6', border: '1px solid #c4b5fd' }
+            case 'EMPLOYEE':
+                return { background: 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)', color: '#166534', border: '1px solid #86efac' }
+            default:
+                return { background: '#f1f5f9', color: '#475569', border: '1px solid #e2e8f0' }
+        }
+    }
+
     const containerStyle: React.CSSProperties = {
         direction: locale === 'ar' ? 'rtl' : 'ltr',
         textAlign: locale === 'ar' ? 'right' : 'left'
@@ -379,26 +394,56 @@ export default function SectionNotesPage() {
                                 <div className="h-px w-full bg-gradient-to-r from-transparent via-slate-200 to-transparent mb-4 opacity-50" />
 
                                 {/* Footer: Audit & Actions */}
-                                <div className="space-y-4">
+                                <div className="space-y-4 mt-auto pt-4 border-t border-dashed border-slate-200">
                                     {/* Audit Trail */}
-                                    <div className="flex flex-col gap-2">
-                                        <div className="flex items-center gap-2">
-                                            <div className="px-2 py-0.5 bg-slate-100 rounded text-[10px] font-bold text-slate-500 uppercase tracking-wider">
-                                                {(note.createdBy?.role || 'USER').replace(/_/g, ' ')}
+                                    <div className="space-y-2">
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-2">
+                                                <div
+                                                    className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold border border-white shadow-sm"
+                                                    style={{
+                                                        backgroundColor: 'var(--primary)',
+                                                        color: 'white',
+                                                        textTransform: 'uppercase'
+                                                    }}
+                                                >
+                                                    {note.createdBy?.firstName?.[0]}{note.createdBy?.lastName?.[0]}
+                                                </div>
+                                                <div className="flex flex-col">
+                                                    <span className="text-[11px] font-bold text-slate-700 leading-none">
+                                                        {note.createdBy ? `${note.createdBy.firstName} ${note.createdBy.lastName}` : 'System'}
+                                                    </span>
+                                                    <span className="text-[9px] text-slate-400 mt-0.5">
+                                                        {new Date(note.createdAt).toLocaleDateString(locale === 'ar' ? 'ar-EG' : 'en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                                    </span>
+                                                </div>
                                             </div>
-                                            <div className="text-[11px] text-slate-500">
-                                                <span className="font-semibold text-slate-700">{note.createdBy ? `${note.createdBy.firstName} ${note.createdBy.lastName}` : 'System'}</span>
-                                                <span className="mx-1">•</span>
-                                                {new Date(note.createdAt).toLocaleDateString(locale === 'ar' ? 'ar-EG' : 'en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                            <div
+                                                className="px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider shadow-sm"
+                                                style={getRoleStyles(note.createdBy?.role || '')}
+                                            >
+                                                {t(`role_${(note.createdBy?.role || 'USER').toLowerCase()}` as any) || (note.createdBy?.role || 'USER').replace(/_/g, ' ')}
                                             </div>
                                         </div>
-                                        {note.lastEditedBy && note.lastEditedAt && (
-                                            <div className="flex items-center gap-2">
-                                                <div className="px-2 py-0.5 bg-sky-50 rounded text-[10px] font-bold text-sky-600 uppercase tracking-wider">
-                                                    {(note.lastEditedBy.role || 'USER').replace(/_/g, ' ')}
+
+                                        {note.lastEditedBy && (
+                                            <div className="flex items-center justify-between opacity-80 pt-1">
+                                                <div className="flex items-center gap-2">
+                                                    <div className="w-5 h-5 rounded-full bg-slate-100 flex items-center justify-center text-[8px] border border-white">
+                                                        <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                                                            <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"></path>
+                                                            <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                                                        </svg>
+                                                    </div>
+                                                    <span className="text-[10px] text-slate-500 italic">
+                                                        {t('updated_by' as any)} {note.lastEditedBy.firstName}
+                                                    </span>
                                                 </div>
-                                                <div className="text-[11px] text-slate-400 italic">
-                                                    {t('updated_by' as any)} <span className="font-medium text-slate-500">{note.lastEditedBy.firstName} {note.lastEditedBy.lastName}</span>
+                                                <div
+                                                    className="px-1.5 py-0.5 rounded text-[8px] font-bold uppercase tracking-tight opacity-70"
+                                                    style={getRoleStyles(note.lastEditedBy.role)}
+                                                >
+                                                    {t(`role_${note.lastEditedBy.role.toLowerCase()}` as any) || note.lastEditedBy.role.replace(/_/g, ' ')}
                                                 </div>
                                             </div>
                                         )}
@@ -406,21 +451,23 @@ export default function SectionNotesPage() {
 
                                     {/* Action Buttons */}
                                     <div className="flex gap-2">
-                                        {note.attachment && (
+                                        {note.attachment ? (
                                             <a
                                                 href={note.attachment}
                                                 target="_blank"
                                                 rel="noopener noreferrer"
-                                                className="flex-grow flex items-center justify-center gap-2 px-3 py-2 bg-primary/5 hover:bg-primary/10 text-primary text-xs font-bold rounded-xl transition-all duration-200 border border-primary/10"
+                                                className="flex-grow flex items-center justify-center gap-2 px-3 py-2 bg-gradient-to-br from-primary/10 to-primary/5 hover:from-primary/20 hover:to-primary/10 text-primary text-[11px] font-bold rounded-xl transition-all duration-300 border border-primary/10 shadow-sm"
                                             >
                                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                                                     <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"></path>
                                                 </svg>
-                                                {t('view_attachment' as any) || 'View File'}
+                                                {t('view_attachment' as any) || 'View Attachment'}
                                             </a>
+                                        ) : (
+                                            <div className="flex-grow h-[34px]" /> // Spacer to keep alignment
                                         )}
                                         {isAuthorized && (
-                                            <div className="flex gap-1.5 ml-auto">
+                                            <div className="flex gap-1.5">
                                                 <button
                                                     onClick={() => {
                                                         setEditingNote(note)
@@ -429,17 +476,17 @@ export default function SectionNotesPage() {
                                                         setEditReminderDays(note.reminderDays ? note.reminderDays.toString() : '')
                                                         setIsEditModalOpen(true)
                                                     }}
-                                                    className="w-9 h-9 flex items-center justify-center rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-all border border-slate-200/50"
+                                                    className="w-[34px] h-[34px] flex items-center justify-center rounded-xl bg-white hover:bg-sky-50 text-slate-400 hover:text-sky-600 transition-all duration-300 border border-slate-100 hover:border-sky-200 shadow-sm hover:shadow"
                                                     title={t('edit')}
                                                 >
-                                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
                                                 </button>
                                                 <button
                                                     onClick={() => setDeleteConfirm({ isOpen: true, note })}
-                                                    className="w-9 h-9 flex items-center justify-center rounded-xl bg-red-50 hover:bg-red-100 text-red-400 hover:text-red-500 transition-all border border-red-200/50"
+                                                    className="w-[34px] h-[34px] flex items-center justify-center rounded-xl bg-white hover:bg-red-50 text-slate-400 hover:text-red-500 transition-all duration-300 border border-slate-100 hover:border-red-200 shadow-sm hover:shadow"
                                                     title={t('delete')}
                                                 >
-                                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
                                                 </button>
                                             </div>
                                         )}
