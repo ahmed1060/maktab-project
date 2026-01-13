@@ -70,6 +70,17 @@ export default function DayOffRequestsPage() {
         }
     }, [isAdmin, user?.id, contextCompanyId])
 
+    // SECURE: Automatically switch deduction type if credit is insufficient
+    useEffect(() => {
+        if (isApprovalModalOpen && selectedRequest && deductionType === 'CREDIT') {
+            const deduction = parseFloat(daysToDeduct) || 0;
+            const credit = selectedRequest.user?.dayOffCredit || 0;
+            if (deduction > credit) {
+                setDeductionType('SALARY');
+            }
+        }
+    }, [daysToDeduct, selectedRequest, isApprovalModalOpen, deductionType]);
+
     const fetchRequests = async () => {
         setLoading(true)
         try {
@@ -597,10 +608,18 @@ export default function DayOffRequestsPage() {
                             />
                         </div>
                         <div style={{ marginBottom: '1.5rem' }}>
-                            <label style={{ display: 'block', marginBottom: '0.5rem' }}>{t('deduct_from_label' as any)}</label>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                                <label style={{ fontSize: '0.875rem', fontWeight: '500', color: '#64748b' }}>{t('deduct_from_label' as any)}</label>
+                                {(parseFloat(daysToDeduct) || 0) > (selectedRequest.user?.dayOffCredit || 0) && (
+                                    <span style={{ fontSize: '0.7rem', color: '#ef4444', fontWeight: 'bold', background: '#fee2e2', padding: '0.1rem 0.4rem', borderRadius: '0.25rem' }}>
+                                        ⚠️ {t('insufficient_credit' as any) || 'Insufficient Credit'}
+                                    </span>
+                                )}
+                            </div>
                             <div style={{ display: 'flex', gap: '0.5rem' }}>
                                 <button
                                     onClick={() => setDeductionType('CREDIT')}
+                                    disabled={(parseFloat(daysToDeduct) || 0) > (selectedRequest.user?.dayOffCredit || 0)}
                                     style={{
                                         flex: 1,
                                         padding: '0.625rem',
@@ -608,14 +627,15 @@ export default function DayOffRequestsPage() {
                                         border: '1px solid #e2e8f0',
                                         background: deductionType === 'CREDIT' ? '#3b82f6' : 'white',
                                         color: deductionType === 'CREDIT' ? 'white' : '#64748b',
-                                        cursor: 'pointer',
+                                        cursor: (parseFloat(daysToDeduct) || 0) > (selectedRequest.user?.dayOffCredit || 0) ? 'not-allowed' : 'pointer',
                                         fontWeight: '700',
                                         fontSize: '0.875rem',
                                         transition: 'all 0.2s',
                                         display: 'flex',
                                         alignItems: 'center',
                                         justifyContent: 'center',
-                                        gap: '0.5rem'
+                                        gap: '0.5rem',
+                                        opacity: (parseFloat(daysToDeduct) || 0) > (selectedRequest.user?.dayOffCredit || 0) ? 0.5 : 1
                                     }}
                                 >
                                     <span>📅</span> {t('deduct_from_credit' as any)}

@@ -424,7 +424,7 @@ export default function SectionNotesPage() {
                         </p>
                     </div>
                 ) : (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
                         {filteredNotes.map((note, index) => (
                             <div
                                 key={note.id}

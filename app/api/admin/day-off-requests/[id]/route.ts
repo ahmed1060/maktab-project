@@ -88,6 +88,16 @@ export async function PATCH(
                         }
                     })
                 } else {
+                    // SECURE: Check if user has enough credit before deducting
+                    const currentUser = await tx.user.findUnique({
+                        where: { id: requestToUpdate.userId },
+                        select: { dayOffCredit: true }
+                    })
+
+                    if (!currentUser || currentUser.dayOffCredit < deduction) {
+                        throw new Error(`Insufficient day off credit. Available: ${currentUser?.dayOffCredit || 0}, Required: ${deduction}`)
+                    }
+
                     await tx.user.update({
                         where: { id: requestToUpdate.userId },
                         data: {
@@ -120,6 +130,9 @@ export async function PATCH(
         return NextResponse.json(result)
     } catch (error: any) {
         console.error('Error updating day off request:', error)
-        return new NextResponse(error.message || "Internal Server Error", { status: 500 })
+        const isClientError = error.message?.includes('Insufficient') || error.message?.includes('Invalid')
+        return new NextResponse(error.message || "Internal Server Error", {
+            status: isClientError ? 400 : 500
+        })
     }
 }

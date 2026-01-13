@@ -566,6 +566,7 @@ export const translations = {
         min_selection_error: "⚠️ Minimum selection: 3 hours from now",
         am: "AM",
         pm: "PM",
+        insufficient_credit: "Insufficient Credit",
         lateness_penalty_msg: "⚠️ Automatic Lateness Penalty: {days} day(s) deducted for late check-in on deadline day (Time: {time})"
     },
     ar: {
@@ -1134,6 +1135,7 @@ export const translations = {
         min_selection_error: "⚠️ الحد الأدنى للاختيار: 3 ساعات من الآن",
         am: "صباحاً",
         pm: "مساءً",
+        insufficient_credit: "رصيد غير كافٍ",
         lateness_penalty_msg: "⚠️ خصم تأخير تلقائي: تم خصم {days} يوم بسبب تسجيل الحضور المتأخر في يوم الموعد النهائي (الوقت: {time})"
     }
 };
