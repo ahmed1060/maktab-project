@@ -150,6 +150,15 @@ export async function GET(req: Request) {
         whereClause.status = { not: 'DELETED' }
     }
 
+    // Added: Support for efficient counting
+    const countOnly = searchParams.get('countOnly')
+    if (countOnly === 'deleted') {
+        const deletedCount = await prisma.user.count({
+            where: { ...whereClause, status: 'DELETED' }
+        })
+        return NextResponse.json({ total: deletedCount })
+    }
+
     const page = parseInt(searchParams.get('page') || '1')
     const limit = parseInt(searchParams.get('limit') || '10')
     const skip = (page - 1) * limit
@@ -173,9 +182,13 @@ export async function GET(req: Request) {
                     }
                 },
                 totalDifficultyPoints: true,
-                salary: false // Salary NOT needed in list view generally, keeps payload small/secure
+                salary: false
             },
-            orderBy: { firstName: 'asc' },
+            // Updated Ordering: Sort by company name, then first name
+            orderBy: [
+                { company: { name: 'asc' } },
+                { firstName: 'asc' }
+            ],
             skip,
             take: limit
         }),
@@ -197,7 +210,6 @@ export async function GET(req: Request) {
             }
         }
 
-        // Note: We do NOT expose salary in the list view return
         return {
             id: user.id,
             firstName: user.firstName,

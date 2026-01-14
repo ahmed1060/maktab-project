@@ -39,6 +39,7 @@ export default function AllUsersPage() {
     const [viewingProfileId, setViewingProfileId] = useState<string | null>(null)
     const [permanentDeleteConfirm, setPermanentDeleteConfirm] = useState<{ isOpen: boolean, user: User | null }>({ isOpen: false, user: null })
     const [errorModal, setErrorModal] = useState<{ isOpen: boolean, title: string, message: string }>({ isOpen: false, title: '', message: '' })
+    const [realDeletedCount, setRealDeletedCount] = useState(0)
 
     const [deletedUsersList, setDeletedUsersList] = useState<User[]>([])
     const [deletedPage, setDeletedPage] = useState(1)
@@ -54,7 +55,7 @@ export default function AllUsersPage() {
         setLoading(true)
         try {
             const queryParams = new URLSearchParams()
-            queryParams.set('includeDeleted', 'true')
+            queryParams.set('includeDeleted', 'false')
             queryParams.set('page', page.toString())
             queryParams.set('limit', limit.toString())
             if (filters.companyId) queryParams.set('companyId', filters.companyId)
@@ -76,9 +77,12 @@ export default function AllUsersPage() {
                 const data = await companiesRes.json()
                 setCompanies(data.data || [])
             }
-            if (superAdminsRes.ok) {
+            // Super Admins: Only fetch if we are on the first page
+            if (page === 1 && superAdminsRes.ok) {
                 const data = await superAdminsRes.json()
                 setSuperAdminsList(data.data || [])
+            } else if (page > 1) {
+                setSuperAdminsList([])
             }
         } catch (err) {
             console.error('Failed to fetch data', err)
@@ -118,10 +122,24 @@ export default function AllUsersPage() {
         }
     }, [showExUsersModal, fetchDeletedUsers])
 
+    useEffect(() => {
+        const fetchDeletedCount = async () => {
+            try {
+                const res = await fetch('/api/users?countOnly=deleted')
+                if (res.ok) {
+                    const data = await res.json()
+                    setRealDeletedCount(data.total || 0)
+                }
+            } catch (err) {
+                console.error('Failed to fetch deleted count', err)
+            }
+        }
+        fetchDeletedCount()
+    }, [users]) // Re-fetch when users change (e.g. after a delete)
+
     const superAdmins = superAdminsList
     const activeRegularUsers = users.filter((u: User) => u.status !== 'DELETED' && u.role !== 'SUPER_ADMIN')
-    const hasAnyDeletedCount = total - activeRegularUsers.length
-    const hasAnyDeleted = hasAnyDeletedCount > 0
+    const hasAnyDeleted = realDeletedCount > 0
 
     const filteredUsers = activeRegularUsers.filter((user: User) => {
         if (filters.companyId && user.company?.id !== filters.companyId) return false
@@ -151,7 +169,7 @@ export default function AllUsersPage() {
 
     const companySections = Object.values(usersByCompany).sort((a, b) => a.name.localeCompare(b.name))
 
-    const showSuperAdmins = !filters.companyId && (!filters.search ||
+    const showSuperAdmins = page === 1 && !filters.companyId && (!filters.search ||
         t('super_administrators_label').toLowerCase().includes(filters.search.toLowerCase()) ||
         "shsd".includes(filters.search.toLowerCase()))
 
@@ -382,7 +400,7 @@ export default function AllUsersPage() {
                         <div style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>
                             <h2 style={{ fontSize: '1.2rem', fontWeight: 'bold', color: '#64748b' }}>{t('ex_users_label')}</h2>
                             <p style={{ margin: 0, color: '#94a3b8', fontSize: '0.9rem' }}>
-                                {hasAnyDeletedCount} {t('deleted_users_archive_msg')}
+                                {realDeletedCount} {t('deleted_users_archive_msg')}
                             </p>
                         </div>
                         <button
