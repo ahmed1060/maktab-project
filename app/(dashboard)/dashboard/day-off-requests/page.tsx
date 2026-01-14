@@ -317,8 +317,29 @@ export default function DayOffRequestsPage() {
                 }
             />
 
-            <div style={{ display: 'grid', gridTemplateColumns: isAdmin ? '1fr' : '1fr 320px', gap: '1.5rem', marginBottom: '2rem' }}>
+            <div className={isAdmin ? "" : "responsive-sidebar-grid"} style={{ display: isAdmin ? 'grid' : undefined, gridTemplateColumns: isAdmin ? '1fr' : undefined, gap: '1.5rem', marginBottom: '2rem' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                    {/* User Credit Stats - Mobile only */}
+                    {!isAdmin && (
+                        <div className="show-on-mobile" style={{ display: 'none', flexDirection: 'column', gap: '1rem', width: '100%' }}>
+                            <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', padding: '1.5rem' }}>
+                                <h4 style={{ margin: '0 0 1rem 0', fontSize: '1rem', color: '#1e293b', fontWeight: 'bold' }}>{t('credit_overview' as any)}</h4>
+                                <div style={{
+                                    background: '#10b981',
+                                    color: 'white',
+                                    padding: '1rem 1.5rem',
+                                    borderRadius: '1.5rem',
+                                    fontSize: '2rem',
+                                    fontWeight: '800',
+                                    boxShadow: '0 10px 15px -3px rgba(16, 185, 129, 0.3)'
+                                }}>
+                                    {userCredit}
+                                </div>
+                                <div style={{ marginTop: '0.5rem', fontSize: '0.8rem', color: '#64748b', fontWeight: 'bold' }}>{t('days_label')} {t('remaining_credit' as any)}</div>
+                            </div>
+                        </div>
+                    )}
+
                     {loading ? (
                         <div className="glass-card p-12 flex flex-col items-center justify-center animate-pulse">
                             <div className="w-12 h-12 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin mb-4"></div>
@@ -507,7 +528,7 @@ export default function DayOffRequestsPage() {
                 </div>
 
                 {!isAdmin && (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+                    <div className="hide-on-mobile" style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
                         <div className="card" style={{ height: 'fit-content' }}>
                             <h2 className="text-xl font-semibold mb-4">{t('credit_overview' as any)}</h2>
                             <div style={{ height: '250px' }}>
