@@ -107,7 +107,13 @@ export async function GET(req: Request) {
     }
 
     if (searchFilter) {
-        whereClause.title = { contains: searchFilter, mode: 'insensitive' }
+        whereClause.AND = whereClause.AND || []
+        whereClause.AND.push({
+            OR: [
+                { title: { contains: searchFilter, mode: 'insensitive' } },
+                { description: { contains: searchFilter, mode: 'insensitive' } }
+            ]
+        })
     }
 
     if (dateFrom || dateTo) {

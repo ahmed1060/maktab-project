@@ -275,6 +275,7 @@ export default function ClientDetailsPage() {
                     dateTo={''}
                     selectedStatus={''}
                     searchQuery={searchQuery}
+                    placeholder={locale === 'ar' ? 'بحث في عنوان القسم' : 'Search Section Title'}
                     totalCount={total}
                     primaryAction={
                         <button

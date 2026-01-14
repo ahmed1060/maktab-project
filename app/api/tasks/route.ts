@@ -71,7 +71,21 @@ export async function GET(req: Request) {
     }
 
     if (searchFilter) {
-        whereClause.title = { contains: searchFilter, mode: 'insensitive' }
+        const searchOR = {
+            OR: [
+                { title: { contains: searchFilter, mode: 'insensitive' } },
+                { description: { contains: searchFilter, mode: 'insensitive' } }
+            ]
+        }
+        if (whereClause.OR) {
+            whereClause.AND = whereClause.AND || []
+            whereClause.AND.push({ OR: whereClause.OR })
+            delete whereClause.OR
+            whereClause.AND.push(searchOR)
+        } else {
+            whereClause.AND = whereClause.AND || []
+            whereClause.AND.push(searchOR)
+        }
     }
 
     if (dateFrom || dateTo) {

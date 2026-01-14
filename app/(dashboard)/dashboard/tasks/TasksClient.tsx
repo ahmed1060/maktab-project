@@ -109,7 +109,7 @@ export default function TasksClient({ tasks, total, page, totalPages, role, curr
                 totalCount={total}
                 selectedStatus={filters.status}
                 searchQuery={filters.search}
-                placeholder={locale === 'ar' ? 'بحث في عنوان المهمة أو الوصف أو المنشئ' : 'Search Task Title, Description, or Creator'}
+                placeholder={locale === 'ar' ? 'بحث في عنوان المهمة أو الوصف' : 'Search Task Title or Description'}
                 isEmployee={role === 'EMPLOYEE'}
                 sortBy={sortBy}
                 sortOrder={sortOrder}

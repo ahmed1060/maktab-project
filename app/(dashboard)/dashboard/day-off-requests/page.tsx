@@ -239,7 +239,6 @@ export default function DayOffRequestsPage() {
         const matchesEmployee = !filters.employeeId || req.userId === filters.employeeId
         const matchesStatus = !filters.status || req.status === filters.status
         const matchesSearch = !filters.search ||
-            (req.user?.firstName + ' ' + req.user?.lastName).toLowerCase().includes(filters.search.toLowerCase()) ||
             (req.reason || '').toLowerCase().includes(filters.search.toLowerCase())
 
         let matchesDate = true
@@ -309,7 +308,7 @@ export default function DayOffRequestsPage() {
                 searchQuery={filters.search}
                 isEmployee={!isAdmin}
                 hideSearch={false}
-                placeholder={locale === 'ar' ? 'بحث في السبب أو اسم الموظف' : 'Search Reason or Employee'}
+                placeholder={locale === 'ar' ? 'بحث في السبب' : 'Search Reason'}
                 totalCount={total}
                 allowedStatuses={['PENDING', 'APPROVED', 'REJECTED']}
                 primaryAction={

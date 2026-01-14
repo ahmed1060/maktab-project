@@ -96,7 +96,7 @@ export default function ObligationsClient({ obligations, total, page, totalPages
                 totalCount={total}
                 selectedStatus={filters.status}
                 searchQuery={filters.search}
-                placeholder={locale === 'ar' ? 'بحث في العنوان أو الوصف أو المسؤول' : 'Search Title, Description, or Assignee'}
+                placeholder={locale === 'ar' ? 'بحث في العنوان أو الوصف' : 'Search Title or Description'}
                 isEmployee={role === 'EMPLOYEE'}
                 sortBy={sortBy}
                 sortOrder={sortOrder}

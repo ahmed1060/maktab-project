@@ -268,7 +268,7 @@ export default function AllUsersPage() {
                 dateTo=""
                 totalCount={total + (filters.companyId ? 0 : superAdminsTotal)}
                 searchQuery={filters.search}
-                placeholder={locale === 'ar' ? 'بحث عن الموظف بالاسم، أو البريد الإلكتروني، أو رقم الهاتف' : 'Search Name, Email, or Phone'}
+                placeholder={locale === 'ar' ? 'بحث بالاسم، أو البريد الإلكتروني، أو الشركة' : 'Search Name, Email, or Company'}
                 showCompanyFilter={true}
                 selectedCompanyId={filters.companyId}
                 onCompanyChange={(id) => setFilters((prev: any) => ({ ...prev, companyId: id }))}

@@ -61,7 +61,17 @@ export async function GET(
         }
 
         if (search) {
-            where.content = { contains: search, mode: 'insensitive' }
+            where.OR = [
+                { content: { contains: search, mode: 'insensitive' } },
+                {
+                    createdBy: {
+                        OR: [
+                            { firstName: { contains: search, mode: 'insensitive' } },
+                            { lastName: { contains: search, mode: 'insensitive' } }
+                        ]
+                    }
+                }
+            ]
         }
 
         const [notes, total] = await Promise.all([
