@@ -42,6 +42,7 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
     const { data: session } = useSession()
     const currentUser = session?.user || user
     const [headerAvatar, setHeaderAvatar] = useState<string | null>(currentUser.avatar || currentUser.image || currentUser.picture || null)
+    const lastProcessedCompany = useRef<string | null | undefined>(undefined)
 
     // Precisely like the profile page: Fetch "Ground Truth" on mount and on session changes
     useEffect(() => {
@@ -90,6 +91,10 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
     useEffect(() => {
         const companyNameFromUrl = searchParams.get('company')
 
+        // If the URL matches what we last processed (manually or via sync), 
+        // we skip to avoid race conditions between Context update and Route update.
+        if (companyNameFromUrl === lastProcessedCompany.current) return
+
         if (companyNameFromUrl && companies.length > 0) {
             // URL has priority
             // Find company by name
@@ -114,6 +119,8 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
                 }
             }
         }
+
+        lastProcessedCompany.current = companyNameFromUrl
     }, [searchParams, pathname, router, companies, selectedCompanyId, setSelectedCompanyId])
 
     useEffect(() => {
@@ -138,6 +145,7 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
         setIsCompanyDropdownOpen(false)
 
         const params = new URLSearchParams(searchParams ? searchParams.toString() : '')
+
         if (val) {
             const selectedCompany = companies.find(c => c.id === val)
             if (selectedCompany) {
@@ -148,6 +156,11 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
             params.delete('company')
             params.delete('companyId')
         }
+
+        // Update ref to current URL value immediately.
+        // This prevents the sync useEffect from seeing the "old" URL and 
+        // overriding our new context selection before the router has finished updating the URL.
+        lastProcessedCompany.current = searchParams.get('company')
         router.push(`${pathname}?${params.toString()}`)
     }
 
