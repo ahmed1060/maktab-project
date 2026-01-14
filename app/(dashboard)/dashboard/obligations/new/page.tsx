@@ -18,11 +18,12 @@ export default function NewObligationPage() {
     const { data: session } = useSession()
 
     useEffect(() => {
-        fetch('/api/users')
+        fetch('/api/users?limit=1000')
             .then(res => res.json())
             .then(data => {
+                const usersList = data.data || []
                 // Sort by role: EMPLOYEE -> TEAM_LEADER -> ADMIN -> SUPER_ADMIN
-                const sortedData = data.sort((a: any, b: any) => {
+                const sortedData = usersList.sort((a: any, b: any) => {
                     const rolePriority: { [key: string]: number } = {
                         'EMPLOYEE': 1,
                         'TEAM_LEADER': 2,

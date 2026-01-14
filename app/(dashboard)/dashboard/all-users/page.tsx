@@ -399,7 +399,7 @@ export default function AllUsersPage() {
             />
 
             {/* Ex Users Section */}
-            {hasAnyDeleted && page === totalPages && (
+            {hasAnyDeleted && (page >= totalPages || totalPages === 0) && (
                 <div style={{ marginTop: '2rem' }}>
                     <div style={{ background: '#f8fafc', padding: '1.5rem', borderRadius: '12px', border: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <div style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>
