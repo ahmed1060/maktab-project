@@ -318,49 +318,51 @@ export default function DayOffRequestsPage() {
             />
 
             <div className={isAdmin ? "" : "responsive-sidebar-grid"} style={{ display: isAdmin ? 'grid' : undefined, gridTemplateColumns: isAdmin ? '1fr' : undefined, gap: '1.5rem', marginBottom: '2rem' }}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                     {/* User Credit Stats - Mobile only */}
                     {!isAdmin && (
-                        <div className="show-on-mobile" style={{ display: 'none', width: '100%', padding: '0.5rem 0' }}>
-                            {(() => {
-                                const totalCredit = userCredit + usedCredits;
-                                const percentage = totalCredit > 0 ? userCredit / totalCredit : 1;
+                        <div className="show-on-mobile" style={{ display: 'none', width: '100%', marginBottom: '0.5rem' }}>
+                            <div style={{ display: 'flex', justifyContent: locale === 'ar' ? 'flex-start' : 'flex-end', width: '100%' }}>
+                                {(() => {
+                                    const totalCredit = userCredit + usedCredits;
+                                    const percentage = totalCredit > 0 ? userCredit / totalCredit : 1;
 
-                                let colors = { bg: '#dcfce7', text: '#166534', border: '#bbf7d0' }; // Green
-                                if (percentage < 0.3) {
-                                    colors = { bg: '#fef2f2', text: '#991b1b', border: '#fecaca' }; // Red
-                                } else if (percentage < 0.6) {
-                                    colors = { bg: '#fff7ed', text: '#9a3412', border: '#fed7aa' }; // Orange
-                                }
+                                    let colors = { bg: '#dcfce7', text: '#166534', border: '#bbf7d0' }; // Green
+                                    if (percentage < 0.3) {
+                                        colors = { bg: '#fef2f2', text: '#991b1b', border: '#fecaca' }; // Red
+                                    } else if (percentage < 0.6) {
+                                        colors = { bg: '#fff7ed', text: '#9a3412', border: '#fed7aa' }; // Orange
+                                    }
 
-                                return (
-                                    <div style={{
-                                        background: colors.bg,
-                                        border: `2px solid ${colors.border}`,
-                                        borderRadius: '1.25rem',
-                                        padding: '1.25rem 1rem',
-                                        textAlign: 'center',
-                                        display: 'flex',
-                                        flexDirection: 'column',
-                                        alignItems: 'center',
-                                        gap: '0.25rem',
-                                        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)',
-                                        width: '100%'
-                                    }}>
-                                        <span style={{ fontSize: '0.75rem', fontWeight: '800', color: colors.text, opacity: 0.8, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                                            {t('remaining_day_off_credit' as any)}
-                                        </span>
-                                        <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.4rem' }}>
-                                            <span style={{ fontSize: '2.25rem', fontWeight: '900', color: colors.text, lineHeight: 1 }}>
-                                                {userCredit}
+                                    return (
+                                        <div style={{
+                                            background: colors.bg,
+                                            border: `1.5px solid ${colors.border}`,
+                                            borderRadius: '1rem',
+                                            padding: '0.6rem 0.875rem',
+                                            textAlign: 'center',
+                                            display: 'flex',
+                                            flexDirection: 'column',
+                                            alignItems: 'center',
+                                            gap: '0.1rem',
+                                            boxShadow: '0 2px 4px -1px rgba(0, 0, 0, 0.05)',
+                                            width: 'fit-content'
+                                        }}>
+                                            <span style={{ fontSize: '0.6rem', fontWeight: '800', color: colors.text, opacity: 0.8, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                                {t('remaining_day_off_credit' as any)}
                                             </span>
-                                            <span style={{ fontSize: '1rem', fontWeight: '700', color: colors.text, opacity: 0.8 }}>
-                                                {t('days_label')}
-                                            </span>
+                                            <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.25rem' }}>
+                                                <span style={{ fontSize: '1.5rem', fontWeight: '900', color: colors.text, lineHeight: 1 }}>
+                                                    {userCredit}
+                                                </span>
+                                                <span style={{ fontSize: '0.75rem', fontWeight: '700', color: colors.text, opacity: 0.8 }}>
+                                                    {t('days_label')}
+                                                </span>
+                                            </div>
                                         </div>
-                                    </div>
-                                );
-                            })()}
+                                    );
+                                })()}
+                            </div>
                         </div>
                     )}
 
