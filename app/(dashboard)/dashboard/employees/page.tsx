@@ -41,6 +41,9 @@ export default function EmployeesPage() {
         queryParams.set('page', page.toString())
         queryParams.set('limit', limit.toString())
         queryParams.set('excludeRole', 'SUPER_ADMIN')
+        if (session?.user?.role === 'TEAM_LEADER') {
+            queryParams.set('excludeRole', 'ADMIN,SUPER_ADMIN') // API logic might need change or handling multiple roles
+        }
         if (session?.user?.id) queryParams.set('excludeUserId', (session.user as any).id)
 
         try {

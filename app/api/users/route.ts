@@ -145,8 +145,21 @@ export async function GET(req: Request) {
     const excludeUserId = searchParams.get('excludeUserId')
 
     if (excludeRole) {
-        whereClause.role = { not: excludeRole }
+        const rolesToExclude = excludeRole.split(',')
+        whereClause.role = { ...(whereClause.role || {}), notIn: rolesToExclude }
     }
+
+    // Force hide ADMINs from TEAM_LEADERs even if not explicitly requested
+    if (userRole === 'TEAM_LEADER') {
+        const currentExclude = whereClause.role?.notIn || (whereClause.role?.not ? [whereClause.role.not] : [])
+        if (!currentExclude.includes('ADMIN')) {
+            whereClause.role = {
+                ...(whereClause.role || {}),
+                notIn: [...currentExclude, 'ADMIN']
+            }
+        }
+    }
+
     if (excludeUserId) {
         whereClause.id = { not: excludeUserId }
     }
