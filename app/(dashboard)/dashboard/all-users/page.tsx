@@ -49,6 +49,7 @@ export default function AllUsersPage() {
     const [page, setPage] = useState(1)
     const [total, setTotal] = useState(0)
     const [totalPages, setTotalPages] = useState(0)
+    const [superAdminsTotal, setSuperAdminsTotal] = useState(0)
     const limit = 10
 
     const fetchData = useCallback(async () => {
@@ -64,7 +65,7 @@ export default function AllUsersPage() {
             const [usersRes, companiesRes, superAdminsRes] = await Promise.all([
                 fetch(`/api/users?${queryParams.toString()}`),
                 fetch('/api/companies'),
-                fetch('/api/super-admins')
+                fetch(`/api/super-admins?search=${encodeURIComponent(filters.search)}`)
             ])
 
             if (usersRes.ok) {
@@ -81,8 +82,10 @@ export default function AllUsersPage() {
             if (page === 1 && superAdminsRes.ok) {
                 const data = await superAdminsRes.json()
                 setSuperAdminsList(data.data || [])
+                setSuperAdminsTotal(data.total || 0)
             } else if (page > 1) {
                 setSuperAdminsList([])
+                // Keep superAdminsTotal to maintain the count badge
             }
         } catch (err) {
             console.error('Failed to fetch data', err)
@@ -94,6 +97,10 @@ export default function AllUsersPage() {
     useEffect(() => {
         fetchData()
     }, [fetchData])
+
+    useEffect(() => {
+        setPage(1)
+    }, [filters])
 
     const fetchDeletedUsers = useCallback(async () => {
         setLoadingDeleted(true)
@@ -259,7 +266,7 @@ export default function AllUsersPage() {
                 hideDateFilter={true}
                 dateFrom=""
                 dateTo=""
-                totalCount={filteredUsers.length}
+                totalCount={total + (filters.companyId ? 0 : superAdminsTotal)}
                 searchQuery={filters.search}
                 showCompanyFilter={true}
                 selectedCompanyId={filters.companyId}
@@ -399,7 +406,7 @@ export default function AllUsersPage() {
             />
 
             {/* Ex Users Section */}
-            {hasAnyDeleted && (page >= totalPages || totalPages === 0) && (
+            {hasAnyDeleted && (activeRegularUsers.length === 0 || page >= totalPages || totalPages === 0) && (
                 <div style={{ marginTop: '2rem' }}>
                     <div style={{ background: '#f8fafc', padding: '1.5rem', borderRadius: '12px', border: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <div style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>

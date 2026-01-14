@@ -152,6 +152,16 @@ export async function GET(req: Request) {
     }
 
     const statusParam = searchParams.get('status')
+    const searchParam = searchParams.get('search')
+
+    if (searchParam) {
+        whereClause.OR = [
+            { firstName: { contains: searchParam, mode: 'insensitive' } },
+            { lastName: { contains: searchParam, mode: 'insensitive' } },
+            { email: { contains: searchParam, mode: 'insensitive' } },
+            { company: { name: { contains: searchParam, mode: 'insensitive' } } }
+        ]
+    }
 
     if (statusParam) {
         whereClause.status = statusParam

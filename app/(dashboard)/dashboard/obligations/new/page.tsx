@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import DateTimePicker from '@/components/DateTimePicker'
 import { useLanguage } from '@/context/LanguageContext'
+import { useCompany } from '@/context/CompanyContext'
 
 export default function NewObligationPage() {
     const { t, locale } = useLanguage()
@@ -16,9 +17,14 @@ export default function NewObligationPage() {
     const router = useRouter()
 
     const { data: session } = useSession()
+    const { selectedCompanyId } = useCompany()
 
     useEffect(() => {
-        fetch('/api/users?limit=1000')
+        const queryParams = new URLSearchParams()
+        queryParams.set('limit', '1000')
+        if (selectedCompanyId) queryParams.set('companyId', selectedCompanyId)
+
+        fetch(`/api/users?${queryParams.toString()}`)
             .then(res => res.json())
             .then(data => {
                 const usersList = data.data || []
@@ -46,7 +52,7 @@ export default function NewObligationPage() {
                     : sortedData
                 setUsers(filteredData)
             })
-    }, [session])
+    }, [session, selectedCompanyId])
 
     const [error, setError] = useState('')
     const [fieldErrors, setFieldErrors] = useState<{ [key: string]: string }>({})

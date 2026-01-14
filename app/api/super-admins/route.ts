@@ -15,9 +15,20 @@ export async function GET(req: Request) {
         const page = parseInt(searchParams.get('page') || '1')
         const limit = parseInt(searchParams.get('limit') || '10')
         const skip = (page - 1) * limit
+        const searchParam = searchParams.get('search')
+
+        const where: any = {}
+        if (searchParam) {
+            where.OR = [
+                { firstName: { contains: searchParam, mode: 'insensitive' } },
+                { lastName: { contains: searchParam, mode: 'insensitive' } },
+                { email: { contains: searchParam, mode: 'insensitive' } }
+            ]
+        }
 
         const [admins, total] = await Promise.all([
             prisma.superAdmin.findMany({
+                where,
                 select: {
                     id: true,
                     firstName: true,
@@ -32,7 +43,7 @@ export async function GET(req: Request) {
                 skip,
                 take: limit
             }),
-            prisma.superAdmin.count()
+            prisma.superAdmin.count({ where })
         ])
 
         // Format to match expected frontend Admin type
