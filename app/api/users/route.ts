@@ -129,6 +129,15 @@ export async function GET(req: Request) {
         whereClause.role = { not: 'SUPER_ADMIN' }
     }
 
+    // Added: Support for efficient counting
+    const countOnly = searchParams.get('countOnly')
+    if (countOnly === 'deleted') {
+        const deletedCount = await prisma.user.count({
+            where: { ...whereClause, status: 'DELETED' }
+        })
+        return NextResponse.json({ total: deletedCount })
+    }
+
     // Filter out DELETED users by default, unless requested
     const includeDeleted = searchParams.get('includeDeleted') === 'true'
 
@@ -148,15 +157,6 @@ export async function GET(req: Request) {
         whereClause.status = statusParam
     } else if (!includeDeleted) {
         whereClause.status = { not: 'DELETED' }
-    }
-
-    // Added: Support for efficient counting
-    const countOnly = searchParams.get('countOnly')
-    if (countOnly === 'deleted') {
-        const deletedCount = await prisma.user.count({
-            where: { ...whereClause, status: 'DELETED' }
-        })
-        return NextResponse.json({ total: deletedCount })
     }
 
     const page = parseInt(searchParams.get('page') || '1')

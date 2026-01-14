@@ -100,6 +100,7 @@ export default function AllUsersPage() {
         try {
             const queryParams = new URLSearchParams()
             queryParams.set('status', 'DELETED')
+            if (filters.companyId) queryParams.set('companyId', filters.companyId)
             queryParams.set('page', deletedPage.toString())
             queryParams.set('limit', '10')
 
@@ -125,7 +126,11 @@ export default function AllUsersPage() {
     useEffect(() => {
         const fetchDeletedCount = async () => {
             try {
-                const res = await fetch('/api/users?countOnly=deleted')
+                const queryParams = new URLSearchParams()
+                queryParams.set('countOnly', 'deleted')
+                if (filters.companyId) queryParams.set('companyId', filters.companyId)
+
+                const res = await fetch(`/api/users?${queryParams.toString()}`)
                 if (res.ok) {
                     const data = await res.json()
                     setRealDeletedCount(data.total || 0)
@@ -135,7 +140,7 @@ export default function AllUsersPage() {
             }
         }
         fetchDeletedCount()
-    }, [users]) // Re-fetch when users change (e.g. after a delete)
+    }, [users, filters.companyId]) // Re-fetch when users change or company filter changes
 
     const superAdmins = superAdminsList
     const activeRegularUsers = users.filter((u: User) => u.status !== 'DELETED' && u.role !== 'SUPER_ADMIN')
