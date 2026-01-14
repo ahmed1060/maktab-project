@@ -5,6 +5,7 @@ import { useSession } from 'next-auth/react'
 import DateTimePicker from '@/components/DateTimePicker'
 import { useLanguage } from '@/context/LanguageContext'
 import { useCompany } from '@/context/CompanyContext'
+import { useToast } from '@/context/ToastContext'
 import LocationSearchInput from '@/components/LocationSearchInput'
 
 export default function NewTaskPage() {
@@ -19,8 +20,11 @@ export default function NewTaskPage() {
     const [users, setUsers] = useState<any[]>([])
     const router = useRouter()
 
+    const { showToast } = useToast()
+
     const { data: session } = useSession()
     const { selectedCompanyId } = useCompany()
+    const userRole = (session?.user as any)?.role
 
     useEffect(() => {
         const queryParams = new URLSearchParams()
@@ -49,13 +53,12 @@ export default function NewTaskPage() {
                     return a.firstName.localeCompare(b.firstName)
                 })
                 // TEAM_LEADER Restriction: Hide ADMIN and SUPER_ADMIN from assignee list
-                const userRole = (session?.user as any)?.role
                 const filteredData = userRole === 'TEAM_LEADER'
                     ? sortedData.filter((u: any) => !['ADMIN', 'SUPER_ADMIN'].includes(u.role))
                     : sortedData
                 setUsers(filteredData)
             })
-    }, [session, selectedCompanyId])
+    }, [session, selectedCompanyId, userRole])
 
     const [error, setError] = useState('')
     const [fieldErrors, setFieldErrors] = useState<{ [key: string]: string }>({})
@@ -190,18 +193,20 @@ export default function NewTaskPage() {
                         {description.length}/1000
                     </div>
                 </div>
-                <div style={{ marginBottom: '1.25rem' }}>
-                    <LocationSearchInput
-                        label={t('location_label' as any)}
-                        value={{ name: location, link: locationLink }}
-                        onChange={(val) => {
-                            setLocation(val.name)
-                            setLocationLink(val.link)
-                        }}
-                        placeholder={t('location_name_placeholder')}
-                        locale={locale}
-                    />
-                </div>
+                {userRole === 'SUPER_ADMIN' && (
+                    <div style={{ marginBottom: '1.25rem' }}>
+                        <LocationSearchInput
+                            label="Location"
+                            value={{ name: location, link: locationLink }}
+                            onChange={(val) => {
+                                setLocation(val.name)
+                                setLocationLink(val.link)
+                            }}
+                            placeholder={t('location_name_placeholder')}
+                            locale={locale}
+                        />
+                    </div>
+                )}
                 <div id="field-assigneeIds" style={{ marginBottom: '1.25rem' }}>
                     <label style={{ display: 'block', marginBottom: '0.5rem' }}>{t('assignee_label')}</label>
                     <input

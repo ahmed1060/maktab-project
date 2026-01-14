@@ -37,15 +37,17 @@ export default function LocationSearchInput({ value, onChange, placeholder, labe
             return
         }
         setLoading(true)
+        const apiKey = process.env.NEXT_PUBLIC_HERE_API_KEY
         try {
-            const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(text)}&addressdetails=1&limit=5`, {
-                headers: {
-                    'Accept-Language': locale === 'ar' ? 'ar' : 'en'
-                }
-            })
+            // Using a default bias for the region if possible, or generic
+            const at = '30.0444,31.2357' // Cairo, Egypt as a bias center
+            const res = await fetch(`https://autosuggest.search.hereapi.com/v1/autosuggest?q=${encodeURIComponent(text)}&at=${at}&apiKey=${apiKey}&lang=${locale === 'ar' ? 'ar' : 'en'}`)
+
             if (res.ok) {
                 const data = await res.json()
-                setSuggestions(data)
+                // Filter items that have a title and address
+                const items = (data.items || []).filter((item: any) => item.title && item.address)
+                setSuggestions(items)
                 setShowSuggestions(true)
             }
         } catch (error) {
@@ -66,8 +68,14 @@ export default function LocationSearchInput({ value, onChange, placeholder, labe
     }, [query])
 
     const handleSelect = (s: any) => {
-        const name = s.display_name
-        const link = `https://www.google.com/maps?q=${s.lat},${s.lon}`
+        const name = s.address.label || s.title
+        let link = ''
+        if (s.position) {
+            link = `https://www.google.com/maps?q=${s.position.lat},${s.position.lng}`
+        } else if (s.access && s.access[0]) {
+            link = `https://www.google.com/maps?q=${s.access[0].lat},${s.access[0].lng}`
+        }
+
         onChange({ name, link })
         setQuery(name)
         setShowSuggestions(false)
@@ -128,7 +136,7 @@ export default function LocationSearchInput({ value, onChange, placeholder, labe
                             onMouseEnter={(e) => (e.currentTarget.style.background = '#f8fafc')}
                             onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
                         >
-                            {s.display_name}
+                            {s.address.label || s.title}
                         </div>
                     ))}
                 </div>

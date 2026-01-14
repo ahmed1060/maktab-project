@@ -8,6 +8,7 @@ import { useToast } from '@/context/ToastContext'
 import DateTimePicker from '@/components/DateTimePicker'
 import { useLanguage } from '@/context/LanguageContext'
 import LocationSearchInput from '@/components/LocationSearchInput'
+import { useCompany } from '@/context/CompanyContext' // Added this import
 
 const TrashIcon = ({ size = 18, color = "#ef4444" }: { size?: number, color?: string }) => (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -100,8 +101,11 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
     const searchParams = useSearchParams()
     const highlightId = searchParams.get('highlight')
     const shouldHighlight = highlightId === task.id
+    const { showToast } = useToast() // Added this line
 
-    const { showToast } = useToast()
+    const { selectedCompanyId } = useCompany()
+    // The userRole prop is already passed to the component, so no need to derive it from session here.
+    // const userRole = (session?.user as any)?.role // Removed this line as userRole is a prop
 
     // Sync state when props change (after router.refresh)
     useEffect(() => {
@@ -151,10 +155,11 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                     return r.json()
                 })
                 .then(data => {
-                    const filtered = userRole === 'TEAM_LEADER'
+                    // TEAM_LEADER Restriction: Hide ADMIN and SUPER_ADMIN from assignee list
+                    const filteredData = userRole === 'TEAM_LEADER'
                         ? data.filter((u: any) => !['ADMIN', 'SUPER_ADMIN'].includes(u.role))
                         : data
-                    setAllUsers(filtered)
+                    setAllUsers(filteredData)
                 })
                 .catch(() => setUserFetchError(true))
         }
@@ -1284,17 +1289,19 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                         <textarea className="input" rows={4} value={editForm.description} onChange={e => { setEditForm({ ...editForm, description: e.target.value }); setEditFieldErrors({ ...editFieldErrors, description: '' }); }} style={{ borderColor: editFieldErrors.description ? '#ef4444' : undefined }} maxLength={1000} required />
                         <div style={{ textAlign: locale === 'ar' ? 'left' : 'right', fontSize: '0.7rem', color: '#94a3b8', marginTop: '0.25rem' }}>{editForm.description.length}/1000</div>
                     </div>
-                    <div style={{ marginBottom: '1.25rem' }}>
-                        <LocationSearchInput
-                            label={t('location_label' as any)}
-                            value={{ name: editForm.location, link: (editForm as any).locationLink }}
-                            onChange={(val) => {
-                                setEditForm({ ...editForm, location: val.name, locationLink: val.link } as any)
-                            }}
-                            placeholder={t('location_name_placeholder')}
-                            locale={locale}
-                        />
-                    </div>
+                    {userRole === 'SUPER_ADMIN' && (
+                        <div style={{ marginBottom: '1.25rem' }}>
+                            <LocationSearchInput
+                                label="Location"
+                                value={{ name: editForm.location, link: (editForm as any).locationLink }}
+                                onChange={(val) => {
+                                    setEditForm({ ...editForm, location: val.name, locationLink: val.link } as any)
+                                }}
+                                placeholder={t('location_name_placeholder')}
+                                locale={locale}
+                            />
+                        </div>
+                    )}
                     <div style={{ marginBottom: '1.25rem' }}>
                         <label className="label">{t('assignee_label')}</label>
                         <div style={{
