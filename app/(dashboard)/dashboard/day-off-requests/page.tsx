@@ -321,7 +321,7 @@ export default function DayOffRequestsPage() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                     {/* User Credit Stats - Mobile only */}
                     {!isAdmin && (
-                        <div className="show-on-mobile" style={{ display: 'none', width: '100%', marginBottom: '0.5rem' }}>
+                        <div className="show-on-mobile" style={{ display: 'none', width: '100%', marginBottom: '0.5rem', marginTop: '-0.75rem' }}>
                             <div style={{ display: 'flex', justifyContent: locale === 'ar' ? 'flex-start' : 'flex-end', width: '100%' }}>
                                 {(() => {
                                     const totalCredit = userCredit + usedCredits;

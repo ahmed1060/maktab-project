@@ -275,50 +275,6 @@ export default async function DashboardPage({ searchParams }: { searchParams: { 
                                 { label: t('used_credit' as any), value: usedCredits, color: '#ef4444' }
                             ]}
                         />
-                        {/* User Credit Stats - Mobile only */}
-                        <div className="show-on-mobile" style={{ width: '100%', marginTop: '-0.75rem' }}>
-                            <div style={{ display: 'flex', justifyContent: locale === 'ar' ? 'flex-start' : 'flex-end', width: '100%' }}>
-                                {(() => {
-                                    const totalCredit = (currentUser?.dayOffCredit || 0) + usedCredits;
-                                    const percentage = totalCredit > 0 ? (currentUser?.dayOffCredit || 0) / totalCredit : 1;
-
-                                    let colors = { bg: '#dcfce7', text: '#166534', border: '#bbf7d0' }; // Green
-                                    if (percentage < 0.3) {
-                                        colors = { bg: '#fef2f2', text: '#991b1b', border: '#fecaca' }; // Red
-                                    } else if (percentage < 0.6) {
-                                        colors = { bg: '#fff7ed', text: '#9a3412', border: '#fed7aa' }; // Orange
-                                    }
-
-                                    return (
-                                        <div style={{
-                                            background: colors.bg,
-                                            border: `1.5px solid ${colors.border}`,
-                                            borderRadius: '1rem',
-                                            padding: '0.6rem 0.875rem',
-                                            textAlign: 'center',
-                                            display: 'flex',
-                                            flexDirection: 'column',
-                                            alignItems: 'center',
-                                            gap: '0.1rem',
-                                            boxShadow: '0 2px 4px -1px rgba(0, 0, 0, 0.05)',
-                                            width: 'fit-content'
-                                        }}>
-                                            <span style={{ fontSize: '0.6rem', fontWeight: '800', color: colors.text, opacity: 0.8, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                                                {t('remaining_day_off_credit' as any)}
-                                            </span>
-                                            <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.25rem' }}>
-                                                <span style={{ fontSize: '1.5rem', fontWeight: '900', color: colors.text, lineHeight: 1 }}>
-                                                    {currentUser?.dayOffCredit || 0}
-                                                </span>
-                                                <span style={{ fontSize: '0.75rem', fontWeight: '700', color: colors.text, opacity: 0.8 }}>
-                                                    {t('days_label')}
-                                                </span>
-                                            </div>
-                                        </div>
-                                    );
-                                })()}
-                            </div>
-                        </div>
                     </div>
                     <div style={{ display: 'grid', gap: '1.5rem' }}>
                         <StatMetric label={t('overall_progress')} value={`${completedTasks}/${totalTasks}`} icon="🎯" color="#6366f1" percentage={completionRate} subLabel={t('completion_rate')} />
