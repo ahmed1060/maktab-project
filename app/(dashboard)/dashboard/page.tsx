@@ -266,9 +266,9 @@ export default async function DashboardPage({ searchParams }: { searchParams: { 
                 </header>
 
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2rem', marginBottom: '3rem' }}>
-                    <div className="glass-card dashboard-chart-grid">
+                    <div className="glass-card dashboard-chart-grid" style={{ display: 'grid', gap: '1.5rem' }}>
                         <DonutChart title={t('task_distribution')} data={chartData} />
-                        <div className="hide-on-mobile" style={{ width: '100%' }}>
+                        <div className="hide-on-mobile">
                             <DonutChart
                                 title={t('credit_overview' as any)}
                                 data={[
@@ -277,19 +277,46 @@ export default async function DashboardPage({ searchParams }: { searchParams: { 
                                 ]}
                             />
                         </div>
-                        <div className="show-on-mobile" style={{ width: '100%', flexDirection: 'column', height: '100%', justifyContent: 'center', alignItems: 'center', textAlign: 'center', padding: '1rem' }}>
-                            <div style={{
-                                background: '#10b981',
-                                color: 'white',
-                                padding: '0.75rem 1.25rem',
-                                borderRadius: '1.25rem',
-                                fontSize: '1.5rem',
-                                fontWeight: '800',
-                                boxShadow: '0 8px 12px -3px rgba(16, 185, 129, 0.3)'
-                            }}>
-                                {currentUser?.dayOffCredit || 0}
-                            </div>
-                            <div style={{ marginTop: '0.4rem', fontSize: '0.75rem', color: '#64748b', fontWeight: 'bold' }}>{t('remaining_day_off_credit' as any)}</div>
+                        {/* User Credit Stats - Mobile only */}
+                        <div className="show-on-mobile" style={{ width: '100%', padding: '0.5rem' }}>
+                            {(() => {
+                                const totalCredit = (currentUser?.dayOffCredit || 0) + usedCredits;
+                                const percentage = totalCredit > 0 ? (currentUser?.dayOffCredit || 0) / totalCredit : 1;
+
+                                let colors = { bg: '#dcfce7', text: '#166534', border: '#bbf7d0' }; // Green
+                                if (percentage < 0.3) {
+                                    colors = { bg: '#fef2f2', text: '#991b1b', border: '#fecaca' }; // Red
+                                } else if (percentage < 0.6) {
+                                    colors = { bg: '#fff7ed', text: '#9a3412', border: '#fed7aa' }; // Orange
+                                }
+
+                                return (
+                                    <div style={{
+                                        background: colors.bg,
+                                        border: `2px solid ${colors.border}`,
+                                        borderRadius: '1.25rem',
+                                        padding: '1.25rem 1rem',
+                                        textAlign: 'center',
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        alignItems: 'center',
+                                        gap: '0.25rem',
+                                        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)'
+                                    }}>
+                                        <span style={{ fontSize: '0.75rem', fontWeight: '800', color: colors.text, opacity: 0.8, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                            {t('remaining_day_off_credit' as any)}
+                                        </span>
+                                        <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.4rem' }}>
+                                            <span style={{ fontSize: '2.25rem', fontWeight: '900', color: colors.text, lineHeight: 1 }}>
+                                                {currentUser?.dayOffCredit || 0}
+                                            </span>
+                                            <span style={{ fontSize: '1rem', fontWeight: '700', color: colors.text, opacity: 0.8 }}>
+                                                {t('days_label')}
+                                            </span>
+                                        </div>
+                                    </div>
+                                );
+                            })()}
                         </div>
                     </div>
                     <div style={{ display: 'grid', gap: '1.5rem' }}>

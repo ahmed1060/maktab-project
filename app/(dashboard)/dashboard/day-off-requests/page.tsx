@@ -321,21 +321,46 @@ export default function DayOffRequestsPage() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                     {/* User Credit Stats - Mobile only */}
                     {!isAdmin && (
-                        <div className="show-on-mobile" style={{ display: 'none', flexDirection: 'column', gap: '1rem', width: '100%' }}>
-                            <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', padding: '1rem' }}>
-                                <div style={{
-                                    background: '#10b981',
-                                    color: 'white',
-                                    padding: '0.75rem 1.25rem',
-                                    borderRadius: '1.25rem',
-                                    fontSize: '1.5rem',
-                                    fontWeight: '800',
-                                    boxShadow: '0 8px 12px -3px rgba(16, 185, 129, 0.3)'
-                                }}>
-                                    {userCredit}
-                                </div>
-                                <div style={{ marginTop: '0.4rem', fontSize: '0.75rem', color: '#64748b', fontWeight: 'bold' }}>{t('remaining_day_off_credit' as any)}</div>
-                            </div>
+                        <div className="show-on-mobile" style={{ display: 'none', width: '100%', padding: '0.5rem 0' }}>
+                            {(() => {
+                                const totalCredit = userCredit + usedCredits;
+                                const percentage = totalCredit > 0 ? userCredit / totalCredit : 1;
+
+                                let colors = { bg: '#dcfce7', text: '#166534', border: '#bbf7d0' }; // Green
+                                if (percentage < 0.3) {
+                                    colors = { bg: '#fef2f2', text: '#991b1b', border: '#fecaca' }; // Red
+                                } else if (percentage < 0.6) {
+                                    colors = { bg: '#fff7ed', text: '#9a3412', border: '#fed7aa' }; // Orange
+                                }
+
+                                return (
+                                    <div style={{
+                                        background: colors.bg,
+                                        border: `2px solid ${colors.border}`,
+                                        borderRadius: '1.25rem',
+                                        padding: '1.25rem 1rem',
+                                        textAlign: 'center',
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        alignItems: 'center',
+                                        gap: '0.25rem',
+                                        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)',
+                                        width: '100%'
+                                    }}>
+                                        <span style={{ fontSize: '0.75rem', fontWeight: '800', color: colors.text, opacity: 0.8, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                            {t('remaining_day_off_credit' as any)}
+                                        </span>
+                                        <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.4rem' }}>
+                                            <span style={{ fontSize: '2.25rem', fontWeight: '900', color: colors.text, lineHeight: 1 }}>
+                                                {userCredit}
+                                            </span>
+                                            <span style={{ fontSize: '1rem', fontWeight: '700', color: colors.text, opacity: 0.8 }}>
+                                                {t('days_label')}
+                                            </span>
+                                        </div>
+                                    </div>
+                                );
+                            })()}
                         </div>
                     )}
 
