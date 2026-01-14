@@ -47,11 +47,30 @@ export default async function TasksPage({ searchParams }: { searchParams: { comp
         whereClause.title = { contains: searchParams.search, mode: 'insensitive' }
     }
     if (searchParams.employeeId) {
-        const isEmployeeFilter = { id: searchParams.employeeId }
-        whereClause.OR = [
-            { assigneeId: searchParams.employeeId },
-            { assignees: { some: isEmployeeFilter } }
-        ]
+        const employeeMatch = {
+            OR: [
+                { assigneeId: searchParams.employeeId },
+                { assignees: { some: { id: searchParams.employeeId } } }
+            ]
+        }
+        if (whereClause.OR) {
+            whereClause.AND = [{ OR: whereClause.OR }, employeeMatch]
+            delete whereClause.OR
+        } else {
+            whereClause.AND = whereClause.AND || []
+            whereClause.AND.push(employeeMatch)
+        }
+    }
+
+    const { dateFrom, dateTo } = searchParams as any
+    if (dateFrom || dateTo) {
+        whereClause.updatedAt = {}
+        if (dateFrom) whereClause.updatedAt.gte = new Date(dateFrom)
+        if (dateTo) {
+            const end = new Date(dateTo)
+            end.setHours(23, 59, 59, 999)
+            whereClause.updatedAt.lte = end
+        }
     }
 
     const [tasks, total] = await Promise.all([

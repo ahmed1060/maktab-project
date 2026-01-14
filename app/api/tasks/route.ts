@@ -42,6 +42,48 @@ export async function GET(req: Request) {
         ]
     }
 
+    // Additional Filters
+    const employeeIdFilter = searchParams.get('employeeId')
+    const statusFilter = searchParams.get('status')
+    const searchFilter = searchParams.get('search')
+    const dateFrom = searchParams.get('dateFrom')
+    const dateTo = searchParams.get('dateTo')
+
+    if (employeeIdFilter) {
+        // If we already have an OR (as an employee), we need to wrap it in an AND
+        const employeeMatch = {
+            OR: [
+                { assigneeId: employeeIdFilter },
+                { assignees: { some: { id: employeeIdFilter } } }
+            ]
+        }
+        if (whereClause.OR) {
+            whereClause.AND = [{ OR: whereClause.OR }, employeeMatch]
+            delete whereClause.OR
+        } else {
+            whereClause.AND = whereClause.AND || []
+            whereClause.AND.push(employeeMatch)
+        }
+    }
+
+    if (statusFilter) {
+        whereClause.status = statusFilter
+    }
+
+    if (searchFilter) {
+        whereClause.title = { contains: searchFilter, mode: 'insensitive' }
+    }
+
+    if (dateFrom || dateTo) {
+        whereClause.updatedAt = {}
+        if (dateFrom) whereClause.updatedAt.gte = new Date(dateFrom)
+        if (dateTo) {
+            const end = new Date(dateTo)
+            end.setHours(23, 59, 59, 999)
+            whereClause.updatedAt.lte = end
+        }
+    }
+
     const page = parseInt(searchParams.get('page') || '1')
     const limit = parseInt(searchParams.get('limit') || '10')
     const skip = (page - 1) * limit

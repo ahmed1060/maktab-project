@@ -92,6 +92,34 @@ export async function GET(req: Request) {
         whereClause.assigneeId = userId
     }
 
+    const employeeIdFilter = searchParams.get('employeeId')
+    const statusFilter = searchParams.get('status')
+    const searchFilter = searchParams.get('search')
+    const dateFrom = searchParams.get('dateFrom')
+    const dateTo = searchParams.get('dateTo')
+
+    if (employeeIdFilter && role !== 'EMPLOYEE') {
+        whereClause.assigneeId = employeeIdFilter
+    }
+
+    if (statusFilter) {
+        whereClause.status = statusFilter
+    }
+
+    if (searchFilter) {
+        whereClause.title = { contains: searchFilter, mode: 'insensitive' }
+    }
+
+    if (dateFrom || dateTo) {
+        whereClause.updatedAt = {}
+        if (dateFrom) whereClause.updatedAt.gte = new Date(dateFrom)
+        if (dateTo) {
+            const end = new Date(dateTo)
+            end.setHours(23, 59, 59, 999)
+            whereClause.updatedAt.lte = end
+        }
+    }
+
     const page = parseInt(searchParams.get('page') || '1')
     const limit = parseInt(searchParams.get('limit') || '10')
     const skip = (page - 1) * limit

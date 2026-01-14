@@ -93,6 +93,22 @@ export default function EmployeeFilter({
     const { data: session } = useSession()
     const { selectedCompanyId: globalCompanyId } = useCompany()
 
+    const [localEmployeeId, setLocalEmployeeId] = useState(selectedEmployeeId)
+    const [localDateFrom, setLocalDateFrom] = useState(dateFrom)
+    const [localDateTo, setLocalDateTo] = useState(dateTo)
+    const [localStatus, setLocalStatus] = useState(selectedStatus)
+    const [localRole, setLocalRole] = useState(selectedRole)
+    const [localCompanyId, setLocalCompanyId] = useState(selectedCompanyId)
+
+    useEffect(() => {
+        setLocalEmployeeId(selectedEmployeeId)
+        setLocalStatus(selectedStatus)
+        setLocalRole(selectedRole)
+        setLocalCompanyId(selectedCompanyId)
+        setLocalDateFrom(dateFrom)
+        setLocalDateTo(dateTo)
+    }, [selectedEmployeeId, selectedStatus, selectedRole, selectedCompanyId, dateFrom, dateTo])
+
     useEffect(() => {
         const checkMobile = () => {
             setIsMobile(window.innerWidth < 768)
@@ -143,12 +159,29 @@ export default function EmployeeFilter({
         }
     }, [isEmployee, hideEmployeeFilter, session?.user?.role, globalCompanyId])
 
-    const handleEmployeeChange = (employeeId: string) => {
-        onFilterChange({ employeeId, dateFrom, dateTo, status: selectedStatus, search: searchQuery })
+    const handleApplyFilters = () => {
+        onFilterChange({
+            employeeId: localEmployeeId,
+            dateFrom: localDateFrom,
+            dateTo: localDateTo,
+            status: localStatus,
+            search: searchQuery
+        })
+        if (onRoleChange && showRoleFilter) onRoleChange(localRole)
+        if (onCompanyChange && showCompanyFilter) onCompanyChange(localCompanyId)
+        setIsPopupOpen(false)
     }
 
-    const handleStatusChange = (status: string) => {
-        onFilterChange({ employeeId: selectedEmployeeId, dateFrom, dateTo, status, search: searchQuery })
+    const resetFilters = () => {
+        setLocalEmployeeId('')
+        setLocalStatus('')
+        setLocalDateFrom('')
+        setLocalDateTo('')
+        setLocalRole('')
+        setLocalCompanyId('')
+        onFilterChange({ employeeId: '', dateFrom: '', dateTo: '', status: '', search: searchQuery })
+        if (onRoleChange) onRoleChange('')
+        if (onCompanyChange) onCompanyChange('')
     }
 
     const getRoleKey = (role: string) => {
@@ -162,13 +195,14 @@ export default function EmployeeFilter({
     }
 
     const handleSearchChange = (search: string) => {
-        onFilterChange({ employeeId: selectedEmployeeId, dateFrom, dateTo, status: selectedStatus, search })
-    }
-
-    const resetFilters = () => {
-        onFilterChange({ employeeId: '', dateFrom: '', dateTo: '', status: '', search: searchQuery })
-        if (onRoleChange) onRoleChange('')
-        if (onCompanyChange) onCompanyChange('')
+        // Search stays immediate
+        onFilterChange({
+            employeeId: selectedEmployeeId,
+            dateFrom: dateFrom,
+            dateTo: dateTo,
+            status: selectedStatus,
+            search
+        })
     }
 
     const activeFilterCount = [
@@ -404,8 +438,8 @@ export default function EmployeeFilter({
                                                     value: emp.id,
                                                     subLabel: t(getRoleKey(emp.role) as any)
                                                 }))}
-                                                value={selectedEmployeeId}
-                                                onChange={handleEmployeeChange}
+                                                value={localEmployeeId}
+                                                onChange={setLocalEmployeeId}
                                                 placeholder={t('placeholder_all_employees')}
                                             />
                                         </div>
@@ -416,8 +450,8 @@ export default function EmployeeFilter({
                                             <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '700', fontSize: '0.875rem' }}>{t('role_label' as any) || 'Role'}</label>
                                             <div style={{ position: 'relative' }}>
                                                 <select
-                                                    value={selectedRole}
-                                                    onChange={(e) => onRoleChange(e.target.value)}
+                                                    value={localRole}
+                                                    onChange={(e) => setLocalRole(e.target.value)}
                                                     className="input"
                                                     style={{
                                                         width: '100%',
@@ -453,8 +487,8 @@ export default function EmployeeFilter({
                                             <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '700', fontSize: '0.875rem' }}>{t('company_label')}</label>
                                             <div style={{ position: 'relative' }}>
                                                 <select
-                                                    value={selectedCompanyId}
-                                                    onChange={(e) => onCompanyChange?.(e.target.value)}
+                                                    value={localCompanyId}
+                                                    onChange={(e) => setLocalCompanyId(e.target.value)}
                                                     className="input"
                                                     style={{
                                                         width: '100%',
@@ -490,8 +524,8 @@ export default function EmployeeFilter({
                                             <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '700', fontSize: '0.875rem' }}>{t('filter_by_status')}</label>
                                             <div style={{ position: 'relative' }}>
                                                 <select
-                                                    value={selectedStatus}
-                                                    onChange={(e) => handleStatusChange(e.target.value)}
+                                                    value={localStatus}
+                                                    onChange={(e) => setLocalStatus(e.target.value)}
                                                     className="input"
                                                     style={{
                                                         width: '100%',
@@ -518,7 +552,7 @@ export default function EmployeeFilter({
                                                             {(!allowedStatuses || allowedStatuses.includes('COMPLETED')) && <option value="COMPLETED">{t('status_completed')}</option>}
                                                             {(!allowedStatuses || allowedStatuses.includes('APPROVED')) && <option value="APPROVED">{t('status_approved')}</option>}
                                                             {(!allowedStatuses || allowedStatuses.includes('REJECTED')) && <option value="REJECTED">{t('status_rejected')}</option>}
-                                                            {(!allowedStatuses || allowedStatuses.includes('PENDING_CONFIRMATION')) && <option value="PENDING_CONFIRMATION">{t('status_pending_approval')}</option>}
+                                                            {(!allowedStatuses || allowedStatuses.includes('PENDING_CONFIRMATION')) && <option value="PENDING_CONFIRMATION">{t('status_pending_confirmation')}</option>}
                                                             {(!allowedStatuses || allowedStatuses.includes('IN_PROGRESS')) && <option value="IN_PROGRESS">{t('status_in_progress')}</option>}
                                                             {(!allowedStatuses || allowedStatuses.includes('PENDING')) && <option value="PENDING">{t('status_pending')}</option>}
                                                         </>
@@ -536,9 +570,12 @@ export default function EmployeeFilter({
                                     {!hideDateFilter && (
                                         <div>
                                             <DateRangePicker
-                                                dateFrom={dateFrom}
-                                                dateTo={dateTo}
-                                                onChange={(from, to) => onFilterChange({ employeeId: selectedEmployeeId, dateFrom: from, dateTo: to, status: selectedStatus, search: searchQuery })}
+                                                dateFrom={localDateFrom}
+                                                dateTo={localDateTo}
+                                                onChange={(from, to) => {
+                                                    setLocalDateFrom(from)
+                                                    setLocalDateTo(to)
+                                                }}
                                             />
                                         </div>
                                     )}
@@ -563,7 +600,7 @@ export default function EmployeeFilter({
                                             {t('reset_filters' as any) || 'Reset'}
                                         </button>
                                         <button
-                                            onClick={() => setIsPopupOpen(false)}
+                                            onClick={handleApplyFilters}
                                             style={{
                                                 flex: 1,
                                                 height: '48px',

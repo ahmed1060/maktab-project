@@ -33,11 +33,26 @@ export default async function ObligationsPage({ searchParams }: { searchParams: 
     }
 
     // Apply Filters from searchParams
-    if (searchParams.status) {
-        whereClause.status = searchParams.status
+    const { status, search, employeeId, dateFrom, dateTo } = searchParams as any
+
+    if (status) {
+        whereClause.status = status
     }
-    if (searchParams.search) {
-        whereClause.title = { contains: searchParams.search, mode: 'insensitive' }
+    if (search) {
+        whereClause.title = { contains: search, mode: 'insensitive' }
+    }
+    if (employeeId && role !== 'EMPLOYEE') {
+        whereClause.assigneeId = employeeId
+    }
+
+    if (dateFrom || dateTo) {
+        whereClause.updatedAt = {}
+        if (dateFrom) whereClause.updatedAt.gte = new Date(dateFrom)
+        if (dateTo) {
+            const end = new Date(dateTo)
+            end.setHours(23, 59, 59, 999)
+            whereClause.updatedAt.lte = end
+        }
     }
 
     const [obligations, total] = await Promise.all([
