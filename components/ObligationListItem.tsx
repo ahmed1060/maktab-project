@@ -19,9 +19,10 @@ interface ObligationListItemProps {
         lastStatusUpdateBy?: string
         difficulty: number
     }
+    isHighlighted?: boolean
 }
 
-export default function ObligationListItem({ obligation }: ObligationListItemProps) {
+export default function ObligationListItem({ obligation, isHighlighted }: ObligationListItemProps) {
     const [isModalOpen, setIsModalOpen] = useState(false)
     const [mounted, setMounted] = useState(false)
     const { t, locale } = useLanguage()
@@ -37,7 +38,7 @@ export default function ObligationListItem({ obligation }: ObligationListItemPro
     }
 
     return (
-        <div className="card">
+        <div id={`obligation-${obligation.id}`} className={`card ${isHighlighted ? 'highlight-shading' : ''}`}>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                     <h3

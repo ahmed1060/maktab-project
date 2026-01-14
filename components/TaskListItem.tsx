@@ -34,9 +34,10 @@ interface TaskListItemProps {
     }
     currentUserId: string
     currentUserName?: string
+    isHighlighted?: boolean
 }
 
-export default function TaskListItem({ task, currentUserId }: TaskListItemProps) {
+export default function TaskListItem({ task, currentUserId, isHighlighted }: TaskListItemProps) {
     const [isModalOpen, setIsModalOpen] = useState(false)
     const [mounted, setMounted] = useState(false)
     const { t, locale } = useLanguage()
@@ -57,7 +58,7 @@ export default function TaskListItem({ task, currentUserId }: TaskListItemProps)
     const isMultiAssignee = (task.assignees?.length || 0) > 1
 
     return (
-        <div className="glass-card" style={{ marginBottom: '1rem' }}>
+        <div id={`task-${task.id}`} className={`glass-card ${isHighlighted ? 'highlight-shading' : ''}`} style={{ marginBottom: '1rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                     <h3

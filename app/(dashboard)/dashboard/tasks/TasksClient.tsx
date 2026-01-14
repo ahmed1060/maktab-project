@@ -21,6 +21,7 @@ export default function TasksClient({ tasks, total, page, totalPages, role, curr
     const { t, locale } = useLanguage()
     const router = useRouter()
     const searchParams = useSearchParams()
+    const highlightId = searchParams?.get('highlight')
 
     const [filters, setFilters] = useState({
         employeeId: searchParams?.get('employeeId') || '',
@@ -96,6 +97,16 @@ export default function TasksClient({ tasks, total, page, totalPages, role, curr
         return sortOrder === 'asc' ? comparison : -comparison
     })
 
+    // Scroll to highlighted task
+    useEffect(() => {
+        if (highlightId && tasks.length > 0) {
+            const element = document.getElementById(`task-${highlightId}`);
+            if (element) {
+                element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        }
+    }, [highlightId, tasks]);
+
     return (
         <div>
             <EmployeeFilter
@@ -132,7 +143,12 @@ export default function TasksClient({ tasks, total, page, totalPages, role, curr
             <div style={{ display: 'grid', gap: '1rem' }}>
                 {sortedTasks.length > 0 ? (
                     sortedTasks.map(task => (
-                        <TaskListItem key={task.id} task={task as any} currentUserId={currentUserId} />
+                        <TaskListItem
+                            key={task.id}
+                            task={task as any}
+                            currentUserId={currentUserId}
+                            isHighlighted={highlightId === task.id}
+                        />
                     ))
                 ) : (
                     <div className="card" style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>

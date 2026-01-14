@@ -83,9 +83,9 @@ export default function NotificationBell() {
             const type = notification.type.toUpperCase()
 
             if (type.includes('TASK')) {
-                router.push(`/dashboard/tasks/${notification.relatedId}?highlight=${notification.relatedId}`)
+                router.push(`/dashboard/tasks?highlight=${notification.relatedId}`)
             } else if (type.includes('OBLIGATION')) {
-                router.push(`/dashboard/obligations/${notification.relatedId}?highlight=${notification.relatedId}`)
+                router.push(`/dashboard/obligations?highlight=${notification.relatedId}`)
             } else if (type.includes('DAY_OFF')) {
                 router.push(`/dashboard/day-off-requests?highlight=${notification.relatedId}`)
             } else if (type.includes('BONUS') || type.includes('DEDUCTION')) {

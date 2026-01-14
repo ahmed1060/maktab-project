@@ -20,6 +20,7 @@ export default function ObligationsClient({ obligations, total, page, totalPages
     const { t, locale } = useLanguage()
     const router = useRouter()
     const searchParams = useSearchParams()
+    const highlightId = searchParams?.get('highlight')
 
     const [filters, setFilters] = useState({
         employeeId: searchParams?.get('employeeId') || '',
@@ -83,6 +84,16 @@ export default function ObligationsClient({ obligations, total, page, totalPages
         return sortOrder === 'asc' ? comparison : -comparison
     })
 
+    // Scroll to highlighted obligation
+    useEffect(() => {
+        if (highlightId && obligations.length > 0) {
+            const element = document.getElementById(`obligation-${highlightId}`);
+            if (element) {
+                element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        }
+    }, [highlightId, obligations]);
+
     return (
         <div>
             <EmployeeFilter
@@ -118,7 +129,11 @@ export default function ObligationsClient({ obligations, total, page, totalPages
             <div style={{ display: 'grid', gap: '1rem' }}>
                 {sortedObligations.length > 0 ? (
                     sortedObligations.map(ob => (
-                        <ObligationListItem key={ob.id} obligation={ob as any} />
+                        <ObligationListItem
+                            key={ob.id}
+                            obligation={ob as any}
+                            isHighlighted={highlightId === ob.id}
+                        />
                     ))
                 ) : (
                     <div className="card" style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>
