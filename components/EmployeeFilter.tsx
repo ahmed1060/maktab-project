@@ -491,7 +491,7 @@ export default function EmployeeFilter({
                                         </div>
                                     )}
 
-                                    {showCompanyFilter && companyOptions && (
+                                    {showCompanyFilter && companyOptions && Array.isArray(companyOptions) && (
                                         <div>
                                             <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '700', fontSize: '0.875rem' }}>{t('company_label')}</label>
                                             <div style={{ position: 'relative' }}>
@@ -552,7 +552,7 @@ export default function EmployeeFilter({
                                                     }}
                                                 >
                                                     <option value="">{t('placeholder_all_statuses')}</option>
-                                                    {statusOptions ? (
+                                                    {statusOptions && Array.isArray(statusOptions) ? (
                                                         statusOptions.map(opt => (
                                                             <option key={opt.value} value={opt.value}>{opt.label}</option>
                                                         ))

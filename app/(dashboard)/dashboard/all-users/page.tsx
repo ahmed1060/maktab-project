@@ -74,11 +74,11 @@ export default function AllUsersPage() {
             }
             if (companiesRes.ok) {
                 const data = await companiesRes.json()
-                setCompanies(data)
+                setCompanies(data.data || [])
             }
             if (superAdminsRes.ok) {
                 const data = await superAdminsRes.json()
-                setSuperAdminsList(data)
+                setSuperAdminsList(data.data || [])
             }
         } catch (err) {
             console.error('Failed to fetch data', err)
