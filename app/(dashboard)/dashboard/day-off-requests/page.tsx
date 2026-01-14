@@ -322,20 +322,19 @@ export default function DayOffRequestsPage() {
                     {/* User Credit Stats - Mobile only */}
                     {!isAdmin && (
                         <div className="show-on-mobile" style={{ display: 'none', flexDirection: 'column', gap: '1rem', width: '100%' }}>
-                            <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', padding: '1.5rem' }}>
-                                <h4 style={{ margin: '0 0 1rem 0', fontSize: '1rem', color: '#1e293b', fontWeight: 'bold' }}>{t('credit_overview' as any)}</h4>
+                            <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', padding: '1rem' }}>
                                 <div style={{
                                     background: '#10b981',
                                     color: 'white',
-                                    padding: '1rem 1.5rem',
-                                    borderRadius: '1.5rem',
-                                    fontSize: '2rem',
+                                    padding: '0.75rem 1.25rem',
+                                    borderRadius: '1.25rem',
+                                    fontSize: '1.5rem',
                                     fontWeight: '800',
-                                    boxShadow: '0 10px 15px -3px rgba(16, 185, 129, 0.3)'
+                                    boxShadow: '0 8px 12px -3px rgba(16, 185, 129, 0.3)'
                                 }}>
                                     {userCredit}
                                 </div>
-                                <div style={{ marginTop: '0.5rem', fontSize: '0.8rem', color: '#64748b', fontWeight: 'bold' }}>{t('days_label')} {t('remaining_credit' as any)}</div>
+                                <div style={{ marginTop: '0.4rem', fontSize: '0.75rem', color: '#64748b', fontWeight: 'bold' }}>{t('remaining_day_off_credit' as any)}</div>
                             </div>
                         </div>
                     )}
