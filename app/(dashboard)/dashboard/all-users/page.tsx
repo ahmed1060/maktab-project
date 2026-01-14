@@ -150,7 +150,7 @@ export default function AllUsersPage() {
     }, [users, filters.companyId]) // Re-fetch when users change or company filter changes
 
     const superAdmins = superAdminsList
-    const activeRegularUsers = users.filter((u: User) => u.status !== 'DELETED' && u.role !== 'SUPER_ADMIN')
+    const activeRegularUsers = users.filter((u: User) => u.status !== 'DELETED')
     const hasAnyDeleted = realDeletedCount > 0
 
     const filteredUsers = activeRegularUsers.filter((user: User) => {

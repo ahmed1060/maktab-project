@@ -116,6 +116,9 @@ export async function GET(req: Request) {
         if (filterCompanyId) {
             whereClause.companyId = filterCompanyId
         }
+        // Always exclude SUPER_ADMINs from the regular User list to avoid double-counting
+        // since they are managed and displayed separately from the SuperAdmin table.
+        whereClause.role = { not: 'SUPER_ADMIN' }
     } else {
         // Enforce strict isolation for ADMIN, TEAM_LEADER, EMPLOYEE
         const userCompanyId = (session.user as any).companyId
@@ -179,7 +182,9 @@ export async function GET(req: Request) {
     if (statusParam) {
         whereClause.status = statusParam
     } else if (!includeDeleted) {
-        whereClause.status = { not: 'DELETED' }
+        // Use AND to ensure status is combined with any existing filters like OR
+        whereClause.AND = whereClause.AND || []
+        whereClause.AND.push({ status: { not: 'DELETED' } })
     }
 
     const page = parseInt(searchParams.get('page') || '1')

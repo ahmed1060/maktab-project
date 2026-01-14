@@ -173,7 +173,7 @@ export default function CostsClient({ tasksWithCosts, userRole, total, page, tot
                 isEmployee={isEmployee}
                 hideSearch={false}
                 searchQuery={filters.search}
-                placeholder={locale === 'ar' ? 'بحث في الوصف أو الفئة' : 'Search Description or Category'}
+                placeholder={locale === 'ar' ? 'بحث في عنوان المهمة' : 'Search Task Title'}
                 hideStatusFilter={true}
                 sortBy={sortBy}
                 sortOrder={sortOrder}
