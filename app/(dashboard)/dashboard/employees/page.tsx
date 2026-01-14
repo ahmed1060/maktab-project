@@ -203,7 +203,7 @@ export default function EmployeesPage() {
     }
 
     if (loading) {
-        return <div>{t('loading_filters')}</div>
+        return <div style={{ direction: locale === 'ar' ? 'rtl' : 'ltr' }}>{t('loading_users')}</div>
     }
 
     if (userRole === 'EMPLOYEE') {

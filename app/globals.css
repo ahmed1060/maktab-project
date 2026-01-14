@@ -109,6 +109,15 @@ body::before {
   }
 }
 
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
 /* Responsive Utilities */
 .lg-hidden {
   display: block;

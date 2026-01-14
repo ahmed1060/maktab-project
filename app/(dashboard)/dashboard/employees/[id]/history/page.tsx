@@ -126,7 +126,7 @@ export default function EmployeeHistoryPage() {
         return `${days} ${days === 1 ? t('day_singular' as any) : t('days_label')}`
     }
 
-    if (loading) return <div style={{ padding: '2rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('loading_filters')}</div>
+    if (loading) return <div style={{ padding: '2rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('loading_data')}</div>
 
     return (
         <div style={{ direction: locale === 'ar' ? 'rtl' : 'ltr' }}>

@@ -294,7 +294,7 @@ export default function ClientDetailsPage() {
                 {isLoading ? (
                     <div className="flex flex-col items-center justify-center py-20 space-y-4">
                         <div className="w-12 h-12 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></div>
-                        <p className="text-slate-500 font-medium animate-pulse">{t('loading_filters')}</p>
+                        <p className="text-slate-500 font-medium animate-pulse">{t('loading_data')}</p>
                     </div>
                 ) : filteredSections.length === 0 ? (
                     <div className="glass-card flex flex-col items-center justify-center py-12 text-center text-slate-500">

@@ -417,7 +417,7 @@ export default function SectionNotesPage() {
                 </div>
 
                 {isLoading ? (
-                    <div className="text-center py-10 text-slate-500">{t('loading_filters')}</div>
+                    <div className="text-center py-10 text-slate-500">{t('loading_data')}</div>
                 ) : filteredNotes.length === 0 ? (
                     <div className="glass-card flex flex-col items-center justify-center py-12 text-center text-slate-500">
                         <span className="text-4xl mb-2">📝</span>

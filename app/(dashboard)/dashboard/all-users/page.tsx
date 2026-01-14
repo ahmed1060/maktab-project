@@ -244,7 +244,7 @@ export default function AllUsersPage() {
                 companyOptions={companies.map((c: Company) => ({ label: c.name, value: c.id }))}
             />
 
-            {loading ? <p style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('loading_filters')}</p> : (
+            {loading ? <p style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('loading_users')}</p> : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '3rem' }}>
 
                     {/* Super Admins Section */}
@@ -436,7 +436,7 @@ export default function AllUsersPage() {
                                     <tbody>
                                         {loadingDeleted ? (
                                             <tr>
-                                                <td colSpan={4} style={{ padding: '2rem', textAlign: 'center' }}>{t('loading_filters')}</td>
+                                                <td colSpan={4} style={{ padding: '2rem', textAlign: 'center' }}>{t('loading_users')}</td>
                                             </tr>
                                         ) : deletedUsersList.map((user: User) => (
                                             <tr key={user.id} style={{ borderBottom: '1px solid #e2e8f0' }}>

@@ -86,7 +86,7 @@ export default function EmployeeFilter({
     companyOptions
 }: EmployeeFilterProps) {
     const [employees, setEmployees] = useState<EmployeeType[]>([])
-    const [loading, setLoading] = useState(true)
+    const [loading, setLoading] = useState(!isEmployee && !hideEmployeeFilter)
     const [isPopupOpen, setIsPopupOpen] = useState(false)
     const [isMobile, setIsMobile] = useState(false)
     const { t, locale } = useLanguage()
@@ -213,9 +213,6 @@ export default function EmployeeFilter({
         (showCompanyFilter && selectedCompanyId) ? 1 : 0
     ].reduce((a, b) => a + b, 0)
 
-    if (loading) {
-        return <div style={{ fontSize: '0.875rem', color: '#64748b', marginBottom: '1.5rem' }}>{t('loading_filters')}</div>
-    }
 
     return (
         <div style={{
@@ -283,28 +280,40 @@ export default function EmployeeFilter({
                 {!isEmployee && !hideFilterButton && (
                     <div style={{ position: 'relative' }}>
                         <button
-                            onClick={() => setIsPopupOpen(!isPopupOpen)}
+                            onClick={() => !loading && setIsPopupOpen(!isPopupOpen)}
+                            disabled={loading}
                             style={{
                                 display: 'flex',
                                 alignItems: 'center',
                                 gap: '0.75rem',
                                 padding: '0 1.5rem',
                                 borderRadius: '1.25rem',
-                                background: activeFilterCount > 0 ? '#eff6ff' : 'white',
-                                border: `2px solid ${activeFilterCount > 0 ? '#3b82f6' : '#e2e8f0'}`,
-                                color: activeFilterCount > 0 ? '#2563eb' : '#475569',
+                                background: loading ? '#f1f5f9' : (activeFilterCount > 0 ? '#eff6ff' : 'white'),
+                                border: `2px solid ${loading ? '#e2e8f0' : (activeFilterCount > 0 ? '#3b82f6' : '#e2e8f0')}`,
+                                color: loading ? '#94a3b8' : (activeFilterCount > 0 ? '#2563eb' : '#475569'),
                                 fontWeight: '700',
                                 fontSize: '0.95rem',
-                                cursor: 'pointer',
+                                cursor: loading ? 'default' : 'pointer',
                                 transition: 'all 0.2s ease',
                                 position: 'relative',
-                                height: '48px'
+                                height: '48px',
+                                opacity: loading ? 0.7 : 1,
+                                animation: loading ? 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite' : 'none'
                             }}
                         >
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
-                            </svg>
-                            {t('filters_button' as any) || 'Filters'}
+                            {loading ? (
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                    <div style={{ width: '16px', height: '16px', borderRadius: '50%', border: '2px solid #cbd5e1', borderTopColor: '#94a3b8', animation: 'spin 1s linear infinite' }} />
+                                    <span>{t('loading_filters')}</span>
+                                </div>
+                            ) : (
+                                <>
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                        <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+                                    </svg>
+                                    {t('filters_button')}
+                                </>
+                            )}
                             {activeFilterCount > 0 && (
                                 <span style={{
                                     position: 'absolute',

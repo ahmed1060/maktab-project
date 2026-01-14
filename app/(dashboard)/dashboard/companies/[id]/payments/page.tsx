@@ -190,7 +190,7 @@ export default function CompanyPaymentsPage() {
                     </button>
                     <div style={{ clear: 'both' }}></div>
                     <h1 style={{ margin: 0 }}>{t('payment_history')}</h1>
-                    <p style={{ color: '#64748b', marginTop: '0.25rem' }}>{t('management_for')} <strong>{company?.name || t('loading_filters')}</strong></p>
+                    <p style={{ color: '#64748b', marginTop: '0.25rem' }}>{t('management_for')} <strong>{company?.name || t('loading_data')}</strong></p>
                 </div>
                 <button
                     className="btn btn-primary"

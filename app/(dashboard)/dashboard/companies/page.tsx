@@ -173,7 +173,7 @@ export default function CompaniesPage() {
                     </button>
                 </div>
 
-                {loading ? <p>{t('loading_filters')}</p> : (
+                {loading ? <p>{t('loading_companies')}</p> : (
                     <div style={{ background: 'white', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
                         <table style={{ width: '100%', borderCollapse: 'collapse', direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
                             <thead style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
