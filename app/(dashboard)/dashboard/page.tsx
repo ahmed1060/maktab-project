@@ -266,15 +266,34 @@ export default async function DashboardPage({ searchParams }: { searchParams: { 
                 </header>
 
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2rem', marginBottom: '3rem' }}>
-                    <div className="glass-card" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+                    <div className="glass-card" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: '1.5rem' }}>
                         <DonutChart title={t('task_distribution')} data={chartData} />
-                        <DonutChart
-                            title={t('credit_overview' as any)}
-                            data={[
-                                { label: t('remaining_credit' as any), value: currentUser?.dayOffCredit || 0, color: '#10b981' },
-                                { label: t('used_credit' as any), value: usedCredits, color: '#ef4444' }
-                            ]}
-                        />
+                        <div className="hide-on-mobile">
+                            <DonutChart
+                                title={t('credit_overview' as any)}
+                                data={[
+                                    { label: t('remaining_credit' as any), value: currentUser?.dayOffCredit || 0, color: '#10b981' },
+                                    { label: t('used_credit' as any), value: usedCredits, color: '#ef4444' }
+                                ]}
+                            />
+                        </div>
+                        <div className="show-on-mobile" style={{ display: 'none' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', height: '100%', justifyContent: 'center', alignItems: 'center', textAlign: 'center' }}>
+                                <h4 style={{ margin: '0 0 1rem 0', fontSize: '1rem', color: '#1e293b' }}>{t('remaining_credit' as any)}</h4>
+                                <div style={{
+                                    background: '#10b981',
+                                    color: 'white',
+                                    padding: '1rem 1.5rem',
+                                    borderRadius: '1.5rem',
+                                    fontSize: '2rem',
+                                    fontWeight: '800',
+                                    boxShadow: '0 10px 15px -3px rgba(16, 185, 129, 0.3)'
+                                }}>
+                                    {currentUser?.dayOffCredit || 0}
+                                </div>
+                                <div style={{ marginTop: '0.5rem', fontSize: '0.8rem', color: '#64748b', fontWeight: 'bold' }}>{t('days_label')}</div>
+                            </div>
+                        </div>
                     </div>
                     <div style={{ display: 'grid', gap: '1.5rem' }}>
                         <StatMetric label={t('overall_progress')} value={`${completedTasks}/${totalTasks}`} icon="🎯" color="#6366f1" percentage={completionRate} subLabel={t('completion_rate')} />

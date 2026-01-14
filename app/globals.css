@@ -145,6 +145,22 @@ body::before {
   display: block;
 }
 
+@media (max-width: 768px) {
+  .hide-on-mobile {
+    display: none !important;
+  }
+
+  .show-on-mobile {
+    display: block !important;
+  }
+}
+
+@media (min-width: 769px) {
+  .show-on-mobile {
+    display: none !important;
+  }
+}
+
 @media (max-width: 1023px) {
   .mobile-padding {
     padding-left: 1rem !important;
