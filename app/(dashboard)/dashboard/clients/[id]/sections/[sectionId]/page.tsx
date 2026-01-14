@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
-import { useParams } from 'next/navigation'
+import { useParams, useSearchParams } from 'next/navigation'
 import { useHeader } from '@/context/HeaderContext'
 import { createPortal } from 'react-dom'
 import ConfirmModal from '@/components/ConfirmModal'
@@ -81,6 +81,8 @@ export default function SectionNotesPage() {
     const [total, setTotal] = useState(0)
     const [totalPages, setTotalPages] = useState(0)
     const limit = 10
+    const searchParams = useSearchParams()
+    const highlightId = searchParams.get('highlight')
 
     // Server-side filtering is now implemented
     const filteredNotes = notes
@@ -403,6 +405,7 @@ export default function SectionNotesPage() {
                         dateTo={''}
                         selectedStatus={''}
                         searchQuery={searchQuery}
+                        placeholder={locale === 'ar' ? 'البحث في الملاحظات أو المنشئ' : 'Search content or creator'}
                         totalCount={total}
                         primaryAction={
                             <button
@@ -432,8 +435,9 @@ export default function SectionNotesPage() {
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
                         {filteredNotes.map((note, index) => (
                             <div
+                                id={`note-${note.id}`}
                                 key={note.id}
-                                className="glass-card group flex flex-col hover:shadow-xl transition-all duration-300"
+                                className={`glass-card group flex flex-col hover:shadow-xl transition-all duration-300 ${highlightId === note.id ? 'highlight-shading' : ''}`}
                                 style={{
                                     animationDelay: `${index * 50}ms`,
                                     padding: '1.5rem',

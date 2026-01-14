@@ -121,6 +121,31 @@ body::before {
   }
 }
 
+@keyframes highlight-fade {
+  0% {
+    background-color: rgba(99, 102, 241, 0.25);
+    box-shadow: 0 0 20px rgba(99, 102, 241, 0.2);
+    transform: scale(1.01);
+  }
+
+  10% {
+    background-color: rgba(99, 102, 241, 0.25);
+    transform: scale(1.01);
+  }
+
+  100% {
+    background-color: transparent;
+    box-shadow: none;
+    transform: scale(1);
+  }
+}
+
+.highlight-shading {
+  animation: highlight-fade 3s cubic-bezier(0.4, 0, 0.2, 1) forwards !important;
+  position: relative;
+  z-index: 10;
+}
+
 /* Responsive Utilities */
 .lg-hidden {
   display: block;

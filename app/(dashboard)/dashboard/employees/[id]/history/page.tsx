@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { useLanguage } from '@/context/LanguageContext'
 import { useSession } from 'next-auth/react'
@@ -45,6 +45,8 @@ export default function EmployeeHistoryPage() {
     const [adjustments, setAdjustments] = useState<SalaryAdjustment[]>([])
     const [rollbackLoading, setRollbackLoading] = useState<string | null>(null)
     const [alert, setAlert] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
+    const searchParams = useSearchParams()
+    const highlightId = searchParams.get('highlight')
 
     useEffect(() => {
         const fetchData = async () => {
@@ -73,6 +75,16 @@ export default function EmployeeHistoryPage() {
             fetchData()
         }
     }, [params.id])
+
+    useEffect(() => {
+        if (highlightId && params.id) {
+            // Check if highlightId might be an adjustment
+            // We can fetch adjustments and see if it's there
+            fetchAdjustments().then(() => {
+                setIsAdjustmentsModalOpen(true)
+            })
+        }
+    }, [highlightId, params.id])
 
     const fetchAdjustments = async () => {
         try {
@@ -330,16 +342,20 @@ export default function EmployeeHistoryPage() {
                                 <p style={{ textAlign: 'center', color: '#64748b' }}>{t('no_adjustments_found' as any)}</p>
                             ) : (
                                 adjustments.map(adj => (
-                                    <div key={adj.id} style={{
-                                        position: 'relative',
-                                        padding: '1.25rem',
-                                        borderRadius: '1rem',
-                                        background: 'white',
-                                        border: '1px solid #e2e8f0',
-                                        display: 'flex',
-                                        justifyContent: 'space-between',
-                                        alignItems: 'center'
-                                    }}>
+                                    <div
+                                        key={adj.id}
+                                        className={highlightId === adj.id ? 'highlight-shading' : ''}
+                                        style={{
+                                            position: 'relative',
+                                            padding: '1.25rem',
+                                            borderRadius: '1rem',
+                                            background: 'white',
+                                            border: '1px solid #e2e8f0',
+                                            display: 'flex',
+                                            justifyContent: 'space-between',
+                                            alignItems: 'center'
+                                        }}
+                                    >
                                         {/* Strikethrough Line */}
                                         {adj.status === 'ROLLED_BACK' && (
                                             <div style={{

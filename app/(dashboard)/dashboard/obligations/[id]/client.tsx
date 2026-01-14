@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Modal from '@/components/Modal'
 import { useLanguage } from '@/context/LanguageContext'
 
@@ -16,6 +16,10 @@ export default function ObligationDetailClient({ obligation, userRole }: { oblig
     const [isReverting, setIsReverting] = useState(false)
     const [showRevertConfirm, setShowRevertConfirm] = useState(false)
     const router = useRouter()
+    const searchParams = useSearchParams()
+    const highlightId = searchParams.get('highlight')
+    const shouldHighlight = highlightId === obligation.id
+
 
     useEffect(() => {
         // Fetch current user ID if needed for permission checks
@@ -260,7 +264,7 @@ export default function ObligationDetailClient({ obligation, userRole }: { oblig
     }
 
     return (
-        <div className="card" style={containerStyle}>
+        <div className={`card ${shouldHighlight ? 'highlight-shading' : ''}`} style={containerStyle}>
 
             {/* Deleted Assignee Alert */}
             {obligation.assignee?.status === 'DELETED' && ['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole) && (

@@ -20,6 +20,7 @@ interface EmployeeFilterProps {
     totalCost?: number
     selectedStatus?: string
     searchQuery?: string
+    placeholder?: string
     isEmployee?: boolean
     // New Props for Reorganization
     sortBy?: string
@@ -64,6 +65,7 @@ export default function EmployeeFilter({
     totalCost,
     selectedStatus = '',
     searchQuery = '',
+    placeholder,
     isEmployee = false,
     sortBy,
     sortOrder,
@@ -259,7 +261,7 @@ export default function EmployeeFilter({
                             type="text"
                             value={searchQuery}
                             onChange={(e) => handleSearchChange(e.target.value)}
-                            placeholder={t('search_placeholder')}
+                            placeholder={placeholder || t('search_placeholder')}
                             className="input"
                             style={{
                                 width: '100%',

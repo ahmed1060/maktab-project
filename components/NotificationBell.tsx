@@ -76,18 +76,42 @@ export default function NotificationBell() {
 
     const handleNotificationClick = (notification: Notification) => {
         if (notification.relatedId) {
-            // Determine if it's a task or obligation based on the notification type
-            if (notification.type.includes('TASK')) {
-                router.push(`/dashboard/tasks/${notification.relatedId}`)
-            } else if (notification.type.includes('OBLIGATION')) {
-                router.push(`/dashboard/obligations/${notification.relatedId}`)
-            } else if (notification.type.includes('NOTE')) {
-                // For notes, relatedId contains the full dashboard path
-                if (notification.relatedId && notification.relatedId.startsWith('/')) {
-                    router.push(notification.relatedId)
+            setIsOpen(false)
+
+            // Normalize type - handle subtypes like TASK_ASSIGNED, TASK_COMPLETED, etc.
+            const type = notification.type.toUpperCase()
+
+            if (type.includes('TASK')) {
+                router.push(`/dashboard/tasks/${notification.relatedId}?highlight=${notification.relatedId}`)
+            } else if (type.includes('OBLIGATION')) {
+                router.push(`/dashboard/obligations/${notification.relatedId}?highlight=${notification.relatedId}`)
+            } else if (type.includes('DAY_OFF')) {
+                router.push(`/dashboard/day-off-requests?highlight=${notification.relatedId}`)
+            } else if (type.includes('BONUS') || type.includes('DEDUCTION')) {
+                // Redirection to the user's own salary history
+                router.push(`/dashboard/employees/${notification.userId}/history?highlight=${notification.relatedId}`)
+            } else if (type.includes('PROFILE')) {
+                // If it's a request, go to requests page. If it's a personal profile update, go to own profile.
+                if (notification.message.toLowerCase().includes('request')) {
+                    router.push(`/dashboard/profile-requests?highlight=${notification.relatedId}`)
+                } else {
+                    router.push(`/dashboard/employees/${notification.userId}?highlight=${notification.relatedId}`)
+                }
+            } else if (type.includes('NOTE')) {
+                // For notes, relatedId contains the dashboard path
+                // We append the notification ID as highlight if the specific note ID isn't in the path
+                if (notification.relatedId.startsWith('/')) {
+                    const hasHighlight = notification.relatedId.includes('highlight=') || notification.relatedId.includes('noteId=')
+                    let path = notification.relatedId
+
+                    if (!hasHighlight) {
+                        path = path.includes('?')
+                            ? `${path}&highlight=${notification.id}`
+                            : `${path}?highlight=${notification.id}`
+                    }
+                    router.push(path)
                 }
             }
-            setIsOpen(false)
         }
     }
 

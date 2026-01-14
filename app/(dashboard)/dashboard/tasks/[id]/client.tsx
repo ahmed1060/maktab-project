@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 'use client'
 import { useState, useEffect, useCallback } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Modal from '@/components/Modal'
 import DiffViewer from '@/components/DiffViewer'
 import { useToast } from '@/context/ToastContext'
@@ -85,6 +85,10 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
     const [isReverting, setIsReverting] = useState(false)
 
     const router = useRouter()
+    const searchParams = useSearchParams()
+    const highlightId = searchParams.get('highlight')
+    const shouldHighlight = highlightId === task.id
+
     const { showToast } = useToast()
 
     // Sync state when props change (after router.refresh)
@@ -598,7 +602,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
     }
 
     return (
-        <div className="card" style={containerStyle}>
+        <div className={`card ${shouldHighlight ? 'highlight-shading' : ''}`} style={containerStyle}>
             {/* Deleted Assignee Alert - Check if primary is deleted */}
             {task.assignee?.status === 'DELETED' && ['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole) && !['COMPLETED', 'APPROVED', 'REJECTED'].includes(task.status) && (
                 <div style={{ ...alertStyle, background: '#fee2e2', border: '1px solid #ef4444', color: '#991b1b', flexDirection: 'column', gap: '1rem', alignItems: 'stretch' }}>

@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { useToast } from '@/context/ToastContext'
 import Image from 'next/image'
@@ -39,6 +39,8 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
     const router = useRouter()
     const { data: session, update } = useSession()
     const { showToast } = useToast()
+    const searchParams = useSearchParams()
+    const highlightId = searchParams.get('highlight')
     const userRole = session?.user?.role || ''
 
     useEffect(() => {
@@ -287,7 +289,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
 
 
     return (
-        <div className="glass-card" style={{ maxWidth: '600px', margin: '0 auto', padding: onClose ? '0' : '2rem', direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
+        <div className={`glass-card ${highlightId === userId ? 'highlight-shading' : ''}`} style={{ maxWidth: '600px', margin: '0 auto', padding: onClose ? '0' : '2rem', direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
             {!onClose && (
                 <h1 style={{ marginBottom: '1.5rem', fontSize: '1.5rem', fontWeight: 'bold', textAlign: locale === 'ar' ? 'right' : 'left' }}>
                     {isViewMode ? t('employee_profile') : (userId === session?.user?.id ? t('profile_title') : t('edit_employee_title'))}

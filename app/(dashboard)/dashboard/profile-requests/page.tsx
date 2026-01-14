@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useSession } from 'next-auth/react'
 import AccessDenied from '@/components/AccessDenied'
 import { useToast } from '@/context/ToastContext'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useLanguage } from '@/context/LanguageContext'
 import Pagination from '@/components/Pagination'
 
@@ -38,6 +38,8 @@ export default function ProfileRequestsPage() {
     const [page, setPage] = useState(1)
     const [totalPages, setTotalPages] = useState(0)
     const limit = 10
+    const searchParams = useSearchParams()
+    const highlightId = searchParams.get('highlight')
 
     const fetchRequests = useCallback(async () => {
         setLoading(true)
@@ -160,7 +162,7 @@ export default function ProfileRequestsPage() {
                                     <td colSpan={5} style={{ padding: '3rem', textAlign: 'center', color: '#94a3b8' }}>{t('no_pending_requests')}</td>
                                 </tr>
                             ) : requests.map(req => (
-                                <tr key={req.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                                <tr key={req.id} className={highlightId === req.id ? 'highlight-shading' : ''} style={{ borderBottom: '1px solid #f1f5f9' }}>
                                     <td style={{ padding: '1rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
                                         <div style={{ fontWeight: '600' }}>{req.user.firstName} {req.user.lastName}</div>
                                         <div style={{ fontSize: '0.8rem', color: '#64748b' }}>{req.user.email} • {t(getRoleKey(req.user.role) as any)}</div>

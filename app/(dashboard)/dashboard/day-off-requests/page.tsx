@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { useLanguage } from '@/context/LanguageContext'
 import DateRangePicker from '@/components/DateRangePicker'
@@ -68,6 +69,8 @@ export default function DayOffRequestsPage() {
     const [total, setTotal] = useState(0)
     const [totalPages, setTotalPages] = useState(0)
     const limit = 10
+    const searchParams = useSearchParams()
+    const highlightId = searchParams.get('highlight')
 
     const fetchRequests = useCallback(async () => {
         setLoading(true)
@@ -384,7 +387,7 @@ export default function DayOffRequestsPage() {
                             {filteredRequests.map((req, index) => (
                                 <div
                                     key={req.id}
-                                    className="glass-card hover:bg-white/60 transition-all duration-300 p-5 border border-white/40 shadow-sm relative overflow-hidden flex flex-col gap-4"
+                                    className={`glass-card hover:bg-white/60 transition-all duration-300 p-5 border border-white/40 shadow-sm relative overflow-hidden flex flex-col gap-4 ${highlightId === req.id ? 'highlight-shading' : ''}`}
                                     style={{
                                         animation: 'fadeIn 0.4s ease-out forwards',
                                         animationDelay: `${index * 50}ms`
