@@ -256,6 +256,7 @@ export default function EmployeesPage() {
                 dateTo={''}
                 selectedStatus={filters.status}
                 searchQuery={searchQuery}
+                placeholder={locale === 'ar' ? 'بحث عن الموظف بالاسم، أو البريد الإلكتروني، أو رقم الهاتف' : 'Search Name, Email, or Phone'}
                 totalCount={sortedEmployees.length}
                 showRoleFilter={true}
                 selectedRole={roleFilter}

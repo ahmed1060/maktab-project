@@ -405,7 +405,7 @@ export default function SectionNotesPage() {
                         dateTo={''}
                         selectedStatus={''}
                         searchQuery={searchQuery}
-                        placeholder={locale === 'ar' ? 'البحث في الملاحظات أو المنشئ' : 'Search content or creator'}
+                        placeholder={locale === 'ar' ? 'بحث في الملاحظات أو المنشئ' : 'Search Note Content or Creator'}
                         totalCount={total}
                         primaryAction={
                             <button

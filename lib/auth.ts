@@ -22,6 +22,18 @@ export const authOptions: NextAuthOptions = {
                         return null
                     }
 
+                    // RESTRICTION SYNC: user(20)@domain(10).com
+                    const emailRegex = /^[^@]{1,20}@[^@]{1,10}\.com$/
+                    if (!emailRegex.test(credentials.email)) {
+                        console.log('Backend Validation Fail: Email Format')
+                        return null
+                    }
+
+                    if (credentials.password.length < 6 || credentials.password.length > 20) {
+                        console.log('Backend Validation Fail: Password Length')
+                        return null
+                    }
+
                     // 1. Check SuperAdmin Table first
                     const superAdmin = await prisma.superAdmin.findUnique({
                         where: { email: credentials.email }

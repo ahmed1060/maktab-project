@@ -17,7 +17,7 @@ interface ObligationsClientProps {
 }
 
 export default function ObligationsClient({ obligations, total, page, totalPages, role }: ObligationsClientProps) {
-    const { t } = useLanguage()
+    const { t, locale } = useLanguage()
     const router = useRouter()
     const searchParams = useSearchParams()
 
@@ -96,6 +96,7 @@ export default function ObligationsClient({ obligations, total, page, totalPages
                 totalCount={total}
                 selectedStatus={filters.status}
                 searchQuery={filters.search}
+                placeholder={locale === 'ar' ? 'بحث في العنوان أو الوصف أو المسؤول' : 'Search Title, Description, or Assignee'}
                 isEmployee={role === 'EMPLOYEE'}
                 sortBy={sortBy}
                 sortOrder={sortOrder}

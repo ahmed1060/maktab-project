@@ -20,6 +20,20 @@ export default function LoginPage() {
         setLoading(true)
         setError('')
 
+        // Sync restrictions: user(20) @ domain(10) .com
+        const emailRegex = /^[^@]{1,20}@[^@]{1,10}\.com$/
+        if (!emailRegex.test(email)) {
+            setError(t('error_invalid_credentials')) // Specific enough for security
+            setLoading(false)
+            return
+        }
+
+        if (password.length < 6 || password.length > 20) {
+            setError(t('error_invalid_credentials'))
+            setLoading(false)
+            return
+        }
+
         try {
             console.log('Attempting login with:', email)
             const res = await signIn('credentials', {
@@ -130,8 +144,10 @@ export default function LoginPage() {
                                 type="email"
                                 className="input"
                                 value={email}
-                                onChange={(e) => setEmail(e.target.value)}
+                                onChange={(e) => setEmail(e.target.value.slice(0, 35))}
                                 required
+                                placeholder={locale === 'ar' ? 'user(20)@domain(10).com' : 'user(20)@domain(10).com'}
+                                maxLength={35}
                                 style={{
                                     padding: '0.625rem 1rem',
                                     height: '42px',
@@ -146,8 +162,10 @@ export default function LoginPage() {
                                 type={showPassword ? "text" : "password"}
                                 className="input"
                                 value={password}
-                                onChange={(e) => setPassword(e.target.value)}
+                                onChange={(e) => setPassword(e.target.value.slice(0, 20))}
                                 required
+                                placeholder={locale === 'ar' ? 'كلمة المرور (٢٠ حرف كحد أقصى)' : 'Password (max 20 chars)'}
+                                maxLength={20}
                                 style={{
                                     padding: '0.625rem 1rem',
                                     height: '42px',

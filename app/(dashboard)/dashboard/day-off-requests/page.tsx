@@ -308,7 +308,8 @@ export default function DayOffRequestsPage() {
                 selectedStatus={filters.status}
                 searchQuery={filters.search}
                 isEmployee={!isAdmin}
-                hideSearch={true}
+                hideSearch={false}
+                placeholder={locale === 'ar' ? 'بحث في السبب أو اسم الموظف' : 'Search Reason or Employee'}
                 totalCount={total}
                 allowedStatuses={['PENDING', 'APPROVED', 'REJECTED']}
                 primaryAction={

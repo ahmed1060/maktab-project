@@ -173,6 +173,7 @@ export default function ClientsPage() {
                     dateTo={''}
                     selectedStatus={''}
                     searchQuery={searchQuery}
+                    placeholder={locale === 'ar' ? 'بحث عن اسم العميل' : 'Search Client Name'}
                     totalCount={filteredClients.length}
                     primaryAction={
                         <button

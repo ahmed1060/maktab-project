@@ -18,7 +18,7 @@ interface TasksClientProps {
 }
 
 export default function TasksClient({ tasks, total, page, totalPages, role, currentUserId }: TasksClientProps) {
-    const { t } = useLanguage()
+    const { t, locale } = useLanguage()
     const router = useRouter()
     const searchParams = useSearchParams()
 
@@ -109,6 +109,7 @@ export default function TasksClient({ tasks, total, page, totalPages, role, curr
                 totalCount={total}
                 selectedStatus={filters.status}
                 searchQuery={filters.search}
+                placeholder={locale === 'ar' ? 'بحث في عنوان المهمة أو الوصف أو المنشئ' : 'Search Task Title, Description, or Creator'}
                 isEmployee={role === 'EMPLOYEE'}
                 sortBy={sortBy}
                 sortOrder={sortOrder}
