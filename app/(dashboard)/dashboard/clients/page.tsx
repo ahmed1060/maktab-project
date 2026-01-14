@@ -237,7 +237,14 @@ export default function ClientsPage() {
                                         </div>
 
                                         {/* Action Buttons Container */}
-                                        <div style={{ display: 'flex', gap: '0.5rem', marginLeft: locale === 'ar' ? '0' : 'auto', marginRight: locale === 'ar' ? 'auto' : '0' }}>
+                                        <div style={{
+                                            display: 'flex',
+                                            gap: '0.5rem',
+                                            flexWrap: 'wrap',
+                                            justifyContent: 'flex-start',
+                                            marginLeft: locale === 'ar' ? '0' : 'auto',
+                                            marginRight: locale === 'ar' ? 'auto' : '0'
+                                        }}>
                                             <Link
                                                 href={`/dashboard/clients/${client.id}`}
                                                 className="btn btn-primary"

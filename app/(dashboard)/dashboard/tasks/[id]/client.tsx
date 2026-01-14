@@ -304,7 +304,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
         try {
             const comments = JSON.parse(task.comments || '[]')
             const userLocationCount = Array.isArray(comments) ? comments.filter((c: any) => c.type === 'LOCATION_ADDED' && c.authorId === userId).length : 0
-            if (userLocationCount >= 2) {
+            if (userLocationCount >= 10) {
                 showToast(t('max_locations_error'), 'error')
                 return
             }

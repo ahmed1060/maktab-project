@@ -110,9 +110,12 @@ body::before {
 }
 
 @keyframes pulse {
-  0%, 100% {
+
+  0%,
+  100% {
     opacity: 1;
   }
+
   50% {
     opacity: 0.5;
   }
@@ -151,13 +154,25 @@ body::before {
   }
 
   .show-on-mobile {
-    display: block !important;
+    display: flex !important;
   }
 }
 
 @media (min-width: 769px) {
   .show-on-mobile {
     display: none !important;
+  }
+}
+
+.dashboard-chart-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+}
+
+@media (max-width: 1024px) {
+  .dashboard-chart-grid {
+    grid-template-columns: 1fr;
   }
 }
 
