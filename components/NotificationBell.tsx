@@ -9,6 +9,7 @@ interface Notification {
     type: string
     message: string
     read: boolean
+    userId: string
     relatedId: string | null
     createdAt: string
 }
