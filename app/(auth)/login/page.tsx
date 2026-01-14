@@ -146,7 +146,7 @@ export default function LoginPage() {
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value.slice(0, 35))}
                                 required
-                                placeholder={locale === 'ar' ? 'user(20)@domain(10).com' : 'user(20)@domain(10).com'}
+                                placeholder={locale === 'ar' ? 'أدخل البريد الإلكتروني' : 'Enter Email'}
                                 maxLength={35}
                                 style={{
                                     padding: '0.625rem 1rem',
@@ -164,7 +164,7 @@ export default function LoginPage() {
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value.slice(0, 20))}
                                 required
-                                placeholder={locale === 'ar' ? 'كلمة المرور (٢٠ حرف كحد أقصى)' : 'Password (max 20 chars)'}
+                                placeholder={locale === 'ar' ? 'أدخل كلمة المرور' : 'Enter Password'}
                                 maxLength={20}
                                 style={{
                                     padding: '0.625rem 1rem',
