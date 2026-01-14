@@ -98,32 +98,29 @@ export default function ClientDetailsPage() {
     const fetchData = useCallback(async () => {
         try {
             setError(null)
-            const [clientsRes, sectionsRes] = await Promise.all([
-                fetch('/api/clients'),
+            const [clientRes, sectionsRes] = await Promise.all([
+                fetch(`/api/clients?id=${clientId}`),
                 fetch(`/api/clients/${clientId}/sections?page=${page}&limit=${limit}&search=${encodeURIComponent(searchQuery)}`)
             ])
 
-            if (clientsRes.ok && sectionsRes.ok) {
-                const clientsData = await clientsRes.json()
+            if (clientRes.ok && sectionsRes.ok) {
+                const clientData = await clientRes.json()
                 const sectionsData = await sectionsRes.json()
 
-                const foundClient = clientsData.find((c: any) => c.id === clientId)
-                if (foundClient) {
-                    setClient(foundClient)
-                }
+                setClient(clientData)
                 setSections(sectionsData.data || [])
                 setTotal(sectionsData.total || 0)
                 setTotalPages(sectionsData.totalPages || 1)
             } else {
-                if (sectionsRes.status === 404) {
+                if (clientRes.status === 404 || sectionsRes.status === 404) {
                     setError(t('failed_fetch_client_details' as any))
                 } else {
-                    setError(t('failed_save_generic'))
+                    setError(t('failed_fetch_client_details' as any)) // Fetch failure is more accurate than 'save generic'
                 }
             }
         } catch (error) {
             console.error('Failed to fetch data', error)
-            setError(t('failed_save_generic'))
+            setError(t('failed_fetch_client_details' as any))
         } finally {
             setIsLoading(false)
         }

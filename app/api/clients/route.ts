@@ -20,6 +20,7 @@ export async function GET(request: Request) {
     try {
         const { searchParams } = new URL(request.url)
         const companyId = searchParams.get('companyId')
+        const clientId = searchParams.get('id')
         const session = await getServerSession(authOptions)
         const userId = (session?.user as any)?.id
 
@@ -41,6 +42,29 @@ export async function GET(request: Request) {
 
         if (!user) {
             return NextResponse.json({ error: 'User not found' }, { status: 404 })
+        }
+
+        // --- Single Client Fetch ---
+        if (clientId) {
+            const client = await prisma.businessClient.findUnique({
+                where: { id: clientId },
+                include: {
+                    createdBy: { select: { firstName: true, lastName: true, role: true } },
+                    lastEditedBy: { select: { firstName: true, lastName: true, role: true } },
+                    _count: { select: { sections: true } }
+                }
+            })
+
+            if (!client) {
+                return NextResponse.json({ error: 'Client not found' }, { status: 404 })
+            }
+
+            // Authorization check
+            if (user.role !== 'SUPER_ADMIN' && client.companyId !== user.companyId) {
+                return NextResponse.json({ error: 'Access denied' }, { status: 403 })
+            }
+
+            return NextResponse.json(client)
         }
 
         if (!user.companyId && user.role !== 'SUPER_ADMIN') {

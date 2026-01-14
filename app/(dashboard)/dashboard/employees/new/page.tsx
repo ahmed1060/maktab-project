@@ -30,9 +30,9 @@ export default function NewEmployeePage() {
 
     useEffect(() => {
         if (userRole === 'SUPER_ADMIN') {
-            fetch('/api/companies')
+            fetch('/api/companies?limit=1000')
                 .then(res => res.json())
-                .then(data => setCompanies(data))
+                .then(data => setCompanies(data.data || []))
                 .catch(err => console.error('Failed to fetch companies', err))
         }
     }, [userRole])

@@ -9,6 +9,11 @@ export async function POST() {
         return new NextResponse("Unauthorized", { status: 401 })
     }
 
+    // Super Admins are in a separate table and don't have lastActivity tracking like regular users
+    if (session.user.role === 'SUPER_ADMIN') {
+        return NextResponse.json({ success: true, status: 'ACTIVE' })
+    }
+
     try {
         const user = await prisma.user.update({
             where: { id: session.user.id },
