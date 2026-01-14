@@ -7,6 +7,7 @@ import DiffViewer from '@/components/DiffViewer'
 import { useToast } from '@/context/ToastContext'
 import DateTimePicker from '@/components/DateTimePicker'
 import { useLanguage } from '@/context/LanguageContext'
+import LocationSearchInput from '@/components/LocationSearchInput'
 
 const TrashIcon = ({ size = 18, color = "#ef4444" }: { size?: number, color?: string }) => (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -1284,13 +1285,15 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                         <div style={{ textAlign: locale === 'ar' ? 'left' : 'right', fontSize: '0.7rem', color: '#94a3b8', marginTop: '0.25rem' }}>{editForm.description.length}/1000</div>
                     </div>
                     <div style={{ marginBottom: '1.25rem' }}>
-                        <label className="label">{t('location_name_label')}</label>
-                        <input className="input" value={editForm.location} onChange={e => { setEditForm({ ...editForm, location: e.target.value.slice(0, 100) } as any); }} maxLength={100} />
-                        <div style={{ textAlign: locale === 'ar' ? 'left' : 'right', fontSize: '0.7rem', color: '#94a3b8', marginTop: '0.25rem' }}>{editForm.location.length}/100</div>
-                    </div>
-                    <div style={{ marginBottom: '1.25rem' }}>
-                        <label className="label">{t('location_link_label' as any)}</label>
-                        <input className="input" value={(editForm as any).locationLink} onChange={e => { setEditForm({ ...editForm, locationLink: e.target.value } as any); }} placeholder={t('location_link_placeholder' as any)} />
+                        <LocationSearchInput
+                            label={t('location_label' as any)}
+                            value={{ name: editForm.location, link: (editForm as any).locationLink }}
+                            onChange={(val) => {
+                                setEditForm({ ...editForm, location: val.name, locationLink: val.link } as any)
+                            }}
+                            placeholder={t('location_name_placeholder')}
+                            locale={locale}
+                        />
                     </div>
                     <div style={{ marginBottom: '1.25rem' }}>
                         <label className="label">{t('assignee_label')}</label>

@@ -76,6 +76,13 @@ export default function NewObligationPage() {
         if (Object.keys(errors).length > 0) {
             setFieldErrors(errors)
             setIsSubmitting(false)
+
+            // Auto-scroll to first error
+            const firstErrorField = Object.keys(errors)[0]
+            const element = document.getElementById(`field-${firstErrorField}`)
+            if (element) {
+                element.scrollIntoView({ behavior: 'smooth', block: 'center' })
+            }
             return
         }
 
@@ -121,7 +128,7 @@ export default function NewObligationPage() {
                 </div>
             )}
             <form onSubmit={handleSubmit}>
-                <div style={{ marginBottom: '1.25rem' }}>
+                <div id="field-title" style={{ marginBottom: '1.25rem' }}>
                     <label style={{ display: 'block', marginBottom: '0.5rem' }}>{t('title_label' as any)}</label>
                     <input
                         className="input"
@@ -143,7 +150,7 @@ export default function NewObligationPage() {
                         {title.length}/100
                     </div>
                 </div>
-                <div style={{ marginBottom: '1.25rem' }}>
+                <div id="field-description" style={{ marginBottom: '1.25rem' }}>
                     <label style={{ display: 'block', marginBottom: '0.5rem' }}>{t('description_label' as any)}</label>
                     <textarea
                         className="input"
@@ -166,14 +173,14 @@ export default function NewObligationPage() {
                         {description.length}/500
                     </div>
                 </div>
-                <div style={{ marginBottom: '1.25rem' }}>
+                <div id="field-assigneeId" style={{ marginBottom: '1.25rem' }}>
                     <label style={{ display: 'block', marginBottom: '0.5rem' }}>{t('assignee_label')}</label>
                     <select className="input" value={assigneeId} onChange={e => setAssigneeId(e.target.value)} required style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>
                         <option value="">{t('select_employee_placeholder')}</option>
                         {users.map(u => <option key={u.id} value={u.id}>{u.firstName} {u.lastName} - {t(`role_${u.role?.toLowerCase().replace('team_leader', 'team_leader').replace('employee', 'employee').replace('admin', 'admin')}` as any)}</option>)}
                     </select>
                 </div>
-                <div style={{ marginBottom: '1.25rem' }}>
+                <div id="field-deadline" style={{ marginBottom: '1.25rem' }}>
                     <DateTimePicker
                         label={t('deadline_label')}
                         value={deadline}
@@ -215,7 +222,7 @@ export default function NewObligationPage() {
                         {t('cancel')}
                     </button>
                 </div>
-            </form>
-        </div>
+            </form >
+        </div >
     )
 }

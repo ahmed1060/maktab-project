@@ -5,6 +5,7 @@ import { useSession } from 'next-auth/react'
 import DateTimePicker from '@/components/DateTimePicker'
 import { useLanguage } from '@/context/LanguageContext'
 import { useCompany } from '@/context/CompanyContext'
+import LocationSearchInput from '@/components/LocationSearchInput'
 
 export default function NewTaskPage() {
     const { t, locale } = useLanguage()
@@ -84,6 +85,13 @@ export default function NewTaskPage() {
         if (Object.keys(errors).length > 0) {
             setFieldErrors(errors)
             setIsSubmitting(false)
+
+            // Auto-scroll to first error
+            const firstErrorField = Object.keys(errors)[0]
+            const element = document.getElementById(`field-${firstErrorField}`)
+            if (element) {
+                element.scrollIntoView({ behavior: 'smooth', block: 'center' })
+            }
             return
         }
 
@@ -137,7 +145,7 @@ export default function NewTaskPage() {
                 </div>
             )}
             <form onSubmit={handleSubmit}>
-                <div style={{ marginBottom: '1.25rem' }}>
+                <div id="field-title" style={{ marginBottom: '1.25rem' }}>
                     <label style={{ display: 'block', marginBottom: '0.5rem' }}>{t('title_label' as any)}</label>
                     <input
                         className="input"
@@ -159,7 +167,7 @@ export default function NewTaskPage() {
                         {title.length}/100
                     </div>
                 </div>
-                <div style={{ marginBottom: '1.25rem' }}>
+                <div id="field-description" style={{ marginBottom: '1.25rem' }}>
                     <label style={{ display: 'block', marginBottom: '0.5rem' }}>{t('description_label' as any)}</label>
                     <textarea
                         className="input"
@@ -183,28 +191,18 @@ export default function NewTaskPage() {
                     </div>
                 </div>
                 <div style={{ marginBottom: '1.25rem' }}>
-                    <label style={{ display: 'block', marginBottom: '0.5rem' }}>{t('location_name_label')}</label>
-                    <input
-                        className="input"
-                        value={location}
-                        onChange={e => setLocation(e.target.value.slice(0, 100))}
+                    <LocationSearchInput
+                        label={t('location_label' as any)}
+                        value={{ name: location, link: locationLink }}
+                        onChange={(val) => {
+                            setLocation(val.name)
+                            setLocationLink(val.link)
+                        }}
                         placeholder={t('location_name_placeholder')}
-                        maxLength={100}
-                    />
-                    <div style={{ fontSize: '0.75rem', color: location.length >= 100 ? '#ef4444' : '#94a3b8', textAlign: locale === 'ar' ? 'left' : 'right', marginTop: '0.25rem' }}>
-                        {location.length}/100
-                    </div>
-                </div>
-                <div style={{ marginBottom: '1.25rem' }}>
-                    <label style={{ display: 'block', marginBottom: '0.5rem' }}>{t('location_link_label' as any)}</label>
-                    <input
-                        className="input"
-                        value={locationLink}
-                        onChange={e => setLocationLink(e.target.value)}
-                        placeholder={t('location_link_placeholder' as any)}
+                        locale={locale}
                     />
                 </div>
-                <div style={{ marginBottom: '1.25rem' }}>
+                <div id="field-assigneeIds" style={{ marginBottom: '1.25rem' }}>
                     <label style={{ display: 'block', marginBottom: '0.5rem' }}>{t('assignee_label')}</label>
                     <input
                         type="text"
@@ -261,7 +259,7 @@ export default function NewTaskPage() {
                         </div>
                     )}
                 </div>
-                <div style={{ marginBottom: '1.25rem' }}>
+                <div id="field-deadline" style={{ marginBottom: '1.25rem' }}>
                     <DateTimePicker
                         label={t('deadline_label')}
                         value={deadline}
