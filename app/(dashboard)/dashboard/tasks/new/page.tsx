@@ -14,6 +14,7 @@ export default function NewTaskPage() {
     const [deadline, setDeadline] = useState('')
     const [difficulty, setDifficulty] = useState('')
     const [location, setLocation] = useState('')
+    const [locationLink, setLocationLink] = useState('')
     const [users, setUsers] = useState<any[]>([])
     const router = useRouter()
 
@@ -95,7 +96,7 @@ export default function NewTaskPage() {
                     assigneeIds,
                     deadline,
                     difficulty: parseInt(difficulty) || 0,
-                    location
+                    location: location || locationLink ? JSON.stringify({ name: location, link: locationLink }) : ''
                 }),
                 headers: { 'Content-Type': 'application/json' }
             })
@@ -193,6 +194,15 @@ export default function NewTaskPage() {
                     <div style={{ fontSize: '0.75rem', color: location.length >= 100 ? '#ef4444' : '#94a3b8', textAlign: locale === 'ar' ? 'left' : 'right', marginTop: '0.25rem' }}>
                         {location.length}/100
                     </div>
+                </div>
+                <div style={{ marginBottom: '1.25rem' }}>
+                    <label style={{ display: 'block', marginBottom: '0.5rem' }}>{t('location_link_label' as any)}</label>
+                    <input
+                        className="input"
+                        value={locationLink}
+                        onChange={e => setLocationLink(e.target.value)}
+                        placeholder={t('location_link_placeholder' as any)}
+                    />
                 </div>
                 <div style={{ marginBottom: '1.25rem' }}>
                     <label style={{ display: 'block', marginBottom: '0.5rem' }}>{t('assignee_label')}</label>

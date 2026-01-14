@@ -34,6 +34,16 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
             return typeof taskObj.memberPaymentStatus === 'string' ? JSON.parse(taskObj.memberPaymentStatus) : taskObj.memberPaymentStatus
         } catch { return {} }
     }
+    const parseLocation = (locStr: string) => {
+        if (!locStr) return { name: '', link: '' }
+        try {
+            if (locStr.startsWith('{')) {
+                const parsed = JSON.parse(locStr)
+                return { name: parsed.name || '', link: parsed.link || '' }
+            }
+        } catch { }
+        return { name: locStr, link: '' }
+    }
     const [task, setTask] = useState(initialTask)
     const [existingAttachments, setExistingAttachments] = useState<any[]>(() => {
         try {
@@ -67,7 +77,8 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
         assigneeIds: initialTask.assignees?.map((a: any) => a.id) || [initialTask.assigneeId],
         deadline: initialTask.deadline,
         difficulty: initialTask.difficulty,
-        location: initialTask.location || ''
+        location: parseLocation(initialTask.location || '').name,
+        locationLink: parseLocation(initialTask.location || '').link
     })
     const [editFieldErrors, setEditFieldErrors] = useState({ title: '', description: '' })
     const [isReviewModalOpen, setIsReviewModalOpen] = useState(false)
@@ -103,7 +114,8 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
             assigneeIds: initialTask.assignees?.map((a: any) => a.id) || [initialTask.assigneeId],
             deadline: initialTask.deadline,
             difficulty: initialTask.difficulty,
-            location: initialTask.location || ''
+            location: parseLocation(initialTask.location || '').name,
+            locationLink: parseLocation(initialTask.location || '').link
         })
         setReviewDifficulty(initialTask.difficulty)
     }, [initialTask])
@@ -452,7 +464,8 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
             assigneeIds: task.assignees?.map((a: any) => a.id) || [task.assigneeId],
             deadline: task.deadline,
             difficulty: task.difficulty,
-            location: task.location || ''
+            location: parseLocation(task.location || '').name,
+            locationLink: parseLocation(task.location || '').link
         })
         setIsEditing(true)
     }
@@ -479,7 +492,10 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
         try {
             const res = await fetch(`/api/tasks/${task.id}/details`, {
                 method: 'PUT',
-                body: JSON.stringify(editForm),
+                body: JSON.stringify({
+                    ...editForm,
+                    location: editForm.location || editForm.locationLink ? JSON.stringify({ name: editForm.location, link: editForm.locationLink }) : ''
+                }),
                 headers: { 'Content-Type': 'application/json' }
             })
             if (!res.ok) throw new Error('Update failed')
@@ -719,11 +735,21 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                     )}
                 </div>
                 <p style={{ fontSize: '1.1rem', margin: 0, whiteSpace: 'pre-wrap' }}>{task.description}</p>
-                {task.location && (
-                    <div style={{ marginTop: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#0369a1', fontSize: '0.95rem', fontWeight: '500' }}>
-                        <span>📍</span> {task.location}
-                    </div>
-                )}
+                {task.location && (() => {
+                    const { name, link } = parseLocation(task.location)
+                    return (
+                        <div style={{ marginTop: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#0369a1', fontSize: '0.95rem', fontWeight: '500' }}>
+                            <span>📍</span>
+                            {link ? (
+                                <a href={link} target="_blank" rel="noopener noreferrer" style={{ color: '#0369a1', textDecoration: 'underline' }}>
+                                    {name || link}
+                                </a>
+                            ) : (
+                                <span>{name}</span>
+                            )}
+                        </div>
+                    )
+                })()}
             </div>
 
             <div style={{ marginTop: '1rem', color: '#64748b', fontSize: '0.9rem' }}>
@@ -1259,8 +1285,12 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                     </div>
                     <div style={{ marginBottom: '1.25rem' }}>
                         <label className="label">{t('location_name_label')}</label>
-                        <input className="input" value={editForm.location} onChange={e => { setEditForm({ ...editForm, location: e.target.value.slice(0, 100) }); }} maxLength={100} />
+                        <input className="input" value={editForm.location} onChange={e => { setEditForm({ ...editForm, location: e.target.value.slice(0, 100) } as any); }} maxLength={100} />
                         <div style={{ textAlign: locale === 'ar' ? 'left' : 'right', fontSize: '0.7rem', color: '#94a3b8', marginTop: '0.25rem' }}>{editForm.location.length}/100</div>
+                    </div>
+                    <div style={{ marginBottom: '1.25rem' }}>
+                        <label className="label">{t('location_link_label' as any)}</label>
+                        <input className="input" value={(editForm as any).locationLink} onChange={e => { setEditForm({ ...editForm, locationLink: e.target.value } as any); }} placeholder={t('location_link_placeholder' as any)} />
                     </div>
                     <div style={{ marginBottom: '1.25rem' }}>
                         <label className="label">{t('assignee_label')}</label>
