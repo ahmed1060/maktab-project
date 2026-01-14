@@ -136,10 +136,10 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
 
             // Add location to comments if provided
             if (location) {
-                // Per-user location limit: 2 per user
+                // Per-user location limit: 10 per user
                 const userLocations = comments.filter((c: any) => c.type === 'LOCATION_ADDED' && c.authorId === userId)
-                if (userLocations.length >= 2) {
-                    throw new Error("You have reached the limit of 2 locations for this task.")
+                if (userLocations.length >= 10) {
+                    throw new Error("You have reached the limit of 10 locations for this task.")
                 }
 
                 comments.push({
