@@ -104,10 +104,10 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
 
         const fetchCompanies = async () => {
             try {
-                const res = await fetch('/api/companies')
+                const res = await fetch('/api/companies?limit=1000')
                 if (res.ok) {
                     const data = await res.json()
-                    setCompanies(data)
+                    setCompanies(data.data || [])
                 }
             } catch (e) {
                 console.error('Failed to fetch companies', e)
