@@ -69,6 +69,16 @@ export default function ProfileRequestsPage() {
         }
     }, [session, fetchRequests])
 
+    // Scroll to highlighted request
+    useEffect(() => {
+        if (highlightId && !loading && requests.length > 0) {
+            const element = document.getElementById(`request-${highlightId}`);
+            if (element) {
+                element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        }
+    }, [highlightId, loading, requests]);
+
     const handleAction = async (id: string, action: 'approve' | 'reject') => {
         setProcessingId(id)
         try {
@@ -162,7 +172,7 @@ export default function ProfileRequestsPage() {
                                     <td colSpan={5} style={{ padding: '3rem', textAlign: 'center', color: '#94a3b8' }}>{t('no_pending_requests')}</td>
                                 </tr>
                             ) : requests.map(req => (
-                                <tr key={req.id} className={highlightId === req.id ? 'highlight-shading' : ''} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                                <tr key={req.id} id={`request-${req.id}`} className={highlightId === req.id ? 'highlight-shading' : ''} style={{ borderBottom: '1px solid #f1f5f9' }}>
                                     <td style={{ padding: '1rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
                                         <div style={{ fontWeight: '600' }}>{req.user.firstName} {req.user.lastName}</div>
                                         <div style={{ fontSize: '0.8rem', color: '#64748b' }}>{req.user.email} • {t(getRoleKey(req.user.role) as any)}</div>

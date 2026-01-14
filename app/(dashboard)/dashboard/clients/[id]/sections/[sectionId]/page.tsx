@@ -163,6 +163,16 @@ export default function SectionNotesPage() {
         }
     }, [fetchData, clientId, sectionId])
 
+    // Scroll to highlighted note
+    useEffect(() => {
+        if (highlightId && !isLoading && notes.length > 0) {
+            const element = document.getElementById(`note-${highlightId}`);
+            if (element) {
+                element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        }
+    }, [highlightId, isLoading, notes]);
+
     const handleFiles = (files: File[]) => {
         const MAX_SIZE = 4 * 1024 * 1024
         const validFiles = files.filter(f => {

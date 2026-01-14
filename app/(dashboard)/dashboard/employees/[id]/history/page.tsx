@@ -98,6 +98,20 @@ export default function EmployeeHistoryPage() {
         }
     }
 
+    // Scroll to highlighted adjustment inside modal
+    useEffect(() => {
+        if (highlightId && isAdjustmentsModalOpen && adjustments.length > 0) {
+            // Use a small timeout to ensure the modal content is rendered
+            const timer = setTimeout(() => {
+                const element = document.getElementById(`adj-${highlightId}`);
+                if (element) {
+                    element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            }, 100);
+            return () => clearTimeout(timer);
+        }
+    }, [highlightId, isAdjustmentsModalOpen, adjustments]);
+
     const handleRollback = async (adjId: string) => {
         setRollbackLoading(adjId)
         try {
@@ -344,6 +358,7 @@ export default function EmployeeHistoryPage() {
                                 adjustments.map(adj => (
                                     <div
                                         key={adj.id}
+                                        id={`adj-${adj.id}`}
                                         className={highlightId === adj.id ? 'highlight-shading' : ''}
                                         style={{
                                             position: 'relative',

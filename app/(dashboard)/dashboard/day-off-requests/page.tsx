@@ -122,6 +122,16 @@ export default function DayOffRequestsPage() {
         }
     }, [status, fetchRequests, fetchUserCredit, isAdmin, user?.id])
 
+    // Scroll to highlighted request
+    useEffect(() => {
+        if (highlightId && !loading && requests.length > 0) {
+            const element = document.getElementById(`request-${highlightId}`);
+            if (element) {
+                element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        }
+    }, [highlightId, loading, requests]);
+
     // SECURE: Automatically switch deduction type if credit is insufficient
     useEffect(() => {
         if (isApprovalModalOpen && selectedRequest && deductionType === 'CREDIT') {
@@ -387,6 +397,7 @@ export default function DayOffRequestsPage() {
                             {filteredRequests.map((req, index) => (
                                 <div
                                     key={req.id}
+                                    id={`request-${req.id}`}
                                     className={`glass-card hover:bg-white/60 transition-all duration-300 p-5 border border-white/40 shadow-sm relative overflow-hidden flex flex-col gap-4 ${highlightId === req.id ? 'highlight-shading' : ''}`}
                                     style={{
                                         animation: 'fadeIn 0.4s ease-out forwards',
