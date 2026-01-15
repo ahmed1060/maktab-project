@@ -46,7 +46,13 @@ export default function LocationSearchInput({ value, onChange, placeholder, labe
 
         try {
             const at = '30.0444,31.2357'
-            const res = await fetch(`https://autosuggest.search.hereapi.com/v1/autosuggest?q=${encodeURIComponent(text)}&at=${at}&apiKey=${apiKey}&lang=${locale === 'ar' ? 'ar' : 'en'}`)
+
+            // Dynamic language detection: Check if the text contains Arabic characters
+            // [\u0600-\u06FF] is the Unicode range for Arabic characters
+            const isArabicInput = /[\u0600-\u06FF]/.test(text)
+            const detectedLang = isArabicInput ? 'ar' : 'en'
+
+            const res = await fetch(`https://autosuggest.search.hereapi.com/v1/autosuggest?q=${encodeURIComponent(text)}&at=${at}&apiKey=${apiKey}&lang=${detectedLang}`)
 
             if (res.ok) {
                 const data = await res.json()
