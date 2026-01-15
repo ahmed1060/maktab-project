@@ -4,6 +4,7 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { verifyResourceAccess } from "@/lib/security"
 import { translations, Locale } from "@/lib/translations"
+import { extractCoords, calculateDistance } from "@/lib/location"
 
 export async function PUT(req: Request, { params }: { params: { id: string } }) {
     const session = await getServerSession(authOptions)
@@ -221,6 +222,28 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
                             })
                         }
                     }
+                }
+            }
+
+            // 4. AUTOMATIC LOCATION VERIFICATION
+            // Only proceed if the task has a defined target location
+            if (currentTask.location) {
+                const targetCoords = extractCoords(currentTask.location)
+                if (targetCoords) {
+                    comments = comments.map((c: any) => {
+                        // Auto-verify if no status yet, OR if the existing status was set by the system (autoVerified: true)
+                        // This allows re-evaluating history if the Admin edits the task's target location.
+                        // Manual Admin overrides (no autoVerified flag) are respected and never overwritten.
+                        if (c.type === 'LOCATION_ADDED' && c.location && (!c.verificationStatus || c.autoVerified)) {
+                            const submittedCoords = extractCoords(c.location)
+                            if (submittedCoords) {
+                                const distance = calculateDistance(targetCoords, submittedCoords)
+                                c.verificationStatus = distance <= 100 ? 'CORRECT' : 'WRONG'
+                                c.autoVerified = true // Mark as system-verified
+                            }
+                        }
+                        return c
+                    })
                 }
             }
 

@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { verifyResourceAccess } from "@/lib/security"
+import { extractCoords, calculateDistance } from "@/lib/location"
 
 export async function PUT(req: Request, { params }: { params: { id: string } }) {
     const session = await getServerSession(authOptions)
@@ -60,7 +61,35 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
             if (existingTask.title !== title) changes.title = { from: existingTask.title, to: title }
             if (existingTask.description !== description) changes.description = { from: existingTask.description, to: description }
             if (existingTask.location !== location) changes.location = { from: existingTask.location, to: location }
-            // Optional: detect assignee changes if needed, but the array comparison is complex for a simple audit log
+            // Optional: detect assignee changes if needed, but the array comparison is complex for a simple
+        }
+
+        // 4. AUTOMATIC LOCATION VERIFICATION
+        // RE-evaluate previous locations if target location is present
+        let finalComments = [...existingComments, {
+            text: "Task details updated",
+            type: "TASK_EDITED",
+            author: `${(session.user as any).role} ${(session.user as any).name}`,
+            changes: changes,
+            date: new Date().toISOString()
+        }]
+
+        if (location) {
+            const targetCoords = extractCoords(location)
+            if (targetCoords) {
+                finalComments = finalComments.map((c: any) => {
+                    // Re-verify entries marked by system OR with no status
+                    if (c.type === 'LOCATION_ADDED' && c.location && (!c.verificationStatus || c.autoVerified)) {
+                        const submittedCoords = extractCoords(c.location)
+                        if (submittedCoords) {
+                            const distance = calculateDistance(targetCoords, submittedCoords)
+                            c.verificationStatus = distance <= 100 ? 'CORRECT' : 'WRONG'
+                            c.autoVerified = true
+                        }
+                    }
+                    return c
+                })
+            }
         }
 
         const updateData: any = {
@@ -74,13 +103,7 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
             difficulty,
             location,
             isEdited: true,
-            comments: JSON.stringify([...existingComments, {
-                text: "Task details updated",
-                type: "TASK_EDITED",
-                author: `${(session.user as any).role} ${(session.user as any).name}`,
-                changes: changes,
-                date: new Date().toISOString()
-            }])
+            comments: JSON.stringify(finalComments)
         }
 
         const task = await prisma.task.update({
