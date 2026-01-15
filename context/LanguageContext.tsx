@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useTransition } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { Locale, TranslationKey, translations } from '@/lib/translations';
@@ -20,6 +20,7 @@ export function LanguageProvider({ children, initialLocale }: { children: React.
     const [locale, setLocale] = useState<Locale>(initialLocale);
     const [hasSyncedWithSession, setHasSyncedWithSession] = useState(false);
     const [isChangingLocale, setIsChangingLocale] = useState(false);
+    const [isPending, startTransition] = useTransition();
 
     // Initial language detection
     useEffect(() => {
@@ -80,14 +81,21 @@ export function LanguageProvider({ children, initialLocale }: { children: React.
                 ]);
             }
 
-            // 3. Refresh server components WITHOUT a full page white-screen reload
-            router.refresh();
-
-            // Increase buffer to 1000ms to ensure server components have time to re-render
-            // specifically for the dashboard cards and headers.
+            // 3. Coordination Delay & Refresh
+            // Small delay (150ms) to ensure the cookie is fully visible to the next server request
+            // before we trigger the refresh.
             setTimeout(() => {
-                setIsChangingLocale(false);
-            }, 1000);
+                startTransition(() => {
+                    router.refresh();
+
+                    // 4. Final Buffer
+                    // Increase buffer to 2000ms to ensure server components have time to re-render
+                    // and propagate correctly on the server before hiding the overlay.
+                    setTimeout(() => {
+                        setIsChangingLocale(false);
+                    }, 2000);
+                });
+            }, 150);
 
         } catch (error) {
             console.error('Failed to switch language:', error);
