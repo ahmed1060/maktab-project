@@ -47,7 +47,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
                     position: 'fixed',
                     top: '20px',
                     right: '20px', // or left, or center
-                    zIndex: 9999,
+                    zIndex: 10001,
                     display: 'flex',
                     flexDirection: 'column',
                     gap: '10px',
@@ -62,8 +62,8 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
                                 boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
                                 padding: '16px',
                                 borderLeft: `4px solid ${toast.type === 'success' ? '#22c55e' :
-                                        toast.type === 'error' ? '#ef4444' :
-                                            toast.type === 'warning' ? '#f59e0b' : '#3b82f6'
+                                    toast.type === 'error' ? '#ef4444' :
+                                        toast.type === 'warning' ? '#f59e0b' : '#3b82f6'
                                     }`,
                                 minWidth: '300px',
                                 maxWidth: '400px',

@@ -52,7 +52,7 @@ export async function POST(req: Request) {
         }
 
         if (!targetUser.plainPasswordEnc) {
-            return new NextResponse("Password not available for revelation (not yet updated since feature launch)", { status: 400 })
+            return new NextResponse("password_not_available", { status: 400 })
         }
 
         // 3. Decrypt and return

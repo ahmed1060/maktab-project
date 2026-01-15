@@ -583,7 +583,8 @@ export const translations = {
         reveal_button: "Reveal",
         password_revealed: "Password revealed successfully",
         incorrect_password: "Incorrect password",
-        enter_your_password: "Enter your password"
+        enter_your_password: "Enter your password",
+        password_not_available: "Password not available. Please reset the user's password once to enable revelation."
     },
     ar: {
         welcome_back: "مرحباً بك مجدداً",
@@ -1168,7 +1169,8 @@ export const translations = {
         reveal_button: "كشف",
         password_revealed: "تم كشف كلمة المرور بنجاح",
         incorrect_password: "كلمة المرور غير صحيحة",
-        enter_your_password: "أدخل كلمة المرور الخاصة بك"
+        enter_your_password: "أدخل كلمة المرور الخاصة بك",
+        password_not_available: "كلمة المرور غير متوفرة. يرجى إعادة تعيين كلمة مرور المستخدم مرة واحدة لتمكين الكشف."
     }
 };
 
