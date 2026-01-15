@@ -38,17 +38,29 @@ export default function LocationSearchInput({ value, onChange, placeholder, labe
         }
         setLoading(true)
         const apiKey = process.env.NEXT_PUBLIC_HERE_API_KEY
+        if (!apiKey) {
+            console.warn('HERE API Key is missing')
+            setLoading(false)
+            return
+        }
+
         try {
-            // Using a default bias for the region if possible, or generic
-            const at = '30.0444,31.2357' // Cairo, Egypt as a bias center
+            const at = '30.0444,31.2357'
             const res = await fetch(`https://autosuggest.search.hereapi.com/v1/autosuggest?q=${encodeURIComponent(text)}&at=${at}&apiKey=${apiKey}&lang=${locale === 'ar' ? 'ar' : 'en'}`)
 
             if (res.ok) {
                 const data = await res.json()
-                // Filter items that have a title and address
-                const items = (data.items || []).filter((item: any) => item.title && item.address)
+                const items = (data.items || []).filter((item: any) => item.title)
                 setSuggestions(items)
                 setShowSuggestions(true)
+            } else {
+                const err = await res.json().catch(() => ({}))
+                console.error('HERE API Error Details:', {
+                    status: res.status,
+                    message: err.message,
+                    error: err.error,
+                    description: err.error_description
+                })
             }
         } catch (error) {
             console.error('Location search failed', error)
