@@ -80,7 +80,7 @@ export default function LocationSearchInput({ value, onChange, placeholder, labe
     }, [query])
 
     const handleSelect = (s: any) => {
-        const name = s.address.label || s.title
+        const name = s.address?.label || s.title
         let link = ''
         if (s.position) {
             link = `https://www.google.com/maps?q=${s.position.lat},${s.position.lng}`
@@ -148,7 +148,7 @@ export default function LocationSearchInput({ value, onChange, placeholder, labe
                             onMouseEnter={(e) => (e.currentTarget.style.background = '#f8fafc')}
                             onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
                         >
-                            {s.address.label || s.title}
+                            {s.address?.label || s.title}
                         </div>
                     ))}
                 </div>
