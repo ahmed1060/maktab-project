@@ -93,7 +93,7 @@ export function LanguageProvider({ children, initialLocale }: { children: React.
             // track the RSC payload application, so we use a small timeout for safety.
             setTimeout(() => {
                 setIsChangingLocale(false);
-            }, 2500);
+            }, 2400);
         });
     };
 
