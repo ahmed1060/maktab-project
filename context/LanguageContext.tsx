@@ -1,10 +1,11 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, useTransition } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { Locale, TranslationKey, translations } from '@/lib/translations';
 import LoadingSpinner from '@/components/LoadingSpinner';
+import { setLanguageAction } from '@/app/actions/language';
 
 interface LanguageContextType {
     locale: Locale;
@@ -20,7 +21,6 @@ export function LanguageProvider({ children, initialLocale }: { children: React.
     const [locale, setLocale] = useState<Locale>(initialLocale);
     const [hasSyncedWithSession, setHasSyncedWithSession] = useState(false);
     const [isChangingLocale, setIsChangingLocale] = useState(false);
-    const [isPending, startTransition] = useTransition();
 
     // Initial language detection
     useEffect(() => {
@@ -66,36 +66,24 @@ export function LanguageProvider({ children, initialLocale }: { children: React.
             document.documentElement.dir = newLocale === 'ar' ? 'rtl' : 'ltr';
             document.documentElement.lang = newLocale;
 
-            // 2. Background sync if authenticated
-            if (status === 'authenticated') {
-                // We run database update and session update
-                // We don't necessarily need to await them before refreshing the UI,
-                // but awaiting ensures the server components see the change.
-                await Promise.all([
-                    fetch('/api/user/language', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ language: newLocale }),
-                    }),
-                    update({ language: newLocale })
-                ]);
-            }
+            // 3. Sync with Server and Revalidate
+            // We await the server action alongside DB and Session updates.
+            // The Server Action handles the cookie and triggers revalidatePath('/').
+            await Promise.all([
+                setLanguageAction(newLocale),
+                status === 'authenticated' ? fetch('/api/user/language', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ language: newLocale }),
+                }) : Promise.resolve(),
+                status === 'authenticated' ? update({ language: newLocale }) : Promise.resolve()
+            ]);
 
-            // 3. Coordination Delay & Refresh
-            // Small delay (150ms) to ensure the cookie is fully visible to the next server request
-            // before we trigger the refresh.
+            // Small delay (500ms) to ensure the browser has received the RSC payload 
+            // and painted the translation before we hide the overlay.
             setTimeout(() => {
-                startTransition(() => {
-                    router.refresh();
-
-                    // 4. Final Buffer
-                    // Increase buffer to 2000ms to ensure server components have time to re-render
-                    // and propagate correctly on the server before hiding the overlay.
-                    setTimeout(() => {
-                        setIsChangingLocale(false);
-                    }, 2000);
-                });
-            }, 150);
+                setIsChangingLocale(false);
+            }, 500);
 
         } catch (error) {
             console.error('Failed to switch language:', error);
