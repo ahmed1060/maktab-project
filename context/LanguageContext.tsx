@@ -2,7 +2,9 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
 import { Locale, TranslationKey, translations } from '@/lib/translations';
+import LoadingSpinner from '@/components/LoadingSpinner';
 
 interface LanguageContextType {
     locale: Locale;
@@ -14,8 +16,10 @@ const LanguageContext = createContext<LanguageContextType | undefined>(undefined
 
 export function LanguageProvider({ children, initialLocale }: { children: React.ReactNode, initialLocale: Locale }) {
     const { data: session, status, update } = useSession();
+    const router = useRouter();
     const [locale, setLocale] = useState<Locale>(initialLocale);
     const [hasSyncedWithSession, setHasSyncedWithSession] = useState(false);
+    const [isChangingLocale, setIsChangingLocale] = useState(false);
 
     // Initial language detection
     useEffect(() => {
@@ -52,32 +56,44 @@ export function LanguageProvider({ children, initialLocale }: { children: React.
 
     const toggleLanguage = async () => {
         const newLocale = locale === 'en' ? 'ar' : 'en';
+        setIsChangingLocale(true);
 
-        // 1. Update UI state immediately
-        setLocale(newLocale);
-        document.cookie = `NEXT_LOCALE=${newLocale};path=/;max-age=31536000`;
-        document.documentElement.dir = newLocale === 'ar' ? 'rtl' : 'ltr';
-        document.documentElement.lang = newLocale;
+        try {
+            // 1. Update UI state and Cookies immediately (Optimistic UI)
+            setLocale(newLocale);
+            document.cookie = `NEXT_LOCALE=${newLocale};path=/;max-age=31536000`;
+            document.documentElement.dir = newLocale === 'ar' ? 'rtl' : 'ltr';
+            document.documentElement.lang = newLocale;
 
-        // 2. Background sync if authenticated
-        if (status === 'authenticated') {
-            try {
-                // Update Database
-                await fetch('/api/user/language', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ language: newLocale }),
-                });
-
-                // Update Session (JWT) - this prevents the "snap-back" by making the refresh see the new language
-                await update({ language: newLocale });
-            } catch (error) {
-                console.error('Failed to sync language preference:', error);
+            // 2. Background sync if authenticated
+            if (status === 'authenticated') {
+                // We run database update and session update
+                // We don't necessarily need to await them before refreshing the UI,
+                // but awaiting ensures the server components see the change.
+                await Promise.all([
+                    fetch('/api/user/language', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ language: newLocale }),
+                    }),
+                    update({ language: newLocale })
+                ]);
             }
-        }
 
-        // 3. Force a page refresh to update server-rendered components
-        window.location.reload();
+            // 3. Refresh server components WITHOUT a full page white-screen reload
+            router.refresh();
+
+            // Small delay to ensure smooth transition finishing
+            setTimeout(() => {
+                setIsChangingLocale(false);
+            }, 300);
+
+        } catch (error) {
+            console.error('Failed to switch language:', error);
+            setIsChangingLocale(false);
+            // Fallback to reload if something goes wrong
+            window.location.reload();
+        }
     };
 
     const t = (key: TranslationKey): string => {
@@ -86,6 +102,7 @@ export function LanguageProvider({ children, initialLocale }: { children: React.
 
     return (
         <LanguageContext.Provider value={{ locale, toggleLanguage, t }}>
+            {isChangingLocale && <LoadingSpinner fullPage />}
             {children}
         </LanguageContext.Provider>
     );

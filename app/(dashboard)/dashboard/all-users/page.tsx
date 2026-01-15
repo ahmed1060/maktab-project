@@ -7,6 +7,7 @@ import EmployeeProfileForm from '@/components/EmployeeProfileForm'
 import ConfirmModal from '@/components/ConfirmModal'
 import Modal from '@/components/Modal'
 import { useLanguage } from '@/context/LanguageContext'
+import LoadingSpinner from '@/components/LoadingSpinner'
 
 type User = {
     id: string
@@ -275,7 +276,7 @@ export default function AllUsersPage() {
                 companyOptions={companies.map((c: Company) => ({ label: c.name, value: c.id }))}
             />
 
-            {loading ? <p style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('loading_users')}</p> : (
+            {loading ? <LoadingSpinner message={t('loading_users')} /> : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '3rem' }}>
 
                     {/* Super Admins Section */}

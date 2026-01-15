@@ -4,6 +4,7 @@ import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { useLanguage } from '@/context/LanguageContext'
 import { useSession } from 'next-auth/react'
+import LoadingSpinner from '@/components/LoadingSpinner'
 
 interface SalaryRecord {
     id: string
@@ -152,7 +153,7 @@ export default function EmployeeHistoryPage() {
         return `${days} ${days === 1 ? t('day_singular' as any) : t('days_label')}`
     }
 
-    if (loading) return <div style={{ padding: '2rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('loading_data')}</div>
+    if (loading) return <LoadingSpinner />
 
     return (
         <div style={{ direction: locale === 'ar' ? 'rtl' : 'ltr' }}>

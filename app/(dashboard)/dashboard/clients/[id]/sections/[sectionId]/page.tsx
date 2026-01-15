@@ -7,6 +7,7 @@ import { useHeader } from '@/context/HeaderContext'
 import { createPortal } from 'react-dom'
 import ConfirmModal from '@/components/ConfirmModal'
 import { useLanguage } from '@/context/LanguageContext'
+import LoadingSpinner from '@/components/LoadingSpinner'
 import { useSession } from 'next-auth/react'
 import { useToast } from '@/context/ToastContext'
 import Modal from '@/components/Modal'
@@ -430,7 +431,7 @@ export default function SectionNotesPage() {
                 </div>
 
                 {isLoading ? (
-                    <div className="text-center py-10 text-slate-500">{t('loading_data')}</div>
+                    <LoadingSpinner />
                 ) : filteredNotes.length === 0 ? (
                     <div className="glass-card flex flex-col items-center justify-center py-12 text-center text-slate-500">
                         <span className="text-4xl mb-2">📝</span>

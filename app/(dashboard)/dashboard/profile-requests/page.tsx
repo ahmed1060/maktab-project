@@ -6,6 +6,7 @@ import AccessDenied from '@/components/AccessDenied'
 import { useToast } from '@/context/ToastContext'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useLanguage } from '@/context/LanguageContext'
+import LoadingSpinner from '@/components/LoadingSpinner'
 import Pagination from '@/components/Pagination'
 
 type Request = {
@@ -154,7 +155,7 @@ export default function ProfileRequestsPage() {
                 </div>
             </div>
 
-            {loading ? <p style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('loading_requests')}</p> : (
+            {loading ? <LoadingSpinner message={t('loading_requests')} /> : (
                 <div style={{ background: 'white', borderRadius: '12px', overflowX: 'auto', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '800px' }}>
                         <thead style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>

@@ -9,6 +9,7 @@ import AccessDenied from '@/components/AccessDenied'
 import Modal from '@/components/Modal'
 import Pagination from '@/components/Pagination'
 import { useLanguage } from '@/context/LanguageContext'
+import LoadingSpinner from '@/components/LoadingSpinner'
 
 interface Employee {
     id: string
@@ -206,7 +207,7 @@ export default function EmployeesPage() {
     }
 
     if (loading) {
-        return <div style={{ direction: locale === 'ar' ? 'rtl' : 'ltr' }}>{t('loading_users')}</div>
+        return <LoadingSpinner message={t('loading_users')} />
     }
 
     if (userRole === 'EMPLOYEE') {

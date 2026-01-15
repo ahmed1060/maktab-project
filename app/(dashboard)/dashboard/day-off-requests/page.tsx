@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { useLanguage } from '@/context/LanguageContext'
+import LoadingSpinner from '@/components/LoadingSpinner'
 import DateRangePicker from '@/components/DateRangePicker'
 import DatePickerSingle from '@/components/DatePickerSingle'
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts'
@@ -380,10 +381,7 @@ export default function DayOffRequestsPage() {
                     )}
 
                     {loading ? (
-                        <div className="glass-card p-12 flex flex-col items-center justify-center animate-pulse">
-                            <div className="w-12 h-12 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin mb-4"></div>
-                            <p className="text-slate-500 font-medium">{t('loading_requests')}</p>
-                        </div>
+                        <LoadingSpinner message={t('loading_requests')} />
                     ) : filteredRequests.length === 0 ? (
                         <div className="glass-card flex flex-col items-center justify-center py-16 text-center text-slate-500">
                             <span className="text-5xl mb-4">🌴</span>
