@@ -125,7 +125,12 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
             }
         }
 
-        if (userId) fetchEmployee()
+        if (userId) {
+            fetchEmployee()
+        } else {
+            console.warn('EmployeeProfileForm: userId is missing')
+            setLoading(false)
+        }
         if (userRole === 'SUPER_ADMIN') {
             fetchCompanies()
         }
@@ -351,7 +356,42 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
         }
     }
 
-    if (loading) return <div style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('loading_filters')}</div>
+    if (loading) {
+        return (
+            <div style={{
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'center',
+                alignItems: 'center',
+                minHeight: '400px',
+                gap: '1.25rem'
+            }}>
+                <div className="animate-spin" style={{
+                    width: '40px',
+                    height: '40px',
+                    border: '4px solid rgba(59, 130, 246, 0.1)',
+                    borderTopColor: '#3b82f6',
+                    borderRadius: '50%'
+                }}></div>
+                <p style={{
+                    color: '#64748b',
+                    fontSize: '0.95rem',
+                    fontWeight: '500',
+                    textAlign: locale === 'ar' ? 'right' : 'left'
+                }}>
+                    {t('loading_data')}
+                </p>
+                <style>{`
+                    @keyframes spin {
+                        to { transform: rotate(360deg); }
+                    }
+                    .animate-spin {
+                        animation: spin 1s linear infinite;
+                    }
+                `}</style>
+            </div>
+        )
+    }
 
 
     return (
