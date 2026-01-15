@@ -1039,6 +1039,14 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                     if (locations.length > 0) {
                         return (
                             <div style={{ marginTop: '2rem', borderTop: '1px solid #e2e8f0', paddingTop: '1.5rem' }}>
+                                <style>{`
+                                    @keyframes spin-local {
+                                        to { transform: rotate(360deg); }
+                                    }
+                                    .animate-spin-local {
+                                        animation: spin-local 1s linear infinite;
+                                    }
+                                `}</style>
                                 <h3 style={{ marginBottom: '1rem' }}>{t('location_history_title')}</h3>
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                                     {locations.map((loc: any, i: number) => {
@@ -1138,7 +1146,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                                                                     }}
                                                                     title={t('mark_correct_title')}
                                                                 >
-                                                                    {verifyingLocation === `${loc.date}-CORRECT` ? <div className="animate-spin" style={{ width: '14px', height: '14px', border: '2px solid #166534', borderTopColor: 'transparent', borderRadius: '50%' }} /> : '✓'}
+                                                                    {verifyingLocation === `${loc.date}-CORRECT` ? <div className="animate-spin-local" style={{ width: '14px', height: '14px', border: '2px solid #166534', borderTopColor: 'transparent', borderRadius: '50%' }} /> : '✓'}
                                                                 </button>
                                                                 <button
                                                                     onClick={() => handleVerify('WRONG')}
@@ -1157,7 +1165,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                                                                     }}
                                                                     title={t('mark_wrong_title')}
                                                                 >
-                                                                    {verifyingLocation === `${loc.date}-WRONG` ? <div className="animate-spin" style={{ width: '14px', height: '14px', border: '2px solid #991b1b', borderTopColor: 'transparent', borderRadius: '50%' }} /> : '✕'}
+                                                                    {verifyingLocation === `${loc.date}-WRONG` ? <div className="animate-spin-local" style={{ width: '14px', height: '14px', border: '2px solid #991b1b', borderTopColor: 'transparent', borderRadius: '50%' }} /> : '✕'}
                                                                 </button>
                                                             </div>
                                                         )}
