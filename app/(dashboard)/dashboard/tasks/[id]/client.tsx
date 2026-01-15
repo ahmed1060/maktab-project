@@ -96,6 +96,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
     const [itemToDelete, setItemToDelete] = useState<{ type: 'ATTACHMENT' | 'COST_ADDITION' | 'SUBMISSION_NOTE', itemId: string } | null>(null)
     const [locationToDelete, setLocationToDelete] = useState<{ index?: number, date?: string } | null>(null)
     const [isReverting, setIsReverting] = useState(false)
+    const [verifyingLocation, setVerifyingLocation] = useState<string | null>(null)
 
     const router = useRouter()
     const searchParams = useSearchParams()
@@ -1055,12 +1056,41 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                                         const canDelete = (userRole === 'EMPLOYEE' || userId === task.assigneeId) && ['PENDING', 'IN_PROGRESS', 'REJECTED'].includes(task.status)
 
                                         const handleVerify = async (status: 'CORRECT' | 'WRONG') => {
-                                            await fetch(`/api/tasks/${task.id}/locations`, {
-                                                method: 'PUT',
-                                                body: JSON.stringify({ timestamp: loc.date, action: 'VERIFY', verificationStatus: status }),
-                                                headers: { 'Content-Type': 'application/json' }
-                                            })
-                                            router.refresh()
+                                            if (verifyingLocation === loc.date) return
+
+                                            const timestamp = loc.date
+                                            setVerifyingLocation(timestamp)
+
+                                            // Optimistic UI Update
+                                            const originalComments = task.comments
+                                            try {
+                                                const currentComments = JSON.parse(task.comments || '[]')
+                                                const updatedComments = currentComments.map((c: any) => {
+                                                    if (c.type === 'LOCATION_ADDED' && c.date === timestamp) {
+                                                        return { ...c, verificationStatus: status, autoVerified: false }
+                                                    }
+                                                    return c
+                                                })
+                                                setTask({ ...task, comments: JSON.stringify(updatedComments) })
+
+                                                const res = await fetch(`/api/tasks/${task.id}/locations`, {
+                                                    method: 'PUT',
+                                                    body: JSON.stringify({ timestamp, action: 'VERIFY', verificationStatus: status }),
+                                                    headers: { 'Content-Type': 'application/json' }
+                                                })
+
+                                                if (!res.ok) throw new Error('Failed to verify')
+
+                                                // Don't wait for router.refresh() to unblock the UI
+                                                router.refresh()
+                                            } catch (e) {
+                                                console.error(e)
+                                                // Rollback on error
+                                                setTask({ ...task, comments: originalComments })
+                                                showToast(t('failed_verify_location' as any) || 'Failed to update status', 'error')
+                                            } finally {
+                                                setVerifyingLocation(null)
+                                            }
                                         }
 
                                         return (
@@ -1089,8 +1119,44 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                                                         )}
                                                         {canVerify && (
                                                             <div style={{ display: 'flex', gap: '0.25rem' }}>
-                                                                <button onClick={() => handleVerify('CORRECT')} style={{ background: '#dcfce7', border: '1px solid #22c55e', color: '#166534', width: '32px', height: '32px', borderRadius: '50%', cursor: 'pointer' }} title={t('mark_correct_title')}>✓</button>
-                                                                <button onClick={() => handleVerify('WRONG')} style={{ background: '#fee2e2', border: '1px solid #ef4444', color: '#991b1b', width: '32px', height: '32px', borderRadius: '50%', cursor: 'pointer' }} title={t('mark_wrong_title')}>✕</button>
+                                                                <button
+                                                                    onClick={() => handleVerify('CORRECT')}
+                                                                    disabled={verifyingLocation === loc.date}
+                                                                    style={{
+                                                                        background: '#dcfce7',
+                                                                        border: '1px solid #22c55e',
+                                                                        color: '#166534',
+                                                                        width: '32px',
+                                                                        height: '32px',
+                                                                        borderRadius: '50%',
+                                                                        cursor: verifyingLocation ? 'not-allowed' : 'pointer',
+                                                                        display: 'flex',
+                                                                        alignItems: 'center',
+                                                                        justifyContent: 'center'
+                                                                    }}
+                                                                    title={t('mark_correct_title')}
+                                                                >
+                                                                    {verifyingLocation === loc.date ? <div className="animate-spin" style={{ width: '14px', height: '14px', border: '2px solid #166534', borderTopColor: 'transparent', borderRadius: '50%' }} /> : '✓'}
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => handleVerify('WRONG')}
+                                                                    disabled={verifyingLocation === loc.date}
+                                                                    style={{
+                                                                        background: '#fee2e2',
+                                                                        border: '1px solid #ef4444',
+                                                                        color: '#991b1b',
+                                                                        width: '32px',
+                                                                        height: '32px',
+                                                                        borderRadius: '50%',
+                                                                        cursor: verifyingLocation ? 'not-allowed' : 'pointer',
+                                                                        display: 'flex',
+                                                                        alignItems: 'center',
+                                                                        justifyContent: 'center'
+                                                                    }}
+                                                                    title={t('mark_wrong_title')}
+                                                                >
+                                                                    {verifyingLocation === loc.date ? <div className="animate-spin" style={{ width: '14px', height: '14px', border: '2px solid #991b1b', borderTopColor: 'transparent', borderRadius: '50%' }} /> : '✕'}
+                                                                </button>
                                                             </div>
                                                         )}
                                                         {canDelete && task.status === 'IN_PROGRESS' && (
