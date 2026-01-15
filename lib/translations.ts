@@ -575,7 +575,15 @@ export const translations = {
         am: "AM",
         pm: "PM",
         insufficient_credit: "Insufficient Credit",
-        lateness_penalty_msg: "⚠️ Automatic Lateness Penalty: {days} day(s) deducted for late check-in on deadline day (Time: {time})"
+        lateness_penalty_msg: "⚠️ Automatic Lateness Penalty: {days} day(s) deducted for late check-in on deadline day (Time: {time})",
+        enter_password_confirm: "Please enter your password to confirm this action",
+        verify_identity: "Verify Identity",
+        verifying: "Verifying...",
+        revealed_password: "Revealed Password",
+        reveal_button: "Reveal",
+        password_revealed: "Password revealed successfully",
+        incorrect_password: "Incorrect password",
+        enter_your_password: "Enter your password"
     },
     ar: {
         welcome_back: "مرحباً بك مجدداً",
@@ -1152,7 +1160,15 @@ export const translations = {
         am: "صباحاً",
         pm: "مساءً",
         insufficient_credit: "رصيد غير كافٍ",
-        lateness_penalty_msg: "⚠️ خصم تأخير تلقائي: تم خصم {days} يوم بسبب تسجيل الحضور المتأخر في يوم الموعد النهائي (الوقت: {time})"
+        lateness_penalty_msg: "⚠️ خصم تأخير تلقائي: تم خصم {days} يوم بسبب تسجيل الحضور المتأخر في يوم الموعد النهائي (الوقت: {time})",
+        enter_password_confirm: "يرجى إدخال كلمة المرور الخاصة بك لتأكيد هذا الإجراء",
+        verify_identity: "تحقق من الهوية",
+        verifying: "جاري التحقق...",
+        revealed_password: "كلمة المرور المكشوفة",
+        reveal_button: "كشف",
+        password_revealed: "تم كشف كلمة المرور بنجاح",
+        incorrect_password: "كلمة المرور غير صحيحة",
+        enter_your_password: "أدخل كلمة المرور الخاصة بك"
     }
 };
 

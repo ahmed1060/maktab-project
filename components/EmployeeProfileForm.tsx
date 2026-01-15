@@ -43,6 +43,15 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
     const highlightId = searchParams.get('highlight')
     const userRole = session?.user?.role || ''
 
+    // Password & Verification States
+    const [showNewPassword, setShowNewPassword] = useState(false)
+    const [revealPassword, setRevealPassword] = useState<string | null>(null)
+    const [isRevealLoading, setIsRevealLoading] = useState(false)
+    const [verificationModalOpen, setVerificationModalOpen] = useState(false)
+    const [verificationPassword, setVerificationPassword] = useState('')
+    const [isVerifying, setIsVerifying] = useState(false)
+    const [verificationCallback, setVerificationCallback] = useState<{ type: 'UPDATE' | 'REVEAL', data?: any } | null>(null)
+
     useEffect(() => {
         // Prevent default drag and drop behavior globally for this page
         const preventDefault = (e: DragEvent) => {
@@ -122,8 +131,65 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
         }
     }, [userId, userRole, showToast, session, t])
 
+    const handleRevealPassword = async (adminPasswordInput: string) => {
+        setIsVerifying(true)
+        try {
+            const res = await fetch('/api/users/reveal', {
+                method: 'POST',
+                body: JSON.stringify({ targetUserId: userId, adminPassword: adminPasswordInput }),
+                headers: { 'Content-Type': 'application/json' }
+            })
+
+            if (!res.ok) {
+                const text = await res.text()
+                throw new Error(text || t('incorrect_password'))
+            }
+
+            const data = await res.json()
+            setRevealPassword(data.password)
+            showToast(t('password_revealed'), 'success')
+            setVerificationModalOpen(false)
+            setVerificationPassword('')
+        } catch (err: any) {
+            showToast(err.message || t('error_generic'), 'error')
+        } finally {
+            setIsVerifying(false)
+        }
+    }
+
+    const handleVerifyAndUpdate = async (userPasswordInput: string) => {
+        setIsVerifying(true)
+        try {
+            const res = await fetch('/api/auth/verify', {
+                method: 'POST',
+                body: JSON.stringify({ password: userPasswordInput }),
+                headers: { 'Content-Type': 'application/json' }
+            })
+
+            const data = await res.json()
+            if (!data.valid) {
+                throw new Error(t('incorrect_password'))
+            }
+
+            // If valid, proceed with the actual update
+            setVerificationModalOpen(false)
+            setVerificationPassword('')
+            await executeSubmit()
+        } catch (err: any) {
+            showToast(err.message || t('error_generic'), 'error')
+        } finally {
+            setIsVerifying(false)
+        }
+    }
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
+        // Trigger verification modal before actual submit
+        setVerificationCallback({ type: 'UPDATE' })
+        setVerificationModalOpen(true)
+    }
+
+    const executeSubmit = async () => {
         setSaving(true)
 
         // Validation
@@ -654,16 +720,99 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                 {!isViewMode && (
                     <div style={{ marginBottom: '1rem' }}>
                         <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('new_password_optional_label')}</label>
-                        <input
-                            type="password"
-                            className="input"
-                            value={password}
-                            onChange={e => setPassword(e.target.value)}
-                            minLength={6}
-                            maxLength={20}
-                            placeholder={t('keep_current_password_placeholder')}
-                            style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}
-                        />
+                        <div style={{ position: 'relative' }}>
+                            <input
+                                type={showNewPassword ? "text" : "password"}
+                                className="input"
+                                value={password}
+                                onChange={e => setPassword(e.target.value)}
+                                minLength={6}
+                                maxLength={20}
+                                placeholder={t('keep_current_password_placeholder')}
+                                style={{
+                                    textAlign: locale === 'ar' ? 'right' : 'left',
+                                    [locale === 'ar' ? 'paddingLeft' : 'paddingRight']: '2.5rem'
+                                }}
+                            />
+                            <button
+                                type="button"
+                                onClick={() => setShowNewPassword(!showNewPassword)}
+                                style={{
+                                    position: 'absolute',
+                                    [locale === 'ar' ? 'left' : 'right']: '0.75rem',
+                                    top: '50%',
+                                    transform: 'translateY(-50%)',
+                                    background: 'none',
+                                    border: 'none',
+                                    cursor: 'pointer',
+                                    padding: '0.25rem',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    color: '#64748b'
+                                }}
+                            >
+                                {showNewPassword ? (
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                        <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                                        <line x1="1" y1="1" x2="23" y2="23"></line>
+                                    </svg>
+                                ) : (
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                        <circle cx="12" cy="12" r="3"></circle>
+                                    </svg>
+                                )}
+                            </button>
+                        </div>
+                    </div>
+                )}
+
+                {/* Secure Revelation for Super Admin on SAVED password */}
+                {userRole === 'SUPER_ADMIN' && isViewMode && (
+                    <div style={{ marginBottom: '1rem' }}>
+                        <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('password')}</label>
+                        <div style={{ position: 'relative' }}>
+                            <input
+                                type={revealPassword ? "text" : "password"}
+                                className="input"
+                                value={revealPassword || '********'}
+                                readOnly
+                                style={{
+                                    background: '#f1f5f9',
+                                    cursor: 'default',
+                                    textAlign: locale === 'ar' ? 'right' : 'left',
+                                    [locale === 'ar' ? 'paddingLeft' : 'paddingRight']: '2.5rem'
+                                }}
+                            />
+                            {!revealPassword && (
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setVerificationCallback({ type: 'REVEAL' })
+                                        setVerificationModalOpen(true)
+                                    }}
+                                    style={{
+                                        position: 'absolute',
+                                        [locale === 'ar' ? 'left' : 'right']: '0.75rem',
+                                        top: '50%',
+                                        transform: 'translateY(-50%)',
+                                        background: 'none',
+                                        border: 'none',
+                                        cursor: 'pointer',
+                                        padding: '0.25rem',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        color: '#6366f1'
+                                    }}
+                                    title={t('reveal_button')}
+                                >
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                        <circle cx="12" cy="12" r="3"></circle>
+                                    </svg>
+                                </button>
+                            )}
+                        </div>
                     </div>
                 )}
                 {(userRole === 'SUPER_ADMIN' || userRole === 'ADMIN') && userId !== session?.user?.id && (
@@ -701,6 +850,79 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                     </button>
                 </div>
             </form>
+
+            {verificationModalOpen && createPortal(
+                <div className="modal-overlay">
+                    <div className="modal-content" style={{ maxWidth: '400px', width: '90%' }}>
+                        <div className="modal-header">
+                            <h3 className="modal-title">{t('verify_identity')}</h3>
+                            <button
+                                className="modal-close"
+                                onClick={() => {
+                                    setVerificationModalOpen(false)
+                                    setVerificationPassword('')
+                                    setVerificationCallback(null)
+                                }}
+                            >
+                                &times;
+                            </button>
+                        </div>
+                        <div className="modal-body">
+                            <p style={{ marginBottom: '1.25rem', fontSize: '0.875rem', color: '#64748b' }}>
+                                {t('enter_password_confirm')}
+                            </p>
+                            <div style={{ position: 'relative' }}>
+                                <input
+                                    type="password"
+                                    className="input"
+                                    placeholder={t('enter_your_password')}
+                                    value={verificationPassword}
+                                    onChange={(e) => setVerificationPassword(e.target.value)}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter' && verificationPassword && !isVerifying) {
+                                            if (verificationCallback?.type === 'UPDATE') {
+                                                handleVerifyAndUpdate(verificationPassword)
+                                            } else {
+                                                handleRevealPassword(verificationPassword)
+                                            }
+                                        }
+                                    }}
+                                    autoFocus
+                                    style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}
+                                />
+                            </div>
+                        </div>
+                        <div className="modal-footer">
+                            <button
+                                className="btn btn-secondary"
+                                onClick={() => {
+                                    setVerificationModalOpen(false)
+                                    setVerificationPassword('')
+                                    setVerificationCallback(null)
+                                }}
+                            >
+                                {t('cancel')}
+                            </button>
+                            <button
+                                className="btn btn-primary"
+                                onClick={() => {
+                                    if (verificationPassword && !isVerifying) {
+                                        if (verificationCallback?.type === 'UPDATE') {
+                                            handleVerifyAndUpdate(verificationPassword)
+                                        } else {
+                                            handleRevealPassword(verificationPassword)
+                                        }
+                                    }
+                                }}
+                                disabled={!verificationPassword || isVerifying}
+                            >
+                                {isVerifying ? t('verifying') : t('confirm')}
+                            </button>
+                        </div>
+                    </div>
+                </div>,
+                document.body
+            )}
         </div>
     )
 }

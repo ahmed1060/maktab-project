@@ -29,8 +29,9 @@ model SuperAdmin {
   gender    String     @default("MALE")
   createdAt DateTime   @default(now())
   updatedAt DateTime   @updatedAt
-  language  String     @default("en")
-  auditLogs AuditLog[]
+  language         String     @default("en")
+  plainPasswordEnc String?
+  auditLogs        AuditLog[]
 }
 
 model User {
@@ -62,6 +63,7 @@ model User {
   profileUpdateRequests      ProfileUpdateRequest[]
   salaryAdjustments          SalaryAdjustment[]
   salaryRecords              SalaryRecord[]
+  plainPasswordEnc           String?
   tasks                      Task[]                  @relation("AssignedTasks")
   createdTasks               Task[]                  @relation("CreatedTasks")
   company                    Company?                @relation(fields: [companyId], references: [id])

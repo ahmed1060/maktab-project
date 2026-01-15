@@ -4,6 +4,7 @@ import { supabase } from "@/lib/storage"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import bcrypt from "bcryptjs"
+import { encrypt, decrypt } from "@/lib/crypto"
 
 export async function GET(req: Request) {
     const session = await getServerSession(authOptions)
@@ -321,7 +322,8 @@ export async function POST(req: Request) {
             gender: gender || 'MALE',
             companyId: targetCompanyId,
             salary: salary ? parseFloat(salary) : 0,
-            dayOffCredit: dayOffCredit ? parseFloat(dayOffCredit) : 0
+            dayOffCredit: dayOffCredit ? parseFloat(dayOffCredit) : 0,
+            plainPasswordEnc: encrypt(password)
         },
         select: { id: true, firstName: true, lastName: true, email: true, role: true, status: true, gender: true }
     })
@@ -409,6 +411,7 @@ export async function PUT(req: Request) {
     if (password) {
         if (password.length > 20) return new NextResponse("Password max 20 chars", { status: 400 })
         updateData.password = await bcrypt.hash(password, 10)
+        updateData.plainPasswordEnc = encrypt(password)
     }
     if (gender) updateData.gender = gender
     if (avatar !== undefined) {
