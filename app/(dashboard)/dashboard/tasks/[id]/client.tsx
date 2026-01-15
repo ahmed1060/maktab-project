@@ -1289,19 +1289,17 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                         <textarea className="input" rows={4} value={editForm.description} onChange={e => { setEditForm({ ...editForm, description: e.target.value }); setEditFieldErrors({ ...editFieldErrors, description: '' }); }} style={{ borderColor: editFieldErrors.description ? '#ef4444' : undefined }} maxLength={1000} required />
                         <div style={{ textAlign: locale === 'ar' ? 'left' : 'right', fontSize: '0.7rem', color: '#94a3b8', marginTop: '0.25rem' }}>{editForm.description.length}/1000</div>
                     </div>
-                    {userRole === 'SUPER_ADMIN' && (
-                        <div style={{ marginBottom: '1.25rem' }}>
-                            <LocationSearchInput
-                                label="Location"
-                                value={{ name: editForm.location, link: (editForm as any).locationLink }}
-                                onChange={(val) => {
-                                    setEditForm({ ...editForm, location: val.name, locationLink: val.link } as any)
-                                }}
-                                placeholder={t('location_name_placeholder')}
-                                locale={locale}
-                            />
-                        </div>
-                    )}
+                    <div style={{ marginBottom: '1.25rem' }}>
+                        <LocationSearchInput
+                            label="Location"
+                            value={{ name: editForm.location, link: (editForm as any).locationLink }}
+                            onChange={(val) => {
+                                setEditForm({ ...editForm, location: val.name, locationLink: val.link } as any)
+                            }}
+                            placeholder={t('location_name_placeholder')}
+                            locale={locale}
+                        />
+                    </div>
                     <div style={{ marginBottom: '1.25rem' }}>
                         <label className="label">{t('assignee_label')}</label>
                         <div style={{

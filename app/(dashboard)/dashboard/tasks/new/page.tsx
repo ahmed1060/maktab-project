@@ -193,20 +193,18 @@ export default function NewTaskPage() {
                         {description.length}/1000
                     </div>
                 </div>
-                {userRole === 'SUPER_ADMIN' && (
-                    <div style={{ marginBottom: '1.25rem' }}>
-                        <LocationSearchInput
-                            label="Location"
-                            value={{ name: location, link: locationLink }}
-                            onChange={(val) => {
-                                setLocation(val.name)
-                                setLocationLink(val.link)
-                            }}
-                            placeholder={t('location_name_placeholder')}
-                            locale={locale}
-                        />
-                    </div>
-                )}
+                <div style={{ marginBottom: '1.25rem' }}>
+                    <LocationSearchInput
+                        label="Location"
+                        value={{ name: location, link: locationLink }}
+                        onChange={(val) => {
+                            setLocation(val.name)
+                            setLocationLink(val.link)
+                        }}
+                        placeholder={t('location_name_placeholder')}
+                        locale={locale}
+                    />
+                </div>
                 <div id="field-assigneeIds" style={{ marginBottom: '1.25rem' }}>
                     <label style={{ display: 'block', marginBottom: '0.5rem' }}>{t('assignee_label')}</label>
                     <input
