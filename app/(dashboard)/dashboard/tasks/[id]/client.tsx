@@ -1056,12 +1056,13 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                                         const canDelete = (userRole === 'EMPLOYEE' || userId === task.assigneeId) && ['PENDING', 'IN_PROGRESS', 'REJECTED'].includes(task.status)
 
                                         const handleVerify = async (status: 'CORRECT' | 'WRONG') => {
-                                            if (verifyingLocation === loc.date) return
-
                                             const timestamp = loc.date
-                                            setVerifyingLocation(timestamp)
+                                            const actionId = `${timestamp}-${status}`
+                                            if (verifyingLocation === actionId) return
 
-                                            // Optimistic UI Update
+                                            setVerifyingLocation(actionId)
+
+                                            // UI Logic
                                             const originalComments = task.comments
                                             try {
                                                 const currentComments = JSON.parse(task.comments || '[]')
@@ -1071,7 +1072,6 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                                                     }
                                                     return c
                                                 })
-                                                setTask({ ...task, comments: JSON.stringify(updatedComments) })
 
                                                 const res = await fetch(`/api/tasks/${task.id}/locations`, {
                                                     method: 'PUT',
@@ -1081,7 +1081,9 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
 
                                                 if (!res.ok) throw new Error('Failed to verify')
 
-                                                // Don't wait for router.refresh() to unblock the UI
+                                                // Update UI only AFTER successful database save
+                                                setTask({ ...task, comments: JSON.stringify(updatedComments) })
+
                                                 router.refresh()
                                             } catch (e) {
                                                 console.error(e)
@@ -1121,7 +1123,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                                                             <div style={{ display: 'flex', gap: '0.25rem' }}>
                                                                 <button
                                                                     onClick={() => handleVerify('CORRECT')}
-                                                                    disabled={verifyingLocation === loc.date}
+                                                                    disabled={!!verifyingLocation}
                                                                     style={{
                                                                         background: '#dcfce7',
                                                                         border: '1px solid #22c55e',
@@ -1136,11 +1138,11 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                                                                     }}
                                                                     title={t('mark_correct_title')}
                                                                 >
-                                                                    {verifyingLocation === loc.date ? <div className="animate-spin" style={{ width: '14px', height: '14px', border: '2px solid #166534', borderTopColor: 'transparent', borderRadius: '50%' }} /> : '✓'}
+                                                                    {verifyingLocation === `${loc.date}-CORRECT` ? <div className="animate-spin" style={{ width: '14px', height: '14px', border: '2px solid #166534', borderTopColor: 'transparent', borderRadius: '50%' }} /> : '✓'}
                                                                 </button>
                                                                 <button
                                                                     onClick={() => handleVerify('WRONG')}
-                                                                    disabled={verifyingLocation === loc.date}
+                                                                    disabled={!!verifyingLocation}
                                                                     style={{
                                                                         background: '#fee2e2',
                                                                         border: '1px solid #ef4444',
@@ -1155,7 +1157,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                                                                     }}
                                                                     title={t('mark_wrong_title')}
                                                                 >
-                                                                    {verifyingLocation === loc.date ? <div className="animate-spin" style={{ width: '14px', height: '14px', border: '2px solid #991b1b', borderTopColor: 'transparent', borderRadius: '50%' }} /> : '✕'}
+                                                                    {verifyingLocation === `${loc.date}-WRONG` ? <div className="animate-spin" style={{ width: '14px', height: '14px', border: '2px solid #991b1b', borderTopColor: 'transparent', borderRadius: '50%' }} /> : '✕'}
                                                                 </button>
                                                             </div>
                                                         )}
