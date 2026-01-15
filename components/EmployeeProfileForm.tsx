@@ -867,8 +867,24 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                                 &times;
                             </button>
                         </div>
-                        <div className="modal-body">
-                            <p style={{ marginBottom: '1.25rem', fontSize: '0.875rem', color: '#64748b' }}>
+                        <div className="modal-body" style={{ textAlign: 'center' }}>
+                            <div style={{
+                                width: '64px',
+                                height: '64px',
+                                background: 'rgba(99, 102, 241, 0.1)',
+                                borderRadius: '50%',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                margin: '0 auto 1.5rem',
+                                color: 'var(--primary)'
+                            }}>
+                                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                                    <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                                </svg>
+                            </div>
+                            <p style={{ marginBottom: '1.5rem', fontSize: '1rem', color: '#475569', fontWeight: '500' }}>
                                 {t('enter_password_confirm')}
                             </p>
                             <div style={{ position: 'relative' }}>
@@ -888,13 +904,19 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                                         }
                                     }}
                                     autoFocus
-                                    style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}
+                                    style={{
+                                        textAlign: locale === 'ar' ? 'right' : 'left',
+                                        height: '50px',
+                                        fontSize: '1.125rem',
+                                        borderRadius: '1.25rem'
+                                    }}
                                 />
                             </div>
                         </div>
-                        <div className="modal-footer">
+                        <div className="modal-footer" style={{ background: 'white', borderTop: 'none', paddingBottom: '2.5rem', justifyContent: 'center' }}>
                             <button
-                                className="btn btn-secondary"
+                                className="btn"
+                                style={{ background: '#f1f5f9', color: '#64748b', minWidth: '100px' }}
                                 onClick={() => {
                                     setVerificationModalOpen(false)
                                     setVerificationPassword('')
@@ -905,6 +927,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                             </button>
                             <button
                                 className="btn btn-primary"
+                                style={{ minWidth: '140px' }}
                                 onClick={() => {
                                     if (verificationPassword && !isVerifying) {
                                         if (verificationCallback?.type === 'UPDATE') {
@@ -916,7 +939,12 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                                 }}
                                 disabled={!verificationPassword || isVerifying}
                             >
-                                {isVerifying ? t('verifying') : t('confirm')}
+                                {isVerifying ? (
+                                    <>
+                                        <div className="animate-spin" style={{ width: '16px', height: '16px', border: '2px solid white', borderTopColor: 'transparent', borderRadius: '50%', marginRight: '8px' }}></div>
+                                        {t('verifying')}
+                                    </>
+                                ) : t('confirm')}
                             </button>
                         </div>
                     </div>
