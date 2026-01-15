@@ -1,11 +1,10 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useTransition } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { Locale, TranslationKey, translations } from '@/lib/translations';
 import LoadingSpinner from '@/components/LoadingSpinner';
-import { setLanguageAction } from '@/app/actions/language';
 
 interface LanguageContextType {
     locale: Locale;
@@ -21,6 +20,7 @@ export function LanguageProvider({ children, initialLocale }: { children: React.
     const [locale, setLocale] = useState<Locale>(initialLocale);
     const [hasSyncedWithSession, setHasSyncedWithSession] = useState(false);
     const [isChangingLocale, setIsChangingLocale] = useState(false);
+    const [isPending, startTransition] = useTransition();
 
     // Initial language detection
     useEffect(() => {
@@ -59,38 +59,42 @@ export function LanguageProvider({ children, initialLocale }: { children: React.
         const newLocale = locale === 'en' ? 'ar' : 'en';
         setIsChangingLocale(true);
 
-        try {
-            // 1. Update UI state and Cookies immediately (Optimistic UI)
+        // 1. Update the cookie immediately on the client side
+        // This is necessary so that the router.refresh() (the GET request) 
+        // will carry the correct locale to the server.
+        document.cookie = `NEXT_LOCALE=${newLocale};path=/;max-age=31536000`;
+
+        // 2. Start a transition to handle the server-side refresh and client-side toggle together
+        startTransition(() => {
+            // A. Trigger server-side refresh (fetches fresh RSC payload with the new cookie)
+            router.refresh();
+
+            // 3. Background sync if authenticated
+            if (status === 'authenticated') {
+                Promise.all([
+                    fetch('/api/user/language', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ language: newLocale }),
+                    }),
+                    update({ language: newLocale })
+                ]).catch(console.error);
+            }
+
+            // 4. Update the Client state
+            // By doing this inside startTransition, React will wait for the router.refresh()
+            // to be partially ready or coordinated before applying the state change.
             setLocale(newLocale);
-            document.cookie = `NEXT_LOCALE=${newLocale};path=/;max-age=31536000`;
             document.documentElement.dir = newLocale === 'ar' ? 'rtl' : 'ltr';
             document.documentElement.lang = newLocale;
 
-            // 3. Sync with Server and Revalidate
-            // We await the server action alongside DB and Session updates.
-            // The Server Action handles the cookie and triggers revalidatePath('/').
-            await Promise.all([
-                setLanguageAction(newLocale),
-                status === 'authenticated' ? fetch('/api/user/language', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ language: newLocale }),
-                }) : Promise.resolve(),
-                status === 'authenticated' ? update({ language: newLocale }) : Promise.resolve()
-            ]);
-
-            // Small delay (500ms) to ensure the browser has received the RSC payload 
-            // and painted the translation before we hide the overlay.
+            // 5. Hide the loading screen after a small buffer to ensure paint completion
+            // Note: In Next.js, useTransition's `isPending` might not perfectly 
+            // track the RSC payload application, so we use a small timeout for safety.
             setTimeout(() => {
                 setIsChangingLocale(false);
-            }, 500);
-
-        } catch (error) {
-            console.error('Failed to switch language:', error);
-            setIsChangingLocale(false);
-            // Fallback to reload if something goes wrong
-            window.location.reload();
-        }
+            }, 600);
+        });
     };
 
     const t = (key: TranslationKey): string => {
