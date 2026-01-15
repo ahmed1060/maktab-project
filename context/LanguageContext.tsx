@@ -83,10 +83,11 @@ export function LanguageProvider({ children, initialLocale }: { children: React.
             // 3. Refresh server components WITHOUT a full page white-screen reload
             router.refresh();
 
-            // Small delay to ensure smooth transition finishing
+            // Increase buffer to 1000ms to ensure server components have time to re-render
+            // specifically for the dashboard cards and headers.
             setTimeout(() => {
                 setIsChangingLocale(false);
-            }, 300);
+            }, 1000);
 
         } catch (error) {
             console.error('Failed to switch language:', error);

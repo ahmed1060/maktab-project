@@ -39,11 +39,15 @@ export default function LoadingSpinner({ message, fullPage = false }: LoadingSpi
                 @keyframes spin-loading {
                     to { transform: rotate(360deg); }
                 }
+                @keyframes fadeIn {
+                    from { opacity: 0; }
+                    to { opacity: 1; }
+                }
                 .animate-spin {
                     animation: spin-loading 1s linear infinite;
                 }
             `}</style>
-        </div>
+        </div >
     )
 
     if (fullPage) {
@@ -52,11 +56,12 @@ export default function LoadingSpinner({ message, fullPage = false }: LoadingSpi
                 position: 'fixed',
                 inset: 0,
                 zIndex: 99999,
-                backgroundColor: 'rgba(255, 255, 255, 0.7)',
-                backdropFilter: 'blur(10px)',
+                backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                backdropFilter: 'blur(16px)',
                 display: 'flex',
                 alignItems: 'center',
-                justifyContent: 'center'
+                justifyContent: 'center',
+                animation: 'fadeIn 0.2s ease-out'
             }}>
                 {spinnerContent}
             </div>
