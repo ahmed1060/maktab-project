@@ -81,6 +81,14 @@ export default function ClientDetailsPage() {
     const [editSectionTitle, setEditSectionTitle] = useState('')
     const [editingSectionId, setEditingSectionId] = useState<string | null>(null)
     const [isEditingSection, setIsEditingSection] = useState(false)
+    const [isMobile, setIsMobile] = useState(false)
+
+    useEffect(() => {
+        const checkMobile = () => setIsMobile(window.innerWidth < 1024)
+        checkMobile()
+        window.addEventListener('resize', checkMobile)
+        return () => window.removeEventListener('resize', checkMobile)
+    }, [])
 
 
     useEffect(() => {
@@ -313,74 +321,127 @@ export default function ClientDetailsPage() {
                                     marginBottom: '0.5rem'
                                 }}
                             >
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', gap: '1rem' }}>
-                                    {/* Left Side: Title & Info */}
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                                        <h3 className="text-lg font-semibold text-slate-800 leading-tight" style={{ margin: 0 }}>
-                                            {section.title}
-                                        </h3>
-                                        <span style={{
-                                            padding: '0.25rem 0.75rem',
-                                            borderRadius: '9999px',
-                                            background: '#dbeafe',
-                                            color: '#1e40af',
-                                            fontSize: '0.875rem',
-                                            fontWeight: '600',
+                                <div style={{
+                                    display: 'flex',
+                                    flexWrap: isMobile ? 'nowrap' : 'wrap',
+                                    justifyContent: 'space-between',
+                                    alignItems: 'center',
+                                    width: '100%',
+                                    gap: isMobile ? '0.5rem' : '1rem'
+                                }}>
+                                    {/* Block 1: Left Side (Title & Badge) */}
+                                    <div style={{
+                                        flex: 1,
+                                        minWidth: 0,
+                                        paddingRight: isMobile ? '0' : '0.5rem',
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        gap: '0.375rem'
+                                    }}>
+                                        <h3 className="text-lg font-semibold text-slate-800 leading-tight" style={{
+                                            margin: 0,
+                                            overflow: 'hidden',
+                                            textOverflow: 'ellipsis',
                                             whiteSpace: 'nowrap'
                                         }}>
-                                            {section._count.notes} {section._count.notes === 1 ? t('note_label' as any) : t('notes_label' as any)}
-                                        </span>
+                                            {section.title}
+                                        </h3>
+                                        <div style={{ display: 'flex' }}>
+                                            <span style={{
+                                                padding: '0.15rem 0.6rem',
+                                                borderRadius: '9999px',
+                                                background: '#dbeafe',
+                                                color: '#1e40af',
+                                                fontSize: '0.75rem',
+                                                fontWeight: '600',
+                                                whiteSpace: 'nowrap',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '0.25rem'
+                                            }}>
+                                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                                                </svg>
+                                                {section._count.notes} {section._count.notes === 1 ? t('note_label' as any) : t('notes_label' as any)}
+                                            </span>
+                                        </div>
                                     </div>
 
-                                    {/* Action Buttons Container */}
-                                    <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', justifyContent: 'flex-start', marginLeft: locale === 'ar' ? '0' : 'auto', marginRight: locale === 'ar' ? 'auto' : '0' }}>
+                                    {/* Block 2: Middle Spacer (Invisible on Mobile or small gap) */}
+                                    <div style={{ flex: isMobile ? '0 0 auto' : '0 1 auto' }}></div>
+
+                                    {/* Block 3: Right Side (Action Buttons) */}
+                                    <div style={{
+                                        display: 'flex',
+                                        flexDirection: isMobile ? 'column' : 'row',
+                                        alignItems: 'center',
+                                        gap: '0.4rem',
+                                        flex: '0 0 auto',
+                                        marginLeft: locale === 'ar' ? '0' : (isMobile ? '0' : 'auto'),
+                                        marginRight: locale === 'ar' ? (isMobile ? 'auto' : '0') : '0'
+                                    }}>
                                         <Link
                                             href={`/dashboard/clients/${clientId}/sections/${section.id}`}
                                             className="btn btn-primary"
                                             style={{
                                                 textDecoration: 'none',
-                                                fontSize: '0.875rem',
-                                                padding: '0.5rem 1rem',
-                                                display: 'inline-block'
+                                                fontSize: '0.8125rem',
+                                                padding: '0.4rem 1rem',
+                                                display: 'inline-block',
+                                                textAlign: 'center',
+                                                whiteSpace: 'nowrap',
+                                                width: isMobile ? '100%' : 'auto'
                                             }}
                                         >
                                             {t('view_section_button' as any)}
                                         </Link>
-                                        <button
-                                            onClick={() => {
-                                                setEditingSectionId(section.id)
-                                                setEditSectionTitle(section.title)
-                                                setIsEditSectionModalOpen(true)
-                                            }}
-                                            className="btn"
-                                            style={{
-                                                background: '#dbeafe',
-                                                color: '#1e40af',
-                                                padding: '0.5rem 1rem',
-                                                fontSize: '0.875rem',
-                                                border: 'none',
-                                                cursor: 'pointer'
-                                            }}
-                                        >
-                                            {t('edit')}
-                                        </button>
-                                        <button
-                                            onClick={(e) => {
-                                                e.preventDefault()
-                                                setDeleteConfirm({ isOpen: true, section })
-                                            }}
-                                            className="btn"
-                                            style={{
-                                                background: '#fee2e2',
-                                                color: '#b91c1c',
-                                                padding: '0.5rem 1rem',
-                                                fontSize: '0.875rem',
-                                                border: 'none',
-                                                cursor: 'pointer'
-                                            }}
-                                        >
-                                            {t('delete')}
-                                        </button>
+
+                                        <div style={{
+                                            display: 'flex',
+                                            gap: '0.4rem',
+                                            width: isMobile ? '100%' : 'auto'
+                                        }}>
+                                            <button
+                                                onClick={() => {
+                                                    setEditingSectionId(section.id)
+                                                    setEditSectionTitle(section.title)
+                                                    setIsEditSectionModalOpen(true)
+                                                }}
+                                                className="btn"
+                                                style={{
+                                                    background: '#eff6ff',
+                                                    color: '#2563eb',
+                                                    padding: '0.4rem 0.85rem',
+                                                    fontSize: '0.8125rem',
+                                                    border: 'none',
+                                                    cursor: 'pointer',
+                                                    whiteSpace: 'nowrap',
+                                                    flex: isMobile ? 1 : 'unset'
+                                                }}
+                                            >
+                                                {t('edit')}
+                                            </button>
+
+                                            <button
+                                                onClick={(e) => {
+                                                    e.preventDefault()
+                                                    setDeleteConfirm({ isOpen: true, section })
+                                                }}
+                                                className="btn"
+                                                style={{
+                                                    background: '#fef2f2',
+                                                    color: '#dc2626',
+                                                    padding: '0.4rem 0.85rem',
+                                                    fontSize: '0.8125rem',
+                                                    border: 'none',
+                                                    cursor: 'pointer',
+                                                    whiteSpace: 'nowrap',
+                                                    flex: isMobile ? 1 : 'unset'
+                                                }}
+                                            >
+                                                {t('delete')}
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
 
