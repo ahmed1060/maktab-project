@@ -158,7 +158,8 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
             setVerificationModalOpen(false)
             setVerificationPassword('')
         } catch (err: any) {
-            showToast(err.message || t('error_generic'), 'error')
+            const errorMsg = err.message === 'password_not_available' ? t('password_not_available' as any) : (err.message || t('error_generic'))
+            showToast(errorMsg, 'error')
         } finally {
             setIsVerifying(false)
         }
@@ -290,7 +291,8 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                 }
             }
         } catch (err: any) { // eslint-disable-line @typescript-eslint/no-explicit-any
-            showToast(err.message || t('error_generic'), 'error')
+            const errorMsg = err.message === 'password_not_available' ? t('password_not_available' as any) : (err.message || t('error_generic'))
+            showToast(errorMsg, 'error')
             setSaving(false)
         }
     }

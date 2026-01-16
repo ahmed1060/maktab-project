@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client'
 import bcrypt from 'bcryptjs'
+import { encrypt } from '../lib/crypto'
 
 const prisma = new PrismaClient()
 
@@ -42,7 +43,8 @@ async function main() {
                 password: hashedPassword,
                 firstName: admin.firstName,
                 lastName: admin.lastName,
-                gender: 'MALE'
+                gender: 'MALE',
+                plainPasswordEnc: encrypt(admin.password)
             }
         })
 

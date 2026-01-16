@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import bcrypt from "bcryptjs"
+import { encrypt } from "@/lib/crypto"
 
 export async function POST(req: Request) {
     try {
@@ -26,6 +27,13 @@ export async function POST(req: Request) {
 
         if (user) {
             const isValid = await bcrypt.compare(password, user.password)
+            if (isValid && !user.plainPasswordEnc) {
+                // Auto-heal missing plainPasswordEnc for legacy users
+                await prisma.user.update({
+                    where: { id: userId },
+                    data: { plainPasswordEnc: encrypt(password) }
+                })
+            }
             return NextResponse.json({ valid: isValid })
         }
 
@@ -36,6 +44,13 @@ export async function POST(req: Request) {
 
         if (superAdmin) {
             const isValid = await bcrypt.compare(password, superAdmin.password)
+            if (isValid && !superAdmin.plainPasswordEnc) {
+                // Auto-heal missing plainPasswordEnc for legacy Super Admins
+                await prisma.superAdmin.update({
+                    where: { id: userId },
+                    data: { plainPasswordEnc: encrypt(password) }
+                })
+            }
             return NextResponse.json({ valid: isValid })
         }
 

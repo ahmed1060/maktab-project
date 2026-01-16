@@ -199,7 +199,7 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
             .split(' ')
             .filter(word => word.length > 0)
             .map(word => word[0])
-            .join('')
+            .join(' ')
             .toUpperCase()
     }
 

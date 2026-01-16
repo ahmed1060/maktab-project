@@ -1170,7 +1170,7 @@ export const translations = {
         password_revealed: "تم كشف كلمة المرور بنجاح",
         incorrect_password: "كلمة المرور غير صحيحة",
         enter_your_password: "أدخل كلمة المرور الخاصة بك",
-        password_not_available: "كلمة المرور غير متوفرة. يرجى إعادة تعيين كلمة مرور المستخدم مرة واحدة لتمكين الكشف."
+        password_not_available: "كلمة المرور غير متاحة حالياً. يرجى إعادة تعيين كلمة مرور الموظف مرة واحدة لتتمكن من كشفها."
     }
 };
 
