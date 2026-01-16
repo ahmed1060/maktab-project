@@ -47,6 +47,14 @@ export default function ClientsPage() {
     const [isEditingClient, setIsEditingClient] = useState(false)
     const { showToast } = useToast()
     const { selectedCompanyId: contextCompanyId } = useCompany()
+    const [isMobile, setIsMobile] = useState(false)
+
+    useEffect(() => {
+        const checkMobile = () => setIsMobile(window.innerWidth < 1024)
+        checkMobile()
+        window.addEventListener('resize', checkMobile)
+        return () => window.removeEventListener('resize', checkMobile)
+    }, [])
 
     useEffect(() => {
         setMounted(true)
@@ -239,8 +247,8 @@ export default function ClientsPage() {
                                         <div style={{
                                             display: 'flex',
                                             gap: '0.5rem',
-                                            flexWrap: 'wrap',
-                                            justifyContent: 'flex-start',
+                                            flexDirection: isMobile ? 'column' : 'row',
+                                            alignItems: isMobile ? 'flex-end' : 'center',
                                             marginLeft: locale === 'ar' ? '0' : 'auto',
                                             marginRight: locale === 'ar' ? 'auto' : '0'
                                         }}>
@@ -249,48 +257,59 @@ export default function ClientsPage() {
                                                 className="btn btn-primary"
                                                 style={{
                                                     textDecoration: 'none',
-                                                    fontSize: '0.875rem',
-                                                    padding: '0.5rem 1rem',
-                                                    display: 'inline-block'
+                                                    fontSize: '0.8125rem',
+                                                    padding: '0.4rem 1rem',
+                                                    display: 'inline-block',
+                                                    textAlign: 'center',
+                                                    whiteSpace: 'nowrap'
                                                 }}
                                             >
                                                 {t('view_client')}
                                             </Link>
-                                            <button
-                                                onClick={() => {
-                                                    setEditingClientId(client.id)
-                                                    setEditClientName(client.name)
-                                                    setIsEditClientModalOpen(true)
-                                                }}
-                                                className="btn"
-                                                style={{
-                                                    background: '#dbeafe',
-                                                    color: '#1e40af',
-                                                    padding: '0.5rem 1rem',
-                                                    fontSize: '0.875rem',
-                                                    border: 'none',
-                                                    cursor: 'pointer'
-                                                }}
-                                            >
-                                                {t('edit')}
-                                            </button>
-                                            <button
-                                                onClick={(e) => {
-                                                    e.preventDefault()
-                                                    setDeleteConfirm({ isOpen: true, client })
-                                                }}
-                                                className="btn"
-                                                style={{
-                                                    background: '#fee2e2',
-                                                    color: '#b91c1c',
-                                                    padding: '0.5rem 1rem',
-                                                    fontSize: '0.875rem',
-                                                    border: 'none',
-                                                    cursor: 'pointer'
-                                                }}
-                                            >
-                                                {t('delete')}
-                                            </button>
+
+                                            <div style={{
+                                                display: 'flex',
+                                                gap: '0.4rem'
+                                            }}>
+                                                <button
+                                                    onClick={() => {
+                                                        setEditingClientId(client.id)
+                                                        setEditClientName(client.name)
+                                                        setIsEditClientModalOpen(true)
+                                                    }}
+                                                    className="btn"
+                                                    style={{
+                                                        background: '#eff6ff',
+                                                        color: '#2563eb',
+                                                        padding: '0.4rem 0.85rem',
+                                                        fontSize: '0.8125rem',
+                                                        border: 'none',
+                                                        cursor: 'pointer',
+                                                        whiteSpace: 'nowrap'
+                                                    }}
+                                                >
+                                                    {t('edit')}
+                                                </button>
+
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.preventDefault()
+                                                        setDeleteConfirm({ isOpen: true, client })
+                                                    }}
+                                                    className="btn"
+                                                    style={{
+                                                        background: '#fef2f2',
+                                                        color: '#dc2626',
+                                                        padding: '0.4rem 0.85rem',
+                                                        fontSize: '0.8125rem',
+                                                        border: 'none',
+                                                        cursor: 'pointer',
+                                                        whiteSpace: 'nowrap'
+                                                    }}
+                                                >
+                                                    {t('delete')}
+                                                </button>
+                                            </div>
                                         </div>
                                     </div>
 
