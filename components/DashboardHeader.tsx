@@ -124,7 +124,7 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
     }, [searchParams, pathname, router, companies, selectedCompanyId, setSelectedCompanyId])
 
     useEffect(() => {
-        const checkMobile = () => setIsMobile(window.innerWidth < 768)
+        const checkMobile = () => setIsMobile(window.innerWidth < 1024)
         checkMobile()
         window.addEventListener('resize', checkMobile)
         return () => window.removeEventListener('resize', checkMobile)
@@ -199,7 +199,7 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
             .split(' ')
             .filter(word => word.length > 0)
             .map(word => word[0])
-            .join(' ')
+            .join('')
             .toUpperCase()
     }
 

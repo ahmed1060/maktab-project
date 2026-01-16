@@ -58,10 +58,10 @@ export default function ClientsPage() {
 
     const checkSuperAdmin = useCallback(async () => {
         try {
-            const res = await fetch('/api/companies')
+            const res = await fetch('/api/companies?limit=1000')
             if (res.ok) {
                 const data = await res.json()
-                setCompanies(data)
+                setCompanies(data.data || data) // Handle both paginated and flat responses
                 setShowCompanySelect(true)
             }
         } catch (err) {
@@ -207,9 +207,9 @@ export default function ClientsPage() {
                                         marginBottom: '0.5rem'
                                     }}
                                 >
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', gap: '1rem' }}>
+                                    <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', width: '100%', gap: '1rem' }}>
                                         {/* Left Side: Title & Info */}
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', minWidth: 0, flex: 1 }}>
                                             <h3 className="text-lg font-bold text-slate-800 leading-tight" style={{ margin: 0 }}>
                                                 {client.name}
                                             </h3>

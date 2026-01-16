@@ -51,6 +51,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
     const [verificationModalOpen, setVerificationModalOpen] = useState(false)
     const [verificationPassword, setVerificationPassword] = useState('')
     const [isVerifying, setIsVerifying] = useState(false)
+    const [showVerificationPassword, setShowVerificationPassword] = useState(false)
     const [verificationCallback, setVerificationCallback] = useState<{ type: 'UPDATE' | 'REVEAL', data?: any } | null>(null)
 
     useEffect(() => {
@@ -897,7 +898,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                             </p>
                             <div style={{ position: 'relative' }}>
                                 <input
-                                    type="password"
+                                    type={showVerificationPassword ? "text" : "password"}
                                     className="input"
                                     placeholder={t('enter_your_password')}
                                     value={verificationPassword}
@@ -914,11 +915,45 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                                     autoFocus
                                     style={{
                                         textAlign: locale === 'ar' ? 'right' : 'left',
-                                        height: '50px',
+                                        height: '54px',
                                         fontSize: '1.125rem',
-                                        borderRadius: '1.25rem'
+                                        borderRadius: '1.25rem',
+                                        paddingRight: (locale === 'ar' ? '1rem' : '3.5rem'),
+                                        paddingLeft: (locale === 'ar' ? '3.5rem' : '1rem'),
+                                        background: '#f8fafc',
+                                        border: '2px solid #e2e8f0',
+                                        boxShadow: 'inset 0 2px 4px 0 rgba(0, 0, 0, 0.05)'
                                     }}
                                 />
+                                <button
+                                    type="button"
+                                    onClick={() => setShowVerificationPassword(!showVerificationPassword)}
+                                    style={{
+                                        position: 'absolute',
+                                        [locale === 'ar' ? 'left' : 'right']: '1rem',
+                                        top: '50%',
+                                        transform: 'translateY(-50%)',
+                                        background: 'none',
+                                        border: 'none',
+                                        cursor: 'pointer',
+                                        padding: '0.5rem',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        color: '#64748b'
+                                    }}
+                                >
+                                    {showVerificationPassword ? (
+                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                            <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                                            <line x1="1" y1="1" x2="23" y2="23"></line>
+                                        </svg>
+                                    ) : (
+                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                            <circle cx="12" cy="12" r="3"></circle>
+                                        </svg>
+                                    )}
+                                </button>
                             </div>
                         </div>
                         <div className="modal-footer" style={{ background: 'white', borderTop: 'none', paddingBottom: '2.5rem', justifyContent: 'center' }}>

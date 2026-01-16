@@ -52,7 +52,7 @@ export default function LocationSearchInput({ value, onChange, placeholder, labe
             const isArabicInput = /[\u0600-\u06FF]/.test(text)
             const detectedLang = isArabicInput ? 'ar' : 'en'
 
-            const res = await fetch(`https://autosuggest.search.hereapi.com/v1/autosuggest?q=${encodeURIComponent(text)}&at=${at}&apiKey=${apiKey}&lang=${detectedLang}`)
+            const res = await fetch(`https://autosuggest.search.hereapi.com/v1/autosuggest?q=${encodeURIComponent(text)}&at=${at}&apiKey=${apiKey}&lang=${detectedLang}&in=countryCode:EGY`)
 
             if (res.ok) {
                 const data = await res.json()
