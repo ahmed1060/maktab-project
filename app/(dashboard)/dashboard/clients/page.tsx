@@ -215,12 +215,28 @@ export default function ClientsPage() {
                                         marginBottom: '0.5rem'
                                     }}
                                 >
-                                    <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', width: '100%', gap: '1rem' }}>
-                                        {/* Left Side: Title & Info */}
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', minWidth: 0, flex: 1 }}>
-                                            <h3 className="text-lg font-bold text-slate-800 leading-tight" style={{ margin: 0 }}>
+                                    <div style={{
+                                        display: 'flex',
+                                        flexWrap: isMobile ? 'nowrap' : 'wrap',
+                                        justifyContent: 'space-between',
+                                        alignItems: 'center',
+                                        width: '100%',
+                                        gap: isMobile ? '0.5rem' : '1rem'
+                                    }}>
+                                        {/* Block 1: Left Side (Name) */}
+                                        <div style={{ flex: 1, minWidth: 0, paddingRight: isMobile ? '0' : '0.5rem' }}>
+                                            <h3 className="text-lg font-bold text-slate-800 leading-tight" style={{
+                                                margin: 0,
+                                                overflow: 'hidden',
+                                                textOverflow: 'ellipsis',
+                                                whiteSpace: 'nowrap'
+                                            }}>
                                                 {client.name}
                                             </h3>
+                                        </div>
+
+                                        {/* Block 2: Middle (Sections Badge) */}
+                                        <div style={{ flex: '0 0 auto' }}>
                                             <span style={{
                                                 padding: '0.25rem 0.75rem',
                                                 borderRadius: '9999px',
@@ -243,14 +259,15 @@ export default function ClientsPage() {
                                             </span>
                                         </div>
 
-                                        {/* Action Buttons Container */}
+                                        {/* Block 3: Right Side (Action Buttons) */}
                                         <div style={{
                                             display: 'flex',
-                                            gap: '0.5rem',
                                             flexDirection: isMobile ? 'column' : 'row',
-                                            alignItems: isMobile ? 'flex-end' : 'center',
-                                            marginLeft: locale === 'ar' ? '0' : 'auto',
-                                            marginRight: locale === 'ar' ? 'auto' : '0'
+                                            alignItems: 'center',
+                                            gap: '0.4rem',
+                                            flex: '0 0 auto',
+                                            marginLeft: locale === 'ar' ? '0' : (isMobile ? '0' : 'auto'),
+                                            marginRight: locale === 'ar' ? (isMobile ? 'auto' : '0') : '0'
                                         }}>
                                             <Link
                                                 href={`/dashboard/clients/${client.id}`}
@@ -261,7 +278,8 @@ export default function ClientsPage() {
                                                     padding: '0.4rem 1rem',
                                                     display: 'inline-block',
                                                     textAlign: 'center',
-                                                    whiteSpace: 'nowrap'
+                                                    whiteSpace: 'nowrap',
+                                                    width: isMobile ? '100%' : 'auto'
                                                 }}
                                             >
                                                 {t('view_client')}
@@ -269,7 +287,8 @@ export default function ClientsPage() {
 
                                             <div style={{
                                                 display: 'flex',
-                                                gap: '0.4rem'
+                                                gap: '0.4rem',
+                                                width: isMobile ? '100%' : 'auto'
                                             }}>
                                                 <button
                                                     onClick={() => {
@@ -285,7 +304,8 @@ export default function ClientsPage() {
                                                         fontSize: '0.8125rem',
                                                         border: 'none',
                                                         cursor: 'pointer',
-                                                        whiteSpace: 'nowrap'
+                                                        whiteSpace: 'nowrap',
+                                                        flex: isMobile ? 1 : 'unset'
                                                     }}
                                                 >
                                                     {t('edit')}
@@ -304,7 +324,8 @@ export default function ClientsPage() {
                                                         fontSize: '0.8125rem',
                                                         border: 'none',
                                                         cursor: 'pointer',
-                                                        whiteSpace: 'nowrap'
+                                                        whiteSpace: 'nowrap',
+                                                        flex: isMobile ? 1 : 'unset'
                                                     }}
                                                 >
                                                     {t('delete')}
