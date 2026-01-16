@@ -223,8 +223,16 @@ export default function ClientsPage() {
                                         width: '100%',
                                         gap: isMobile ? '0.5rem' : '1rem'
                                     }}>
-                                        {/* Block 1: Left Side (Name) */}
-                                        <div style={{ flex: 1, minWidth: 0, paddingRight: isMobile ? '0' : '0.5rem' }}>
+                                        {/* Block 1: Left Side (Name & Badge) */}
+                                        <div style={{
+                                            flex: 1,
+                                            minWidth: 0,
+                                            paddingRight: isMobile ? '0' : '0.5rem',
+                                            display: 'flex',
+                                            flexDirection: isMobile ? 'column' : 'row',
+                                            alignItems: isMobile ? 'flex-start' : 'center',
+                                            gap: isMobile ? '0.375rem' : '0.75rem'
+                                        }}>
                                             <h3 className="text-lg font-bold text-slate-800 leading-tight" style={{
                                                 margin: 0,
                                                 overflow: 'hidden',
@@ -233,31 +241,32 @@ export default function ClientsPage() {
                                             }}>
                                                 {client.name}
                                             </h3>
+                                            <div style={{ display: 'flex' }}>
+                                                <span style={{
+                                                    padding: isMobile ? '0.15rem 0.6rem' : '0.25rem 0.75rem',
+                                                    borderRadius: '9999px',
+                                                    background: '#dbeafe',
+                                                    color: '#1e40af',
+                                                    fontSize: isMobile ? '0.75rem' : '0.875rem',
+                                                    fontWeight: '600',
+                                                    whiteSpace: 'nowrap',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: '0.375rem'
+                                                }}>
+                                                    <svg width={isMobile ? "12" : "14"} height={isMobile ? "12" : "14"} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                                                        <circle cx="9" cy="7" r="4"></circle>
+                                                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                                                        <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                                                    </svg>
+                                                    {client._count.sections} {client._count.sections === 1 ? t('section_label') : t('sections_label')}
+                                                </span>
+                                            </div>
                                         </div>
 
-                                        {/* Block 2: Middle (Sections Badge) */}
-                                        <div style={{ flex: '0 0 auto' }}>
-                                            <span style={{
-                                                padding: '0.25rem 0.75rem',
-                                                borderRadius: '9999px',
-                                                background: '#dbeafe',
-                                                color: '#1e40af',
-                                                fontSize: '0.875rem',
-                                                fontWeight: '600',
-                                                whiteSpace: 'nowrap',
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                gap: '0.375rem'
-                                            }}>
-                                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-                                                    <circle cx="9" cy="7" r="4"></circle>
-                                                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-                                                    <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-                                                </svg>
-                                                {client._count.sections} {client._count.sections === 1 ? t('section_label') : t('sections_label')}
-                                            </span>
-                                        </div>
+                                        {/* Spacer for Desktop (Invisible on Mobile) */}
+                                        {!isMobile && <div style={{ flex: '0 1 auto' }}></div>}
 
                                         {/* Block 3: Right Side (Action Buttons) */}
                                         <div style={{
