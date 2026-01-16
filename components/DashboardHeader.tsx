@@ -313,18 +313,20 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
                                 </span>
                             )}
 
-                            <span style={{
-                                position: 'absolute',
-                                [locale === 'ar' ? 'left' : 'right']: '0.75rem',
-                                transform: isCompanyDropdownOpen ? 'rotate(180deg)' : 'rotate(0deg)',
-                                transition: 'transform 0.2s',
-                                display: 'flex',
-                                alignItems: 'center'
-                            }}>
-                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                                    <polyline points="6 9 12 15 18 9"></polyline>
-                                </svg>
-                            </span>
+                            {!isMobile && (
+                                <span style={{
+                                    position: 'absolute',
+                                    [locale === 'ar' ? 'left' : 'right']: '0.75rem',
+                                    transform: isCompanyDropdownOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+                                    transition: 'transform 0.2s',
+                                    display: 'flex',
+                                    alignItems: 'center'
+                                }}>
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                                        <polyline points="6 9 12 15 18 9"></polyline>
+                                    </svg>
+                                </span>
+                            )}
                         </div>
 
                         {isCompanyDropdownOpen && (
