@@ -335,24 +335,25 @@ export default function ClientDetailsPage() {
                                         minWidth: 0,
                                         paddingRight: isMobile ? '0' : '0.5rem',
                                         display: 'flex',
-                                        flexDirection: 'column',
-                                        gap: '0.375rem'
+                                        flexDirection: isMobile ? 'column' : 'row',
+                                        alignItems: isMobile ? 'flex-start' : 'center',
+                                        gap: isMobile ? '0.375rem' : '0.75rem'
                                     }}>
                                         <h3 className="text-lg font-semibold text-slate-800 leading-tight" style={{
                                             margin: 0,
-                                            overflow: 'hidden',
-                                            textOverflow: 'ellipsis',
-                                            whiteSpace: 'nowrap'
+                                            wordBreak: 'break-word',
+                                            whiteSpace: 'normal',
+                                            overflowWrap: 'anywhere'
                                         }}>
                                             {section.title}
                                         </h3>
                                         <div style={{ display: 'flex' }}>
                                             <span style={{
-                                                padding: '0.15rem 0.6rem',
+                                                padding: isMobile ? '0.15rem 0.6rem' : '0.25rem 0.75rem',
                                                 borderRadius: '9999px',
                                                 background: '#dbeafe',
                                                 color: '#1e40af',
-                                                fontSize: '0.75rem',
+                                                fontSize: isMobile ? '0.75rem' : '0.875rem',
                                                 fontWeight: '600',
                                                 whiteSpace: 'nowrap',
                                                 display: 'flex',
