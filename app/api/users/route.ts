@@ -456,16 +456,16 @@ export async function PUT(req: Request) {
                 const newBase = parseFloat(baseDayOffCredit)
                 updateData.baseDayOffCredit = newBase
 
-                // Recalculate remaining credit based on current reset year approved requests
-                const currentResetYear = regularUser.lastDayOffResetYear || new Date().getFullYear()
+                // Recalculate remaining credit based on current calendar year approved requests
+                const currentYear = new Date().getFullYear()
                 const deductions = await prisma.dayOffRequest.aggregate({
                     where: {
                         userId: id,
                         status: 'APPROVED',
                         deductionType: 'CREDIT',
                         date: {
-                            gte: new Date(currentResetYear, 0, 1),
-                            lte: new Date(currentResetYear, 11, 31)
+                            gte: new Date(currentYear, 0, 1),
+                            lt: new Date(currentYear + 1, 0, 1)
                         }
                     },
                     _sum: {
