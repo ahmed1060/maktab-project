@@ -9,6 +9,7 @@ export default function AddDeductionPage() {
     const params = useParams()
     const router = useRouter()
     const [amount, setAmount] = useState('')
+    const [reason, setReason] = useState('')
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState('')
     const [fieldError, setFieldError] = useState('')
@@ -29,7 +30,10 @@ export default function AddDeductionPage() {
         try {
             const res = await fetch(`/api/users/${params.id}/deduction`, {
                 method: 'POST',
-                body: JSON.stringify({ amount: parseFloat(amount) }), // Amount is DAYS (e.g. 1 for 1 day)
+                body: JSON.stringify({
+                    amount: parseFloat(amount),
+                    reason: reason.trim()
+                }), // Amount is DAYS (e.g. 1 for 1 day)
                 headers: { 'Content-Type': 'application/json' }
             })
 
@@ -96,6 +100,17 @@ export default function AddDeductionPage() {
                             {fieldError}
                         </div>
                     )}
+                </div>
+
+                <div style={{ marginBottom: '1.5rem' }}>
+                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>{t('reason_label')}</label>
+                    <textarea
+                        className="input"
+                        value={reason}
+                        onChange={e => setReason(e.target.value)}
+                        placeholder={t('reason_placeholder')}
+                        style={{ width: '100%', minHeight: '100px', padding: '0.75rem' }}
+                    />
                 </div>
 
                 <div style={{ display: 'flex', gap: '1rem' }}>

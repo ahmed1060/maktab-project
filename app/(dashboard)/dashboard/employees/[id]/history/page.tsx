@@ -43,6 +43,7 @@ interface SalaryAdjustment {
     id: string
     type: 'BONUS' | 'DEDUCTION'
     amount: number
+    reason?: string
     status: 'ACTIVE' | 'ROLLED_BACK'
     createdAt: string
 }
@@ -531,7 +532,12 @@ export default function EmployeeHistoryPage() {
                                             <div style={{ fontWeight: 'bold', fontSize: '1.1rem', color: adj.type === 'BONUS' ? '#7c3aed' : '#dc2626' }}>
                                                 {adj.type === 'BONUS' ? '+' : '-'}{formatDays(adj.amount)}
                                             </div>
-                                            <div style={{ fontSize: '0.875rem', color: '#64748b' }}>
+                                            {adj.reason && (
+                                                <div style={{ fontSize: '0.9rem', color: '#475569', marginTop: '0.25rem', maxWidth: '300px' }}>
+                                                    {adj.reason}
+                                                </div>
+                                            )}
+                                            <div style={{ fontSize: '0.875rem', color: '#94a3b8', marginTop: '0.25rem' }}>
                                                 {new Date(adj.createdAt).toLocaleString(locale)}
                                             </div>
                                         </div>

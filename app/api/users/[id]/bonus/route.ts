@@ -24,7 +24,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     try {
         const userId = params.id
         const json = await req.json()
-        const { amount } = json
+        const { amount, reason } = json
 
         if (!amount || typeof amount !== 'number' || amount <= 0 || amount > 1000) {
             return new NextResponse("Invalid amount (must be positive and <= 1000)", { status: 400 })
@@ -57,6 +57,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
                         userId,
                         type: 'BONUS',
                         amount,
+                        reason: reason || null,
                         status: 'ACTIVE'
                     }
                 }),
@@ -88,6 +89,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
                         userId,
                         type: 'BONUS',
                         amount,
+                        reason: reason || null,
                         status: 'ACTIVE'
                     }
                 }),
