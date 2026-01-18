@@ -5,7 +5,10 @@ import { authOptions } from "@/lib/auth"
 
 export async function GET(req: Request, { params }: { params: { id: string } }) {
     const session = await getServerSession(authOptions)
-    if (!session || !['ADMIN', 'SUPER_ADMIN'].includes(session.user.role)) {
+    const isSelf = session?.user?.id === params.id
+    const isAdmin = ['ADMIN', 'SUPER_ADMIN'].includes(session?.user?.role || '')
+
+    if (!session || (!isSelf && !isAdmin)) {
         return new NextResponse("Unauthorized", { status: 401 })
     }
 

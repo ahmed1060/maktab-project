@@ -554,7 +554,7 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
                                             onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.4)'}
                                             onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
                                         >
-                                            {t('salary_history')}
+                                            {t('history')}
                                         </Link>
                                     )}
                                     <LanguageToggleButton variant="menu-item" onAction={() => setIsMenuOpen(false)} />

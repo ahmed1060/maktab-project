@@ -270,7 +270,7 @@ export default function EmployeeHistoryPage() {
                             className={`btn ${activeTab === 'SALARY' ? 'btn-primary' : 'glass'}`}
                             style={{ borderRadius: '1rem', padding: '0.5rem 1.5rem', height: '42px' }}
                         >
-                            {t('salary_label' as any) || 'Salary'}
+                            {isAdmin ? t('salary_label' as any) : t('history')}
                         </button>
                         <button
                             onClick={() => setActiveTab('DAY_OFF')}
