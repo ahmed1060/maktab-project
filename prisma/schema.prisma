@@ -50,6 +50,7 @@ model User {
   salary                     Float?                  @default(0)
   language                   String                  @default("en")
   dayOffCredit               Float                   @default(0)
+  baseDayOffCredit           Float                   @default(0)
   auditLogs                  AuditLog[]
   createdClients             BusinessClient[]        @relation("CreatedClients")
   editedClients              BusinessClient[]        @relation("EditedClients")

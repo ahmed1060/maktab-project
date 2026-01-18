@@ -36,6 +36,17 @@ export default function EmployeesPage() {
     const [totalEmployees, setTotalEmployees] = useState(0)
     const limit = 10
 
+    const [sortBy, setSortBy] = useState('name')
+    const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc')
+    const [searchQuery, setSearchQuery] = useState('')
+    const [roleFilter, setRoleFilter] = useState('')
+    const [filters, setFilters] = useState({ search: '', status: '', dateFrom: '', dateTo: '', employeeId: '' })
+    const [alert, setAlert] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
+    const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; name: string } | null>(null)
+    const [resettingPoints, setResettingPoints] = useState<string | null>(null)
+    const [deletingUser, setDeletingUser] = useState<string | null>(null)
+    const [togglingStatus, setTogglingStatus] = useState<string | null>(null)
+
     const fetchEmployees = useCallback(async () => {
         setLoading(true)
         const queryParams = new URLSearchParams()
@@ -44,9 +55,11 @@ export default function EmployeesPage() {
         queryParams.set('limit', limit.toString())
         queryParams.set('excludeRole', 'SUPER_ADMIN')
         if (session?.user?.role === 'TEAM_LEADER') {
-            queryParams.set('excludeRole', 'ADMIN,SUPER_ADMIN') // API logic might need change or handling multiple roles
+            queryParams.set('excludeRole', 'ADMIN,SUPER_ADMIN')
         }
         if (session?.user?.id) queryParams.set('excludeUserId', (session.user as any).id)
+        if (filters.search) queryParams.set('search', filters.search)
+        if (filters.status) queryParams.set('status', filters.status)
 
         try {
             const res = await fetch(`/api/users?${queryParams.toString()}`, { cache: 'no-store' })
@@ -59,32 +72,9 @@ export default function EmployeesPage() {
         } finally {
             setLoading(false)
         }
-    }, [selectedCompanyId, page, limit, session?.user?.id])
+    }, [selectedCompanyId, page, limit, session?.user?.id, filters.search, filters.status])
 
-    const [sortBy, setSortBy] = useState('name')
-    const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc')
-    const [searchQuery, setSearchQuery] = useState('')
-    const [roleFilter, setRoleFilter] = useState('')
-    const [filters, setFilters] = useState({ search: '', status: '', dateFrom: '', dateTo: '', employeeId: '' })
-    const [alert, setAlert] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
-    const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; name: string } | null>(null)
-    const [resettingPoints, setResettingPoints] = useState<string | null>(null)
-    const [deletingUser, setDeletingUser] = useState<string | null>(null)
-    const [togglingStatus, setTogglingStatus] = useState<string | null>(null)
-
-    const filteredEmployees = employees.filter(emp => {
-        if (roleFilter && emp.role !== roleFilter) return false
-        if (filters.status && emp.status !== filters.status) return false
-        if (searchQuery) {
-            const query = searchQuery.toLowerCase()
-            return (
-                emp.firstName.toLowerCase().includes(query) ||
-                emp.lastName.toLowerCase().includes(query) ||
-                emp.email.toLowerCase().includes(query)
-            )
-        }
-        return true
-    })
+    const filteredEmployees = employees
 
     const sortedEmployees = [...filteredEmployees].sort((a, b) => {
         let comparison = 0
@@ -111,7 +101,7 @@ export default function EmployeesPage() {
         if (session?.user) {
             fetchEmployees()
         }
-    }, [session, selectedCompanyId, page])
+    }, [session, selectedCompanyId, page, filters.search, filters.status])
 
     const handleDelete = async (id: string, name: string) => {
         setDeleteConfirm({ id, name })
@@ -251,6 +241,7 @@ export default function EmployeesPage() {
                 onFilterChange={(newFilters) => {
                     setFilters(prev => ({ ...prev, ...newFilters }))
                     setSearchQuery(newFilters.search)
+                    setPage(1)
                 }}
                 selectedEmployeeId={''}
                 hideEmployeeFilter={true}
