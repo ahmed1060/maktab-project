@@ -452,7 +452,30 @@ export async function PUT(req: Request) {
             if (salary > 1000000000) return new NextResponse("Salary cannot exceed 1 billion", { status: 400 })
             updateData.salary = salary
             if (dayOffCredit !== undefined) updateData.dayOffCredit = parseFloat(dayOffCredit)
-            if (baseDayOffCredit !== undefined) updateData.baseDayOffCredit = parseFloat(baseDayOffCredit)
+            if (baseDayOffCredit !== undefined) {
+                const newBase = parseFloat(baseDayOffCredit)
+                updateData.baseDayOffCredit = newBase
+
+                // Recalculate remaining credit based on current reset year approved requests
+                const currentResetYear = regularUser.lastDayOffResetYear || new Date().getFullYear()
+                const deductions = await prisma.dayOffRequest.aggregate({
+                    where: {
+                        userId: id,
+                        status: 'APPROVED',
+                        deductionType: 'CREDIT',
+                        date: {
+                            gte: new Date(currentResetYear, 0, 1),
+                            lte: new Date(currentResetYear, 11, 31)
+                        }
+                    },
+                    _sum: {
+                        daysDeducted: true
+                    }
+                })
+
+                const totalDeducted = deductions._sum.daysDeducted || 0
+                updateData.dayOffCredit = newBase - totalDeducted
+            }
         }
 
 
