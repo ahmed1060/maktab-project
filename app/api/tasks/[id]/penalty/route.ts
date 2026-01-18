@@ -57,7 +57,19 @@ export async function POST(req: Request, { params }: { params: { id: string } })
                 })
             }
 
-            // 3. Add System Comment to Task
+            // 3. Add Record to SalaryAdjustment (for history management)
+            const msg = `Lateness Penalty Deduction applied with ${amount} days`
+            await tx.salaryAdjustment.create({
+                data: {
+                    userId: userId,
+                    type: 'DEDUCTION',
+                    amount: amount,
+                    reason: msg,
+                    status: 'ACTIVE'
+                }
+            })
+
+            // 4. Add System Comment to Task
             let comments = []
             if (task.comments) {
                 try {
@@ -68,11 +80,11 @@ export async function POST(req: Request, { params }: { params: { id: string } })
             }
 
             comments.push({
-                text: "Lateness Penalty Deduction",
+                text: msg,
                 author: "System",
                 date: now.toISOString(),
                 type: 'SYSTEM_DEDUCTION',
-                amount: amount // Optional: store amount in comment for tracing
+                amount: amount
             })
 
             await tx.task.update({
@@ -80,7 +92,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
                 data: { comments: JSON.stringify(comments) }
             })
 
-            // 4. Audit Log
+            // 5. Audit Log
             await tx.auditLog.create({
                 data: {
                     action: 'APPLY_MANUAL_PENALTY',
