@@ -51,6 +51,7 @@ model User {
   language                   String                  @default("en")
   dayOffCredit               Float                   @default(0)
   baseDayOffCredit           Float                   @default(0)
+  lastDayOffResetYear        Int                     @default(2024)
   auditLogs                  AuditLog[]
   createdClients             BusinessClient[]        @relation("CreatedClients")
   editedClients              BusinessClient[]        @relation("EditedClients")
@@ -64,6 +65,7 @@ model User {
   profileUpdateRequests      ProfileUpdateRequest[]
   salaryAdjustments          SalaryAdjustment[]
   salaryRecords              SalaryRecord[]
+  dayOffCreditSnapshots      DayOffCreditSnapshot[]
   plainPasswordEnc           String?
   tasks                      Task[]                  @relation("AssignedTasks")
   createdTasks               Task[]                  @relation("CreatedTasks")
@@ -294,4 +296,17 @@ model SalaryAdjustment {
   @@index([userId])
   @@index([type])
   @@index([status])
+}
+
+model DayOffCreditSnapshot {
+  id              String   @id @default(uuid())
+  userId          String
+  year            Int
+  baseCredit      Float
+  remainingCredit Float
+  createdAt       DateTime @default(now())
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([year])
 }
