@@ -198,7 +198,7 @@ export default function EmployeesPage() {
         }
     }
 
-    if (loading) {
+    if (loading && employees.length === 0) {
         return <LoadingSpinner message={t('loading_users')} />
     }
 
@@ -277,7 +277,15 @@ export default function EmployeesPage() {
                 }
             />
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
+            <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))',
+                gap: '1rem',
+                marginBottom: '2rem',
+                opacity: loading ? 0.6 : 1,
+                pointerEvents: loading ? 'none' : 'auto',
+                transition: 'opacity 0.2s ease-in-out'
+            }}>
                 {sortedEmployees.length === 0 ? (
                     <div className="glass-card flex flex-col items-center justify-center py-16 text-center text-slate-500 col-span-full">
                         <span className="text-5xl mb-4">👥</span>

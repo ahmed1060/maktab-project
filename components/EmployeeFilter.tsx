@@ -101,6 +101,7 @@ export default function EmployeeFilter({
     const [localStatus, setLocalStatus] = useState(selectedStatus)
     const [localRole, setLocalRole] = useState(selectedRole)
     const [localCompanyId, setLocalCompanyId] = useState(selectedCompanyId)
+    const [searchTerm, setSearchTerm] = useState(searchQuery)
 
     useEffect(() => {
         setLocalEmployeeId(selectedEmployeeId)
@@ -109,7 +110,8 @@ export default function EmployeeFilter({
         setLocalCompanyId(selectedCompanyId)
         setLocalDateFrom(dateFrom)
         setLocalDateTo(dateTo)
-    }, [selectedEmployeeId, selectedStatus, selectedRole, selectedCompanyId, dateFrom, dateTo])
+        setSearchTerm(searchQuery)
+    }, [selectedEmployeeId, selectedStatus, selectedRole, selectedCompanyId, dateFrom, dateTo, searchQuery])
 
     useEffect(() => {
         const checkMobile = () => {
@@ -161,6 +163,22 @@ export default function EmployeeFilter({
         }
     }, [isEmployee, hideEmployeeFilter, session?.user?.role, globalCompanyId])
 
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            if (searchTerm !== searchQuery) {
+                onFilterChange({
+                    employeeId: localEmployeeId,
+                    dateFrom: localDateFrom,
+                    dateTo: localDateTo,
+                    status: localStatus,
+                    search: searchTerm
+                })
+            }
+        }, 500)
+
+        return () => clearTimeout(timer)
+    }, [searchTerm])
+
     const handleApplyFilters = () => {
         onFilterChange({
             employeeId: localEmployeeId,
@@ -197,14 +215,7 @@ export default function EmployeeFilter({
     }
 
     const handleSearchChange = (search: string) => {
-        // Search stays immediate
-        onFilterChange({
-            employeeId: selectedEmployeeId,
-            dateFrom: dateFrom,
-            dateTo: dateTo,
-            status: selectedStatus,
-            search
-        })
+        setSearchTerm(search)
     }
 
     const activeFilterCount = [
@@ -259,7 +270,7 @@ export default function EmployeeFilter({
                         </div>
                         <input
                             type="text"
-                            value={searchQuery}
+                            value={searchTerm}
                             onChange={(e) => handleSearchChange(e.target.value)}
                             placeholder={placeholder || t('search_placeholder')}
                             className="input"
