@@ -15,33 +15,93 @@ export async function POST(req: Request) {
     }
 
     try {
-        const { taskIds } = await req.json()
-
-        if (!Array.isArray(taskIds) || taskIds.length === 0) {
-            return new NextResponse("Invalid task IDs", { status: 400 })
-        }
+        const { taskIds, filters } = await req.json()
 
         const userCompanyId = (session.user as any).companyId
         let finalTaskIds = taskIds
 
-        // For non-Super Admins, only allow tasks from their own company
-        if (role !== 'SUPER_ADMIN') {
-            if (!userCompanyId) {
-                return new NextResponse("Forbidden: No company assigned", { status: 403 })
+        if (!taskIds || !Array.isArray(taskIds) || taskIds.length === 0) {
+            // If no taskIds, use filters
+            if (!filters) {
+                return new NextResponse("Invalid request: taskIds or filters required", { status: 400 })
             }
 
-            const validTasks = await prisma.task.findMany({
-                where: {
-                    id: { in: taskIds },
-                    assignee: { companyId: userCompanyId }
-                },
+            const where: any = {
+                AND: [
+                    {
+                        OR: [
+                            { status: 'APPROVED' },
+                            { status: 'COMPLETED' },
+                            { status: 'REJECTED' }
+                        ]
+                    },
+                    { totalCost: { gt: 0 } },
+                    { paymentStatus: 'PENDING_PAYMENT' }
+                ]
+            }
+
+            // Company isolation
+            if (role !== 'SUPER_ADMIN') {
+                if (!userCompanyId) {
+                    return new NextResponse("Forbidden: No company assigned", { status: 403 })
+                }
+                where.AND.push({
+                    OR: [
+                        { assignee: { companyId: userCompanyId } },
+                        { assignees: { some: { companyId: userCompanyId } } }
+                    ]
+                })
+            }
+
+            // Apply Filters
+            if (filters.employeeId) {
+                where.AND.push({
+                    OR: [
+                        { assigneeId: filters.employeeId },
+                        { assignees: { some: { id: filters.employeeId } } }
+                    ]
+                })
+            }
+            if (filters.search) {
+                where.AND.push({ title: { contains: filters.search, mode: 'insensitive' } })
+            }
+            if (filters.dateFrom) {
+                where.AND.push({ updatedAt: { gte: new Date(filters.dateFrom) } })
+            }
+            if (filters.dateTo) {
+                const toDate = new Date(filters.dateTo)
+                toDate.setHours(23, 59, 59, 999)
+                where.AND.push({ updatedAt: { lte: toDate } })
+            }
+
+            const tasks = await prisma.task.findMany({
+                where,
                 select: { id: true }
             })
-            finalTaskIds = validTasks.map(t => t.id)
+            finalTaskIds = tasks.map(t => t.id)
+        } else {
+            // For non-Super Admins, only allow tasks from their own company
+            if (role !== 'SUPER_ADMIN') {
+                if (!userCompanyId) {
+                    return new NextResponse("Forbidden: No company assigned", { status: 403 })
+                }
 
-            if (finalTaskIds.length === 0) {
-                return new NextResponse("Forbidden: Tasks do not belong to your company", { status: 403 })
+                const validTasks = await prisma.task.findMany({
+                    where: {
+                        id: { in: taskIds },
+                        OR: [
+                            { assignee: { companyId: userCompanyId } },
+                            { assignees: { some: { companyId: userCompanyId } } }
+                        ]
+                    },
+                    select: { id: true }
+                })
+                finalTaskIds = validTasks.map(t => t.id)
             }
+        }
+
+        if (!finalTaskIds || finalTaskIds.length === 0) {
+            return NextResponse.json({ success: true, count: 0 })
         }
 
         // Update all tasks to PAID and COMPLETED

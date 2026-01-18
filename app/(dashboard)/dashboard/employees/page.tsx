@@ -33,6 +33,7 @@ export default function EmployeesPage() {
 
     const [page, setPage] = useState(1)
     const [totalPages, setTotalPages] = useState(0)
+    const [totalEmployees, setTotalEmployees] = useState(0)
     const limit = 10
 
     const fetchEmployees = useCallback(async () => {
@@ -52,6 +53,7 @@ export default function EmployeesPage() {
             const result = await res.json()
             setEmployees(result.data)
             setTotalPages(result.totalPages)
+            setTotalEmployees(result.total)
         } catch (error) {
             console.error('Fetch error:', error)
         } finally {
@@ -109,7 +111,7 @@ export default function EmployeesPage() {
         if (session?.user) {
             fetchEmployees()
         }
-    }, [session, selectedCompanyId])
+    }, [session, selectedCompanyId, page])
 
     const handleDelete = async (id: string, name: string) => {
         setDeleteConfirm({ id, name })
@@ -258,7 +260,7 @@ export default function EmployeesPage() {
                 selectedStatus={filters.status}
                 searchQuery={searchQuery}
                 placeholder={locale === 'ar' ? 'بحث بالاسم أو البريد الإلكتروني' : 'Search Name or Email'}
-                totalCount={sortedEmployees.length}
+                totalCount={totalEmployees}
                 showRoleFilter={true}
                 selectedRole={roleFilter}
                 onRoleChange={setRoleFilter}

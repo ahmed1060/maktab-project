@@ -110,15 +110,12 @@ export default function CostsClient({ tasksWithCosts, userRole, total, page, tot
     }
 
     const handleMarkAllAsPaid = async () => {
-        if (sortedEntries.length === 0) return
-
         setIsUpdating(true)
         try {
-            const taskIds = Array.from(new Set(sortedEntries.map(entry => entry.id)))
             const res = await fetch('/api/tasks/payment/bulk', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ taskIds })
+                body: JSON.stringify({ filters })
             })
 
             if (res.ok) {
@@ -183,7 +180,7 @@ export default function CostsClient({ tasksWithCosts, userRole, total, page, tot
                     { label: t('amount_label'), value: 'amount' },
                 ]}
                 primaryAction={
-                    ['ADMIN', 'SUPER_ADMIN'].includes(userRole) && tasksWithCosts.length > 0 && (
+                    ['ADMIN', 'SUPER_ADMIN'].includes(userRole) && total > 0 && (
                         <button
                             onClick={handleMarkAllAsPaid}
                             disabled={isUpdating}
@@ -202,7 +199,7 @@ export default function CostsClient({ tasksWithCosts, userRole, total, page, tot
                                 alignItems: 'center'
                             }}
                         >
-                            {isUpdating ? t('marking_as_paid') : `${t('mark_all_as_paid')} (${tasksWithCosts.length})`}
+                            {isUpdating ? t('marking_as_paid') : `${t('mark_all_as_paid')} (${total})`}
                         </button>
                     )
                 }
