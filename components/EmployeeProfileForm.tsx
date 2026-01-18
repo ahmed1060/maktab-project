@@ -24,7 +24,6 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
     const [role, setRole] = useState('')
     const [gender, setGender] = useState('MALE')
     const [salary, setSalary] = useState<string>('')
-    const [dayOffCredit, setDayOffCredit] = useState<string>('')
     const [baseDayOffCredit, setBaseDayOffCredit] = useState<string>('')
     const [companyId, setCompanyId] = useState('')
     const [companies, setCompanies] = useState<{ id: string, name: string }[]>([])
@@ -95,7 +94,6 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                 setRole(employee.role)
                 setGender(employee.gender || 'MALE')
                 setSalary(employee.salary !== undefined && employee.salary !== null ? employee.salary.toString() : '')
-                setDayOffCredit(employee.dayOffCredit !== undefined && employee.dayOffCredit !== null ? employee.dayOffCredit.toString() : '0')
                 setBaseDayOffCredit(employee.baseDayOffCredit !== undefined && employee.baseDayOffCredit !== null ? employee.baseDayOffCredit.toString() : '0')
                 setCompanyId(employee.companyId || '')
                 setAvatarUrl(employee.avatar || null)
@@ -254,7 +252,6 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                     avatar: avatarUrl,
                     companyId: userRole === 'SUPER_ADMIN' ? companyId : undefined,
                     salary: (userRole === 'ADMIN' || userRole === 'SUPER_ADMIN') && userId !== session?.user?.id ? parseFloat(salary) || 0 : undefined,
-                    dayOffCredit: (userRole === 'ADMIN' || userRole === 'SUPER_ADMIN') && userId !== session?.user?.id ? parseFloat(dayOffCredit) || 0 : undefined,
                     baseDayOffCredit: (userRole === 'ADMIN' || userRole === 'SUPER_ADMIN') && userId !== session?.user?.id ? parseFloat(baseDayOffCredit) || 0 : undefined
                 }),
                 headers: { 'Content-Type': 'application/json' }
@@ -730,17 +727,6 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                                 style={(isViewMode || userId === session?.user?.id || !['ADMIN', 'SUPER_ADMIN'].includes(userRole)) ? { background: '#f1f5f9', cursor: 'not-allowed', textAlign: locale === 'ar' ? 'right' : 'left' } : { textAlign: locale === 'ar' ? 'right' : 'left' }}
                             />
                         </div>
-                        <div style={{ marginBottom: '1rem' }}>
-                            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('remaining_day_off_credit')}</label>
-                            <input
-                                type="number"
-                                className="input"
-                                value={dayOffCredit}
-                                disabled={true}
-                                readOnly={true}
-                                style={{ background: '#f1f5f9', cursor: 'not-allowed', textAlign: locale === 'ar' ? 'right' : 'left' }}
-                            />
-                        </div>
                     </>
                 )}
 
@@ -878,51 +864,120 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                 </div>
             </form>
 
-            {verificationModalOpen && createPortal(
-                <div className="modal-overlay">
-                    <div className="modal-content" style={{ maxWidth: '400px', width: '90%' }}>
-                        <div className="modal-header">
-                            <h3 className="modal-title">{t('verify_identity')}</h3>
-                            <button
-                                className="modal-close"
-                                onClick={() => {
-                                    setVerificationModalOpen(false)
-                                    setVerificationPassword('')
-                                    setVerificationCallback(null)
-                                }}
-                            >
-                                &times;
-                            </button>
-                        </div>
-                        <div className="modal-body" style={{ textAlign: 'center' }}>
-                            <div style={{
-                                width: '64px',
-                                height: '64px',
-                                background: 'rgba(99, 102, 241, 0.1)',
-                                borderRadius: '50%',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                margin: '0 auto 1.5rem',
-                                color: 'var(--primary)'
-                            }}>
-                                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
-                                    <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
-                                </svg>
+            {
+                verificationModalOpen && createPortal(
+                    <div className="modal-overlay">
+                        <div className="modal-content" style={{ maxWidth: '400px', width: '90%' }}>
+                            <div className="modal-header">
+                                <h3 className="modal-title">{t('verify_identity')}</h3>
+                                <button
+                                    className="modal-close"
+                                    onClick={() => {
+                                        setVerificationModalOpen(false)
+                                        setVerificationPassword('')
+                                        setVerificationCallback(null)
+                                    }}
+                                >
+                                    &times;
+                                </button>
                             </div>
-                            <p style={{ marginBottom: '1.5rem', fontSize: '1rem', color: '#475569', fontWeight: '500' }}>
-                                {t('enter_password_confirm')}
-                            </p>
-                            <div style={{ position: 'relative' }}>
-                                <input
-                                    type={showVerificationPassword ? "text" : "password"}
-                                    className="input"
-                                    placeholder={t('enter_your_password')}
-                                    value={verificationPassword}
-                                    onChange={(e) => setVerificationPassword(e.target.value)}
-                                    onKeyDown={(e) => {
-                                        if (e.key === 'Enter' && verificationPassword && !isVerifying) {
+                            <div className="modal-body" style={{ textAlign: 'center' }}>
+                                <div style={{
+                                    width: '64px',
+                                    height: '64px',
+                                    background: 'rgba(99, 102, 241, 0.1)',
+                                    borderRadius: '50%',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    margin: '0 auto 1.5rem',
+                                    color: 'var(--primary)'
+                                }}>
+                                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                                        <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                                    </svg>
+                                </div>
+                                <p style={{ marginBottom: '1.5rem', fontSize: '1rem', color: '#475569', fontWeight: '500' }}>
+                                    {t('enter_password_confirm')}
+                                </p>
+                                <div style={{ position: 'relative' }}>
+                                    <input
+                                        type={showVerificationPassword ? "text" : "password"}
+                                        className="input"
+                                        placeholder={t('enter_your_password')}
+                                        value={verificationPassword}
+                                        onChange={(e) => setVerificationPassword(e.target.value)}
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter' && verificationPassword && !isVerifying) {
+                                                if (verificationCallback?.type === 'UPDATE') {
+                                                    handleVerifyAndUpdate(verificationPassword)
+                                                } else {
+                                                    handleRevealPassword(verificationPassword)
+                                                }
+                                            }
+                                        }}
+                                        autoFocus
+                                        style={{
+                                            textAlign: locale === 'ar' ? 'right' : 'left',
+                                            height: '54px',
+                                            fontSize: '1.125rem',
+                                            borderRadius: '1.25rem',
+                                            paddingRight: (locale === 'ar' ? '1rem' : '3.5rem'),
+                                            paddingLeft: (locale === 'ar' ? '3.5rem' : '1rem'),
+                                            background: '#f8fafc',
+                                            border: '2px solid #e2e8f0',
+                                            boxShadow: 'inset 0 2px 4px 0 rgba(0, 0, 0, 0.05)'
+                                        }}
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowVerificationPassword(!showVerificationPassword)}
+                                        style={{
+                                            position: 'absolute',
+                                            [locale === 'ar' ? 'left' : 'right']: '1rem',
+                                            top: '50%',
+                                            transform: 'translateY(-50%)',
+                                            background: 'none',
+                                            border: 'none',
+                                            cursor: 'pointer',
+                                            padding: '0.5rem',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            color: '#64748b'
+                                        }}
+                                    >
+                                        {showVerificationPassword ? (
+                                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                                                <line x1="1" y1="1" x2="23" y2="23"></line>
+                                            </svg>
+                                        ) : (
+                                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                                <circle cx="12" cy="12" r="3"></circle>
+                                            </svg>
+                                        )}
+                                    </button>
+                                </div>
+                            </div>
+                            <div className="modal-footer" style={{ background: 'white', borderTop: 'none', paddingBottom: '2.5rem', justifyContent: 'center' }}>
+                                <button
+                                    className="btn"
+                                    style={{ background: '#f1f5f9', color: '#64748b', minWidth: '100px' }}
+                                    onClick={() => {
+                                        setVerificationModalOpen(false)
+                                        setVerificationPassword('')
+                                        setVerificationCallback(null)
+                                    }}
+                                >
+                                    {t('cancel')}
+                                </button>
+                                <button
+                                    className="btn btn-primary"
+                                    style={{ minWidth: '140px' }}
+                                    onClick={() => {
+                                        if (verificationPassword && !isVerifying) {
                                             if (verificationCallback?.type === 'UPDATE') {
                                                 handleVerifyAndUpdate(verificationPassword)
                                             } else {
@@ -930,88 +985,21 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                                             }
                                         }
                                     }}
-                                    autoFocus
-                                    style={{
-                                        textAlign: locale === 'ar' ? 'right' : 'left',
-                                        height: '54px',
-                                        fontSize: '1.125rem',
-                                        borderRadius: '1.25rem',
-                                        paddingRight: (locale === 'ar' ? '1rem' : '3.5rem'),
-                                        paddingLeft: (locale === 'ar' ? '3.5rem' : '1rem'),
-                                        background: '#f8fafc',
-                                        border: '2px solid #e2e8f0',
-                                        boxShadow: 'inset 0 2px 4px 0 rgba(0, 0, 0, 0.05)'
-                                    }}
-                                />
-                                <button
-                                    type="button"
-                                    onClick={() => setShowVerificationPassword(!showVerificationPassword)}
-                                    style={{
-                                        position: 'absolute',
-                                        [locale === 'ar' ? 'left' : 'right']: '1rem',
-                                        top: '50%',
-                                        transform: 'translateY(-50%)',
-                                        background: 'none',
-                                        border: 'none',
-                                        cursor: 'pointer',
-                                        padding: '0.5rem',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        color: '#64748b'
-                                    }}
+                                    disabled={!verificationPassword || isVerifying}
                                 >
-                                    {showVerificationPassword ? (
-                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                            <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
-                                            <line x1="1" y1="1" x2="23" y2="23"></line>
-                                        </svg>
-                                    ) : (
-                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                                            <circle cx="12" cy="12" r="3"></circle>
-                                        </svg>
-                                    )}
+                                    {isVerifying ? (
+                                        <>
+                                            <div className="animate-spin" style={{ width: '16px', height: '16px', border: '2px solid white', borderTopColor: 'transparent', borderRadius: '50%', marginRight: '8px' }}></div>
+                                            {t('verifying')}
+                                        </>
+                                    ) : t('confirm')}
                                 </button>
                             </div>
                         </div>
-                        <div className="modal-footer" style={{ background: 'white', borderTop: 'none', paddingBottom: '2.5rem', justifyContent: 'center' }}>
-                            <button
-                                className="btn"
-                                style={{ background: '#f1f5f9', color: '#64748b', minWidth: '100px' }}
-                                onClick={() => {
-                                    setVerificationModalOpen(false)
-                                    setVerificationPassword('')
-                                    setVerificationCallback(null)
-                                }}
-                            >
-                                {t('cancel')}
-                            </button>
-                            <button
-                                className="btn btn-primary"
-                                style={{ minWidth: '140px' }}
-                                onClick={() => {
-                                    if (verificationPassword && !isVerifying) {
-                                        if (verificationCallback?.type === 'UPDATE') {
-                                            handleVerifyAndUpdate(verificationPassword)
-                                        } else {
-                                            handleRevealPassword(verificationPassword)
-                                        }
-                                    }
-                                }}
-                                disabled={!verificationPassword || isVerifying}
-                            >
-                                {isVerifying ? (
-                                    <>
-                                        <div className="animate-spin" style={{ width: '16px', height: '16px', border: '2px solid white', borderTopColor: 'transparent', borderRadius: '50%', marginRight: '8px' }}></div>
-                                        {t('verifying')}
-                                    </>
-                                ) : t('confirm')}
-                            </button>
-                        </div>
-                    </div>
-                </div>,
-                document.body
-            )}
-        </div>
+                    </div>,
+                    document.body
+                )
+            }
+        </div >
     )
 }

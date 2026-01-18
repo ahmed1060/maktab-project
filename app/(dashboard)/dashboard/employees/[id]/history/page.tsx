@@ -429,12 +429,11 @@ export default function EmployeeHistoryPage() {
                                         <th style={{ padding: '0.75rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('reason_label')}</th>
                                         <th style={{ padding: '0.75rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('days_label')}</th>
                                         <th style={{ padding: '0.75rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('deducted_from' as any) || 'Deducted From'}</th>
-                                        {isAdmin && <th style={{ padding: '0.75rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('actions_label')}</th>}
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {yearData.requests.length === 0 ? (
-                                        <tr><td colSpan={6} style={{ padding: '2rem', textAlign: 'center', color: '#64748b' }}>{t('no_records_found')}</td></tr>
+                                        <tr><td colSpan={5} style={{ padding: '2rem', textAlign: 'center', color: '#64748b' }}>{t('no_records_found')}</td></tr>
                                     ) : (
                                         yearData.requests.map(req => (
                                             <tr key={req.id} style={{ borderBottom: '1px solid #e2e8f0' }}>
@@ -443,19 +442,6 @@ export default function EmployeeHistoryPage() {
                                                 <td style={{ padding: '0.75rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{req.reason || '-'}</td>
                                                 <td style={{ padding: '0.75rem', textAlign: locale === 'ar' ? 'right' : 'left', fontWeight: 'bold' }}>{req.daysDeducted}</td>
                                                 <td style={{ padding: '0.75rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{req.deductionType === 'CREDIT' ? t('day_off_credit') : t('salary_label' as any)}</td>
-                                                {isAdmin && (
-                                                    <td style={{ padding: '0.75rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
-                                                        {req.deductionType === 'CREDIT' && (
-                                                            <button
-                                                                onClick={() => { setSelectedRequest(req); setReevaluateValue(req.daysDeducted.toString()); setIsReevaluateModalOpen(true); }}
-                                                                className="btn glass"
-                                                                style={{ fontSize: '0.8rem', padding: '0.25rem 0.5rem' }}
-                                                            >
-                                                                {t('reevaluate' as any) || 'ReEvaluate'}
-                                                            </button>
-                                                        )}
-                                                    </td>
-                                                )}
                                             </tr>
                                         ))
                                     )}
