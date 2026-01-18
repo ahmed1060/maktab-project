@@ -64,7 +64,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
                     userId: userId,
                     type: 'DEDUCTION',
                     amount: amount,
-                    reason: msg,
+                    reason: "Lateness Penalty Deduction",
                     status: 'ACTIVE'
                 }
             })

@@ -16,8 +16,25 @@ interface Coordinates {
 export function extractCoords(locationStr: string | null | undefined): Coordinates | null {
     if (!locationStr) return null;
 
+    // Check if it's a JSON string
+    if (locationStr.trim().startsWith('{')) {
+        try {
+            const data = JSON.parse(locationStr);
+            const lat = parseFloat(data.latitude || data.lat);
+            const lng = parseFloat(data.longitude || data.lng || data.link?.match(/q=(-?\d+\.\d+),(-?\d+\.\d+)/)?.[1]);
+            // If link extraction failed, try another match
+            let finalLng = lng;
+            if (isNaN(lng) && data.link) {
+                const match = data.link.match(/q=(-?\d+\.\d+),(-?\d+\.\d+)/);
+                if (match) finalLng = parseFloat(match[2]);
+            }
+            if (!isNaN(lat) && !isNaN(finalLng)) {
+                return { lat, lng: finalLng };
+            }
+        } catch (e) { }
+    }
+
     // Regex to find patterns like q=lat,lng or just lat,lng
-    // We look for two sequences of numbers/decimals separated by a comma
     const regex = /(?:q=)?(-?\d+\.\d+)\s*,\s*(-?\d+\.\d+)/;
     const match = locationStr.match(regex);
 

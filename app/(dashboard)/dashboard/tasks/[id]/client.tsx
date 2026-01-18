@@ -1168,12 +1168,12 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                                 </div>
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                                     {locations.map((loc: any, i: number) => {
-                                        let displayLoc = loc.location
+                                        let displayLoc = loc.locationName || loc.location
                                         let mapsLink = null
                                         try {
                                             if (loc.location.startsWith('{')) {
                                                 const d = JSON.parse(loc.location)
-                                                displayLoc = d.address || `${d.latitude}, ${d.longitude}`
+                                                displayLoc = loc.locationName || d.address || d.name || `${d.latitude}, ${d.longitude}`
                                                 if (d.latitude && d.longitude) mapsLink = `https://www.google.com/maps?q=${d.latitude},${d.longitude}`
                                             }
                                         } catch { }
