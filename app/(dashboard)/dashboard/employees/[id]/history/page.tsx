@@ -585,7 +585,7 @@ export default function EmployeeHistoryPage() {
                         boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)',
                         direction: locale === 'ar' ? 'rtl' : 'ltr'
                     }}>
-                        <h2 style={{ marginBottom: '1rem' }}>{t('reevaluate' as any) || 'Re-Evaluate Days'}</h2>
+                        <h2 style={{ marginBottom: '1rem' }}>{t('reevaluate')}</h2>
                         <p style={{ color: '#64748b', fontSize: '0.9rem', marginBottom: '1.5rem' }}>
                             {new Date(selectedRequest.date).toLocaleDateString(locale)} - {t(selectedRequest.type as any) || selectedRequest.type}
                         </p>
@@ -604,7 +604,7 @@ export default function EmployeeHistoryPage() {
                             />
                         </div>
                         <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
-                            <button onClick={() => setIsReevaluateModalOpen(false)} className="btn glass">{t('cancel_button' as any) || 'Cancel'}</button>
+                            <button onClick={() => setIsReevaluateModalOpen(false)} className="btn glass">{t('cancel_button')}</button>
                             <button
                                 onClick={handleReevaluate}
                                 className="btn btn-primary"
@@ -641,7 +641,7 @@ export default function EmployeeHistoryPage() {
                         direction: locale === 'ar' ? 'rtl' : 'ltr'
                     }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-                            <h2 style={{ margin: 0 }}>{t('manage_deductions' as any) || 'Day Off Deductions'}</h2>
+                            <h2 style={{ margin: 0 }}>{t('manage_deductions')}</h2>
                             <button onClick={() => setIsManageDeductionsOpen(false)} style={{ border: 'none', background: 'none', fontSize: '1.5rem', cursor: 'pointer', color: '#64748b' }}>×</button>
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
@@ -664,7 +664,7 @@ export default function EmployeeHistoryPage() {
                                                     className="btn glass"
                                                     style={{ fontSize: '0.85rem' }}
                                                 >
-                                                    {t('reevaluate' as any) || 'ReEvaluate'}
+                                                    {t('reevaluate')}
                                                 </button>
                                             </div>
                                         </div>
