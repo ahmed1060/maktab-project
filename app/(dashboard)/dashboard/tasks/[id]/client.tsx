@@ -1161,7 +1161,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                                                     gap: '0.4rem'
                                                 }}
                                             >
-                                                <span>⚠️</span> {locale === 'ar' ? 'خصم تأخير' : 'Late Penalty'}
+                                                <span>⚠️</span> {locale === 'ar' ? 'خصم تأخير' : 'Lateness Penalty'}
                                             </button>
                                         </div>
                                     )}

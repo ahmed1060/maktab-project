@@ -68,7 +68,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
             }
 
             comments.push({
-                text: "Late Penalty Deduction",
+                text: "Lateness Penalty Deduction",
                 author: "System",
                 date: now.toISOString(),
                 type: 'SYSTEM_DEDUCTION',
