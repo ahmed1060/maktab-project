@@ -97,6 +97,9 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
     const [locationToDelete, setLocationToDelete] = useState<{ index?: number, date?: string } | null>(null)
     const [isReverting, setIsReverting] = useState(false)
     const [verifyingLocation, setVerifyingLocation] = useState<string | null>(null)
+    const [showPenaltyUI, setShowPenaltyUI] = useState(false)
+    const [selectedPenalty, setSelectedPenalty] = useState<number | null>(null)
+    const [applyingPenalty, setApplyingPenalty] = useState(false)
 
     const router = useRouter()
     const searchParams = useSearchParams()
@@ -339,7 +342,23 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
         navigator.geolocation.getCurrentPosition(
             async (pos) => {
                 const { latitude, longitude } = pos.coords
-                const locationString = `{"latitude": ${latitude}, "longitude": ${longitude}}`
+                let locationName = ''
+
+                // Reverse Geocoding via HERE API
+                const apiKey = process.env.NEXT_PUBLIC_HERE_API_KEY
+                if (apiKey) {
+                    try {
+                        const res = await fetch(`https://revgeocode.search.hereapi.com/v1/revgeocode?at=${latitude},${longitude}&apiKey=${apiKey}&lang=${locale === 'ar' ? 'ar' : 'en'}`)
+                        if (res.ok) {
+                            const data = await res.json()
+                            if (data.items && data.items.length > 0) {
+                                locationName = data.items[0].address.label
+                            }
+                        }
+                    } catch (e) { console.error('Reverse geocode failed', e) }
+                }
+
+                const locationString = JSON.stringify({ latitude, longitude, address: locationName })
                 setLocation(locationString)
                 setLocationStatus(t('location_captured_saving'))
 
@@ -350,6 +369,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                             note: '',
                             costEntries: [],
                             location: locationString,
+                            locationName: locationName,
                             isDraft: true
                         }),
                         headers: { 'Content-Type': 'application/json' }
@@ -1047,7 +1067,105 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                                         animation: spin-local 1s linear infinite;
                                     }
                                 `}</style>
-                                <h3 style={{ marginBottom: '1rem' }}>{t('location_history_title')}</h3>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexDirection: 'row', gap: '1rem', flexWrap: 'wrap' }}>
+                                    <h3 style={{ margin: 0 }}>{t('location_history_title')}</h3>
+                                    {['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole) && (
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
+                                            {showPenaltyUI && (
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: '#f8fafc', padding: '0.25rem 0.5rem', borderRadius: '2rem', border: '1px solid #e2e8f0' }}>
+                                                    {[0.25, 0.5, 1].map(amount => (
+                                                        <button
+                                                            key={amount}
+                                                            onClick={() => setSelectedPenalty(amount)}
+                                                            style={{
+                                                                width: '32px',
+                                                                height: '32px',
+                                                                borderRadius: '50%',
+                                                                border: selectedPenalty === amount ? '2px solid #ef4444' : '1px solid #cbd5e1',
+                                                                background: selectedPenalty === amount ? '#fee2e2' : 'white',
+                                                                color: selectedPenalty === amount ? '#991b1b' : '#64748b',
+                                                                fontSize: '0.7rem',
+                                                                fontWeight: 'bold',
+                                                                cursor: 'pointer',
+                                                                display: 'flex',
+                                                                alignItems: 'center',
+                                                                justifyContent: 'center',
+                                                                transition: 'all 0.2s'
+                                                            }}
+                                                        >
+                                                            {amount}
+                                                        </button>
+                                                    ))}
+                                                    <button
+                                                        onClick={async () => {
+                                                            if (!selectedPenalty || applyingPenalty) return
+                                                            setApplyingPenalty(true)
+                                                            try {
+                                                                // Apply to all assignees if multiple? 
+                                                                // The user didn't specify, but usually it's per task. 
+                                                                // For now we'll apply it to the PRIMARY assignee (assigneeId) or all?
+                                                                // Usually these penalties are specific to who is late. 
+                                                                // Let's apply it once for the task's main assignee for simplicity, or we should ask.
+                                                                // Actually, let's apply it for each current assignee if it's a team effort?
+                                                                // User said "salary deduction" - usually specific to a user.
+                                                                // I'll apply it to task.assigneeId for now.
+                                                                const res = await fetch(`/api/tasks/${task.id}/penalty`, {
+                                                                    method: 'POST',
+                                                                    body: JSON.stringify({ amount: selectedPenalty, userId: task.assigneeId }),
+                                                                    headers: { 'Content-Type': 'application/json' }
+                                                                })
+                                                                if (res.ok) {
+                                                                    showToast(t('update_success'), 'success')
+                                                                    setShowPenaltyUI(false)
+                                                                    setSelectedPenalty(null)
+                                                                    router.refresh()
+                                                                } else {
+                                                                    throw new Error()
+                                                                }
+                                                            } catch {
+                                                                showToast(t('error_generic'), 'error')
+                                                            } finally {
+                                                                setApplyingPenalty(false)
+                                                            }
+                                                        }}
+                                                        disabled={!selectedPenalty || applyingPenalty}
+                                                        style={{
+                                                            padding: '0.25rem 0.75rem',
+                                                            borderRadius: '1rem',
+                                                            background: '#ef4444',
+                                                            color: 'white',
+                                                            fontSize: '0.75rem',
+                                                            fontWeight: 'bold',
+                                                            border: 'none',
+                                                            cursor: (selectedPenalty && !applyingPenalty) ? 'pointer' : 'not-allowed',
+                                                            opacity: (selectedPenalty && !applyingPenalty) ? 1 : 0.6
+                                                        }}
+                                                    >
+                                                        {applyingPenalty ? '...' : t('confirm')}
+                                                    </button>
+                                                </div>
+                                            )}
+                                            <button
+                                                onClick={() => setShowPenaltyUI(!showPenaltyUI)}
+                                                style={{
+                                                    background: showPenaltyUI ? '#f1f5f9' : '#fee2e2',
+                                                    color: showPenaltyUI ? '#475569' : '#991b1b',
+                                                    border: '1px solid ' + (showPenaltyUI ? '#cbd5e1' : '#fca5a5'),
+                                                    padding: '0.4rem 0.8rem',
+                                                    borderRadius: '0.5rem',
+                                                    fontSize: '0.8rem',
+                                                    fontWeight: '700',
+                                                    cursor: 'pointer',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: '0.4rem'
+                                                }}
+                                            >
+                                                <span>⚠️</span> {locale === 'ar' ? 'خصم تأخير' : 'Late Penalty'}
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                                     {locations.map((loc: any, i: number) => {
                                         let displayLoc = loc.location

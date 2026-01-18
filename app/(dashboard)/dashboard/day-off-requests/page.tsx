@@ -65,6 +65,7 @@ export default function DayOffRequestsPage() {
 
     // User Credit Info
     const [userCredit, setUserCredit] = useState(0)
+    const [baseCredit, setBaseCredit] = useState(0)
 
     const [page, setPage] = useState(1)
     const [total, setTotal] = useState(0)
@@ -107,6 +108,7 @@ export default function DayOffRequestsPage() {
                 const foundUser = Array.isArray(data.data) ? data.data[0] : (data.id ? data : null)
                 if (foundUser) {
                     setUserCredit(foundUser.dayOffCredit)
+                    setBaseCredit(foundUser.baseDayOffCredit || foundUser.dayOffCredit)
                 }
             }
         } catch (error) {
@@ -234,7 +236,7 @@ export default function DayOffRequestsPage() {
     }
 
     // Pie Chart Data
-    const usedCredits = requests.filter(r => r.status === 'APPROVED').reduce((acc, r) => acc + (r.daysDeducted || 0), 0)
+    const usedByCredit = Math.max(0, baseCredit - userCredit)
 
     const formatDays = (days: number) => {
         if (locale === 'ar') {
@@ -275,7 +277,7 @@ export default function DayOffRequestsPage() {
 
     const pieData = [
         { name: t('remaining_credit' as any), value: userCredit },
-        { name: t('used_credit' as any), value: usedCredits }
+        { name: t('used_credit' as any), value: usedByCredit }
     ]
     const COLORS = ['#10b981', '#ef4444']
 
@@ -338,7 +340,7 @@ export default function DayOffRequestsPage() {
                         <div className="show-on-mobile" style={{ display: 'none', width: '100%', marginBottom: '0.5rem', marginTop: '-0.75rem' }}>
                             <div style={{ display: 'flex', justifyContent: locale === 'ar' ? 'flex-start' : 'flex-end', width: '100%' }}>
                                 {(() => {
-                                    const totalCredit = userCredit + usedCredits;
+                                    const totalCredit = baseCredit;
                                     const percentage = totalCredit > 0 ? userCredit / totalCredit : 1;
 
                                     let colors = { bg: '#dcfce7', text: '#166534', border: '#bbf7d0' }; // Green
