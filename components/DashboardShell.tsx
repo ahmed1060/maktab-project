@@ -131,7 +131,7 @@ export default function DashboardShell({ children, user }: DashboardShellProps) 
                             backdropFilter: 'blur(4px)',
                             border: '1px solid rgba(255,255,255,0.1)'
                         }}>
-                            <span style={{ fontSize: '1.4rem' }}>📂</span>
+                            <span style={{ fontSize: '1.4rem' }}>🚀</span>
                         </div>
                         {!isCollapsed && (
                             <div style={{
@@ -388,45 +388,58 @@ export default function DashboardShell({ children, user }: DashboardShellProps) 
                     justifyContent: 'center',
                     alignItems: 'center',
                     borderTop: '1px solid rgba(255,255,255,0.05)',
-                    background: 'rgba(0,0,0,0.1)'
+                    background: 'transparent'
                 }}>
                     {isCollapsed ? (
                         <div style={{
-                            width: '40px',
-                            height: '40px',
+                            width: '42px',
+                            height: '42px',
                             position: 'relative',
-                            borderRadius: '10px',
+                            borderRadius: '12px',
                             overflow: 'hidden',
-                            border: '2px solid rgba(255,255,255,0.15)',
+                            border: '1px solid rgba(255,255,255,0.2)',
                             cursor: 'pointer',
                             transition: 'all 0.3s ease',
-                            background: 'white'
+                            background: 'white',
+                            boxShadow: '0 4px 15px rgba(0,0,0,0.1)'
                         }}
                             onMouseOver={(e) => {
-                                e.currentTarget.style.transform = 'scale(1.15) rotate(5deg)'
-                                e.currentTarget.style.borderColor = 'rgba(255,255,255,0.4)'
+                                e.currentTarget.style.transform = 'scale(1.1) translateY(-2px)'
+                                e.currentTarget.style.borderColor = 'rgba(255,255,255,0.5)'
                             }}
                             onMouseOut={(e) => {
-                                e.currentTarget.style.transform = 'scale(1) rotate(0)'
-                                e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)'
+                                e.currentTarget.style.transform = 'scale(1) translateY(0)'
+                                e.currentTarget.style.borderColor = 'rgba(255,255,255,0.2)'
                             }}
                         >
                             <img src="/shsd-logo.jpg" alt="SHSD" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                         </div>
                     ) : (
                         <div style={{
-                            padding: '0.6rem 1.25rem',
-                            background: 'rgba(255,255,255,0.08)',
-                            backdropFilter: 'blur(8px)',
+                            padding: '0.65rem 1.5rem',
+                            background: 'rgba(255,255,255,0.12)',
+                            backdropFilter: 'blur(12px)',
                             borderRadius: '2rem',
                             fontSize: '0.65rem',
                             fontWeight: '800',
-                            color: 'rgba(255,255,255,0.5)',
+                            color: 'rgba(255,255,255,0.7)',
                             textAlign: 'center',
-                            border: '1px solid rgba(255,255,255,0.1)',
-                            letterSpacing: '0.05em',
-                            boxShadow: '0 4px 6px rgba(0,0,0,0.02)'
-                        }}>
+                            border: '1px solid rgba(255,255,255,0.15)',
+                            letterSpacing: '0.08em',
+                            boxShadow: '0 8px 32px rgba(0,0,0,0.1)',
+                            transition: 'all 0.3s ease'
+                        }}
+                            onMouseOver={(e) => {
+                                e.currentTarget.style.background = 'rgba(255,255,255,0.2)'
+                                e.currentTarget.style.transform = 'translateY(-2px)'
+                                e.currentTarget.style.color = 'white'
+                            }}
+                            onMouseOut={(e) => {
+                                e.currentTarget.style.background = 'rgba(255,255,255,0.12)'
+                                e.currentTarget.style.transform = 'translateY(0)'
+                                e.currentTarget.style.color = 'rgba(255,255,255,0.7)'
+                            }}
+                        >
                             POWERED BY SHSD
                         </div>
                     )}
