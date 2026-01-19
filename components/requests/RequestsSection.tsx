@@ -5,6 +5,8 @@ import CreateRequestModal from './CreateRequestModal'
 import ViewRequestModal from './ViewRequestModal'
 import { useLanguage } from '@/context/LanguageContext'
 import { useToast } from '@/context/ToastContext'
+import { useCompany } from '@/context/CompanyContext'
+import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 
 interface RequestsSectionProps {
@@ -12,9 +14,11 @@ interface RequestsSectionProps {
     companyId?: string
 }
 
-export default function RequestsSection({ userRole, companyId }: RequestsSectionProps) {
+export default function RequestsSection({ userRole }: { userRole: string }) {
     const { t, locale } = useLanguage()
     const { showToast } = useToast()
+    const { selectedCompanyId } = useCompany()
+    const searchParams = useSearchParams()
     const [requests, setRequests] = useState<any[]>([])
     const [loading, setLoading] = useState(true)
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
@@ -27,11 +31,16 @@ export default function RequestsSection({ userRole, companyId }: RequestsSection
     const [order, setOrder] = useState('desc')
     const [showFilters, setShowFilters] = useState(false)
     const [employees, setEmployees] = useState<any[]>([])
+    const [highlightId, setHighlightId] = useState<string | null>(null)
 
     const fetchEmployees = async () => {
         if (!['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole)) return
         try {
-            const res = await fetch('/api/users?limit=100')
+            let url = '/api/users?limit=100'
+            if (userRole === 'SUPER_ADMIN' && selectedCompanyId) {
+                url += `&companyId=${selectedCompanyId}`
+            }
+            const res = await fetch(url)
             if (res.ok) {
                 const data = await res.json()
                 setEmployees(data.data || [])
@@ -44,7 +53,7 @@ export default function RequestsSection({ userRole, companyId }: RequestsSection
     const fetchRequests = async () => {
         try {
             let url = `/api/requests?sortBy=${sortBy}&order=${order}`
-            if (companyId) url += `&companyId=${companyId}`
+            if (selectedCompanyId) url += `&companyId=${selectedCompanyId}`
             if (search) url += `&search=${encodeURIComponent(search)}`
             if (filterStatus) url += `&status=${filterStatus}`
             if (filterUserId) url += `&userId=${filterUserId}`
@@ -63,18 +72,42 @@ export default function RequestsSection({ userRole, companyId }: RequestsSection
 
     useEffect(() => {
         fetchRequests()
-    }, [companyId, search, filterStatus, filterUserId, sortBy, order])
+    }, [selectedCompanyId, search, filterStatus, filterUserId, sortBy, order])
 
     useEffect(() => {
         fetchEmployees()
-    }, [companyId])
+    }, [selectedCompanyId])
+
+    useEffect(() => {
+        const highlight = searchParams.get('highlight')
+        if (highlight) {
+            setHighlightId(highlight)
+        }
+    }, [searchParams])
+
+    useEffect(() => {
+        if (highlightId && requests.length > 0) {
+            const req = requests.find(r => r.id === highlightId)
+            if (req) {
+                setSelectedRequest(req)
+                setIsViewModalOpen(true)
+                // Clear highlight after opening to avoid multiple opens
+                setHighlightId(null)
+            }
+        }
+    }, [highlightId, requests])
 
     const handleCreateRequest = async (title: string, details: string) => {
         try {
+            const body: any = { title, details }
+            if (userRole === 'SUPER_ADMIN' && selectedCompanyId) {
+                body.companyId = selectedCompanyId
+            }
+
             const res = await fetch('/api/requests', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ title, details })
+                body: JSON.stringify(body)
             })
             if (res.ok) {
                 showToast(t('request_submitted_success') || 'Request submitted successfully', 'success')
@@ -294,6 +327,31 @@ export default function RequestsSection({ userRole, companyId }: RequestsSection
                                     animation: 'popIn 0.2s ease-out'
                                 }}>
                                     <div>
+                                        <label style={{ display: 'block', marginBottom: '0.75rem', fontWeight: '800', fontSize: '0.75rem', textTransform: 'uppercase', color: '#64748b', letterSpacing: '0.05em' }}>{t('sort_by')}</label>
+                                        <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                            <div style={{ position: 'relative', flex: 1 }}>
+                                                <select
+                                                    className="input"
+                                                    value={sortBy}
+                                                    onChange={(e) => setSortBy(e.target.value)}
+                                                    style={{ width: '100%', padding: '0 1rem', borderRadius: '1.25rem', height: '48px', appearance: 'none', backgroundImage: 'none', background: 'white', border: '1px solid #e2e8f0' }}
+                                                >
+                                                    <option value="createdAt">{t('date_created')}</option>
+                                                    <option value="status">{t('status')}</option>
+                                                </select>
+                                                <div style={{ position: 'absolute', [locale === 'ar' ? 'left' : 'right']: '1rem', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', pointerEvents: 'none' }}>▼</div>
+                                            </div>
+                                            <button
+                                                className="btn"
+                                                onClick={() => setOrder(order === 'asc' ? 'desc' : 'asc')}
+                                                style={{ height: '48px', width: '48px', borderRadius: '1.25rem', border: '1px solid #e2e8f0', background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                                            >
+                                                {order === 'asc' ? '↑' : '↓'}
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <div>
                                         <label style={{ display: 'block', marginBottom: '0.75rem', fontWeight: '800', fontSize: '0.75rem', textTransform: 'uppercase', color: '#64748b', letterSpacing: '0.05em' }}>{t('status')}</label>
                                         <div style={{ position: 'relative' }}>
                                             <select
@@ -302,10 +360,9 @@ export default function RequestsSection({ userRole, companyId }: RequestsSection
                                                 onChange={(e) => setFilterStatus(e.target.value)}
                                                 style={{ width: '100%', padding: '0 1rem', borderRadius: '1.25rem', height: '48px', appearance: 'none', backgroundImage: 'none', background: 'white', border: '1px solid #e2e8f0' }}
                                             >
-                                                <option value="">{t('all_statuses' as any)}</option>
+                                                <option value="">{t('all_statuses')}</option>
                                                 <option value="PENDING">{t('status_pending')}</option>
                                                 <option value="IN_PROGRESS">{t('status_in_progress')}</option>
-                                                <option value="COMPLETED">{t('status_completed')}</option>
                                             </select>
                                             <div style={{ position: 'absolute', [locale === 'ar' ? 'left' : 'right']: '1rem', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', pointerEvents: 'none' }}>▼</div>
                                         </div>
@@ -331,30 +388,6 @@ export default function RequestsSection({ userRole, companyId }: RequestsSection
                                         </div>
                                     )}
 
-                                    <div>
-                                        <label style={{ display: 'block', marginBottom: '0.75rem', fontWeight: '800', fontSize: '0.75rem', textTransform: 'uppercase', color: '#64748b', letterSpacing: '0.05em' }}>{t('sort_by')}</label>
-                                        <div style={{ display: 'flex', gap: '0.5rem' }}>
-                                            <div style={{ position: 'relative', flex: 1 }}>
-                                                <select
-                                                    className="input"
-                                                    value={sortBy}
-                                                    onChange={(e) => setSortBy(e.target.value)}
-                                                    style={{ width: '100%', padding: '0 1rem', borderRadius: '1.25rem', height: '48px', appearance: 'none', backgroundImage: 'none', background: 'white', border: '1px solid #e2e8f0' }}
-                                                >
-                                                    <option value="createdAt">{t('date_created')}</option>
-                                                    <option value="status">{t('status')}</option>
-                                                </select>
-                                                <div style={{ position: 'absolute', [locale === 'ar' ? 'left' : 'right']: '1rem', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', pointerEvents: 'none' }}>▼</div>
-                                            </div>
-                                            <button
-                                                className="btn"
-                                                onClick={() => setOrder(order === 'asc' ? 'desc' : 'asc')}
-                                                style={{ height: '48px', width: '48px', borderRadius: '1.25rem', border: '1px solid #e2e8f0', background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                                            >
-                                                {order === 'asc' ? '↑' : '↓'}
-                                            </button>
-                                        </div>
-                                    </div>
 
                                     <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.75rem' }}>
                                         <button

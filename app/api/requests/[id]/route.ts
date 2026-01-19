@@ -105,7 +105,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
             data: {
                 userId: request.userId,
                 type: 'REQUEST_STATUS_UPDATED',
-                message: `Your request "${request.title}" status changed to ${statusText}. (Updated by ${updaterName} - ${updaterRole})`,
+                message: `Your request "${request.title}" is ${statusText}. (Done by ${updaterRole} ${updaterName})`,
                 relatedId: request.id
             }
         })

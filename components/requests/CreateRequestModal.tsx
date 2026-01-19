@@ -34,20 +34,20 @@ export default function CreateRequestModal({ isOpen, onClose, onSubmit }: Create
         <Modal
             isOpen={isOpen}
             onClose={onClose}
-            title={t('make_a_request' as any) || (locale === 'ar' ? 'تقديم طلب' : 'Make a Request')}
+            title={t('make_a_request')}
             hideFooter
         >
             <form onSubmit={handleSubmit} style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>
                 <div style={{ marginBottom: '1.5rem' }}>
                     <label className="label" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600' }}>
-                        {t('title' as any) || (locale === 'ar' ? 'العنوان' : 'Title')}
+                        {t('title')}
                     </label>
                     <input
                         type="text"
                         className="input"
                         value={title}
                         onChange={(e) => setTitle(e.target.value)}
-                        placeholder={locale === 'ar' ? 'عنوان الطلب' : 'Request Title'}
+                        placeholder={t('request_title')}
                         required
                         disabled={submitting}
                         style={{ width: '100%' }}
@@ -55,14 +55,14 @@ export default function CreateRequestModal({ isOpen, onClose, onSubmit }: Create
                 </div>
                 <div style={{ marginBottom: '1.5rem' }}>
                     <label className="label" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600' }}>
-                        {t('details' as any) || (locale === 'ar' ? 'التفاصيل' : 'Details')}
+                        {t('details')}
                     </label>
                     <textarea
                         className="input"
                         rows={5}
                         value={details}
                         onChange={(e) => setDetails(e.target.value)}
-                        placeholder={locale === 'ar' ? 'تفاصيل الطلب...' : 'Request details...'}
+                        placeholder={t('request_details_placeholder')}
                         required
                         disabled={submitting}
                         style={{ width: '100%', resize: 'none' }}
@@ -80,7 +80,7 @@ export default function CreateRequestModal({ isOpen, onClose, onSubmit }: Create
                         }}
                         disabled={submitting}
                     >
-                        {t('close' as any) || (locale === 'ar' ? 'إغلاق' : 'Close')}
+                        {t('close')}
                     </button>
                     <button
                         type="submit"
@@ -90,7 +90,7 @@ export default function CreateRequestModal({ isOpen, onClose, onSubmit }: Create
                         }}
                         disabled={submitting}
                     >
-                        {submitting ? (t('submitting' as any) || '...') : (t('apply' as any) || (locale === 'ar' ? 'تقديم' : 'Apply'))}
+                        {submitting ? t('submitting') : t('apply')}
                     </button>
                 </div>
             </form>

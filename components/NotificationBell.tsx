@@ -112,6 +112,8 @@ export default function NotificationBell() {
                     }
                     router.push(path)
                 }
+            } else if (type.includes('REQUEST')) {
+                router.push(`/dashboard/requests?highlight=${notification.relatedId}`)
             }
         }
     }
