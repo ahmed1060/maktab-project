@@ -324,7 +324,7 @@ export default function EmployeeFilter({
                                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                                         <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
                                     </svg>
-                                    {t('filters_button')}
+                                    {t('filters')}
                                 </>
                             )}
                             {activeFilterCount > 0 && (
@@ -469,7 +469,7 @@ export default function EmployeeFilter({
 
                                     {showRoleFilter && onRoleChange && (
                                         <div>
-                                            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '700', fontSize: '0.875rem' }}>{t('role_label' as any) || 'Role'}</label>
+                                            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '700', fontSize: '0.875rem' }}>{t('role_label') || 'Role'}</label>
                                             <div style={{ position: 'relative' }}>
                                                 <select
                                                     value={localRole}
@@ -619,7 +619,7 @@ export default function EmployeeFilter({
                                             onMouseOver={(e) => e.currentTarget.style.background = '#f8fafc'}
                                             onMouseOut={(e) => e.currentTarget.style.background = 'white'}
                                         >
-                                            {t('reset_filters' as any) || 'Reset'}
+                                            {t('reset_filters')}
                                         </button>
                                         <button
                                             onClick={handleApplyFilters}
@@ -636,7 +636,7 @@ export default function EmployeeFilter({
                                                 boxShadow: '0 4px 12px rgba(99, 102, 241, 0.2)'
                                             }}
                                         >
-                                            {t('show_results' as any) || 'Apply'}
+                                            {t('show_results')}
                                         </button>
                                     </div>
                                 </div>
