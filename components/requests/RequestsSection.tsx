@@ -110,9 +110,21 @@ export default function RequestsSection({ userRole, companyId }: RequestsSection
         setIsViewModalOpen(true)
     }
 
+    const activeFilterCount = [
+        filterStatus ? 1 : 0,
+        filterUserId ? 1 : 0
+    ].reduce((a, b) => a + b, 0)
+
     return (
-        <section style={{ marginTop: '2rem', marginBottom: '3rem' }}>
-            {/* History Button Row */}
+        <section style={{ marginTop: '1.5rem', marginBottom: '3rem' }}>
+            <style>{`
+                @keyframes popIn { 
+                    from { opacity: 0; transform: translateY(-8px); } 
+                    to { opacity: 1; transform: translateY(0); } 
+                }
+            `}</style>
+
+            {/* History Button Row - Aligned with the unified theme */}
             <div style={{
                 display: 'flex',
                 justifyContent: locale === 'ar' ? 'flex-start' : 'flex-end',
@@ -123,221 +135,305 @@ export default function RequestsSection({ userRole, companyId }: RequestsSection
                     href="/dashboard/requests/history"
                     className="btn"
                     style={{
-                        padding: '0.6rem 1.25rem',
-                        fontSize: '0.85rem',
-                        background: 'rgba(255, 255, 255, 0.4)',
-                        color: '#64748b',
-                        border: '1px solid rgba(0,0,0,0.1)',
-                        fontWeight: '700',
-                        borderRadius: '1rem',
+                        padding: '0 1.5rem',
+                        height: '48px',
+                        fontSize: '0.95rem',
+                        background: 'rgba(254, 243, 199, 0.4)',
+                        color: '#b45309',
+                        border: '1px solid rgba(251, 191, 36, 0.3)',
+                        fontWeight: '800',
+                        borderRadius: '1.25rem',
                         display: 'flex',
                         alignItems: 'center',
                         gap: '0.5rem',
-                        backdropFilter: 'blur(8px)'
+                        backdropFilter: 'blur(10px)',
+                        textDecoration: 'none',
+                        boxShadow: '0 4px 12px rgba(251, 191, 36, 0.1)'
                     }}
                 >
                     📜 {t('history')}
                 </Link>
             </div>
 
-            {/* Unified Glass Toolbar */}
+            {/* Unified Glass Toolbar - Matches EmployeeFilter style */}
             <div style={{
-                background: 'rgba(255, 255, 255, 0.4)',
-                backdropFilter: 'blur(16px)',
-                padding: '0.75rem',
-                borderRadius: '2rem',
+                marginBottom: '2rem',
                 display: 'flex',
-                alignItems: 'center',
+                flexDirection: 'column',
                 gap: '1rem',
-                border: '1px solid rgba(255, 255, 255, 0.6)',
-                flexWrap: 'wrap',
-                boxShadow: '0 8px 32px rgba(0,0,0,0.05)',
-                flexDirection: locale === 'ar' ? 'row-reverse' : 'row',
-                marginBottom: '2.5rem'
+                position: 'relative'
             }}>
-                {/* Search */}
-                <div style={{ position: 'relative', flex: 1, minWidth: '200px' }}>
-                    <input
-                        type="text"
-                        placeholder={t('search_by_title')}
-                        className="input"
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                        style={{
-                            borderRadius: '1.5rem',
-                            border: '1px solid rgba(0,0,0,0.1)',
-                            padding: '0.65rem 1rem 0.65rem 2.8rem',
-                            background: 'white',
-                            width: '100%',
-                            boxSizing: 'border-box'
-                        }}
-                    />
-                    <span style={{
+                <div style={{
+                    display: 'flex',
+                    gap: '1rem',
+                    alignItems: 'center',
+                    flexWrap: 'wrap',
+                    padding: '0.75rem',
+                    position: 'relative',
+                    zIndex: 10
+                }}>
+                    {/* Background Layer */}
+                    <div style={{
                         position: 'absolute',
-                        [locale === 'ar' ? 'right' : 'left']: '1rem',
-                        top: '50%',
-                        transform: 'translateY(-50%)',
-                        opacity: 0.4,
-                        fontSize: '1.2rem'
-                    }}>🔍</span>
-                </div>
+                        inset: 0,
+                        background: 'rgba(255, 255, 255, 0.4)',
+                        backdropFilter: 'blur(8px)',
+                        borderRadius: '1.5rem',
+                        border: '1px solid rgba(255, 255, 255, 0.5)',
+                        zIndex: -1,
+                        pointerEvents: 'none'
+                    }} />
 
-                {/* Filters Toggle */}
-                <div style={{ position: 'relative' }}>
-                    <button
-                        onClick={() => setShowFilters(!showFilters)}
-                        className="btn"
-                        style={{
-                            borderRadius: '1.5rem',
-                            background: 'white',
-                            border: '1px solid rgba(0,0,0,0.1)',
-                            padding: '0.65rem 1.25rem',
-                            color: '#475569',
-                            fontWeight: '600',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '0.5rem',
-                            boxShadow: '0 2px 4px rgba(0,0,0,0.02)'
-                        }}
-                    >
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                            <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
-                        </svg>
-                        {t('filters')}
-                    </button>
+                    {/* Search */}
+                    <div style={{ flex: 1, minWidth: '300px', position: 'relative' }}>
+                        <div style={{ position: 'absolute', [locale === 'ar' ? 'right' : 'left']: '1.25rem', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', pointerEvents: 'none' }}>
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                <circle cx="11" cy="11" r="8"></circle>
+                                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                            </svg>
+                        </div>
+                        <input
+                            type="text"
+                            placeholder={t('search_by_title')}
+                            className="input"
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            style={{
+                                width: '100%',
+                                padding: locale === 'ar' ? '0.625rem 3.5rem 0.625rem 1.25rem' : '0.625rem 1.25rem 0.625rem 3.5rem',
+                                borderRadius: '1.25rem',
+                                fontSize: '0.95rem',
+                                border: '1px solid #e2e8f0',
+                                textAlign: locale === 'ar' ? 'right' : 'left',
+                                background: 'white',
+                                height: '48px',
+                                minHeight: '48px'
+                            }}
+                        />
+                    </div>
 
-                    {showFilters && (
-                        <div className="glass-card" style={{
-                            position: 'absolute',
-                            top: 'calc(100% + 12px)',
-                            [locale === 'ar' ? 'left' : 'right']: 0,
-                            zIndex: 100,
-                            width: '300px',
-                            padding: '1.5rem',
-                            boxShadow: '0 20px 50px rgba(0,0,0,0.15)',
-                            border: '1px solid rgba(255,255,255,0.8)',
-                            borderRadius: '1.5rem',
-                            background: 'rgba(255,255,255,0.9)',
-                            backdropFilter: 'blur(20px)'
-                        }}>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                                <div>
-                                    <label style={{ fontSize: '0.75rem', fontWeight: '800', color: '#64748b', marginBottom: '0.5rem', display: 'block', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('status')}</label>
-                                    <select
-                                        className="input"
-                                        value={filterStatus}
-                                        onChange={(e) => setFilterStatus(e.target.value)}
-                                        style={{ borderRadius: '0.75rem' }}
-                                    >
-                                        <option value="">{t('all_statuses' as any)}</option>
-                                        <option value="PENDING">{t('status_pending')}</option>
-                                        <option value="IN_PROGRESS">{t('status_in_progress')}</option>
-                                        <option value="COMPLETED">{t('status_completed')}</option>
-                                    </select>
-                                </div>
+                    {/* Filters Toggle */}
+                    <div style={{ position: 'relative' }}>
+                        <button
+                            onClick={() => setShowFilters(!showFilters)}
+                            style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '0.75rem',
+                                padding: '0 1.5rem',
+                                borderRadius: '1.25rem',
+                                background: activeFilterCount > 0 ? '#eff6ff' : 'white',
+                                border: `2px solid ${activeFilterCount > 0 ? '#3b82f6' : '#e2e8f0'}`,
+                                color: activeFilterCount > 0 ? '#2563eb' : '#475569',
+                                fontWeight: '700',
+                                fontSize: '0.95rem',
+                                cursor: 'pointer',
+                                transition: 'all 0.2s ease',
+                                position: 'relative',
+                                height: '48px'
+                            }}
+                        >
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+                            </svg>
+                            {t('filters')}
+                            {activeFilterCount > 0 && (
+                                <span style={{
+                                    position: 'absolute',
+                                    top: '-4px',
+                                    [locale === 'ar' ? 'left' : 'right']: '-4px',
+                                    background: '#3b82f6',
+                                    color: 'white',
+                                    width: '20px',
+                                    height: '20px',
+                                    borderRadius: '50%',
+                                    fontSize: '0.7rem',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    border: '2px solid white'
+                                }}>
+                                    {activeFilterCount}
+                                </span>
+                            )}
+                        </button>
 
-                                {['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole) && (
+                        {showFilters && (
+                            <>
+                                <div onClick={() => setShowFilters(false)} style={{ position: 'fixed', inset: 0, zIndex: 999 }} />
+                                <div style={{
+                                    position: 'absolute',
+                                    top: 'calc(100% + 0.75rem)',
+                                    [locale === 'ar' ? 'left' : 'right']: 0,
+                                    width: '320px',
+                                    backgroundColor: '#ffffff',
+                                    borderRadius: '1.25rem',
+                                    padding: '1.5rem',
+                                    boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.15), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+                                    border: '1px solid #e2e8f0',
+                                    zIndex: 1000,
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    gap: '1.25rem',
+                                    animation: 'popIn 0.2s ease-out'
+                                }}>
                                     <div>
-                                        <label style={{ fontSize: '0.75rem', fontWeight: '800', color: '#64748b', marginBottom: '0.5rem', display: 'block', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('employee')}</label>
-                                        <select
-                                            className="input"
-                                            value={filterUserId}
-                                            onChange={(e) => setFilterUserId(e.target.value)}
-                                            style={{ borderRadius: '0.75rem' }}
-                                        >
-                                            <option value="">{t('all_employees')}</option>
-                                            {employees.map(emp => (
-                                                <option key={emp.id} value={emp.id}>{emp.firstName} {emp.lastName}</option>
-                                            ))}
-                                        </select>
+                                        <label style={{ display: 'block', marginBottom: '0.75rem', fontWeight: '800', fontSize: '0.75rem', textTransform: 'uppercase', color: '#64748b', letterSpacing: '0.05em' }}>{t('status')}</label>
+                                        <div style={{ position: 'relative' }}>
+                                            <select
+                                                className="input"
+                                                value={filterStatus}
+                                                onChange={(e) => setFilterStatus(e.target.value)}
+                                                style={{ width: '100%', padding: '0 1rem', borderRadius: '1.25rem', height: '48px', appearance: 'none', backgroundImage: 'none', background: 'white', border: '1px solid #e2e8f0' }}
+                                            >
+                                                <option value="">{t('all_statuses' as any)}</option>
+                                                <option value="PENDING">{t('status_pending')}</option>
+                                                <option value="IN_PROGRESS">{t('status_in_progress')}</option>
+                                                <option value="COMPLETED">{t('status_completed')}</option>
+                                            </select>
+                                            <div style={{ position: 'absolute', [locale === 'ar' ? 'left' : 'right']: '1rem', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', pointerEvents: 'none' }}>▼</div>
+                                        </div>
                                     </div>
-                                )}
 
-                                <div>
-                                    <label style={{ fontSize: '0.75rem', fontWeight: '800', color: '#64748b', marginBottom: '0.5rem', display: 'block', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('sort_by')}</label>
-                                    <div style={{ display: 'flex', gap: '0.5rem' }}>
-                                        <select
-                                            className="input"
-                                            value={sortBy}
-                                            onChange={(e) => setSortBy(e.target.value)}
-                                            style={{ flex: 1, borderRadius: '0.75rem' }}
-                                        >
-                                            <option value="createdAt">{t('date_created')}</option>
-                                            <option value="status">{t('status')}</option>
-                                        </select>
+                                    {['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole) && (
+                                        <div>
+                                            <label style={{ display: 'block', marginBottom: '0.75rem', fontWeight: '800', fontSize: '0.75rem', textTransform: 'uppercase', color: '#64748b', letterSpacing: '0.05em' }}>{t('employee')}</label>
+                                            <div style={{ position: 'relative' }}>
+                                                <select
+                                                    className="input"
+                                                    value={filterUserId}
+                                                    onChange={(e) => setFilterUserId(e.target.value)}
+                                                    style={{ width: '100%', padding: '0 1rem', borderRadius: '1.25rem', height: '48px', appearance: 'none', backgroundImage: 'none', background: 'white', border: '1px solid #e2e8f0' }}
+                                                >
+                                                    <option value="">{t('all_employees')}</option>
+                                                    {employees.map(emp => (
+                                                        <option key={emp.id} value={emp.id}>{emp.firstName} {emp.lastName}</option>
+                                                    ))}
+                                                </select>
+                                                <div style={{ position: 'absolute', [locale === 'ar' ? 'left' : 'right']: '1rem', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', pointerEvents: 'none' }}>▼</div>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    <div>
+                                        <label style={{ display: 'block', marginBottom: '0.75rem', fontWeight: '800', fontSize: '0.75rem', textTransform: 'uppercase', color: '#64748b', letterSpacing: '0.05em' }}>{t('sort_by')}</label>
+                                        <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                            <div style={{ position: 'relative', flex: 1 }}>
+                                                <select
+                                                    className="input"
+                                                    value={sortBy}
+                                                    onChange={(e) => setSortBy(e.target.value)}
+                                                    style={{ width: '100%', padding: '0 1rem', borderRadius: '1.25rem', height: '48px', appearance: 'none', backgroundImage: 'none', background: 'white', border: '1px solid #e2e8f0' }}
+                                                >
+                                                    <option value="createdAt">{t('date_created')}</option>
+                                                    <option value="status">{t('status')}</option>
+                                                </select>
+                                                <div style={{ position: 'absolute', [locale === 'ar' ? 'left' : 'right']: '1rem', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', pointerEvents: 'none' }}>▼</div>
+                                            </div>
+                                            <button
+                                                className="btn"
+                                                onClick={() => setOrder(order === 'asc' ? 'desc' : 'asc')}
+                                                style={{ height: '48px', width: '48px', borderRadius: '1.25rem', border: '1px solid #e2e8f0', background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                                            >
+                                                {order === 'asc' ? '↑' : '↓'}
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.75rem' }}>
                                         <button
-                                            className="btn"
-                                            onClick={() => setOrder(order === 'asc' ? 'desc' : 'asc')}
-                                            style={{ padding: '0', width: '42px', height: '42px', minWidth: 'unset', borderRadius: '0.75rem', background: 'white', border: '1px solid rgba(0,0,0,0.1)' }}
+                                            onClick={() => {
+                                                setFilterStatus('')
+                                                setFilterUserId('')
+                                                setSortBy('createdAt')
+                                                setOrder('desc')
+                                                setSearch('')
+                                                setShowFilters(false)
+                                            }}
+                                            style={{
+                                                flex: 1,
+                                                height: '48px',
+                                                borderRadius: '1.25rem',
+                                                border: '1px solid #e2e8f0',
+                                                background: 'white',
+                                                fontWeight: '700',
+                                                cursor: 'pointer',
+                                                fontSize: '0.875rem',
+                                                color: '#64748b'
+                                            }}
                                         >
-                                            {order === 'asc' ? '↑' : '↓'}
+                                            {t('reset_filters')}
+                                        </button>
+                                        <button
+                                            onClick={() => setShowFilters(false)}
+                                            style={{
+                                                flex: 1,
+                                                height: '48px',
+                                                borderRadius: '1.25rem',
+                                                border: 'none',
+                                                background: 'linear-gradient(135deg, #6366f1 0%, #a855f7 100%)',
+                                                color: 'white',
+                                                fontWeight: '700',
+                                                cursor: 'pointer',
+                                                fontSize: '0.875rem',
+                                                boxShadow: '0 4px 12px rgba(99, 102, 241, 0.2)'
+                                            }}
+                                        >
+                                            {t('show_results') || 'Apply'}
                                         </button>
                                     </div>
                                 </div>
+                            </>
+                        )}
+                    </div>
 
-                                <div style={{ marginTop: '0.5rem', textAlign: 'center' }}>
-                                    <button
-                                        onClick={() => {
-                                            setFilterStatus('')
-                                            setFilterUserId('')
-                                            setSortBy('createdAt')
-                                            setOrder('desc')
-                                            setSearch('')
-                                            setShowFilters(false)
-                                        }}
-                                        style={{ color: '#ef4444', fontSize: '0.75rem', fontWeight: '700', background: 'none', border: 'none', cursor: 'pointer', padding: '0.5rem', width: '100%' }}
-                                    >
-                                        {t('reset_filters')}
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    )}
+                    {/* Statistics Box */}
+                    <div style={{
+                        height: '48px',
+                        padding: '0 1.25rem',
+                        background: '#0f172a',
+                        borderRadius: '1.25rem',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.75rem',
+                        color: 'white'
+                    }}>
+                        <span style={{ fontSize: '0.7rem', fontWeight: '800', opacity: 0.5, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('total_label')}</span>
+                        <span style={{ fontSize: '1.25rem', fontWeight: '900' }}>{requests.length}</span>
+                    </div>
+
+                    {/* Create Request Push-to-end */}
+                    <div style={{ marginLeft: locale === 'ar' ? '0' : 'auto', marginRight: locale === 'ar' ? 'auto' : '0' }}>
+                        <button
+                            onClick={() => setIsCreateModalOpen(true)}
+                            className="btn btn-primary"
+                            style={{
+                                padding: '0 1.5rem',
+                                height: '48px',
+                                fontSize: '0.95rem',
+                                fontWeight: '800',
+                                borderRadius: '1.25rem',
+                                background: 'linear-gradient(135deg, #6366f1 0%, #a855f7 100%)',
+                                border: 'none',
+                                color: 'white',
+                                boxShadow: '0 4px 15px rgba(99, 102, 241, 0.3)',
+                                whiteSpace: 'nowrap',
+                                display: 'flex',
+                                alignItems: 'center'
+                            }}
+                        >
+                            {t('make_a_request')}
+                        </button>
+                    </div>
                 </div>
-
-                {/* Total Counter Badge */}
-                <div style={{
-                    background: '#0f172a',
-                    color: 'white',
-                    padding: '0.65rem 1.25rem',
-                    borderRadius: '1.5rem',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.5rem',
-                    fontSize: '0.8rem',
-                    fontWeight: '800',
-                    boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
-                }}>
-                    <span style={{ opacity: 0.6, fontSize: '0.7rem' }}>TOTAL</span>
-                    <span>{requests.length}</span>
-                </div>
-
-                {/* Create Request Button */}
-                <button
-                    onClick={() => setIsCreateModalOpen(true)}
-                    className="btn btn-primary"
-                    style={{
-                        padding: '0.65rem 1.5rem',
-                        fontSize: '0.9rem',
-                        fontWeight: '800',
-                        borderRadius: '1.5rem',
-                        background: 'linear-gradient(135deg, #6366f1 0%, #a855f7 100%)',
-                        border: 'none',
-                        color: 'white',
-                        boxShadow: '0 4px 15px rgba(99, 102, 241, 0.3)',
-                        whiteSpace: 'nowrap'
-                    }}
-                >
-                    {t('make_a_request')}
-                </button>
             </div>
 
             {loading ? (
-                <div className="glass-card" style={{ padding: '2rem', textAlign: 'center', color: '#64748b' }}>
+                <div className="card" style={{ padding: '2rem', textAlign: 'center', color: '#64748b' }}>
                     {t('loading_data')}
                 </div>
             ) : requests.length === 0 ? (
-                <div className="glass-card" style={{ padding: '2rem', textAlign: 'center', color: '#94a3b8' }}>
+                <div className="card" style={{ padding: '2rem', textAlign: 'center', color: '#94a3b8' }}>
                     {t('no_requests_found')}
                 </div>
             ) : (
