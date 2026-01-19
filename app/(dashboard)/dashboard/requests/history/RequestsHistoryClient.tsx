@@ -82,6 +82,28 @@ export default function RequestsHistoryClient({ userRole }: { userRole: string }
         setIsViewModalOpen(true)
     }
 
+    const handleStatusUpdate = async (id: string, status: string) => {
+        try {
+            const res = await fetch(`/api/requests/${id}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status })
+            })
+            if (res.ok) {
+                const updatedData = await res.json()
+                showToast(t('request_action_success') || 'Status updated', 'success')
+                fetchHistory()
+                if (selectedRequest && selectedRequest.id === id) {
+                    setSelectedRequest({ ...selectedRequest, ...updatedData })
+                }
+            } else {
+                showToast(t('error_generic'), 'error')
+            }
+        } catch (error) {
+            showToast(t('error_generic'), 'error')
+        }
+    }
+
     return (
         <section style={{ padding: '0', marginBottom: '3rem' }}>
             <style>{`
@@ -185,6 +207,7 @@ export default function RequestsHistoryClient({ userRole }: { userRole: string }
                 request={selectedRequest}
                 userRole={userRole}
                 onDelete={handleDeleteRequest}
+                onStatusUpdate={handleStatusUpdate}
             />
         </section>
     )

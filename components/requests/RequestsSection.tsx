@@ -117,8 +117,12 @@ export default function RequestsSection({ userRole }: { userRole: string }) {
                 body: JSON.stringify({ status })
             })
             if (res.ok) {
+                const updatedData = await res.json()
                 showToast(t('request_action_success') || 'Status updated', 'success')
                 fetchRequests()
+                if (selectedRequest && selectedRequest.id === id) {
+                    setSelectedRequest({ ...selectedRequest, ...updatedData })
+                }
             } else {
                 showToast(t('error_generic'), 'error')
             }
@@ -280,6 +284,7 @@ export default function RequestsSection({ userRole }: { userRole: string }) {
                 request={selectedRequest}
                 userRole={userRole}
                 onDelete={handleDeleteRequest}
+                onStatusUpdate={handleStatusUpdate}
             />
         </section>
     )

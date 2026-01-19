@@ -1,4 +1,4 @@
-'use client'
+import { useState } from 'react'
 import Modal from '@/components/Modal'
 import { useLanguage } from '@/context/LanguageContext'
 
@@ -8,12 +8,26 @@ interface ViewRequestModalProps {
     request: any
     userRole: string
     onDelete: (id: string) => Promise<void>
+    onStatusUpdate?: (id: string, status: string) => Promise<void>
 }
 
-export default function ViewRequestModal({ isOpen, onClose, request, userRole, onDelete }: ViewRequestModalProps) {
+export default function ViewRequestModal({ isOpen, onClose, request, userRole, onDelete, onStatusUpdate }: ViewRequestModalProps) {
     const { t, locale } = useLanguage()
+    const [updating, setUpdating] = useState(false)
 
     if (!request) return null
+
+    const handleUpdate = async (status: string) => {
+        if (!onStatusUpdate || updating) return
+        setUpdating(true)
+        try {
+            await onStatusUpdate(request.id, status)
+        } finally {
+            setUpdating(false)
+        }
+    }
+
+    const isAdmin = ['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole)
 
     return (
         <Modal
@@ -26,31 +40,63 @@ export default function ViewRequestModal({ isOpen, onClose, request, userRole, o
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
                         <h3 style={{ margin: '0 0 0.5rem 0', color: '#1e293b', fontSize: '1.25rem', flex: 1 }}>{request.title}</h3>
 
-                        {(request.status !== 'COMPLETED' || userRole === 'SUPER_ADMIN') && (
-                            <button
-                                onClick={() => {
-                                    if (confirm(t('confirm_item_delete'))) {
-                                        onDelete(request.id)
-                                    }
-                                }}
-                                className="btn"
-                                style={{
-                                    background: '#fef2f2',
-                                    color: '#dc2626',
-                                    padding: '0.4rem 0.85rem',
-                                    fontSize: '0.8125rem',
-                                    border: 'none',
-                                    borderRadius: '0.75rem',
-                                    cursor: 'pointer',
-                                    whiteSpace: 'nowrap',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '0.4rem'
-                                }}
-                            >
-                                🗑️ {t('delete')}
-                            </button>
-                        )}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', alignItems: 'flex-end' }}>
+                            {(request.status !== 'COMPLETED' || userRole === 'SUPER_ADMIN') && (
+                                <button
+                                    onClick={() => {
+                                        if (confirm(t('confirm_item_delete'))) {
+                                            onDelete(request.id)
+                                        }
+                                    }}
+                                    className="btn"
+                                    style={{
+                                        background: '#fef2f2',
+                                        color: '#dc2626',
+                                        padding: '0.4rem 0.85rem',
+                                        fontSize: '0.8125rem',
+                                        border: 'none',
+                                        borderRadius: '0.75rem',
+                                        cursor: 'pointer',
+                                        whiteSpace: 'nowrap',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '0.4rem'
+                                    }}
+                                >
+                                    🗑️ {t('delete')}
+                                </button>
+                            )}
+
+                            {isAdmin && request.status !== 'COMPLETED' && (
+                                <button
+                                    onClick={() => handleUpdate(request.status === 'PENDING' ? 'IN_PROGRESS' : 'COMPLETED')}
+                                    disabled={updating}
+                                    style={{
+                                        background: request.status === 'PENDING' ? '#e0f2fe' : '#dcfce7',
+                                        border: `1px solid ${request.status === 'PENDING' ? '#38bdf8' : '#22c55e'}`,
+                                        color: request.status === 'PENDING' ? '#0369a1' : '#166534',
+                                        padding: '0.4rem 0.85rem',
+                                        borderRadius: '0.75rem',
+                                        fontSize: '0.8125rem',
+                                        fontWeight: '600',
+                                        cursor: updating ? 'not-allowed' : 'pointer',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '0.4rem',
+                                        transition: 'all 0.2s',
+                                        boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)'
+                                    }}
+                                    title={request.status === 'PENDING' ? t('mark_in_progress' as any) : t('mark_completed' as any)}
+                                >
+                                    {updating ? (
+                                        <div className="animate-spin-local" style={{ width: '14px', height: '14px', border: `2px solid ${request.status === 'PENDING' ? '#0369a1' : '#166534'}`, borderTopColor: 'transparent', borderRadius: '50%' }} />
+                                    ) : (
+                                        <span style={{ fontSize: '1rem' }}>✓</span>
+                                    )}
+                                    {request.status === 'PENDING' ? t('mark_in_progress' as any) : t('mark_completed' as any)}
+                                </button>
+                            )}
+                        </div>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                         <span className="badge" style={{
