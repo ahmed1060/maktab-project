@@ -105,6 +105,23 @@ export default function RequestsSection({ userRole, companyId }: RequestsSection
         }
     }
 
+    const handleDeleteRequest = async (id: string) => {
+        try {
+            const res = await fetch(`/api/requests/${id}`, {
+                method: 'DELETE'
+            })
+            if (res.ok) {
+                showToast(t('item_deleted_success' as any) || 'Request deleted successfully', 'success')
+                setIsViewModalOpen(false)
+                fetchRequests()
+            } else {
+                showToast(t('error_generic'), 'error')
+            }
+        } catch (error) {
+            showToast(t('error_generic'), 'error')
+        }
+    }
+
     const handleViewRequest = (request: any) => {
         setSelectedRequest(request)
         setIsViewModalOpen(true)
@@ -116,7 +133,7 @@ export default function RequestsSection({ userRole, companyId }: RequestsSection
     ].reduce((a, b) => a + b, 0)
 
     return (
-        <section style={{ marginTop: '1.5rem', marginBottom: '3rem' }}>
+        <section style={{ marginBottom: '3rem' }}>
             <style>{`
                 @keyframes popIn { 
                     from { opacity: 0; transform: translateY(-8px); } 
@@ -460,6 +477,8 @@ export default function RequestsSection({ userRole, companyId }: RequestsSection
                 isOpen={isViewModalOpen}
                 onClose={() => setIsViewModalOpen(false)}
                 request={selectedRequest}
+                userRole={userRole}
+                onDelete={handleDeleteRequest}
             />
         </section>
     )

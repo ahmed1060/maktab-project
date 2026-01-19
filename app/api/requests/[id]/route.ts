@@ -108,3 +108,51 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
         return new NextResponse("Internal Server Error", { status: 500 })
     }
 }
+
+export async function DELETE(req: Request, { params }: { params: { id: string } }) {
+    const session = await getServerSession(authOptions)
+    if (!session) {
+        return new NextResponse("Unauthorized", { status: 401 })
+    }
+
+    const userRole = (session.user as any).role
+    const userId = (session.user as any).id
+
+    try {
+        const request = await prisma.request.findUnique({
+            where: { id: params.id }
+        })
+
+        if (!request) {
+            return new NextResponse("Request not found", { status: 404 })
+        }
+
+        // Restriction: COMPLETED requests cannot be deleted unless SUPER_ADMIN
+        if (request.status === 'COMPLETED' && userRole !== 'SUPER_ADMIN') {
+            return new NextResponse("Forbidden: Completed requests can only be deleted by Super Admins", { status: 403 })
+        }
+
+        // Authorization: User can delete their own, Admin/TeamLeader can delete company's, SuperAdmin can delete all.
+        if (userRole === 'SUPER_ADMIN') {
+            // OK
+        } else if (['ADMIN', 'TEAM_LEADER'].includes(userRole)) {
+            const userCompanyId = (session.user as any).companyId
+            if (request.companyId !== userCompanyId) {
+                return new NextResponse("Forbidden", { status: 403 })
+            }
+        } else {
+            if (request.userId !== userId) {
+                return new NextResponse("Forbidden", { status: 403 })
+            }
+        }
+
+        await prisma.request.delete({
+            where: { id: params.id }
+        })
+
+        return new NextResponse(null, { status: 204 })
+    } catch (error) {
+        console.error("Error deleting request:", error)
+        return new NextResponse("Internal Server Error", { status: 500 })
+    }
+}

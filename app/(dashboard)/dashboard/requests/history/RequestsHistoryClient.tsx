@@ -4,9 +4,11 @@ import { useLanguage } from '@/context/LanguageContext'
 import RequestCard from '@/components/requests/RequestCard'
 import ViewRequestModal from '@/components/requests/ViewRequestModal'
 import Link from 'next/link'
+import { useToast } from '@/context/ToastContext'
 
 export default function RequestsHistoryClient({ userRole }: { userRole: string }) {
     const { t, locale } = useLanguage()
+    const { showToast } = useToast()
     const [requests, setRequests] = useState<any[]>([])
     const [loading, setLoading] = useState(true)
     const [selectedRequest, setSelectedRequest] = useState<any>(null)
@@ -55,6 +57,23 @@ export default function RequestsHistoryClient({ userRole }: { userRole: string }
         fetchEmployees()
     }, [])
 
+    const handleDeleteRequest = async (id: string) => {
+        try {
+            const res = await fetch(`/api/requests/${id}`, {
+                method: 'DELETE'
+            })
+            if (res.ok) {
+                showToast(t('item_deleted_success' as any) || 'Request deleted successfully', 'success')
+                setIsViewModalOpen(false)
+                fetchHistory()
+            } else {
+                showToast(t('error_generic'), 'error')
+            }
+        } catch (error) {
+            showToast(t('error_generic'), 'error')
+        }
+    }
+
     const handleViewRequest = (request: any) => {
         setSelectedRequest(request)
         setIsViewModalOpen(true)
@@ -65,7 +84,7 @@ export default function RequestsHistoryClient({ userRole }: { userRole: string }
     ].reduce((a, b) => a + b, 0)
 
     return (
-        <section style={{ padding: '0', marginTop: '1.5rem', marginBottom: '3rem' }}>
+        <section style={{ padding: '0', marginBottom: '3rem' }}>
             <style>{`
                 @keyframes popIn { 
                     from { opacity: 0; transform: translateY(-8px); } 
@@ -82,24 +101,28 @@ export default function RequestsHistoryClient({ userRole }: { userRole: string }
             }}>
                 <Link
                     href="/dashboard/requests"
-                    className="btn"
+                    className="glass"
                     style={{
-                        padding: '0 1.5rem',
-                        height: '48px',
-                        fontSize: '0.95rem',
-                        background: 'rgba(255, 255, 255, 0.4)',
-                        color: '#64748b',
-                        border: '1px solid rgba(0,0,0,0.1)',
-                        fontWeight: '700',
-                        borderRadius: '1.25rem',
+                        width: '40px',
+                        height: '40px',
                         display: 'flex',
                         alignItems: 'center',
-                        gap: '0.5rem',
+                        justifyContent: 'center',
+                        color: '#6366f1',
+                        textDecoration: 'none',
+                        transition: 'all 0.3s ease',
+                        border: '1px solid rgba(255, 255, 255, 0.4)',
+                        borderRadius: '0.75rem',
+                        background: 'rgba(255, 255, 255, 0.4)',
                         backdropFilter: 'blur(8px)',
-                        textDecoration: 'none'
+                        transform: locale === 'ar' ? 'scaleX(-1)' : 'none'
                     }}
+                    title={t('back_to_requests' as any) || 'Back to Requests'}
                 >
-                    {locale === 'ar' ? '← العودة' : '← Back'}
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <line x1="19" y1="12" x2="5" y2="12"></line>
+                        <polyline points="12 19 5 12 12 5"></polyline>
+                    </svg>
                 </Link>
             </div>
 
@@ -331,6 +354,8 @@ export default function RequestsHistoryClient({ userRole }: { userRole: string }
                 isOpen={isViewModalOpen}
                 onClose={() => setIsViewModalOpen(false)}
                 request={selectedRequest}
+                userRole={userRole}
+                onDelete={handleDeleteRequest}
             />
         </section>
     )

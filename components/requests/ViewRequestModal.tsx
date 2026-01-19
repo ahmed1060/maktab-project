@@ -6,9 +6,11 @@ interface ViewRequestModalProps {
     isOpen: boolean
     onClose: () => void
     request: any
+    userRole: string
+    onDelete: (id: string) => Promise<void>
 }
 
-export default function ViewRequestModal({ isOpen, onClose, request }: ViewRequestModalProps) {
+export default function ViewRequestModal({ isOpen, onClose, request, userRole, onDelete }: ViewRequestModalProps) {
     const { t, locale } = useLanguage()
 
     if (!request) return null
@@ -21,7 +23,35 @@ export default function ViewRequestModal({ isOpen, onClose, request }: ViewReque
         >
             <div style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>
                 <div style={{ marginBottom: '1.5rem' }}>
-                    <h3 style={{ margin: '0 0 0.5rem 0', color: '#1e293b', fontSize: '1.25rem' }}>{request.title}</h3>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
+                        <h3 style={{ margin: '0 0 0.5rem 0', color: '#1e293b', fontSize: '1.25rem', flex: 1 }}>{request.title}</h3>
+
+                        {(request.status !== 'COMPLETED' || userRole === 'SUPER_ADMIN') && (
+                            <button
+                                onClick={() => {
+                                    if (confirm(t('confirm_item_delete' as any) || 'Are you sure you want to delete this?')) {
+                                        onDelete(request.id)
+                                    }
+                                }}
+                                className="btn"
+                                style={{
+                                    background: '#fef2f2',
+                                    color: '#dc2626',
+                                    padding: '0.4rem 0.85rem',
+                                    fontSize: '0.8125rem',
+                                    border: 'none',
+                                    borderRadius: '0.75rem',
+                                    cursor: 'pointer',
+                                    whiteSpace: 'nowrap',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '0.4rem'
+                                }}
+                            >
+                                🗑️ {t('delete')}
+                            </button>
+                        )}
+                    </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
                         <span className="badge" style={{
                             background: request.status === 'PENDING' ? '#fef9c3' : request.status === 'IN_PROGRESS' ? '#e0f2fe' : '#dcfce7',
