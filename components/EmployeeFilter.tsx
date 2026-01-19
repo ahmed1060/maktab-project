@@ -119,6 +119,17 @@ export default function EmployeeFilter({
         setLocalSortOrder(sortOrder || 'asc')
     }, [selectedEmployeeId, selectedStatus, selectedRole, selectedCompanyId, dateFrom, dateTo, searchQuery, sortBy, sortOrder])
 
+    // Auto-apply search with 500ms debounce
+    useEffect(() => {
+        if (searchTerm === searchQuery) return
+
+        const timer = setTimeout(() => {
+            handleApplyFilters()
+        }, 500)
+
+        return () => clearTimeout(timer)
+    }, [searchTerm])
+
     useEffect(() => {
         const checkMobile = () => {
             setIsMobile(window.innerWidth < 768)
@@ -297,29 +308,6 @@ export default function EmployeeFilter({
                                 minHeight: '48px'
                             }}
                         />
-                        {/* Search Button for clarity when filters are hidden */}
-                        {(searchTerm !== searchQuery) && (
-                            <button
-                                onClick={handleApplyFilters}
-                                style={{
-                                    position: 'absolute',
-                                    [locale === 'ar' ? 'left' : 'right']: '0.5rem',
-                                    top: '50%',
-                                    transform: 'translateY(-50%)',
-                                    background: 'linear-gradient(135deg, #6366f1 0%, #a855f7 100%)',
-                                    color: 'white',
-                                    border: 'none',
-                                    borderRadius: '0.75rem',
-                                    padding: '0.4rem 0.8rem',
-                                    fontSize: '0.75rem',
-                                    fontWeight: '700',
-                                    cursor: 'pointer',
-                                    boxShadow: '0 2px 4px rgba(99, 102, 241, 0.2)'
-                                }}
-                            >
-                                {t('apply') || 'Go'}
-                            </button>
-                        )}
                     </div>
                 )}
 
