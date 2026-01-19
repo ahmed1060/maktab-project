@@ -62,6 +62,7 @@ model User {
   dayOffRequests             DayOffRequest[]
   notifications              Notification[]
   obligations                Obligation[]
+  requests                   Request[]
   profileUpdateRequests      ProfileUpdateRequest[]
   salaryAdjustments          SalaryAdjustment[]
   salaryRecords              SalaryRecord[]
@@ -309,4 +310,20 @@ model DayOffCreditSnapshot {
 
   @@index([userId])
   @@index([year])
+}
+
+model Request {
+  id        String   @id @default(uuid())
+  title     String
+  details   String
+  status    String   @default("PENDING") // PENDING, IN_PROGRESS, COMPLETED
+  userId    String
+  companyId String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([companyId])
+  @@index([status])
 }

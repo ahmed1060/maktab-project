@@ -5,6 +5,7 @@ import Link from "next/link"
 import { DonutChart, StatMetric } from "@/components/DashboardCharts"
 import { cookies } from "next/headers"
 import { Locale, translations } from "@/lib/translations"
+import RequestsSection from "@/components/requests/RequestsSection"
 
 export default async function DashboardPage({ searchParams }: { searchParams: { company?: string } }) {
     const session = await getServerSession(authOptions)
@@ -172,6 +173,8 @@ export default async function DashboardPage({ searchParams }: { searchParams: { 
                         </div>
                     </div>
                 </div>
+
+                <RequestsSection userRole={userRole} />
             </div>
         )
     } else {
@@ -385,6 +388,8 @@ export default async function DashboardPage({ searchParams }: { searchParams: { 
                         </div>
                     </section>
                 </div>
+
+                <RequestsSection userRole={userRole} />
             </div>
         )
     }
