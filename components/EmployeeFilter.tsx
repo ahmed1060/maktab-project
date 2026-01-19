@@ -104,6 +104,8 @@ export default function EmployeeFilter({
     const [localRole, setLocalRole] = useState(selectedRole)
     const [localCompanyId, setLocalCompanyId] = useState(selectedCompanyId)
     const [searchTerm, setSearchTerm] = useState(searchQuery)
+    const [localSortBy, setLocalSortBy] = useState(sortBy || '')
+    const [localSortOrder, setLocalSortOrder] = useState<'asc' | 'desc'>(sortOrder || 'asc')
 
     useEffect(() => {
         setLocalEmployeeId(selectedEmployeeId)
@@ -113,7 +115,9 @@ export default function EmployeeFilter({
         setLocalDateFrom(dateFrom)
         setLocalDateTo(dateTo)
         setSearchTerm(searchQuery)
-    }, [selectedEmployeeId, selectedStatus, selectedRole, selectedCompanyId, dateFrom, dateTo, searchQuery])
+        setLocalSortBy(sortBy || '')
+        setLocalSortOrder(sortOrder || 'asc')
+    }, [selectedEmployeeId, selectedStatus, selectedRole, selectedCompanyId, dateFrom, dateTo, searchQuery, sortBy, sortOrder])
 
     useEffect(() => {
         const checkMobile = () => {
@@ -165,21 +169,7 @@ export default function EmployeeFilter({
         }
     }, [isEmployee, hideEmployeeFilter, session?.user?.role, globalCompanyId])
 
-    useEffect(() => {
-        const timer = setTimeout(() => {
-            if (searchTerm !== searchQuery) {
-                onFilterChange({
-                    employeeId: localEmployeeId,
-                    dateFrom: localDateFrom,
-                    dateTo: localDateTo,
-                    status: localStatus,
-                    search: searchTerm
-                })
-            }
-        }, 500)
-
-        return () => clearTimeout(timer)
-    }, [searchTerm])
+    // Removed auto-apply search effect to wait for "Show Results"
 
     const handleApplyFilters = () => {
         onFilterChange({
@@ -187,8 +177,11 @@ export default function EmployeeFilter({
             dateFrom: localDateFrom,
             dateTo: localDateTo,
             status: localStatus,
-            search: searchQuery
+            search: searchTerm
         })
+        if (onSortChange && localSortBy) {
+            onSortChange(localSortBy, localSortOrder)
+        }
         if (onRoleChange && showRoleFilter) onRoleChange(localRole)
         if (onCompanyChange && showCompanyFilter) onCompanyChange(localCompanyId)
         setIsPopupOpen(false)
@@ -201,7 +194,11 @@ export default function EmployeeFilter({
         setLocalDateTo('')
         setLocalRole('')
         setLocalCompanyId('')
-        onFilterChange({ employeeId: '', dateFrom: '', dateTo: '', status: '', search: searchQuery })
+        setSearchTerm('')
+        onFilterChange({ employeeId: '', dateFrom: '', dateTo: '', status: '', search: '' })
+        if (onSortChange && sortOptions?.[0]) {
+            onSortChange(sortOptions[0].value, 'asc')
+        }
         if (onRoleChange) onRoleChange('')
         if (onCompanyChange) onCompanyChange('')
     }
@@ -281,6 +278,11 @@ export default function EmployeeFilter({
                             type="text"
                             value={searchTerm}
                             onChange={(e) => handleSearchChange(e.target.value)}
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                    handleApplyFilters()
+                                }
+                            }}
                             placeholder={placeholder || t('search_placeholder')}
                             className="input"
                             style={{
@@ -295,6 +297,29 @@ export default function EmployeeFilter({
                                 minHeight: '48px'
                             }}
                         />
+                        {/* Search Button for clarity when filters are hidden */}
+                        {(searchTerm !== searchQuery) && (
+                            <button
+                                onClick={handleApplyFilters}
+                                style={{
+                                    position: 'absolute',
+                                    [locale === 'ar' ? 'left' : 'right']: '0.5rem',
+                                    top: '50%',
+                                    transform: 'translateY(-50%)',
+                                    background: 'linear-gradient(135deg, #6366f1 0%, #a855f7 100%)',
+                                    color: 'white',
+                                    border: 'none',
+                                    borderRadius: '0.75rem',
+                                    padding: '0.4rem 0.8rem',
+                                    fontSize: '0.75rem',
+                                    fontWeight: '700',
+                                    cursor: 'pointer',
+                                    boxShadow: '0 2px 4px rgba(99, 102, 241, 0.2)'
+                                }}
+                            >
+                                {t('apply') || 'Go'}
+                            </button>
+                        )}
                     </div>
                 )}
 
@@ -411,8 +436,8 @@ export default function EmployeeFilter({
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: 1 }}>
                                                 <div style={{ position: 'relative', flex: 1 }}>
                                                     <select
-                                                        value={sortBy}
-                                                        onChange={(e) => onSortChange(e.target.value, sortOrder || 'asc')}
+                                                        value={localSortBy}
+                                                        onChange={(e) => setLocalSortBy(e.target.value)}
                                                         className="input"
                                                         style={{
                                                             width: '100%',
@@ -440,7 +465,7 @@ export default function EmployeeFilter({
                                                     </div>
                                                 </div>
                                                 <button
-                                                    onClick={() => onSortChange(sortBy || '', sortOrder === 'asc' ? 'desc' : 'asc')}
+                                                    onClick={() => setLocalSortOrder(localSortOrder === 'asc' ? 'desc' : 'asc')}
                                                     style={{
                                                         height: '48px',
                                                         width: '48px',
