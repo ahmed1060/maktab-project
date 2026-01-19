@@ -112,6 +112,34 @@ export default function RequestsSection({ userRole, companyId }: RequestsSection
 
     return (
         <section style={{ marginTop: '2rem', marginBottom: '3rem' }}>
+            {/* History Button Row */}
+            <div style={{
+                display: 'flex',
+                justifyContent: locale === 'ar' ? 'flex-start' : 'flex-end',
+                marginBottom: '1rem',
+                flexDirection: locale === 'ar' ? 'row-reverse' : 'row'
+            }}>
+                <Link
+                    href="/dashboard/requests/history"
+                    className="btn"
+                    style={{
+                        padding: '0.6rem 1.25rem',
+                        fontSize: '0.85rem',
+                        background: 'rgba(255, 255, 255, 0.4)',
+                        color: '#64748b',
+                        border: '1px solid rgba(0,0,0,0.1)',
+                        fontWeight: '700',
+                        borderRadius: '1rem',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.5rem',
+                        backdropFilter: 'blur(8px)'
+                    }}
+                >
+                    📜 {t('history')}
+                </Link>
+            </div>
+
             {/* Unified Glass Toolbar */}
             <div style={{
                 background: 'rgba(255, 255, 255, 0.4)',
@@ -247,23 +275,7 @@ export default function RequestsSection({ userRole, companyId }: RequestsSection
                                     </div>
                                 </div>
 
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '0.5rem' }}>
-                                    <Link
-                                        href="/dashboard/requests/history"
-                                        className="btn"
-                                        style={{
-                                            width: '100%',
-                                            padding: '0.6rem',
-                                            fontSize: '0.85rem',
-                                            background: 'rgba(0,0,0,0.05)',
-                                            color: '#64748b',
-                                            border: '1px solid rgba(0,0,0,0.05)',
-                                            fontWeight: '700',
-                                            borderRadius: '0.75rem'
-                                        }}
-                                    >
-                                        📜 {t('history')}
-                                    </Link>
+                                <div style={{ marginTop: '0.5rem', textAlign: 'center' }}>
                                     <button
                                         onClick={() => {
                                             setFilterStatus('')
@@ -273,7 +285,7 @@ export default function RequestsSection({ userRole, companyId }: RequestsSection
                                             setSearch('')
                                             setShowFilters(false)
                                         }}
-                                        style={{ color: '#ef4444', fontSize: '0.75rem', fontWeight: '700', background: 'none', border: 'none', cursor: 'pointer', padding: '0.5rem' }}
+                                        style={{ color: '#ef4444', fontSize: '0.75rem', fontWeight: '700', background: 'none', border: 'none', cursor: 'pointer', padding: '0.5rem', width: '100%' }}
                                     >
                                         {t('reset_filters')}
                                     </button>
