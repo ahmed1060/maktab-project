@@ -95,9 +95,8 @@ export default function RequestsHistoryClient({ userRole }: { userRole: string }
             {/* Back Button Row */}
             <div style={{
                 display: 'flex',
-                justifyContent: locale === 'ar' ? 'flex-end' : 'flex-start',
-                marginBottom: '1rem',
-                flexDirection: locale === 'ar' ? 'row-reverse' : 'row'
+                justifyContent: 'flex-start',
+                marginBottom: '1rem'
             }}>
                 <Link
                     href="/dashboard/requests"
@@ -117,7 +116,7 @@ export default function RequestsHistoryClient({ userRole }: { userRole: string }
                         backdropFilter: 'blur(8px)',
                         transform: locale === 'ar' ? 'scaleX(-1)' : 'none'
                     }}
-                    title={t('back_to_requests' as any) || 'Back to Requests'}
+                    title={t('back_to_requests')}
                 >
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                         <line x1="19" y1="12" x2="5" y2="12"></line>

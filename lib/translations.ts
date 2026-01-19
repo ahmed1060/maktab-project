@@ -611,7 +611,13 @@ export const translations = {
         password_revealed: "Password revealed successfully",
         incorrect_password: "Incorrect password",
         enter_your_password: "Enter your password",
-        password_not_available: "Password not available. Please reset the user's password once to enable revelation."
+        password_not_available: "Password not available. Please reset the user's password once to enable revelation.",
+        back_to_requests: "Back to Requests",
+        requested_on: "Requested on",
+        started_at: "Started at",
+        finished_at: "Finished at",
+        mark_in_progress: "Mark In Progress",
+        mark_completed: "Mark Completed"
     },
     ar: {
         welcome_back: "مرحباً بك مجدداً",
@@ -1224,7 +1230,13 @@ export const translations = {
         password_revealed: "تم كشف كلمة المرور بنجاح",
         incorrect_password: "كلمة المرور غير صحيحة",
         enter_your_password: "أدخل كلمة المرور الخاصة بك",
-        password_not_available: "كلمة المرور غير متاحة حالياً. يرجى إعادة تعيين كلمة مرور الموظف مرة واحدة لتتمكن من كشفها."
+        password_not_available: "كلمة المرور غير متاحة حالياً. يرجى إعادة تعيين كلمة مرور الموظف مرة واحدة لتتمكن من كشفها.",
+        back_to_requests: "العودة للطلبات",
+        requested_on: "تاريخ التقديم",
+        started_at: "بدء العمل",
+        finished_at: "تم الإنجاز",
+        mark_in_progress: "تميز قيد التنفيذ",
+        mark_completed: "تميز كمكتمل"
     }
 };
 

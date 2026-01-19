@@ -26,9 +26,9 @@ export default function RequestCard({ request, userRole, onView, onStatusUpdate 
     const isAdmin = ['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole)
 
     return (
-        <div className="glass-card" style={{ padding: '1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', transition: 'all 0.2s', borderLeft: locale === 'ar' ? 'none' : '4px solid #6366f1', borderRight: locale === 'ar' ? '4px solid #6366f1' : 'none' }}>
-            <div style={{ flex: 1, textAlign: locale === 'ar' ? 'right' : 'left' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.25rem', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
+        <div className="glass-card" style={{ padding: '1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', transition: 'all 0.2s', borderInlineStart: '4px solid #6366f1' }}>
+            <div style={{ flex: 1 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.25rem' }}>
                     <h3 style={{ fontSize: '1.1rem', fontWeight: '700', margin: 0, color: '#1e293b' }}>{request.title}</h3>
                     <span className="badge" style={{
                         background: request.status === 'PENDING' ? '#fef9c3' : request.status === 'IN_PROGRESS' ? '#e0f2fe' : '#dcfce7',
@@ -45,7 +45,7 @@ export default function RequestCard({ request, userRole, onView, onStatusUpdate 
                 )}
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                 <button
                     onClick={() => onView(request)}
                     className="btn"
@@ -79,7 +79,7 @@ export default function RequestCard({ request, userRole, onView, onStatusUpdate 
                             transition: 'all 0.2s',
                             boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)'
                         }}
-                        title={request.status === 'PENDING' ? (locale === 'ar' ? 'قيد التنفيذ' : 'Mark In Progress') : (locale === 'ar' ? 'مكتمل' : 'Mark Completed')}
+                        title={request.status === 'PENDING' ? t('mark_in_progress' as any) : t('mark_completed' as any)}
                     >
                         {updating ? (
                             <div className="animate-spin-local" style={{ width: '16px', height: '16px', border: `2px solid ${request.status === 'PENDING' ? '#0369a1' : '#166534'}`, borderTopColor: 'transparent', borderRadius: '50%' }} />

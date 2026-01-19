@@ -313,15 +313,17 @@ model DayOffCreditSnapshot {
 }
 
 model Request {
-  id        String   @id @default(uuid())
-  title     String
-  details   String
-  status    String   @default("PENDING") // PENDING, IN_PROGRESS, COMPLETED
-  userId    String
-  companyId String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  user      User     @relation(fields: [userId], references: [id])
+  id           String   @id @default(uuid())
+  title        String
+  details      String
+  status       String   @default("PENDING") // PENDING, IN_PROGRESS, COMPLETED
+  userId       String
+  companyId    String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  inProgressAt DateTime?
+  completedAt  DateTime?
+  user         User     @relation(fields: [userId], references: [id])
 
   @@index([userId])
   @@index([companyId])

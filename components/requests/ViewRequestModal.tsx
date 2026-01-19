@@ -19,17 +19,17 @@ export default function ViewRequestModal({ isOpen, onClose, request, userRole, o
         <Modal
             isOpen={isOpen}
             onClose={onClose}
-            title={t('request_details' as any) || (locale === 'ar' ? 'تفاصيل الطلب' : 'Request Details')}
+            title={t('request_details')}
         >
-            <div style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>
+            <div>
                 <div style={{ marginBottom: '1.5rem' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
                         <h3 style={{ margin: '0 0 0.5rem 0', color: '#1e293b', fontSize: '1.25rem', flex: 1 }}>{request.title}</h3>
 
                         {(request.status !== 'COMPLETED' || userRole === 'SUPER_ADMIN') && (
                             <button
                                 onClick={() => {
-                                    if (confirm(t('confirm_item_delete' as any) || 'Are you sure you want to delete this?')) {
+                                    if (confirm(t('confirm_item_delete'))) {
                                         onDelete(request.id)
                                     }
                                 }}
@@ -52,7 +52,7 @@ export default function ViewRequestModal({ isOpen, onClose, request, userRole, o
                             </button>
                         )}
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                         <span className="badge" style={{
                             background: request.status === 'PENDING' ? '#fef9c3' : request.status === 'IN_PROGRESS' ? '#e0f2fe' : '#dcfce7',
                             color: request.status === 'PENDING' ? '#854d0e' : request.status === 'IN_PROGRESS' ? '#0369a1' : '#166534',
@@ -68,7 +68,7 @@ export default function ViewRequestModal({ isOpen, onClose, request, userRole, o
                 </div>
 
                 {request.user && (
-                    <div style={{ padding: '1rem', background: '#f8fafc', borderRadius: '0.75rem', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '1rem', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
+                    <div style={{ padding: '1rem', background: '#f8fafc', borderRadius: '0.75rem', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
                         <div style={{
                             width: '40px',
                             height: '40px',
@@ -92,6 +92,32 @@ export default function ViewRequestModal({ isOpen, onClose, request, userRole, o
                         </div>
                     </div>
                 )}
+
+                <div style={{
+                    marginBottom: '1.5rem',
+                    padding: '1rem',
+                    background: 'rgba(99, 102, 241, 0.03)',
+                    border: '1px dashed rgba(99, 102, 241, 0.2)',
+                    borderRadius: '0.75rem',
+                    fontSize: '0.85rem'
+                }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', color: '#64748b' }}>
+                        <span>📅 {t('requested_on')}:</span>
+                        <span style={{ fontWeight: '600', color: '#334155' }}>{new Date(request.createdAt).toLocaleString(locale)}</span>
+                    </div>
+                    {request.inProgressAt && (
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', color: '#64748b' }}>
+                            <span>🚀 {t('started_at')}:</span>
+                            <span style={{ fontWeight: '600', color: '#334155' }}>{new Date(request.inProgressAt).toLocaleString(locale)}</span>
+                        </div>
+                    )}
+                    {request.completedAt && (
+                        <div style={{ display: 'flex', justifyContent: 'space-between', color: '#64748b' }}>
+                            <span>✅ {t('finished_at')}:</span>
+                            <span style={{ fontWeight: '600', color: '#334155' }}>{new Date(request.completedAt).toLocaleString(locale)}</span>
+                        </div>
+                    )}
+                </div>
 
                 <div style={{
                     whiteSpace: 'pre-wrap',

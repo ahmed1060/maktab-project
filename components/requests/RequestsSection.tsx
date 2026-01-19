@@ -145,8 +145,7 @@ export default function RequestsSection({ userRole, companyId }: RequestsSection
             <div style={{
                 display: 'flex',
                 justifyContent: locale === 'ar' ? 'flex-start' : 'flex-end',
-                marginBottom: '1rem',
-                flexDirection: locale === 'ar' ? 'row-reverse' : 'row'
+                marginBottom: '1rem'
             }}>
                 <Link
                     href="/dashboard/requests/history"

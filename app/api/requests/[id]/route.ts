@@ -87,17 +87,25 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
             }
         }
 
+        const data: any = { status }
+        if (status === 'IN_PROGRESS') data.inProgressAt = new Date()
+        if (status === 'COMPLETED') data.completedAt = new Date()
+
         const updatedRequest = await prisma.request.update({
             where: { id: params.id },
-            data: { status }
+            data
         })
 
-        // Notify user
+        // Notify user with enhanced message
+        const updaterName = `${(session.user as any).firstName || ''} ${(session.user as any).lastName || ''}`.trim() || session.user?.name || 'Someone'
+        const updaterRole = userRole.replace(/_/g, ' ')
+        const statusText = status.replace(/_/g, ' ')
+
         await prisma.notification.create({
             data: {
                 userId: request.userId,
                 type: 'REQUEST_STATUS_UPDATED',
-                message: `Your request "${request.title}" status changed to ${status.replace('_', ' ')}`,
+                message: `Your request "${request.title}" status changed to ${statusText}. (Updated by ${updaterName} - ${updaterRole})`,
                 relatedId: request.id
             }
         })
