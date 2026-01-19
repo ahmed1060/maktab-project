@@ -89,8 +89,8 @@ export default function DashboardShell({ children, user }: DashboardShellProps) 
             }}>
                 <div style={{
                     height: (user?.role === 'SUPER_ADMIN') ? '70px' : '55px', // Reduced by 10-15px
-                    paddingInlineStart: isCollapsed ? '1rem' : '2rem',
-                    paddingInlineEnd: '10px',
+                    paddingInlineStart: isCollapsed ? '0' : '2rem',
+                    paddingInlineEnd: isCollapsed ? '0' : '10px',
                     paddingTop: (user?.role === 'SUPER_ADMIN' ? '0.25rem' : 0), // Tightened
                     display: 'flex',
                     justifyContent: isCollapsed ? 'center' : 'flex-start',
@@ -118,7 +118,9 @@ export default function DashboardShell({ children, user }: DashboardShellProps) 
                         }}
                         title={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
                     >
-                        <span style={{ fontSize: isCollapsed ? '2rem' : '1.75rem', transition: 'font-size 0.3s', flexShrink: 0 }}>🚀</span>
+                        <div style={{ width: isCollapsed ? '40px' : '45px', height: isCollapsed ? '40px' : '45px', position: 'relative', flexShrink: 0, overflow: 'hidden', borderRadius: '8px' }}>
+                            <img src="/shsd-logo.jpg" alt="SHSD Logo" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        </div>
                         {!isCollapsed && (
                             <div style={{
                                 display: 'flex',
@@ -225,6 +227,21 @@ export default function DashboardShell({ children, user }: DashboardShellProps) 
                     overflowX: 'hidden',
                     scrollbarGutter: 'stable'
                 }}>
+                    {!isCollapsed && (
+                        <div style={{
+                            padding: '0.5rem 1rem',
+                            marginBottom: '1rem',
+                            background: 'rgba(255,255,255,0.1)',
+                            borderRadius: '1rem',
+                            fontSize: '0.7rem',
+                            fontWeight: '700',
+                            color: 'rgba(255,255,255,0.6)',
+                            textAlign: 'center',
+                            border: '1px solid rgba(255,255,255,0.1)'
+                        }}>
+                            POWERED BY SHSD
+                        </div>
+                    )}
                     {!isCollapsed && <p style={{ fontSize: '0.75rem', fontWeight: 'bold', textTransform: 'uppercase', color: '#94a3b8', [isRtl ? 'paddingRight' : 'paddingLeft']: '1rem', marginBottom: '0.25rem', letterSpacing: '0.1em' }}>{t('menu' as any)}</p>}
 
                     {[
@@ -365,14 +382,6 @@ export default function DashboardShell({ children, user }: DashboardShellProps) 
                         </>
                     )}
                 </nav>
-
-                {!isCollapsed && (
-                    <div style={{ marginTop: 'auto', padding: '1.5rem', borderTop: '1px solid rgba(255,255,255,0.1)', background: 'rgba(0,0,0,0.2)' }}>
-                        <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>
-                            &copy; 2025 Maktab Project
-                        </div>
-                    </div>
-                )}
             </aside>
 
             {/* Main Content Wrapper */}

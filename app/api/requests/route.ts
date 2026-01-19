@@ -12,6 +12,10 @@ export async function GET(req: Request) {
     const { searchParams } = new URL(req.url)
     const status = searchParams.get('status')
     const companyIdParam = searchParams.get('companyId')
+    const search = searchParams.get('search')
+    const filterUserId = searchParams.get('userId')
+    const sortBy = searchParams.get('sortBy') || 'createdAt'
+    const order = searchParams.get('order') || 'desc'
 
     const userRole = (session.user as any).role
     const userId = (session.user as any).id
@@ -41,6 +45,14 @@ export async function GET(req: Request) {
         }
     }
 
+    if (search) {
+        where.title = { contains: search, mode: 'insensitive' }
+    }
+
+    if (filterUserId && (userRole === 'SUPER_ADMIN' || userRole === 'ADMIN' || userRole === 'TEAM_LEADER')) {
+        where.userId = filterUserId
+    }
+
     try {
         const requests = await prisma.request.findMany({
             where,
@@ -57,7 +69,7 @@ export async function GET(req: Request) {
                 }
             },
             orderBy: {
-                createdAt: 'desc'
+                [sortBy]: order
             }
         })
 

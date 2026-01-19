@@ -60,7 +60,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: { 
                 <div className="animate-fade-in" style={{ direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
                     <header style={{ marginBottom: '2.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
                         <h1 style={{ fontSize: '2rem', fontWeight: '800', color: '#1e293b' }}>
-                            {t('system_overview')}
+                            {t('requests')}
                         </h1>
                     </header>
 
