@@ -7,6 +7,7 @@ import Link from 'next/link'
 import { useToast } from '@/context/ToastContext'
 import { useCompany } from '@/context/CompanyContext'
 import EmployeeFilter from '@/components/EmployeeFilter'
+import Pagination from '@/components/Pagination'
 
 export default function RequestsHistoryClient({ userRole }: { userRole: string }) {
     const { t, locale } = useLanguage()
@@ -26,10 +27,13 @@ export default function RequestsHistoryClient({ userRole }: { userRole: string }
         dateFrom: '',
         dateTo: ''
     })
+    const [page, setPage] = useState(1)
+    const [total, setTotal] = useState(0)
+    const [totalPages, setTotalPages] = useState(0)
 
     const fetchHistory = async () => {
         try {
-            let url = `/api/requests?history=true&sortBy=${sortBy}&order=${order}`
+            let url = `/api/requests?history=true&sortBy=${sortBy}&order=${order}&page=${page}&limit=10`
             if (filters.search) url += `&search=${encodeURIComponent(filters.search)}`
             if (filters.employeeId) url += `&userId=${filters.employeeId}`
             if (selectedCompanyId) url += `&companyId=${selectedCompanyId}`
@@ -37,7 +41,9 @@ export default function RequestsHistoryClient({ userRole }: { userRole: string }
             const res = await fetch(url)
             if (res.ok) {
                 const data = await res.json()
-                setRequests(data)
+                setRequests(data.data || [])
+                setTotal(data.total || 0)
+                setTotalPages(data.totalPages || 0)
             }
         } catch (error) {
             console.error("Error fetching history:", error)
@@ -48,6 +54,10 @@ export default function RequestsHistoryClient({ userRole }: { userRole: string }
 
     useEffect(() => {
         fetchHistory()
+    }, [filters, selectedCompanyId, sortBy, order, page])
+
+    useEffect(() => {
+        setPage(1)
     }, [filters, selectedCompanyId, sortBy, order])
 
     const handleDeleteRequest = async (id: string) => {
@@ -123,7 +133,7 @@ export default function RequestsHistoryClient({ userRole }: { userRole: string }
                 selectedEmployeeId={filters.employeeId}
                 dateFrom={filters.dateFrom}
                 dateTo={filters.dateTo}
-                totalCount={requests.length}
+                totalCount={total}
                 selectedStatus={filters.status}
                 searchQuery={filters.search}
                 placeholder={t('search_by_title')}
@@ -162,6 +172,12 @@ export default function RequestsHistoryClient({ userRole }: { userRole: string }
                     ))}
                 </div>
             )}
+
+            <Pagination
+                currentPage={page}
+                totalPages={totalPages}
+                onPageChange={(p) => setPage(p)}
+            />
 
             <ViewRequestModal
                 isOpen={isViewModalOpen}

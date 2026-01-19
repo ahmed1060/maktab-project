@@ -9,6 +9,7 @@ import { useCompany } from '@/context/CompanyContext'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import EmployeeFilter from '@/components/EmployeeFilter'
+import Pagination from '@/components/Pagination'
 
 
 export default function RequestsSection({ userRole }: { userRole: string }) {
@@ -30,12 +31,15 @@ export default function RequestsSection({ userRole }: { userRole: string }) {
         dateFrom: '',
         dateTo: ''
     })
+    const [page, setPage] = useState(1)
+    const [total, setTotal] = useState(0)
+    const [totalPages, setTotalPages] = useState(0)
     const [highlightId, setHighlightId] = useState<string | null>(null)
 
 
     const fetchRequests = async () => {
         try {
-            let url = `/api/requests?sortBy=${sortBy}&order=${order}`
+            let url = `/api/requests?sortBy=${sortBy}&order=${order}&page=${page}&limit=10`
             if (selectedCompanyId) url += `&companyId=${selectedCompanyId}`
             if (filters.search) url += `&search=${encodeURIComponent(filters.search)}`
             if (filters.status) url += `&status=${filters.status}`
@@ -44,7 +48,9 @@ export default function RequestsSection({ userRole }: { userRole: string }) {
             const res = await fetch(url)
             if (res.ok) {
                 const data = await res.json()
-                setRequests(data)
+                setRequests(data.data || [])
+                setTotal(data.total || 0)
+                setTotalPages(data.totalPages || 0)
             }
         } catch (error) {
             console.error("Error fetching requests:", error)
@@ -55,6 +61,10 @@ export default function RequestsSection({ userRole }: { userRole: string }) {
 
     useEffect(() => {
         fetchRequests()
+    }, [selectedCompanyId, filters, sortBy, order, page])
+
+    useEffect(() => {
+        setPage(1)
     }, [selectedCompanyId, filters, sortBy, order])
 
     useEffect(() => {
@@ -186,7 +196,7 @@ export default function RequestsSection({ userRole }: { userRole: string }) {
                 selectedEmployeeId={filters.employeeId}
                 dateFrom={filters.dateFrom}
                 dateTo={filters.dateTo}
-                totalCount={requests.length}
+                totalCount={total}
                 selectedStatus={filters.status}
                 searchQuery={filters.search}
                 placeholder={t('search_by_title')}
@@ -251,6 +261,12 @@ export default function RequestsSection({ userRole }: { userRole: string }) {
                     ))}
                 </div>
             )}
+
+            <Pagination
+                currentPage={page}
+                totalPages={totalPages}
+                onPageChange={(p) => setPage(p)}
+            />
 
             <CreateRequestModal
                 isOpen={isCreateModalOpen}
