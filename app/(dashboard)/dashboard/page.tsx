@@ -88,6 +88,8 @@ export default async function DashboardPage({ searchParams }: { searchParams: { 
                             </Link>
                         </div>
                     </div>
+
+                    <RequestsSection userRole={userRole} />
                 </div>
             )
         }
@@ -174,7 +176,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: { 
                     </div>
                 </div>
 
-                <RequestsSection userRole={userRole} />
+                <RequestsSection userRole={userRole} companyId={finalCompanyId} />
             </div>
         )
     } else {

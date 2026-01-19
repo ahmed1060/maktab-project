@@ -231,6 +231,7 @@ export default function DashboardShell({ children, user }: DashboardShellProps) 
                         { href: '/dashboard', label: t('dashboard'), icon: '📊' },
                         { href: '/dashboard/tasks', label: t('tasks'), icon: '✅' },
                         { href: '/dashboard/obligations', label: t('obligations'), icon: '📌' },
+                        { href: '/dashboard/requests', label: t('requests'), icon: '📩' },
                         { href: '/dashboard/day-off-requests', label: t('day_off_requests'), icon: '📅' },
                         { href: '/dashboard/clients', label: t('clients'), icon: '🤝' },
                     ].map(link => (

@@ -9,9 +9,10 @@ import Link from 'next/link'
 
 interface RequestsSectionProps {
     userRole: string
+    companyId?: string
 }
 
-export default function RequestsSection({ userRole }: RequestsSectionProps) {
+export default function RequestsSection({ userRole, companyId }: RequestsSectionProps) {
     const { t, locale } = useLanguage()
     const { showToast } = useToast()
     const [requests, setRequests] = useState<any[]>([])
@@ -22,7 +23,8 @@ export default function RequestsSection({ userRole }: RequestsSectionProps) {
 
     const fetchRequests = async () => {
         try {
-            const res = await fetch('/api/requests')
+            const url = companyId ? `/api/requests?companyId=${companyId}` : '/api/requests'
+            const res = await fetch(url)
             if (res.ok) {
                 const data = await res.json()
                 setRequests(data)
@@ -36,7 +38,7 @@ export default function RequestsSection({ userRole }: RequestsSectionProps) {
 
     useEffect(() => {
         fetchRequests()
-    }, [])
+    }, [companyId])
 
     const handleCreateRequest = async (title: string, details: string) => {
         try {
