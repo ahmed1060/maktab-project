@@ -176,7 +176,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: { 
                     </div>
                 </div>
 
-                <RequestsSection userRole={userRole} companyId={finalCompanyId} />
+                <RequestsSection userRole={userRole} />
             </div>
         )
     } else {

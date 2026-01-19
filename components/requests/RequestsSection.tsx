@@ -9,10 +9,6 @@ import { useCompany } from '@/context/CompanyContext'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 
-interface RequestsSectionProps {
-    userRole: string
-    companyId?: string
-}
 
 export default function RequestsSection({ userRole }: { userRole: string }) {
     const { t, locale } = useLanguage()

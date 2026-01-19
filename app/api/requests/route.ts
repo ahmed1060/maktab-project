@@ -95,7 +95,13 @@ export async function POST(req: Request) {
         }
 
         const userId = (session.user as any).id
-        const companyId = (session.user as any).companyId
+        const userRole = (session.user as any).role
+        let companyId = (session.user as any).companyId
+
+        // For Super Admins, allow setting companyId from body
+        if (userRole === 'SUPER_ADMIN' && json.companyId) {
+            companyId = json.companyId
+        }
 
         const request = await prisma.request.create({
             data: {
