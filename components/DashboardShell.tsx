@@ -118,8 +118,20 @@ export default function DashboardShell({ children, user }: DashboardShellProps) 
                         }}
                         title={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
                     >
-                        <div style={{ width: isCollapsed ? '40px' : '45px', height: isCollapsed ? '40px' : '45px', position: 'relative', flexShrink: 0, overflow: 'hidden', borderRadius: '8px' }}>
-                            <img src="/shsd-logo.jpg" alt="SHSD Logo" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        <div style={{
+                            width: '42px',
+                            height: '42px',
+                            background: 'rgba(255,255,255,0.15)',
+                            borderRadius: '12px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            flexShrink: 0,
+                            boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                            backdropFilter: 'blur(4px)',
+                            border: '1px solid rgba(255,255,255,0.1)'
+                        }}>
+                            <span style={{ fontSize: '1.4rem' }}>📂</span>
                         </div>
                         {!isCollapsed && (
                             <div style={{
@@ -227,21 +239,6 @@ export default function DashboardShell({ children, user }: DashboardShellProps) 
                     overflowX: 'hidden',
                     scrollbarGutter: 'stable'
                 }}>
-                    {!isCollapsed && (
-                        <div style={{
-                            padding: '0.5rem 1rem',
-                            marginBottom: '1rem',
-                            background: 'rgba(255,255,255,0.1)',
-                            borderRadius: '1rem',
-                            fontSize: '0.7rem',
-                            fontWeight: '700',
-                            color: 'rgba(255,255,255,0.6)',
-                            textAlign: 'center',
-                            border: '1px solid rgba(255,255,255,0.1)'
-                        }}>
-                            POWERED BY SHSD
-                        </div>
-                    )}
                     {!isCollapsed && <p style={{ fontSize: '0.75rem', fontWeight: 'bold', textTransform: 'uppercase', color: '#94a3b8', [isRtl ? 'paddingRight' : 'paddingLeft']: '1rem', marginBottom: '0.25rem', letterSpacing: '0.1em' }}>{t('menu' as any)}</p>}
 
                     {[
@@ -382,6 +379,58 @@ export default function DashboardShell({ children, user }: DashboardShellProps) 
                         </>
                     )}
                 </nav>
+
+                {/* Bottom Attribution / Branding */}
+                <div style={{
+                    marginTop: 'auto',
+                    padding: '1.5rem 1rem',
+                    display: 'flex',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    borderTop: '1px solid rgba(255,255,255,0.05)',
+                    background: 'rgba(0,0,0,0.1)'
+                }}>
+                    {isCollapsed ? (
+                        <div style={{
+                            width: '40px',
+                            height: '40px',
+                            position: 'relative',
+                            borderRadius: '10px',
+                            overflow: 'hidden',
+                            border: '2px solid rgba(255,255,255,0.15)',
+                            cursor: 'pointer',
+                            transition: 'all 0.3s ease',
+                            background: 'white'
+                        }}
+                            onMouseOver={(e) => {
+                                e.currentTarget.style.transform = 'scale(1.15) rotate(5deg)'
+                                e.currentTarget.style.borderColor = 'rgba(255,255,255,0.4)'
+                            }}
+                            onMouseOut={(e) => {
+                                e.currentTarget.style.transform = 'scale(1) rotate(0)'
+                                e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)'
+                            }}
+                        >
+                            <img src="/shsd-logo.jpg" alt="SHSD" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        </div>
+                    ) : (
+                        <div style={{
+                            padding: '0.6rem 1.25rem',
+                            background: 'rgba(255,255,255,0.08)',
+                            backdropFilter: 'blur(8px)',
+                            borderRadius: '2rem',
+                            fontSize: '0.65rem',
+                            fontWeight: '800',
+                            color: 'rgba(255,255,255,0.5)',
+                            textAlign: 'center',
+                            border: '1px solid rgba(255,255,255,0.1)',
+                            letterSpacing: '0.05em',
+                            boxShadow: '0 4px 6px rgba(0,0,0,0.02)'
+                        }}>
+                            POWERED BY SHSD
+                        </div>
+                    )}
+                </div>
             </aside>
 
             {/* Main Content Wrapper */}
