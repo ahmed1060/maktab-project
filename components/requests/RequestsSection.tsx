@@ -164,7 +164,7 @@ export default function RequestsSection({ userRole, companyId }: RequestsSection
                     <div style={{ position: 'relative', flex: 1, minWidth: '250px' }}>
                         <input
                             type="text"
-                            placeholder={t('search_by_title' as any) || "Search by title..."}
+                            placeholder={t('search_by_title')}
                             className="input"
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
@@ -218,7 +218,7 @@ export default function RequestsSection({ userRole, companyId }: RequestsSection
                                                 value={filterUserId}
                                                 onChange={(e) => setFilterUserId(e.target.value)}
                                             >
-                                                <option value="">{t('all_employees' as any)}</option>
+                                                <option value="">{t('all_employees')}</option>
                                                 {employees.map(emp => (
                                                     <option key={emp.id} value={emp.id}>{emp.firstName} {emp.lastName}</option>
                                                 ))}
@@ -235,7 +235,7 @@ export default function RequestsSection({ userRole, companyId }: RequestsSection
                                                 onChange={(e) => setSortBy(e.target.value)}
                                                 style={{ flex: 1 }}
                                             >
-                                                <option value="createdAt">{t('date_created' as any)}</option>
+                                                <option value="createdAt">{t('date_created')}</option>
                                                 <option value="status">{t('status')}</option>
                                             </select>
                                             <button
@@ -258,7 +258,7 @@ export default function RequestsSection({ userRole, companyId }: RequestsSection
                                         }}
                                         style={{ color: '#ef4444', fontSize: '0.85rem', fontWeight: '600', background: 'none', border: 'none', cursor: 'pointer', marginTop: '0.5rem' }}
                                     >
-                                        {t('reset_filters' as any) || "Reset Filters"}
+                                        {t('reset_filters')}
                                     </button>
                                 </div>
                             </div>
