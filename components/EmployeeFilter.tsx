@@ -45,7 +45,8 @@ interface EmployeeFilterProps {
     showCompanyFilter?: boolean,
     selectedCompanyId?: string,
     onCompanyChange?: (id: string) => void,
-    companyOptions?: SortOption[]
+    companyOptions?: SortOption[],
+    secondaryAction?: React.ReactNode
 }
 
 // Define interface for Employee data locally since it's just for display
@@ -85,7 +86,8 @@ export default function EmployeeFilter({
     showCompanyFilter,
     selectedCompanyId = '',
     onCompanyChange,
-    companyOptions
+    companyOptions,
+    secondaryAction
 }: EmployeeFilterProps) {
     const [employees, setEmployees] = useState<EmployeeType[]>([])
     const [loading, setLoading] = useState(!isEmployee && !hideEmployeeFilter)
@@ -256,6 +258,13 @@ export default function EmployeeFilter({
                     zIndex: -1,
                     pointerEvents: 'none'
                 }} />
+                {/* Secondary Action - At the start (e.g. Back Button) */}
+                {secondaryAction && (
+                    <div style={{ marginRight: locale === 'ar' ? '0' : '0.5rem', marginLeft: locale === 'ar' ? '0.5rem' : '0' }}>
+                        {secondaryAction}
+                    </div>
+                )}
+
                 {/* Spacer to push items to the right if search is hidden */}
                 {hideSearch && <div style={{ flex: 1 }} />}
 

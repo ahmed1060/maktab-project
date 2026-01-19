@@ -16,7 +16,8 @@ export default function RequestsHistoryClient({ userRole }: { userRole: string }
     const [loading, setLoading] = useState(true)
     const [selectedRequest, setSelectedRequest] = useState<any>(null)
     const [isViewModalOpen, setIsViewModalOpen] = useState(false)
-
+    const [sortBy, setSortBy] = useState('updatedAt')
+    const [order, setOrder] = useState('desc')
     // Filter states
     const [filters, setFilters] = useState({
         employeeId: '',
@@ -28,7 +29,7 @@ export default function RequestsHistoryClient({ userRole }: { userRole: string }
 
     const fetchHistory = async () => {
         try {
-            let url = '/api/requests?history=true'
+            let url = `/api/requests?history=true&sortBy=${sortBy}&order=${order}`
             if (filters.search) url += `&search=${encodeURIComponent(filters.search)}`
             if (filters.employeeId) url += `&userId=${filters.employeeId}`
             if (selectedCompanyId) url += `&companyId=${selectedCompanyId}`
@@ -47,7 +48,7 @@ export default function RequestsHistoryClient({ userRole }: { userRole: string }
 
     useEffect(() => {
         fetchHistory()
-    }, [filters, selectedCompanyId])
+    }, [filters, selectedCompanyId, sortBy, order])
 
     const handleDeleteRequest = async (id: string) => {
         try {
@@ -94,9 +95,19 @@ export default function RequestsHistoryClient({ userRole }: { userRole: string }
                 searchQuery={filters.search}
                 placeholder={t('search_by_title')}
                 isEmployee={userRole === 'EMPLOYEE'}
+                sortBy={sortBy}
+                sortOrder={order as any}
+                onSortChange={(field, ord) => {
+                    setSortBy(field)
+                    setOrder(ord)
+                }}
+                sortOptions={[
+                    { label: t('date_updated'), value: 'updatedAt' },
+                    { label: t('date_created'), value: 'createdAt' },
+                ]}
                 hideStatusFilter={true}
                 hideDateFilter={true}
-                primaryAction={
+                secondaryAction={
                     <Link
                         href="/dashboard/requests"
                         className="glass"
