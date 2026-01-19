@@ -148,6 +148,36 @@ export default function RequestsSection({ userRole }: { userRole: string }) {
                 }
             `}</style>
 
+            {/* History Button Row - Restore to old place */}
+            <div style={{
+                display: 'flex',
+                justifyContent: locale === 'ar' ? 'flex-start' : 'flex-end',
+                marginBottom: '1rem'
+            }}>
+                <Link
+                    href="/dashboard/requests/history"
+                    className="btn"
+                    style={{
+                        padding: '0 1.5rem',
+                        height: '48px',
+                        fontSize: '0.95rem',
+                        background: 'rgba(254, 243, 199, 0.4)',
+                        color: '#b45309',
+                        border: '1px solid rgba(251, 191, 36, 0.3)',
+                        fontWeight: '800',
+                        borderRadius: '1.25rem',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.5rem',
+                        backdropFilter: 'blur(10px)',
+                        textDecoration: 'none',
+                        boxShadow: '0 4px 12px rgba(251, 191, 36, 0.1)'
+                    }}
+                >
+                    📜 {t('history')}
+                </Link>
+            </div>
+
             {/* Employee Filter & Toolbar */}
             <EmployeeFilter
                 onFilterChange={(newFilters) => {
@@ -176,30 +206,6 @@ export default function RequestsSection({ userRole }: { userRole: string }) {
                     { label: t('status_in_progress'), value: 'IN_PROGRESS' },
                 ]}
                 hideDateFilter={true}
-                secondaryAction={
-                    <Link
-                        href="/dashboard/requests/history"
-                        className="btn"
-                        style={{
-                            padding: '0 1rem',
-                            height: '40px',
-                            fontSize: '0.85rem',
-                            background: 'rgba(254, 243, 199, 0.4)',
-                            color: '#b45309',
-                            border: '1px solid rgba(251, 191, 36, 0.3)',
-                            fontWeight: '800',
-                            borderRadius: '1.25rem',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '0.4rem',
-                            backdropFilter: 'blur(10px)',
-                            textDecoration: 'none',
-                            boxShadow: '0 2px 8px rgba(251, 191, 36, 0.05)'
-                        }}
-                    >
-                        📜 {t('history')}
-                    </Link>
-                }
                 primaryAction={
                     <button
                         onClick={() => setIsCreateModalOpen(true)}

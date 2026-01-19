@@ -82,6 +82,39 @@ export default function RequestsHistoryClient({ userRole }: { userRole: string }
             `}</style>
 
 
+            {/* Back Button Row - Restore to old place */}
+            <div style={{
+                display: 'flex',
+                justifyContent: 'flex-start',
+                marginBottom: '1rem'
+            }}>
+                <Link
+                    href="/dashboard/requests"
+                    className="glass"
+                    style={{
+                        width: '40px',
+                        height: '40px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: '#6366f1',
+                        textDecoration: 'none',
+                        transition: 'all 0.3s ease',
+                        border: '1px solid rgba(255, 255, 255, 0.4)',
+                        borderRadius: '0.75rem',
+                        background: 'rgba(255, 255, 255, 0.4)',
+                        backdropFilter: 'blur(8px)',
+                        transform: locale === 'ar' ? 'scaleX(-1)' : 'none'
+                    }}
+                    title={t('back_to_requests')}
+                >
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <line x1="19" y1="12" x2="5" y2="12"></line>
+                        <polyline points="12 19 5 12 12 5"></polyline>
+                    </svg>
+                </Link>
+            </div>
+
             {/* Employee Filter & Toolbar */}
             <EmployeeFilter
                 onFilterChange={(newFilters) => {
@@ -107,33 +140,6 @@ export default function RequestsHistoryClient({ userRole }: { userRole: string }
                 ]}
                 hideStatusFilter={true}
                 hideDateFilter={true}
-                secondaryAction={
-                    <Link
-                        href="/dashboard/requests"
-                        className="glass"
-                        style={{
-                            width: '40px',
-                            height: '40px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            color: '#6366f1',
-                            textDecoration: 'none',
-                            transition: 'all 0.3s ease',
-                            border: '1px solid rgba(255, 255, 255, 0.4)',
-                            borderRadius: '1.25rem',
-                            background: 'rgba(255, 255, 255, 0.4)',
-                            backdropFilter: 'blur(8px)',
-                            transform: locale === 'ar' ? 'rotate(180deg)' : 'none'
-                        }}
-                        title={t('back_to_requests')}
-                    >
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                            <line x1="19" y1="12" x2="5" y2="12"></line>
-                            <polyline points="12 19 5 12 12 5"></polyline>
-                        </svg>
-                    </Link>
-                }
             />
 
             {loading ? (
