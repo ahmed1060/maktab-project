@@ -142,7 +142,7 @@ export default function DashboardShell({ children, user }: DashboardShellProps) 
                                 boxSizing: 'border-box',
                                 width: '100%',
                                 overflow: 'hidden',
-                                textAlign: 'left'
+                                textAlign: 'center'
                             }}>
                                 {(() => {
                                     const words = displayName.split(' ');
@@ -170,7 +170,7 @@ export default function DashboardShell({ children, user }: DashboardShellProps) 
 
                                     if (!part2) {
                                         return (
-                                            <span style={{ ...textStyle, textAlign: 'left', width: '100%' }}>{part1}</span>
+                                            <span style={{ ...textStyle, textAlign: 'center', width: '100%' }}>{part1}</span>
                                         );
                                     }
 
