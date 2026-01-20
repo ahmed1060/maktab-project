@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 
 interface Obligation {
     id: string
@@ -20,6 +20,19 @@ interface Attachment {
 export default function ObligationCard({ obligation, userRole, isHighlighted }: { obligation: Obligation, userRole: string, isHighlighted?: boolean }) {
     const [status, setStatus] = useState(obligation.status)
     const [uploading, setUploading] = useState(false)
+    const [showVisualHighlight, setShowVisualHighlight] = useState(isHighlighted)
+
+    useEffect(() => {
+        if (isHighlighted) {
+            setShowVisualHighlight(true)
+            const timer = setTimeout(() => {
+                setShowVisualHighlight(false)
+            }, 6000)
+            return () => clearTimeout(timer)
+        } else {
+            setShowVisualHighlight(false)
+        }
+    }, [isHighlighted])
 
     const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         if (!e.target.files?.[0]) return
@@ -63,12 +76,12 @@ export default function ObligationCard({ obligation, userRole, isHighlighted }: 
     }
 
     return (
-        <div id={`obligation-${obligation.id}`} className={`card ${isHighlighted ? 'highlight-pulse' : ''}`} style={{
+        <div id={`obligation-${obligation.id}`} className={`card ${showVisualHighlight ? 'highlight-pulse' : ''}`} style={{
             padding: '1rem',
             border: '1px solid #eee',
             borderRadius: '8px',
-            background: isHighlighted ? 'rgba(168, 85, 247, 0.05)' : 'white',
-            borderInlineStart: isHighlighted ? '4px solid #a855f7' : '1px solid #eee',
+            background: showVisualHighlight ? 'rgba(168, 85, 247, 0.05)' : 'white',
+            borderInlineStart: showVisualHighlight ? '4px solid #a855f7' : '1px solid #eee',
             transition: 'all 0.3s ease'
         }}>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>

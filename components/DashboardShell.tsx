@@ -147,6 +147,9 @@ export default function DashboardShell({ children, user }: DashboardShellProps) 
                                     const part2 = words.slice(1).join(' ');
 
                                     const nameLength = displayName.length;
+                                    const isArabic = /[\u0600-\u06FF]/.test(displayName);
+                                    const textDirection = isArabic ? 'rtl' : 'ltr';
+
                                     const textStyle: React.CSSProperties = {
                                         background: 'linear-gradient(to right, #ffffff, #a5b4fc)',
                                         WebkitBackgroundClip: 'text',
@@ -160,19 +163,19 @@ export default function DashboardShell({ children, user }: DashboardShellProps) 
                                         lineHeight: '1.2',
                                         fontFamily: 'inherit',
                                         display: 'block',
-                                        letterSpacing: '-0.02em',
+                                        letterSpacing: isArabic ? 'normal' : '-0.02em',
                                         transition: 'font-size 0.2s ease',
                                         width: 'fit-content'
                                     };
 
                                     if (!part2) {
                                         return (
-                                            <span style={{ ...textStyle, textAlign: 'center' }}>{part1}</span>
+                                            <span dir={textDirection} style={{ ...textStyle, textAlign: 'center', width: '100%' }}>{part1}</span>
                                         );
                                     }
 
                                     return (
-                                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', justifyContent: 'center' }}>
+                                        <div dir={textDirection} style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', justifyContent: 'center', width: '100%' }}>
                                             <span style={textStyle}>{part1}</span>
                                             <span style={{
                                                 ...textStyle,
@@ -403,7 +406,7 @@ export default function DashboardShell({ children, user }: DashboardShellProps) 
                     textAlign: 'center'
                 }} className="floating-attribution">
                     <span style={{
-                        fontSize: '0.55rem',
+                        fontSize: '0.45rem',
                         color: '#64748b',
                         fontWeight: '600',
                         textTransform: 'uppercase',
@@ -413,11 +416,11 @@ export default function DashboardShell({ children, user }: DashboardShellProps) 
                         {t('powered_by' as any) || 'Powered by'}
                     </span>
                     <span style={{
-                        fontSize: '1.15rem',
+                        fontSize: '1.35rem',
                         color: '#1e293b',
                         fontWeight: '900',
                         letterSpacing: '0.15em',
-                        marginTop: '0.1rem',
+                        marginTop: '0.05rem',
                         textTransform: 'uppercase',
                         fontFamily: "'Inter', sans-serif",
                         background: 'linear-gradient(135deg, #1e293b 0%, #475569 100%)',

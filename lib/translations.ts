@@ -622,7 +622,9 @@ export const translations = {
         started_at: "Started at",
         finished_at: "Finished at",
         mark_in_progress: "Mark In Progress",
-        mark_completed: "Mark Completed"
+        mark_completed: "Mark Completed",
+        powered_by: "Powered by"
+
     },
     ar: {
         welcome_back: "مرحباً بك مجدداً",
@@ -1246,7 +1248,9 @@ export const translations = {
         started_at: "بدء العمل",
         finished_at: "تم الإنجاز",
         mark_in_progress: "تميز قيد التنفيذ",
-        mark_completed: "تميز كمكتمل"
+        mark_completed: "تميز كمكتمل",
+        powered_by: "صنع بواسطة"
+
     }
 };
 

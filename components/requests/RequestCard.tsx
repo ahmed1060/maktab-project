@@ -14,10 +14,18 @@ export default function RequestCard({ request, userRole, onView, onStatusUpdate,
     const { t, locale } = useLanguage()
     const [updating, setUpdating] = useState(false)
     const cardRef = useRef<HTMLDivElement>(null)
+    const [showVisualHighlight, setShowVisualHighlight] = useState(isHighlighted)
 
     useEffect(() => {
-        if (isHighlighted && cardRef.current) {
-            cardRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        if (isHighlighted) {
+            setShowVisualHighlight(true)
+            cardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+            const timer = setTimeout(() => {
+                setShowVisualHighlight(false)
+            }, 6000) // 3 pulses * 2s
+            return () => clearTimeout(timer)
+        } else {
+            setShowVisualHighlight(false)
         }
     }, [isHighlighted])
 
@@ -37,15 +45,15 @@ export default function RequestCard({ request, userRole, onView, onStatusUpdate,
         <div
             ref={cardRef}
             id={`request-${request.id}`}
-            className={`glass-card ${isHighlighted ? 'highlight-pulse' : ''}`}
+            className={`glass-card ${showVisualHighlight ? 'highlight-pulse' : ''}`}
             style={{
                 padding: '1.25rem',
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
                 transition: 'all 0.3s ease',
-                borderInlineStart: isHighlighted ? '4px solid #a855f7' : '4px solid #6366f1',
-                background: isHighlighted ? 'rgba(168, 85, 247, 0.05)' : 'white'
+                borderInlineStart: showVisualHighlight ? '4px solid #a855f7' : '4px solid #6366f1',
+                background: showVisualHighlight ? 'rgba(168, 85, 247, 0.05)' : 'white'
             }}
         >
             <div style={{ flex: 1 }}>

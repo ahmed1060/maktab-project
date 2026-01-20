@@ -73,6 +73,19 @@ export default function DayOffRequestsPage() {
     const limit = 10
     const searchParams = useSearchParams()
     const highlightId = searchParams.get('highlight')
+    const [visualHighlightId, setVisualHighlightId] = useState<string | null>(highlightId)
+
+    useEffect(() => {
+        if (highlightId) {
+            setVisualHighlightId(highlightId)
+            const timer = setTimeout(() => {
+                setVisualHighlightId(null)
+            }, 6000)
+            return () => clearTimeout(timer)
+        } else {
+            setVisualHighlightId(null)
+        }
+    }, [highlightId])
 
     const fetchRequests = useCallback(async () => {
         setLoading(true)
@@ -398,12 +411,12 @@ export default function DayOffRequestsPage() {
                                 <div
                                     key={req.id}
                                     id={`request-${req.id}`}
-                                    className={`glass-card hover:bg-white/60 transition-all duration-300 p-5 border border-white/40 shadow-sm relative overflow-hidden flex flex-col gap-4 ${highlightId === req.id ? 'highlight-pulse' : ''}`}
+                                    className={`glass-card hover:bg-white/60 transition-all duration-300 p-5 border border-white/40 shadow-sm relative overflow-hidden flex flex-col gap-4 ${visualHighlightId === req.id ? 'highlight-pulse' : ''}`}
                                     style={{
-                                        animation: highlightId === req.id ? 'none' : 'fadeIn 0.4s ease-out forwards',
+                                        animation: visualHighlightId === req.id ? 'none' : 'fadeIn 0.4s ease-out forwards',
                                         animationDelay: `${index * 50}ms`,
-                                        borderInlineStart: highlightId === req.id ? '4px solid #a855f7' : '',
-                                        background: highlightId === req.id ? 'rgba(168, 85, 247, 0.05)' : ''
+                                        borderInlineStart: visualHighlightId === req.id ? '4px solid #a855f7' : '',
+                                        background: visualHighlightId === req.id ? 'rgba(168, 85, 247, 0.05)' : ''
                                     }}
                                 >
                                     {/* Card Header */}

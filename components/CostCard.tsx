@@ -1,6 +1,6 @@
 'use client'
 import Link from 'next/link'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useLanguage } from '@/context/LanguageContext'
 
 interface CostCardProps {
@@ -21,6 +21,19 @@ interface CostCardProps {
 export default function CostCard({ task, isHighlighted }: CostCardProps) {
     const { t, locale } = useLanguage()
     const [isHovered, setIsHovered] = useState(false)
+    const [showVisualHighlight, setShowVisualHighlight] = useState(isHighlighted)
+
+    useEffect(() => {
+        if (isHighlighted) {
+            setShowVisualHighlight(true)
+            const timer = setTimeout(() => {
+                setShowVisualHighlight(false)
+            }, 6000)
+            return () => clearTimeout(timer)
+        } else {
+            setShowVisualHighlight(false)
+        }
+    }, [isHighlighted])
 
     // Status mapping using translation keys
     const getStatusKey = (status: string) => {
@@ -39,16 +52,16 @@ export default function CostCard({ task, isHighlighted }: CostCardProps) {
         >
             <div
                 id={`cost-${task.id}`}
-                className={`card ${isHighlighted ? 'highlight-pulse' : ''}`}
+                className={`card ${showVisualHighlight ? 'highlight-pulse' : ''}`}
                 style={{
                     cursor: 'pointer',
                     transition: 'all 0.2s ease',
-                    border: isHighlighted ? '2px solid #a855f7' : '2px solid #e2e8f0',
+                    border: showVisualHighlight ? '2px solid #a855f7' : '2px solid #e2e8f0',
                     height: '100%',
-                    transform: (isHovered || isHighlighted) ? 'translateY(-2px)' : 'translateY(0)',
-                    boxShadow: (isHovered || isHighlighted) ? '0 4px 12px rgba(0,0,0,0.1)' : 'none',
-                    borderColor: isHighlighted ? '#a855f7' : (isHovered ? '#3b82f6' : '#e2e8f0'),
-                    background: isHighlighted ? 'rgba(168, 85, 247, 0.05)' : 'white',
+                    transform: (isHovered || showVisualHighlight) ? 'translateY(-2px)' : 'translateY(0)',
+                    boxShadow: (isHovered || showVisualHighlight) ? '0 4px 12px rgba(0,0,0,0.1)' : 'none',
+                    borderColor: showVisualHighlight ? '#a855f7' : (isHovered ? '#3b82f6' : '#e2e8f0'),
+                    background: showVisualHighlight ? 'rgba(168, 85, 247, 0.05)' : 'white',
                     textAlign: locale === 'ar' ? 'right' : 'left',
                     direction: locale === 'ar' ? 'rtl' : 'ltr'
                 }}

@@ -39,12 +39,22 @@ interface TaskListItemProps {
 
 export default function TaskListItem({ task, currentUserId, isHighlighted }: TaskListItemProps) {
     const [isModalOpen, setIsModalOpen] = useState(false)
+    const [showVisualHighlight, setShowVisualHighlight] = useState(isHighlighted)
     const [mounted, setMounted] = useState(false)
     const { t, locale } = useLanguage()
 
     useEffect(() => {
         setMounted(true)
-    }, [])
+        if (isHighlighted) {
+            setShowVisualHighlight(true)
+            const timer = setTimeout(() => {
+                setShowVisualHighlight(false)
+            }, 6000)
+            return () => clearTimeout(timer)
+        } else {
+            setShowVisualHighlight(false)
+        }
+    }, [isHighlighted])
 
     const getButtonLabel = () => {
         if (currentUserId !== task.assigneeId) return t('view_task')
@@ -58,11 +68,11 @@ export default function TaskListItem({ task, currentUserId, isHighlighted }: Tas
     const isMultiAssignee = (task.assignees?.length || 0) > 1
 
     return (
-        <div id={`task-${task.id}`} className={`glass-card ${isHighlighted ? 'highlight-pulse' : ''}`} style={{
+        <div id={`task-${task.id}`} className={`glass-card ${showVisualHighlight ? 'highlight-pulse' : ''}`} style={{
             marginBottom: '1rem',
-            borderInlineStart: isHighlighted ? '4px solid #a855f7' : '',
+            borderInlineStart: showVisualHighlight ? '4px solid #a855f7' : '',
             transition: 'all 0.3s ease',
-            background: isHighlighted ? 'rgba(168, 85, 247, 0.05)' : ''
+            background: showVisualHighlight ? 'rgba(168, 85, 247, 0.05)' : ''
         }}>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
