@@ -55,6 +55,13 @@ interface Employee {
     salary?: number
 }
 
+interface PaidCost {
+    id: string
+    title: string
+    amount: number
+    date: string
+}
+
 export default function EmployeeHistoryPage() {
     const { t, locale } = useLanguage()
     const params = useParams()
@@ -69,8 +76,9 @@ export default function EmployeeHistoryPage() {
     const [adjustments, setAdjustments] = useState<SalaryAdjustment[]>([])
     const [rollbackLoading, setRollbackLoading] = useState<string | null>(null)
     const [alert, setAlert] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
-    const [activeTab, setActiveTab] = useState<'SALARY' | 'DAY_OFF'>('SALARY')
+    const [activeTab, setActiveTab] = useState<'SALARY' | 'DAY_OFF' | 'COSTS'>('SALARY')
     const [dayOffHistory, setDayOffHistory] = useState<{ baseCredit: number, remainingCredit: number, history: DayOffHistoryYear[] } | null>(null)
+    const [paidCosts, setPaidCosts] = useState<PaidCost[]>([])
     const [isReevaluateModalOpen, setIsReevaluateModalOpen] = useState(false)
     const [selectedRequest, setSelectedRequest] = useState<DayOffRequest | null>(null)
     const [reevaluateValue, setReevaluateValue] = useState('')
@@ -113,6 +121,13 @@ export default function EmployeeHistoryPage() {
             if (dayOffRes.ok) {
                 const dayOffData = await dayOffRes.json()
                 setDayOffHistory(dayOffData)
+            }
+
+            // Fetch Paid Costs
+            const costsRes = await fetch(`/api/users/${params.id}/costs-history`)
+            if (costsRes.ok) {
+                const costsData = await costsRes.json()
+                setPaidCosts(costsData)
             }
         } catch (error) {
             console.error('Error fetching data:', error)
@@ -293,6 +308,13 @@ export default function EmployeeHistoryPage() {
                         >
                             {t('day_off_credit_tab' as any) || 'Day Off Credit'}
                         </button>
+                        <button
+                            onClick={() => setActiveTab('COSTS')}
+                            className={`btn ${activeTab === 'COSTS' ? 'btn-primary' : 'glass'}`}
+                            style={{ borderRadius: '1rem', padding: '0.5rem 1.5rem', height: '42px' }}
+                        >
+                            {t('costs_tab' as any) || 'Costs'}
+                        </button>
                     </div>
                     {isAdmin && activeTab === 'SALARY' && (
                         <button
@@ -418,6 +440,44 @@ export default function EmployeeHistoryPage() {
                                         </tr>
                                     )
                                 })
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+            ) : activeTab === 'COSTS' ? (
+                <div className="card" style={{ overflowX: 'auto', padding: '1.5rem', background: 'rgba(255, 255, 255, 0.7)' }}>
+                    <h2 style={{ marginBottom: '1.5rem', borderBottom: '1px solid #e2e8f0', paddingBottom: '0.75rem' }}>
+                        {t('paid_costs' as any) || 'Paid Costs'}
+                    </h2>
+                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                        <thead>
+                            <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
+                                <th style={{ padding: '0.75rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('date_label')}</th>
+                                <th style={{ padding: '0.75rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('task_title' as any) || 'Task'}</th>
+                                <th style={{ padding: '0.75rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('amount_label' as any) || 'Amount'}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {paidCosts.length === 0 ? (
+                                <tr>
+                                    <td colSpan={3} style={{ padding: '2rem', textAlign: 'center', color: '#64748b' }}>
+                                        {t('no_records_found')}
+                                    </td>
+                                </tr>
+                            ) : (
+                                paidCosts.map(cost => (
+                                    <tr key={cost.id} style={{ borderBottom: '1px solid #e2e8f0' }}>
+                                        <td style={{ padding: '0.75rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
+                                            {new Date(cost.date).toLocaleDateString(locale)}
+                                        </td>
+                                        <td style={{ padding: '0.75rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
+                                            {cost.title}
+                                        </td>
+                                        <td style={{ padding: '0.75rem', textAlign: locale === 'ar' ? 'right' : 'left', fontWeight: 'bold', color: '#166534' }}>
+                                            {new Intl.NumberFormat(locale === 'ar' ? 'ar-EG' : 'en-EG', { style: 'currency', currency: 'EGP' }).format(cost.amount)}
+                                        </td>
+                                    </tr>
+                                ))
                             )}
                         </tbody>
                     </table>

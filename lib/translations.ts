@@ -624,7 +624,10 @@ export const translations = {
         finished_at: "Finished at",
         mark_in_progress: "Mark In Progress",
         mark_completed: "Mark Completed",
-        powered_by: "Powered by"
+        powered_by: "Powered by",
+        paid_costs: "Paid Costs",
+        task_title: "Task",
+        costs_tab: "Costs"
 
     },
     ar: {
@@ -1250,9 +1253,11 @@ export const translations = {
         started_at: "بدء العمل",
         finished_at: "تم الإنجاز",
         mark_in_progress: "تميز قيد التنفيذ",
-        mark_completed: "تميز كمكتمل",
-        powered_by: "صنع بواسطة"
-
+        mark_completed: "تم إكمال المهمة",
+        powered_by: "بدعم من",
+        paid_costs: "التكاليف المدفوعة",
+        task_title: "المهمة",
+        costs_tab: "التكاليف"
     }
 };
 
