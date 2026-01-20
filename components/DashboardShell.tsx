@@ -118,21 +118,7 @@ export default function DashboardShell({ children, user }: DashboardShellProps) 
                         }}
                         title={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
                     >
-                        <div style={{
-                            width: '42px',
-                            height: '42px',
-                            background: 'rgba(255,255,255,0.15)',
-                            borderRadius: '12px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            flexShrink: 0,
-                            boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-                            backdropFilter: 'blur(4px)',
-                            border: '1px solid rgba(255,255,255,0.1)'
-                        }}>
-                            <span style={{ fontSize: '1.4rem' }}>🚀</span>
-                        </div>
+                        <span style={{ fontSize: '1.4rem', filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.1))' }}>🚀</span>
                         {!isCollapsed && (
                             <div style={{
                                 display: 'flex',
@@ -193,25 +179,19 @@ export default function DashboardShell({ children, user }: DashboardShellProps) 
                                             style={{
                                                 display: 'flex',
                                                 flexDirection: 'column',
-                                                width: '100%',
-                                                alignItems: 'center', // Center group as a whole
-                                                justifyContent: 'center'
+                                                alignItems: 'flex-start',
+                                                justifyContent: 'center',
+                                                gap: '0'
                                             }}
                                         >
-                                            <div style={{ width: 'fit-content', position: 'relative' }}>
-                                                {/* Top Word */}
-                                                <span style={textStyle}>{part1}</span>
-
-                                                {/* Bottom Word: Staggered logically. 
-                                                    In LTR, pushes Right. In RTL, pushes Left. */}
-                                                <span style={{
-                                                    ...textStyle,
-                                                    marginInlineStart: `calc(${part1.length - 1}ch * 0.72)`,
-                                                    marginTop: '-0.3rem'
-                                                }}>
-                                                    {part2}
-                                                </span>
-                                            </div>
+                                            <span style={textStyle}>{part1}</span>
+                                            <span style={{
+                                                ...textStyle,
+                                                marginInlineStart: '1.5rem',
+                                                marginTop: '-0.4rem'
+                                            }}>
+                                                {part2}
+                                            </span>
                                         </div>
                                     );
                                 })()}
@@ -380,70 +360,8 @@ export default function DashboardShell({ children, user }: DashboardShellProps) 
                     )}
                 </nav>
 
-                {/* Bottom Attribution / Branding */}
-                <div style={{
-                    marginTop: 'auto',
-                    padding: '1.5rem 1rem',
-                    display: 'flex',
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                    borderTop: '1px solid rgba(255,255,255,0.05)',
-                    background: 'transparent'
-                }}>
-                    {isCollapsed ? (
-                        <div style={{
-                            width: '42px',
-                            height: '42px',
-                            position: 'relative',
-                            borderRadius: '12px',
-                            overflow: 'hidden',
-                            border: '1px solid rgba(255,255,255,0.2)',
-                            cursor: 'pointer',
-                            transition: 'all 0.3s ease',
-                            background: 'white',
-                            boxShadow: '0 4px 15px rgba(0,0,0,0.1)'
-                        }}
-                            onMouseOver={(e) => {
-                                e.currentTarget.style.transform = 'scale(1.1) translateY(-2px)'
-                                e.currentTarget.style.borderColor = 'rgba(255,255,255,0.5)'
-                            }}
-                            onMouseOut={(e) => {
-                                e.currentTarget.style.transform = 'scale(1) translateY(0)'
-                                e.currentTarget.style.borderColor = 'rgba(255,255,255,0.2)'
-                            }}
-                        >
-                            <img src="/shsd-logo.jpg" alt="SHSD" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                        </div>
-                    ) : (
-                        <div style={{
-                            padding: '0.65rem 1.5rem',
-                            background: 'rgba(255,255,255,0.12)',
-                            backdropFilter: 'blur(12px)',
-                            borderRadius: '2rem',
-                            fontSize: '0.65rem',
-                            fontWeight: '800',
-                            color: 'rgba(255,255,255,0.7)',
-                            textAlign: 'center',
-                            border: '1px solid rgba(255,255,255,0.15)',
-                            letterSpacing: '0.08em',
-                            boxShadow: '0 8px 32px rgba(0,0,0,0.1)',
-                            transition: 'all 0.3s ease'
-                        }}
-                            onMouseOver={(e) => {
-                                e.currentTarget.style.background = 'rgba(255,255,255,0.2)'
-                                e.currentTarget.style.transform = 'translateY(-2px)'
-                                e.currentTarget.style.color = 'white'
-                            }}
-                            onMouseOut={(e) => {
-                                e.currentTarget.style.background = 'rgba(255,255,255,0.12)'
-                                e.currentTarget.style.transform = 'translateY(0)'
-                                e.currentTarget.style.color = 'rgba(255,255,255,0.7)'
-                            }}
-                        >
-                            POWERED BY SHSD
-                        </div>
-                    )}
-                </div>
+                {/* Sidebar Bottom Spacer */}
+                <div style={{ marginTop: 'auto', padding: '1rem' }} />
             </aside>
 
             {/* Main Content Wrapper */}
@@ -481,6 +399,40 @@ export default function DashboardShell({ children, user }: DashboardShellProps) 
                 <div style={{ padding: '2rem', maxWidth: '1400px', width: '100%', margin: '0 auto', boxSizing: 'border-box' }}>
                     {children}
                 </div>
+                {/* Floating Attribution - Minimalist CYSHIELD style */}
+                <div style={{
+                    position: 'fixed',
+                    bottom: '1rem',
+                    [isRtl ? 'left' : 'right']: '1.5rem',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: isRtl ? 'flex-start' : 'flex-end',
+                    zIndex: 100,
+                    pointerEvents: 'none',
+                    opacity: 0.6,
+                    transition: 'opacity 0.3s'
+                }} className="floating-attribution">
+                    <span style={{ fontSize: '0.6rem', color: '#64748b', fontWeight: '500', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                        Powered by
+                    </span>
+                    <span style={{
+                        fontSize: '0.9rem',
+                        color: '#475569',
+                        fontWeight: '800',
+                        letterSpacing: '0.2em',
+                        marginTop: '-0.1rem',
+                        textTransform: 'uppercase',
+                        fontFamily: 'monospace'
+                    }}>
+                        SHSD
+                    </span>
+                </div>
+
+                <style jsx>{`
+                    .floating-attribution:hover {
+                        opacity: 1;
+                    }
+                `}</style>
             </main>
         </div>
     )
