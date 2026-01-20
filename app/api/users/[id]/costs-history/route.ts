@@ -45,8 +45,8 @@ export async function GET(request: Request, { params }: { params: { id: string }
             }
         })
 
-        // Process results to only include PAID costs for this specific user
-        const paidCosts = tasks
+        // Process results to include all costs for this specific user
+        const allCosts = tasks
             .map(task => {
                 const memberCosts = (task.memberCosts as any) || {}
                 const memberPaymentStatus = (task.memberPaymentStatus as any) || {}
@@ -55,11 +55,12 @@ export async function GET(request: Request, { params }: { params: { id: string }
                 const cost = memberCosts[userId]
                 const status = memberPaymentStatus[userId]
 
-                if (cost && status === 'PAID') {
+                if (cost !== undefined && cost !== null) {
                     return {
                         id: task.id,
                         title: task.title,
                         amount: cost,
+                        status: status || 'PENDING_PAYMENT',
                         date: task.updatedAt
                     }
                 }
@@ -67,7 +68,7 @@ export async function GET(request: Request, { params }: { params: { id: string }
             })
             .filter((item): item is NonNullable<typeof item> => item !== null)
 
-        return NextResponse.json(paidCosts)
+        return NextResponse.json(allCosts)
 
     } catch (error) {
         console.error('Error fetching costs history:', error)

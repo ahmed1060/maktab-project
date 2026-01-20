@@ -55,10 +55,11 @@ interface Employee {
     salary?: number
 }
 
-interface PaidCost {
+interface UserCost {
     id: string
     title: string
     amount: number
+    status: string
     date: string
 }
 
@@ -78,7 +79,7 @@ export default function EmployeeHistoryPage() {
     const [alert, setAlert] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
     const [activeTab, setActiveTab] = useState<'SALARY' | 'DAY_OFF' | 'COSTS'>('SALARY')
     const [dayOffHistory, setDayOffHistory] = useState<{ baseCredit: number, remainingCredit: number, history: DayOffHistoryYear[] } | null>(null)
-    const [paidCosts, setPaidCosts] = useState<PaidCost[]>([])
+    const [userCosts, setUserCosts] = useState<UserCost[]>([])
     const [isReevaluateModalOpen, setIsReevaluateModalOpen] = useState(false)
     const [selectedRequest, setSelectedRequest] = useState<DayOffRequest | null>(null)
     const [reevaluateValue, setReevaluateValue] = useState('')
@@ -123,11 +124,11 @@ export default function EmployeeHistoryPage() {
                 setDayOffHistory(dayOffData)
             }
 
-            // Fetch Paid Costs
+            // Fetch User Costs
             const costsRes = await fetch(`/api/users/${params.id}/costs-history`)
             if (costsRes.ok) {
                 const costsData = await costsRes.json()
-                setPaidCosts(costsData)
+                setUserCosts(costsData)
             }
         } catch (error) {
             console.error('Error fetching data:', error)
@@ -340,14 +341,14 @@ export default function EmployeeHistoryPage() {
                             employee.salary !== undefined && (
                                 <p style={{ margin: '0.25rem 0 0 0', fontSize: '1rem' }}>{t('current_base_salary')}: <strong>{employee.salary} {t('egp')}</strong></p>
                             )
-                        ) : (
+                        ) : activeTab === 'DAY_OFF' ? (
                             dayOffHistory && (
                                 <p style={{ margin: '0.25rem 0 0 0', fontSize: '1rem' }}>
                                     {t('assigned_day_off_credit_label' as any) || 'Assigned Credit'}: <strong>{dayOffHistory.baseCredit}</strong> |
                                     {t('remaining_day_off_credit_label' as any) || ' Remaining'}: <strong style={{ color: '#166534' }}>{dayOffHistory.remainingCredit}</strong>
                                 </p>
                             )
-                        )}
+                        ) : null}
                     </div>
                 )}
             </div>
@@ -447,7 +448,7 @@ export default function EmployeeHistoryPage() {
             ) : activeTab === 'COSTS' ? (
                 <div className="card" style={{ overflowX: 'auto', padding: '1.5rem', background: 'rgba(255, 255, 255, 0.7)' }}>
                     <h2 style={{ marginBottom: '1.5rem', borderBottom: '1px solid #e2e8f0', paddingBottom: '0.75rem' }}>
-                        {t('paid_costs' as any) || 'Paid Costs'}
+                        {t('costs_tab' as any) || 'Costs'}
                     </h2>
                     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                         <thead>
@@ -455,17 +456,18 @@ export default function EmployeeHistoryPage() {
                                 <th style={{ padding: '0.75rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('date_label')}</th>
                                 <th style={{ padding: '0.75rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('task_title' as any) || 'Task'}</th>
                                 <th style={{ padding: '0.75rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('amount_label' as any) || 'Amount'}</th>
+                                <th style={{ padding: '0.75rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('status' as any) || 'Status'}</th>
                             </tr>
                         </thead>
                         <tbody>
-                            {paidCosts.length === 0 ? (
+                            {userCosts.length === 0 ? (
                                 <tr>
-                                    <td colSpan={3} style={{ padding: '2rem', textAlign: 'center', color: '#64748b' }}>
+                                    <td colSpan={4} style={{ padding: '2rem', textAlign: 'center', color: '#64748b' }}>
                                         {t('no_records_found')}
                                     </td>
                                 </tr>
                             ) : (
-                                paidCosts.map(cost => (
+                                userCosts.map(cost => (
                                     <tr key={cost.id} style={{ borderBottom: '1px solid #e2e8f0' }}>
                                         <td style={{ padding: '0.75rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
                                             {new Date(cost.date).toLocaleDateString(locale)}
@@ -473,8 +475,20 @@ export default function EmployeeHistoryPage() {
                                         <td style={{ padding: '0.75rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
                                             {cost.title}
                                         </td>
-                                        <td style={{ padding: '0.75rem', textAlign: locale === 'ar' ? 'right' : 'left', fontWeight: 'bold', color: '#166534' }}>
+                                        <td style={{ padding: '0.75rem', textAlign: locale === 'ar' ? 'right' : 'left', fontWeight: 'bold' }}>
                                             {new Intl.NumberFormat(locale === 'ar' ? 'ar-EG' : 'en-EG', { style: 'currency', currency: 'EGP' }).format(cost.amount)}
+                                        </td>
+                                        <td style={{ padding: '0.75rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
+                                            <span style={{
+                                                padding: '0.25rem 0.75rem',
+                                                borderRadius: '1rem',
+                                                fontSize: '0.875rem',
+                                                fontWeight: 'bold',
+                                                background: cost.status === 'PAID' ? '#dcfce7' : '#fee2e2',
+                                                color: cost.status === 'PAID' ? '#166534' : '#991b1b'
+                                            }}>
+                                                {cost.status === 'PAID' ? t('payment_status_paid' as any) : t('payment_status_pending' as any)}
+                                            </span>
                                         </td>
                                     </tr>
                                 ))
