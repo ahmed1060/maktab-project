@@ -194,31 +194,52 @@ export default function NewTaskPage() {
                     // Process Deadline (Merge Date and Time)
                     let finalDeadline = ''
                     if (deadlineDateStr) {
-                        // xlsx often parses dates as numbers (days since 1900)
-                        let d = deadlineDateStr
-                        if (typeof d === 'number') {
-                            const dateObj = XLSX.utils.format_cell({ v: d, t: 'd' })
-                            d = dateObj
+                        let baseDate: Date | null = null
+
+                        // 1. Handle Date Part
+                        if (typeof deadlineDateStr === 'number') {
+                            // Excel serial date
+                            const excelDate = new Date((deadlineDateStr - 25569) * 86400 * 1000)
+                            baseDate = excelDate
+                        } else {
+                            const dStr = String(deadlineDateStr).trim()
+                            // Try DD/MM/YYYY
+                            const dParts = dStr.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/)
+                            if (dParts) {
+                                baseDate = new Date(Number(dParts[3]), Number(dParts[2]) - 1, Number(dParts[1]))
+                            } else {
+                                const fallback = new Date(dStr)
+                                if (!isNaN(fallback.getTime())) baseDate = fallback
+                            }
                         }
 
-                        const datePart = new Date(d)
-                        if (!isNaN(datePart.getTime())) {
-                            if (deadlineTimeStr) {
-                                let tStr = String(deadlineTimeStr)
-                                // If excel time (decimal)
-                                if (typeof deadlineTimeStr === 'number') {
-                                    const totalSeconds = Math.round(deadlineTimeStr * 24 * 3600)
-                                    const hours = Math.floor(totalSeconds / 3600)
-                                    const minutes = Math.floor((totalSeconds % 3600) / 60)
-                                    tStr = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`
-                                }
+                        if (baseDate && !isNaN(baseDate.getTime())) {
+                            let hours = 0
+                            let minutes = 0
 
-                                const [h, m] = tStr.split(':').map(Number)
-                                if (!isNaN(h) && !isNaN(m)) {
-                                    datePart.setHours(h, m, 0, 0)
+                            // 2. Handle Time Part
+                            if (deadlineTimeStr !== undefined && deadlineTimeStr !== null && deadlineTimeStr !== '') {
+                                if (typeof deadlineTimeStr === 'number') {
+                                    // Excel time decimal (0.5 = 12:00 PM)
+                                    const totalSeconds = Math.round(deadlineTimeStr * 24 * 3600)
+                                    hours = Math.floor(totalSeconds / 3600)
+                                    minutes = Math.floor((totalSeconds % 3600) / 60)
+                                } else {
+                                    const tStr = String(deadlineTimeStr).trim().toUpperCase()
+                                    // Try HH:MM AM/PM or HH:MM
+                                    const tParts = tStr.match(/^(\d{1,2}):(\d{1,2})(?:\s*(AM|PM))?$/)
+                                    if (tParts) {
+                                        hours = Number(tParts[1])
+                                        minutes = Number(tParts[2])
+                                        const ampm = tParts[3]
+                                        if (ampm === 'PM' && hours < 12) hours += 12
+                                        if (ampm === 'AM' && hours === 12) hours = 0
+                                    }
                                 }
                             }
-                            finalDeadline = datePart.toISOString()
+
+                            baseDate.setHours(hours, minutes, 0, 0)
+                            finalDeadline = baseDate.toISOString()
                         }
                     }
 
