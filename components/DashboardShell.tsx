@@ -125,7 +125,9 @@ export default function DashboardShell({ children, user }: DashboardShellProps) 
                             width: isCollapsed ? '100%' : 'auto',
                             display: 'flex',
                             justifyContent: 'center',
-                            flexShrink: 0
+                            flexShrink: 0,
+                            marginLeft: (!isCollapsed && locale === 'en') ? '0.4rem' : '0',
+                            transition: 'all 0.3s ease'
                         }}>🚀</span>
                         {!isCollapsed && (
                             <div style={{
