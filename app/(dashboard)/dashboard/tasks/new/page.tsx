@@ -7,6 +7,7 @@ import { useLanguage } from '@/context/LanguageContext'
 import { useCompany } from '@/context/CompanyContext'
 import { useToast } from '@/context/ToastContext'
 import LocationSearchInput from '@/components/LocationSearchInput'
+import * as XLSX from 'xlsx'
 
 export default function NewTaskPage() {
     const { t, locale } = useLanguage()
@@ -17,6 +18,9 @@ export default function NewTaskPage() {
     const [difficulty, setDifficulty] = useState('')
     const [location, setLocation] = useState('')
     const [locationLink, setLocationLink] = useState('')
+    const [isBulkModalOpen, setIsBulkModalOpen] = useState(false)
+    const [isManageTemplatesOpen, setIsManageTemplatesOpen] = useState(false)
+    const [bulkTasks, setBulkTasks] = useState<any[]>([])
     const [users, setUsers] = useState<any[]>([])
     const router = useRouter()
 
@@ -127,6 +131,91 @@ export default function NewTaskPage() {
         }
     }
 
+    const handleBulkUpload = async (file: File) => {
+        const reader = new FileReader()
+        reader.onload = (e) => {
+            const data = new Uint8Array(e.target?.result as ArrayBuffer)
+            const workbook = XLSX.read(data, { type: 'array' })
+            const sheetName = workbook.SheetNames[0]
+            const worksheet = workbook.Sheets[sheetName]
+            const jsonData: any[] = XLSX.utils.sheet_to_json(worksheet, { header: 1 })
+
+            // Process data starting from Row 3 (index 2)
+            const tasks = jsonData.slice(2).filter(row => row[0]) // row[0] is Title
+                .map(row => {
+                    const title = row[0]
+                    const description = row[1]
+                    const usernamesRaw = row[2] ? String(row[2]) : ''
+                    const deadlineDateStr = row[3] // Column D
+                    const deadlineTimeStr = row[4] // Column E
+                    const diffPoints = parseInt(row[5]) || 0 // Column F
+
+                    // Resolve usernames to IDs
+                    const usernames = usernamesRaw.split(',').map(u => u.trim()).filter(u => u)
+                    const resolvedIds = []
+                    const unresolvedUsernames = []
+
+                    for (const uname of usernames) {
+                        const user = users.find(u => u.username === uname)
+                        if (user) resolvedIds.push(user.id)
+                        else unresolvedUsernames.push(uname)
+                    }
+
+                    // Process Deadline (Merge Date and Time)
+                    let finalDeadline = ''
+                    if (deadlineDateStr) {
+                        // xlsx often parses dates as numbers (days since 1900)
+                        let d = deadlineDateStr
+                        if (typeof d === 'number') {
+                            const dateObj = XLSX.utils.format_cell({ v: d, t: 'd' })
+                            d = dateObj
+                        }
+
+                        const datePart = new Date(d)
+                        if (!isNaN(datePart.getTime())) {
+                            if (deadlineTimeStr) {
+                                let tStr = String(deadlineTimeStr)
+                                // If excel time (decimal)
+                                if (typeof deadlineTimeStr === 'number') {
+                                    const totalSeconds = Math.round(deadlineTimeStr * 24 * 3600)
+                                    const hours = Math.floor(totalSeconds / 3600)
+                                    const minutes = Math.floor((totalSeconds % 3600) / 60)
+                                    tStr = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`
+                                }
+
+                                const [h, m] = tStr.split(':').map(Number)
+                                if (!isNaN(h) && !isNaN(m)) {
+                                    datePart.setHours(h, m, 0, 0)
+                                }
+                            }
+                            finalDeadline = datePart.toISOString()
+                        }
+                    }
+
+                    return {
+                        title,
+                        description,
+                        usernamesRaw,
+                        resolvedIds,
+                        unresolvedUsernames,
+                        deadline: finalDeadline,
+                        difficulty: diffPoints,
+                        location: '', // Added later in modal
+                        isInvalid: unresolvedUsernames.length > 0 || !title || !description || !finalDeadline
+                    }
+                })
+
+            if (tasks.length === 0) {
+                showToast(t('no_data_available'), 'error')
+                return
+            }
+
+            setBulkTasks(tasks)
+            setIsBulkModalOpen(true)
+        }
+        reader.readAsArrayBuffer(file)
+    }
+
     const containerStyle: React.CSSProperties = {
         direction: locale === 'ar' ? 'rtl' : 'ltr',
         textAlign: locale === 'ar' ? 'right' : 'left'
@@ -141,7 +230,35 @@ export default function NewTaskPage() {
 
     return (
         <div className="card" style={{ maxWidth: '600px', margin: '0 auto', ...containerStyle }}>
-            <h1 style={{ marginBottom: '1.5rem' }}>{t('create_new_task')}</h1>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                <h1 style={{ margin: 0 }}>{t('create_new_task')}</h1>
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    <button
+                        type="button"
+                        onClick={() => {
+                            if (userRole === 'SUPER_ADMIN') setIsManageTemplatesOpen(true)
+                            else window.open(`/api/templates/download?locale=${locale}`, '_blank')
+                        }}
+                        className="button-secondary"
+                        style={{ padding: '0.5rem 1rem', fontSize: '0.85rem' }}
+                    >
+                        {t('download_template')}
+                    </button>
+                    <label className="button-primary" style={{ padding: '0.5rem 1rem', fontSize: '0.85rem', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+                        {t('upload_tasks_excel')}
+                        <input
+                            type="file"
+                            accept=".xlsx, .xls"
+                            onChange={(e) => {
+                                const file = e.target.files?.[0]
+                                if (file) handleBulkUpload(file)
+                                e.target.value = '' // Reset
+                            }}
+                            style={{ display: 'none' }}
+                        />
+                    </label>
+                </div>
+            </div>
             {error && (
                 <div style={{ background: '#fee2e2', color: '#991b1b', padding: '1rem', borderRadius: '0.5rem', marginBottom: '1rem', border: '1px solid #fecaca' }}>
                     {error}
@@ -195,7 +312,7 @@ export default function NewTaskPage() {
                 </div>
                 <div style={{ marginBottom: '1.25rem' }}>
                     <LocationSearchInput
-                        label="Location"
+                        label={t('location_name_label')}
                         value={{ name: location, link: locationLink }}
                         onChange={(val) => {
                             setLocation(val.name)
@@ -310,6 +427,223 @@ export default function NewTaskPage() {
                     </button>
                 </div>
             </form>
+
+            {/* Bulk Review Modal */}
+            {isBulkModalOpen && (
+                <div style={{
+                    position: 'fixed',
+                    inset: 0,
+                    zIndex: 1000,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    background: 'rgba(0,0,0,0.4)',
+                    backdropFilter: 'blur(4px)',
+                    padding: '2rem'
+                }}>
+                    <div className="card" style={{
+                        width: '100%',
+                        maxWidth: '1200px',
+                        maxHeight: '90vh',
+                        overflowY: 'auto',
+                        padding: '2rem',
+                        background: '#f8fafc'
+                    }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                            <h2 style={{ margin: 0 }}>{t('bulk_review_title')}</h2>
+                            <button className="button-secondary" onClick={() => setIsBulkModalOpen(false)}>×</button>
+                        </div>
+
+                        <div style={{ overflowX: 'auto', marginBottom: '1.5rem' }}>
+                            <table style={{ width: '100%', borderCollapse: 'collapse', background: '#fff', borderRadius: '0.5rem', border: '1px solid #e2e8f0' }}>
+                                <thead>
+                                    <tr style={{ background: '#f1f5f9', borderBottom: '2px solid #e2e8f0' }}>
+                                        <th style={{ padding: '0.75rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>#</th>
+                                        <th style={{ padding: '0.75rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('title')}</th>
+                                        <th style={{ padding: '0.75rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('description_label' as any)}</th>
+                                        <th style={{ padding: '0.75rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('assignees_label')}</th>
+                                        <th style={{ padding: '0.75rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('deadline_label')}</th>
+                                        <th style={{ padding: '0.75rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('location_name_label')}</th>
+                                        <th style={{ padding: '0.75rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('actions_label')}</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {bulkTasks.map((bt, idx) => (
+                                        <tr key={idx} style={{ borderBottom: '1px solid #e2e8f0', position: 'relative' }}>
+                                            <td style={{ padding: '0.75rem' }}>{idx + 1}</td>
+                                            <td style={{ padding: '0.75rem' }}>
+                                                <div style={{ opacity: bt.isInvalid ? 0.5 : 1 }}>{bt.title}</div>
+                                                {bt.isInvalid && !bt.title && <div style={{ color: '#ef4444', fontSize: '0.7rem' }}>Required</div>}
+                                            </td>
+                                            <td style={{ padding: '0.75rem' }}>
+                                                <div style={{ opacity: bt.isInvalid ? 0.5 : 1, fontSize: '0.85rem' }}>{bt.description?.substring(0, 50)}...</div>
+                                            </td>
+                                            <td style={{ padding: '0.75rem', position: 'relative' }}>
+                                                {bt.isInvalid && bt.unresolvedUsernames.length > 0 && (
+                                                    <div style={{
+                                                        position: 'absolute',
+                                                        top: '50%',
+                                                        left: '0',
+                                                        right: '0',
+                                                        height: '1px',
+                                                        background: '#ef4444',
+                                                        transform: 'rotate(-2deg)',
+                                                        zIndex: 2,
+                                                        pointerEvents: 'none'
+                                                    }} />
+                                                )}
+                                                <div style={{ opacity: bt.isInvalid ? 0.6 : 1 }}>
+                                                    {bt.usernamesRaw}
+                                                </div>
+                                                {bt.unresolvedUsernames.length > 0 && (
+                                                    <div style={{ color: '#ef4444', fontSize: '0.7rem', fontWeight: 'bold' }}>
+                                                        {t('invalid_username')}: {bt.unresolvedUsernames.join(', ')}
+                                                    </div>
+                                                )}
+                                            </td>
+                                            <td style={{ padding: '0.75rem' }}>
+                                                <div style={{ opacity: bt.isInvalid ? 0.5 : 1 }}>
+                                                    {bt.deadline ? new Date(bt.deadline).toLocaleString(locale) : 'Invalid'}
+                                                </div>
+                                            </td>
+                                            <td style={{ padding: '0.75rem' }}>
+                                                <div style={{ minWidth: '150px' }}>
+                                                    <LocationSearchInput
+                                                        value={{ name: bt.location, link: bt.locationLink || '' }}
+                                                        onChange={(val) => {
+                                                            const newTasks = [...bulkTasks]
+                                                            newTasks[idx].location = val.name
+                                                            newTasks[idx].locationLink = val.link
+                                                            setBulkTasks(newTasks)
+                                                        }}
+                                                        placeholder={t('location_name_placeholder')}
+                                                        locale={locale}
+                                                    />
+                                                </div>
+                                            </td>
+                                            <td style={{ padding: '0.75rem' }}>
+                                                <button
+                                                    className="button-secondary"
+                                                    style={{ color: '#dc2626', padding: '0.25rem 0.5rem' }}
+                                                    onClick={() => {
+                                                        const newTasks = bulkTasks.filter((_, i) => i !== idx)
+                                                        setBulkTasks(newTasks)
+                                                        if (newTasks.length === 0) setIsBulkModalOpen(false)
+                                                    }}
+                                                >
+                                                    {t('delete')}
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
+                            <button
+                                className="button-primary"
+                                disabled={isSubmitting || bulkTasks.filter(t => !t.isInvalid).length === 0}
+                                onClick={async () => {
+                                    setIsSubmitting(true)
+                                    const validToSubmit = bulkTasks.filter(t => !t.isInvalid).map(bt => ({
+                                        title: bt.title,
+                                        description: bt.description,
+                                        assigneeIds: bt.resolvedIds,
+                                        deadline: bt.deadline,
+                                        difficulty: bt.difficulty,
+                                        location: bt.location ? JSON.stringify({ name: bt.location, link: bt.locationLink || '' }) : ''
+                                    }))
+
+                                    try {
+                                        const res = await fetch('/api/tasks/bulk', {
+                                            method: 'POST',
+                                            body: JSON.stringify({ tasks: validToSubmit }),
+                                            headers: { 'Content-Type': 'application/json' }
+                                        })
+
+                                        if (!res.ok) throw new Error(t('bulk_create_failed'))
+
+                                        showToast(t('bulk_create_success'), 'success')
+                                        setIsBulkModalOpen(false)
+                                        router.push('/dashboard/tasks')
+                                    } catch (err: any) {
+                                        showToast(err.message, 'error')
+                                    } finally {
+                                        setIsSubmitting(false)
+                                    }
+                                }}
+                            >
+                                {isSubmitting ? t('processing') : `${t('create_tasks')} (${bulkTasks.filter(t => !t.isInvalid).length})`}
+                            </button>
+                            <button className="button-secondary" onClick={() => setIsBulkModalOpen(false)}>{t('cancel')}</button>
+                        </div>
+                        {bulkTasks.some(t => t.isInvalid) && (
+                            <div style={{ marginTop: '1rem', color: '#991b1b', fontSize: '0.85rem' }}>
+                                * {t('skipped_status')}: {bulkTasks.filter(t => t.isInvalid).length} rows with errors will be skipped.
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
+
+            {/* Manage Templates Modal (Super Admin) */}
+            {isManageTemplatesOpen && (
+                <div style={{
+                    position: 'fixed',
+                    inset: 0,
+                    zIndex: 1000,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    background: 'rgba(0,0,0,0.4)',
+                    backdropFilter: 'blur(4px)',
+                    padding: '1rem'
+                }}>
+                    <div className="card" style={{ width: '100%', maxWidth: '500px', padding: '2rem' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                            <h2 style={{ margin: 0 }}>{t('manage_templates')}</h2>
+                            <button className="button-secondary" onClick={() => setIsManageTemplatesOpen(false)}>×</button>
+                        </div>
+
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                            <div>
+                                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>{t('upload_en_template')}</label>
+                                <input type="file" accept=".xlsx" onChange={async (e) => {
+                                    const file = e.target.files?.[0]
+                                    if (file) {
+                                        const fd = new FormData()
+                                        fd.append('file', file)
+                                        fd.append('locale', 'en')
+                                        const res = await fetch('/api/templates/upload', { method: 'POST', body: fd })
+                                        if (res.ok) showToast('Template uploaded', 'success')
+                                    }
+                                }} />
+                            </div>
+                            <div>
+                                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>{t('upload_ar_template')}</label>
+                                <input type="file" accept=".xlsx" onChange={async (e) => {
+                                    const file = e.target.files?.[0]
+                                    if (file) {
+                                        const fd = new FormData()
+                                        fd.append('file', file)
+                                        fd.append('locale', 'ar')
+                                        const res = await fetch('/api/templates/upload', { method: 'POST', body: fd })
+                                        if (res.ok) showToast('Template uploaded', 'success')
+                                    }
+                                }} />
+                            </div>
+                            <hr style={{ border: 'none', borderTop: '1px solid #e2e8f0' }} />
+                            <button
+                                className="button-secondary"
+                                onClick={() => window.open(`/api/templates/download?locale=${locale}`, '_blank')}
+                            >
+                                {t('download_current_template')}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     )
 }
