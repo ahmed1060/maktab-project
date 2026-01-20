@@ -51,3 +51,44 @@ export async function uploadToCloud(file: File, folder: string) {
 
     return publicUrl
 }
+
+/**
+ * Specifically for system templates. Uses fixed names and enables upsert (overwrite).
+ */
+export async function uploadTemplateToCloud(file: File, locale: string) {
+    if (!supabase) {
+        throw new Error("Supabase client not initialized.")
+    }
+
+    const fileName = `templates/template_${locale}.xlsx`
+    const arrayBuffer = await file.arrayBuffer()
+    const buffer = Buffer.from(arrayBuffer)
+
+    const { error } = await supabase.storage
+        .from('app-assets')
+        .upload(fileName, buffer, {
+            contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            cacheControl: '0', // No cache for templates so changes are immediate
+            upsert: true
+        })
+
+    if (error) {
+        console.error('Supabase template upload error:', error)
+        throw error
+    }
+
+    const { data: { publicUrl } } = supabase.storage
+        .from('app-assets')
+        .getPublicUrl(fileName)
+
+    return publicUrl
+}
+
+export function getTemplateUrl(locale: string) {
+    if (!supabase) return null
+    const fileName = `templates/template_${locale}.xlsx`
+    const { data: { publicUrl } } = supabase.storage
+        .from('app-assets')
+        .getPublicUrl(fileName)
+    return publicUrl
+}

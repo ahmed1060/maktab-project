@@ -696,11 +696,12 @@ export default function NewTaskPage() {
                                                     fd.append('locale', 'en')
                                                     try {
                                                         const res = await fetch('/api/templates/upload', { method: 'POST', body: fd })
+                                                        const result = await res.json().catch(() => ({}))
                                                         if (res.ok) {
                                                             showToast('English Template Updated', 'success')
                                                             setEnTemplateFile(null)
                                                         } else {
-                                                            showToast('Upload Failed', 'error')
+                                                            showToast(result.message || 'Upload Failed', 'error')
                                                         }
                                                     } catch (e) {
                                                         showToast('Upload Error', 'error')
@@ -751,11 +752,12 @@ export default function NewTaskPage() {
                                                     fd.append('locale', 'ar')
                                                     try {
                                                         const res = await fetch('/api/templates/upload', { method: 'POST', body: fd })
+                                                        const result = await res.json().catch(() => ({}))
                                                         if (res.ok) {
                                                             showToast('Arabic Template Updated', 'success')
                                                             setArTemplateFile(null)
                                                         } else {
-                                                            showToast('Upload Failed', 'error')
+                                                            showToast(result.message || 'Upload Failed', 'error')
                                                         }
                                                     } catch (e) {
                                                         showToast('Upload Error', 'error')

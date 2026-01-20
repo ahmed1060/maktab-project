@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
-import fs from "fs"
-import path from "path"
+import { uploadTemplateToCloud } from "@/lib/storage"
 
 export async function POST(req: Request) {
     const session = await getServerSession(authOptions)
@@ -21,24 +20,19 @@ export async function POST(req: Request) {
             return new NextResponse(JSON.stringify({ message: "No file provided" }), { status: 400 })
         }
 
-        const buffer = Buffer.from(await file.arrayBuffer())
-        const fileName = locale === 'ar' ? 'template_ar.xlsx' : 'template_en.xlsx'
-        const dirPath = path.join(process.cwd(), 'public', 'templates')
-        const filePath = path.join(dirPath, fileName)
-
-        if (!fs.existsSync(dirPath)) {
-            fs.mkdirSync(dirPath, { recursive: true })
-        }
-
-        fs.writeFileSync(filePath, buffer)
+        const publicUrl = await uploadTemplateToCloud(file, locale)
 
         return NextResponse.json({
             success: true,
-            message: `Template for ${locale} uploaded successfully`
+            message: `Template for ${locale} uploaded successfully`,
+            url: publicUrl
         })
 
     } catch (error: any) {
         console.error("[TEMPLATE_UPLOAD_ERROR]", error)
-        return new NextResponse(JSON.stringify({ message: error.message || "Internal Server Error" }), { status: 500 })
+        return new NextResponse(JSON.stringify({
+            message: error.message || "Internal Server Error",
+            details: error.stack
+        }), { status: 500 })
     }
 }
