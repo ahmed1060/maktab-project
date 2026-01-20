@@ -23,8 +23,10 @@ const UKFlag = () => (
 const SAFlag = () => (
     <svg width="20" height="20" viewBox="0 0 32 32" style={{ borderRadius: '4px', verticalAlign: 'middle', marginRight: '8px' }}>
         <rect width="32" height="32" fill="#006C35" />
-        <path d="M6 18 L26 18 M16 8 L16 22" stroke="#fff" strokeWidth="2" fill="none" />
-        <path d="M8 14 Q16 12 24 14" stroke="#fff" strokeWidth="1" fill="none" />
+        {/* Simplified Shahada points */}
+        <path d="M10 12 L12 11 L14 12 L16 11 L18 12 L20 11 L22 12" stroke="#fff" strokeWidth="1" fill="none" opacity="0.8" />
+        {/* Recognizable Sword */}
+        <path d="M8 20 H24 M8 20 L10 18 M8 20 L10 22" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" />
     </svg>
 )
 
@@ -40,6 +42,9 @@ export default function NewTaskPage() {
     const [isBulkModalOpen, setIsBulkModalOpen] = useState(false)
     const [isManageTemplatesOpen, setIsManageTemplatesOpen] = useState(false)
     const [mounted, setMounted] = useState(false)
+    const [enTemplateFile, setEnTemplateFile] = useState<File | null>(null)
+    const [arTemplateFile, setArTemplateFile] = useState<File | null>(null)
+    const [isUploadingTemplate, setIsUploadingTemplate] = useState(false)
     const [bulkTasks, setBulkTasks] = useState<any[]>([])
     const [users, setUsers] = useState<any[]>([])
     const router = useRouter()
@@ -645,7 +650,11 @@ export default function NewTaskPage() {
                     <div className="modal-content glass" style={{ width: '90%', maxWidth: '550px' }}>
                         <div className="modal-header">
                             <h2 className="modal-title">{t('manage_templates')}</h2>
-                            <button className="modal-close" onClick={() => setIsManageTemplatesOpen(false)}>×</button>
+                            <button className="modal-close" onClick={() => {
+                                setIsManageTemplatesOpen(false)
+                                setEnTemplateFile(null)
+                                setArTemplateFile(null)
+                            }}>×</button>
                         </div>
 
                         <div className="modal-body">
@@ -654,44 +663,76 @@ export default function NewTaskPage() {
                                     <label style={{ display: 'flex', alignItems: 'center', marginBottom: '0.75rem', fontWeight: '600', color: 'var(--text-main)' }}>
                                         <UKFlag /> {t('upload_en_template')}
                                     </label>
-                                    <input
-                                        type="file"
-                                        accept=".xlsx"
-                                        className="input"
-                                        style={{ height: 'auto', padding: '0.5rem' }}
-                                        onChange={async (e) => {
-                                            const file = e.target.files?.[0]
-                                            if (file) {
-                                                const fd = new FormData()
-                                                fd.append('file', file)
-                                                fd.append('locale', 'en')
-                                                const res = await fetch('/api/templates/upload', { method: 'POST', body: fd })
-                                                if (res.ok) showToast('English Template Updated', 'success')
-                                            }
-                                        }}
-                                    />
+                                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                                        <input
+                                            type="file"
+                                            accept=".xlsx"
+                                            className="input"
+                                            style={{ height: 'auto', padding: '0.5rem', flex: 1 }}
+                                            onChange={(e) => setEnTemplateFile(e.target.files?.[0] || null)}
+                                        />
+                                        {enTemplateFile && (
+                                            <button
+                                                className="btn btn-primary"
+                                                style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem' }}
+                                                disabled={isUploadingTemplate}
+                                                onClick={async () => {
+                                                    setIsUploadingTemplate(true)
+                                                    const fd = new FormData()
+                                                    fd.append('file', enTemplateFile)
+                                                    fd.append('locale', 'en')
+                                                    const res = await fetch('/api/templates/upload', { method: 'POST', body: fd })
+                                                    if (res.ok) {
+                                                        showToast('English Template Updated', 'success')
+                                                        setEnTemplateFile(null)
+                                                    } else {
+                                                        showToast('Upload Failed', 'error')
+                                                    }
+                                                    setIsUploadingTemplate(false)
+                                                }}
+                                            >
+                                                {isUploadingTemplate ? '...' : 'Upload'}
+                                            </button>
+                                        )}
+                                    </div>
                                 </div>
 
                                 <div className="glass" style={{ padding: '1.25rem', background: 'rgba(255, 255, 255, 0.3)' }}>
                                     <label style={{ display: 'flex', alignItems: 'center', marginBottom: '0.75rem', fontWeight: '600', color: 'var(--text-main)' }}>
                                         <SAFlag /> {t('upload_ar_template')}
                                     </label>
-                                    <input
-                                        type="file"
-                                        accept=".xlsx"
-                                        className="input"
-                                        style={{ height: 'auto', padding: '0.5rem' }}
-                                        onChange={async (e) => {
-                                            const file = e.target.files?.[0]
-                                            if (file) {
-                                                const fd = new FormData()
-                                                fd.append('file', file)
-                                                fd.append('locale', 'ar')
-                                                const res = await fetch('/api/templates/upload', { method: 'POST', body: fd })
-                                                if (res.ok) showToast('Arabic Template Updated', 'success')
-                                            }
-                                        }}
-                                    />
+                                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                                        <input
+                                            type="file"
+                                            accept=".xlsx"
+                                            className="input"
+                                            style={{ height: 'auto', padding: '0.5rem', flex: 1 }}
+                                            onChange={(e) => setArTemplateFile(e.target.files?.[0] || null)}
+                                        />
+                                        {arTemplateFile && (
+                                            <button
+                                                className="btn btn-primary"
+                                                style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem' }}
+                                                disabled={isUploadingTemplate}
+                                                onClick={async () => {
+                                                    setIsUploadingTemplate(true)
+                                                    const fd = new FormData()
+                                                    fd.append('file', arTemplateFile)
+                                                    fd.append('locale', 'ar')
+                                                    const res = await fetch('/api/templates/upload', { method: 'POST', body: fd })
+                                                    if (res.ok) {
+                                                        showToast('Arabic Template Updated', 'success')
+                                                        setArTemplateFile(null)
+                                                    } else {
+                                                        showToast('Upload Failed', 'error')
+                                                    }
+                                                    setIsUploadingTemplate(false)
+                                                }}
+                                            >
+                                                {isUploadingTemplate ? '...' : 'Upload'}
+                                            </button>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -708,7 +749,11 @@ export default function NewTaskPage() {
                             >
                                 📥 {t('download_current_template')}
                             </button>
-                            <button className="btn btn-primary" onClick={() => setIsManageTemplatesOpen(false)} style={{ flex: 1 }}>
+                            <button className="btn btn-primary" onClick={() => {
+                                setIsManageTemplatesOpen(false)
+                                setEnTemplateFile(null)
+                                setArTemplateFile(null)
+                            }} style={{ flex: 1 }}>
                                 {t('cancel')}
                             </button>
                         </div>
