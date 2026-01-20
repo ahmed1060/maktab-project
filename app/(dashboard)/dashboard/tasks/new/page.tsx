@@ -182,13 +182,18 @@ export default function NewTaskPage() {
 
                     // Resolve usernames to IDs
                     const usernames = usernamesRaw.split(',').map(u => u.trim()).filter(u => u)
-                    const resolvedIds = []
-                    const unresolvedUsernames = []
+                    const resolvedIds: string[] = []
+                    const resolvedNames: string[] = []
+                    const unresolvedUsernames: string[] = []
 
                     for (const uname of usernames) {
                         const user = users.find(u => u.username === uname)
-                        if (user) resolvedIds.push(user.id)
-                        else unresolvedUsernames.push(uname)
+                        if (user) {
+                            resolvedIds.push(user.id)
+                            resolvedNames.push(`${user.firstName} ${user.lastName}`)
+                        } else {
+                            unresolvedUsernames.push(uname)
+                        }
                     }
 
                     // Process Deadline (Merge Date and Time)
@@ -248,6 +253,7 @@ export default function NewTaskPage() {
                         description,
                         usernamesRaw,
                         resolvedIds,
+                        resolvedNames,
                         unresolvedUsernames,
                         deadline: finalDeadline,
                         difficulty: diffPoints,
@@ -554,7 +560,7 @@ export default function NewTaskPage() {
                                                         opacity: bt.isInvalid ? 0.6 : 1,
                                                         color: bt.unresolvedUsernames.length > 0 ? '#ef4444' : 'inherit'
                                                     }}>
-                                                        {bt.usernamesRaw}
+                                                        {bt.resolvedNames && bt.resolvedNames.length > 0 ? bt.resolvedNames.join(', ') : bt.usernamesRaw}
                                                     </div>
                                                     {bt.unresolvedUsernames.length > 0 && (
                                                         <div style={{ color: '#ef4444', fontSize: '0.7rem', fontWeight: 'bold', marginTop: '0.25rem' }}>
