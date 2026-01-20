@@ -643,7 +643,7 @@ export const translations = {
         task_title: "Task",
         costs_tab: "Costs",
         username_label: "Username",
-        username_placeholder: "Username"
+        username_placeholder: "Enter username..."
     },
     ar: {
         welcome_back: "مرحباً بك مجدداً",
@@ -1287,6 +1287,8 @@ export const translations = {
         delete_row: "حذف الصف",
         create_tasks: "إنشاء المهام",
         processing: "جاري المعالجة...",
+        username_label: "اسم المستخدم",
+        username_placeholder: "أدخل اسم المستخدم...",
     }
 };
 
