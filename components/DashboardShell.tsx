@@ -88,7 +88,7 @@ export default function DashboardShell({ children, user }: DashboardShellProps) 
                 direction: isRtl ? 'rtl' : 'ltr'
             }}>
                 <div style={{
-                    height: (user?.role === 'SUPER_ADMIN') ? '70px' : '55px',
+                    minHeight: (user?.role === 'SUPER_ADMIN') ? '70px' : '55px',
                     paddingInlineStart: isCollapsed ? '0' : '1.25rem',
                     paddingInlineEnd: isCollapsed ? '0' : '0.75rem',
                     paddingTop: (user?.role === 'SUPER_ADMIN' ? '0.25rem' : 0),
