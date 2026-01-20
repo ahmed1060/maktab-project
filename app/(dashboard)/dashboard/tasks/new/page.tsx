@@ -11,22 +11,22 @@ import LocationSearchInput from '@/components/LocationSearchInput'
 import * as XLSX from 'xlsx'
 
 const UKFlag = () => (
-    <svg width="20" height="20" viewBox="0 0 32 32" style={{ borderRadius: '4px', verticalAlign: 'middle', marginRight: '8px' }}>
-        <rect width="32" height="32" fill="#012169" />
-        <path d="M0 0 L32 32 M32 0 L0 32" stroke="#fff" strokeWidth="4" />
-        <path d="M0 0 L32 32 M32 0 L0 32" stroke="#C8102E" strokeWidth="2" />
-        <path d="M16 0 V32 M0 16 H32" stroke="#fff" strokeWidth="6" />
-        <path d="M16 0 V32 M0 16 H32" stroke="#C8102E" strokeWidth="4" />
+    <svg width="24" height="18" viewBox="0 0 32 24" style={{ borderRadius: '2px', verticalAlign: 'middle', marginRight: '10px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+        <rect width="32" height="24" fill="#012169" />
+        <path d="M0 0 L32 24 M32 0 L0 24" stroke="#fff" strokeWidth="3" />
+        <path d="M0 0 L32 24 M32 0 L0 24" stroke="#C8102E" strokeWidth="1.5" />
+        <path d="M16 0 V24 M0 12 H32" stroke="#fff" strokeWidth="5" />
+        <path d="M16 0 V24 M0 12 H32" stroke="#C8102E" strokeWidth="3" />
     </svg>
 )
 
 const SAFlag = () => (
-    <svg width="20" height="20" viewBox="0 0 32 32" style={{ borderRadius: '4px', verticalAlign: 'middle', marginRight: '8px' }}>
-        <rect width="32" height="32" fill="#006C35" />
-        {/* Simplified Shahada points */}
-        <path d="M10 12 L12 11 L14 12 L16 11 L18 12 L20 11 L22 12" stroke="#fff" strokeWidth="1" fill="none" opacity="0.8" />
-        {/* Recognizable Sword */}
-        <path d="M8 20 H24 M8 20 L10 18 M8 20 L10 22" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" />
+    <svg width="24" height="18" viewBox="0 0 32 24" style={{ borderRadius: '2px', verticalAlign: 'middle', marginRight: '10px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+        <rect width="32" height="24" fill="#006C35" />
+        {/* Simplified but clearer SA sword */}
+        <path d="M8 18 H24 M10 18 L12 20 M10 18 L12 16" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+        {/* Simplified Shahada calligraphic curve */}
+        <path d="M10 11 Q16 8 22 11" stroke="#fff" strokeWidth="1.2" fill="none" />
     </svg>
 )
 
@@ -676,7 +676,7 @@ export default function NewTaskPage() {
                                             whiteSpace: 'nowrap'
                                         }}>
                                             <span>📂</span>
-                                            {enTemplateFile ? enTemplateFile.name : t('choose_file' as any)}
+                                            {enTemplateFile ? enTemplateFile.name : t('choose_file')}
                                             <input
                                                 type="file"
                                                 accept=".xlsx"
@@ -731,7 +731,7 @@ export default function NewTaskPage() {
                                             whiteSpace: 'nowrap'
                                         }}>
                                             <span>📂</span>
-                                            {arTemplateFile ? arTemplateFile.name : t('choose_file' as any)}
+                                            {arTemplateFile ? arTemplateFile.name : t('choose_file')}
                                             <input
                                                 type="file"
                                                 accept=".xlsx"
