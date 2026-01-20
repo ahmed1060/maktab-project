@@ -14,6 +14,7 @@ type User = {
     firstName: string
     lastName: string
     email: string
+    username?: string | null
     role: string
     status: string
     totalDifficultyPoints: number
@@ -292,6 +293,7 @@ export default function AllUsersPage() {
                                         <tr>
                                             <th style={{ textAlign: locale === 'ar' ? 'right' : 'left', padding: '1rem', fontSize: '0.875rem', color: '#92400e' }}>{t('name_label')}</th>
                                             <th style={{ textAlign: locale === 'ar' ? 'right' : 'left', padding: '1rem', fontSize: '0.875rem', color: '#92400e' }}>{t('email')}</th>
+                                            <th style={{ textAlign: locale === 'ar' ? 'right' : 'left', padding: '1rem', fontSize: '0.875rem', color: '#92400e' }}>{t('username_label' as any) || 'Username'}</th>
                                             <th style={{ textAlign: locale === 'ar' ? 'right' : 'left', padding: '1rem', fontSize: '0.875rem', color: '#92400e' }}>{t('role_label')}</th>
                                             <th style={{ textAlign: locale === 'ar' ? 'left' : 'right', padding: '1rem', fontSize: '0.875rem', color: '#92400e' }}>{t('status_label' as any) || t('system')}</th>
                                         </tr>
@@ -303,6 +305,11 @@ export default function AllUsersPage() {
                                                     <div style={{ fontWeight: '500' }}>{user.firstName} {user.lastName}</div>
                                                 </td>
                                                 <td style={{ padding: '1rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{user.email}</td>
+                                                <td style={{ padding: '1rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
+                                                    <code style={{ fontSize: '0.8rem', background: '#fef3c7', padding: '0.2rem 0.4rem', borderRadius: '4px' }}>
+                                                        {user.username || '-'}
+                                                    </code>
+                                                </td>
                                                 <td style={{ padding: '1rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
                                                     <span style={{
                                                         fontSize: '0.75rem', fontWeight: 'bold',
@@ -343,6 +350,7 @@ export default function AllUsersPage() {
                                         <tr>
                                             <th style={{ textAlign: locale === 'ar' ? 'right' : 'left', padding: '1rem', fontSize: '0.875rem', color: '#64748b' }}>{t('name_label')}</th>
                                             <th style={{ textAlign: locale === 'ar' ? 'right' : 'left', padding: '1rem', fontSize: '0.875rem', color: '#64748b' }}>{t('email')}</th>
+                                            <th style={{ textAlign: locale === 'ar' ? 'right' : 'left', padding: '1rem', fontSize: '0.875rem', color: '#64748b' }}>{t('username_label' as any) || 'Username'}</th>
                                             <th style={{ textAlign: locale === 'ar' ? 'right' : 'left', padding: '1rem', fontSize: '0.875rem', color: '#64748b' }}>{t('role_label')}</th>
                                             <th style={{ textAlign: locale === 'ar' ? 'right' : 'left', padding: '1rem', fontSize: '0.875rem', color: '#64748b' }}>{t('points_label')}</th>
                                             <th style={{ textAlign: locale === 'ar' ? 'left' : 'right', padding: '1rem', fontSize: '0.875rem', color: '#64748b' }}>{t('status_label' as any) || t('system')}</th>
@@ -355,6 +363,11 @@ export default function AllUsersPage() {
                                                     <div style={{ fontWeight: '500' }}>{user.firstName} {user.lastName}</div>
                                                 </td>
                                                 <td style={{ padding: '1rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{user.email}</td>
+                                                <td style={{ padding: '1rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
+                                                    <code style={{ fontSize: '0.8rem', background: '#f8fafc', padding: '0.2rem 0.4rem', border: '1px solid #e2e8f0', borderRadius: '4px' }}>
+                                                        {user.username || '-'}
+                                                    </code>
+                                                </td>
                                                 <td style={{ padding: '1rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
                                                     <span style={{
                                                         fontSize: '0.75rem', fontWeight: 'bold',
@@ -384,7 +397,7 @@ export default function AllUsersPage() {
                                         ))}
                                         {section.users.length === 0 && (
                                             <tr>
-                                                <td colSpan={5} style={{ padding: '2rem', textAlign: 'center', color: '#64748b' }}>{t('no_users_found_company')}</td>
+                                                <td colSpan={6} style={{ padding: '2rem', textAlign: 'center', color: '#64748b' }}>{t('no_users_found_company')}</td>
                                             </tr>
                                         )}
                                     </tbody>
@@ -461,6 +474,7 @@ export default function AllUsersPage() {
                                         <tr>
                                             <th style={{ textAlign: 'inherit', padding: '1rem', color: '#64748b' }}>{t('name_label')}</th>
                                             <th style={{ textAlign: 'inherit', padding: '1rem', color: '#64748b' }}>{t('email')}</th>
+                                            <th style={{ textAlign: 'inherit', padding: '1rem', color: '#64748b' }}>{t('username_label' as any) || 'Username'}</th>
                                             <th style={{ textAlign: 'inherit', padding: '1rem', color: '#64748b' }}>{t('previously_label')}</th>
                                             <th style={{ textAlign: locale === 'ar' ? 'left' : 'right', padding: '1rem', color: '#64748b' }}>{t('profile_label')}</th>
                                         </tr>
@@ -468,7 +482,7 @@ export default function AllUsersPage() {
                                     <tbody>
                                         {loadingDeleted ? (
                                             <tr>
-                                                <td colSpan={4} style={{ padding: '2rem', textAlign: 'center' }}>{t('loading_users')}</td>
+                                                <td colSpan={5} style={{ padding: '2rem', textAlign: 'center' }}>{t('loading_users')}</td>
                                             </tr>
                                         ) : deletedUsersList.map((user: User) => (
                                             <tr key={user.id} style={{ borderBottom: '1px solid #e2e8f0' }}>
@@ -477,6 +491,11 @@ export default function AllUsersPage() {
                                                 </td>
                                                 <td style={{ padding: '1rem', color: '#64748b', textAlign: 'inherit' }}>
                                                     {user.email.includes('_DELETED_') ? user.email.split('_DELETED_')[0] : user.email}
+                                                </td>
+                                                <td style={{ padding: '1rem', color: '#64748b', textAlign: 'inherit' }}>
+                                                    <code style={{ fontSize: '0.8rem', background: '#f1f5f9', padding: '0.2rem 0.4rem', borderRadius: '4px' }}>
+                                                        {user.username || '-'}
+                                                    </code>
                                                 </td>
                                                 <td style={{ padding: '1rem', textAlign: 'inherit' }}>
                                                     <span style={{ fontSize: '0.75rem', background: '#f1f5f9', padding: '0.2rem 0.5rem', borderRadius: '0.25rem', color: '#475569' }}>
