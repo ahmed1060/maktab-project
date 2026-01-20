@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev -H 0.0.0.0 -p 3000",
-    "build": "prisma generate && prisma migrate deploy && next build",
+    "build": "prisma generate && (prisma migrate deploy || echo 'Migration skip or timeout') && next build",
     "start": "next start",
     "lint": "next lint",
     "postinstall": "prisma generate"

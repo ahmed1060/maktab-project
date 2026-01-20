@@ -10,6 +10,24 @@ import { useToast } from '@/context/ToastContext'
 import LocationSearchInput from '@/components/LocationSearchInput'
 import * as XLSX from 'xlsx'
 
+const UKFlag = () => (
+    <svg width="20" height="20" viewBox="0 0 32 32" style={{ borderRadius: '4px', verticalAlign: 'middle', marginRight: '8px' }}>
+        <rect width="32" height="32" fill="#012169" />
+        <path d="M0 0 L32 32 M32 0 L0 32" stroke="#fff" strokeWidth="4" />
+        <path d="M0 0 L32 32 M32 0 L0 32" stroke="#C8102E" strokeWidth="2" />
+        <path d="M16 0 V32 M0 16 H32" stroke="#fff" strokeWidth="6" />
+        <path d="M16 0 V32 M0 16 H32" stroke="#C8102E" strokeWidth="4" />
+    </svg>
+)
+
+const SAFlag = () => (
+    <svg width="20" height="20" viewBox="0 0 32 32" style={{ borderRadius: '4px', verticalAlign: 'middle', marginRight: '8px' }}>
+        <rect width="32" height="32" fill="#006C35" />
+        <path d="M6 18 L26 18 M16 8 L16 22" stroke="#fff" strokeWidth="2" fill="none" />
+        <path d="M8 14 Q16 12 24 14" stroke="#fff" strokeWidth="1" fill="none" />
+    </svg>
+)
+
 export default function NewTaskPage() {
     const { t, locale } = useLanguage()
     const [title, setTitle] = useState('')
@@ -633,8 +651,8 @@ export default function NewTaskPage() {
                         <div className="modal-body">
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
                                 <div className="glass" style={{ padding: '1.25rem', background: 'rgba(255, 255, 255, 0.3)' }}>
-                                    <label style={{ display: 'block', marginBottom: '0.75rem', fontWeight: '600', color: 'var(--text-main)' }}>
-                                        🇬🇧 {t('upload_en_template')}
+                                    <label style={{ display: 'flex', alignItems: 'center', marginBottom: '0.75rem', fontWeight: '600', color: 'var(--text-main)' }}>
+                                        <UKFlag /> {t('upload_en_template')}
                                     </label>
                                     <input
                                         type="file"
@@ -655,8 +673,8 @@ export default function NewTaskPage() {
                                 </div>
 
                                 <div className="glass" style={{ padding: '1.25rem', background: 'rgba(255, 255, 255, 0.3)' }}>
-                                    <label style={{ display: 'block', marginBottom: '0.75rem', fontWeight: '600', color: 'var(--text-main)' }}>
-                                        🇸🇦 {t('upload_ar_template')}
+                                    <label style={{ display: 'flex', alignItems: 'center', marginBottom: '0.75rem', fontWeight: '600', color: 'var(--text-main)' }}>
+                                        <SAFlag /> {t('upload_ar_template')}
                                     </label>
                                     <input
                                         type="file"
