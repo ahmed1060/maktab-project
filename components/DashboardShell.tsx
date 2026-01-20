@@ -150,6 +150,8 @@ export default function DashboardShell({ children, user }: DashboardShellProps) 
                                     const part2 = words.slice(1).join(' ');
 
                                     const nameLength = displayName.length;
+                                    const isArabicName = /[\u0600-\u06FF]/.test(displayName);
+
                                     const textStyle: React.CSSProperties = {
                                         background: 'linear-gradient(to right, #ffffff, #a5b4fc)',
                                         WebkitBackgroundClip: 'text',
@@ -163,7 +165,7 @@ export default function DashboardShell({ children, user }: DashboardShellProps) 
                                         lineHeight: '1.2',
                                         fontFamily: 'inherit',
                                         display: 'block',
-                                        letterSpacing: '-0.02em',
+                                        letterSpacing: isArabicName ? 'normal' : '-0.02em',
                                         transition: 'font-size 0.2s ease',
                                         width: 'fit-content'
                                     };
@@ -175,11 +177,21 @@ export default function DashboardShell({ children, user }: DashboardShellProps) 
                                     }
 
                                     return (
-                                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', justifyContent: 'center', width: '100%' }}>
-                                            <span style={textStyle}>{part1}</span>
+                                        <div style={{
+                                            display: 'flex',
+                                            flexDirection: 'column',
+                                            alignItems: 'flex-start',
+                                            justifyContent: 'center',
+                                            width: '100%',
+                                            direction: isArabicName ? 'rtl' : 'ltr'
+                                        }}>
                                             <span style={{
                                                 ...textStyle,
-                                                marginInlineStart: '2.5rem',
+                                                marginLeft: isArabicName ? '2.5rem' : '0',
+                                            }}>{part1}</span>
+                                            <span style={{
+                                                ...textStyle,
+                                                marginLeft: isArabicName ? '0' : '2.5rem',
                                                 marginTop: '-0.4rem'
                                             }}>
                                                 {part2}
