@@ -126,7 +126,7 @@ export default function DashboardShell({ children, user }: DashboardShellProps) 
                             display: 'flex',
                             justifyContent: 'center',
                             flexShrink: 0,
-                            marginLeft: (!isCollapsed && locale === 'en') ? '0.4rem' : '0',
+                            marginLeft: (!isCollapsed && locale === 'en') ? '0.8rem' : '0',
                             transition: 'all 0.3s ease'
                         }}>🚀</span>
                         {!isCollapsed && (
