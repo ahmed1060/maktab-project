@@ -78,10 +78,12 @@ export default function RequestsSection({ userRole }: { userRole: string }) {
         if (highlightId && requests.length > 0) {
             const req = requests.find(r => r.id === highlightId)
             if (req) {
-                setSelectedRequest(req)
-                setIsViewModalOpen(true)
-                // Clear highlight after opening to avoid multiple opens
-                setHighlightId(null)
+                // We no longer auto-open the modal
+                // Instead, we let the RequestCard show the highlight
+
+                // Clear highlight after 10 seconds to stop the pulse
+                const timer = setTimeout(() => setHighlightId(null), 10000)
+                return () => clearTimeout(timer)
             }
         }
     }, [highlightId, requests])
@@ -261,6 +263,7 @@ export default function RequestsSection({ userRole }: { userRole: string }) {
                             userRole={userRole}
                             onView={handleViewRequest}
                             onStatusUpdate={handleStatusUpdate}
+                            isHighlighted={req.id === highlightId}
                         />
                     ))}
                 </div>

@@ -113,7 +113,20 @@ export default function NotificationBell() {
                     router.push(path)
                 }
             } else if (type.includes('REQUEST')) {
-                router.push(`/dashboard/requests?highlight=${notification.relatedId}`)
+                // Fetch the current status of the request to determine redirection
+                fetch(`/api/requests/${notification.relatedId}`)
+                    .then(res => res.json())
+                    .then(request => {
+                        const targetPage = request.status === 'COMPLETED' ? 'history' : ''
+                        const path = targetPage
+                            ? `/dashboard/requests/history?highlight=${notification.relatedId}`
+                            : `/dashboard/requests?highlight=${notification.relatedId}`
+                        router.push(path)
+                    })
+                    .catch(() => {
+                        // Fallback to active requests if fetch fails
+                        router.push(`/dashboard/requests?highlight=${notification.relatedId}`)
+                    })
             }
         }
     }

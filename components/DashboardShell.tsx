@@ -107,7 +107,7 @@ export default function DashboardShell({ children, user }: DashboardShellProps) 
                             letterSpacing: '-0.025em',
                             display: 'flex',
                             alignItems: 'center',
-                            gap: '0.4rem',
+                            gap: '0.75rem',
                             color: 'white',
                             whiteSpace: 'nowrap',
                             overflow: 'visible',
@@ -127,7 +127,7 @@ export default function DashboardShell({ children, user }: DashboardShellProps) 
                                 flex: 1,
                                 position: 'relative',
                                 border: 'none', // Removed testing border
-                                padding: '0.4rem 0.6rem 0.5rem 0.6rem', // Trimmed bottom padding slightly
+                                padding: '0.4rem 0 0.5rem 0.4rem', // Removed right padding to allow it to expand correctly
                                 boxSizing: 'border-box',
                                 width: 'fit-content',
                                 maxWidth: '100%',
@@ -187,7 +187,7 @@ export default function DashboardShell({ children, user }: DashboardShellProps) 
                                             <span style={textStyle}>{part1}</span>
                                             <span style={{
                                                 ...textStyle,
-                                                marginInlineStart: '1.5rem',
+                                                marginInlineStart: '2.5rem', // Increased staggering for better "floating" look
                                                 marginTop: '-0.4rem'
                                             }}>
                                                 {part2}
@@ -291,7 +291,7 @@ export default function DashboardShell({ children, user }: DashboardShellProps) 
                                         display: 'flex',
                                         alignItems: 'center',
                                         justifyContent: isCollapsed ? 'center' : 'flex-start',
-                                        gap: isCollapsed ? '0' : '1rem',
+                                        gap: isCollapsed ? '0' : '1.25rem',
                                         transition: 'all 0.2s',
                                         fontSize: '0.95rem',
                                         fontWeight: '500'

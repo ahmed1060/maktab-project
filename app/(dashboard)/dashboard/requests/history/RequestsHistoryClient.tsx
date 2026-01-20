@@ -6,6 +6,7 @@ import ViewRequestModal from '@/components/requests/ViewRequestModal'
 import Link from 'next/link'
 import { useToast } from '@/context/ToastContext'
 import { useCompany } from '@/context/CompanyContext'
+import { useSearchParams } from 'next/navigation'
 import EmployeeFilter from '@/components/EmployeeFilter'
 import Pagination from '@/components/Pagination'
 
@@ -30,6 +31,8 @@ export default function RequestsHistoryClient({ userRole }: { userRole: string }
     const [page, setPage] = useState(1)
     const [total, setTotal] = useState(0)
     const [totalPages, setTotalPages] = useState(0)
+    const [highlightId, setHighlightId] = useState<string | null>(null)
+    const searchParams = useSearchParams()
 
     const fetchHistory = async () => {
         try {
@@ -59,6 +62,24 @@ export default function RequestsHistoryClient({ userRole }: { userRole: string }
     useEffect(() => {
         setPage(1)
     }, [filters, selectedCompanyId, sortBy, order])
+
+    useEffect(() => {
+        const highlight = searchParams.get('highlight')
+        if (highlight) {
+            setHighlightId(highlight)
+        }
+    }, [searchParams])
+
+    useEffect(() => {
+        if (highlightId && requests.length > 0) {
+            const req = requests.find(r => r.id === highlightId)
+            if (req) {
+                // Clear highlight after 10 seconds to stop the pulse
+                const timer = setTimeout(() => setHighlightId(null), 10000)
+                return () => clearTimeout(timer)
+            }
+        }
+    }, [highlightId, requests])
 
     const handleDeleteRequest = async (id: string) => {
         try {
@@ -190,6 +211,7 @@ export default function RequestsHistoryClient({ userRole }: { userRole: string }
                             request={req}
                             userRole={userRole}
                             onView={handleViewRequest}
+                            isHighlighted={req.id === highlightId}
                         />
                     ))}
                 </div>
