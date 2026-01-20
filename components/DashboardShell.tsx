@@ -98,7 +98,8 @@ export default function DashboardShell({ children, user }: DashboardShellProps) 
                     transition: 'all 0.4s ease',
                     width: '100%',
                     boxSizing: 'border-box',
-                    position: 'relative'
+                    position: 'relative',
+                    border: '1px solid red'
                 }}>
                     <div
                         onClick={() => !isMobile && setIsCollapsed(!isCollapsed)}
@@ -142,7 +143,8 @@ export default function DashboardShell({ children, user }: DashboardShellProps) 
                                 boxSizing: 'border-box',
                                 width: '100%',
                                 overflow: 'hidden',
-                                textAlign: 'left'
+                                textAlign: 'left',
+                                border: '1px solid red'
                             }}>
                                 {(() => {
                                     const isArabicName = /[\u0600-\u06FF]/.test(displayName);
@@ -175,7 +177,7 @@ export default function DashboardShell({ children, user }: DashboardShellProps) 
 
                                     if (!part2) {
                                         return (
-                                            <div style={{ display: 'flex', alignItems: 'center', height: '100%' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', height: '100%', border: '1px solid red' }}>
                                                 <span style={{ ...textStyle, textAlign: isRtl ? 'right' : 'left', width: '100%' }}>{part1}</span>
                                             </div>
                                         );
@@ -188,7 +190,8 @@ export default function DashboardShell({ children, user }: DashboardShellProps) 
                                             alignItems: isArabicName ? 'flex-start' : 'flex-start', // Base alignment
                                             justifyContent: 'center',
                                             width: '100%',
-                                            direction: isArabicName ? 'rtl' : 'ltr'
+                                            direction: isArabicName ? 'rtl' : 'ltr',
+                                            border: '1px solid red'
                                         }}>
                                             <span style={textStyle}>{part1}</span>
                                             <span style={{
