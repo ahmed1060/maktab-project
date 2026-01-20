@@ -54,8 +54,8 @@ export default function DashboardShell({ children, user }: DashboardShellProps) 
     const selectedCompanyName = searchParams.get('company')
 
     const displayName = user?.role === 'SUPER_ADMIN'
-        ? (selectedCompanyName || 'Task Manager')
-        : (user?.companyName || 'Task Manager')
+        ? (selectedCompanyName || t('task_manager'))
+        : (user?.companyName || t('task_manager'));
 
     return (
         <div style={{ display: 'flex', minHeight: '100vh', background: 'transparent' }}>
@@ -149,8 +149,9 @@ export default function DashboardShell({ children, user }: DashboardShellProps) 
                                 {(() => {
                                     const cleanName = displayName.trim();
                                     const isArabicName = /[\u0600-\u06FF]/.test(cleanName);
+                                    const isAppTitle = cleanName === t('task_manager');
                                     const words = cleanName.split(/\s+/);
-                                    const isTwoWords = words.length === 2;
+                                    const isTwoWords = words.length === 2 && !isAppTitle;
 
                                     // Case 1: 1 word
                                     // Case 2: 2 words -> Part 1 = Word 1, Part 2 = Word 2 (Diagonal)

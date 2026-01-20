@@ -3,6 +3,7 @@ export type Locale = 'en' | 'ar';
 export const translations = {
     en: {
         welcome_back: "Welcome Back",
+        task_manager: "Task Manager",
         sign_in_subtitle: "Sign in to continue to your dashboard",
         email: "Email",
         password: "Password",
@@ -628,6 +629,7 @@ export const translations = {
     },
     ar: {
         welcome_back: "مرحباً بك مجدداً",
+        task_manager: "مدير المهام",
         sign_in_subtitle: "قم بتسجيل الدخول للمتابعة إلى لوحة التحكم الخاصة بك",
         email: "البريد الإلكتروني",
         password: "كلمة المرور",
