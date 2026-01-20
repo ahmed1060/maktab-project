@@ -181,7 +181,7 @@ export default function DashboardShell({ children, user }: DashboardShellProps) 
 
                                     if (!part2) {
                                         return (
-                                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', border: '1px solid red', width: '100%' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', width: '100%' }}>
                                                 <span style={{ ...textStyle, textAlign: 'center', width: '100%' }}>{part1}</span>
                                             </div>
                                         );
@@ -194,8 +194,7 @@ export default function DashboardShell({ children, user }: DashboardShellProps) 
                                             alignItems: 'center',
                                             justifyContent: 'center',
                                             width: '100%',
-                                            direction: isArabicName ? 'rtl' : 'ltr',
-                                            border: '1px solid red'
+                                            direction: isArabicName ? 'rtl' : 'ltr'
                                         }}>
                                             <span style={{
                                                 ...textStyle,
