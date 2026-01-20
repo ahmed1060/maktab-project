@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import DateTimePicker from '@/components/DateTimePicker'
@@ -20,6 +21,7 @@ export default function NewTaskPage() {
     const [locationLink, setLocationLink] = useState('')
     const [isBulkModalOpen, setIsBulkModalOpen] = useState(false)
     const [isManageTemplatesOpen, setIsManageTemplatesOpen] = useState(false)
+    const [mounted, setMounted] = useState(false)
     const [bulkTasks, setBulkTasks] = useState<any[]>([])
     const [users, setUsers] = useState<any[]>([])
     const router = useRouter()
@@ -29,6 +31,10 @@ export default function NewTaskPage() {
     const { data: session } = useSession()
     const { selectedCompanyId } = useCompany()
     const userRole = (session?.user as any)?.role
+
+    useEffect(() => {
+        setMounted(true)
+    }, [])
 
     useEffect(() => {
         const queryParams = new URLSearchParams()
@@ -230,9 +236,9 @@ export default function NewTaskPage() {
 
     return (
         <div className="card" style={{ maxWidth: '600px', margin: '0 auto', ...containerStyle }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2rem' }}>
                 <h1 style={{ margin: 0 }}>{t('create_new_task')}</h1>
-                <div style={{ display: 'flex', gap: '0.75rem' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', minWidth: '180px' }}>
                     <button
                         type="button"
                         onClick={() => {
@@ -245,17 +251,26 @@ export default function NewTaskPage() {
                             color: 'var(--text-main)',
                             border: '1px solid var(--glass-border)',
                             backdropFilter: 'blur(8px)',
-                            padding: '0.625rem 1.25rem'
+                            padding: '0.4rem 0.75rem',
+                            fontSize: '0.8rem',
+                            width: '100%',
+                            justifyContent: 'flex-start'
                         }}
                     >
-                        <span style={{ fontSize: '1.2rem' }}>📥</span>
+                        <span style={{ fontSize: '1rem' }}>📥</span>
                         {t('download_template')}
                     </button>
                     <label
                         className="btn btn-primary"
-                        style={{ cursor: 'pointer', padding: '0.625rem 1.25rem' }}
+                        style={{
+                            cursor: 'pointer',
+                            padding: '0.4rem 0.75rem',
+                            fontSize: '0.8rem',
+                            width: '100%',
+                            justifyContent: 'flex-start'
+                        }}
                     >
-                        <span style={{ fontSize: '1.2rem' }}>📤</span>
+                        <span style={{ fontSize: '1rem' }}>📤</span>
                         {t('upload_tasks_excel')}
                         <input
                             type="file"
@@ -440,8 +455,8 @@ export default function NewTaskPage() {
             </form>
 
             {/* Bulk Review Modal */}
-            {isBulkModalOpen && (
-                <div className="modal-overlay">
+            {mounted && isBulkModalOpen && createPortal(
+                <div className="modal-overlay" style={{ zIndex: 10000 }}>
                     <div className="modal-content glass" style={{
                         width: '95%',
                         maxWidth: '1300px',
@@ -602,12 +617,13 @@ export default function NewTaskPage() {
                             </button>
                         </div>
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
 
             {/* Manage Templates Modal (Super Admin) */}
-            {isManageTemplatesOpen && (
-                <div className="modal-overlay">
+            {mounted && isManageTemplatesOpen && createPortal(
+                <div className="modal-overlay" style={{ zIndex: 10000 }}>
                     <div className="modal-content glass" style={{ width: '90%', maxWidth: '550px' }}>
                         <div className="modal-header">
                             <h2 className="modal-title">{t('manage_templates')}</h2>
@@ -679,7 +695,8 @@ export default function NewTaskPage() {
                             </button>
                         </div>
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
         </div>
     )
