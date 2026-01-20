@@ -25,6 +25,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
     const [gender, setGender] = useState('MALE')
     const [salary, setSalary] = useState<string>('')
     const [baseDayOffCredit, setBaseDayOffCredit] = useState<string>('')
+    const [username, setUsername] = useState('')
     const [companyId, setCompanyId] = useState('')
     const [companies, setCompanies] = useState<{ id: string, name: string }[]>([])
     const [loading, setLoading] = useState(true)
@@ -96,6 +97,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                 setSalary(employee.salary !== undefined && employee.salary !== null ? employee.salary.toString() : '')
                 setBaseDayOffCredit(employee.baseDayOffCredit !== undefined && employee.baseDayOffCredit !== null ? employee.baseDayOffCredit.toString() : '0')
                 setCompanyId(employee.companyId || '')
+                setUsername(employee.username || '')
                 setAvatarUrl(employee.avatar || null)
 
                 // Check for pending name change requests
@@ -252,7 +254,8 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                     avatar: avatarUrl,
                     companyId: userRole === 'SUPER_ADMIN' ? companyId : undefined,
                     salary: (userRole === 'ADMIN' || userRole === 'SUPER_ADMIN') && userId !== session?.user?.id ? parseFloat(salary) || 0 : undefined,
-                    baseDayOffCredit: (userRole === 'ADMIN' || userRole === 'SUPER_ADMIN') && userId !== session?.user?.id ? parseFloat(baseDayOffCredit) || 0 : undefined
+                    baseDayOffCredit: (userRole === 'ADMIN' || userRole === 'SUPER_ADMIN') && userId !== session?.user?.id ? parseFloat(baseDayOffCredit) || 0 : undefined,
+                    username: userRole === 'SUPER_ADMIN' ? username : undefined
                 }),
                 headers: { 'Content-Type': 'application/json' }
             })
@@ -682,6 +685,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                         )}
                     </div>
                 )}
+
                 <div style={{ marginBottom: '1rem' }}>
                     <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('email')}</label>
                     <input
@@ -695,115 +699,78 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                     />
                 </div>
 
-                {/* Salary Field - Visible to Admins and Self, Editable only by Admins (not self). Hidden for Admins and Super Admins. */}
-                {(['ADMIN', 'SUPER_ADMIN'].includes(userRole) || userId === session?.user?.id) && !['ADMIN', 'SUPER_ADMIN'].includes(role) && role !== '' && (
-                    <div style={{ marginBottom: '1rem' }}>
-                        <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('monthly_base_salary_label')}</label>
-                        <input
-                            type="number"
-                            className="input"
-                            value={salary}
-                            onChange={e => setSalary(e.target.value)}
-                            disabled={isViewMode || userId === session?.user?.id || !['ADMIN', 'SUPER_ADMIN'].includes(userRole)}
-                            max={1000000000}
-                            style={(isViewMode || userId === session?.user?.id || !['ADMIN', 'SUPER_ADMIN'].includes(userRole)) ? { background: '#f1f5f9', cursor: 'not-allowed', textAlign: locale === 'ar' ? 'right' : 'left' } : { textAlign: locale === 'ar' ? 'right' : 'left' }}
-                            placeholder={userId === session?.user?.id && !salary ? t('no_data_available') : (locale === 'ar' ? 'أدخل الراتب' : 'Enter salary')}
-                        />
-                    </div>
-                )}
+                <div style={{ marginBottom: '1rem' }}>
+                    <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('username_label' as any) || 'Username'}</label>
+                    <input
+                        className="input"
+                        value={username}
+                        onChange={e => setUsername(e.target.value)}
+                        disabled={isViewMode || userRole !== 'SUPER_ADMIN'}
+                        style={(isViewMode || userRole !== 'SUPER_ADMIN') ? { background: '#f1f5f9', cursor: 'not-allowed', textAlign: locale === 'ar' ? 'right' : 'left' } : { textAlign: locale === 'ar' ? 'right' : 'left' }}
+                        placeholder={t('username_placeholder' as any) || 'Username'}
+                    />
+                </div>
 
-                {/* Day Off Credit Fields - Visible to Admins and Self, Editable only by Admins (not self). Hidden for Admins and Super Admins. */}
-                {(['ADMIN', 'SUPER_ADMIN'].includes(userRole) || userId === session?.user?.id) && !['ADMIN', 'SUPER_ADMIN'].includes(role) && role !== '' && (
-                    <>
+                {/* Salary Field - Visible to Admins and Self, Editable only by Admins (not self). Hidden for Admins and Super Admins. */}
+                {
+                    (['ADMIN', 'SUPER_ADMIN'].includes(userRole) || userId === session?.user?.id) && !['ADMIN', 'SUPER_ADMIN'].includes(role) && role !== '' && (
                         <div style={{ marginBottom: '1rem' }}>
-                            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('day_off_credit_assigned')}</label>
+                            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('monthly_base_salary_label')}</label>
                             <input
                                 type="number"
                                 className="input"
-                                value={baseDayOffCredit}
-                                onChange={e => setBaseDayOffCredit(e.target.value)}
+                                value={salary}
+                                onChange={e => setSalary(e.target.value)}
                                 disabled={isViewMode || userId === session?.user?.id || !['ADMIN', 'SUPER_ADMIN'].includes(userRole)}
-                                step="0.5"
+                                max={1000000000}
                                 style={(isViewMode || userId === session?.user?.id || !['ADMIN', 'SUPER_ADMIN'].includes(userRole)) ? { background: '#f1f5f9', cursor: 'not-allowed', textAlign: locale === 'ar' ? 'right' : 'left' } : { textAlign: locale === 'ar' ? 'right' : 'left' }}
+                                placeholder={userId === session?.user?.id && !salary ? t('no_data_available') : (locale === 'ar' ? 'أدخل الراتب' : 'Enter salary')}
                             />
                         </div>
-                    </>
-                )}
+                    )
+                }
 
-                {!isViewMode && (
-                    <div style={{ marginBottom: '1rem' }}>
-                        <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('new_password_optional_label')}</label>
-                        <div style={{ position: 'relative' }}>
-                            <input
-                                type={showNewPassword ? "text" : "password"}
-                                className="input"
-                                value={password}
-                                onChange={e => setPassword(e.target.value)}
-                                minLength={6}
-                                maxLength={20}
-                                placeholder={t('keep_current_password_placeholder')}
-                                style={{
-                                    textAlign: locale === 'ar' ? 'right' : 'left',
-                                    [locale === 'ar' ? 'paddingLeft' : 'paddingRight']: '2.5rem'
-                                }}
-                            />
-                            <button
-                                type="button"
-                                onClick={() => setShowNewPassword(!showNewPassword)}
-                                style={{
-                                    position: 'absolute',
-                                    [locale === 'ar' ? 'left' : 'right']: '0.75rem',
-                                    top: '50%',
-                                    transform: 'translateY(-50%)',
-                                    background: 'none',
-                                    border: 'none',
-                                    cursor: 'pointer',
-                                    padding: '0.25rem',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    color: '#64748b'
-                                }}
-                            >
-                                {showNewPassword ? (
-                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                        <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
-                                        <line x1="1" y1="1" x2="23" y2="23"></line>
-                                    </svg>
-                                ) : (
-                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                                        <circle cx="12" cy="12" r="3"></circle>
-                                    </svg>
-                                )}
-                            </button>
-                        </div>
-                    </div>
-                )}
+                {/* Day Off Credit Fields - Visible to Admins and Self, Editable only by Admins (not self). Hidden for Admins and Super Admins. */}
+                {
+                    (['ADMIN', 'SUPER_ADMIN'].includes(userRole) || userId === session?.user?.id) && !['ADMIN', 'SUPER_ADMIN'].includes(role) && role !== '' && (
+                        <>
+                            <div style={{ marginBottom: '1rem' }}>
+                                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('day_off_credit_assigned')}</label>
+                                <input
+                                    type="number"
+                                    className="input"
+                                    value={baseDayOffCredit}
+                                    onChange={e => setBaseDayOffCredit(e.target.value)}
+                                    disabled={isViewMode || userId === session?.user?.id || !['ADMIN', 'SUPER_ADMIN'].includes(userRole)}
+                                    step="0.5"
+                                    style={(isViewMode || userId === session?.user?.id || !['ADMIN', 'SUPER_ADMIN'].includes(userRole)) ? { background: '#f1f5f9', cursor: 'not-allowed', textAlign: locale === 'ar' ? 'right' : 'left' } : { textAlign: locale === 'ar' ? 'right' : 'left' }}
+                                />
+                            </div>
+                        </>
+                    )
+                }
 
-                {/* Secure Revelation for Super Admin on SAVED password */}
-                {userRole === 'SUPER_ADMIN' && isViewMode && (
-                    <div style={{ marginBottom: '1rem' }}>
-                        <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('password')}</label>
-                        <div style={{ position: 'relative' }}>
-                            <input
-                                type={revealPassword ? "text" : "password"}
-                                className="input"
-                                value={revealPassword || '********'}
-                                readOnly
-                                style={{
-                                    background: '#f1f5f9',
-                                    cursor: 'default',
-                                    textAlign: locale === 'ar' ? 'right' : 'left',
-                                    [locale === 'ar' ? 'paddingLeft' : 'paddingRight']: '2.5rem'
-                                }}
-                            />
-                            {!revealPassword && (
+                {
+                    !isViewMode && (
+                        <div style={{ marginBottom: '1rem' }}>
+                            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('new_password_optional_label')}</label>
+                            <div style={{ position: 'relative' }}>
+                                <input
+                                    type={showNewPassword ? "text" : "password"}
+                                    className="input"
+                                    value={password}
+                                    onChange={e => setPassword(e.target.value)}
+                                    minLength={6}
+                                    maxLength={20}
+                                    placeholder={t('keep_current_password_placeholder')}
+                                    style={{
+                                        textAlign: locale === 'ar' ? 'right' : 'left',
+                                        [locale === 'ar' ? 'paddingLeft' : 'paddingRight']: '2.5rem'
+                                    }}
+                                />
                                 <button
                                     type="button"
-                                    onClick={() => {
-                                        setVerificationCallback({ type: 'REVEAL' })
-                                        setVerificationModalOpen(true)
-                                    }}
+                                    onClick={() => setShowNewPassword(!showNewPassword)}
                                     style={{
                                         position: 'absolute',
                                         [locale === 'ar' ? 'left' : 'right']: '0.75rem',
@@ -815,37 +782,96 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                                         padding: '0.25rem',
                                         display: 'flex',
                                         alignItems: 'center',
-                                        color: '#6366f1'
+                                        color: '#64748b'
                                     }}
-                                    title={t('reveal_button')}
                                 >
-                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                                        <circle cx="12" cy="12" r="3"></circle>
-                                    </svg>
+                                    {showNewPassword ? (
+                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                            <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                                            <line x1="1" y1="1" x2="23" y2="23"></line>
+                                        </svg>
+                                    ) : (
+                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                            <circle cx="12" cy="12" r="3"></circle>
+                                        </svg>
+                                    )}
                                 </button>
-                            )}
+                            </div>
                         </div>
-                    </div>
-                )}
-                {(userRole === 'SUPER_ADMIN' || userRole === 'ADMIN') && userId !== session?.user?.id && (
-                    <div style={{ marginBottom: '1rem' }}>
-                        <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('role_label')}</label>
-                        <select
-                            className="input"
-                            value={role}
-                            onChange={e => setRole(e.target.value)}
-                            required
-                            disabled={isViewMode || userId === session?.user?.id || role === 'SUPER_ADMIN'}
-                            style={(isViewMode || userId === session?.user?.id || role === 'SUPER_ADMIN') ? { background: '#f1f5f9', cursor: 'not-allowed', color: '#64748b', textAlign: locale === 'ar' ? 'right' : 'left' } : { textAlign: locale === 'ar' ? 'right' : 'left' }}
-                        >
-                            <option value="EMPLOYEE">{t('role_employee')}</option>
-                            <option value="TEAM_LEADER">{t('role_team_leader')}</option>
-                            {(userRole === 'SUPER_ADMIN' || role === 'ADMIN') && <option value="ADMIN">{t('role_admin')}</option>}
-                            {role === 'SUPER_ADMIN' && <option value="SUPER_ADMIN">{t('super_admins')}</option>}
-                        </select>
-                    </div>
-                )}
+                    )
+                }
+
+                {/* Secure Revelation for Super Admin on SAVED password */}
+                {
+                    userRole === 'SUPER_ADMIN' && isViewMode && (
+                        <div style={{ marginBottom: '1rem' }}>
+                            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('password')}</label>
+                            <div style={{ position: 'relative' }}>
+                                <input
+                                    type={revealPassword ? "text" : "password"}
+                                    className="input"
+                                    value={revealPassword || '********'}
+                                    readOnly
+                                    style={{
+                                        background: '#f1f5f9',
+                                        cursor: 'default',
+                                        textAlign: locale === 'ar' ? 'right' : 'left',
+                                        [locale === 'ar' ? 'paddingLeft' : 'paddingRight']: '2.5rem'
+                                    }}
+                                />
+                                {!revealPassword && (
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setVerificationCallback({ type: 'REVEAL' })
+                                            setVerificationModalOpen(true)
+                                        }}
+                                        style={{
+                                            position: 'absolute',
+                                            [locale === 'ar' ? 'left' : 'right']: '0.75rem',
+                                            top: '50%',
+                                            transform: 'translateY(-50%)',
+                                            background: 'none',
+                                            border: 'none',
+                                            cursor: 'pointer',
+                                            padding: '0.25rem',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            color: '#6366f1'
+                                        }}
+                                        title={t('reveal_button')}
+                                    >
+                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                            <circle cx="12" cy="12" r="3"></circle>
+                                        </svg>
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+                    )
+                }
+                {
+                    (userRole === 'SUPER_ADMIN' || userRole === 'ADMIN') && userId !== session?.user?.id && (
+                        <div style={{ marginBottom: '1rem' }}>
+                            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('role_label')}</label>
+                            <select
+                                className="input"
+                                value={role}
+                                onChange={e => setRole(e.target.value)}
+                                required
+                                disabled={isViewMode || userId === session?.user?.id || role === 'SUPER_ADMIN'}
+                                style={(isViewMode || userId === session?.user?.id || role === 'SUPER_ADMIN') ? { background: '#f1f5f9', cursor: 'not-allowed', color: '#64748b', textAlign: locale === 'ar' ? 'right' : 'left' } : { textAlign: locale === 'ar' ? 'right' : 'left' }}
+                            >
+                                <option value="EMPLOYEE">{t('role_employee')}</option>
+                                <option value="TEAM_LEADER">{t('role_team_leader')}</option>
+                                {(userRole === 'SUPER_ADMIN' || role === 'ADMIN') && <option value="ADMIN">{t('role_admin')}</option>}
+                                {role === 'SUPER_ADMIN' && <option value="SUPER_ADMIN">{t('super_admins')}</option>}
+                            </select>
+                        </div>
+                    )
+                }
 
                 <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem', justifyContent: isViewMode ? 'flex-end' : 'flex-start', flexDirection: 'row' }}>
                     {!isViewMode && (
@@ -862,7 +888,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                         {t('close_button')}
                     </button>
                 </div>
-            </form>
+            </form >
 
             {
                 verificationModalOpen && createPortal(

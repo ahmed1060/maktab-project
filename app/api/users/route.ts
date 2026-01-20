@@ -5,6 +5,7 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import bcrypt from "bcryptjs"
 import { encrypt, decrypt } from "@/lib/crypto"
+import { generateUsername } from "@/lib/username"
 
 export async function GET(req: Request) {
     const session = await getServerSession(authOptions)
@@ -45,7 +46,8 @@ export async function GET(req: Request) {
                 totalDifficultyPoints: true,
                 avatar: true,
                 dayOffCredit: true,
-                baseDayOffCredit: true
+                baseDayOffCredit: true,
+                username: true
             }
         })
 
@@ -66,7 +68,8 @@ export async function GET(req: Request) {
                 dayOffCredit: user.dayOffCredit,
                 baseDayOffCredit: user.baseDayOffCredit,
                 totalDifficultyPoints: user.totalDifficultyPoints,
-                avatar: user.avatar
+                avatar: user.avatar,
+                username: user.username
             })
         }
 
@@ -79,7 +82,8 @@ export async function GET(req: Request) {
                 lastName: true,
                 email: true,
                 gender: true,
-                avatar: true
+                avatar: true,
+                username: true
             }
         })
 
@@ -93,6 +97,7 @@ export async function GET(req: Request) {
                 role: 'SUPER_ADMIN', // Injected role
                 gender: superAdmin.gender,
                 avatar: superAdmin.avatar,
+                username: superAdmin.username,
                 salary: 0, // No salary for Super Admins
                 totalDifficultyPoints: 0 // Super Admins don't play the points game
             })
@@ -213,6 +218,7 @@ export async function GET(req: Request) {
                     }
                 },
                 totalDifficultyPoints: true,
+                username: true,
                 salary: false
             },
             // Updated Ordering: Sort by company name, then first name
@@ -250,7 +256,8 @@ export async function GET(req: Request) {
             role: user.role,
             gender: user.gender,
             company: user.company,
-            totalDifficultyPoints: user.totalDifficultyPoints
+            totalDifficultyPoints: user.totalDifficultyPoints,
+            username: user.username
         }
     })
 
@@ -272,7 +279,7 @@ export async function POST(req: Request) {
     }
 
     const json = await req.json()
-    const { firstName, lastName, email, password, role, gender, companyId, salary, dayOffCredit, baseDayOffCredit } = json
+    const { firstName, lastName, email, password, role, gender, companyId, salary, dayOffCredit, baseDayOffCredit, username } = json
 
     // Validation
     if (firstName.length > 15) return new NextResponse("First name must be max 15 characters", { status: 400 })
@@ -313,11 +320,19 @@ export async function POST(req: Request) {
     }
 
     const hashedPassword = await bcrypt.hash(password, 10)
+
+    // Auto-generate username if not provided
+    let finalUsername = username
+    if (!finalUsername && targetCompanyId) {
+        finalUsername = await generateUsername(targetCompanyId)
+    }
+
     const user = await prisma.user.create({
         data: {
             firstName,
             lastName,
             email,
+            username: finalUsername,
             password: hashedPassword,
             role: newUserRole,
             status: 'OFFLINE',
@@ -328,7 +343,7 @@ export async function POST(req: Request) {
             baseDayOffCredit: baseDayOffCredit ? parseFloat(baseDayOffCredit) : (dayOffCredit ? parseFloat(dayOffCredit) : 0),
             plainPasswordEnc: encrypt(password)
         },
-        select: { id: true, firstName: true, lastName: true, email: true, role: true, status: true, gender: true }
+        select: { id: true, firstName: true, lastName: true, email: true, role: true, status: true, gender: true, username: true }
     })
 
     return NextResponse.json(user)
@@ -343,7 +358,7 @@ export async function PUT(req: Request) {
     }
 
     const json = await req.json()
-    const { id, firstName, lastName, email, password, role, gender, salary, companyId, avatar, dayOffCredit, baseDayOffCredit } = json
+    const { id, firstName, lastName, email, password, role, gender, salary, companyId, avatar, dayOffCredit, baseDayOffCredit, username } = json
 
     if (!id) {
         return new NextResponse("User ID required", { status: 400 })
@@ -383,6 +398,17 @@ export async function PUT(req: Request) {
             }
         })
         if (conflictAdmin) return new NextResponse("Email already in use", { status: 400 })
+    }
+
+    // Username Uniqueness Check
+    if (username) {
+        const conflictUser = await prisma.user.findFirst({
+            where: {
+                username: { equals: username, mode: 'insensitive' },
+                NOT: { id }
+            }
+        })
+        if (conflictUser) return new NextResponse("Username already in use", { status: 400 })
     }
 
     // Build update data
@@ -448,6 +474,11 @@ export async function PUT(req: Request) {
             }
         }
 
+        // Only Super Admin can update username
+        if (username !== undefined && userRole === 'SUPER_ADMIN') {
+            updateData.username = username || null
+        }
+
         if (['ADMIN', 'SUPER_ADMIN'].includes(userRole || '')) {
             if (salary > 1000000000) return new NextResponse("Salary cannot exceed 1 billion", { status: 400 })
             updateData.salary = salary
@@ -488,7 +519,7 @@ export async function PUT(req: Request) {
         const updatedUser = await prisma.user.update({
             where: { id },
             data: updateData,
-            select: { id: true, firstName: true, lastName: true, email: true, role: true, gender: true, salary: true, companyId: true, avatar: true, dayOffCredit: true, baseDayOffCredit: true }
+            select: { id: true, firstName: true, lastName: true, email: true, role: true, gender: true, salary: true, companyId: true, avatar: true, dayOffCredit: true, baseDayOffCredit: true, username: true }
         })
 
         // Sync Salary Record
@@ -530,7 +561,7 @@ export async function PUT(req: Request) {
         const updatedAdmin = await prisma.superAdmin.update({
             where: { id },
             data: updateData,
-            select: { id: true, firstName: true, lastName: true, email: true, gender: true, avatar: true }
+            select: { id: true, firstName: true, lastName: true, email: true, gender: true, avatar: true, username: true }
         })
 
         return NextResponse.json({

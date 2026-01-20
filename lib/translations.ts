@@ -627,8 +627,9 @@ export const translations = {
         powered_by: "Powered by",
         paid_costs: "Paid Costs",
         task_title: "Task",
-        costs_tab: "Costs"
-
+        costs_tab: "Costs",
+        username_label: "Username",
+        username_placeholder: "Username"
     },
     ar: {
         welcome_back: "مرحباً بك مجدداً",
@@ -1257,7 +1258,9 @@ export const translations = {
         powered_by: "بدعم من",
         paid_costs: "التكاليف المدفوعة",
         task_title: "المهمة",
-        costs_tab: "التكاليف"
+        costs_tab: "التكاليف",
+        username_label: "اسم المستخدم",
+        username_placeholder: "اسم المستخدم"
     }
 };
 
