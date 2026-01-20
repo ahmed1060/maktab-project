@@ -230,21 +230,32 @@ export default function NewTaskPage() {
 
     return (
         <div className="card" style={{ maxWidth: '600px', margin: '0 auto', ...containerStyle }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
                 <h1 style={{ margin: 0 }}>{t('create_new_task')}</h1>
-                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <div style={{ display: 'flex', gap: '0.75rem' }}>
                     <button
                         type="button"
                         onClick={() => {
                             if (userRole === 'SUPER_ADMIN') setIsManageTemplatesOpen(true)
                             else window.open(`/api/templates/download?locale=${locale}`, '_blank')
                         }}
-                        className="button-secondary"
-                        style={{ padding: '0.5rem 1rem', fontSize: '0.85rem' }}
+                        className="btn"
+                        style={{
+                            background: 'rgba(255, 255, 255, 0.4)',
+                            color: 'var(--text-main)',
+                            border: '1px solid var(--glass-border)',
+                            backdropFilter: 'blur(8px)',
+                            padding: '0.625rem 1.25rem'
+                        }}
                     >
+                        <span style={{ fontSize: '1.2rem' }}>📥</span>
                         {t('download_template')}
                     </button>
-                    <label className="button-primary" style={{ padding: '0.5rem 1rem', fontSize: '0.85rem', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+                    <label
+                        className="btn btn-primary"
+                        style={{ cursor: 'pointer', padding: '0.625rem 1.25rem' }}
+                    >
+                        <span style={{ fontSize: '1.2rem' }}>📤</span>
                         {t('upload_tasks_excel')}
                         <input
                             type="file"
@@ -430,119 +441,126 @@ export default function NewTaskPage() {
 
             {/* Bulk Review Modal */}
             {isBulkModalOpen && (
-                <div style={{
-                    position: 'fixed',
-                    inset: 0,
-                    zIndex: 1000,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    background: 'rgba(0,0,0,0.4)',
-                    backdropFilter: 'blur(4px)',
-                    padding: '2rem'
-                }}>
-                    <div className="card" style={{
-                        width: '100%',
-                        maxWidth: '1200px',
+                <div className="modal-overlay">
+                    <div className="modal-content glass" style={{
+                        width: '95%',
+                        maxWidth: '1300px',
                         maxHeight: '90vh',
-                        overflowY: 'auto',
-                        padding: '2rem',
-                        background: '#f8fafc'
+                        display: 'flex',
+                        flexDirection: 'column'
                     }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-                            <h2 style={{ margin: 0 }}>{t('bulk_review_title')}</h2>
-                            <button className="button-secondary" onClick={() => setIsBulkModalOpen(false)}>×</button>
+                        <div className="modal-header">
+                            <h2 className="modal-title">{t('bulk_review_title')}</h2>
+                            <button className="modal-close" onClick={() => setIsBulkModalOpen(false)}>×</button>
                         </div>
 
-                        <div style={{ overflowX: 'auto', marginBottom: '1.5rem' }}>
-                            <table style={{ width: '100%', borderCollapse: 'collapse', background: '#fff', borderRadius: '0.5rem', border: '1px solid #e2e8f0' }}>
-                                <thead>
-                                    <tr style={{ background: '#f1f5f9', borderBottom: '2px solid #e2e8f0' }}>
-                                        <th style={{ padding: '0.75rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>#</th>
-                                        <th style={{ padding: '0.75rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('title')}</th>
-                                        <th style={{ padding: '0.75rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('description_label' as any)}</th>
-                                        <th style={{ padding: '0.75rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('assignees_label')}</th>
-                                        <th style={{ padding: '0.75rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('deadline_label')}</th>
-                                        <th style={{ padding: '0.75rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('location_name_label')}</th>
-                                        <th style={{ padding: '0.75rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('actions_label')}</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {bulkTasks.map((bt, idx) => (
-                                        <tr key={idx} style={{ borderBottom: '1px solid #e2e8f0', position: 'relative' }}>
-                                            <td style={{ padding: '0.75rem' }}>{idx + 1}</td>
-                                            <td style={{ padding: '0.75rem' }}>
-                                                <div style={{ opacity: bt.isInvalid ? 0.5 : 1 }}>{bt.title}</div>
-                                                {bt.isInvalid && !bt.title && <div style={{ color: '#ef4444', fontSize: '0.7rem' }}>Required</div>}
-                                            </td>
-                                            <td style={{ padding: '0.75rem' }}>
-                                                <div style={{ opacity: bt.isInvalid ? 0.5 : 1, fontSize: '0.85rem' }}>{bt.description?.substring(0, 50)}...</div>
-                                            </td>
-                                            <td style={{ padding: '0.75rem', position: 'relative' }}>
-                                                {bt.isInvalid && bt.unresolvedUsernames.length > 0 && (
-                                                    <div style={{
-                                                        position: 'absolute',
-                                                        top: '50%',
-                                                        left: '0',
-                                                        right: '0',
-                                                        height: '1px',
-                                                        background: '#ef4444',
-                                                        transform: 'rotate(-2deg)',
-                                                        zIndex: 2,
-                                                        pointerEvents: 'none'
-                                                    }} />
-                                                )}
-                                                <div style={{ opacity: bt.isInvalid ? 0.6 : 1 }}>
-                                                    {bt.usernamesRaw}
-                                                </div>
-                                                {bt.unresolvedUsernames.length > 0 && (
-                                                    <div style={{ color: '#ef4444', fontSize: '0.7rem', fontWeight: 'bold' }}>
-                                                        {t('invalid_username')}: {bt.unresolvedUsernames.join(', ')}
-                                                    </div>
-                                                )}
-                                            </td>
-                                            <td style={{ padding: '0.75rem' }}>
-                                                <div style={{ opacity: bt.isInvalid ? 0.5 : 1 }}>
-                                                    {bt.deadline ? new Date(bt.deadline).toLocaleString(locale) : 'Invalid'}
-                                                </div>
-                                            </td>
-                                            <td style={{ padding: '0.75rem' }}>
-                                                <div style={{ minWidth: '150px' }}>
-                                                    <LocationSearchInput
-                                                        value={{ name: bt.location, link: bt.locationLink || '' }}
-                                                        onChange={(val) => {
-                                                            const newTasks = [...bulkTasks]
-                                                            newTasks[idx].location = val.name
-                                                            newTasks[idx].locationLink = val.link
-                                                            setBulkTasks(newTasks)
-                                                        }}
-                                                        placeholder={t('location_name_placeholder')}
-                                                        locale={locale}
-                                                    />
-                                                </div>
-                                            </td>
-                                            <td style={{ padding: '0.75rem' }}>
-                                                <button
-                                                    className="button-secondary"
-                                                    style={{ color: '#dc2626', padding: '0.25rem 0.5rem' }}
-                                                    onClick={() => {
-                                                        const newTasks = bulkTasks.filter((_, i) => i !== idx)
-                                                        setBulkTasks(newTasks)
-                                                        if (newTasks.length === 0) setIsBulkModalOpen(false)
-                                                    }}
-                                                >
-                                                    {t('delete')}
-                                                </button>
-                                            </td>
+                        <div className="modal-body" style={{ overflowY: 'auto', flex: 1, padding: '1.5rem' }}>
+                            <div style={{ overflowX: 'auto', borderRadius: '1rem', border: '1px solid var(--glass-border)' }}>
+                                <table style={{ width: '100%', borderCollapse: 'collapse', background: 'rgba(255, 255, 255, 0.4)' }}>
+                                    <thead>
+                                        <tr style={{ background: 'rgba(255, 255, 255, 0.6)', borderBottom: '2px solid var(--glass-border)' }}>
+                                            <th style={{ padding: '1rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>#</th>
+                                            <th style={{ padding: '1rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('title')}</th>
+                                            <th style={{ padding: '1rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('description_label' as any)}</th>
+                                            <th style={{ padding: '1rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('assignees_label')}</th>
+                                            <th style={{ padding: '1rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('deadline_label')}</th>
+                                            <th style={{ padding: '1rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('location_name_label')}</th>
+                                            <th style={{ padding: '1rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('actions_label')}</th>
                                         </tr>
-                                    ))}
-                                </tbody>
-                            </table>
+                                    </thead>
+                                    <tbody>
+                                        {bulkTasks.map((bt, idx) => (
+                                            <tr key={idx} style={{
+                                                borderBottom: '1px solid var(--glass-border)',
+                                                background: bt.isInvalid ? 'rgba(239, 68, 68, 0.05)' : 'transparent',
+                                                transition: 'background 0.3s'
+                                            }}>
+                                                <td style={{ padding: '1rem' }}>{idx + 1}</td>
+                                                <td style={{ padding: '1rem' }}>
+                                                    <div style={{
+                                                        opacity: bt.isInvalid ? 0.5 : 1,
+                                                        textDecoration: bt.isInvalid && !bt.title ? 'line-through' : 'none'
+                                                    }}>
+                                                        {bt.title || t('missing_title' as any)}
+                                                    </div>
+                                                </td>
+                                                <td style={{ padding: '1rem' }}>
+                                                    <div style={{ opacity: bt.isInvalid ? 0.5 : 1, fontSize: '0.85rem' }}>
+                                                        {bt.description?.substring(0, 50)}...
+                                                    </div>
+                                                </td>
+                                                <td style={{ padding: '1rem', position: 'relative' }}>
+                                                    <div style={{
+                                                        opacity: bt.isInvalid ? 0.6 : 1,
+                                                        color: bt.unresolvedUsernames.length > 0 ? '#ef4444' : 'inherit'
+                                                    }}>
+                                                        {bt.usernamesRaw}
+                                                    </div>
+                                                    {bt.unresolvedUsernames.length > 0 && (
+                                                        <div style={{ color: '#ef4444', fontSize: '0.7rem', fontWeight: 'bold', marginTop: '0.25rem' }}>
+                                                            {t('invalid_username')}: {bt.unresolvedUsernames.join(', ')}
+                                                        </div>
+                                                    )}
+                                                </td>
+                                                <td style={{ padding: '1rem' }}>
+                                                    <div style={{ opacity: bt.isInvalid ? 0.5 : 1 }}>
+                                                        {bt.deadline ? new Date(bt.deadline).toLocaleString(locale) : t('invalid_date' as any)}
+                                                    </div>
+                                                </td>
+                                                <td style={{ padding: '1rem' }}>
+                                                    <div style={{ minWidth: '150px' }}>
+                                                        <LocationSearchInput
+                                                            value={{ name: bt.location, link: bt.locationLink || '' }}
+                                                            onChange={(val) => {
+                                                                const newTasks = [...bulkTasks]
+                                                                newTasks[idx].location = val.name
+                                                                newTasks[idx].locationLink = val.link
+                                                                setBulkTasks(newTasks)
+                                                            }}
+                                                            placeholder={t('location_name_placeholder')}
+                                                            locale={locale}
+                                                        />
+                                                    </div>
+                                                </td>
+                                                <td style={{ padding: '1rem' }}>
+                                                    <button
+                                                        className="btn"
+                                                        style={{
+                                                            padding: '0.4rem 0.8rem',
+                                                            background: 'rgba(239, 68, 68, 0.1)',
+                                                            color: '#dc2626',
+                                                            borderRadius: '0.75rem'
+                                                        }}
+                                                        onClick={() => {
+                                                            const newTasks = bulkTasks.filter((_, i) => i !== idx)
+                                                            setBulkTasks(newTasks)
+                                                            if (newTasks.length === 0) setIsBulkModalOpen(false)
+                                                        }}
+                                                    >
+                                                        {t('delete')}
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
 
-                        <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
+                        <div className="modal-footer" style={{ borderTop: '1px solid var(--glass-border)', background: 'rgba(255, 255, 255, 0.3)' }}>
+                            <div style={{ flex: 1 }}>
+                                {bulkTasks.some(t => t.isInvalid) && (
+                                    <div style={{ color: '#991b1b', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                        <span style={{ fontSize: '1.1rem' }}>⚠️</span>
+                                        {t('skipped_status')}: {bulkTasks.filter(t => t.isInvalid).length} {t('rows_with_errors' as any)}
+                                    </div>
+                                )}
+                            </div>
+                            <button className="btn" onClick={() => setIsBulkModalOpen(false)} style={{ background: 'rgba(0,0,0,0.05)' }}>
+                                {t('cancel')}
+                            </button>
                             <button
-                                className="button-primary"
+                                className="btn btn-primary"
                                 disabled={isSubmitting || bulkTasks.filter(t => !t.isInvalid).length === 0}
                                 onClick={async () => {
                                     setIsSubmitting(true)
@@ -573,72 +591,91 @@ export default function NewTaskPage() {
                                         setIsSubmitting(false)
                                     }
                                 }}
+                                style={{ minWidth: '160px' }}
                             >
-                                {isSubmitting ? t('processing') : `${t('create_tasks')} (${bulkTasks.filter(t => !t.isInvalid).length})`}
+                                {isSubmitting ? t('processing') : (
+                                    <>
+                                        <span>✨</span>
+                                        {t('create_tasks')} ({bulkTasks.filter(t => !t.isInvalid).length})
+                                    </>
+                                )}
                             </button>
-                            <button className="button-secondary" onClick={() => setIsBulkModalOpen(false)}>{t('cancel')}</button>
                         </div>
-                        {bulkTasks.some(t => t.isInvalid) && (
-                            <div style={{ marginTop: '1rem', color: '#991b1b', fontSize: '0.85rem' }}>
-                                * {t('skipped_status')}: {bulkTasks.filter(t => t.isInvalid).length} rows with errors will be skipped.
-                            </div>
-                        )}
                     </div>
                 </div>
             )}
 
             {/* Manage Templates Modal (Super Admin) */}
             {isManageTemplatesOpen && (
-                <div style={{
-                    position: 'fixed',
-                    inset: 0,
-                    zIndex: 1000,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    background: 'rgba(0,0,0,0.4)',
-                    backdropFilter: 'blur(4px)',
-                    padding: '1rem'
-                }}>
-                    <div className="card" style={{ width: '100%', maxWidth: '500px', padding: '2rem' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-                            <h2 style={{ margin: 0 }}>{t('manage_templates')}</h2>
-                            <button className="button-secondary" onClick={() => setIsManageTemplatesOpen(false)}>×</button>
+                <div className="modal-overlay">
+                    <div className="modal-content glass" style={{ width: '90%', maxWidth: '550px' }}>
+                        <div className="modal-header">
+                            <h2 className="modal-title">{t('manage_templates')}</h2>
+                            <button className="modal-close" onClick={() => setIsManageTemplatesOpen(false)}>×</button>
                         </div>
 
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                            <div>
-                                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>{t('upload_en_template')}</label>
-                                <input type="file" accept=".xlsx" onChange={async (e) => {
-                                    const file = e.target.files?.[0]
-                                    if (file) {
-                                        const fd = new FormData()
-                                        fd.append('file', file)
-                                        fd.append('locale', 'en')
-                                        const res = await fetch('/api/templates/upload', { method: 'POST', body: fd })
-                                        if (res.ok) showToast('Template uploaded', 'success')
-                                    }
-                                }} />
+                        <div className="modal-body">
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+                                <div className="glass" style={{ padding: '1.25rem', background: 'rgba(255, 255, 255, 0.3)' }}>
+                                    <label style={{ display: 'block', marginBottom: '0.75rem', fontWeight: '600', color: 'var(--text-main)' }}>
+                                        🇬🇧 {t('upload_en_template')}
+                                    </label>
+                                    <input
+                                        type="file"
+                                        accept=".xlsx"
+                                        className="input"
+                                        style={{ height: 'auto', padding: '0.5rem' }}
+                                        onChange={async (e) => {
+                                            const file = e.target.files?.[0]
+                                            if (file) {
+                                                const fd = new FormData()
+                                                fd.append('file', file)
+                                                fd.append('locale', 'en')
+                                                const res = await fetch('/api/templates/upload', { method: 'POST', body: fd })
+                                                if (res.ok) showToast('English Template Updated', 'success')
+                                            }
+                                        }}
+                                    />
+                                </div>
+
+                                <div className="glass" style={{ padding: '1.25rem', background: 'rgba(255, 255, 255, 0.3)' }}>
+                                    <label style={{ display: 'block', marginBottom: '0.75rem', fontWeight: '600', color: 'var(--text-main)' }}>
+                                        🇸🇦 {t('upload_ar_template')}
+                                    </label>
+                                    <input
+                                        type="file"
+                                        accept=".xlsx"
+                                        className="input"
+                                        style={{ height: 'auto', padding: '0.5rem' }}
+                                        onChange={async (e) => {
+                                            const file = e.target.files?.[0]
+                                            if (file) {
+                                                const fd = new FormData()
+                                                fd.append('file', file)
+                                                fd.append('locale', 'ar')
+                                                const res = await fetch('/api/templates/upload', { method: 'POST', body: fd })
+                                                if (res.ok) showToast('Arabic Template Updated', 'success')
+                                            }
+                                        }}
+                                    />
+                                </div>
                             </div>
-                            <div>
-                                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>{t('upload_ar_template')}</label>
-                                <input type="file" accept=".xlsx" onChange={async (e) => {
-                                    const file = e.target.files?.[0]
-                                    if (file) {
-                                        const fd = new FormData()
-                                        fd.append('file', file)
-                                        fd.append('locale', 'ar')
-                                        const res = await fetch('/api/templates/upload', { method: 'POST', body: fd })
-                                        if (res.ok) showToast('Template uploaded', 'success')
-                                    }
-                                }} />
-                            </div>
-                            <hr style={{ border: 'none', borderTop: '1px solid #e2e8f0' }} />
+                        </div>
+
+                        <div className="modal-footer" style={{ background: 'rgba(0, 0, 0, 0.03)' }}>
                             <button
-                                className="button-secondary"
+                                className="btn"
+                                style={{
+                                    background: 'rgba(255, 255, 255, 0.6)',
+                                    border: '1px solid var(--glass-border)',
+                                    flex: 1
+                                }}
                                 onClick={() => window.open(`/api/templates/download?locale=${locale}`, '_blank')}
                             >
-                                {t('download_current_template')}
+                                📥 {t('download_current_template')}
+                            </button>
+                            <button className="btn btn-primary" onClick={() => setIsManageTemplatesOpen(false)} style={{ flex: 1 }}>
+                                {t('cancel')}
                             </button>
                         </div>
                     </div>
