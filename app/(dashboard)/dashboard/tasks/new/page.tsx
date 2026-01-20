@@ -44,7 +44,8 @@ export default function NewTaskPage() {
     const [mounted, setMounted] = useState(false)
     const [enTemplateFile, setEnTemplateFile] = useState<File | null>(null)
     const [arTemplateFile, setArTemplateFile] = useState<File | null>(null)
-    const [isUploadingTemplate, setIsUploadingTemplate] = useState(false)
+    const [isEnUploading, setIsEnUploading] = useState(false)
+    const [isArUploading, setIsArUploading] = useState(false)
     const [bulkTasks, setBulkTasks] = useState<any[]>([])
     const [users, setUsers] = useState<any[]>([])
     const router = useRouter()
@@ -660,76 +661,110 @@ export default function NewTaskPage() {
                         <div className="modal-body">
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
                                 <div className="glass" style={{ padding: '1.25rem', background: 'rgba(255, 255, 255, 0.3)' }}>
-                                    <label style={{ display: 'flex', alignItems: 'center', marginBottom: '0.75rem', fontWeight: '600', color: 'var(--text-main)' }}>
+                                    <label style={{ display: 'flex', alignItems: 'center', marginBottom: '1rem', fontWeight: '600', color: 'var(--text-main)' }}>
                                         <UKFlag /> {t('upload_en_template')}
                                     </label>
-                                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                                        <input
-                                            type="file"
-                                            accept=".xlsx"
-                                            className="input"
-                                            style={{ height: 'auto', padding: '0.5rem', flex: 1 }}
-                                            onChange={(e) => setEnTemplateFile(e.target.files?.[0] || null)}
-                                        />
+                                    <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+                                        <label className="btn" style={{
+                                            flex: 1,
+                                            cursor: 'pointer',
+                                            background: 'rgba(255, 255, 255, 0.6)',
+                                            fontSize: '0.85rem',
+                                            justifyContent: 'flex-start',
+                                            overflow: 'hidden',
+                                            textOverflow: 'ellipsis',
+                                            whiteSpace: 'nowrap'
+                                        }}>
+                                            <span>📂</span>
+                                            {enTemplateFile ? enTemplateFile.name : t('choose_file' as any)}
+                                            <input
+                                                type="file"
+                                                accept=".xlsx"
+                                                style={{ display: 'none' }}
+                                                onChange={(e) => setEnTemplateFile(e.target.files?.[0] || null)}
+                                            />
+                                        </label>
                                         {enTemplateFile && (
                                             <button
                                                 className="btn btn-primary"
-                                                style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem' }}
-                                                disabled={isUploadingTemplate}
+                                                style={{ padding: '0.5rem 1rem', fontSize: '0.85rem', minWidth: '100px' }}
+                                                disabled={isEnUploading}
                                                 onClick={async () => {
-                                                    setIsUploadingTemplate(true)
+                                                    setIsEnUploading(true)
                                                     const fd = new FormData()
                                                     fd.append('file', enTemplateFile)
                                                     fd.append('locale', 'en')
-                                                    const res = await fetch('/api/templates/upload', { method: 'POST', body: fd })
-                                                    if (res.ok) {
-                                                        showToast('English Template Updated', 'success')
-                                                        setEnTemplateFile(null)
-                                                    } else {
-                                                        showToast('Upload Failed', 'error')
+                                                    try {
+                                                        const res = await fetch('/api/templates/upload', { method: 'POST', body: fd })
+                                                        if (res.ok) {
+                                                            showToast('English Template Updated', 'success')
+                                                            setEnTemplateFile(null)
+                                                        } else {
+                                                            showToast('Upload Failed', 'error')
+                                                        }
+                                                    } catch (e) {
+                                                        showToast('Upload Error', 'error')
+                                                    } finally {
+                                                        setIsEnUploading(false)
                                                     }
-                                                    setIsUploadingTemplate(false)
                                                 }}
                                             >
-                                                {isUploadingTemplate ? '...' : 'Upload'}
+                                                {isEnUploading ? <div className="spinner-small" style={{ width: '16px', height: '16px' }} /> : 'Upload'}
                                             </button>
                                         )}
                                     </div>
                                 </div>
 
                                 <div className="glass" style={{ padding: '1.25rem', background: 'rgba(255, 255, 255, 0.3)' }}>
-                                    <label style={{ display: 'flex', alignItems: 'center', marginBottom: '0.75rem', fontWeight: '600', color: 'var(--text-main)' }}>
+                                    <label style={{ display: 'flex', alignItems: 'center', marginBottom: '1rem', fontWeight: '600', color: 'var(--text-main)' }}>
                                         <SAFlag /> {t('upload_ar_template')}
                                     </label>
-                                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                                        <input
-                                            type="file"
-                                            accept=".xlsx"
-                                            className="input"
-                                            style={{ height: 'auto', padding: '0.5rem', flex: 1 }}
-                                            onChange={(e) => setArTemplateFile(e.target.files?.[0] || null)}
-                                        />
+                                    <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+                                        <label className="btn" style={{
+                                            flex: 1,
+                                            cursor: 'pointer',
+                                            background: 'rgba(255, 255, 255, 0.6)',
+                                            fontSize: '0.85rem',
+                                            justifyContent: 'flex-start',
+                                            overflow: 'hidden',
+                                            textOverflow: 'ellipsis',
+                                            whiteSpace: 'nowrap'
+                                        }}>
+                                            <span>📂</span>
+                                            {arTemplateFile ? arTemplateFile.name : t('choose_file' as any)}
+                                            <input
+                                                type="file"
+                                                accept=".xlsx"
+                                                style={{ display: 'none' }}
+                                                onChange={(e) => setArTemplateFile(e.target.files?.[0] || null)}
+                                            />
+                                        </label>
                                         {arTemplateFile && (
                                             <button
                                                 className="btn btn-primary"
-                                                style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem' }}
-                                                disabled={isUploadingTemplate}
+                                                style={{ padding: '0.5rem 1rem', fontSize: '0.85rem', minWidth: '100px' }}
+                                                disabled={isArUploading}
                                                 onClick={async () => {
-                                                    setIsUploadingTemplate(true)
+                                                    setIsArUploading(true)
                                                     const fd = new FormData()
                                                     fd.append('file', arTemplateFile)
                                                     fd.append('locale', 'ar')
-                                                    const res = await fetch('/api/templates/upload', { method: 'POST', body: fd })
-                                                    if (res.ok) {
-                                                        showToast('Arabic Template Updated', 'success')
-                                                        setArTemplateFile(null)
-                                                    } else {
-                                                        showToast('Upload Failed', 'error')
+                                                    try {
+                                                        const res = await fetch('/api/templates/upload', { method: 'POST', body: fd })
+                                                        if (res.ok) {
+                                                            showToast('Arabic Template Updated', 'success')
+                                                            setArTemplateFile(null)
+                                                        } else {
+                                                            showToast('Upload Failed', 'error')
+                                                        }
+                                                    } catch (e) {
+                                                        showToast('Upload Error', 'error')
+                                                    } finally {
+                                                        setIsArUploading(false)
                                                     }
-                                                    setIsUploadingTemplate(false)
                                                 }}
                                             >
-                                                {isUploadingTemplate ? '...' : 'Upload'}
+                                                {isArUploading ? <div className="spinner-small" style={{ width: '16px', height: '16px' }} /> : 'Upload'}
                                             </button>
                                         )}
                                     </div>
