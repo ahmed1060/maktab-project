@@ -500,16 +500,18 @@ export default function EmployeeHistoryPage() {
                                     <div
                                         key={adj.id}
                                         id={`adj-${adj.id}`}
-                                        className={highlightId === adj.id ? 'highlight-shading' : ''}
+                                        className={highlightId === adj.id ? 'highlight-pulse' : ''}
                                         style={{
                                             position: 'relative',
                                             padding: '1.25rem',
                                             borderRadius: '1rem',
-                                            background: 'white',
+                                            background: highlightId === adj.id ? 'rgba(168, 85, 247, 0.05)' : 'white',
                                             border: '1px solid #e2e8f0',
+                                            borderInlineStart: highlightId === adj.id ? '4px solid #a855f7' : '1px solid #e2e8f0',
                                             display: 'flex',
                                             justifyContent: 'space-between',
-                                            alignItems: 'center'
+                                            alignItems: 'center',
+                                            transition: 'all 0.3s ease'
                                         }}
                                     >
                                         {/* Strikethrough Line */}

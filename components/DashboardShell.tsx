@@ -48,7 +48,7 @@ export default function DashboardShell({ children, user }: DashboardShellProps) 
     }, [])
 
     // Dynamic width based on state
-    const sidebarWidth = isMobile ? '270px' : (isCollapsed ? '80px' : '270px')
+    const sidebarWidth = isMobile ? '230px' : (isCollapsed ? '80px' : '215px')
 
     const searchParams = useSearchParams()
     const selectedCompanyName = searchParams.get('company')
@@ -88,16 +88,17 @@ export default function DashboardShell({ children, user }: DashboardShellProps) 
                 direction: isRtl ? 'rtl' : 'ltr'
             }}>
                 <div style={{
-                    height: (user?.role === 'SUPER_ADMIN') ? '70px' : '55px', // Reduced by 10-15px
-                    paddingInlineStart: isCollapsed ? '0' : '2rem',
-                    paddingInlineEnd: isCollapsed ? '0' : '10px',
-                    paddingTop: (user?.role === 'SUPER_ADMIN' ? '0.25rem' : 0), // Tightened
+                    height: (user?.role === 'SUPER_ADMIN') ? '70px' : '55px',
+                    paddingInlineStart: isCollapsed ? '0' : '1.25rem',
+                    paddingInlineEnd: isCollapsed ? '0' : '0.75rem',
+                    paddingTop: (user?.role === 'SUPER_ADMIN' ? '0.25rem' : 0),
                     display: 'flex',
                     justifyContent: isCollapsed ? 'center' : 'flex-start',
                     alignItems: 'center',
                     transition: 'all 0.4s ease',
                     width: '100%',
-                    boxSizing: 'border-box'
+                    boxSizing: 'border-box',
+                    position: 'relative'
                 }}>
                     <div
                         onClick={() => !isMobile && setIsCollapsed(!isCollapsed)}
@@ -118,79 +119,52 @@ export default function DashboardShell({ children, user }: DashboardShellProps) 
                         }}
                         title={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
                     >
-                        <span style={{ fontSize: '1.4rem', filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.1))' }}>🚀</span>
+                        <span style={{
+                            fontSize: '1.4rem',
+                            filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.1))',
+                            width: isCollapsed ? '100%' : 'auto',
+                            display: 'flex',
+                            justifyContent: 'center',
+                            flexShrink: 0
+                        }}>🚀</span>
                         {!isCollapsed && (
                             <div style={{
                                 display: 'flex',
                                 flexDirection: 'column',
-                                alignItems: 'flex-start',
+                                alignItems: 'center', // Centered horizontally
+                                justifyContent: 'center',
                                 flex: 1,
                                 position: 'relative',
-                                border: 'none', // Removed testing border
-                                padding: '0.4rem 0 0.5rem 0.4rem', // Removed right padding to allow it to expand correctly
+                                padding: '0.4rem 0.25rem 0.5rem 0.25rem',
                                 boxSizing: 'border-box',
-                                width: 'fit-content',
-                                maxWidth: '100%',
-                                overflow: 'visible'
+                                width: '100%',
+                                overflow: 'hidden',
+                                textAlign: 'center'
                             }}>
                                 {(() => {
-                                    const words = displayName.split(' ');
-                                    const part1 = words[0] || '';
-                                    const part2 = words.slice(1).join(' ');
-
                                     const nameLength = displayName.length;
                                     const textStyle: React.CSSProperties = {
                                         background: 'linear-gradient(to right, #ffffff, #a5b4fc)',
                                         WebkitBackgroundClip: 'text',
                                         WebkitTextFillColor: 'transparent',
-                                        // Dynamic font size: shrinks as name gets longer to "flex" within the sidebar
                                         fontSize: nameLength > 20
-                                            ? 'clamp(0.9rem, 1.4vw, 1.2rem)'
+                                            ? 'clamp(0.9rem, 1.4vw, 1.1rem)'
                                             : nameLength > 12
-                                                ? 'clamp(1.1rem, 1.7vw, 1.5rem)'
-                                                : 'clamp(1.2rem, 1.8vw, 1.7rem)',
-                                        fontWeight: '900',
-                                        lineHeight: '1.1', // Increased from 0.9 to fix descender clipping
-                                        whiteSpace: 'nowrap',
-                                        fontFamily: 'inherit',
+                                                ? 'clamp(1.1rem, 1.7vw, 1.4rem)'
+                                                : 'clamp(1.2rem, 1.8vw, 1.6rem)',
+                                        fontWeight: '800',
+                                        lineHeight: '1.2',
+                                        fontFamily: "'Inter', sans-serif",
                                         display: 'block',
-                                        letterSpacing: '-0.02em',
-                                        transition: 'font-size 0.2s ease'
+                                        letterSpacing: '0.02em',
+                                        textAlign: 'center',
+                                        width: '100%'
                                     };
 
-                                    const isArabic = /[\u0600-\u06FF]/.test(displayName);
-                                    const textDirection = isArabic ? 'rtl' : 'ltr';
-
-                                    if (!part2) {
-                                        return (
-                                            <span dir={textDirection} style={{
-                                                ...textStyle,
-                                                fontSize: 'clamp(1.2rem, 1.8vw, 2rem)',
-                                                textAlign: 'center'
-                                            }}>
-                                                {part1}
-                                            </span>
-                                        );
-                                    }
-
                                     return (
-                                        <div
-                                            dir={textDirection}
-                                            style={{
-                                                display: 'flex',
-                                                flexDirection: 'column',
-                                                alignItems: 'flex-start',
-                                                justifyContent: 'center',
-                                                gap: '0'
-                                            }}
-                                        >
-                                            <span style={textStyle}>{part1}</span>
-                                            <span style={{
-                                                ...textStyle,
-                                                marginInlineStart: '2.5rem', // Increased staggering for better "floating" look
-                                                marginTop: '-0.4rem'
-                                            }}>
-                                                {part2}
+                                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '100%' }}>
+                                            <span style={textStyle}>
+                                                {displayName}
                                             </span>
                                         </div>
                                     );
@@ -406,23 +380,34 @@ export default function DashboardShell({ children, user }: DashboardShellProps) 
                     [isRtl ? 'left' : 'right']: '1.5rem',
                     display: 'flex',
                     flexDirection: 'column',
-                    alignItems: isRtl ? 'flex-start' : 'flex-end',
+                    alignItems: 'center', // Centered relative to each other
                     zIndex: 100,
                     pointerEvents: 'none',
-                    opacity: 0.6,
-                    transition: 'opacity 0.3s'
+                    opacity: 0.7,
+                    transition: 'all 0.3s ease',
+                    textAlign: 'center'
                 }} className="floating-attribution">
-                    <span style={{ fontSize: '0.6rem', color: '#64748b', fontWeight: '500', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                        Powered by
+                    <span style={{
+                        fontSize: '0.55rem',
+                        color: '#64748b',
+                        fontWeight: '600',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.1em',
+                        fontFamily: "'Inter', sans-serif"
+                    }}>
+                        {t('powered_by' as any) || 'Powered by'}
                     </span>
                     <span style={{
-                        fontSize: '0.9rem',
-                        color: '#475569',
-                        fontWeight: '800',
-                        letterSpacing: '0.2em',
-                        marginTop: '-0.1rem',
+                        fontSize: '1.15rem',
+                        color: '#1e293b',
+                        fontWeight: '900',
+                        letterSpacing: '0.15em',
+                        marginTop: '0.1rem',
                         textTransform: 'uppercase',
-                        fontFamily: 'monospace'
+                        fontFamily: "'Inter', sans-serif",
+                        background: 'linear-gradient(135deg, #1e293b 0%, #475569 100%)',
+                        WebkitBackgroundClip: 'text',
+                        WebkitTextFillColor: 'transparent',
                     }}>
                         SHSD
                     </span>

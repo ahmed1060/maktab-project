@@ -15,9 +15,10 @@ interface CostCardProps {
         }
         paymentStatus?: string
     }
+    isHighlighted?: boolean
 }
 
-export default function CostCard({ task }: CostCardProps) {
+export default function CostCard({ task, isHighlighted }: CostCardProps) {
     const { t, locale } = useLanguage()
     const [isHovered, setIsHovered] = useState(false)
 
@@ -37,15 +38,17 @@ export default function CostCard({ task }: CostCardProps) {
             style={{ textDecoration: 'none', color: 'inherit' }}
         >
             <div
-                className="card"
+                id={`cost-${task.id}`}
+                className={`card ${isHighlighted ? 'highlight-pulse' : ''}`}
                 style={{
                     cursor: 'pointer',
                     transition: 'all 0.2s ease',
-                    border: '2px solid #e2e8f0',
+                    border: isHighlighted ? '2px solid #a855f7' : '2px solid #e2e8f0',
                     height: '100%',
-                    transform: isHovered ? 'translateY(-2px)' : 'translateY(0)',
-                    boxShadow: isHovered ? '0 4px 12px rgba(0,0,0,0.1)' : 'none',
-                    borderColor: isHovered ? '#3b82f6' : '#e2e8f0',
+                    transform: (isHovered || isHighlighted) ? 'translateY(-2px)' : 'translateY(0)',
+                    boxShadow: (isHovered || isHighlighted) ? '0 4px 12px rgba(0,0,0,0.1)' : 'none',
+                    borderColor: isHighlighted ? '#a855f7' : (isHovered ? '#3b82f6' : '#e2e8f0'),
+                    background: isHighlighted ? 'rgba(168, 85, 247, 0.05)' : 'white',
                     textAlign: locale === 'ar' ? 'right' : 'left',
                     direction: locale === 'ar' ? 'rtl' : 'ltr'
                 }}

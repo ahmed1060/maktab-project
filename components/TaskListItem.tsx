@@ -58,7 +58,12 @@ export default function TaskListItem({ task, currentUserId, isHighlighted }: Tas
     const isMultiAssignee = (task.assignees?.length || 0) > 1
 
     return (
-        <div id={`task-${task.id}`} className={`glass-card ${isHighlighted ? 'highlight-shading' : ''}`} style={{ marginBottom: '1rem' }}>
+        <div id={`task-${task.id}`} className={`glass-card ${isHighlighted ? 'highlight-pulse' : ''}`} style={{
+            marginBottom: '1rem',
+            borderInlineStart: isHighlighted ? '4px solid #a855f7' : '',
+            transition: 'all 0.3s ease',
+            background: isHighlighted ? 'rgba(168, 85, 247, 0.05)' : ''
+        }}>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                     <h3

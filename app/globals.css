@@ -121,27 +121,18 @@ body::before {
   }
 }
 
-@keyframes highlight-fade {
-  0% {
-    box-shadow: inset 0 0 0 2000px rgba(99, 102, 241, 0.2), 0 0 30px rgba(99, 102, 241, 0.1);
-    transform: scale(1.01);
-  }
-
-  10% {
-    box-shadow: inset 0 0 0 2000px rgba(99, 102, 241, 0.2), 0 0 30px rgba(99, 102, 241, 0.1);
-    transform: scale(1.01);
-  }
-
-  100% {
-    box-shadow: inset 0 0 0 2000px rgba(99, 102, 241, 0), 0 0 0 rgba(99, 102, 241, 0);
-    transform: scale(1);
-  }
+@keyframes highlight-pulse-animation {
+  0% { box-shadow: 0 0 0 0 rgba(168, 85, 247, 0.4); border-color: rgba(168, 85, 247, 0.5); transform: scale(1.02); }
+  70% { box-shadow: 0 0 20px 10px rgba(168, 85, 247, 0); border-color: rgba(168, 85, 247, 0.3); transform: scale(1.02); }
+  100% { box-shadow: 0 0 0 0 rgba(168, 85, 247, 0); border-color: rgba(168, 85, 247, 0.5); transform: scale(1.02); }
 }
 
-.highlight-shading {
-  animation: highlight-fade 3s cubic-bezier(0.4, 0, 0.2, 1) forwards !important;
+.highlight-pulse {
+  animation: highlight-pulse-animation 2s infinite !important;
   position: relative;
   z-index: 10;
+  border: 2px solid rgba(168, 85, 247, 0.5) !important;
+  transition: all 0.3s ease;
 }
 
 /* Responsive Utilities */

@@ -398,10 +398,12 @@ export default function DayOffRequestsPage() {
                                 <div
                                     key={req.id}
                                     id={`request-${req.id}`}
-                                    className={`glass-card hover:bg-white/60 transition-all duration-300 p-5 border border-white/40 shadow-sm relative overflow-hidden flex flex-col gap-4 ${highlightId === req.id ? 'highlight-shading' : ''}`}
+                                    className={`glass-card hover:bg-white/60 transition-all duration-300 p-5 border border-white/40 shadow-sm relative overflow-hidden flex flex-col gap-4 ${highlightId === req.id ? 'highlight-pulse' : ''}`}
                                     style={{
-                                        animation: 'fadeIn 0.4s ease-out forwards',
-                                        animationDelay: `${index * 50}ms`
+                                        animation: highlightId === req.id ? 'none' : 'fadeIn 0.4s ease-out forwards',
+                                        animationDelay: `${index * 50}ms`,
+                                        borderInlineStart: highlightId === req.id ? '4px solid #a855f7' : '',
+                                        background: highlightId === req.id ? 'rgba(168, 85, 247, 0.05)' : ''
                                     }}
                                 >
                                     {/* Card Header */}

@@ -36,6 +36,7 @@ export default function RequestCard({ request, userRole, onView, onStatusUpdate,
     return (
         <div
             ref={cardRef}
+            id={`request-${request.id}`}
             className={`glass-card ${isHighlighted ? 'highlight-pulse' : ''}`}
             style={{
                 padding: '1.25rem',
@@ -44,7 +45,6 @@ export default function RequestCard({ request, userRole, onView, onStatusUpdate,
                 alignItems: 'center',
                 transition: 'all 0.3s ease',
                 borderInlineStart: isHighlighted ? '4px solid #a855f7' : '4px solid #6366f1',
-                boxShadow: isHighlighted ? '0 0 20px rgba(168, 85, 247, 0.3)' : 'none',
                 background: isHighlighted ? 'rgba(168, 85, 247, 0.05)' : 'white'
             }}
         >
@@ -115,14 +115,6 @@ export default function RequestCard({ request, userRole, onView, onStatusUpdate,
                 @keyframes spin {
                     from { transform: rotate(0deg); }
                     to { transform: rotate(360deg); }
-                }
-                .highlight-pulse {
-                    animation: pulse-shadow 2s infinite;
-                }
-                @keyframes pulse-shadow {
-                    0% { box-shadow: 0 0 0 0 rgba(168, 85, 247, 0.4); }
-                    70% { box-shadow: 0 0 15px 10px rgba(168, 85, 247, 0); }
-                    100% { box-shadow: 0 0 0 0 rgba(168, 85, 247, 0); }
                 }
             `}</style>
         </div>

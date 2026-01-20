@@ -448,14 +448,16 @@ export default function SectionNotesPage() {
                             <div
                                 id={`note-${note.id}`}
                                 key={note.id}
-                                className={`glass-card group flex flex-col hover:shadow-xl transition-all duration-300 ${highlightId === note.id ? 'highlight-shading' : ''}`}
+                                className={`glass-card group flex flex-col hover:shadow-xl transition-all duration-300 ${highlightId === note.id ? 'highlight-pulse' : ''}`}
                                 style={{
                                     animationDelay: `${index * 50}ms`,
                                     padding: '1.5rem',
                                     display: 'flex',
                                     flexDirection: 'column',
                                     marginBottom: '0.25rem',
-                                    borderRadius: '1.5rem'
+                                    borderRadius: '1.5rem',
+                                    background: highlightId === note.id ? 'rgba(168, 85, 247, 0.05)' : '',
+                                    borderInlineStart: highlightId === note.id ? '4px solid #a855f7' : ''
                                 }}
                             >
                                 {/* Header: User & Role */}

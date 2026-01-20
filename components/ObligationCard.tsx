@@ -17,7 +17,7 @@ interface Attachment {
     name: string
 }
 
-export default function ObligationCard({ obligation, userRole }: { obligation: Obligation, userRole: string }) {
+export default function ObligationCard({ obligation, userRole, isHighlighted }: { obligation: Obligation, userRole: string, isHighlighted?: boolean }) {
     const [status, setStatus] = useState(obligation.status)
     const [uploading, setUploading] = useState(false)
 
@@ -63,7 +63,14 @@ export default function ObligationCard({ obligation, userRole }: { obligation: O
     }
 
     return (
-        <div className="card" style={{ padding: '1rem', border: '1px solid #eee', borderRadius: '8px', background: 'white' }}>
+        <div id={`obligation-${obligation.id}`} className={`card ${isHighlighted ? 'highlight-pulse' : ''}`} style={{
+            padding: '1rem',
+            border: '1px solid #eee',
+            borderRadius: '8px',
+            background: isHighlighted ? 'rgba(168, 85, 247, 0.05)' : 'white',
+            borderInlineStart: isHighlighted ? '4px solid #a855f7' : '1px solid #eee',
+            transition: 'all 0.3s ease'
+        }}>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <h3>{obligation.title}</h3>
                 <span style={{
