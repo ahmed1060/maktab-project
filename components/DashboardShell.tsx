@@ -150,11 +150,11 @@ export default function DashboardShell({ children, user }: DashboardShellProps) 
                                     const cleanName = displayName.trim();
                                     const isArabicName = /[\u0600-\u06FF]/.test(cleanName);
                                     const words = cleanName.split(/\s+/);
-                                    const shouldCenter = words.length !== 2;
+                                    const isTwoWords = words.length === 2;
 
                                     // Case 1: 1 word
-                                    // Case 2: 2 words -> Part 1 = Word 1, Part 2 = Word 2
-                                    // Case 3: 3+ words -> Part 1 = All but last, Part 2 = Last word
+                                    // Case 2: 2 words -> Part 1 = Word 1, Part 2 = Word 2 (Diagonal)
+                                    // Case 3: 3+ words -> Part 1 = All but last, Part 2 = Last word (Centered)
                                     const part1 = words.length > 1 ? words.slice(0, -1).join(' ') : words[0] || '';
                                     const part2 = words.length > 1 ? words.slice(-1)[0] : '';
 
@@ -190,17 +190,21 @@ export default function DashboardShell({ children, user }: DashboardShellProps) 
                                         <div style={{
                                             display: 'flex',
                                             flexDirection: 'column',
-                                            alignItems: shouldCenter ? 'center' : 'flex-start',
+                                            alignItems: isTwoWords ? 'stretch' : 'center',
                                             justifyContent: 'center',
                                             width: '100%',
                                             direction: isArabicName ? 'rtl' : 'ltr',
                                             border: '1px solid red'
                                         }}>
-                                            <span style={{ ...textStyle, textAlign: shouldCenter ? 'center' : (isArabicName ? 'right' : 'left') }}>{part1}</span>
                                             <span style={{
                                                 ...textStyle,
-                                                textAlign: shouldCenter ? 'center' : (isArabicName ? 'right' : 'left'),
-                                                marginInlineStart: shouldCenter ? '0' : '2.5rem',
+                                                alignSelf: isTwoWords ? 'flex-start' : 'center',
+                                                textAlign: isTwoWords ? (isArabicName ? 'right' : 'left') : 'center'
+                                            }}>{part1}</span>
+                                            <span style={{
+                                                ...textStyle,
+                                                alignSelf: isTwoWords ? 'flex-end' : 'center',
+                                                textAlign: isTwoWords ? (isArabicName ? 'left' : 'right') : 'center',
                                                 marginTop: '-0.3rem'
                                             }}>
                                                 {part2}
