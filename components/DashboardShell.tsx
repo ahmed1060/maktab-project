@@ -98,8 +98,7 @@ export default function DashboardShell({ children, user }: DashboardShellProps) 
                     transition: 'all 0.4s ease',
                     width: '100%',
                     boxSizing: 'border-box',
-                    position: 'relative',
-                    border: '1px solid red'
+                    position: 'relative'
                 }}>
                     <div
                         onClick={() => !isMobile && setIsCollapsed(!isCollapsed)}
@@ -143,8 +142,7 @@ export default function DashboardShell({ children, user }: DashboardShellProps) 
                                 boxSizing: 'border-box',
                                 width: '100%',
                                 overflow: 'hidden',
-                                textAlign: 'left',
-                                border: '1px solid red'
+                                textAlign: 'left'
                             }}>
                                 {(() => {
                                     const cleanName = displayName.trim();
