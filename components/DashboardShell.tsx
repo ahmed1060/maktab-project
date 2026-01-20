@@ -48,7 +48,7 @@ export default function DashboardShell({ children, user }: DashboardShellProps) 
     }, [])
 
     // Dynamic width based on state
-    const sidebarWidth = isMobile ? '230px' : (isCollapsed ? '80px' : '215px')
+    const sidebarWidth = isMobile ? '270px' : (isCollapsed ? '80px' : '270px')
 
     const searchParams = useSearchParams()
     const selectedCompanyName = searchParams.get('company')
@@ -142,29 +142,44 @@ export default function DashboardShell({ children, user }: DashboardShellProps) 
                                 textAlign: 'center'
                             }}>
                                 {(() => {
+                                    const words = displayName.split(' ');
+                                    const part1 = words[0] || '';
+                                    const part2 = words.slice(1).join(' ');
+
                                     const nameLength = displayName.length;
                                     const textStyle: React.CSSProperties = {
                                         background: 'linear-gradient(to right, #ffffff, #a5b4fc)',
                                         WebkitBackgroundClip: 'text',
                                         WebkitTextFillColor: 'transparent',
                                         fontSize: nameLength > 20
-                                            ? 'clamp(0.9rem, 1.4vw, 1.1rem)'
+                                            ? 'clamp(0.9rem, 1.4vw, 1.2rem)'
                                             : nameLength > 12
-                                                ? 'clamp(1.1rem, 1.7vw, 1.4rem)'
-                                                : 'clamp(1.2rem, 1.8vw, 1.6rem)',
-                                        fontWeight: '800',
+                                                ? 'clamp(1.1rem, 1.7vw, 1.5rem)'
+                                                : 'clamp(1.2rem, 1.8vw, 1.7rem)',
+                                        fontWeight: '900',
                                         lineHeight: '1.2',
-                                        fontFamily: "'Inter', sans-serif",
+                                        fontFamily: 'inherit',
                                         display: 'block',
-                                        letterSpacing: '0.02em',
-                                        textAlign: 'center',
-                                        width: '100%'
+                                        letterSpacing: '-0.02em',
+                                        transition: 'font-size 0.2s ease',
+                                        width: 'fit-content'
                                     };
 
+                                    if (!part2) {
+                                        return (
+                                            <span style={{ ...textStyle, textAlign: 'center' }}>{part1}</span>
+                                        );
+                                    }
+
                                     return (
-                                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '100%' }}>
-                                            <span style={textStyle}>
-                                                {displayName}
+                                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', justifyContent: 'center' }}>
+                                            <span style={textStyle}>{part1}</span>
+                                            <span style={{
+                                                ...textStyle,
+                                                marginInlineStart: '2.5rem',
+                                                marginTop: '-0.4rem'
+                                            }}>
+                                                {part2}
                                             </span>
                                         </div>
                                     );
