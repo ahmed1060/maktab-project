@@ -147,6 +147,9 @@ export default function DashboardShell({ children, user }: DashboardShellProps) 
                                     const part2 = words.slice(1).join(' ');
 
                                     const nameLength = displayName.length;
+                                    const isArabic = /[\u0600-\u06FF]/.test(displayName);
+                                    const textDirection = isArabic ? 'rtl' : 'ltr';
+
                                     const textStyle: React.CSSProperties = {
                                         background: 'linear-gradient(to right, #ffffff, #a5b4fc)',
                                         WebkitBackgroundClip: 'text',
@@ -160,24 +163,31 @@ export default function DashboardShell({ children, user }: DashboardShellProps) 
                                         lineHeight: '1.2',
                                         fontFamily: 'inherit',
                                         display: 'block',
-                                        letterSpacing: '-0.02em',
+                                        letterSpacing: isArabic ? 'normal' : '-0.02em',
                                         transition: 'font-size 0.2s ease',
                                         width: 'fit-content'
                                     };
 
                                     if (!part2) {
                                         return (
-                                            <span style={{ ...textStyle, textAlign: 'left', width: '100%' }}>{part1}</span>
+                                            <span style={{ ...textStyle, textAlign: isArabic ? 'right' : 'left', width: '100%' }}>{part1}</span>
                                         );
                                     }
 
                                     return (
-                                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', justifyContent: 'center', width: '100%' }}>
+                                        <div dir={textDirection} style={{
+                                            display: 'flex',
+                                            flexDirection: 'column',
+                                            alignItems: 'flex-start',
+                                            justifyContent: 'center',
+                                            width: 'fit-content',
+                                            alignSelf: 'flex-start'
+                                        }}>
                                             <span style={textStyle}>{part1}</span>
                                             <span style={{
                                                 ...textStyle,
-                                                marginInlineStart: '2.5rem',
-                                                marginTop: '-0.4rem'
+                                                marginInlineStart: '2rem',
+                                                marginTop: '-0.3rem'
                                             }}>
                                                 {part2}
                                             </span>
