@@ -147,8 +147,10 @@ export default function DashboardShell({ children, user }: DashboardShellProps) 
                                 border: '1px solid red'
                             }}>
                                 {(() => {
-                                    const isArabicName = /[\u0600-\u06FF]/.test(displayName);
-                                    const words = displayName.split(' ');
+                                    const cleanName = displayName.trim();
+                                    const isArabicName = /[\u0600-\u06FF]/.test(cleanName);
+                                    const words = cleanName.split(/\s+/);
+                                    const shouldCenter = words.length !== 2;
 
                                     // Case 1: 1 word
                                     // Case 2: 2 words -> Part 1 = Word 1, Part 2 = Word 2
@@ -156,7 +158,7 @@ export default function DashboardShell({ children, user }: DashboardShellProps) 
                                     const part1 = words.length > 1 ? words.slice(0, -1).join(' ') : words[0] || '';
                                     const part2 = words.length > 1 ? words.slice(-1)[0] : '';
 
-                                    const nameLength = displayName.length;
+                                    const nameLength = cleanName.length;
                                     const textStyle: React.CSSProperties = {
                                         background: 'linear-gradient(to right, #ffffff, #a5b4fc)',
                                         WebkitBackgroundClip: 'text',
@@ -172,13 +174,14 @@ export default function DashboardShell({ children, user }: DashboardShellProps) 
                                         display: 'block',
                                         letterSpacing: isArabicName ? 'normal' : '-0.02em',
                                         transition: 'font-size 0.2s ease',
-                                        width: 'fit-content'
+                                        width: 'fit-content',
+                                        whiteSpace: 'pre-wrap' // Handle internal wrapping if name is extremely long
                                     };
 
                                     if (!part2) {
                                         return (
-                                            <div style={{ display: 'flex', alignItems: 'center', height: '100%', border: '1px solid red' }}>
-                                                <span style={{ ...textStyle, textAlign: isRtl ? 'right' : 'left', width: '100%' }}>{part1}</span>
+                                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', border: '1px solid red', width: '100%' }}>
+                                                <span style={{ ...textStyle, textAlign: 'center', width: '100%' }}>{part1}</span>
                                             </div>
                                         );
                                     }
@@ -187,16 +190,17 @@ export default function DashboardShell({ children, user }: DashboardShellProps) 
                                         <div style={{
                                             display: 'flex',
                                             flexDirection: 'column',
-                                            alignItems: isArabicName ? 'flex-start' : 'flex-start', // Base alignment
+                                            alignItems: shouldCenter ? 'center' : 'flex-start',
                                             justifyContent: 'center',
                                             width: '100%',
                                             direction: isArabicName ? 'rtl' : 'ltr',
                                             border: '1px solid red'
                                         }}>
-                                            <span style={textStyle}>{part1}</span>
+                                            <span style={{ ...textStyle, textAlign: shouldCenter ? 'center' : (isArabicName ? 'right' : 'left') }}>{part1}</span>
                                             <span style={{
                                                 ...textStyle,
-                                                marginInlineStart: '2.5rem',
+                                                textAlign: shouldCenter ? 'center' : (isArabicName ? 'right' : 'left'),
+                                                marginInlineStart: shouldCenter ? '0' : '2.5rem',
                                                 marginTop: '-0.3rem'
                                             }}>
                                                 {part2}
