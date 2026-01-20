@@ -190,7 +190,7 @@ export default function DashboardShell({ children, user }: DashboardShellProps) 
                                         <div style={{
                                             display: 'flex',
                                             flexDirection: 'column',
-                                            alignItems: isTwoWords ? 'stretch' : 'center',
+                                            alignItems: 'center',
                                             justifyContent: 'center',
                                             width: '100%',
                                             direction: isArabicName ? 'rtl' : 'ltr',
@@ -198,13 +198,13 @@ export default function DashboardShell({ children, user }: DashboardShellProps) 
                                         }}>
                                             <span style={{
                                                 ...textStyle,
-                                                alignSelf: isTwoWords ? 'flex-start' : 'center',
-                                                textAlign: isTwoWords ? (isArabicName ? 'right' : 'left') : 'center'
+                                                textAlign: 'center',
+                                                transform: isTwoWords ? (isArabicName ? 'translateX(0.8rem)' : 'translateX(-0.8rem)') : 'none'
                                             }}>{part1}</span>
                                             <span style={{
                                                 ...textStyle,
-                                                alignSelf: isTwoWords ? 'flex-end' : 'center',
-                                                textAlign: isTwoWords ? (isArabicName ? 'left' : 'right') : 'center',
+                                                textAlign: 'center',
+                                                transform: isTwoWords ? (isArabicName ? 'translateX(-0.8rem)' : 'translateX(0.8rem)') : 'none',
                                                 marginTop: '-0.3rem'
                                             }}>
                                                 {part2}
