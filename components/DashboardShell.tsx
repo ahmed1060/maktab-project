@@ -192,7 +192,7 @@ export default function DashboardShell({ children, user }: DashboardShellProps) 
                                             <span style={{
                                                 ...textStyle,
                                                 marginLeft: isArabicName ? '0' : '2.5rem',
-                                                marginTop: '-0.4rem'
+                                                marginTop: '-0.3rem'
                                             }}>
                                                 {part2}
                                             </span>
