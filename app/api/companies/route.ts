@@ -199,10 +199,9 @@ export async function DELETE(req: Request) {
                 // Delete Audit Logs
                 await tx.auditLog.deleteMany({ where: { userId: { in: userIds } } })
 
-                // Unlink Created Tasks
-                await tx.task.updateMany({
-                    where: { createdBy: { in: userIds } },
-                    data: { createdBy: null }
+                // Delete Created Tasks
+                await tx.task.deleteMany({
+                    where: { createdBy: { in: userIds } }
                 })
 
                 // Delete Users
