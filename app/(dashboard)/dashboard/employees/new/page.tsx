@@ -18,7 +18,6 @@ export default function NewEmployeePage() {
     const [role, setRole] = useState('EMPLOYEE')
     const [companyId, setCompanyId] = useState('')
     const [salary, setSalary] = useState('')
-    const [username, setUsername] = useState('')
     const [dayOffCredit, setDayOffCredit] = useState('0')
     const [companies, setCompanies] = useState<Company[]>([])
     const [error, setError] = useState('')
@@ -71,9 +70,6 @@ export default function NewEmployeePage() {
             const body: any = { firstName, lastName, email, password, role }
             if (userRole === 'SUPER_ADMIN' && companyId) {
                 body.companyId = companyId
-            }
-            if (username) {
-                body.username = username
             }
             if (salary) {
                 body.salary = parseFloat(salary)
@@ -195,19 +191,6 @@ export default function NewEmployeePage() {
                         </div>
                     )}
                 </div>
-
-                {userRole === 'SUPER_ADMIN' && (
-                    <div style={{ marginBottom: '1rem' }}>
-                        <label style={{ display: 'block', marginBottom: '0.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('username_label' as any) || 'Username (Optional)'}</label>
-                        <input
-                            className="input"
-                            value={username}
-                            onChange={e => setUsername(e.target.value)}
-                            style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}
-                            placeholder={locale === 'ar' ? 'سيتم إنشاؤه تلقائياً إذا ترك فارغاً' : "Will be auto-generated if left blank"}
-                        />
-                    </div>
-                )}
 
                 <div style={{ position: 'relative' }}>
                     <label style={{ display: 'block', marginBottom: '0.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('password')}</label>
