@@ -17,7 +17,7 @@ export default async function TasksPage({ searchParams }: { searchParams: { comp
         if (comp) companyId = comp.id
     }
 
-    const view = searchParams.view || (role === 'EMPLOYEE' ? 'my' : 'active')
+    const view = searchParams.view || (['EMPLOYEE', 'TEAM_LEADER'].includes(role) ? 'my' : 'active')
     const whereClause: any = {}
     const userCompanyId = (session?.user as any)?.companyId
 
@@ -43,8 +43,12 @@ export default async function TasksPage({ searchParams }: { searchParams: { comp
                 { assignees: { some: { id: userId } } }
             ]
         } else {
-            // Active tasks: all company tasks
+            // Active tasks: all company tasks except those assigned to current user
             whereClause.assignee = { companyId: userCompanyId }
+            whereClause.NOT = [
+                { assigneeId: userId },
+                { assignees: { some: { id: userId } } }
+            ]
         }
     } else if (role === 'ADMIN') {
         // ADMIN still sees all company tasks
