@@ -115,15 +115,15 @@ export default function TasksClient({ tasks, total, page, totalPages, role, curr
                         onClick={() => updateQueryParams({ view: 'my' })}
                         className="btn"
                         style={{
-                            background: view === 'my' ? 'var(--btn-primary)' : 'rgba(255, 255, 255, 0.4)',
-                            color: view === 'my' ? '#fff' : 'var(--text-main)',
-                            border: '1px solid var(--glass-border)',
-                            backdropFilter: 'blur(8px)',
-                            padding: '0.6rem 1.25rem',
-                            borderRadius: '1rem',
-                            fontSize: '0.9rem',
-                            fontWeight: '600',
-                            transition: 'all 0.2s ease'
+                            background: view === 'my' ? 'var(--btn-primary)' : '#f1f5f9',
+                            color: view === 'my' ? '#fff' : '#0f172a',
+                            border: 'none',
+                            padding: '0.6rem 1.75rem',
+                            borderRadius: '99px',
+                            fontSize: '0.95rem',
+                            fontWeight: '800',
+                            transition: 'all 0.2s ease',
+                            boxShadow: view === 'my' ? '0 4px 12px rgba(139, 92, 246, 0.25)' : 'none'
                         }}
                     >
                         {t('my_tasks' as any)}
@@ -132,15 +132,15 @@ export default function TasksClient({ tasks, total, page, totalPages, role, curr
                         onClick={() => updateQueryParams({ view: 'active' })}
                         className="btn"
                         style={{
-                            background: view === 'active' ? 'var(--btn-primary)' : 'rgba(255, 255, 255, 0.4)',
-                            color: view === 'active' ? '#fff' : 'var(--text-main)',
-                            border: '1px solid var(--glass-border)',
-                            backdropFilter: 'blur(8px)',
-                            padding: '0.6rem 1.25rem',
-                            borderRadius: '1rem',
-                            fontSize: '0.9rem',
-                            fontWeight: '600',
-                            transition: 'all 0.2s ease'
+                            background: view === 'active' ? 'var(--btn-primary)' : '#f1f5f9',
+                            color: view === 'active' ? '#fff' : '#0f172a',
+                            border: 'none',
+                            padding: '0.6rem 1.75rem',
+                            borderRadius: '99px',
+                            fontSize: '0.95rem',
+                            fontWeight: '800',
+                            transition: 'all 0.2s ease',
+                            boxShadow: view === 'active' ? '0 4px 12px rgba(139, 92, 246, 0.25)' : 'none'
                         }}
                     >
                         {t('active_tasks' as any)}
