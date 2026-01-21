@@ -1,1 +1,0 @@
-app/api/companies/route.ts(205,29): error TS2322: Type 'null' is not assignable to type 'string | StringFieldUpdateOperationsInput | undefined'.
