@@ -13,6 +13,7 @@ export default function NewObligationPage() {
     const [assigneeId, setAssigneeId] = useState('')
     const [deadline, setDeadline] = useState('')
     const [difficulty, setDifficulty] = useState('')
+    const [searchTerm, setSearchTerm] = useState('')
     const [users, setUsers] = useState<any[]>([])
     const router = useRouter()
 
@@ -119,6 +120,11 @@ export default function NewObligationPage() {
         textAlign: locale === 'ar' ? 'right' : 'left'
     }
 
+    const filteredUsers = users.filter(u => {
+        const fullName = `${u.firstName} ${u.lastName}`.toLowerCase()
+        return fullName.includes(searchTerm.toLowerCase())
+    })
+
     return (
         <div className="card" style={{ maxWidth: '600px', margin: '0 auto', ...containerStyle }}>
             <h1 style={{ marginBottom: '1.5rem' }}>{t('add_obligation')}</h1>
@@ -175,10 +181,58 @@ export default function NewObligationPage() {
                 </div>
                 <div id="field-assigneeId" style={{ marginBottom: '1.25rem' }}>
                     <label style={{ display: 'block', marginBottom: '0.5rem' }}>{t('assignee_label')}</label>
-                    <select className="input" value={assigneeId} onChange={e => setAssigneeId(e.target.value)} required style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>
-                        <option value="">{t('select_employee_placeholder')}</option>
-                        {users.map(u => <option key={u.id} value={u.id}>{u.firstName} {u.lastName} - {t(`role_${u.role?.toLowerCase().replace('team_leader', 'team_leader').replace('employee', 'employee').replace('admin', 'admin')}` as any)}</option>)}
-                    </select>
+                    <input
+                        type="text"
+                        className="input"
+                        placeholder={t('search_placeholder')}
+                        value={searchTerm}
+                        onChange={e => setSearchTerm(e.target.value)}
+                        style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}
+                    />
+                    <div style={{
+                        maxHeight: '200px',
+                        overflowY: 'auto',
+                        border: '1px solid #e2e8f0',
+                        borderRadius: '0.5rem',
+                        padding: '0.75rem',
+                        background: '#fff'
+                    }}>
+                        {filteredUsers.length > 0 ? filteredUsers.map(u => (
+                            <label key={u.id} style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '0.5rem',
+                                marginBottom: '0.5rem',
+                                cursor: 'pointer',
+                                padding: '0.25rem',
+                                borderRadius: '0.25rem',
+                                background: assigneeId === u.id ? '#f0f9ff' : 'transparent'
+                            }}>
+                                <input
+                                    type="radio"
+                                    name="assignee"
+                                    checked={assigneeId === u.id}
+                                    onChange={() => {
+                                        setAssigneeId(u.id)
+                                        if (fieldErrors.assigneeId) setFieldErrors({ ...fieldErrors, assigneeId: '' })
+                                    }}
+                                    required
+                                />
+                                <span style={{ fontSize: '0.9rem' }}>
+                                    {u.firstName} {u.lastName} <small style={{ color: '#64748b' }}>({t(`role_${u.role?.toLowerCase().replace('team_leader', 'team_leader').replace('employee', 'employee').replace('admin', 'admin')}` as any)})</small>
+                                </span>
+                            </label>
+                        )) : (
+                            <div style={{ color: '#64748b', fontSize: '0.9rem', textAlign: 'center', padding: '1rem' }}>
+                                {t('no_data_available')}
+                            </div>
+                        )}
+                    </div>
+                    {fieldErrors.assigneeId && (
+                        <div style={{ color: '#ef4444', fontSize: '0.85rem', marginTop: '0.25rem' }}>
+                            {fieldErrors.assigneeId}
+                        </div>
+                    )}
                 </div>
                 <div id="field-deadline" style={{ marginBottom: '1.25rem' }}>
                     <DateTimePicker

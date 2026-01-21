@@ -35,6 +35,7 @@ export async function POST() {
         }
 
         return NextResponse.json({ success: true, status: 'ACTIVE' })
+
     } catch {
         return new NextResponse("Error updating activity", { status: 500 })
     }

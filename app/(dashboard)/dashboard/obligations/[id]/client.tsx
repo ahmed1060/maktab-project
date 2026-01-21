@@ -28,6 +28,33 @@ export default function ObligationDetailClient({ obligation, userRole }: { oblig
         })
     }, [])
 
+    useEffect(() => {
+        if (userRole !== 'EMPLOYEE') return
+
+        const isOverdue = new Date(obligation.deadline) < new Date() && !['COMPLETED', 'APPROVED'].includes(obligation.status)
+        if (!isOverdue) return
+
+        const handleLocalClick = (e: MouseEvent) => {
+            const target = e.target as HTMLElement
+            const closestClickable = target.closest('button, a, [role="button"]')
+
+            if (closestClickable) {
+                // Allow close button or logout
+                const text = closestClickable.textContent?.toLowerCase() || ''
+                if (text.includes(t('close_button').toLowerCase()) || text.includes('logout') || text.includes('sign out')) {
+                    return
+                }
+
+                e.preventDefault()
+                e.stopPropagation()
+                alert(t('overdue_obligation_alert_msg' as any))
+            }
+        }
+
+        document.addEventListener('click', handleLocalClick, true)
+        return () => document.removeEventListener('click', handleLocalClick, true)
+    }, [userRole, obligation.deadline, obligation.status, t])
+
     const handleUpload = useCallback(async (isDraft: boolean) => {
         setUploading(true)
         setLoadingType(isDraft ? 'DRAFT' : 'SUBMIT')

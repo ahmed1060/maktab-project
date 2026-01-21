@@ -644,7 +644,9 @@ export const translations = {
         costs_tab: "Costs",
         username_label: "Username",
         username_placeholder: "Enter username...",
-        choose_file: "Choose File"
+        choose_file: "Choose File",
+        overdue_task_alert_msg: "The deadline for this task has passed. Please contact the person who assigned it to discuss next steps or to request an extension",
+        overdue_obligation_alert_msg: "The deadline for this obligation has passed. Please contact the person who assigned it to discuss next steps or to request an extension"
     },
     ar: {
         welcome_back: "مرحباً بك مجدداً",
@@ -1290,7 +1292,9 @@ export const translations = {
         processing: "جاري المعالجة...",
         username_label: "اسم المستخدم",
         username_placeholder: "أدخل اسم المستخدم...",
-        choose_file: "اختر ملفاً"
+        choose_file: "اختر ملف",
+        overdue_task_alert_msg: "لقد مر الموعد النهائي لهذه المهمة. يرجى الاتصال بالشخص الذي قام بتعيينها لمناقشة الخطوات التالية أو لطلب تمديد",
+        overdue_obligation_alert_msg: "لقد مر الموعد النهائي لهذا الالتزام. يرجى الاتصال بالشخص الذي قام بتعيينها لمناقشة الخطوات التالية أو لطلب تمديد"
     }
 };
 

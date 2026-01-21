@@ -150,6 +150,33 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
 
     // Load users once for search/filter efficiency
     useEffect(() => {
+        if (userRole !== 'EMPLOYEE') return
+
+        const isOverdue = new Date(task.deadline) < new Date() && !['COMPLETED', 'APPROVED'].includes(task.status)
+        if (!isOverdue) return
+
+        const handleLocalClick = (e: MouseEvent) => {
+            const target = e.target as HTMLElement
+            const closestClickable = target.closest('button, a, [role="button"]')
+
+            if (closestClickable) {
+                // Allow back button or close button or logout
+                const text = closestClickable.textContent?.toLowerCase() || ''
+                if (text.includes(t('close_button').toLowerCase()) || text.includes('logout') || text.includes('sign out')) {
+                    return
+                }
+
+                e.preventDefault()
+                e.stopPropagation()
+                alert(t('overdue_task_alert_msg' as any))
+            }
+        }
+
+        document.addEventListener('click', handleLocalClick, true)
+        return () => document.removeEventListener('click', handleLocalClick, true)
+    }, [userRole, task.deadline, task.status, t])
+
+    useEffect(() => {
         if (['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole)) {
             fetch('/api/users')
                 .then(r => {
