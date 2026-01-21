@@ -34,6 +34,10 @@ export default function TasksClient({ tasks, total, page, totalPages, role, curr
     const [sortBy, setSortBy] = useState(searchParams?.get('sortBy') || 'smart')
     const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>(searchParams?.get('sortOrder') as any || 'asc')
 
+    // Hover states for toggle buttons
+    const [isMyHovered, setIsMyHovered] = useState(false)
+    const [isActiveHovered, setIsActiveHovered] = useState(false)
+
     const updateQueryParams = (newFilters: any) => {
         const params = new URLSearchParams(searchParams?.toString())
         Object.keys(newFilters).forEach(key => {
@@ -112,35 +116,49 @@ export default function TasksClient({ tasks, total, page, totalPages, role, curr
             {['EMPLOYEE', 'TEAM_LEADER'].includes(role) && (
                 <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1.25rem' }}>
                     <button
+                        onMouseEnter={() => setIsMyHovered(true)}
+                        onMouseLeave={() => setIsMyHovered(false)}
                         onClick={() => updateQueryParams({ view: 'my' })}
                         className="btn"
                         style={{
-                            background: view === 'my' ? 'var(--btn-primary)' : '#f1f5f9',
+                            background: view === 'my'
+                                ? 'linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%)'
+                                : '#f1f5f9',
                             color: view === 'my' ? '#fff' : '#0f172a',
                             border: 'none',
                             padding: '0.6rem 1.75rem',
                             borderRadius: '99px',
                             fontSize: '0.95rem',
                             fontWeight: '800',
-                            transition: 'all 0.2s ease',
-                            boxShadow: view === 'my' ? '0 4px 12px rgba(139, 92, 246, 0.25)' : 'none'
+                            transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                            transform: isMyHovered ? 'translateY(-2px)' : 'none',
+                            boxShadow: isMyHovered
+                                ? '0 8px 25px rgba(99, 102, 241, 0.45)'
+                                : (view === 'my' ? '0 4px 12px rgba(139, 92, 246, 0.25)' : 'none')
                         }}
                     >
                         {t('my_tasks' as any)}
                     </button>
                     <button
+                        onMouseEnter={() => setIsActiveHovered(true)}
+                        onMouseLeave={() => setIsActiveHovered(false)}
                         onClick={() => updateQueryParams({ view: 'active' })}
                         className="btn"
                         style={{
-                            background: view === 'active' ? 'var(--btn-primary)' : '#f1f5f9',
+                            background: view === 'active'
+                                ? 'linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%)'
+                                : '#f1f5f9',
                             color: view === 'active' ? '#fff' : '#0f172a',
                             border: 'none',
                             padding: '0.6rem 1.75rem',
                             borderRadius: '99px',
                             fontSize: '0.95rem',
                             fontWeight: '800',
-                            transition: 'all 0.2s ease',
-                            boxShadow: view === 'active' ? '0 4px 12px rgba(139, 92, 246, 0.25)' : 'none'
+                            transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                            transform: isActiveHovered ? 'translateY(-2px)' : 'none',
+                            boxShadow: isActiveHovered
+                                ? '0 8px 25px rgba(99, 102, 241, 0.45)'
+                                : (view === 'active' ? '0 4px 12px rgba(139, 92, 246, 0.25)' : 'none')
                         }}
                     >
                         {t('active_tasks' as any)}
