@@ -14,9 +14,10 @@ interface TasksClientProps {
     totalPages: number
     role: string
     currentUserId: string
+    view: string
 }
 
-export default function TasksClient({ tasks, total, page, totalPages, role, currentUserId }: TasksClientProps) {
+export default function TasksClient({ tasks, total, page, totalPages, role, currentUserId, view }: TasksClientProps) {
     const { t, locale } = useLanguage()
     const router = useRouter()
     const searchParams = useSearchParams()
@@ -108,6 +109,44 @@ export default function TasksClient({ tasks, total, page, totalPages, role, curr
 
     return (
         <div>
+            {['EMPLOYEE', 'TEAM_LEADER'].includes(role) && (
+                <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1.25rem' }}>
+                    <button
+                        onClick={() => updateQueryParams({ view: 'my' })}
+                        className="btn"
+                        style={{
+                            background: view === 'my' ? 'var(--btn-primary)' : 'rgba(255, 255, 255, 0.4)',
+                            color: view === 'my' ? '#fff' : 'var(--text-main)',
+                            border: '1px solid var(--glass-border)',
+                            backdropFilter: 'blur(8px)',
+                            padding: '0.6rem 1.25rem',
+                            borderRadius: '1rem',
+                            fontSize: '0.9rem',
+                            fontWeight: '600',
+                            transition: 'all 0.2s ease'
+                        }}
+                    >
+                        {t('my_tasks' as any)}
+                    </button>
+                    <button
+                        onClick={() => updateQueryParams({ view: 'active' })}
+                        className="btn"
+                        style={{
+                            background: view === 'active' ? 'var(--btn-primary)' : 'rgba(255, 255, 255, 0.4)',
+                            color: view === 'active' ? '#fff' : 'var(--text-main)',
+                            border: '1px solid var(--glass-border)',
+                            backdropFilter: 'blur(8px)',
+                            padding: '0.6rem 1.25rem',
+                            borderRadius: '1rem',
+                            fontSize: '0.9rem',
+                            fontWeight: '600',
+                            transition: 'all 0.2s ease'
+                        }}
+                    >
+                        {t('active_tasks' as any)}
+                    </button>
+                </div>
+            )}
             <EmployeeFilter
                 onFilterChange={(newFilters) => {
                     setFilters(prev => ({ ...prev, ...newFilters }))

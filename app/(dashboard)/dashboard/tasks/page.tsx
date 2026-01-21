@@ -3,12 +3,13 @@ import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import TasksClient from "./TasksClient"
 
-export default async function TasksPage({ searchParams }: { searchParams: { company?: string, page?: string, status?: string, search?: string, employeeId?: string } }) {
+export default async function TasksPage({ searchParams }: { searchParams: { company?: string, page?: string, status?: string, search?: string, employeeId?: string, view?: string, dateFrom?: string, dateTo?: string } }) {
     const session = await getServerSession(authOptions)
     const role = (session?.user as any)?.role
     const page = parseInt(searchParams.page || '1')
     const limit = 10
     const skip = (page - 1) * limit
+    const userId = (session?.user as any)?.id // Define userId here for all cases
 
     let companyId: string | undefined = undefined
     if (searchParams.company) {
@@ -16,21 +17,38 @@ export default async function TasksPage({ searchParams }: { searchParams: { comp
         if (comp) companyId = comp.id
     }
 
+    const view = searchParams.view || (role === 'EMPLOYEE' ? 'my' : 'active')
     const whereClause: any = {}
     const userCompanyId = (session?.user as any)?.companyId
 
     if (role === 'EMPLOYEE') {
-        const userId = (session?.user as any)?.id
-        whereClause.OR = [
-            { assigneeId: userId },
-            { assignees: { some: { id: userId } } }
-        ]
-    } else if (['ADMIN', 'TEAM_LEADER'].includes(role)) {
-        // Strict isolation for Admin/Team Leader: Must match their company
-        if (!userCompanyId) {
-            // Unassigned Admins see nothing
-            return <TasksClient tasks={[]} total={0} page={1} totalPages={0} role={role} currentUserId={(session?.user as any)?.id} />
+        if (view === 'my') {
+            whereClause.OR = [
+                { assigneeId: userId },
+                { assignees: { some: { id: userId } } }
+            ]
+        } else {
+            // Active tasks: other users tasks in same company with status PENDING or IN_PROGRESS
+            whereClause.assignee = { companyId: userCompanyId }
+            whereClause.NOT = [
+                { assigneeId: userId },
+                { assignees: { some: { id: userId } } }
+            ]
+            whereClause.status = { in: ['PENDING', 'IN_PROGRESS'] }
         }
+    } else if (role === 'TEAM_LEADER') {
+        if (view === 'my') {
+            whereClause.OR = [
+                { assigneeId: userId },
+                { assignees: { some: { id: userId } } }
+            ]
+        } else {
+            // Active tasks: all company tasks
+            whereClause.assignee = { companyId: userCompanyId }
+        }
+    } else if (role === 'ADMIN') {
+        // ADMIN still sees all company tasks
+        if (!userCompanyId) return <TasksClient tasks={[]} total={0} page={page} totalPages={0} role={role} currentUserId={userId} view={view} />
         whereClause.assignee = { companyId: userCompanyId }
     } else if (role === 'SUPER_ADMIN') {
         // Super Admin can filter by company or see everything
@@ -95,7 +113,8 @@ export default async function TasksPage({ searchParams }: { searchParams: { comp
             page={page}
             totalPages={Math.ceil(total / limit)}
             role={role}
-            currentUserId={(session?.user as any)?.id}
+            currentUserId={userId}
+            view={view}
         />
     )
 }

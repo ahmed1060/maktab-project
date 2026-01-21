@@ -33,5 +33,17 @@ export default async function TaskDetailPage({ params }: { params: { id: string 
         }
     }
 
-    return <TaskDetailClient task={task} userRole={(session?.user as any)?.role} userId={(session?.user as any)?.id} creatorName={creatorName} currentUserName={(session?.user as any)?.name} />
+    const userId = (session?.user as any)?.id
+    const userRole = (session?.user as any)?.role
+    const isAssigned = task.assigneeId === userId || task.assignees?.some((a: any) => a.id === userId)
+    const isRestricted = userRole === 'EMPLOYEE' && !isAssigned
+
+    return <TaskDetailClient
+        task={task}
+        userRole={userRole}
+        userId={userId}
+        creatorName={creatorName}
+        currentUserName={(session?.user as any)?.name}
+        isRestricted={isRestricted}
+    />
 }

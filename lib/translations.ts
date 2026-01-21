@@ -646,7 +646,9 @@ export const translations = {
         username_placeholder: "Enter username...",
         choose_file: "Choose File",
         overdue_task_alert_msg: "The deadline for this task has passed. Please contact the person who assigned it to discuss next steps or to request an extension",
-        overdue_obligation_alert_msg: "The deadline for this obligation has passed. Please contact the person who assigned it to discuss next steps or to request an extension"
+        overdue_obligation_alert_msg: "The deadline for this obligation has passed. Please contact the person who assigned it to discuss next steps or to request an extension",
+        my_tasks: "My Tasks",
+        active_tasks: "Active Tasks"
     },
     ar: {
         welcome_back: "مرحباً بك مجدداً",
@@ -1293,8 +1295,12 @@ export const translations = {
         username_label: "اسم المستخدم",
         username_placeholder: "أدخل اسم المستخدم...",
         choose_file: "اختر ملف",
-        overdue_task_alert_msg: "لقد مر الموعد النهائي لهذه المهمة. يرجى الاتصال بالشخص الذي قام بتعيينها لمناقشة الخطوات التالية أو لطلب تمديد",
-        overdue_obligation_alert_msg: "لقد مر الموعد النهائي لهذا الالتزام. يرجى الاتصال بالشخص الذي قام بتعيينها لمناقشة الخطوات التالية أو لطلب تمديد"
+        overdue_task_alert_msg: "لقد تجاوزت الموعد النهائي لهذه المهمة. يرجى التواصل مع الشخص الذي قام بتكليفك بها لمناقشة الخطوات التالية أو لطلب تمديد الموعد.",
+        overdue_obligation_alert_msg: "لقد تجاوزت الموعد النهائي لهذا الالتزام. يرجى التواصل مع الشخص الذي قام بتكليفك به لمناقشة الخطوات التالية أو لطلب تمديد الموعد.",
+        global_overdue_alert_title: "مطلوب إجراء: عناصر متأخرة",
+        global_overdue_alert_msg: "لديك عناصر تجاوزت الموعد النهائي. الوصول إلى ميزات لوحة التحكم الأخرى محدود حتى يتم التعامل مع هذه العناصر.",
+        my_tasks: "مهامي",
+        active_tasks: "المهام النشطة"
     }
 };
 

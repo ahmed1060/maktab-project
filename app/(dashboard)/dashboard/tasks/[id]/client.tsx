@@ -20,7 +20,7 @@ const TrashIcon = ({ size = 18, color = "#ef4444" }: { size?: number, color?: st
     </svg>
 )
 
-export default function TaskDetailClient({ task: initialTask, userRole, userId, creatorName }: { task: any, userRole: string, userId: string, creatorName: string, currentUserName: string }) {
+export default function TaskDetailClient({ task: initialTask, userRole, userId, creatorName, isRestricted }: { task: any, userRole: string, userId: string, creatorName: string, currentUserName: string, isRestricted: boolean }) {
     const { t, locale } = useLanguage()
 
     // Parse member costs and payment status
@@ -776,8 +776,8 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                         </button>
                     )}
                     <button onClick={() => router.back()} style={{ background: 'none', border: '1px solid #cbd5e1', borderRadius: '0.25rem', padding: '0.5rem 1rem', cursor: 'pointer', color: '#64748b' }}>{t('close_button')}</button>
-                    {(['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole) && (userRole === 'TEAM_LEADER' || userId !== task.assigneeId)) && (<button onClick={handleEditClick} style={{ background: '#e0f2fe', color: '#0369a1', border: 'none', borderRadius: '0.25rem', padding: '0.5rem 1rem', cursor: 'pointer' }}>{t('edit_task_button')}</button>)}
-                    {(['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole) && (userRole === 'TEAM_LEADER' || userId !== task.assigneeId)) && (<button onClick={() => setShowDeleteConfirm(true)} style={{ background: '#fee2e2', color: '#991b1b', border: 'none', borderRadius: '0.25rem', padding: '0.5rem 1rem', cursor: 'pointer' }}>{t('delete_task_button')}</button>)}
+                    {!isRestricted && (['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole) && (userRole === 'TEAM_LEADER' || userId !== task.assigneeId)) && (<button onClick={handleEditClick} style={{ background: '#e0f2fe', color: '#0369a1', border: 'none', borderRadius: '0.25rem', padding: '0.5rem 1rem', cursor: 'pointer' }}>{t('edit_task_button')}</button>)}
+                    {!isRestricted && (['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole) && (userRole === 'TEAM_LEADER' || userId !== task.assigneeId)) && (<button onClick={() => setShowDeleteConfirm(true)} style={{ background: '#fee2e2', color: '#991b1b', border: 'none', borderRadius: '0.25rem', padding: '0.5rem 1rem', cursor: 'pointer' }}>{t('delete_task_button')}</button>)}
                 </div>
             </div>
 
@@ -1075,409 +1075,413 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                 } catch { return null }
             })()}
 
-            {/* Location History Section */}
-            {(() => {
-                if (!task.comments) return null
-                try {
-                    const logs = JSON.parse(task.comments)
-                    if (!Array.isArray(logs)) return null
-                    const locations = logs.filter((l: any) => l.type === 'LOCATION_ADDED')
-                    if (locations.length > 0) {
-                        return (
-                            <div style={{ marginTop: '2rem', borderTop: '1px solid #e2e8f0', paddingTop: '1.5rem' }}>
-                                <style>{`
-                                    @keyframes spin-local {
-                                        to { transform: rotate(360deg); }
-                                    }
-                                    .animate-spin-local {
-                                        animation: spin-local 1s linear infinite;
-                                    }
-                                `}</style>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexDirection: 'row', gap: '1rem', flexWrap: 'wrap' }}>
-                                    <h3 style={{ margin: 0 }}>{t('location_history_title')}</h3>
-                                    {['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole) && (
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
-                                            {showPenaltyUI && (
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: '#f8fafc', padding: '0.25rem 0.5rem', borderRadius: '2rem', border: '1px solid #e2e8f0' }}>
-                                                    {[0.25, 0.5, 1].map(amount => (
-                                                        <button
-                                                            key={amount}
-                                                            onClick={() => setSelectedPenalty(amount)}
-                                                            style={{
-                                                                width: '32px',
-                                                                height: '32px',
-                                                                borderRadius: '50%',
-                                                                border: selectedPenalty === amount ? '2px solid #ef4444' : '1px solid #cbd5e1',
-                                                                background: selectedPenalty === amount ? '#fee2e2' : 'white',
-                                                                color: selectedPenalty === amount ? '#991b1b' : '#64748b',
-                                                                fontSize: '0.7rem',
-                                                                fontWeight: 'bold',
-                                                                cursor: 'pointer',
-                                                                display: 'flex',
-                                                                alignItems: 'center',
-                                                                justifyContent: 'center',
-                                                                transition: 'all 0.2s'
-                                                            }}
-                                                        >
-                                                            {amount}
-                                                        </button>
-                                                    ))}
+            {!isRestricted && (
+                <>
+                    {/* Location History Section */}
+                    {(() => {
+                        if (!task.comments) return null
+                        try {
+                            const logs = JSON.parse(task.comments)
+                            if (!Array.isArray(logs)) return null
+                            const locations = logs.filter((l: any) => l.type === 'LOCATION_ADDED')
+                            if (locations.length > 0) {
+                                return (
+                                    <div style={{ marginTop: '2rem', borderTop: '1px solid #e2e8f0', paddingTop: '1.5rem' }}>
+                                        <style>{`
+                                            @keyframes spin-local {
+                                                to { transform: rotate(360deg); }
+                                            }
+                                            .animate-spin-local {
+                                                animation: spin-local 1s linear infinite;
+                                            }
+                                        `}</style>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexDirection: 'row', gap: '1rem', flexWrap: 'wrap' }}>
+                                            <h3 style={{ margin: 0 }}>{t('location_history_title')}</h3>
+                                            {['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole) && (
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
+                                                    {showPenaltyUI && (
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: '#f8fafc', padding: '0.25rem 0.5rem', borderRadius: '2rem', border: '1px solid #e2e8f0' }}>
+                                                            {[0.25, 0.5, 1].map(amount => (
+                                                                <button
+                                                                    key={amount}
+                                                                    onClick={() => setSelectedPenalty(amount)}
+                                                                    style={{
+                                                                        width: '32px',
+                                                                        height: '32px',
+                                                                        borderRadius: '50%',
+                                                                        border: selectedPenalty === amount ? '2px solid #ef4444' : '1px solid #cbd5e1',
+                                                                        background: selectedPenalty === amount ? '#fee2e2' : 'white',
+                                                                        color: selectedPenalty === amount ? '#991b1b' : '#64748b',
+                                                                        fontSize: '0.7rem',
+                                                                        fontWeight: 'bold',
+                                                                        cursor: 'pointer',
+                                                                        display: 'flex',
+                                                                        alignItems: 'center',
+                                                                        justifyContent: 'center',
+                                                                        transition: 'all 0.2s'
+                                                                    }}
+                                                                >
+                                                                    {amount}
+                                                                </button>
+                                                            ))}
+                                                            <button
+                                                                onClick={async () => {
+                                                                    if (!selectedPenalty || applyingPenalty) return
+                                                                    setApplyingPenalty(true)
+                                                                    try {
+                                                                        // Apply to all assignees if multiple?
+                                                                        // The user didn't specify, but usually it's per task.
+                                                                        // For now we'll apply it to the PRIMARY assignee (assigneeId) or all?
+                                                                        // Usually these penalties are specific to who is late.
+                                                                        // I'll apply it once for the task's main assignee for simplicity, or we should ask.
+                                                                        // Actually, let's apply it for each current assignee if it's a team effort?
+                                                                        // User said "salary deduction" - usually specific to a user.
+                                                                        // I'll apply it to task.assigneeId for now.
+                                                                        const res = await fetch(`/api/tasks/${task.id}/penalty`, {
+                                                                            method: 'POST',
+                                                                            body: JSON.stringify({ amount: selectedPenalty, userId: task.assigneeId }),
+                                                                            headers: { 'Content-Type': 'application/json' }
+                                                                        })
+                                                                        if (res.ok) {
+                                                                            showToast(t('update_success'), 'success')
+                                                                            setShowPenaltyUI(false)
+                                                                            setSelectedPenalty(null)
+                                                                            router.refresh()
+                                                                        } else {
+                                                                            throw new Error()
+                                                                        }
+                                                                    } catch {
+                                                                        showToast(t('error_generic'), 'error')
+                                                                    } finally {
+                                                                        setApplyingPenalty(false)
+                                                                    }
+                                                                }}
+                                                                disabled={!selectedPenalty || applyingPenalty}
+                                                                style={{
+                                                                    padding: '0.25rem 0.75rem',
+                                                                    borderRadius: '1rem',
+                                                                    background: '#ef4444',
+                                                                    color: 'white',
+                                                                    fontSize: '0.75rem',
+                                                                    fontWeight: 'bold',
+                                                                    border: 'none',
+                                                                    cursor: (selectedPenalty && !applyingPenalty) ? 'pointer' : 'not-allowed',
+                                                                    opacity: (selectedPenalty && !applyingPenalty) ? 1 : 0.6
+                                                                }}
+                                                            >
+                                                                {applyingPenalty ? '...' : t('confirm')}
+                                                            </button>
+                                                        </div>
+                                                    )}
                                                     <button
-                                                        onClick={async () => {
-                                                            if (!selectedPenalty || applyingPenalty) return
-                                                            setApplyingPenalty(true)
-                                                            try {
-                                                                // Apply to all assignees if multiple? 
-                                                                // The user didn't specify, but usually it's per task. 
-                                                                // For now we'll apply it to the PRIMARY assignee (assigneeId) or all?
-                                                                // Usually these penalties are specific to who is late. 
-                                                                // Let's apply it once for the task's main assignee for simplicity, or we should ask.
-                                                                // Actually, let's apply it for each current assignee if it's a team effort?
-                                                                // User said "salary deduction" - usually specific to a user.
-                                                                // I'll apply it to task.assigneeId for now.
-                                                                const res = await fetch(`/api/tasks/${task.id}/penalty`, {
-                                                                    method: 'POST',
-                                                                    body: JSON.stringify({ amount: selectedPenalty, userId: task.assigneeId }),
-                                                                    headers: { 'Content-Type': 'application/json' }
-                                                                })
-                                                                if (res.ok) {
-                                                                    showToast(t('update_success'), 'success')
-                                                                    setShowPenaltyUI(false)
-                                                                    setSelectedPenalty(null)
-                                                                    router.refresh()
-                                                                } else {
-                                                                    throw new Error()
-                                                                }
-                                                            } catch {
-                                                                showToast(t('error_generic'), 'error')
-                                                            } finally {
-                                                                setApplyingPenalty(false)
-                                                            }
-                                                        }}
-                                                        disabled={!selectedPenalty || applyingPenalty}
+                                                        onClick={() => setShowPenaltyUI(!showPenaltyUI)}
                                                         style={{
-                                                            padding: '0.25rem 0.75rem',
-                                                            borderRadius: '1rem',
-                                                            background: '#ef4444',
-                                                            color: 'white',
-                                                            fontSize: '0.75rem',
-                                                            fontWeight: 'bold',
-                                                            border: 'none',
-                                                            cursor: (selectedPenalty && !applyingPenalty) ? 'pointer' : 'not-allowed',
-                                                            opacity: (selectedPenalty && !applyingPenalty) ? 1 : 0.6
+                                                            background: showPenaltyUI ? '#f1f5f9' : '#fee2e2',
+                                                            color: showPenaltyUI ? '#475569' : '#991b1b',
+                                                            border: '1px solid ' + (showPenaltyUI ? '#cbd5e1' : '#fca5a5'),
+                                                            padding: '0.4rem 0.8rem',
+                                                            borderRadius: '0.5rem',
+                                                            fontSize: '0.8rem',
+                                                            fontWeight: '700',
+                                                            cursor: 'pointer',
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            gap: '0.4rem'
                                                         }}
                                                     >
-                                                        {applyingPenalty ? '...' : t('confirm')}
+                                                        <span>⚠️</span> {locale === 'ar' ? 'خصم تأخير' : 'Lateness Penalty'}
                                                     </button>
                                                 </div>
                                             )}
-                                            <button
-                                                onClick={() => setShowPenaltyUI(!showPenaltyUI)}
-                                                style={{
-                                                    background: showPenaltyUI ? '#f1f5f9' : '#fee2e2',
-                                                    color: showPenaltyUI ? '#475569' : '#991b1b',
-                                                    border: '1px solid ' + (showPenaltyUI ? '#cbd5e1' : '#fca5a5'),
-                                                    padding: '0.4rem 0.8rem',
-                                                    borderRadius: '0.5rem',
-                                                    fontSize: '0.8rem',
-                                                    fontWeight: '700',
-                                                    cursor: 'pointer',
-                                                    display: 'flex',
-                                                    alignItems: 'center',
-                                                    gap: '0.4rem'
-                                                }}
-                                            >
-                                                <span>⚠️</span> {locale === 'ar' ? 'خصم تأخير' : 'Lateness Penalty'}
-                                            </button>
                                         </div>
-                                    )}
-                                </div>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                                    {locations.map((loc: any, i: number) => {
-                                        let displayLoc = loc.locationName || loc.location
-                                        let mapsLink = null
-                                        try {
-                                            if (loc.location.startsWith('{')) {
-                                                const d = JSON.parse(loc.location)
-                                                displayLoc = loc.locationName || d.address || d.name || `${d.latitude}, ${d.longitude}`
-                                                if (d.latitude && d.longitude) mapsLink = `https://www.google.com/maps?q=${d.latitude},${d.longitude}`
-                                            }
-                                        } catch { }
-
-                                        const canVerify = ['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole) && task.status === 'PENDING_CONFIRMATION' && userId !== task.assigneeId
-                                        const canDelete = (userRole === 'EMPLOYEE' || userId === task.assigneeId) && ['PENDING', 'IN_PROGRESS', 'REJECTED'].includes(task.status)
-
-                                        const handleVerify = async (status: 'CORRECT' | 'WRONG') => {
-                                            const timestamp = loc.date
-                                            const actionId = `${timestamp}-${status}`
-                                            if (verifyingLocation === actionId) return
-
-                                            setVerifyingLocation(actionId)
-
-                                            // UI Logic
-                                            const originalComments = task.comments
-                                            try {
-                                                const currentComments = JSON.parse(task.comments || '[]')
-                                                const updatedComments = currentComments.map((c: any) => {
-                                                    if (c.type === 'LOCATION_ADDED' && c.date === timestamp) {
-                                                        return { ...c, verificationStatus: status, autoVerified: false }
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                                            {locations.map((loc: any, i: number) => {
+                                                let displayLoc = loc.locationName || loc.location
+                                                let mapsLink = null
+                                                try {
+                                                    if (loc.location.startsWith('{')) {
+                                                        const d = JSON.parse(loc.location)
+                                                        displayLoc = loc.locationName || d.address || d.name || `${d.latitude}, ${d.longitude}`
+                                                        if (d.latitude && d.longitude) mapsLink = `https://www.google.com/maps?q=${d.latitude},${d.longitude}`
                                                     }
-                                                    return c
-                                                })
+                                                } catch { }
 
-                                                const res = await fetch(`/api/tasks/${task.id}/locations`, {
-                                                    method: 'PUT',
-                                                    body: JSON.stringify({ timestamp, action: 'VERIFY', verificationStatus: status }),
-                                                    headers: { 'Content-Type': 'application/json' }
-                                                })
+                                                const canVerify = ['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole) && task.status === 'PENDING_CONFIRMATION' && userId !== task.assigneeId
+                                                const canDelete = (userRole === 'EMPLOYEE' || userId === task.assigneeId) && ['PENDING', 'IN_PROGRESS', 'REJECTED'].includes(task.status)
 
-                                                if (!res.ok) throw new Error('Failed to verify')
+                                                const handleVerify = async (status: 'CORRECT' | 'WRONG') => {
+                                                    const timestamp = loc.date
+                                                    const actionId = `${timestamp}-${status}`
+                                                    if (verifyingLocation === actionId) return
 
-                                                // Update UI only AFTER successful database save
-                                                setTask({ ...task, comments: JSON.stringify(updatedComments) })
+                                                    setVerifyingLocation(actionId)
 
-                                                router.refresh()
-                                            } catch (e) {
-                                                console.error(e)
-                                                // Rollback on error
-                                                setTask({ ...task, comments: originalComments })
-                                                showToast(t('failed_verify_location' as any) || 'Failed to update status', 'error')
-                                            } finally {
-                                                setVerifyingLocation(null)
-                                            }
-                                        }
+                                                    // UI Logic
+                                                    const originalComments = task.comments
+                                                    try {
+                                                        const currentComments = JSON.parse(task.comments || '[]')
+                                                        const updatedComments = currentComments.map((c: any) => {
+                                                            if (c.type === 'LOCATION_ADDED' && c.date === timestamp) {
+                                                                return { ...c, verificationStatus: status, autoVerified: false }
+                                                            }
+                                                            return c
+                                                        })
 
-                                        return (
-                                            <div key={i} style={{ border: '1px solid #bae6fd', background: '#f0f9ff', borderRadius: '0.5rem', padding: '1rem' }}>
-                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexDirection: 'row', gap: '1rem' }}>
-                                                    <div style={{ display: 'flex', gap: '0.75rem', flexDirection: 'row' }}>
-                                                        <span style={{ fontSize: '1.25rem' }}>📍</span>
-                                                        <div style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>
-                                                            {mapsLink ? <a href={mapsLink} target="_blank" rel="noreferrer" style={{ fontWeight: '600', color: '#0369a1', textDecoration: 'underline' }}>{displayLoc}</a> : <span style={{ fontWeight: '600', color: '#0c4a6e' }}>{displayLoc}</span>}
-                                                            <div style={{ fontSize: '0.75rem', color: '#0369a1', marginTop: '0.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                                                {(task.assignees?.length > 1) && (
-                                                                    <span style={{ background: '#e0f2fe', border: '1px solid #38bdf8', color: '#0369a1', padding: '0.1rem 0.4rem', borderRadius: '1rem', fontSize: '0.65rem', fontWeight: 'bold' }}>
-                                                                        {locale === 'ar' ? 'بواسطة:' : 'By:'} {loc.author}
+                                                        const res = await fetch(`/api/tasks/${task.id}/locations`, {
+                                                            method: 'PUT',
+                                                            body: JSON.stringify({ timestamp, action: 'VERIFY', verificationStatus: status }),
+                                                            headers: { 'Content-Type': 'application/json' }
+                                                        })
+
+                                                        if (!res.ok) throw new Error('Failed to verify')
+
+                                                        // Update UI only AFTER successful database save
+                                                        setTask({ ...task, comments: JSON.stringify(updatedComments) })
+
+                                                        router.refresh()
+                                                    } catch (e) {
+                                                        console.error(e)
+                                                        // Rollback on error
+                                                        setTask({ ...task, comments: originalComments })
+                                                        showToast(t('failed_verify_location' as any) || 'Failed to update status', 'error')
+                                                    } finally {
+                                                        setVerifyingLocation(null)
+                                                    }
+                                                }
+
+                                                return (
+                                                    <div key={i} style={{ border: '1px solid #bae6fd', background: '#f0f9ff', borderRadius: '0.5rem', padding: '1rem' }}>
+                                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexDirection: 'row', gap: '1rem' }}>
+                                                            <div style={{ display: 'flex', gap: '0.75rem', flexDirection: 'row' }}>
+                                                                <span style={{ fontSize: '1.25rem' }}>📍</span>
+                                                                <div style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>
+                                                                    {mapsLink ? <a href={mapsLink} target="_blank" rel="noreferrer" style={{ fontWeight: '600', color: '#0369a1', textDecoration: 'underline' }}>{displayLoc}</a> : <span style={{ fontWeight: '600', color: '#0c4a6e' }}>{displayLoc}</span>}
+                                                                    <div style={{ fontSize: '0.75rem', color: '#0369a1', marginTop: '0.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                                        {(task.assignees?.length > 1) && (
+                                                                            <span style={{ background: '#e0f2fe', border: '1px solid #38bdf8', color: '#0369a1', padding: '0.1rem 0.4rem', borderRadius: '1rem', fontSize: '0.65rem', fontWeight: 'bold' }}>
+                                                                                {locale === 'ar' ? 'بواسطة:' : 'By:'} {loc.author}
+                                                                            </span>
+                                                                        )}
+                                                                        {!((task.assignees?.length > 1)) && <span>{loc.author}</span>}
+                                                                        <span>• {new Date(loc.date).toLocaleString(locale)}</span>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexDirection: 'row' }}>
+                                                                {loc.verificationStatus && (
+                                                                    <span style={{ fontSize: '0.75rem', fontWeight: '700', color: loc.verificationStatus === 'CORRECT' ? '#16a34a' : '#dc2626', background: loc.verificationStatus === 'CORRECT' ? '#dcfce7' : '#fee2e2', padding: '0.25rem 0.5rem', borderRadius: '0.25rem' }}>
+                                                                        {loc.verificationStatus === 'CORRECT' ? t('verified_correct_title') : t('verified_wrong_title')}
                                                                     </span>
                                                                 )}
-                                                                {!((task.assignees?.length > 1)) && <span>{loc.author}</span>}
-                                                                <span>• {new Date(loc.date).toLocaleString(locale)}</span>
+                                                                {canVerify && (
+                                                                    <div style={{ display: 'flex', gap: '0.25rem' }}>
+                                                                        <button
+                                                                            onClick={() => handleVerify('CORRECT')}
+                                                                            disabled={!!verifyingLocation}
+                                                                            style={{
+                                                                                background: '#dcfce7',
+                                                                                border: '1px solid #22c55e',
+                                                                                color: '#166534',
+                                                                                width: '32px',
+                                                                                height: '32px',
+                                                                                borderRadius: '50%',
+                                                                                cursor: verifyingLocation ? 'not-allowed' : 'pointer',
+                                                                                display: 'flex',
+                                                                                alignItems: 'center',
+                                                                                justifyContent: 'center'
+                                                                            }}
+                                                                            title={t('mark_correct_title')}
+                                                                        >
+                                                                            {verifyingLocation === `${loc.date}-CORRECT` ? <div className="animate-spin-local" style={{ width: '14px', height: '14px', border: '2px solid #166534', borderTopColor: 'transparent', borderRadius: '50%' }} /> : '✓'}
+                                                                        </button>
+                                                                        <button
+                                                                            onClick={() => handleVerify('WRONG')}
+                                                                            disabled={!!verifyingLocation}
+                                                                            style={{
+                                                                                background: '#fee2e2',
+                                                                                border: '1px solid #ef4444',
+                                                                                color: '#991b1b',
+                                                                                width: '32px',
+                                                                                height: '32px',
+                                                                                borderRadius: '50%',
+                                                                                cursor: verifyingLocation ? 'not-allowed' : 'pointer',
+                                                                                display: 'flex',
+                                                                                alignItems: 'center',
+                                                                                justifyContent: 'center'
+                                                                            }}
+                                                                            title={t('mark_wrong_title')}
+                                                                        >
+                                                                            {verifyingLocation === `${loc.date}-WRONG` ? <div className="animate-spin-local" style={{ width: '14px', height: '14px', border: '2px solid #991b1b', borderTopColor: 'transparent', borderRadius: '50%' }} /> : '✕'}
+                                                                        </button>
+                                                                    </div>
+                                                                )}
+                                                                {canDelete && task.status === 'IN_PROGRESS' && (
+                                                                    <button onClick={() => setLocationToDelete({ date: loc.date })} style={{ background: '#fee2e2', color: '#dc2626', border: 'none', borderRadius: '0.25rem', padding: '0.4rem', cursor: 'pointer', display: 'flex' }} title={t('delete_location_title')}>
+                                                                        <TrashIcon size={16} />
+                                                                    </button>
+                                                                )}
                                                             </div>
                                                         </div>
                                                     </div>
-                                                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexDirection: 'row' }}>
-                                                        {loc.verificationStatus && (
-                                                            <span style={{ fontSize: '0.75rem', fontWeight: '700', color: loc.verificationStatus === 'CORRECT' ? '#16a34a' : '#dc2626', background: loc.verificationStatus === 'CORRECT' ? '#dcfce7' : '#fee2e2', padding: '0.25rem 0.5rem', borderRadius: '0.25rem' }}>
-                                                                {loc.verificationStatus === 'CORRECT' ? t('verified_correct_title') : t('verified_wrong_title')}
-                                                            </span>
-                                                        )}
-                                                        {canVerify && (
-                                                            <div style={{ display: 'flex', gap: '0.25rem' }}>
-                                                                <button
-                                                                    onClick={() => handleVerify('CORRECT')}
-                                                                    disabled={!!verifyingLocation}
-                                                                    style={{
-                                                                        background: '#dcfce7',
-                                                                        border: '1px solid #22c55e',
-                                                                        color: '#166534',
-                                                                        width: '32px',
-                                                                        height: '32px',
-                                                                        borderRadius: '50%',
-                                                                        cursor: verifyingLocation ? 'not-allowed' : 'pointer',
-                                                                        display: 'flex',
-                                                                        alignItems: 'center',
-                                                                        justifyContent: 'center'
-                                                                    }}
-                                                                    title={t('mark_correct_title')}
-                                                                >
-                                                                    {verifyingLocation === `${loc.date}-CORRECT` ? <div className="animate-spin-local" style={{ width: '14px', height: '14px', border: '2px solid #166534', borderTopColor: 'transparent', borderRadius: '50%' }} /> : '✓'}
-                                                                </button>
-                                                                <button
-                                                                    onClick={() => handleVerify('WRONG')}
-                                                                    disabled={!!verifyingLocation}
-                                                                    style={{
-                                                                        background: '#fee2e2',
-                                                                        border: '1px solid #ef4444',
-                                                                        color: '#991b1b',
-                                                                        width: '32px',
-                                                                        height: '32px',
-                                                                        borderRadius: '50%',
-                                                                        cursor: verifyingLocation ? 'not-allowed' : 'pointer',
-                                                                        display: 'flex',
-                                                                        alignItems: 'center',
-                                                                        justifyContent: 'center'
-                                                                    }}
-                                                                    title={t('mark_wrong_title')}
-                                                                >
-                                                                    {verifyingLocation === `${loc.date}-WRONG` ? <div className="animate-spin-local" style={{ width: '14px', height: '14px', border: '2px solid #991b1b', borderTopColor: 'transparent', borderRadius: '50%' }} /> : '✕'}
-                                                                </button>
-                                                            </div>
-                                                        )}
-                                                        {canDelete && task.status === 'IN_PROGRESS' && (
-                                                            <button onClick={() => setLocationToDelete({ date: loc.date })} style={{ background: '#fee2e2', color: '#dc2626', border: 'none', borderRadius: '0.25rem', padding: '0.4rem', cursor: 'pointer', display: 'flex' }} title={t('delete_location_title')}>
-                                                                <TrashIcon size={16} />
-                                                            </button>
-                                                        )}
+                                                )
+                                            })}
+                                        </div>
+                                    </div>
+                                )
+                            }
+                        } catch { return null }
+                    })()}
+
+                    {/* Submission Section (Employee only) */}
+                    {(userRole === 'EMPLOYEE' || userId === task.assigneeId) && !['APPROVED', 'COMPLETED', 'PENDING_CONFIRMATION', 'REJECTED'].includes(task.status) && (
+                        <div style={{ marginTop: '3rem', borderTop: '2px solid #e2e8f0', paddingTop: '2rem' }}>
+                            <h3 style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', flexDirection: 'row' }}>
+                                <span>📤</span> {t('submit_task_title')}
+                            </h3>
+
+                            <div style={{ marginBottom: '1.5rem' }}>
+                                <label style={{ display: 'block', fontWeight: '600', marginBottom: '0.75rem' }}>{t('attachments_optional_label')}</label>
+                                <div
+                                    onDragOver={e => { e.preventDefault(); setIsDragging(true); }}
+                                    onDragLeave={() => setIsDragging(false)}
+                                    onDrop={e => { e.preventDefault(); setIsDragging(false); if (e.dataTransfer.files.length) handleFiles(Array.from(e.dataTransfer.files)); }}
+                                    style={{ border: `2px dashed ${isDragging ? '#3b82f6' : '#cbd5e1'}`, borderRadius: '0.75rem', padding: '2.5rem', textAlign: 'center', background: isDragging ? '#eff6ff' : '#f8fafc', transition: 'all 0.2s', cursor: 'pointer', position: 'relative' }}
+                                >
+                                    <input
+                                        type="file"
+                                        multiple
+                                        accept=".jpg,.jpeg,.png,.gif,.webp,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx"
+                                        onChange={e => {
+                                            if (e.target.files) {
+                                                handleFiles(Array.from(e.target.files))
+                                                // Reset input so the same file can be selected again if removed
+                                                e.target.value = ''
+                                            }
+                                        }}
+                                        style={{ opacity: 0, position: 'absolute', inset: 0, cursor: 'pointer' }}
+                                        disabled={uploading}
+                                    />
+                                    <div style={{ pointerEvents: 'none' }}>
+                                        <div style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>☁️</div>
+                                        <div style={{ fontWeight: '600', color: '#475569' }}>{t('upload_drag_files_msg')}</div>
+                                        <div style={{ fontSize: '0.8rem', color: '#94a3b8', marginTop: '0.25rem' }}>{t('upload_allowed_types_msg')}</div>
+                                    </div>
+                                </div>
+
+                                {pendingFiles.length > 0 && (
+                                    <div style={{ marginTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                        {pendingFiles.map((f, i) => (
+                                            <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem 1rem', background: 'white', border: '1px solid #e2e8f0', borderRadius: '0.5rem', flexDirection: 'row' }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexDirection: 'row' }}>
+                                                    <span style={{ fontSize: '1.25rem' }}>📄</span>
+                                                    <div style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>
+                                                        <div style={{ fontSize: '0.9rem', fontWeight: '500' }}>{f.name}</div>
+                                                        <div style={{ fontSize: '0.7rem', color: '#94a3b8' }}>{(f.size / 1024 / 1024).toFixed(2)} MB</div>
                                                     </div>
                                                 </div>
+                                                <button onClick={() => removePendingFile(i)} style={{ color: '#ef4444', background: '#fef2f2', border: 'none', borderRadius: '0.375rem', padding: '0.4rem 0.75rem', cursor: 'pointer', fontSize: '0.8rem', fontWeight: '600' }}>{t('delete')}</button>
                                             </div>
-                                        )
-                                    })}
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+
+                            <div style={{ marginBottom: '1.5rem' }}>
+                                <label style={{ display: 'block', fontWeight: '600', marginBottom: '0.75rem' }}>{t('add_costs_label')}</label>
+                                <div style={{ display: 'flex', gap: '0.5rem', flexDirection: 'row' }}>
+                                    <input type="text" className="input" placeholder={t('cost_description_placeholder')} value={costDescription} onChange={e => setCostDescription(e.target.value)} style={{ flex: 1 }} />
+                                    <input type="number" className="input" placeholder={t('cost_amount_placeholder')} value={cost} onChange={e => setCost(e.target.value)} style={{ width: '120px' }} />
+                                    <button onClick={handleAddCost} disabled={!cost} className="btn" style={{ background: '#e0f2fe', color: '#0369a1', fontWeight: '700', minWidth: '80px' }}>{t('add_label')}</button>
+                                </div>
+                                {costEntries.length > 0 && (
+                                    <div style={{ marginTop: '1rem', background: 'white', border: '1px solid #e2e8f0', borderRadius: '0.5rem', overflow: 'hidden' }}>
+                                        {costEntries.map((e, i) => (
+                                            <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem 1rem', borderBottom: i < costEntries.length - 1 ? '1px solid #f1f5f9' : 'none', flexDirection: 'row' }}>
+                                                <div style={{ display: 'flex', gap: '0.5rem', fontWeight: '500', flexDirection: 'row' }}>
+                                                    <span>{e.description || t('no_description')}</span>
+                                                    <span style={{ color: '#94a3b8' }}>•</span>
+                                                    <span style={{ color: '#b45309' }}>{e.amount.toFixed(2)} {t('egp')}</span>
+                                                </div>
+                                                <button onClick={() => removeCostEntry(i)} style={{ color: '#ef4444', padding: '0.25rem', cursor: 'pointer', border: 'none', background: 'none', fontWeight: 'bold', fontSize: '1.2rem' }}>×</button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+
+                            <div style={{ marginBottom: '1.5rem' }}>
+                                <label style={{ display: 'block', fontWeight: '600', marginBottom: '0.75rem' }}>{t('note_optional_label')}</label>
+                                <textarea className="input" rows={3} placeholder={t('note_placeholder')} value={note} onChange={e => setNote(e.target.value)} style={{ width: '100%', resize: 'none' }} maxLength={500} />
+                                <div style={{ textAlign: locale === 'ar' ? 'left' : 'right', fontSize: '0.75rem', color: note.length >= 500 ? '#ef4444' : '#94a3b8', marginTop: '0.25rem' }}>{note.length}/500</div>
+                            </div>
+
+                            <div style={{ marginBottom: '2rem' }}>
+                                <label style={{ display: 'block', fontWeight: '600', marginBottom: '0.75rem' }}>{t('current_location_label')}</label>
+                                <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexDirection: 'row' }}>
+                                    <button onClick={handleCaptureLocation} disabled={capturingLocation || uploading} className="btn" style={{ background: capturingLocation ? '#e2e8f0' : '#3b82f6', color: capturingLocation ? '#64748b' : 'white', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                        {capturingLocation ? t('capturing_location_button').replace('📍', '') : t('capture_location_button').replace('📍', '')}
+                                    </button>
+                                    <span style={{ fontSize: '0.875rem', fontWeight: '500', color: locationStatus.includes('✓') ? '#16a34a' : locationStatus.includes('Failed') ? '#dc2626' : '#64748b' }}>{locationStatus}</span>
                                 </div>
                             </div>
-                        )
-                    }
-                } catch { return null }
-            })()}
 
-            {/* Submission Section (Employee only) */}
-            {(userRole === 'EMPLOYEE' || userId === task.assigneeId) && !['APPROVED', 'COMPLETED', 'PENDING_CONFIRMATION', 'REJECTED'].includes(task.status) && (
-                <div style={{ marginTop: '3rem', borderTop: '2px solid #e2e8f0', paddingTop: '2rem' }}>
-                    <h3 style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', flexDirection: 'row' }}>
-                        <span>📤</span> {t('submit_task_title')}
-                    </h3>
+                            <div style={{ display: 'flex', gap: '1rem', flexDirection: 'row' }}>
+                                <button onClick={() => handleUpload(true)} disabled={uploading} className="btn" style={{ background: '#e2e8f0', color: '#1e293b', fontWeight: '600', flex: 1 }}>{loadingType === 'DRAFT' ? t('saving') : t('save_draft_button')}</button>
+                                <button onClick={handleUploadRequest} disabled={uploading} className="btn btn-primary" style={{ fontWeight: '700', flex: 2 }}>{loadingType === 'SUBMIT' ? t('submitting') : t('submit_task_button')}</button>
+                            </div>
+                        </div>
+                    )}
 
-                    <div style={{ marginBottom: '1.5rem' }}>
-                        <label style={{ display: 'block', fontWeight: '600', marginBottom: '0.75rem' }}>{t('attachments_optional_label')}</label>
-                        <div
-                            onDragOver={e => { e.preventDefault(); setIsDragging(true); }}
-                            onDragLeave={() => setIsDragging(false)}
-                            onDrop={e => { e.preventDefault(); setIsDragging(false); if (e.dataTransfer.files.length) handleFiles(Array.from(e.dataTransfer.files)); }}
-                            style={{ border: `2px dashed ${isDragging ? '#3b82f6' : '#cbd5e1'}`, borderRadius: '0.75rem', padding: '2.5rem', textAlign: 'center', background: isDragging ? '#eff6ff' : '#f8fafc', transition: 'all 0.2s', cursor: 'pointer', position: 'relative' }}
-                        >
-                            <input
-                                type="file"
-                                multiple
-                                accept=".jpg,.jpeg,.png,.gif,.webp,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx"
-                                onChange={e => {
-                                    if (e.target.files) {
-                                        handleFiles(Array.from(e.target.files))
-                                        // Reset input so the same file can be selected again if removed
-                                        e.target.value = ''
-                                    }
+                    {/* Finalized/Pending Message for Employees */}
+                    {(userRole === 'EMPLOYEE' || userId === task.assigneeId) && ['PENDING_CONFIRMATION', 'APPROVED', 'COMPLETED', 'REJECTED'].includes(task.status) && (
+                        <div style={{ marginTop: '2rem', padding: '1.5rem', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '0.5rem', textAlign: 'center' }}>
+                            <p style={{ margin: 0, color: '#475569', fontWeight: '500' }}>
+                                {task.status === 'PENDING_CONFIRMATION'
+                                    ? t('pending_confirmation_msg' as any) || "Submitted and awaiting review"
+                                    : t('task_finalized_msg' as any) || "This task has been finalized and cannot be modified."}
+                            </p>
+                        </div>
+                    )}
+
+                    {/* Transfer Button (Admins only) */}
+                    {['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole) && ['IN_PROGRESS', 'PENDING'].includes(task.status) && (
+                        <div style={{ marginTop: '2rem', textAlign: locale === 'ar' ? 'left' : 'right' }}>
+                            <button
+                                onClick={() => {
+                                    const currentIds = task.assignees?.map((a: any) => a.id) || (task.assigneeId ? [task.assigneeId] : [])
+                                    setTransferAssigneeIds(currentIds)
+                                    setIsTransferModalOpen(true)
                                 }}
-                                style={{ opacity: 0, position: 'absolute', inset: 0, cursor: 'pointer' }}
-                                disabled={uploading}
-                            />
-                            <div style={{ pointerEvents: 'none' }}>
-                                <div style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>☁️</div>
-                                <div style={{ fontWeight: '600', color: '#475569' }}>{t('upload_drag_files_msg')}</div>
-                                <div style={{ fontSize: '0.8rem', color: '#94a3b8', marginTop: '0.25rem' }}>{t('upload_allowed_types_msg')}</div>
-                            </div>
-                        </div>
-
-                        {pendingFiles.length > 0 && (
-                            <div style={{ marginTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                                {pendingFiles.map((f, i) => (
-                                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem 1rem', background: 'white', border: '1px solid #e2e8f0', borderRadius: '0.5rem', flexDirection: 'row' }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexDirection: 'row' }}>
-                                            <span style={{ fontSize: '1.25rem' }}>📄</span>
-                                            <div style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>
-                                                <div style={{ fontSize: '0.9rem', fontWeight: '500' }}>{f.name}</div>
-                                                <div style={{ fontSize: '0.7rem', color: '#94a3b8' }}>{(f.size / 1024 / 1024).toFixed(2)} MB</div>
-                                            </div>
-                                        </div>
-                                        <button onClick={() => removePendingFile(i)} style={{ color: '#ef4444', background: '#fef2f2', border: 'none', borderRadius: '0.375rem', padding: '0.4rem 0.75rem', cursor: 'pointer', fontSize: '0.8rem', fontWeight: '600' }}>{t('delete')}</button>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-                    </div>
-
-                    <div style={{ marginBottom: '1.5rem' }}>
-                        <label style={{ display: 'block', fontWeight: '600', marginBottom: '0.75rem' }}>{t('add_costs_label')}</label>
-                        <div style={{ display: 'flex', gap: '0.5rem', flexDirection: 'row' }}>
-                            <input type="text" className="input" placeholder={t('cost_description_placeholder')} value={costDescription} onChange={e => setCostDescription(e.target.value)} style={{ flex: 1 }} />
-                            <input type="number" className="input" placeholder={t('cost_amount_placeholder')} value={cost} onChange={e => setCost(e.target.value)} style={{ width: '120px' }} />
-                            <button onClick={handleAddCost} disabled={!cost} className="btn" style={{ background: '#e0f2fe', color: '#0369a1', fontWeight: '700', minWidth: '80px' }}>{t('add_label')}</button>
-                        </div>
-                        {costEntries.length > 0 && (
-                            <div style={{ marginTop: '1rem', background: 'white', border: '1px solid #e2e8f0', borderRadius: '0.5rem', overflow: 'hidden' }}>
-                                {costEntries.map((e, i) => (
-                                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem 1rem', borderBottom: i < costEntries.length - 1 ? '1px solid #f1f5f9' : 'none', flexDirection: 'row' }}>
-                                        <div style={{ display: 'flex', gap: '0.5rem', fontWeight: '500', flexDirection: 'row' }}>
-                                            <span>{e.description || t('no_description')}</span>
-                                            <span style={{ color: '#94a3b8' }}>•</span>
-                                            <span style={{ color: '#b45309' }}>{e.amount.toFixed(2)} {t('egp')}</span>
-                                        </div>
-                                        <button onClick={() => removeCostEntry(i)} style={{ color: '#ef4444', padding: '0.25rem', cursor: 'pointer', border: 'none', background: 'none', fontWeight: 'bold', fontSize: '1.2rem' }}>×</button>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-                    </div>
-
-                    <div style={{ marginBottom: '1.5rem' }}>
-                        <label style={{ display: 'block', fontWeight: '600', marginBottom: '0.75rem' }}>{t('note_optional_label')}</label>
-                        <textarea className="input" rows={3} placeholder={t('note_placeholder')} value={note} onChange={e => setNote(e.target.value)} style={{ width: '100%', resize: 'none' }} maxLength={500} />
-                        <div style={{ textAlign: locale === 'ar' ? 'left' : 'right', fontSize: '0.75rem', color: note.length >= 500 ? '#ef4444' : '#94a3b8', marginTop: '0.25rem' }}>{note.length}/500</div>
-                    </div>
-
-                    <div style={{ marginBottom: '2rem' }}>
-                        <label style={{ display: 'block', fontWeight: '600', marginBottom: '0.75rem' }}>{t('current_location_label')}</label>
-                        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexDirection: 'row' }}>
-                            <button onClick={handleCaptureLocation} disabled={capturingLocation || uploading} className="btn" style={{ background: capturingLocation ? '#e2e8f0' : '#3b82f6', color: capturingLocation ? '#64748b' : 'white', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                {capturingLocation ? t('capturing_location_button').replace('📍', '') : t('capture_location_button').replace('📍', '')}
+                                className="btn"
+                                style={{
+                                    background: '#f8fafc',
+                                    color: '#475569',
+                                    border: '1px solid #cbd5e1',
+                                    borderRadius: '0.5rem',
+                                    padding: '0.6rem 1.25rem',
+                                    fontSize: '0.875rem',
+                                    fontWeight: '600',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '0.5rem',
+                                    boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+                                    transition: 'all 0.2s ease',
+                                    cursor: 'pointer'
+                                }}
+                            >
+                                <span>🔄</span> {t('transfer_to_another_employee')}
                             </button>
-                            <span style={{ fontSize: '0.875rem', fontWeight: '500', color: locationStatus.includes('✓') ? '#16a34a' : locationStatus.includes('Failed') ? '#dc2626' : '#64748b' }}>{locationStatus}</span>
                         </div>
-                    </div>
+                    )}
 
-                    <div style={{ display: 'flex', gap: '1rem', flexDirection: 'row' }}>
-                        <button onClick={() => handleUpload(true)} disabled={uploading} className="btn" style={{ background: '#e2e8f0', color: '#1e293b', fontWeight: '600', flex: 1 }}>{loadingType === 'DRAFT' ? t('saving') : t('save_draft_button')}</button>
-                        <button onClick={handleUploadRequest} disabled={uploading} className="btn btn-primary" style={{ fontWeight: '700', flex: 2 }}>{loadingType === 'SUBMIT' ? t('submitting') : t('submit_task_button')}</button>
-                    </div>
-                </div>
-            )}
-
-            {/* Finalized/Pending Message for Employees */}
-            {(userRole === 'EMPLOYEE' || userId === task.assigneeId) && ['PENDING_CONFIRMATION', 'APPROVED', 'COMPLETED', 'REJECTED'].includes(task.status) && (
-                <div style={{ marginTop: '2rem', padding: '1.5rem', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '0.5rem', textAlign: 'center' }}>
-                    <p style={{ margin: 0, color: '#475569', fontWeight: '500' }}>
-                        {task.status === 'PENDING_CONFIRMATION'
-                            ? t('pending_confirmation_msg' as any) || "Submitted and awaiting review"
-                            : t('task_finalized_msg' as any) || "This task has been finalized and cannot be modified."}
-                    </p>
-                </div>
-            )}
-
-            {/* Transfer Button (Admins only) */}
-            {['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole) && ['IN_PROGRESS', 'PENDING'].includes(task.status) && (
-                <div style={{ marginTop: '2rem', textAlign: locale === 'ar' ? 'left' : 'right' }}>
-                    <button
-                        onClick={() => {
-                            const currentIds = task.assignees?.map((a: any) => a.id) || (task.assigneeId ? [task.assigneeId] : [])
-                            setTransferAssigneeIds(currentIds)
-                            setIsTransferModalOpen(true)
-                        }}
-                        className="btn"
-                        style={{
-                            background: '#f8fafc',
-                            color: '#475569',
-                            border: '1px solid #cbd5e1',
-                            borderRadius: '0.5rem',
-                            padding: '0.6rem 1.25rem',
-                            fontSize: '0.875rem',
-                            fontWeight: '600',
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '0.5rem',
-                            boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
-                            transition: 'all 0.2s ease',
-                            cursor: 'pointer'
-                        }}
-                    >
-                        <span>🔄</span> {t('transfer_to_another_employee')}
-                    </button>
-                </div>
-            )}
-
-            {/* Approve/Reject Buttons (Admins only) */}
-            {['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole) && task.status === 'PENDING_CONFIRMATION' && (userRole === 'TEAM_LEADER' || userId !== task.assigneeId) && (
-                <div style={{ marginTop: '2.5rem', display: 'flex', gap: '1.25rem', borderTop: '2px solid #e2e8f0', paddingTop: '2rem', flexDirection: 'row' }}>
-                    <button onClick={handleApprove} className="btn btn-primary" style={{ flex: 1, padding: '1rem', fontSize: '1.1rem', fontWeight: '700' }}>{t('approve_button')}</button>
-                    <button onClick={handleReject} className="btn" style={{ flex: 1, padding: '1rem', fontSize: '1.1rem', fontWeight: '700', background: '#ef4444', color: 'white' }}>{t('reject_button')}</button>
-                </div>
+                    {/* Approve/Reject Buttons (Admins only) */}
+                    {['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole) && task.status === 'PENDING_CONFIRMATION' && (userRole === 'TEAM_LEADER' || userId !== task.assigneeId) && (
+                        <div style={{ marginTop: '2.5rem', display: 'flex', gap: '1.25rem', borderTop: '2px solid #e2e8f0', paddingTop: '2rem', flexDirection: 'row' }}>
+                            <button onClick={handleApprove} className="btn btn-primary" style={{ flex: 1, padding: '1rem', fontSize: '1.1rem', fontWeight: '700' }}>{t('approve_button')}</button>
+                            <button onClick={handleReject} className="btn" style={{ flex: 1, padding: '1rem', fontSize: '1.1rem', fontWeight: '700', background: '#ef4444', color: 'white' }}>{t('reject_button')}</button>
+                        </div>
+                    )}
+                </>
             )}
 
             {/* Modals */}
