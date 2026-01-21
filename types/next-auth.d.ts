@@ -13,6 +13,7 @@ declare module "next-auth" {
             companyName?: string | null
             image?: string | null
             picture?: string | null
+            username: string
             language: string
         } & DefaultSession["user"]
     }
@@ -28,6 +29,7 @@ declare module "next-auth" {
         companyName?: string | null
         image?: string | null
         picture?: string | null
+        username?: string
         language?: string
     }
 }
@@ -43,6 +45,7 @@ declare module "next-auth/jwt" {
         companyName?: string | null
         image?: string | null
         picture?: string | null
+        username?: string
         language?: string
     }
 }

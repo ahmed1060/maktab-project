@@ -11,6 +11,7 @@ async function main() {
     const superAdmins = [
         {
             email: 'ahmed.hossam1060@gmail.com',
+            username: 'ahmed_hossam',
             firstName: 'Ahmed',
             lastName: 'Hossam',
             password: '12345678',
@@ -18,6 +19,7 @@ async function main() {
         },
         {
             email: 'mohamedsadek@gmail.com',
+            username: 'mohamed_sadek',
             firstName: 'Mohamed',
             lastName: 'Sadek',
             password: '12345678',
@@ -40,6 +42,7 @@ async function main() {
         const created = await prisma.superAdmin.create({
             data: {
                 email: admin.email,
+                username: admin.username,
                 password: hashedPassword,
                 firstName: admin.firstName,
                 lastName: admin.lastName,
@@ -48,7 +51,7 @@ async function main() {
             }
         })
 
-        console.log(`✅ Super Admin created successfully: ${created.email}`)
+        console.log(`✅ Super Admin created successfully: ${created.email} (${created.username})`)
     }
 }
 

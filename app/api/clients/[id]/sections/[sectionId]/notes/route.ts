@@ -179,6 +179,7 @@ export async function POST(
                         id: userId, // Keep ID consistent
                         firstName: user.firstName,
                         lastName: user.lastName,
+                        username: user.username || `system_${userId}`,
                         email: shadowEmail,
                         password: user.password, // hashed
                         avatar: user.avatar,

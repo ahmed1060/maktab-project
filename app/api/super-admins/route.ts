@@ -34,6 +34,7 @@ export async function GET(req: Request) {
                     firstName: true,
                     lastName: true,
                     email: true,
+                    username: true,
                     gender: true,
                     avatar: true,
                 },
@@ -77,7 +78,7 @@ export async function POST(req: Request) {
         }
 
         const body = await req.json()
-        const { firstName, lastName, email, password, gender } = body
+        const { firstName, lastName, email, password, gender, username } = body
 
         if (!firstName || !lastName || !email || !password) {
             return NextResponse.json({ error: "Missing required fields" }, { status: 400 })
@@ -91,6 +92,7 @@ export async function POST(req: Request) {
                 firstName,
                 lastName,
                 email,
+                username,
                 password: hashedPassword,
                 gender: gender || 'MALE'
             }

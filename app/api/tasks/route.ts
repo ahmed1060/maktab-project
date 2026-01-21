@@ -103,7 +103,7 @@ export async function GET(req: Request) {
     const skip = (page - 1) * limit
 
     const [tasks, total] = await Promise.all([
-        (prisma.task as any).findMany({
+        prisma.task.findMany({
             where: whereClause,
             include: {
                 assignee: {
@@ -208,7 +208,7 @@ export async function POST(req: Request) {
 
     try {
         const result = await prisma.$transaction(async (tx) => {
-            const task = await (tx.task as any).create({
+            const task = await tx.task.create({
                 data: {
                     title,
                     description,

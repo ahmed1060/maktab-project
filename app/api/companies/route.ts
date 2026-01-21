@@ -14,21 +14,27 @@ export async function GET(req: Request) {
         const id = searchParams.get('id')
 
         if (id) {
-            const company: any[] = await prisma.$queryRaw`SELECT id, name, "isBanned" FROM "Company" WHERE id = ${id}`
-            if (company.length === 0) {
+            const company = await prisma.company.findUnique({
+                where: { id },
+                select: { id: true, name: true, isBanned: true }
+            })
+            if (!company) {
                 return NextResponse.json({ error: "Not found" }, { status: 404 })
             }
-            return NextResponse.json(company[0])
+            return NextResponse.json(company)
         }
 
         const page = parseInt(searchParams.get('page') || '1')
         const limit = parseInt(searchParams.get('limit') || '10')
         const skip = (page - 1) * limit
 
-        // Use raw query to fetch isBanned since client is stale
-        const companies: any[] = await prisma.$queryRaw`SELECT id, name, "isBanned" FROM "Company" ORDER BY name ASC LIMIT ${limit} OFFSET ${skip}`
-        const totalCount: any[] = await prisma.$queryRaw`SELECT COUNT(*)::int as count FROM "Company"`
-        const total = totalCount[0]?.count || 0
+        const companies = await prisma.company.findMany({
+            select: { id: true, name: true, isBanned: true },
+            orderBy: { name: 'asc' },
+            skip,
+            take: limit
+        })
+        const total = await prisma.company.count()
 
         return NextResponse.json({
             data: companies,
@@ -99,17 +105,20 @@ export async function PUT(req: Request) {
 
         // Handle specific Ban/Unban action if isBanned is provided
         if (isBanned !== undefined) {
-            // Use executeRaw for this hidden field
-            await prisma.$executeRaw`UPDATE "Company" SET "isBanned" = ${isBanned} WHERE id = ${id}`
+            await prisma.company.update({
+                where: { id },
+                data: { isBanned }
+            })
             // If name is also provided, update it too
             if (name) {
-                // Prevent defaulting SHSD rename
-                const existing: any[] = await prisma.$queryRaw`SELECT name FROM "Company" WHERE id = ${id}`
-                if (existing[0]?.name === 'SHSD' && name !== 'SHSD') {
+                const existing = await prisma.company.findUnique({ where: { id } })
+                if (existing?.name === 'SHSD' && name !== 'SHSD') {
                     return NextResponse.json({ error: "Cannot rename SHSD" }, { status: 403 })
                 }
-
-                await prisma.$executeRaw`UPDATE "Company" SET name = ${name} WHERE id = ${id}`
+                await prisma.company.update({
+                    where: { id },
+                    data: { name }
+                })
             }
             return NextResponse.json({ success: true })
         }
@@ -117,12 +126,11 @@ export async function PUT(req: Request) {
         // Standard Rename (fallback)
         if (!name) return NextResponse.json({ error: "Name required" }, { status: 400 })
 
-        const existing: any[] = await prisma.$queryRaw`SELECT name FROM "Company" WHERE id = ${id}`
-        if (existing[0]?.name === 'SHSD' && name !== 'SHSD') {
+        const existing = await prisma.company.findUnique({ where: { id } })
+        if (existing?.name === 'SHSD' && name !== 'SHSD') {
             return NextResponse.json({ error: "Cannot rename the default system company (SHSD)" }, { status: 403 })
         }
 
-        // Use standard update for name if we want, or raw to be safe/consistent
         const company = await prisma.company.update({
             where: { id },
             data: { name }

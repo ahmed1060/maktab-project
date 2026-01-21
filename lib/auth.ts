@@ -56,6 +56,7 @@ export const authOptions: NextAuthOptions = {
                             image: superAdmin.avatar || null, // Map to standard NextAuth field
                             companyId: null,
                             companyName: 'SHSD',
+                            username: superAdmin.username,
                             language: superAdmin.language || 'en'
                         }
                     }
@@ -74,12 +75,9 @@ export const authOptions: NextAuthOptions = {
                         throw new Error('This user does not belong to the selected company.')
                     }
 
-                    // Check for Company Ban Status (Raw Query because client is stale)
-                    if (user.companyId) {
-                        const companyStatus: any[] = await prisma.$queryRaw`SELECT "isBanned", name FROM "Company" WHERE id = ${user.companyId}`
-                        if (companyStatus[0]?.isBanned) {
-                            throw new Error('Company access restricted. Please contact support.')
-                        }
+                    // Check for Company Ban Status
+                    if (user.company?.isBanned) {
+                        throw new Error('Company access restricted. Please contact support.')
                     }
 
                     if (user.status === 'SUSPENDED' || user.status === 'DELETED') {
@@ -109,6 +107,7 @@ export const authOptions: NextAuthOptions = {
                         image: user.avatar || null, // Map to standard NextAuth field
                         companyId: user.companyId,
                         companyName: user.company?.name || null,
+                        username: user.username,
                         language: user.language || 'en'
                     }
 
@@ -135,6 +134,7 @@ export const authOptions: NextAuthOptions = {
                 session.user.picture = avatar
                 session.user.companyId = token.companyId as string | null
                 session.user.companyName = token.companyName as string | null
+                session.user.username = token.username as string
                 session.user.language = token.language as string
             }
             return session
@@ -153,6 +153,7 @@ export const authOptions: NextAuthOptions = {
                 token.picture = avatarUrl
                 token.companyId = user.companyId
                 token.companyName = user.companyName
+                token.username = user.username
                 token.language = user.language || 'en'
                 token.jti = uuidv4()
             }

@@ -90,7 +90,11 @@ export default function NewEmployeePage() {
 
             if (!res.ok) {
                 const text = await res.text()
-                setError(text || 'Failed to create user')
+                if (text.includes("Username already in use")) {
+                    setError(locale === 'ar' ? 'اسم المستخدم مستخدم بالفعل' : 'Username already in use')
+                } else {
+                    setError(text || 'Failed to create user')
+                }
                 setLoading(false)
                 return
             }

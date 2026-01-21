@@ -257,7 +257,7 @@ export async function GET(req: Request) {
             gender: user.gender,
             company: user.company,
             totalDifficultyPoints: user.totalDifficultyPoints,
-            username: user.username
+            username: user.username as string
         }
     })
 
@@ -323,7 +323,16 @@ export async function POST(req: Request) {
 
     // Auto-generate username if not provided
     let finalUsername = username
-    if (!finalUsername && targetCompanyId) {
+    if (finalUsername) {
+        // Check if username exists globally
+        const conflictUser = await prisma.user.findFirst({
+            where: { username: { equals: finalUsername, mode: 'insensitive' } }
+        })
+        const conflictAdmin = await prisma.superAdmin.findFirst({
+            where: { username: { equals: finalUsername, mode: 'insensitive' } }
+        })
+        if (conflictUser || conflictAdmin) return new NextResponse("Username already in use", { status: 400 })
+    } else if (targetCompanyId) {
         finalUsername = await generateUsername(targetCompanyId)
     }
 
@@ -400,8 +409,9 @@ export async function PUT(req: Request) {
         if (conflictAdmin) return new NextResponse("Email already in use", { status: 400 })
     }
 
-    // Username Uniqueness Check
+    // Username Uniqueness Check (Global)
     if (username) {
+        // Check User Table
         const conflictUser = await prisma.user.findFirst({
             where: {
                 username: { equals: username, mode: 'insensitive' },
@@ -409,6 +419,15 @@ export async function PUT(req: Request) {
             }
         })
         if (conflictUser) return new NextResponse("Username already in use", { status: 400 })
+
+        // Check SuperAdmin Table
+        const conflictAdmin = await prisma.superAdmin.findFirst({
+            where: {
+                username: { equals: username, mode: 'insensitive' },
+                NOT: { id }
+            }
+        })
+        if (conflictAdmin) return new NextResponse("Username already in use", { status: 400 })
     }
 
     // Build update data

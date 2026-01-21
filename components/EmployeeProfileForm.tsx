@@ -262,6 +262,9 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
 
             if (!res.ok) {
                 const text = await res.text()
+                if (text.includes("Username already in use")) {
+                    throw new Error(locale === 'ar' ? 'اسم المستخدم مستخدم بالفعل' : 'Username already in use')
+                }
                 throw new Error(text || t('error_generic'))
             }
 
