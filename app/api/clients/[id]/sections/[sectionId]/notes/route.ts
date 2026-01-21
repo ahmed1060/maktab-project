@@ -116,6 +116,7 @@ export async function POST(
     try {
         const session = await getServerSession(authOptions)
         const userId = (session?.user as any)?.id
+        const userRole = (session?.user as any)?.role
 
         if (!userId) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -159,7 +160,7 @@ export async function POST(
             data: {
                 content,
                 sectionId: params.sectionId,
-                createdById: userId,
+                createdById: userRole === 'SUPER_ADMIN' ? null : userId,
                 attachment: Array.isArray(attachment) ? JSON.stringify(attachment) : attachment,
                 expiryDate: expiryDate ? new Date(expiryDate) : null,
                 reminderDays: reminderDays ? parseInt(reminderDays) : null
@@ -257,8 +258,9 @@ export async function PUT(
     try {
         const session = await getServerSession(authOptions)
         const userId = (session?.user as any)?.id
+        const userRole = (session?.user as any)?.role
 
-        if (!session?.user || (session.user.role !== 'SUPER_ADMIN' && session.user.role !== 'ADMIN')) {
+        if (!session?.user || (userRole !== 'SUPER_ADMIN' && userRole !== 'ADMIN')) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
         }
 
@@ -296,7 +298,7 @@ export async function PUT(
                 attachment: Array.isArray(body.attachment) ? JSON.stringify(body.attachment) : body.attachment,
                 expiryDate: expiryDate ? new Date(expiryDate) : null,
                 reminderDays: reminderDays ? parseInt(reminderDays) : null,
-                lastEditedById: userId,
+                lastEditedById: userRole === 'SUPER_ADMIN' ? null : userId,
                 lastEditedAt: new Date()
             }
         })

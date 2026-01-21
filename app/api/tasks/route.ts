@@ -220,7 +220,7 @@ export async function POST(req: Request) {
                     difficulty: Math.min(Math.max(difficulty, 0), 10), // Ensure 0-10 range
                     status: 'PENDING',
                     location: location,
-                    createdBy: creatorId, // Use the ID (Super Admin or User)
+                    createdBy: userRole === 'SUPER_ADMIN' ? null : creatorId, // Super Admin not in User table
                     // Store Super Admin creator info in comments since there is no FK relationship
                     comments: userRole === 'SUPER_ADMIN' ? JSON.stringify([{
                         text: "Task created by Super Admin",

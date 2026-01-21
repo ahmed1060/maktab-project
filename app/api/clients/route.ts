@@ -127,7 +127,8 @@ export async function POST(request: Request) {
         console.log('[API] Session:', session ? 'Found' : 'Null')
 
         const userId = (session?.user as any)?.id
-        console.log('[API] UserId:', userId)
+        const userRole = (session?.user as any)?.role
+        console.log('[API] UserId:', userId, 'Role:', userRole)
 
         if (!userId) {
             console.log('[API] Unauthorized: No UserId')
@@ -183,7 +184,7 @@ export async function POST(request: Request) {
             data: {
                 name,
                 companyId: targetCompanyId!,
-                createdById: userId
+                createdById: userRole === 'SUPER_ADMIN' ? null : userId
             }
         })
         console.log('[API] Client Created:', client)
@@ -234,8 +235,9 @@ export async function PUT(request: Request) {
     try {
         const session = await getServerSession(authOptions)
         const userId = (session?.user as any)?.id
+        const userRole = (session?.user as any)?.role
 
-        if (!userId || !session?.user || (session.user.role !== 'SUPER_ADMIN' && session.user.role !== 'ADMIN' && session.user.role !== 'TEAM_LEADER')) {
+        if (!userId || !session?.user || (userRole !== 'SUPER_ADMIN' && userRole !== 'ADMIN' && userRole !== 'TEAM_LEADER')) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
         }
 
@@ -259,7 +261,7 @@ export async function PUT(request: Request) {
             where: { id },
             data: {
                 name,
-                lastEditedById: userId
+                lastEditedById: userRole === 'SUPER_ADMIN' ? null : userId
             }
         })
 

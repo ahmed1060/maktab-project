@@ -74,7 +74,7 @@ export async function POST(req: Request) {
                 deadline: new Date(deadline),
                 difficulty,
                 location,
-                createdBy: creatorId,
+                createdBy: userRole === 'SUPER_ADMIN' ? null : creatorId,
                 assigneeId: assigneeIds[0], // Primary assignee for legacy support
                 assigneeIds: assigneeIds
             })

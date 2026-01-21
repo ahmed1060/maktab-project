@@ -112,6 +112,7 @@ export async function POST(
     try {
         const session = await getServerSession(authOptions)
         const userId = (session?.user as any)?.id
+        const userRole = (session?.user as any)?.role
 
         if (!userId) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -153,7 +154,7 @@ export async function POST(
             data: {
                 title,
                 clientId: params.id,
-                createdById: userId
+                createdById: userRole === 'SUPER_ADMIN' ? null : userId
             }
         })
 
@@ -210,8 +211,9 @@ export async function PUT(
     try {
         const session = await getServerSession(authOptions)
         const userId = (session?.user as any)?.id
+        const userRole = (session?.user as any)?.role
 
-        if (!userId || !session?.user || (session.user.role !== 'SUPER_ADMIN' && session.user.role !== 'ADMIN' && session.user.role !== 'TEAM_LEADER')) {
+        if (!userId || !session?.user || (userRole !== 'SUPER_ADMIN' && userRole !== 'ADMIN' && userRole !== 'TEAM_LEADER')) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
         }
 
@@ -239,7 +241,7 @@ export async function PUT(
             where: { id },
             data: {
                 title,
-                lastEditedById: userId
+                lastEditedById: userRole === 'SUPER_ADMIN' ? null : userId
             }
         })
 
