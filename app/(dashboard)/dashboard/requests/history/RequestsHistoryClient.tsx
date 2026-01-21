@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useLanguage } from '@/context/LanguageContext'
 import RequestCard from '@/components/requests/RequestCard'
 import ViewRequestModal from '@/components/requests/ViewRequestModal'
@@ -34,7 +34,7 @@ export default function RequestsHistoryClient({ userRole }: { userRole: string }
     const [highlightId, setHighlightId] = useState<string | null>(null)
     const searchParams = useSearchParams()
 
-    const fetchHistory = async () => {
+    const fetchHistory = useCallback(async () => {
         try {
             let url = `/api/requests?history=true&sortBy=${sortBy}&order=${order}&page=${page}&limit=10`
             if (filters.search) url += `&search=${encodeURIComponent(filters.search)}`
@@ -48,16 +48,16 @@ export default function RequestsHistoryClient({ userRole }: { userRole: string }
                 setTotal(data.total || 0)
                 setTotalPages(data.totalPages || 0)
             }
-        } catch (error) {
-            console.error("Error fetching history:", error)
+        } catch {
+            console.error("Error fetching history")
         } finally {
             setLoading(false)
         }
-    }
+    }, [sortBy, order, page, filters, selectedCompanyId])
 
     useEffect(() => {
         fetchHistory()
-    }, [filters, selectedCompanyId, sortBy, order, page])
+    }, [fetchHistory, filters, selectedCompanyId, sortBy, order, page])
 
     useEffect(() => {
         setPage(1)

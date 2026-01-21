@@ -91,7 +91,7 @@ model Task {
   difficulty          Int      @default(0)
   totalCost           Float    @default(0)
   assigneeId          String
-  createdBy           String
+  createdBy           String?
   attachments         String?
   comments            String?
   createdAt           DateTime @default(now())
@@ -182,7 +182,7 @@ model BusinessClient {
   id             String                  @id @default(uuid())
   name           String
   companyId      String
-  createdById    String
+  createdById    String?
   lastEditedById String?
   createdAt      DateTime                @default(now())
   updatedAt      DateTime                @updatedAt
@@ -199,7 +199,7 @@ model BusinessClientSection {
   id             String               @id @default(uuid())
   title          String
   clientId       String
-  createdById    String
+  createdById    String?
   lastEditedById String?
   createdAt      DateTime             @default(now())
   updatedAt      DateTime             @updatedAt
@@ -216,7 +216,7 @@ model BusinessClientNote {
   id                 String                @id @default(uuid())
   content            String
   sectionId          String
-  createdById        String
+  createdById        String?
   createdAt          DateTime              @default(now())
   updatedAt          DateTime              @updatedAt
   attachment         String?

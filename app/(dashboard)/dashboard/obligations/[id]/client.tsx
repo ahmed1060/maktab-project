@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Modal from '@/components/Modal'
 import { useLanguage } from '@/context/LanguageContext'
@@ -28,6 +28,62 @@ export default function ObligationDetailClient({ obligation, userRole }: { oblig
         })
     }, [])
 
+    const handleUpload = useCallback(async (isDraft: boolean) => {
+        setUploading(true)
+        setLoadingType(isDraft ? 'DRAFT' : 'SUBMIT')
+        const uploadedAttachments: any[] = []
+
+        try {
+            // Upload all pending files
+            for (const file of pendingFiles) {
+                const formData = new FormData()
+                formData.append('file', file)
+
+                try {
+                    const res = await fetch('/api/upload', { method: 'POST', body: formData })
+                    const data = await res.json()
+                    if (data.success) {
+                        uploadedAttachments.push({
+                            name: file.name,
+                            url: data.url,
+                            type: file.type,
+                            uploadedAt: new Date().toISOString()
+                        })
+                    }
+                } catch (err) {
+                    console.error("Upload error", err)
+                }
+            }
+
+            const res = await fetch(`/api/obligations/${obligation.id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    status: isDraft ? 'IN_PROGRESS' : 'PENDING_CONFIRMATION',
+                    newAttachments: uploadedAttachments // Send only new ones
+                })
+            })
+
+            if (!res.ok) {
+                const data = await res.json().catch(() => ({}))
+                throw new Error(data.message || 'Update failed')
+            }
+
+            setPendingFiles([])
+            router.refresh()
+            setFeedbackMessage(isDraft ? t('draft_saved_success') : t('obligation_submitted_success' as any))
+            setShowFeedback(true)
+            setTimeout(() => setShowFeedback(false), 3000)
+        } catch (error: any) {
+            console.error("Update failed", error)
+            setFeedbackMessage(error.message || t('failed_save_generic'))
+            setShowFeedback(true)
+        } finally {
+            setUploading(false)
+            setLoadingType(null)
+        }
+    }, [pendingFiles, obligation.id, router, t])
+
     // Listen for suspension auto-save event
     useEffect(() => {
         const handleSuspendSave = () => {
@@ -39,7 +95,7 @@ export default function ObligationDetailClient({ obligation, userRole }: { oblig
         }
         window.addEventListener('app:suspend-detected', handleSuspendSave)
         return () => window.removeEventListener('app:suspend-detected', handleSuspendSave)
-    }, [obligation.status, userRole, pendingFiles])
+    }, [obligation.status, userRole, handleUpload])
 
     // Helper to parse existing attachments
     const existingAttachments = obligation.attachments ? (() => {
@@ -94,61 +150,6 @@ export default function ObligationDetailClient({ obligation, userRole }: { oblig
         setPendingFiles(prev => prev.filter((_, i) => i !== index))
     }
 
-    const handleUpload = async (isDraft: boolean) => {
-        setUploading(true)
-        setLoadingType(isDraft ? 'DRAFT' : 'SUBMIT')
-        const uploadedAttachments: any[] = []
-
-        try {
-            // Upload all pending files
-            for (const file of pendingFiles) {
-                const formData = new FormData()
-                formData.append('file', file)
-
-                try {
-                    const res = await fetch('/api/upload', { method: 'POST', body: formData })
-                    const data = await res.json()
-                    if (data.success) {
-                        uploadedAttachments.push({
-                            name: file.name,
-                            url: data.url,
-                            type: file.type,
-                            uploadedAt: new Date().toISOString()
-                        })
-                    }
-                } catch (err) {
-                    console.error("Upload error", err)
-                }
-            }
-
-            const res = await fetch(`/api/obligations/${obligation.id}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    status: isDraft ? 'IN_PROGRESS' : 'PENDING_CONFIRMATION',
-                    newAttachments: uploadedAttachments // Send only new ones
-                })
-            })
-
-            if (!res.ok) {
-                const data = await res.json().catch(() => ({}))
-                throw new Error(data.message || 'Update failed')
-            }
-
-            setPendingFiles([])
-            router.refresh()
-            setFeedbackMessage(isDraft ? t('draft_saved_success') : t('obligation_submitted_success' as any))
-            setShowFeedback(true)
-            setTimeout(() => setShowFeedback(false), 3000)
-        } catch (error: any) {
-            console.error("Update failed", error)
-            setFeedbackMessage(error.message || t('failed_save_generic'))
-            setShowFeedback(true)
-        } finally {
-            setUploading(false)
-            setLoadingType(null)
-        }
-    }
 
     const handleApprove = async () => {
         try {

@@ -1,0 +1,94 @@
+
+> app@0.1.0 lint
+> next lint
+
+
+./app/(dashboard)/dashboard/clients/[id]/page.tsx
+606:34  Warning: '_e' is defined but never used.  @typescript-eslint/no-unused-vars
+
+./app/(dashboard)/dashboard/companies/[id]/payments/page.tsx
+98:18  Warning: 'error' is defined but never used.  @typescript-eslint/no-unused-vars
+143:18  Warning: 'error' is defined but never used.  @typescript-eslint/no-unused-vars
+
+./app/(dashboard)/dashboard/obligations/ObligationsClient.tsx
+7:8  Warning: 'SortControl' is defined but never used.  @typescript-eslint/no-unused-vars
+
+./app/(dashboard)/dashboard/obligations/[id]/client.tsx
+42:8  Warning: React Hook useEffect has a missing dependency: 'handleUpload'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+
+./app/(dashboard)/dashboard/page.tsx
+305:56  Warning: 'idx' is defined but never used.  @typescript-eslint/no-unused-vars
+
+./app/(dashboard)/dashboard/requests/history/RequestsHistoryClient.tsx
+96:18  Warning: 'error' is defined but never used.  @typescript-eslint/no-unused-vars
+123:18  Warning: 'error' is defined but never used.  @typescript-eslint/no-unused-vars
+
+./app/(dashboard)/dashboard/requests/RequestsClient.tsx
+3:10  Warning: 'useLanguage' is defined but never used.  @typescript-eslint/no-unused-vars
+
+./app/(dashboard)/dashboard/tasks/new/page.tsx
+736:62  Warning: 'e' is defined but never used.  @typescript-eslint/no-unused-vars
+792:62  Warning: 'e' is defined but never used.  @typescript-eslint/no-unused-vars
+
+./app/(dashboard)/dashboard/tasks/TasksClient.tsx
+7:8  Warning: 'SortControl' is defined but never used.  @typescript-eslint/no-unused-vars
+
+./app/(dashboard)/dashboard/tasks/[id]/client.tsx
+11:10  Warning: 'useCompany' is defined but never used.  @typescript-eslint/no-unused-vars
+191:8  Warning: React Hook useEffect has missing dependencies: 'handleUpload' and 'task.assignees'. Either include them or remove the dependency array.  react-hooks/exhaustive-deps
+
+./app/api/clients/[id]/sections/route.ts
+169:7  Warning: 'params' is defined but never used.  @typescript-eslint/no-unused-vars
+208:7  Warning: 'params' is defined but never used.  @typescript-eslint/no-unused-vars
+
+./app/api/clients/[id]/sections/[sectionId]/notes/route.ts
+179:7  Warning: 'params' is defined but never used.  @typescript-eslint/no-unused-vars
+255:7  Warning: 'params' is defined but never used.  @typescript-eslint/no-unused-vars
+
+./app/api/day-off-requests/route.ts
+5:28  Warning: 'getEgyptTomorrowStr' is defined but never used.  @typescript-eslint/no-unused-vars
+5:49  Warning: 'getEgyptYesterdayStr' is defined but never used.  @typescript-eslint/no-unused-vars
+54:15  Warning: 'todayStr' is assigned a value but never used.  @typescript-eslint/no-unused-vars
+
+./app/api/requests/route.ts
+155:15  Warning: 'superAdmins' is assigned a value but never used.  @typescript-eslint/no-unused-vars
+
+./app/api/tasks/[id]/items/route.ts
+24:15  Warning: 'isAdmin' is assigned a value but never used.  @typescript-eslint/no-unused-vars
+
+./app/api/tasks/[id]/submit/route.ts
+6:10  Warning: 'translations' is defined but never used.  @typescript-eslint/no-unused-vars
+6:24  Warning: 'Locale' is defined but never used.  @typescript-eslint/no-unused-vars
+
+./app/api/users/route.ts
+7:19  Warning: 'decrypt' is defined but never used.  @typescript-eslint/no-unused-vars
+
+./components/EmployeeFilter.tsx
+131:8  Warning: React Hook useEffect has missing dependencies: 'handleApplyFilters' and 'searchQuery'. Either include them or remove the dependency array.  react-hooks/exhaustive-deps
+
+./components/EmployeeProfileForm.tsx
+51:12  Warning: 'isRevealLoading' is assigned a value but never used.  @typescript-eslint/no-unused-vars
+51:29  Warning: 'setIsRevealLoading' is assigned a value but never used.  @typescript-eslint/no-unused-vars
+
+./components/LocationSearchInput.tsx
+86:8  Warning: React Hook useEffect has a missing dependency: 'value.name'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+
+./components/requests/RequestCard.tsx
+14:16  Warning: 'locale' is assigned a value but never used.  @typescript-eslint/no-unused-vars
+
+./components/requests/RequestsSection.tsx
+64:8  Warning: React Hook useEffect has a missing dependency: 'fetchRequests'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+109:18  Warning: 'error' is defined but never used.  @typescript-eslint/no-unused-vars
+131:18  Warning: 'error' is defined but never used.  @typescript-eslint/no-unused-vars
+148:18  Warning: 'error' is defined but never used.  @typescript-eslint/no-unused-vars
+
+./components/requests/ViewRequestModal.tsx
+130:33  Warning: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+./components/TaskListItem.tsx
+4:10  Warning: 'formatTaskStatus' is defined but never used.  @typescript-eslint/no-unused-vars
+
+./lib/location.ts
+34:18  Warning: 'e' is defined but never used.  @typescript-eslint/no-unused-vars
+
+info  - Need to disable some ESLint rules? Learn more here: https://nextjs.org/docs/basic-features/eslint#disabling-rules

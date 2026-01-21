@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { getServerSession } from "next-auth/next"
 import { authOptions } from "@/lib/auth"
-import { getEgyptTodayStr, getEgyptTomorrowStr, getEgyptYesterdayStr } from "@/lib/time"
+import { getEgyptTodayStr } from "@/lib/time"
 
 export async function GET(request: NextRequest) {
     const session = await getServerSession(authOptions)
@@ -51,7 +51,7 @@ export async function POST(request: NextRequest) {
             return new NextResponse("Reason must be 100 characters or less", { status: 400 })
         }
 
-        const todayStr = getEgyptTodayStr();
+        getEgyptTodayStr();
 
         const requestDateStr = new Date(date).toISOString().split('T')[0];
         const finalEndDateStr = endDate ? new Date(endDate).toISOString().split('T')[0] : requestDateStr;

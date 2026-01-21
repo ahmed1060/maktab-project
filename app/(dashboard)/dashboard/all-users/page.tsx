@@ -124,7 +124,7 @@ export default function AllUsersPage() {
         } finally {
             setLoadingDeleted(false)
         }
-    }, [deletedPage])
+    }, [deletedPage, filters.companyId])
 
     useEffect(() => {
         if (showExUsersModal) {

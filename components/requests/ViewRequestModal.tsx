@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import Image from 'next/image'
 import Modal from '@/components/Modal'
 import { useLanguage } from '@/context/LanguageContext'
 
@@ -127,7 +128,7 @@ export default function ViewRequestModal({ isOpen, onClose, request, userRole, o
                             overflow: 'hidden'
                         }}>
                             {request.user.avatar ? (
-                                <img src={request.user.avatar} alt="avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                <Image src={request.user.avatar} alt="avatar" width={40} height={40} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                             ) : (
                                 <span>{(request.user.firstName?.[0] || 'U').toUpperCase()}</span>
                             )}

@@ -48,7 +48,6 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
     // Password & Verification States
     const [showNewPassword, setShowNewPassword] = useState(false)
     const [revealPassword, setRevealPassword] = useState<string | null>(null)
-    const [isRevealLoading, setIsRevealLoading] = useState(false)
     const [verificationModalOpen, setVerificationModalOpen] = useState(false)
     const [verificationPassword, setVerificationPassword] = useState('')
     const [isVerifying, setIsVerifying] = useState(false)

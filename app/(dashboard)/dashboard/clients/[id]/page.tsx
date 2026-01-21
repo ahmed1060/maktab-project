@@ -8,7 +8,6 @@ import { createPortal } from 'react-dom'
 import ConfirmModal from '@/components/ConfirmModal'
 import EmployeeFilter from '@/components/EmployeeFilter'
 import { useLanguage } from '@/context/LanguageContext'
-import { useSession } from 'next-auth/react'
 import Modal from '@/components/Modal'
 import { useToast } from '@/context/ToastContext'
 import Pagination from '@/components/Pagination'
@@ -72,7 +71,6 @@ export default function ClientDetailsPage() {
     const [searchQuery, setSearchQuery] = useState('')
     const [mounted, setMounted] = useState(false)
     const [deleteConfirm, setDeleteConfirm] = useState<{ isOpen: boolean, section: Section | null }>({ isOpen: false, section: null })
-    const { data: session } = useSession()
     const { showToast } = useToast()
     const [isEditClientModalOpen, setIsEditClientModalOpen] = useState(false)
     const [editClientName, setEditClientName] = useState('')
@@ -140,8 +138,8 @@ export default function ClientDetailsPage() {
         }
     }, [fetchData, clientId])
 
-    const handleEditClient = async (e: React.FormEvent) => {
-        e.preventDefault()
+    const handleEditClient = async (_e: React.FormEvent) => {
+        _e.preventDefault()
         if (!editClientName.trim() || !client) return
 
         setIsEditingClient(true)
@@ -168,8 +166,8 @@ export default function ClientDetailsPage() {
         }
     }
 
-    const handleEditSection = async (e: React.FormEvent) => {
-        e.preventDefault()
+    const handleEditSection = async (_e: React.FormEvent) => {
+        _e.preventDefault()
         if (!editSectionTitle.trim() || !editingSectionId) return
 
         setIsEditingSection(true)
@@ -197,8 +195,8 @@ export default function ClientDetailsPage() {
         }
     }
 
-    const handleCreateSection = async (e: React.FormEvent) => {
-        e.preventDefault()
+    const handleCreateSection = async (_e: React.FormEvent) => {
+        _e.preventDefault()
         if (!newSectionTitle.trim()) return
 
         setIsSubmitting(true)
@@ -605,7 +603,7 @@ export default function ClientDetailsPage() {
                                 const err = await res.json()
                                 showToast(`${t('error_generic')}: ${err.error}`, 'error')
                             }
-                        } catch (e) {
+                        } catch {
                             showToast(t('error_generic'), 'error')
                         } finally {
                             setIsSubmitting(false)

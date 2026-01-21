@@ -4,7 +4,7 @@ import { supabase } from "@/lib/storage"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import bcrypt from "bcryptjs"
-import { encrypt, decrypt } from "@/lib/crypto"
+import { encrypt } from "@/lib/crypto"
 import { generateUsername } from "@/lib/username"
 
 export async function GET(req: Request) {

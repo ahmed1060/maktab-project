@@ -762,7 +762,7 @@ export default function SectionNotesPage() {
                                 const err = await res.json()
                                 alert(`${t('failed_save_generic')}: ${err.error}`)
                             }
-                        } catch (error) {
+                        } catch {
                             alert(t('failed_save_generic'))
                         }
                     }

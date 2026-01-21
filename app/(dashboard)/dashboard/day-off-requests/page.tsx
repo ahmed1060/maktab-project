@@ -105,8 +105,8 @@ export default function DayOffRequestsPage() {
                 setTotal(result.total)
                 setTotalPages(result.totalPages)
             }
-        } catch (error) {
-            console.error('Failed to fetch requests', error)
+        } catch {
+            console.error('Failed to fetch requests')
         } finally {
             setLoading(false)
         }
@@ -124,8 +124,8 @@ export default function DayOffRequestsPage() {
                     setBaseCredit(foundUser.baseDayOffCredit || foundUser.dayOffCredit)
                 }
             }
-        } catch (error) {
-            console.error('Failed to fetch user credit', error)
+        } catch {
+            console.error('Failed to fetch user credit')
         }
     }, [user?.id])
 
@@ -190,7 +190,7 @@ export default function DayOffRequestsPage() {
                 const err = await res.text()
                 showAlert('error', err || t('failed_submit_request' as any))
             }
-        } catch (error) {
+        } catch {
             showAlert('error', t('error_generic'))
         } finally {
             setSubmitting(false)
@@ -243,7 +243,7 @@ export default function DayOffRequestsPage() {
             } else {
                 showAlert('error', t('error_generic'))
             }
-        } catch (error) {
+        } catch {
             showAlert('error', t('error_generic'))
         }
     }

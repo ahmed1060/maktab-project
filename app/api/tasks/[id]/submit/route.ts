@@ -3,7 +3,6 @@ import { prisma } from "@/lib/prisma"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { verifyResourceAccess } from "@/lib/security"
-import { translations, Locale } from "@/lib/translations"
 import { extractCoords, calculateDistance } from "@/lib/location"
 
 export async function PUT(req: Request, { params }: { params: { id: string } }) {

@@ -11,7 +11,7 @@ interface RequestCardProps {
 }
 
 export default function RequestCard({ request, userRole, onView, onStatusUpdate, isHighlighted }: RequestCardProps) {
-    const { t, locale } = useLanguage()
+    const { t } = useLanguage()
     const [updating, setUpdating] = useState(false)
     const cardRef = useRef<HTMLDivElement>(null)
     const [showVisualHighlight, setShowVisualHighlight] = useState(isHighlighted)

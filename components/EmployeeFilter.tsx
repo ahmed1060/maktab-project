@@ -107,6 +107,22 @@ export default function EmployeeFilter({
     const [localSortBy, setLocalSortBy] = useState(sortBy || '')
     const [localSortOrder, setLocalSortOrder] = useState<'asc' | 'desc'>(sortOrder || 'asc')
 
+    const handleApplyFilters = () => {
+        onFilterChange({
+            employeeId: localEmployeeId,
+            dateFrom: localDateFrom,
+            dateTo: localDateTo,
+            status: localStatus,
+            search: searchTerm
+        })
+        if (onSortChange && localSortBy) {
+            onSortChange(localSortBy, localSortOrder)
+        }
+        if (onRoleChange && showRoleFilter) onRoleChange(localRole)
+        if (onCompanyChange && showCompanyFilter) onCompanyChange(localCompanyId)
+        setIsPopupOpen(false)
+    }
+
     useEffect(() => {
         setLocalEmployeeId(selectedEmployeeId)
         setLocalStatus(selectedStatus)
@@ -128,7 +144,7 @@ export default function EmployeeFilter({
         }, 500)
 
         return () => clearTimeout(timer)
-    }, [searchTerm])
+    }, [searchTerm, searchQuery, handleApplyFilters]) // Added missing dependencies too
 
     useEffect(() => {
         const checkMobile = () => {
@@ -137,7 +153,7 @@ export default function EmployeeFilter({
         checkMobile()
         window.addEventListener('resize', checkMobile)
         return () => window.removeEventListener('resize', checkMobile)
-    }, [])
+    }, []) // handleApplyFilters and searchQuery were not needed here, they were unused in this effect.
 
     useEffect(() => {
         if (!isEmployee && !hideEmployeeFilter) {
@@ -182,21 +198,6 @@ export default function EmployeeFilter({
 
     // Removed auto-apply search effect to wait for "Show Results"
 
-    const handleApplyFilters = () => {
-        onFilterChange({
-            employeeId: localEmployeeId,
-            dateFrom: localDateFrom,
-            dateTo: localDateTo,
-            status: localStatus,
-            search: searchTerm
-        })
-        if (onSortChange && localSortBy) {
-            onSortChange(localSortBy, localSortOrder)
-        }
-        if (onRoleChange && showRoleFilter) onRoleChange(localRole)
-        if (onCompanyChange && showCompanyFilter) onCompanyChange(localCompanyId)
-        setIsPopupOpen(false)
-    }
 
     const resetFilters = () => {
         setLocalEmployeeId('')

@@ -152,7 +152,7 @@ export async function POST(req: Request) {
         // Also notify Super Admins if no companyId or just as a general rule? 
         // The user said: "super admins/admins/teamleader should receive a notification of it"
         // Let's notify super admins too.
-        const superAdmins = await prisma.superAdmin.findMany({ select: { id: true } })
+        // const superAdmins = await prisma.superAdmin.findMany({ select: { id: true } })
         // Wait, Notification model userId is logic to User model. SuperAdmin is a different model.
         // Let's check Notification model in schema.prisma again.
         // userId String -> User model. SuperAdmin does not have notifications relation in schema.prisma.

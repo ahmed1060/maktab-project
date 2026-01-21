@@ -29,7 +29,7 @@ export default function LocationSearchInput({ value, onChange, placeholder, labe
         }
         document.addEventListener('mousedown', handleClickOutside)
         return () => document.removeEventListener('mousedown', handleClickOutside)
-    }, [])
+    }, [value?.name])
 
     const searchLocations = async (text: string) => {
         if (!text || text.length < 3) {

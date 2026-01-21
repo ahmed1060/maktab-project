@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import AccessDenied from '@/components/AccessDenied'
@@ -44,38 +44,38 @@ export default function CompanyPaymentsPage() {
     const [submitting, setSubmitting] = useState(false)
     const [paymentToDelete, setPaymentToDelete] = useState<string | null>(null)
 
-    const fetchCompanyData = async () => {
+    const fetchCompanyData = useCallback(async () => {
         try {
             const res = await fetch(`/api/companies?id=${companyId}`)
             if (res.ok) {
                 const data = await res.json()
                 setCompany(data)
             }
-        } catch (error) {
+        } catch {
             console.error('Failed to fetch company')
         }
-    }
+    }, [companyId])
 
-    const fetchPayments = async () => {
+    const fetchPayments = useCallback(async () => {
         try {
             const res = await fetch(`/api/companies/${companyId}/payments`)
             if (res.ok) {
                 const data = await res.json()
                 setPayments(data)
             }
-        } catch (error) {
+        } catch {
             console.error('Failed to fetch payments')
         } finally {
             setLoading(false)
         }
-    }
+    }, [companyId])
 
     useEffect(() => {
         if (companyId) {
             fetchCompanyData()
             fetchPayments()
         }
-    }, [companyId])
+    }, [companyId, fetchCompanyData, fetchPayments])
 
     const handleAddPayment = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -116,7 +116,7 @@ export default function CompanyPaymentsPage() {
             } else {
                 showToast(t('error_generic'), 'error')
             }
-        } catch (error) {
+        } catch {
             showToast(t('error_generic'), 'error')
         }
     }

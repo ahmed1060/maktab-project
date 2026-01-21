@@ -154,42 +154,6 @@ export async function POST(
 
         if (!content) return NextResponse.json({ error: 'Content required' }, { status: 400 })
 
-        // Shadow User Logic: If Super Admin doesn't have a User record, create one to satisfy FK
-        if (user.role === 'SUPER_ADMIN' && !user.companyId) {
-            // Check if user exists in User table
-            const existingShadowUser = await prisma.user.findUnique({ where: { id: userId } })
-
-            if (!existingShadowUser) {
-                // Determine a safe email for the shadow user
-                // If the Super Admin's email is already in User table (unlikely if IDs differ, but possible), we need a loophole.
-                // But we are using the SAME ID. If ID exists, we found it above.
-                // If ID doesn't exist, we can try to insert.
-                // Email collision check:
-                const emailExists = await prisma.user.findUnique({ where: { email: user.email } })
-
-                let shadowEmail = user.email
-                if (emailExists) {
-                    // Start of a tricky edge case: Email exists but ID does not.
-                    // We must use a different email for the shadow user.
-                    shadowEmail = `superadmin + ${userId} @system.internal`
-                }
-
-                await prisma.user.create({
-                    data: {
-                        id: userId, // Keep ID consistent
-                        firstName: user.firstName,
-                        lastName: user.lastName,
-                        username: user.username || `system_${userId}`,
-                        email: shadowEmail,
-                        password: user.password, // hashed
-                        avatar: user.avatar,
-                        role: 'SUPER_ADMIN', // Storing string directly
-                        status: 'ACTIVE',
-                        totalDifficultyPoints: 0
-                    }
-                })
-            }
-        }
 
         const note = await prisma.businessClientNote.create({
             data: {

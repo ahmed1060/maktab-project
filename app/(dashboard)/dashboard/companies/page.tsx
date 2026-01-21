@@ -364,7 +364,7 @@ export default function CompaniesPage() {
                             } else {
                                 alert(t('failed_change_ban_status'))
                             }
-                        } catch (e) {
+                        } catch {
                             alert(t('error_changing_status'))
                         }
                     }

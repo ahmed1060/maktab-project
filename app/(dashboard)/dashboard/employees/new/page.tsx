@@ -97,7 +97,7 @@ export default function NewEmployeePage() {
 
             router.push('/dashboard/employees')
             router.refresh()
-        } catch (err) {
+        } catch {
             setError('An error occurred')
             setLoading(false)
         }

@@ -4,6 +4,7 @@ import RequestCard from './RequestCard'
 import CreateRequestModal from './CreateRequestModal'
 import ViewRequestModal from './ViewRequestModal'
 import { useLanguage } from '@/context/LanguageContext'
+import { useCallback } from 'react'
 import { useToast } from '@/context/ToastContext'
 import { useCompany } from '@/context/CompanyContext'
 import { useSearchParams } from 'next/navigation'
@@ -37,7 +38,7 @@ export default function RequestsSection({ userRole }: { userRole: string }) {
     const [highlightId, setHighlightId] = useState<string | null>(null)
 
 
-    const fetchRequests = async () => {
+    const fetchRequests = useCallback(async () => {
         try {
             let url = `/api/requests?sortBy=${sortBy}&order=${order}&page=${page}&limit=10`
             if (selectedCompanyId) url += `&companyId=${selectedCompanyId}`
@@ -57,11 +58,11 @@ export default function RequestsSection({ userRole }: { userRole: string }) {
         } finally {
             setLoading(false)
         }
-    }
+    }, [sortBy, order, page, selectedCompanyId, filters])
 
     useEffect(() => {
         fetchRequests()
-    }, [selectedCompanyId, filters, sortBy, order, page])
+    }, [fetchRequests])
 
     useEffect(() => {
         setPage(1)

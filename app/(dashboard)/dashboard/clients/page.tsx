@@ -72,7 +72,7 @@ export default function ClientsPage() {
                 setCompanies(data.data || data) // Handle both paginated and flat responses
                 setShowCompanySelect(true)
             }
-        } catch (err) {
+        } catch {
             // Not a super admin or failed to fetch companies
         }
     }, [])
@@ -489,7 +489,7 @@ export default function ClientsPage() {
                                 const err = await res.json()
                                 alert(`${t('error_generic')}: ${err.error}`)
                             }
-                        } catch (error) {
+                        } catch {
                             alert(t('error_delete_client'))
                         }
                     }

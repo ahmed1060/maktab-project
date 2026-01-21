@@ -1,7 +1,6 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
-import Link from 'next/link'
 import { useLanguage } from '@/context/LanguageContext'
 import { useSession } from 'next-auth/react'
 import LoadingSpinner from '@/components/LoadingSpinner'
@@ -100,7 +99,7 @@ export default function EmployeeHistoryPage() {
         }
     }, [highlightId])
 
-    const fetchData = async () => {
+    const fetchData = useCallback(async () => {
         try {
             setLoading(true)
             // Fetch Employee Details (Use query param for ID)
@@ -130,18 +129,30 @@ export default function EmployeeHistoryPage() {
                 const costsData = await costsRes.json()
                 setUserCosts(costsData)
             }
-        } catch (error) {
-            console.error('Error fetching data:', error)
+        } catch {
+            console.error('Error fetching data')
         } finally {
             setLoading(false)
         }
-    }
+    }, [params.id])
+
+    const fetchAdjustments = useCallback(async () => {
+        try {
+            const res = await fetch(`/api/users/${params.id}/adjustments`)
+            if (res.ok) {
+                const data = await res.json()
+                setAdjustments(data)
+            }
+        } catch {
+            console.error('Error fetching adjustments')
+        }
+    }, [params.id])
 
     useEffect(() => {
         if (params.id) {
             fetchData()
         }
-    }, [params.id])
+    }, [params.id, fetchData])
 
     useEffect(() => {
         if (highlightId && params.id) {
@@ -151,19 +162,7 @@ export default function EmployeeHistoryPage() {
                 setIsAdjustmentsModalOpen(true)
             })
         }
-    }, [highlightId, params.id])
-
-    const fetchAdjustments = async () => {
-        try {
-            const res = await fetch(`/api/users/${params.id}/adjustments`)
-            if (res.ok) {
-                const data = await res.json()
-                setAdjustments(data)
-            }
-        } catch (error) {
-            console.error('Error fetching adjustments:', error)
-        }
-    }
+    }, [highlightId, params.id, fetchAdjustments])
 
     // Scroll to highlighted adjustment inside modal
     useEffect(() => {
@@ -197,8 +196,8 @@ export default function EmployeeHistoryPage() {
             } else {
                 setAlert({ type: 'error', message: t('failed_rollback' as any) })
             }
-        } catch (error) {
-            console.error('Error rolling back:', error)
+        } catch {
+            console.error('Error rolling back')
             setAlert({ type: 'error', message: t('failed_rollback' as any) })
         } finally {
             setRollbackLoading(null)
@@ -225,7 +224,7 @@ export default function EmployeeHistoryPage() {
                 const err = await res.text()
                 setAlert({ type: 'error', message: err || t('update_failed' as any) })
             }
-        } catch (error) {
+        } catch {
             setAlert({ type: 'error', message: t('update_failed' as any) })
         } finally {
             setLoading(false)

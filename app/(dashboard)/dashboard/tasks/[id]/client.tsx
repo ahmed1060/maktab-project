@@ -20,7 +20,7 @@ const TrashIcon = ({ size = 18, color = "#ef4444" }: { size?: number, color?: st
     </svg>
 )
 
-export default function TaskDetailClient({ task: initialTask, userRole, userId, creatorName, currentUserName }: { task: any, userRole: string, userId: string, creatorName: string, currentUserName: string }) {
+export default function TaskDetailClient({ task: initialTask, userRole, userId, creatorName }: { task: any, userRole: string, userId: string, creatorName: string, currentUserName: string }) {
     const { t, locale } = useLanguage()
 
     // Parse member costs and payment status
@@ -61,7 +61,6 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
     const [loadingType, setLoadingType] = useState<'DRAFT' | 'SUBMIT' | null>(null)
     const [capturingLocation, setCapturingLocation] = useState(false)
     const [pendingFiles, setPendingFiles] = useState<File[]>([])
-    const [inputKey, setInputKey] = useState(Date.now())
     const [isDragging, setIsDragging] = useState(false)
     const [costEntries, setCostEntries] = useState<any[]>([])
     const [transferAssigneeIds, setTransferAssigneeIds] = useState<string[]>([])
@@ -107,7 +106,6 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
     const shouldHighlight = highlightId === task.id
     const { showToast } = useToast() // Added this line
 
-    const { selectedCompanyId } = useCompany()
     // The userRole prop is already passed to the component, so no need to derive it from session here.
     // const userRole = (session?.user as any)?.role // Removed this line as userRole is a prop
 
@@ -178,70 +176,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
         } catch (e) { console.error(e) }
     }
 
-    // Listen for suspension auto-save event
-    useEffect(() => {
-        const handleSuspendSave = () => {
-            console.log('Suspension detected, auto-saving task progress...')
-            // Only auto-save if employee interaction is active and not already submitted or finalized
-            const isUserAssignee = task.assigneeId === userId || task.assignees?.some((a: any) => a.id === userId)
-            if ((userRole === 'EMPLOYEE' || isUserAssignee) && !['PENDING_CONFIRMATION', 'APPROVED', 'COMPLETED', 'REJECTED'].includes(task.status)) {
-                handleUpload(true)
-            }
-        }
-        window.addEventListener('app:suspend-detected', handleSuspendSave)
-        return () => window.removeEventListener('app:suspend-detected', handleSuspendSave)
-    }, [task.status, userRole, userId, task.assigneeId, pendingFiles, note, costEntries, location])
-
-    const handleFiles = (newFiles: File[]) => {
-        const allowedExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx']
-
-        const validFiles = newFiles.filter(file => {
-            // 1. Check Size
-            if (file.size > 4 * 1024 * 1024) {
-                showToast(t('failed_upload_files') || `File ${file.name} is too large (max 4MB)`, 'error')
-                return false
-            }
-
-            // 2. Check Extension
-            const ext = file.name.substring(file.name.lastIndexOf('.')).toLowerCase()
-            if (!allowedExtensions.includes(ext)) {
-                showToast(`${t('error_generic') || 'Invalid file type'}: ${file.name}`, 'error')
-                return false
-            }
-
-            return true
-        })
-        setPendingFiles(prev => [...prev, ...validFiles])
-    }
-
-    const removePendingFile = (index: number) => {
-        setPendingFiles(prev => prev.filter((_, i) => i !== index))
-    }
-
-    const handleAddCost = () => {
-        if (!cost) return
-        if (parseFloat(cost) < 0) {
-            showToast(t('cost_negative_error'), 'error')
-            return
-        }
-        setCostEntries(prev => [...prev, { amount: parseFloat(cost), description: costDescription || '' }])
-        setCost('')
-        setCostDescription('')
-    }
-
-    const removeCostEntry = (index: number) => {
-        setCostEntries(prev => prev.filter((_, i) => i !== index))
-    }
-
-    const handleUploadRequest = () => {
-        if (pendingFiles.length === 0 && costEntries.length === 0 && !note.trim()) {
-            setShowSubmitConfirm(true)
-        } else {
-            handleUpload(false)
-        }
-    }
-
-    const handleUpload = async (isDraft: boolean) => {
+    const handleUpload = useCallback(async (isDraft: boolean) => {
         if (uploading) return
         setUploading(true)
         setLoadingType(isDraft ? 'DRAFT' : 'SUBMIT')
@@ -314,7 +249,71 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
             setUploading(false)
             setLoadingType(null)
         }
+    }, [uploading, pendingFiles, task.id, note, costEntries, location, showToast, t, router])
+
+
+    const handleFiles = (newFiles: File[]) => {
+        const allowedExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx']
+
+        const validFiles = newFiles.filter(file => {
+            // 1. Check Size
+            if (file.size > 4 * 1024 * 1024) {
+                showToast(t('failed_upload_files') || `File ${file.name} is too large (max 4MB)`, 'error')
+                return false
+            }
+
+            // 2. Check Extension
+            const ext = file.name.substring(file.name.lastIndexOf('.')).toLowerCase()
+            if (!allowedExtensions.includes(ext)) {
+                showToast(`${t('error_generic') || 'Invalid file type'}: ${file.name}`, 'error')
+                return false
+            }
+
+            return true
+        })
+        setPendingFiles(prev => [...prev, ...validFiles])
     }
+
+    const removePendingFile = (index: number) => {
+        setPendingFiles(prev => prev.filter((_, i) => i !== index))
+    }
+
+    const handleAddCost = () => {
+        if (!cost) return
+        if (parseFloat(cost) < 0) {
+            showToast(t('cost_negative_error'), 'error')
+            return
+        }
+        setCostEntries(prev => [...prev, { amount: parseFloat(cost), description: costDescription || '' }])
+        setCost('')
+        setCostDescription('')
+    }
+
+    const removeCostEntry = (index: number) => {
+        setCostEntries(prev => prev.filter((_, i) => i !== index))
+    }
+
+    const handleUploadRequest = () => {
+        if (pendingFiles.length === 0 && costEntries.length === 0 && !note.trim()) {
+            setShowSubmitConfirm(true)
+        } else {
+            handleUpload(false)
+        }
+    }
+
+    // Listen for suspension auto-save event
+    useEffect(() => {
+        const handleSuspendSave = () => {
+            console.log('Suspension detected, auto-saving task progress...')
+            // Only auto-save if employee interaction is active and not already submitted or finalized
+            const isUserAssignee = task.assigneeId === userId || task.assignees?.some((a: any) => a.id === userId)
+            if ((userRole === 'EMPLOYEE' || isUserAssignee) && !['PENDING_CONFIRMATION', 'APPROVED', 'COMPLETED', 'REJECTED'].includes(task.status)) {
+                handleUpload(true)
+            }
+        }
+        window.addEventListener('app:suspend-detected', handleSuspendSave)
+        return () => window.removeEventListener('app:suspend-detected', handleSuspendSave)
+    }, [task.status, userRole, userId, task.assigneeId, note, costEntries, location, task.assignees, handleUpload])
 
     const handleCaptureLocation = async () => {
         if (['PENDING_CONFIRMATION', 'APPROVED', 'COMPLETED', 'REJECTED'].includes(task.status)) {

@@ -96,7 +96,7 @@ export default function ProfileRequestsPage() {
             } else {
                 showToast(action === 'approve' ? t('request_approval_failed') : t('request_rejection_failed'), 'error')
             }
-        } catch (e) {
+        } catch {
             showToast(t('error_generic'), 'error')
         } finally {
             setProcessingId(null)

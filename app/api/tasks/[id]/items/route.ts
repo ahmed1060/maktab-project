@@ -21,7 +21,6 @@ export async function DELETE(
 
     try {
         const { type, itemId } = await request.json()
-        const isAdmin = ['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(session.user.role)
 
         const task = await prisma.task.findUnique({
             where: { id: taskId }

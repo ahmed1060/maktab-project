@@ -45,7 +45,7 @@ export default function EmployeesPage() {
     const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; name: string } | null>(null)
     const [resettingPoints, setResettingPoints] = useState<string | null>(null)
     const [deletingUser, setDeletingUser] = useState<string | null>(null)
-    const [togglingStatus, setTogglingStatus] = useState<string | null>(null)
+    const [, setTogglingStatus] = useState<string | null>(null)
 
     const fetchEmployees = useCallback(async () => {
         setLoading(true)
@@ -72,7 +72,7 @@ export default function EmployeesPage() {
         } finally {
             setLoading(false)
         }
-    }, [selectedCompanyId, page, limit, session?.user?.id, filters.search, filters.status])
+    }, [selectedCompanyId, page, limit, session?.user, filters.search, filters.status])
 
     const filteredEmployees = employees
 
@@ -101,7 +101,7 @@ export default function EmployeesPage() {
         if (session?.user) {
             fetchEmployees()
         }
-    }, [session, selectedCompanyId, page, filters.search, filters.status])
+    }, [session, fetchEmployees, selectedCompanyId, page, filters.search, filters.status])
 
     const handleDelete = async (id: string, name: string) => {
         setDeleteConfirm({ id, name })

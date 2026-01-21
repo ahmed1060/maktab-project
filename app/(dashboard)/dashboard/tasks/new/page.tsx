@@ -646,7 +646,10 @@ export default function NewTaskPage() {
                                             headers: { 'Content-Type': 'application/json' }
                                         })
 
-                                        if (!res.ok) throw new Error(t('bulk_create_failed'))
+                                        if (!res.ok) {
+                                            const errorData = await res.json().catch(() => ({}))
+                                            throw new Error(errorData.message || t('bulk_create_failed'))
+                                        }
 
                                         showToast(t('bulk_create_success'), 'success')
                                         setIsBulkModalOpen(false)

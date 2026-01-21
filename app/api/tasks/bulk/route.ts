@@ -122,6 +122,14 @@ export async function POST(req: Request) {
 
     } catch (error: any) {
         console.error("[BULK_TASK_CREATE_ERROR]", error)
-        return new NextResponse(JSON.stringify({ message: error.message || "Internal Server Error" }), { status: 500 })
+        // Extract Prisma error details if available
+        let errorMessage = error.message || "Internal Server Error"
+        if (error.code === 'P2003') {
+            errorMessage = "Database constraint violation. Please check if all assigned employees still exist."
+        }
+        return new NextResponse(JSON.stringify({
+            message: errorMessage,
+            details: error.meta || error.toString()
+        }), { status: 500 })
     }
 }

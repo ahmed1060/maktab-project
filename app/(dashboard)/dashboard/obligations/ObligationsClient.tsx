@@ -4,7 +4,6 @@ import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import ObligationListItem from '@/components/ObligationListItem'
 import EmployeeFilter from '@/components/EmployeeFilter'
-import SortControl from '@/components/SortControl'
 import Pagination from '@/components/Pagination'
 import { useLanguage } from '@/context/LanguageContext'
 
