@@ -235,10 +235,15 @@ export default function ObligationDetailClient({ obligation, userRole }: { oblig
 
     const loadUsers = async () => {
         if (allUsers.length > 0) return
-        const res = await fetch('/api/users')
+        const queryParams = new URLSearchParams()
+        queryParams.set('limit', '1000')
+        if (obligation.assignee?.companyId) queryParams.set('companyId', obligation.assignee.companyId)
+
+        const res = await fetch(`/api/users?${queryParams.toString()}`)
         if (res.ok) {
             const data = await res.json()
-            const filtered = userRole === 'TEAM_LEADER' ? data.filter((u: any) => !['ADMIN', 'SUPER_ADMIN'].includes(u.role)) : data
+            const usersList = data.data || []
+            const filtered = userRole === 'TEAM_LEADER' ? usersList.filter((u: any) => !['ADMIN', 'SUPER_ADMIN'].includes(u.role)) : usersList
             setAllUsers(filtered)
         }
     }

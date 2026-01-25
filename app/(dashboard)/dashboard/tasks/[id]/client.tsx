@@ -178,21 +178,26 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
 
     useEffect(() => {
         if (['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole)) {
-            fetch('/api/users')
+            const queryParams = new URLSearchParams()
+            queryParams.set('limit', '1000')
+            if (task.companyId) queryParams.set('companyId', task.companyId)
+
+            fetch(`/api/users?${queryParams.toString()}`)
                 .then(r => {
                     if (!r.ok) throw new Error()
                     return r.json()
                 })
                 .then(data => {
+                    const usersList = data.data || []
                     // TEAM_LEADER Restriction: Hide ADMIN and SUPER_ADMIN from assignee list
                     const filteredData = userRole === 'TEAM_LEADER'
-                        ? data.filter((u: any) => !['ADMIN', 'SUPER_ADMIN'].includes(u.role))
-                        : data
+                        ? usersList.filter((u: any) => !['ADMIN', 'SUPER_ADMIN'].includes(u.role))
+                        : usersList
                     setAllUsers(filteredData)
                 })
                 .catch(() => setUserFetchError(true))
         }
-    }, [userRole])
+    }, [userRole, task.companyId])
 
     const handleDismiss = async () => {
         try {
