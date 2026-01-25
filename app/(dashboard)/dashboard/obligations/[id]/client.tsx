@@ -402,7 +402,7 @@ export default function ObligationDetailClient({ obligation, userRole }: { oblig
                             onClick={() => setShowDeleteConfirm(true)}
                             style={{ background: '#fee2e2', color: '#991b1b', border: 'none', borderRadius: '0.25rem', padding: '0.5rem 1rem', cursor: 'pointer' }}
                         >
-                            {t('delete_task_button').replace(t('tasks'), t('obligations'))}
+                            {t('delete_obligation_button' as any)}
                         </button>
                     )}
                 </div>
@@ -544,7 +544,7 @@ export default function ObligationDetailClient({ obligation, userRole }: { oblig
                             onClick={() => handleUpload(true)}
                             disabled={uploading}
                         >
-                            {loadingType === 'DRAFT' ? t('saving') : t('save_draft_button').replace(t('tasks'), t('obligations'))}
+                            {loadingType === 'DRAFT' ? t('saving') : t('save_draft_obligation_button' as any)}
                         </button>
                         <button
                             className="btn btn-primary"
@@ -599,9 +599,9 @@ export default function ObligationDetailClient({ obligation, userRole }: { oblig
             )}
 
             {/* Delete Confirmation Modal */}
-            <Modal isOpen={showDeleteConfirm} onClose={() => setShowDeleteConfirm(false)} title={t('delete_task_title').replace(t('tasks'), t('obligations'))} hideFooter>
+            <Modal isOpen={showDeleteConfirm} onClose={() => setShowDeleteConfirm(false)} title={t('delete_obligation_title' as any)} hideFooter>
                 <div style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>
-                    <p>{t('delete_task_warning').replace(t('tasks'), t('obligations'))}</p>
+                    <p>{t('delete_obligation_warning' as any)}</p>
                     <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem', justifyContent: 'flex-end', flexDirection: 'row' }}>
                         <button onClick={() => setShowDeleteConfirm(false)} className="btn" style={{ background: '#e2e8f0' }}>{t('cancel')}</button>
                         <button onClick={handleDelete} className="btn" style={{ background: '#dc2626', color: 'white' }}>{t('delete')}</button>
