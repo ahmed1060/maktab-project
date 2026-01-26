@@ -44,15 +44,30 @@ export default function ObligationDetailClient({ obligation, userRole }: { oblig
                 return
             }
 
-            const closestClickable = target.closest('button, a, [role="button"]')
+            // Expanded selector to include label (for file uploads)
+            const closestClickable = target.closest('button, a, label, [role="button"]')
 
             if (closestClickable) {
-                // Allow close button or logout
-                const text = closestClickable.textContent?.toLowerCase() || ''
+                const text = closestClickable.textContent?.trim().toLowerCase() || ''
+
+                // 1. Always allow Close, Logout, etc.
                 if (text.includes(t('close_button').toLowerCase()) || text.includes('logout') || text.includes('sign out')) {
                     return
                 }
 
+                // 2. For Team Leaders, allow administrative/management actions
+                if (userRole === 'TEAM_LEADER') {
+                    // List of allowed management actions for TL even if overdue
+                    const allowedActions = [
+                        (t('edit_button' as any) || 'edit').toLowerCase(),
+                        (t('delete_button' as any) || 'delete').toLowerCase()
+                    ]
+
+                    const isAllowed = allowedActions.some(action => text.includes(action))
+                    if (isAllowed) return
+                }
+
+                // 3. Block everything else (Submission, Attachments, etc.)
                 e.preventDefault()
                 e.stopPropagation()
                 setShowDeadlineModal(true)
