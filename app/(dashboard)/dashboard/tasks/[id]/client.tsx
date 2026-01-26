@@ -564,37 +564,10 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
         }
 
         try {
-            // 1. Upload new files if any
-            const newUploaded: any[] = []
-            if (editPendingFiles.length > 0) {
-                for (const file of editPendingFiles) {
-                    const fd = new FormData()
-                    fd.append('file', file)
-                    fd.append('taskId', task.id)
-                    const res = await fetch('/api/upload', { method: 'POST', body: fd })
-                    if (res.ok) {
-                        const data = await res.json()
-                        if (data.success && data.url) {
-                            newUploaded.push({
-                                url: data.url,
-                                name: file.name,
-                                uploadedBy: (session?.user as any)?.name || 'Admin',
-                                uploadedAt: new Date().toISOString(),
-                                size: file.size,
-                                type: file.type
-                            })
-                        }
-                    }
-                }
-            }
-
-            const updatedAttachments = [...editForm.attachments, ...newUploaded]
-
             const res = await fetch(`/api/tasks/${task.id}/details`, {
                 method: 'PUT',
                 body: JSON.stringify({
                     ...editForm,
-                    attachments: updatedAttachments,
                     location: editForm.location || editForm.locationLink ? JSON.stringify({ name: editForm.location, link: editForm.locationLink }) : ''
                 }),
                 headers: { 'Content-Type': 'application/json' }
@@ -1634,97 +1607,6 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                         <DateTimePicker label={t('deadline_label')} value={editForm.deadline} onChange={v => setEditForm({ ...editForm, deadline: v })} min={new Date().toISOString()} />
                     </div>
 
-                    {/* Attachment Management Section in Edit Mode */}
-                    <div style={{ marginBottom: '1.25rem' }}>
-                        <label className="label">{t('attachments_label' as any)}</label>
-
-                        {/* Existing Attachments in Edit Form */}
-                        {editForm.attachments.length > 0 && (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1rem' }}>
-                                {editForm.attachments.map((att: any, idx: number) => (
-                                    <div key={idx} style={{
-                                        display: 'flex',
-                                        justifyContent: 'space-between',
-                                        alignItems: 'center',
-                                        padding: '0.5rem 0.75rem',
-                                        background: '#f8fafc',
-                                        borderRadius: '0.375rem',
-                                        border: '1px solid #e2e8f0',
-                                        fontSize: '0.85rem'
-                                    }}>
-                                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '80%' }}>
-                                            {att.name}
-                                        </span>
-                                        <button
-                                            type="button"
-                                            onClick={() => {
-                                                const newAtts = editForm.attachments.filter((_: any, i: number) => i !== idx)
-                                                setEditForm({ ...editForm, attachments: newAtts })
-                                            }}
-                                            style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 'bold' }}
-                                        >
-                                            {t('delete')}
-                                        </button>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-
-                        {/* Dropzone for new files in Edit Mode */}
-                        <div style={{
-                            border: '2px dashed #cbd5e1',
-                            borderRadius: '0.5rem',
-                            padding: '1rem',
-                            textAlign: 'center',
-                            background: '#f1f5f9',
-                            cursor: 'pointer'
-                        }} onClick={() => document.getElementById('edit-file-upload')?.click()}>
-                            <span style={{ fontSize: '1.2rem' }}>📎</span>
-                            <p style={{ margin: '0.25rem 0 0', fontSize: '0.8rem', color: '#64748b' }}>
-                                {t('click_to_upload' as any)}
-                            </p>
-                            <input
-                                id="edit-file-upload"
-                                type="file"
-                                multiple
-                                style={{ display: 'none' }}
-                                onChange={(e) => {
-                                    if (e.target.files) {
-                                        setEditPendingFiles([...editPendingFiles, ...Array.from(e.target.files)])
-                                    }
-                                }}
-                            />
-                        </div>
-
-                        {/* Pending Files in Edit Mode */}
-                        {editPendingFiles.length > 0 && (
-                            <div style={{ marginTop: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                                {editPendingFiles.map((file, idx) => (
-                                    <div key={idx} style={{
-                                        display: 'flex',
-                                        justifyContent: 'space-between',
-                                        alignItems: 'center',
-                                        padding: '0.5rem 0.75rem',
-                                        background: '#ecfdf5',
-                                        borderRadius: '0.375rem',
-                                        border: '1px solid #10b981',
-                                        fontSize: '0.85rem'
-                                    }}>
-                                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '80%' }}>
-                                            (New) {file.name}
-                                        </span>
-                                        <button
-                                            type="button"
-                                            onClick={() => setEditPendingFiles(editPendingFiles.filter((_, i) => i !== idx))}
-                                            style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 'bold' }}
-                                        >
-                                            ×
-                                        </button>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-                    </div>
                     <div style={{ marginBottom: '1.5rem' }}>
                         <label className="label">{t('difficulty')}</label>
                         <input type="number" className="input" value={editForm.difficulty} onChange={e => setEditForm({ ...editForm, difficulty: parseInt(e.target.value) || 0 })} min={0} max={10} required />
