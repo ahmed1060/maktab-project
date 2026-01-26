@@ -21,27 +21,7 @@ const TrashIcon = ({ size = 18, color = "#ef4444" }: { size?: number, color?: st
     </svg>
 )
 
-interface Task {
-    id: string
-    title: string
-    description: string
-    status: string
-    difficulty: number
-    deadline?: string
-    location?: string
-    attachments?: string
-    memberCosts?: string | any
-    memberPaymentStatus?: string | any
-    isEdited?: boolean
-    assignees: { id: string, firstName: string, lastName: string, avatar?: string }[]
-    comments?: any[]
-    totalCost?: number
-    paymentStatus?: string
-    companyId?: string
-    [key: string]: any // Catch-all for other prisma include fields
-}
-
-export default function TaskDetailClient({ task: initialTask, userRole, userId, creatorName, isRestricted }: { task: Task, userRole: string, userId: string, creatorName: string, currentUserName: string, isRestricted: boolean }) {
+export default function TaskDetailClient({ task: initialTask, userRole, userId, creatorName, isRestricted }: { task: any, userRole: string, userId: string, creatorName: string, currentUserName: string, isRestricted: boolean }) {
     const { t, locale } = useLanguage()
     const { data: session } = useSession()
 
@@ -164,7 +144,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
     useEffect(() => {
         if (task.comments) {
             try {
-                const logs = JSON.parse(task.comments)
+                const logs = typeof task.comments === 'string' ? JSON.parse(task.comments) : task.comments
                 if (Array.isArray(logs)) {
                     const lastEdit = [...logs].reverse().find((l: any) => l.type === 'TASK_EDITED')
                     if (lastEdit && lastEdit.changes) {
@@ -789,14 +769,14 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                             </span>
                         )}
                     </span>
-                    {task.totalCost > 0 && (task.status === 'APPROVED' || task.status === 'COMPLETED') && (
+                    {task.totalCost !== undefined && task.totalCost > 0 && (task.status === 'APPROVED' || task.status === 'COMPLETED') && (
                         <span style={{ padding: '0.5rem', borderRadius: '0.5rem', background: task.paymentStatus === 'PAID' ? '#d1fae5' : '#fed7aa', color: task.paymentStatus === 'PAID' ? '#065f46' : '#9a3412', fontSize: '0.875rem', fontWeight: '600' }}>
                             {task.paymentStatus === 'PAID' ? t('paid_status') : t('pending_payment_status')}
                         </span>
                     )}
                 </div>
                 <div style={{ display: 'flex', gap: '0.5rem', flexDirection: 'row' }}>
-                    {task.totalCost > 0 && (task.status === 'APPROVED' || task.status === 'COMPLETED') && ['ADMIN', 'SUPER_ADMIN'].includes(userRole) && (
+                    {task.totalCost !== undefined && task.totalCost > 0 && (task.status === 'APPROVED' || task.status === 'COMPLETED') && ['ADMIN', 'SUPER_ADMIN'].includes(userRole) && (
                         <button onClick={() => handlePaymentStatusChange(task.paymentStatus === 'PAID' ? 'PENDING_PAYMENT' : 'PAID')} style={{ background: task.paymentStatus === 'PAID' ? '#fed7aa' : '#d1fae5', color: task.paymentStatus === 'PAID' ? '#9a3412' : '#065f46', border: 'none', borderRadius: '0.25rem', padding: '0.5rem 1rem', cursor: 'pointer', fontSize: '0.875rem', fontWeight: '600' }}>
                             {task.paymentStatus === 'PAID' ? t('mark_as_pending_button') : t('mark_as_paid')}
                         </button>
