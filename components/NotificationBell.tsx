@@ -14,10 +14,10 @@ interface Notification {
     createdAt: string
 }
 
-export default function NotificationBell() {
+export default function NotificationBell({ initialUnreadCount = 0 }: { initialUnreadCount?: number }) {
     const [notifications, setNotifications] = useState<Notification[]>([])
     const [isOpen, setIsOpen] = useState(false)
-    const [unreadCount, setUnreadCount] = useState(0)
+    const [unreadCount, setUnreadCount] = useState(initialUnreadCount)
     const dropdownRef = useRef<HTMLDivElement>(null)
     const router = useRouter()
     const { t, locale } = useLanguage()

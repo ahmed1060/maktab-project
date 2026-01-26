@@ -20,15 +20,16 @@ export default async function ObligationsPage({ searchParams }: { searchParams: 
     const userCompanyId = (session?.user as any)?.companyId
 
     if (role === 'EMPLOYEE') {
-        whereClause.assigneeId = (session?.user as any)?.id
+        whereClause.assignees = { some: { id: (session?.user as any)?.id } }
+        whereClause.companyId = userCompanyId
     } else if (['ADMIN', 'TEAM_LEADER'].includes(role)) {
         if (!userCompanyId) {
             return <ObligationsClient obligations={[]} total={0} page={1} totalPages={0} role={role} />
         }
-        whereClause.assignee = { companyId: userCompanyId }
+        whereClause.companyId = userCompanyId
     } else if (role === 'SUPER_ADMIN') {
         if (companyId) {
-            whereClause.assignee = { companyId }
+            whereClause.companyId = companyId
         }
     }
 
@@ -42,7 +43,7 @@ export default async function ObligationsPage({ searchParams }: { searchParams: 
         whereClause.title = { contains: search, mode: 'insensitive' }
     }
     if (employeeId && role !== 'EMPLOYEE') {
-        whereClause.assigneeId = employeeId
+        whereClause.assignees = { some: { id: employeeId } }
     }
 
     if (dateFrom || dateTo) {
@@ -58,7 +59,7 @@ export default async function ObligationsPage({ searchParams }: { searchParams: 
     const [obligations, total] = await Promise.all([
         prisma.obligation.findMany({
             where: whereClause,
-            include: { assignee: { select: { firstName: true, lastName: true } } },
+            include: { assignees: { select: { firstName: true, lastName: true } } },
             orderBy: { deadline: 'asc' },
             skip,
             take: limit

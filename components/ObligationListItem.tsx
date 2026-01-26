@@ -11,10 +11,10 @@ interface ObligationListItemProps {
         description: string
         status: string
         deadline: Date | string
-        assignee: {
+        assignees: {
             firstName: string
             lastName: string
-        }
+        }[]
         createdAt: Date | string
         lastStatusUpdateBy?: string
         difficulty: number
@@ -82,7 +82,13 @@ export default function ObligationListItem({ obligation, isHighlighted }: Obliga
 
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1rem' }}>
                 <div style={{ fontSize: '0.875rem', color: '#64748b' }}>
-                    <div>{t('assignee_label')}: {obligation.assignee.firstName} {obligation.assignee.lastName}</div>
+                    <div>
+                        {obligation.assignees && obligation.assignees.length > 1 ? (t('assignees_label' as any) || 'Assignees') : t('assignee_label')}: {obligation.assignees && obligation.assignees.length >= 1
+                            ? obligation.assignees.length <= 2
+                                ? obligation.assignees.map(a => `${a.firstName} ${a.lastName}`).join(', ')
+                                : `${obligation.assignees[0].firstName} ${obligation.assignees[0].lastName} + ${obligation.assignees.length - 1}`
+                            : '---'}
+                    </div>
                     <div style={{ marginTop: '0.25rem' }}>
                         {mounted && (
                             <>

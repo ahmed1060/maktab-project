@@ -67,13 +67,9 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
                 updateData.status = 'COMPLETED'
                 // Update all members to PAID
                 const allAssigneeIds = currentTask.assignees.map(a => a.id)
-                if (allAssigneeIds.length > 0) {
-                    allAssigneeIds.forEach(id => {
-                        newMemberPaymentStatus[id] = 'PAID'
-                    })
-                } else if (currentTask.assigneeId) {
-                    newMemberPaymentStatus[currentTask.assigneeId] = 'PAID'
-                }
+                allAssigneeIds.forEach(id => {
+                    newMemberPaymentStatus[id] = 'PAID'
+                })
                 updateData.memberPaymentStatus = newMemberPaymentStatus
             } else {
                 updateData.status = 'APPROVED'

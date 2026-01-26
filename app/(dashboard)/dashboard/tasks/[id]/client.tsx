@@ -2,6 +2,7 @@
 'use client'
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import { useSession } from 'next-auth/react'
 import Modal from '@/components/Modal'
 import DiffViewer from '@/components/DiffViewer'
 import { useToast } from '@/context/ToastContext'
@@ -22,6 +23,7 @@ const TrashIcon = ({ size = 18, color = "#ef4444" }: { size?: number, color?: st
 
 export default function TaskDetailClient({ task: initialTask, userRole, userId, creatorName, isRestricted }: { task: any, userRole: string, userId: string, creatorName: string, currentUserName: string, isRestricted: boolean }) {
     const { t, locale } = useLanguage()
+    const { data: session } = useSession()
 
     // Parse member costs and payment status
     const getMemberCosts = (taskObj: any) => {
@@ -75,12 +77,18 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
     const [editForm, setEditForm] = useState({
         title: initialTask.title,
         description: initialTask.description,
-        assigneeIds: initialTask.assignees?.map((a: any) => a.id) || [initialTask.assigneeId],
+        assigneeIds: initialTask.assignees?.map((a: any) => a.id) || [],
         deadline: initialTask.deadline,
         difficulty: initialTask.difficulty,
         location: parseLocation(initialTask.location || '').name,
-        locationLink: parseLocation(initialTask.location || '').link
+        locationLink: parseLocation(initialTask.location || '').link,
+        attachments: (() => {
+            try {
+                return initialTask.attachments ? JSON.parse(initialTask.attachments) : []
+            } catch { return [] }
+        })()
     })
+    const [editPendingFiles, setEditPendingFiles] = useState<File[]>([])
     const [editFieldErrors, setEditFieldErrors] = useState({ title: '', description: '' })
     const [isReviewModalOpen, setIsReviewModalOpen] = useState(false)
     const [reviewAction, setReviewAction] = useState<'APPROVED' | 'REJECTED' | null>(null)
@@ -118,12 +126,18 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
         setEditForm({
             title: initialTask.title,
             description: initialTask.description,
-            assigneeIds: initialTask.assignees?.map((a: any) => a.id) || [initialTask.assigneeId],
+            assigneeIds: initialTask.assignees?.map((a: any) => a.id) || [],
             deadline: initialTask.deadline,
             difficulty: initialTask.difficulty,
             location: parseLocation(initialTask.location || '').name,
-            locationLink: parseLocation(initialTask.location || '').link
+            locationLink: parseLocation(initialTask.location || '').link,
+            attachments: (() => {
+                try {
+                    return initialTask.attachments ? JSON.parse(initialTask.attachments) : []
+                } catch { return [] }
+            })()
         })
+        setEditPendingFiles([])
         setReviewDifficulty(initialTask.difficulty)
     }, [initialTask])
 
@@ -146,7 +160,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
         if (isUserAssignee && (task.isEdited || isEditedPersistent)) {
             // Logic to track if they've seen it could be here
         }
-    }, [userId, task.assigneeId, task.assignees, task.isEdited, isEditedPersistent])
+    }, [userId, task.assignees, task.isEdited, isEditedPersistent])
 
     // Load users once for search/filter efficiency
     useEffect(() => {
@@ -519,12 +533,14 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
         setEditForm({
             title: task.title,
             description: task.description,
-            assigneeIds: task.assignees?.map((a: any) => a.id) || [task.assigneeId],
+            assigneeIds: task.assignees?.map((a: any) => a.id) || [],
             deadline: task.deadline,
             difficulty: task.difficulty,
             location: parseLocation(task.location || '').name,
-            locationLink: parseLocation(task.location || '').link
+            locationLink: parseLocation(task.location || '').link,
+            attachments: existingAttachments
         })
+        setEditPendingFiles([])
         setIsEditing(true)
     }
 
@@ -548,10 +564,37 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
         }
 
         try {
+            // 1. Upload new files if any
+            const newUploaded: any[] = []
+            if (editPendingFiles.length > 0) {
+                for (const file of editPendingFiles) {
+                    const fd = new FormData()
+                    fd.append('file', file)
+                    fd.append('taskId', task.id)
+                    const res = await fetch('/api/upload', { method: 'POST', body: fd })
+                    if (res.ok) {
+                        const data = await res.json()
+                        if (data.success && data.url) {
+                            newUploaded.push({
+                                url: data.url,
+                                name: file.name,
+                                uploadedBy: (session?.user as any)?.name || 'Admin',
+                                uploadedAt: new Date().toISOString(),
+                                size: file.size,
+                                type: file.type
+                            })
+                        }
+                    }
+                }
+            }
+
+            const updatedAttachments = [...editForm.attachments, ...newUploaded]
+
             const res = await fetch(`/api/tasks/${task.id}/details`, {
                 method: 'PUT',
                 body: JSON.stringify({
                     ...editForm,
+                    attachments: updatedAttachments,
                     location: editForm.location || editForm.locationLink ? JSON.stringify({ name: editForm.location, link: editForm.locationLink }) : ''
                 }),
                 headers: { 'Content-Type': 'application/json' }
@@ -559,6 +602,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
             if (!res.ok) throw new Error('Update failed')
             showToast(t('task_details_updated_success'), 'success')
             setIsEditing(false)
+            setEditPendingFiles([])
             router.refresh()
         } catch (e) {
             console.error(e)
@@ -1577,6 +1621,98 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                     </div>
                     <div style={{ marginBottom: '1.25rem' }}>
                         <DateTimePicker label={t('deadline_label')} value={editForm.deadline} onChange={v => setEditForm({ ...editForm, deadline: v })} min={new Date().toISOString()} />
+                    </div>
+
+                    {/* Attachment Management Section in Edit Mode */}
+                    <div style={{ marginBottom: '1.25rem' }}>
+                        <label className="label">{t('attachments_label' as any)}</label>
+
+                        {/* Existing Attachments in Edit Form */}
+                        {editForm.attachments.length > 0 && (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1rem' }}>
+                                {editForm.attachments.map((att: any, idx: number) => (
+                                    <div key={idx} style={{
+                                        display: 'flex',
+                                        justifyContent: 'space-between',
+                                        alignItems: 'center',
+                                        padding: '0.5rem 0.75rem',
+                                        background: '#f8fafc',
+                                        borderRadius: '0.375rem',
+                                        border: '1px solid #e2e8f0',
+                                        fontSize: '0.85rem'
+                                    }}>
+                                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '80%' }}>
+                                            {att.name}
+                                        </span>
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                const newAtts = editForm.attachments.filter((_: any, i: number) => i !== idx)
+                                                setEditForm({ ...editForm, attachments: newAtts })
+                                            }}
+                                            style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 'bold' }}
+                                        >
+                                            {t('delete')}
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
+                        {/* Dropzone for new files in Edit Mode */}
+                        <div style={{
+                            border: '2px dashed #cbd5e1',
+                            borderRadius: '0.5rem',
+                            padding: '1rem',
+                            textAlign: 'center',
+                            background: '#f1f5f9',
+                            cursor: 'pointer'
+                        }} onClick={() => document.getElementById('edit-file-upload')?.click()}>
+                            <span style={{ fontSize: '1.2rem' }}>📎</span>
+                            <p style={{ margin: '0.25rem 0 0', fontSize: '0.8rem', color: '#64748b' }}>
+                                {t('click_to_upload' as any)}
+                            </p>
+                            <input
+                                id="edit-file-upload"
+                                type="file"
+                                multiple
+                                style={{ display: 'none' }}
+                                onChange={(e) => {
+                                    if (e.target.files) {
+                                        setEditPendingFiles([...editPendingFiles, ...Array.from(e.target.files)])
+                                    }
+                                }}
+                            />
+                        </div>
+
+                        {/* Pending Files in Edit Mode */}
+                        {editPendingFiles.length > 0 && (
+                            <div style={{ marginTop: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                {editPendingFiles.map((file, idx) => (
+                                    <div key={idx} style={{
+                                        display: 'flex',
+                                        justifyContent: 'space-between',
+                                        alignItems: 'center',
+                                        padding: '0.5rem 0.75rem',
+                                        background: '#ecfdf5',
+                                        borderRadius: '0.375rem',
+                                        border: '1px solid #10b981',
+                                        fontSize: '0.85rem'
+                                    }}>
+                                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '80%' }}>
+                                            (New) {file.name}
+                                        </span>
+                                        <button
+                                            type="button"
+                                            onClick={() => setEditPendingFiles(editPendingFiles.filter((_, i) => i !== idx))}
+                                            style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 'bold' }}
+                                        >
+                                            ×
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
                     </div>
                     <div style={{ marginBottom: '1.5rem' }}>
                         <label className="label">{t('difficulty')}</label>

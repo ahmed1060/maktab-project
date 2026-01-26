@@ -26,7 +26,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
 
     try {
         const result = await prisma.$transaction(async (tx) => {
-            // 1. Fetch original task with assignees
+            // 1. Fetch original task with assignees and companyId
             const originalTask = await (tx.task as any).findUnique({
                 where: { id: params.id },
                 include: { assignees: true }
@@ -36,10 +36,6 @@ export async function POST(req: Request, { params }: { params: { id: string } })
 
             // Permission check
             const currentAssigneeIds = (originalTask as any).assignees.map((a: any) => a.id)
-            if (!currentAssigneeIds.includes(originalTask.assigneeId)) {
-                currentAssigneeIds.push(originalTask.assigneeId)
-            }
-
             const isAssignee = currentAssigneeIds.includes(userId)
             if (!isAssignee && !['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole)) {
                 throw new Error("Unauthorized to transfer this task")
@@ -69,7 +65,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
             } catch { existingComments = [] }
 
             const transferComment = {
-                text: `Task transfer processed. (Added ${addedIds.length} new copies).`,
+                text: `Task transfer processed. (Assigned to ${addedIds.length} new users).`,
                 author: "System",
                 date: new Date().toISOString(),
                 type: 'TASK_TRANSFERRED'
@@ -82,14 +78,12 @@ export async function POST(req: Request, { params }: { params: { id: string } })
                     assignees: {
                         set: keptIds.map(id => ({ id }))
                     },
-                    // If the primary assignee was removed, pick the first kept one as primary
-                    assigneeId: keptIds.includes(originalTask.assigneeId) ? originalTask.assigneeId : (keptIds[0] || originalTask.assigneeId),
                     comments: JSON.stringify([...existingComments, transferComment]),
                     lastStatusUpdateBy: `${(session.user as any).role} ${(session.user as any).name}`
                 }
             })
 
-            // 3. Create Clones for NEW assignees
+            // 3. Create ONE Clone for ALL NEW assignees
             let commentsToClone: any[] = []
             try {
                 if (originalTask.comments) {
@@ -100,14 +94,14 @@ export async function POST(req: Request, { params }: { params: { id: string } })
                 }
             } catch { commentsToClone = [] }
 
-            const createdTasks = []
-            for (const newId of addedIds) {
-                const newTask = await (tx.task as any).create({
+            let newTask: any = null
+            if (addedIds.length > 0) {
+                newTask = await (tx.task as any).create({
                     data: {
                         title: originalTask.title + " (Transfer Copy)",
                         description: originalTask.description,
-                        assigneeId: newId,
-                        assignees: { connect: [{ id: newId }] },
+                        companyId: originalTask.companyId,
+                        assignees: { connect: addedIds.map(id => ({ id })) },
                         deadline: originalTask.deadline,
                         difficulty: originalTask.difficulty,
                         status: 'PENDING',
@@ -123,15 +117,15 @@ export async function POST(req: Request, { params }: { params: { id: string } })
                     }
                 })
 
-                await tx.notification.create({
-                    data: {
-                        userId: newId,
+                // Create notifications for all new assignees
+                await tx.notification.createMany({
+                    data: addedIds.map(id => ({
+                        userId: id,
                         type: 'TASK_ASSIGNED',
                         message: `You have been assigned a transferred task: ${newTask.title}`,
                         relatedId: newTask.id
-                    }
+                    }))
                 })
-                createdTasks.push(newTask)
             }
 
             // 4. Audit
@@ -151,7 +145,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
                 }
             })
 
-            return { originalId: originalTask.id, clones: createdTasks.length }
+            return { originalId: originalTask.id, clones: newTask ? 1 : 0 }
         })
 
         return NextResponse.json(result)

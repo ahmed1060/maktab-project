@@ -75,7 +75,6 @@ export async function POST(req: Request) {
                 difficulty,
                 location,
                 createdBy: userRole === 'SUPER_ADMIN' ? null : creatorId,
-                assigneeId: assigneeIds[0], // Primary assignee for legacy support
                 assigneeIds: assigneeIds
             })
         }

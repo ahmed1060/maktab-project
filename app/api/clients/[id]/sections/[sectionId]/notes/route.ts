@@ -161,7 +161,7 @@ export async function POST(
                 content,
                 sectionId: params.sectionId,
                 createdById: userRole === 'SUPER_ADMIN' ? null : userId,
-                attachment: Array.isArray(attachment) ? JSON.stringify(attachment) : attachment,
+                attachment: Array.isArray(attachment) ? JSON.stringify(attachment) : attachment, // Now expects standardized objects
                 expiryDate: expiryDate ? new Date(expiryDate) : null,
                 reminderDays: reminderDays ? parseInt(reminderDays) : null
             }
@@ -227,8 +227,11 @@ export async function DELETE(
                     filesToDelete = [note.attachment]
                 }
 
-                for (const fileUrl of filesToDelete) {
+                for (const fileItem of filesToDelete) {
+                    if (!fileItem) continue
+                    const fileUrl = typeof fileItem === 'string' ? fileItem : (fileItem as any).url
                     if (!fileUrl) continue
+
                     // Extract file path from URL (e.g., "notes/filename.ext")
                     const urlParts = fileUrl.split('/app-assets/')
                     if (urlParts.length > 1) {
@@ -295,7 +298,7 @@ export async function PUT(
             where: { id: noteId },
             data: {
                 content,
-                attachment: Array.isArray(body.attachment) ? JSON.stringify(body.attachment) : body.attachment,
+                attachment: Array.isArray(body.attachment) ? JSON.stringify(body.attachment) : body.attachment, // Now expects standardized objects
                 expiryDate: expiryDate ? new Date(expiryDate) : null,
                 reminderDays: reminderDays ? parseInt(reminderDays) : null,
                 lastEditedById: userRole === 'SUPER_ADMIN' ? null : userId,

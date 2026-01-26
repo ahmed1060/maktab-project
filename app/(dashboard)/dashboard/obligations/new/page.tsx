@@ -10,11 +10,12 @@ export default function NewObligationPage() {
     const { t, locale } = useLanguage()
     const [title, setTitle] = useState('')
     const [description, setDescription] = useState('')
-    const [assigneeId, setAssigneeId] = useState('')
+    const [assigneeIds, setAssigneeIds] = useState<string[]>([])
     const [deadline, setDeadline] = useState('')
     const [difficulty, setDifficulty] = useState('')
     const [searchTerm, setSearchTerm] = useState('')
     const [users, setUsers] = useState<any[]>([])
+    const [pendingFiles, setPendingFiles] = useState<File[]>([])
     const router = useRouter()
 
     const { data: session } = useSession()
@@ -88,14 +89,36 @@ export default function NewObligationPage() {
         }
 
         try {
+            // 1. Upload files first
+            const uploadedAttachments: { url: string, name: string, size: number, type: string }[] = []
+            if (pendingFiles.length > 0) {
+                for (const file of pendingFiles) {
+                    const fd = new FormData()
+                    fd.append('file', file)
+                    const uploadRes = await fetch('/api/upload', { method: 'POST', body: fd })
+                    if (uploadRes.ok) {
+                        const data = await uploadRes.json()
+                        if (data.success && data.url) {
+                            uploadedAttachments.push({
+                                url: data.url,
+                                name: file.name,
+                                size: file.size,
+                                type: file.type
+                            })
+                        }
+                    }
+                }
+            }
+
             const res = await fetch('/api/obligations', {
                 method: 'POST',
                 body: JSON.stringify({
                     title,
                     description,
-                    assigneeId,
+                    assigneeIds,
                     deadline,
-                    difficulty: parseInt(difficulty) || 0
+                    difficulty: parseInt(difficulty) || 0,
+                    attachments: uploadedAttachments
                 }),
                 headers: { 'Content-Type': 'application/json' }
             })
@@ -179,7 +202,7 @@ export default function NewObligationPage() {
                         {description.length}/500
                     </div>
                 </div>
-                <div id="field-assigneeId" style={{ marginBottom: '1.25rem' }}>
+                <div id="field-assigneeIds" style={{ marginBottom: '1.25rem' }}>
                     <label style={{ display: 'block', marginBottom: '0.5rem' }}>{t('assignee_label')}</label>
                     <input
                         type="text"
@@ -206,17 +229,19 @@ export default function NewObligationPage() {
                                 cursor: 'pointer',
                                 padding: '0.25rem',
                                 borderRadius: '0.25rem',
-                                background: assigneeId === u.id ? '#f0f9ff' : 'transparent'
+                                background: assigneeIds.includes(u.id) ? '#f0f9ff' : 'transparent'
                             }}>
                                 <input
-                                    type="radio"
-                                    name="assignee"
-                                    checked={assigneeId === u.id}
-                                    onChange={() => {
-                                        setAssigneeId(u.id)
-                                        if (fieldErrors.assigneeId) setFieldErrors({ ...fieldErrors, assigneeId: '' })
+                                    type="checkbox"
+                                    checked={assigneeIds.includes(u.id)}
+                                    onChange={e => {
+                                        if (e.target.checked) {
+                                            setAssigneeIds([...assigneeIds, u.id])
+                                        } else {
+                                            setAssigneeIds(assigneeIds.filter(id => id !== u.id))
+                                        }
+                                        if (fieldErrors.assigneeIds) setFieldErrors({ ...fieldErrors, assigneeIds: '' })
                                     }}
-                                    required
                                 />
                                 <span style={{ fontSize: '0.9rem' }}>
                                     {u.firstName} {u.lastName} <small style={{ color: '#64748b' }}>({t(`role_${u.role?.toLowerCase().replace('team_leader', 'team_leader').replace('employee', 'employee').replace('admin', 'admin')}` as any)})</small>
@@ -228,9 +253,9 @@ export default function NewObligationPage() {
                             </div>
                         )}
                     </div>
-                    {fieldErrors.assigneeId && (
+                    {fieldErrors.assigneeIds && (
                         <div style={{ color: '#ef4444', fontSize: '0.85rem', marginTop: '0.25rem' }}>
-                            {fieldErrors.assigneeId}
+                            {fieldErrors.assigneeIds}
                         </div>
                     )}
                 </div>
@@ -263,6 +288,63 @@ export default function NewObligationPage() {
                         required
                     />
                 </div>
+
+                {/* Attachments Section */}
+                <div style={{ marginBottom: '1.5rem' }}>
+                    <label style={{ display: 'block', marginBottom: '0.5rem' }}>{t('attachments_label' as any)}</label>
+                    <div style={{
+                        border: '2px dashed var(--glass-border)',
+                        borderRadius: '0.5rem',
+                        padding: '1.5rem',
+                        textAlign: 'center',
+                        background: 'rgba(255, 255, 255, 0.2)',
+                        cursor: 'pointer'
+                    }} onClick={() => document.getElementById('file-upload')?.click()}>
+                        <span style={{ fontSize: '1.5rem', display: 'block' }}>📎</span>
+                        <p style={{ margin: '0.5rem 0 0', fontSize: '0.9rem', color: '#64748b' }}>
+                            {t('click_to_upload' as any)}
+                        </p>
+                        <input
+                            id="file-upload"
+                            type="file"
+                            multiple
+                            style={{ display: 'none' }}
+                            onChange={(e) => {
+                                if (e.target.files) {
+                                    setPendingFiles([...pendingFiles, ...Array.from(e.target.files)])
+                                }
+                            }}
+                        />
+                    </div>
+                    {pendingFiles.length > 0 && (
+                        <div style={{ marginTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                            {pendingFiles.map((file, idx) => (
+                                <div key={idx} style={{
+                                    display: 'flex',
+                                    justifyContent: 'space-between',
+                                    alignItems: 'center',
+                                    padding: '0.5rem 0.75rem',
+                                    background: '#f8fafc',
+                                    borderRadius: '0.375rem',
+                                    border: '1px solid #e2e8f0',
+                                    fontSize: '0.85rem'
+                                }}>
+                                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '80%' }}>
+                                        {file.name} ({(file.size / 1024).toFixed(1)} KB)
+                                    </span>
+                                    <button
+                                        type="button"
+                                        onClick={() => setPendingFiles(pendingFiles.filter((_, i) => i !== idx))}
+                                        style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 'bold' }}
+                                    >
+                                        ×
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+
                 <div style={{ display: 'flex', gap: '1rem' }}>
                     <button type="submit" className="btn btn-primary" disabled={isSubmitting}>
                         {isSubmitting ? t('creating') : t('create_obligation_button' as any)}

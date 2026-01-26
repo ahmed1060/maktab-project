@@ -109,13 +109,20 @@ export default async function DashboardPage({ searchParams }: { searchParams: { 
             )
         }
 
-        const baseWhere = finalCompanyId ? { assignee: { companyId: finalCompanyId } } : {}
+        const baseWhere = finalCompanyId ? { companyId: finalCompanyId } : {}
 
-        const totalTasks = await prisma.task.count({ where: baseWhere })
-        const completedTasks = await prisma.task.count({ where: { ...baseWhere, status: 'COMPLETED' } })
-        const pendingTasks = await prisma.task.count({ where: { ...baseWhere, status: 'PENDING' } })
-        const reviewTasks = await prisma.task.count({ where: { ...baseWhere, status: 'PENDING_CONFIRMATION' } })
-        const rejectedTasks = await prisma.task.count({ where: { ...baseWhere, status: 'REJECTED' } })
+        // Optimized status counts using groupBy
+        const taskStats = await prisma.task.groupBy({
+            where: baseWhere,
+            by: ['status'],
+            _count: true
+        })
+
+        const totalTasks = taskStats.reduce((acc, s) => acc + s._count, 0)
+        const completedTasks = taskStats.find(s => s.status === 'COMPLETED')?._count || 0
+        const pendingTasks = taskStats.find(s => s.status === 'PENDING')?._count || 0
+        const reviewTasks = taskStats.find(s => s.status === 'PENDING_CONFIRMATION')?._count || 0
+        const rejectedTasks = taskStats.find(s => s.status === 'REJECTED')?._count || 0
 
         const completionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0
 
@@ -176,27 +183,20 @@ export default async function DashboardPage({ searchParams }: { searchParams: { 
             </div>
         )
     } else {
-        // Employee View
-        const myTasks = await (prisma.task as any).findMany({
+        // Optimized Employee View: Use groupBy for stats and targeted fetch for today's focus
+        const taskStats = await prisma.task.groupBy({
             where: {
-                OR: [
-                    { assigneeId: userId },
-                    { assignees: { some: { id: userId } } }
-                ]
+                assignees: { some: { id: userId } }
             },
-            include: {
-                assignee: { select: { firstName: true, lastName: true } },
-                assignees: { select: { id: true, firstName: true, lastName: true } },
-                creator: { select: { firstName: true, lastName: true } }
-            },
-            orderBy: { deadline: 'asc' }
+            by: ['status'],
+            _count: true
         })
 
-        const totalTasks = myTasks.length
-        const completedTasks = myTasks.filter((t: any) => t.status === 'COMPLETED').length
-        const pendingTasks = myTasks.filter((t: any) => t.status === 'PENDING' || t.status === 'IN_PROGRESS').length
-        const reviewTasks = myTasks.filter((t: any) => t.status === 'PENDING_CONFIRMATION').length
-        const rejectedTasks = myTasks.filter((t: any) => t.status === 'REJECTED').length
+        const totalTasks = taskStats.reduce((acc, s) => acc + s._count, 0)
+        const completedTasks = taskStats.find(s => s.status === 'COMPLETED')?._count || 0
+        const pendingTasks = (taskStats.find(s => s.status === 'PENDING')?._count || 0) + (taskStats.find(s => s.status === 'IN_PROGRESS')?._count || 0)
+        const reviewTasks = taskStats.find(s => s.status === 'PENDING_CONFIRMATION')?._count || 0
+        const rejectedTasks = taskStats.find(s => s.status === 'REJECTED')?._count || 0
 
         const completionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0
 
@@ -228,18 +228,30 @@ export default async function DashboardPage({ searchParams }: { searchParams: { 
         })
 
         const myObligations = await prisma.obligation.findMany({
-            where: { assigneeId: userId },
+            where: {
+                assignees: { some: { id: userId } }
+            },
             orderBy: { deadline: 'asc' },
-            include: { assignee: true }
+            take: 5
         })
 
         const today = new Date()
         today.setHours(0, 0, 0, 0)
+        const tomorrow = new Date(today)
+        tomorrow.setDate(tomorrow.getDate() + 1)
 
-        const todayTasks = myTasks.filter((task: any) => {
-            const deadline = new Date(task.deadline)
-            deadline.setHours(0, 0, 0, 0)
-            return deadline.getTime() === today.getTime() && task.status !== 'APPROVED' && task.status !== 'COMPLETED'
+        const todayTasks = await prisma.task.findMany({
+            where: {
+                assignees: { some: { id: userId } },
+                deadline: {
+                    gte: today,
+                    lt: tomorrow
+                },
+                status: { notIn: ['COMPLETED', 'APPROVED'] }
+            },
+            include: {
+                assignees: { select: { id: true, firstName: true, lastName: true } }
+            }
         })
 
         const chartData = [

@@ -5,21 +5,18 @@ import ObligationDetailClient from "./client"
 
 export default async function ObligationDetailPage({ params }: { params: { id: string } }) {
     const session = await getServerSession(authOptions)
+    const userId = (session?.user as any)?.id
+
     const obligation = await prisma.obligation.findUnique({
         where: { id: params.id },
-        include: { assignee: true }
+        include: { assignees: true }
     })
 
     if (!obligation) return <div>Obligation not found</div>
 
-    // Auto-update status to IN_PROGRESS if viewed by assignee
-    if (obligation.status === 'PENDING' && (session?.user as any)?.id === obligation.assigneeId) {
-        // We don't have an IN_PROGRESS status for obligations in the schema yet (it was PENDING/COMPLETED)
-        // But the user requested it. Let's assume we can use it or just stick to PENDING until upload.
-        // Actually, the user explicitly asked: "make the status of the task or obligation when the employee opens them to change to in progress"
-        // So I should probably update the schema or just allow the string if it's not an enum.
-        // The schema defines status as String, so it's fine.
-
+    // Auto-update status to IN_PROGRESS if viewed by any assignee
+    const isAssignee = obligation.assignees.some(u => u.id === userId)
+    if (obligation.status === 'PENDING' && isAssignee) {
         await prisma.obligation.update({
             where: { id: obligation.id },
             data: { status: 'IN_PROGRESS' }

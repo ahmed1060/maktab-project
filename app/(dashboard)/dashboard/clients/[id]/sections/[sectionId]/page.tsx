@@ -203,16 +203,21 @@ export default function SectionNotesPage() {
         setPendingFiles(prev => prev.filter((_, i) => i !== index))
     }
 
-    const getNoteAttachments = (attachment: string | null | undefined): string[] => {
+    const getNoteAttachments = (attachment: string | null | undefined): any[] => {
         if (!attachment) return []
-        if (attachment.startsWith('[')) {
-            try {
-                return JSON.parse(attachment)
-            } catch {
-                return [attachment]
+        try {
+            const parsed = JSON.parse(attachment)
+            if (Array.isArray(parsed)) {
+                return parsed
             }
+            return [parsed]
+        } catch {
+            // Backward compatibility for single URL strings
+            if (typeof attachment === 'string' && attachment.startsWith('http')) {
+                return [{ url: attachment, name: attachment.split('/').pop() || 'File', size: 0, type: 'unknown' }]
+            }
+            return []
         }
-        return [attachment]
     }
 
     const handleCreateNote = async (e: React.FormEvent) => {
@@ -233,7 +238,13 @@ export default function SectionNotesPage() {
                 const uploadRes = await fetch('/api/upload', { method: 'POST', body: formData })
                 const uploadData = await uploadRes.json()
                 if (uploadData.success) {
-                    attachmentUrls.push(uploadData.url)
+                    attachmentUrls.push({
+                        url: uploadData.url,
+                        name: file.name,
+                        size: file.size,
+                        type: file.type || 'application/octet-stream',
+                        uploadedAt: new Date().toISOString()
+                    } as any)
                 } else {
                     throw new Error(uploadData.error || t('photo_upload_failed'))
                 }
@@ -289,7 +300,13 @@ export default function SectionNotesPage() {
                 const uploadRes = await fetch('/api/upload', { method: 'POST', body: formData })
                 const uploadData = await uploadRes.json()
                 if (uploadData.success) {
-                    newAttachmentUrls.push(uploadData.url)
+                    newAttachmentUrls.push({
+                        url: uploadData.url,
+                        name: file.name,
+                        size: file.size,
+                        type: file.type || 'application/octet-stream',
+                        uploadedAt: new Date().toISOString()
+                    } as any)
                 } else {
                     throw new Error(uploadData.error || t('photo_upload_failed'))
                 }
@@ -330,10 +347,12 @@ export default function SectionNotesPage() {
         }
     }
 
-    const handleRemoveExistingAttachment = async (note: Note, urlToRemove: string) => {
+    const handleRemoveExistingAttachment = async (note: Note, itemToRemove: any) => {
         if (!note) return
         const currentAttachments = getNoteAttachments(note.attachment)
-        const updatedAttachments = currentAttachments.filter(url => url !== urlToRemove)
+        const updatedAttachments = currentAttachments.filter(item =>
+            (typeof item === 'string' ? item : item.url) !== (typeof itemToRemove === 'string' ? itemToRemove : itemToRemove.url)
+        )
 
         try {
             const res = await fetch(`/api/clients/${clientId}/sections/${sectionId}/notes`, {
@@ -538,34 +557,36 @@ export default function SectionNotesPage() {
                                 {/* Footer Actions */}
                                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 'auto' }}>
                                     <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                                        {getNoteAttachments(note.attachment).map((url, i) => (
-                                            <a
-                                                key={i}
-                                                href={url}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                className="hover:scale-110 transition-transform"
-                                                style={{ color: 'var(--primary)', display: 'flex' }}
-                                                title={url.split('/').pop()}
-                                            >
-                                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                                                    <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"></path>
-                                                </svg>
-                                            </a>
-                                        ))}
-                                        {note.attachment && getNoteAttachments(note.attachment).length === 0 && note.attachment.startsWith('http') && (
-                                            <a
-                                                href={note.attachment}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                className="hover:scale-110 transition-transform"
-                                                style={{ color: 'var(--primary)' }}
-                                            >
-                                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                                                    <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"></path>
-                                                </svg>
-                                            </a>
-                                        )}
+                                        {getNoteAttachments(note.attachment).map((att, i) => {
+                                            const url = typeof att === 'string' ? att : att.url
+                                            const name = typeof att === 'string' ? url.split('/').pop() : att.name
+                                            return (
+                                                <a
+                                                    key={i}
+                                                    href={url}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="hover:scale-110 transition-transform"
+                                                    style={{
+                                                        color: 'var(--primary)',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        gap: '0.25rem',
+                                                        background: 'rgba(56, 189, 248, 0.1)',
+                                                        padding: '0.25rem 0.5rem',
+                                                        borderRadius: '0.5rem',
+                                                        textDecoration: 'none',
+                                                        fontSize: '0.75rem'
+                                                    }}
+                                                    title={name}
+                                                >
+                                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                                        <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"></path>
+                                                    </svg>
+                                                    <span style={{ maxWidth: '100px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</span>
+                                                </a>
+                                            )
+                                        })}
                                         {note.lastEditedBy && (
                                             <span style={{ fontSize: '0.7rem', color: '#94a3b8', fontStyle: 'italic', display: 'flex', alignItems: 'center' }}>
                                                 {t('updated_by' as any)} {t(`role_${(note.lastEditedBy.role || 'USER').toLowerCase()}` as any) || note.lastEditedBy.role}

@@ -15,18 +15,22 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
     }
 
     const json = await req.json()
-    const { status, newAttachments, assigneeId } = json
+    const { status, newAttachments, assigneeIds } = json
+    const finalAssigneeIds: string[] = assigneeIds || []
     const userId = (session.user as any).id
 
     try {
         const result = await prisma.$transaction(async (tx) => {
-            // Get current obligation
-            const currentObligation = await tx.obligation.findUnique({ where: { id: params.id } })
+            // Get current obligation with assignees
+            const currentObligation = await tx.obligation.findUnique({
+                where: { id: params.id },
+                include: { assignees: true }
+            })
             if (!currentObligation) throw new Error("Obligation not found")
 
             // Authorization Check
             const isManager = ['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes((session.user as any).role)
-            const isAssignee = currentObligation.assigneeId === userId
+            const isAssignee = currentObligation.assignees.some((a: any) => a.id === userId)
 
             if (!isManager && !isAssignee) {
                 throw new Error("Unauthorized to update this obligation")
@@ -34,7 +38,7 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
 
             // Self-approval restriction for ADMIN and SUPER_ADMIN
             const userRole = (session.user as any).role
-            if (status && (status === 'APPROVED' || status === 'REJECTED') && ['ADMIN', 'SUPER_ADMIN'].includes(userRole) && currentObligation.assigneeId === userId) {
+            if (status && (status === 'APPROVED' || status === 'REJECTED') && ['ADMIN', 'SUPER_ADMIN'].includes(userRole) && isAssignee) {
                 throw new Error("Admins cannot approve or reject their own obligations")
             }
             // TEAM_LEADER is allowed to approve/reject their own obligations
@@ -70,24 +74,26 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
             }
 
             // Handle Reassignment
-            if (assigneeId && isManager) {
+            if (finalAssigneeIds.length > 0 && isManager) {
                 // TEAM_LEADER Restriction: Cannot reassign to ADMIN or SUPER_ADMIN
                 if (userRole === 'TEAM_LEADER') {
-                    const newAssignee = await tx.user.findUnique({
-                        where: { id: assigneeId },
+                    const targetUsers = await tx.user.findMany({
+                        where: { id: { in: finalAssigneeIds } },
                         select: { role: true }
                     })
-                    if (newAssignee && ['ADMIN', 'SUPER_ADMIN'].includes(newAssignee.role)) {
+                    if (targetUsers.some(u => ['ADMIN', 'SUPER_ADMIN'].includes(u.role))) {
                         throw new Error("Team Leaders cannot reassign obligations to Admins or Super Admins")
                     }
                 }
-                updateData.assigneeId = assigneeId
+                updateData.assignees = {
+                    set: finalAssigneeIds.map(id => ({ id }))
+                }
             }
 
             const obligation = await tx.obligation.update({
                 where: { id: params.id },
                 data: updateData,
-                include: { assignee: true }
+                include: { assignees: true }
             })
 
             // Calculate point delta
@@ -98,17 +104,21 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
             const newHasPoints = hasPoints(status || currentObligation.status)
 
             if (!oldHasPoints && newHasPoints) {
-                // Add points
-                await tx.user.update({
-                    where: { id: obligation.assigneeId },
-                    data: { totalDifficultyPoints: { increment: obligation.difficulty } }
-                })
+                // Add points to all assignees
+                for (const a of obligation.assignees) {
+                    await tx.user.update({
+                        where: { id: a.id },
+                        data: { totalDifficultyPoints: { increment: obligation.difficulty } }
+                    })
+                }
             } else if (oldHasPoints && !newHasPoints) {
-                // Remove points (e.g. if rejected after being approved)
-                await tx.user.update({
-                    where: { id: obligation.assigneeId },
-                    data: { totalDifficultyPoints: { decrement: obligation.difficulty } }
-                })
+                // Remove points from all assignees
+                for (const a of obligation.assignees) {
+                    await tx.user.update({
+                        where: { id: a.id },
+                        data: { totalDifficultyPoints: { decrement: obligation.difficulty } }
+                    })
+                }
             }
 
             // Notifications
@@ -116,13 +126,13 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
                 // Notify admins? Usually notifications go to users.
                 // For now, let's notify the user when admin approves/rejects
             } else if (status === 'APPROVED' || status === 'REJECTED') {
-                await tx.notification.create({
-                    data: {
-                        userId: obligation.assigneeId,
+                await tx.notification.createMany({
+                    data: obligation.assignees.map((a: any) => ({
+                        userId: a.id,
                         type: status === 'APPROVED' ? 'OBLIGATION_APPROVED' : 'OBLIGATION_REJECTED',
                         message: `Your obligation "${obligation.title}" has been ${status === 'APPROVED' ? 'approved' : 'rejected'}.`,
                         relatedId: obligation.id
-                    }
+                    }))
                 })
             }
 
@@ -165,30 +175,33 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
             // Get obligation details before deleting
             const obligation = await tx.obligation.findUnique({
                 where: { id: params.id },
-                select: { status: true, difficulty: true, assigneeId: true }
+                select: { status: true, difficulty: true, assignees: { select: { id: true } } }
             })
 
             if (!obligation) throw new Error("Obligation not found")
 
             // Self-deletion restriction for ADMIN and SUPER_ADMIN
-            if (['ADMIN', 'SUPER_ADMIN'].includes(role) && obligation.assigneeId === userId) {
+            const isSelfAssigned = obligation.assignees.some((a: any) => a.id === userId)
+            if (['ADMIN', 'SUPER_ADMIN'].includes(role) && isSelfAssigned) {
                 throw new Error("Admins cannot delete their own obligations")
             }
             // TEAM_LEADER is allowed to delete their own obligations
 
-            // If obligation was completed, deduct points from assignee
+            // If obligation was completed, deduct points from ALL assignees
             if (obligation && ['APPROVED', 'COMPLETED'].includes(obligation.status)) {
-                try {
-                    await tx.user.update({
-                        where: { id: obligation.assigneeId },
-                        data: {
-                            totalDifficultyPoints: {
-                                decrement: obligation.difficulty
+                for (const a of obligation.assignees) {
+                    try {
+                        await tx.user.update({
+                            where: { id: a.id },
+                            data: {
+                                totalDifficultyPoints: {
+                                    decrement: obligation.difficulty
+                                }
                             }
-                        }
-                    })
-                } catch (error) {
-                    console.error("Failed to deduct points during obligation deletion:", error)
+                        })
+                    } catch (error) {
+                        console.error(`Failed to deduct points from user ${a.id} during obligation deletion:`, error)
+                    }
                 }
             }
 

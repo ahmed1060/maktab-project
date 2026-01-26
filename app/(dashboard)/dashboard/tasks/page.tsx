@@ -22,42 +22,30 @@ export default async function TasksPage({ searchParams }: { searchParams: { comp
     const userCompanyId = (session?.user as any)?.companyId
 
     if (role === 'EMPLOYEE') {
+        whereClause.companyId = userCompanyId
         if (view === 'my') {
-            whereClause.OR = [
-                { assigneeId: userId },
-                { assignees: { some: { id: userId } } }
-            ]
+            whereClause.assignees = { some: { id: userId } }
         } else {
             // Active tasks: other users tasks in same company with status PENDING or IN_PROGRESS
-            whereClause.assignee = { companyId: userCompanyId }
-            whereClause.NOT = [
-                { assigneeId: userId },
-                { assignees: { some: { id: userId } } }
-            ]
+            whereClause.assignees = { none: { id: userId } }
             whereClause.status = { in: ['PENDING', 'IN_PROGRESS'] }
         }
     } else if (role === 'TEAM_LEADER') {
+        whereClause.companyId = userCompanyId
         if (view === 'my') {
-            whereClause.OR = [
-                { assigneeId: userId },
-                { assignees: { some: { id: userId } } }
-            ]
+            whereClause.assignees = { some: { id: userId } }
         } else {
             // Active tasks: all company tasks except those assigned to current user
-            whereClause.assignee = { companyId: userCompanyId }
-            whereClause.NOT = [
-                { assigneeId: userId },
-                { assignees: { some: { id: userId } } }
-            ]
+            whereClause.assignees = { none: { id: userId } }
         }
     } else if (role === 'ADMIN') {
         // ADMIN still sees all company tasks
         if (!userCompanyId) return <TasksClient tasks={[]} total={0} page={page} totalPages={0} role={role} currentUserId={userId} view={view} />
-        whereClause.assignee = { companyId: userCompanyId }
+        whereClause.companyId = userCompanyId
     } else if (role === 'SUPER_ADMIN') {
         // Super Admin can filter by company or see everything
         if (companyId) {
-            whereClause.assignee = { companyId }
+            whereClause.companyId = companyId
         }
     }
 
@@ -69,19 +57,7 @@ export default async function TasksPage({ searchParams }: { searchParams: { comp
         whereClause.title = { contains: searchParams.search, mode: 'insensitive' }
     }
     if (searchParams.employeeId) {
-        const employeeMatch = {
-            OR: [
-                { assigneeId: searchParams.employeeId },
-                { assignees: { some: { id: searchParams.employeeId } } }
-            ]
-        }
-        if (whereClause.OR) {
-            whereClause.AND = [{ OR: whereClause.OR }, employeeMatch]
-            delete whereClause.OR
-        } else {
-            whereClause.AND = whereClause.AND || []
-            whereClause.AND.push(employeeMatch)
-        }
+        whereClause.assignees = { some: { id: searchParams.employeeId } }
     }
 
     const { dateFrom, dateTo } = searchParams as any
@@ -99,7 +75,6 @@ export default async function TasksPage({ searchParams }: { searchParams: { comp
         (prisma.task as any).findMany({
             where: whereClause,
             include: {
-                assignee: { select: { firstName: true, lastName: true } },
                 assignees: { select: { id: true, firstName: true, lastName: true } },
                 creator: { select: { firstName: true, lastName: true } }
             },

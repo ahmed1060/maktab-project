@@ -33,6 +33,7 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
     const { title: contextTitle } = useHeader()
     const [companies, setCompanies] = useState<any[]>([])
     const [pendingRequestsCount, setPendingRequestsCount] = useState(0)
+    const [unreadNotificationsCount, setUnreadNotificationsCount] = useState(0)
     const [isCompanyDropdownOpen, setIsCompanyDropdownOpen] = useState(false)
     const [isMobile, setIsMobile] = useState(false)
     const dropdownRef = useRef<HTMLDivElement>(null)
@@ -44,48 +45,41 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
     const [headerAvatar, setHeaderAvatar] = useState<string | null>(currentUser.avatar || currentUser.image || currentUser.picture || null)
     const lastProcessedCompany = useRef<string | null | undefined>(undefined)
 
-    // Precisely like the profile page: Fetch "Ground Truth" on mount and on session changes
+    // Unified data fetching via bootstrap API
     useEffect(() => {
-        const fetchGroundTruth = async () => {
+        const fetchBootstrapData = async () => {
             if (!currentUser.id) return
             try {
-                const res = await fetch(`/api/users?id=${currentUser.id}`, { cache: 'no-store' })
+                const res = await fetch('/api/me/bootstrap', { cache: 'no-store' })
                 if (res.ok) {
                     const data = await res.json()
-                    // Fallback through all possible field names returned by API
-                    setHeaderAvatar(data.avatar || data.image || data.picture || null)
+                    // Update Avatar
+                    const userAvatar = data.user?.avatar || data.user?.image || data.user?.picture || null
+                    setHeaderAvatar(userAvatar)
+
+                    // Update Companies if Super Admin
+                    if (data.companies && Array.isArray(data.companies)) {
+                        setCompanies(data.companies)
+                    }
+
+                    // Update Pending Requests Count & Notifications
+                    if (data.counts) {
+                        setPendingRequestsCount(data.counts.pendingProfileRequests || 0)
+                        setUnreadNotificationsCount(data.counts.unreadNotifications || 0)
+                    }
+
+                    // Trigger Note Expiry Check for Admins
+                    if (['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role)) {
+                        fetch('/api/notes/check-expiry', { method: 'POST' }).catch(() => { })
+                    }
                 }
             } catch (err) {
-                console.error('Header sync error:', err)
+                console.error('Bootstrap fetch error:', err)
             }
         }
-        fetchGroundTruth()
-    }, [currentUser.id, session?.user?.image, session?.user?.avatar, session?.user?.picture])
 
-    useEffect(() => {
-        if (currentUser.role === 'SUPER_ADMIN') {
-            fetch('/api/companies?limit=1000', { cache: 'no-store' })
-                .then(res => res.json())
-                .then(data => {
-                    if (data && Array.isArray(data.data)) {
-                        setCompanies(data.data)
-                    } else if (Array.isArray(data)) {
-                        setCompanies(data)
-                    }
-                })
-                .catch(err => console.error('Failed to fetch companies', err))
-        }
-
-        if (['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role)) {
-            fetch('/api/profile-requests?status=PENDING', { cache: 'no-store' })
-                .then(res => res.json())
-                .then(data => setPendingRequestsCount(data.length))
-                .catch(err => console.error('Failed to fetch profile requests', err))
-
-            // Trigger Note Expiry Check
-            fetch('/api/notes/check-expiry', { method: 'POST' }).catch(() => { })
-        }
-    }, [currentUser.role, refreshTrigger])
+        fetchBootstrapData()
+    }, [currentUser.id, currentUser.role, refreshTrigger, session?.user?.image, session?.user?.avatar, session?.user?.picture])
 
     // Sync URL <-> Context
     useEffect(() => {
@@ -455,7 +449,7 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
                     </Link>
                 )}
 
-                <NotificationBell />
+                <NotificationBell initialUnreadCount={unreadNotificationsCount} />
 
                 {/* Avatar area - Grouped for desktop info, but direct child for mobile gap consistency */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>

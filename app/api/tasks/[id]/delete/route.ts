@@ -30,29 +30,33 @@ export async function DELETE(
         await prisma.$transaction(async (tx) => {
             const task = await tx.task.findUnique({
                 where: { id: params.id },
-                select: { status: true, difficulty: true, assigneeId: true, attachments: true }
+                select: { status: true, difficulty: true, assignees: { select: { id: true } }, attachments: true }
             })
 
             if (!task) throw new Error("Task not found")
 
             // Self-deletion restriction for ADMIN and SUPER_ADMIN
-            if (['ADMIN', 'SUPER_ADMIN'].includes(userRole) && task.assigneeId === currentUserId) {
+            const isSelfAssigned = (task.assignees as any[]).some((a: any) => a.id === currentUserId)
+            if (['ADMIN', 'SUPER_ADMIN'].includes(userRole) && isSelfAssigned) {
                 throw new Error("Admins cannot delete their own tasks")
             }
             // TEAM_LEADER is allowed to delete their own tasks (per user request)
 
             if (task && ['APPROVED', 'COMPLETED'].includes(task.status)) {
-                try {
-                    await tx.user.update({
-                        where: { id: task.assigneeId },
-                        data: {
-                            totalDifficultyPoints: {
-                                decrement: task.difficulty
+                const assigneeIds = (task.assignees as any[]).map((a: any) => a.id)
+                for (const aId of assigneeIds) {
+                    try {
+                        await tx.user.update({
+                            where: { id: aId },
+                            data: {
+                                totalDifficultyPoints: {
+                                    decrement: task.difficulty
+                                }
                             }
-                        }
-                    })
-                } catch (error) {
-                    console.error("Failed to deduct points during task deletion:", error)
+                        })
+                    } catch (error) {
+                        console.error(`Failed to deduct points from user ${aId} during task deletion:`, error)
+                    }
                 }
             }
 

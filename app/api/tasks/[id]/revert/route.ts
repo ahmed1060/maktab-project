@@ -56,9 +56,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
 
             // Deduct points from assignees
             if (pointDeduction > 0) {
-                const assigneeIds = (task.assignees.length > 0)
-                    ? task.assignees.map((a: { id: string }) => a.id)
-                    : [task.assigneeId]
+                const assigneeIds = task.assignees.map((a: { id: string }) => a.id)
 
                 await tx.user.updateMany({
                     where: { id: { in: assigneeIds } },
@@ -71,9 +69,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
             }
 
             // Create notification for all assignees
-            const targetIds = (task.assignees.length > 0)
-                ? task.assignees.map((a: { id: string }) => a.id)
-                : [task.assigneeId]
+            const targetIds = task.assignees.map((a: { id: string }) => a.id)
 
             await tx.notification.createMany({
                 data: targetIds.map((id: string) => ({

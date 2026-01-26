@@ -12,7 +12,8 @@ export default function ObligationDetailClient({ obligation, userRole }: { oblig
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
     const [showFeedback, setShowFeedback] = useState(false)
     const [feedbackMessage, setFeedbackMessage] = useState('')
-    const [userId, setUserId] = useState<string | null>(null) // We need this to check if user is the assignee
+    const [userId, setUserId] = useState<string | null>(null)
+    const isAssignee = obligation.assignees?.some((a: any) => a.id === userId)
     const [isReverting, setIsReverting] = useState(false)
     const [showRevertConfirm, setShowRevertConfirm] = useState(false)
     const router = useRouter()
@@ -132,9 +133,39 @@ export default function ObligationDetailClient({ obligation, userRole }: { oblig
             if (parsed.url) return [parsed] // Legacy
             return []
         } catch {
+            // Backward compatibility for single URL strings
+            if (typeof obligation.attachments === 'string' && obligation.attachments.startsWith('http')) {
+                return [{ url: obligation.attachments, name: obligation.attachments.split('/').pop() || 'File' }]
+            }
             return []
         }
     })() : []
+
+    const handleRemoveExistingAttachment = async (itemToRemove: any) => {
+        if (!['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole)) return
+
+        const updatedAttachments = existingAttachments.filter((att: any) =>
+            (typeof att === 'string' ? att : att.url) !== (typeof itemToRemove === 'string' ? itemToRemove : itemToRemove.url)
+        )
+
+        try {
+            const res = await fetch(`/api/obligations/${obligation.id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    attachments: updatedAttachments // API handles stringification
+                })
+            })
+
+            if (res.ok) {
+                router.refresh()
+                setFeedbackMessage(t('item_deleted_success' as any) || 'Attachment removed')
+                setShowFeedback(true)
+            }
+        } catch (error) {
+            console.error('Failed to remove attachment', error)
+        }
+    }
 
     const [inputKey, setInputKey] = useState(0)
 
@@ -231,13 +262,13 @@ export default function ObligationDetailClient({ obligation, userRole }: { oblig
 
     const [allUsers, setAllUsers] = useState<any[]>([])
     const [isReassigning, setIsReassigning] = useState(false)
-    const [newAssigneeId, setNewAssigneeId] = useState('')
+    const [newAssigneeIds, setNewAssigneeIds] = useState<string[]>(obligation.assignees?.map((a: any) => a.id) || [])
 
     const loadUsers = async () => {
         if (allUsers.length > 0) return
         const queryParams = new URLSearchParams()
         queryParams.set('limit', '1000')
-        if (obligation.assignee?.companyId) queryParams.set('companyId', obligation.assignee.companyId)
+        if (obligation.companyId) queryParams.set('companyId', obligation.companyId)
 
         const res = await fetch(`/api/users?${queryParams.toString()}`)
         if (res.ok) {
@@ -249,11 +280,11 @@ export default function ObligationDetailClient({ obligation, userRole }: { oblig
     }
 
     const handleReassign = async () => {
-        if (!newAssigneeId) return
+        if (newAssigneeIds.length === 0) return
         try {
             await fetch(`/api/obligations/${obligation.id}`, {
                 method: 'PUT',
-                body: JSON.stringify({ assigneeId: newAssigneeId }),
+                body: JSON.stringify({ assigneeIds: newAssigneeIds }),
                 headers: { 'Content-Type': 'application/json' }
             })
             setIsReassigning(false)
@@ -422,18 +453,67 @@ export default function ObligationDetailClient({ obligation, userRole }: { oblig
             <div style={{ marginTop: '2rem', borderTop: '1px solid #e2e8f0', paddingTop: '1rem' }}>
                 <h3>{t('attachments_label' as any)}</h3>
                 {existingAttachments.length > 0 ? (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                        {existingAttachments.map((att: any, index: number) => (
-                            <div key={index} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexDirection: 'row' }}>
-                                <span style={{ fontSize: '1.2rem' }}>📎</span>
-                                <a href={att.url} target="_blank" style={{ color: 'blue', textDecoration: 'underline' }}>
-                                    {att.name || t('view_photo')}
-                                </a>
-                                <span style={{ fontSize: '0.8rem', color: '#64748b' }}>
-                                    ({new Date(att.uploadedAt || Date.now()).toLocaleTimeString(locale, { timeStyle: 'short' }) + ' ' + new Date(att.uploadedAt || Date.now()).toLocaleDateString(locale === 'ar' ? 'ar-EG' : 'en-GB', { day: 'numeric', month: 'short', year: 'numeric' })})
-                                </span>
-                            </div>
-                        ))}
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', marginTop: '0.75rem' }}>
+                        {existingAttachments.map((att: any, index: number) => {
+                            const url = typeof att === 'string' ? att : att.url
+                            const name = typeof att === 'string' ? url.split('/').pop() : att.name
+                            return (
+                                <div key={index} style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '0.5rem',
+                                    background: 'white',
+                                    border: '1px solid #e2e8f0',
+                                    padding: '0.5rem 0.75rem',
+                                    borderRadius: '0.5rem',
+                                    boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
+                                }}>
+                                    <span style={{ fontSize: '1.2rem' }}>📎</span>
+                                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                        <a href={url} target="_blank" rel="noopener noreferrer" style={{
+                                            color: '#2563eb',
+                                            textDecoration: 'none',
+                                            fontSize: '0.9rem',
+                                            fontWeight: '500',
+                                            maxWidth: '150px',
+                                            overflow: 'hidden',
+                                            textOverflow: 'ellipsis',
+                                            whiteSpace: 'nowrap'
+                                        }}>
+                                            {name || t('view_photo')}
+                                        </a>
+                                        {att.uploadedAt && (
+                                            <span style={{ fontSize: '0.7rem', color: '#64748b' }}>
+                                                {new Date(att.uploadedAt).toLocaleTimeString(locale, { timeStyle: 'short' }) + ' ' + new Date(att.uploadedAt).toLocaleDateString(locale === 'ar' ? 'ar-EG' : 'en-GB', { day: 'numeric', month: 'short' })}
+                                            </span>
+                                        )}
+                                    </div>
+                                    {['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole) && (
+                                        <button
+                                            onClick={() => handleRemoveExistingAttachment(att)}
+                                            style={{
+                                                marginLeft: locale === 'ar' ? '0' : '0.5rem',
+                                                marginRight: locale === 'ar' ? '0.5rem' : '0',
+                                                color: '#ef4444',
+                                                background: 'none',
+                                                border: 'none',
+                                                cursor: 'pointer',
+                                                fontSize: '1.1rem',
+                                                padding: '0.2rem',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center'
+                                            }}
+                                            title={t('delete')}
+                                        >
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                                <path d="M18 6L6 18M6 6l12 12"></path>
+                                            </svg>
+                                        </button>
+                                    )}
+                                </div>
+                            )
+                        })}
                     </div>
                 ) : (
                     <span style={{ color: '#64748b', fontStyle: 'italic' }}>{t('no_attachments_msg')}</span>
@@ -616,22 +696,51 @@ export default function ObligationDetailClient({ obligation, userRole }: { oblig
             {/* Reassign Modal */}
             <Modal isOpen={isReassigning} onClose={() => setIsReassigning(false)} title={t('reassign_button')} hideFooter={true}>
                 <div style={{ padding: '0.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
-                    <p style={{ marginBottom: '1rem' }}>{t('transfer_task_msg')}</p>
-                    <select
-                        className="input"
-                        value={newAssigneeId}
-                        onChange={(e) => setNewAssigneeId(e.target.value)}
-                        style={{ width: '100%', marginBottom: '1rem', textAlign: locale === 'ar' ? 'right' : 'left' }}
-                    >
-                        <option value="">{t('select_employee_placeholder')}...</option>
-                        {allUsers.filter(u => u.id !== obligation.assigneeId).map(u => (
-                            <option key={u.id} value={u.id}>{u.firstName} {u.lastName} ({u.role})</option>
-                        ))}
-                    </select>
+                    <p style={{ marginBottom: '1.25rem' }}>{t('transfer_task_msg')}</p>
+
+                    <div style={{
+                        maxHeight: '200px',
+                        overflowY: 'auto',
+                        border: '1px solid #e2e8f0',
+                        borderRadius: '0.5rem',
+                        padding: '0.75rem',
+                        background: '#f8fafc',
+                        marginBottom: '1.5rem'
+                    }}>
+                        {allUsers.length > 0 ? (
+                            allUsers.map(u => (
+                                <label key={u.id} style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '0.5rem',
+                                    marginBottom: '0.5rem',
+                                    cursor: 'pointer',
+                                    padding: '0.25rem'
+                                }}>
+                                    <input
+                                        type="checkbox"
+                                        checked={newAssigneeIds.includes(u.id)}
+                                        onChange={e => {
+                                            if (e.target.checked) {
+                                                setNewAssigneeIds([...newAssigneeIds, u.id])
+                                            } else {
+                                                setNewAssigneeIds(newAssigneeIds.filter(id => id !== u.id))
+                                            }
+                                        }}
+                                    />
+                                    <span style={{ fontSize: '0.9rem' }}>
+                                        {u.firstName} {u.lastName} <small style={{ color: '#64748b' }}>({u.role})</small>
+                                    </span>
+                                </label>
+                            ))
+                        ) : (
+                            <div style={{ fontSize: '0.9rem', color: '#64748b', textAlign: 'center' }}>{locale === 'ar' ? 'جاري التحميل...' : 'Loading...'}</div>
+                        )}
+                    </div>
 
                     <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', flexDirection: 'row' }}>
-                        <button className="btn" onClick={() => setIsReassigning(false)}>{t('cancel')}</button>
-                        <button className="btn btn-primary" onClick={handleReassign} disabled={!newAssigneeId}>
+                        <button className="btn" style={{ background: '#e2e8f0' }} onClick={() => setIsReassigning(false)}>{t('cancel')}</button>
+                        <button className="btn btn-primary" onClick={handleReassign} disabled={newAssigneeIds.length === 0}>
                             {t('confirm_transfer_button')}
                         </button>
                     </div>

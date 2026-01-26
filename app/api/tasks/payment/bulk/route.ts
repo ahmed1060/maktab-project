@@ -46,20 +46,14 @@ export async function POST(req: Request) {
                     return new NextResponse("Forbidden: No company assigned", { status: 403 })
                 }
                 where.AND.push({
-                    OR: [
-                        { assignee: { companyId: userCompanyId } },
-                        { assignees: { some: { companyId: userCompanyId } } }
-                    ]
+                    assignees: { some: { companyId: userCompanyId } }
                 })
             }
 
             // Apply Filters
             if (filters.employeeId) {
                 where.AND.push({
-                    OR: [
-                        { assigneeId: filters.employeeId },
-                        { assignees: { some: { id: filters.employeeId } } }
-                    ]
+                    assignees: { some: { id: filters.employeeId } }
                 })
             }
             if (filters.search) {
@@ -89,10 +83,7 @@ export async function POST(req: Request) {
                 const validTasks = await prisma.task.findMany({
                     where: {
                         id: { in: taskIds },
-                        OR: [
-                            { assignee: { companyId: userCompanyId } },
-                            { assignees: { some: { companyId: userCompanyId } } }
-                        ]
+                        assignees: { some: { companyId: userCompanyId } }
                     },
                     select: { id: true }
                 })

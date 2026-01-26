@@ -12,12 +12,7 @@ interface TaskListItemProps {
         description: string
         status: string
         deadline: Date | string
-        assigneeId: string
-        assignee: {
-            firstName: string
-            lastName: string
-        }
-        assignees?: {
+        assignees: {
             id: string
             firstName: string
             lastName: string
@@ -57,7 +52,8 @@ export default function TaskListItem({ task, currentUserId, isHighlighted }: Tas
     }, [isHighlighted])
 
     const getButtonLabel = () => {
-        if (currentUserId !== task.assigneeId) return t('view_task')
+        const isSelfAssigned = task.assignees?.some((a: any) => a.id === currentUserId)
+        if (!isSelfAssigned) return t('view_task')
         if (task.status === 'PENDING') return t('start_task')
         if (task.status === 'IN_PROGRESS') return t('continue_task')
         return t('open_task')
@@ -120,15 +116,15 @@ export default function TaskListItem({ task, currentUserId, isHighlighted }: Tas
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1rem' }}>
                 <div style={{ fontSize: '0.875rem', color: '#64748b' }}>
                     <div style={{ marginBottom: '0.25rem' }}>
-                        {(currentUserId === task.assigneeId || (task.assignees as any)?.some((a: any) => a.id === currentUserId)) && task.creator ? (
+                        {task.assignees?.some((a: any) => a.id === currentUserId) && task.creator ? (
                             <span>{t('assigned_by')}: <strong>{task.creator.firstName} {task.creator.lastName}</strong></span>
                         ) : (
                             <span>
-                                {task.assignees && task.assignees.length > 1 ? (t('assignees_label' as any) || 'Assignees') : t('assignee_label')}: {task.assignees && task.assignees.length > 1
+                                {task.assignees && task.assignees.length > 1 ? (t('assignees_label' as any) || 'Assignees') : t('assignee_label')}: {task.assignees && task.assignees.length >= 1
                                     ? task.assignees.length <= 2
                                         ? task.assignees.map(a => `${a.firstName} ${a.lastName}`).join(', ')
                                         : `${task.assignees[0].firstName} ${task.assignees[0].lastName} + ${task.assignees.length - 1}`
-                                    : `${task.assignee.firstName} ${task.assignee.lastName}`}
+                                    : '---'}
                             </span>
                         )}
                     </div>

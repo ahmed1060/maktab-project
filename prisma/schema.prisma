@@ -16,14 +16,15 @@ model Company {
   updatedAt       DateTime         @updatedAt
   businessClients BusinessClient[]
   payments        CompanyPayment[]
-  users           User[]
+  obligations     Obligation[]
   requests        Request[]
+  tasks           Task[]
+  users           User[]
 }
 
 model SuperAdmin {
   id               String     @id @default(uuid())
   email            String     @unique
-  username         String     @unique
   password         String
   firstName        String
   lastName         String
@@ -33,48 +34,48 @@ model SuperAdmin {
   updatedAt        DateTime   @updatedAt
   language         String     @default("en")
   plainPasswordEnc String?
+  username         String     @unique
   auditLogs        AuditLog[]
 }
 
 model User {
-  id                         String                 @id @default(uuid())
-  email                      String                 @unique
-  username                   String                 @unique
+  id                         String                  @id @default(uuid())
+  email                      String                  @unique
   password                   String
   firstName                  String
   lastName                   String
   role                       String
   avatar                     String?
-  gender                     String                 @default("MALE")
+  gender                     String                  @default("MALE")
   companyId                  String?
-  status                     String                 @default("OFFLINE")
-  lastActivity               DateTime               @default(now())
-  totalDifficultyPoints      Int                    @default(0)
-  salary                     Float                  @default(0)
-  language                   String                 @default("en")
-  dayOffCredit               Float                  @default(0)
-  baseDayOffCredit           Float                  @default(0)
-  lastDayOffResetYear        Int                    @default(2026)
+  status                     String                  @default("OFFLINE")
+  lastActivity               DateTime                @default(now())
+  totalDifficultyPoints      Int                     @default(0)
+  salary                     Float                   @default(0)
+  language                   String                  @default("en")
+  dayOffCredit               Float                   @default(0)
+  baseDayOffCredit           Float                   @default(0)
+  lastDayOffResetYear        Int                     @default(2026)
   plainPasswordEnc           String?
+  username                   String                  @unique
   auditLogs                  AuditLog[]
-  createdBusinessClientNotes BusinessClientNote[]   @relation("CreatedNotes")
-  editedBusinessClientNotes  BusinessClientNote[]   @relation("EditedNotes")
-  dayOffRequests             DayOffRequest[]
-  dayOffCreditSnapshots      DayOffCreditSnapshot[]
-  notifications              Notification[]
-  obligations                Obligation[]
-  profileUpdateRequests      ProfileUpdateRequest[]
-  salaryAdjustments          SalaryAdjustment[]
-  salaryRecords              SalaryRecord[]
-  tasks                      Task[]                 @relation("AssignedTasks")
-  manyTasks                  Task[]                 @relation("MultipleAssignees")
-  createdTasks               Task[]                 @relation("CreatedTasks")
-  requests                   Request[]
-  createdClients             BusinessClient[]       @relation("ClientCreatedBy")
-  editedClients              BusinessClient[]       @relation("ClientEditedBy")
+  createdClients             BusinessClient[]        @relation("ClientCreatedBy")
+  editedClients              BusinessClient[]        @relation("ClientEditedBy")
+  createdBusinessClientNotes BusinessClientNote[]    @relation("CreatedNotes")
+  editedBusinessClientNotes  BusinessClientNote[]    @relation("EditedNotes")
   createdSections            BusinessClientSection[] @relation("SectionCreatedBy")
   editedSections             BusinessClientSection[] @relation("SectionEditedBy")
-  company                    Company?               @relation(fields: [companyId], references: [id])
+  dayOffCreditSnapshots      DayOffCreditSnapshot[]
+  dayOffRequests             DayOffRequest[]
+  notifications              Notification[]
+  profileUpdateRequests      ProfileUpdateRequest[]
+  requests                   Request[]
+  salaryAdjustments          SalaryAdjustment[]
+  salaryRecords              SalaryRecord[]
+  createdTasks               Task[]                  @relation("CreatedTasks")
+  company                    Company?                @relation(fields: [companyId], references: [id])
+  tasks                      Task[]                  @relation("MultipleAssignees")
+  obligations                Obligation[]            @relation("ObligationAssignees")
 
   @@index([email])
   @@index([companyId])
@@ -90,7 +91,6 @@ model Task {
   deadline            DateTime
   difficulty          Int      @default(0)
   totalCost           Float    @default(0)
-  assigneeId          String
   createdBy           String?
   attachments         String?
   comments            String?
@@ -102,14 +102,15 @@ model Task {
   location            String?
   lastStatusUpdateBy  String?
   lastEditBy          String?
-  memberPaymentStatus String?
   memberCosts         String?
-  assignee            User     @relation("AssignedTasks", fields: [assigneeId], references: [id])
-  assignees           User[]   @relation("MultipleAssignees")
+  memberPaymentStatus String?
+  companyId           String?
+  company             Company? @relation(fields: [companyId], references: [id])
   creator             User?    @relation("CreatedTasks", fields: [createdBy], references: [id])
+  assignees           User[]   @relation("MultipleAssignees")
 
-  @@index([assigneeId])
   @@index([createdBy])
+  @@index([companyId])
   @@index([status])
   @@index([createdAt])
   @@index([paymentStatus])
@@ -143,7 +144,6 @@ model Obligation {
   id                 String   @id @default(uuid())
   title              String
   description        String
-  assigneeId         String
   recurrence         String   @default("ONE_TIME")
   deadline           DateTime
   difficulty         Int      @default(0)
@@ -152,10 +152,12 @@ model Obligation {
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
   lastStatusUpdateBy String?
-  assignee           User     @relation(fields: [assigneeId], references: [id])
+  companyId          String?
+  company            Company? @relation(fields: [companyId], references: [id])
+  assignees          User[]   @relation("ObligationAssignees")
 
-  @@index([assigneeId])
   @@index([status])
+  @@index([companyId])
   @@index([createdAt])
 }
 
@@ -182,10 +184,10 @@ model BusinessClient {
   id             String                  @id @default(uuid())
   name           String
   companyId      String
-  createdById    String?
-  lastEditedById String?
   createdAt      DateTime                @default(now())
   updatedAt      DateTime                @updatedAt
+  createdById    String?
+  lastEditedById String?
   company        Company                 @relation(fields: [companyId], references: [id], onDelete: Cascade)
   createdBy      User?                   @relation("ClientCreatedBy", fields: [createdById], references: [id])
   lastEditedBy   User?                   @relation("ClientEditedBy", fields: [lastEditedById], references: [id])
@@ -199,10 +201,10 @@ model BusinessClientSection {
   id             String               @id @default(uuid())
   title          String
   clientId       String
-  createdById    String?
-  lastEditedById String?
   createdAt      DateTime             @default(now())
   updatedAt      DateTime             @updatedAt
+  createdById    String?
+  lastEditedById String?
   notes          BusinessClientNote[]
   client         BusinessClient       @relation(fields: [clientId], references: [id], onDelete: Cascade)
   createdBy      User?                @relation("SectionCreatedBy", fields: [createdById], references: [id])
@@ -246,8 +248,8 @@ model ProfileUpdateRequest {
   updatedAt    DateTime @updatedAt
   user         User     @relation(fields: [userId], references: [id])
 
-  @@index([userId])
   @@index([status])
+  @@index([userId])
 }
 
 model CompanyPayment {
@@ -282,8 +284,8 @@ model DayOffRequest {
   deductionType String    @default("CREDIT")
   user          User      @relation(fields: [userId], references: [id])
 
-  @@index([userId])
   @@index([status])
+  @@index([userId])
 }
 
 model SalaryAdjustment {
@@ -303,18 +305,18 @@ model SalaryAdjustment {
 }
 
 model Request {
-  id          String    @id @default(uuid())
-  title       String
-  details     String
-  status      String    @default("PENDING")
-  userId      String
-  companyId   String
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  id           String    @id @default(uuid())
+  title        String
+  details      String
+  status       String    @default("PENDING")
+  userId       String
+  companyId    String
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
   inProgressAt DateTime?
   completedAt  DateTime?
-  user        User      @relation(fields: [userId], references: [id])
-  company     Company?  @relation(fields: [companyId], references: [id])
+  company      Company   @relation(fields: [companyId], references: [id])
+  user         User      @relation(fields: [userId], references: [id])
 
   @@index([userId])
   @@index([companyId])

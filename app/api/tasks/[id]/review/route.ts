@@ -23,14 +23,15 @@ export async function POST(req: Request, { params }: { params: { id: string } })
         // 1. Fetch current task state to calculate point delta
         const oldTask = await (tx.task as any).findUnique({
             where: { id: params.id },
-            select: { status: true, difficulty: true, assigneeId: true, totalCost: true, assignees: { select: { id: true } } }
+            select: { status: true, difficulty: true, totalCost: true, assignees: { select: { id: true } } }
         })
 
         if (!oldTask) throw new Error("Task not found")
 
         // Role-based self-approval restriction
         const userRole = (session.user as any).role
-        if (['ADMIN', 'SUPER_ADMIN'].includes(userRole) && oldTask.assigneeId === userId) {
+        const isSelfAssigned = oldTask.assignees.some((a: any) => a.id === userId)
+        if (['ADMIN', 'SUPER_ADMIN'].includes(userRole) && isSelfAssigned) {
             throw new Error("Admins cannot approve or reject their own tasks")
         }
         // TEAM_LEADER is allowed to approve/reject their own tasks
@@ -73,15 +74,12 @@ export async function POST(req: Request, { params }: { params: { id: string } })
                 difficulty: newDifficulty,
                 lastStatusUpdateBy: `${(session.user as any).role} ${(session.user as any).name}`
             },
-            include: { assignee: true, assignees: true }
+            include: { assignees: true }
         })
 
         // 5. Apply Point Delta to ALL Assignees
         if (pointDelta !== 0) {
-            const allAssigneeIds = Array.from(new Set([
-                ...((oldTask as any).assignees?.map((a: { id: string }) => a.id) || []),
-                oldTask.assigneeId
-            ])).filter(Boolean)
+            const allAssigneeIds = (oldTask as any).assignees?.map((a: { id: string }) => a.id) || []
 
             for (const aId of allAssigneeIds) {
                 try {
@@ -101,13 +99,10 @@ export async function POST(req: Request, { params }: { params: { id: string } })
         }
 
         // Notify all assignees
-        const allAssigneeIdsForNotification = Array.from(new Set([
-            ...((task as any).assignees?.map((a: { id: string }) => a.id) || []),
-            task.assigneeId
-        ])).filter(Boolean)
+        const allAssigneeIdsForNotification = task.assignees.map((a: { id: string }) => a.id)
 
         await tx.notification.createMany({
-            data: allAssigneeIdsForNotification.map(aId => ({
+            data: allAssigneeIdsForNotification.map((aId: string) => ({
                 userId: aId,
                 type: newStatus === 'APPROVED' ? 'TASK_APPROVED' : newStatus === 'COMPLETED' ? 'TASK_COMPLETED' : 'TASK_REJECTED',
                 message: `Your task "${task.title}" has been ${newStatus === 'APPROVED' ? 'approved' : newStatus === 'COMPLETED' ? 'marked as completed' : 'rejected'}`,

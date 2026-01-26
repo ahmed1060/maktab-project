@@ -27,7 +27,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
                     id: true,
                     status: true,
                     difficulty: true,
-                    assigneeId: true,
+                    assignees: { select: { id: true } },
                     title: true
                 }
             })
@@ -52,10 +52,11 @@ export async function POST(req: Request, { params }: { params: { id: string } })
                 }
             })
 
-            // Deduct points from assignee
+            // Deduct points from assignees
             if (pointDeduction > 0) {
-                await tx.user.update({
-                    where: { id: obligation.assigneeId },
+                const assigneeIds = (obligation as any).assignees.map((a: any) => a.id)
+                await tx.user.updateMany({
+                    where: { id: { in: assigneeIds } },
                     data: {
                         totalDifficultyPoints: {
                             decrement: pointDeduction
@@ -64,14 +65,15 @@ export async function POST(req: Request, { params }: { params: { id: string } })
                 })
             }
 
-            // Notify the assignee
-            await tx.notification.create({
-                data: {
-                    userId: obligation.assigneeId,
+            // Notify the assignees
+            const assigneeIds = (obligation as any).assignees.map((a: any) => a.id)
+            await tx.notification.createMany({
+                data: assigneeIds.map((id: string) => ({
+                    userId: id,
                     type: 'OBLIGATION_REVERTED',
                     message: `Super Admin has reverted obligation "${obligation.title}" back to In Progress.`,
                     relatedId: obligation.id
-                }
+                }))
             })
 
             // Determine if user exists in SuperAdmin or User table for AuditLog

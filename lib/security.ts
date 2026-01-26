@@ -33,19 +33,19 @@ export async function verifyResourceAccess(
             const task = await prisma.task.findUnique({
                 where: { id: resourceId },
                 select: {
-                    assignee: { select: { companyId: true } }
+                    companyId: true
                 }
             });
-            return task?.assignee?.companyId === userCompanyId;
+            return task?.companyId === userCompanyId;
         }
         case 'OBLIGATION': {
             const obligation = await prisma.obligation.findUnique({
                 where: { id: resourceId },
                 select: {
-                    assignee: { select: { companyId: true } }
+                    companyId: true
                 }
             });
-            return obligation?.assignee?.companyId === userCompanyId;
+            return obligation?.companyId === userCompanyId;
         }
         case 'CLIENT': {
             const client = await prisma.businessClient.findUnique({

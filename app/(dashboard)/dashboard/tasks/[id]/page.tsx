@@ -7,13 +7,17 @@ export default async function TaskDetailPage({ params }: { params: { id: string 
     const session = await getServerSession(authOptions)
     const task = await prisma.task.findUnique({
         where: { id: params.id },
-        include: { assignee: true, assignees: true }
+        include: { assignees: true }
     })
 
     if (!task) return <div>Task not found</div>
 
-    // Auto-update status to IN_PROGRESS if viewed by assignee
-    if (task.status === 'PENDING' && (session?.user as any)?.id === task.assigneeId) {
+    const userId = (session?.user as any)?.id
+    const userRole = (session?.user as any)?.role
+    const isAssigned = task.assignees?.some((a: any) => a.id === userId)
+
+    // Auto-update status to IN_PROGRESS if viewed by an assignee
+    if (task.status === 'PENDING' && isAssigned) {
         await prisma.task.update({
             where: { id: task.id },
             data: { status: 'IN_PROGRESS' }
@@ -33,9 +37,6 @@ export default async function TaskDetailPage({ params }: { params: { id: string 
         }
     }
 
-    const userId = (session?.user as any)?.id
-    const userRole = (session?.user as any)?.role
-    const isAssigned = task.assigneeId === userId || task.assignees?.some((a: any) => a.id === userId)
     const isRestricted = userRole === 'EMPLOYEE' && !isAssigned
 
     return <TaskDetailClient

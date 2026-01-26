@@ -29,10 +29,7 @@ export async function GET(request: Request, { params }: { params: { id: string }
         // Fetch all tasks where this user is an assignee and has a paid cost
         const tasks = await prisma.task.findMany({
             where: {
-                OR: [
-                    { assigneeId: userId },
-                    { assignees: { some: { id: userId } } }
-                ],
+                assignees: { some: { id: userId } },
                 paymentStatus: { in: ['PAID', 'PENDING_PAYMENT'] } // We will filter further in JS
             },
             orderBy: { updatedAt: 'desc' },

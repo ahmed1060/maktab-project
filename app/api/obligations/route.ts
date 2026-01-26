@@ -1,75 +1,8 @@
+import { withStandardHandler } from "@/lib/api-utils"
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { getServerSession } from "next-auth"
-import { authOptions } from "@/lib/auth"
 
-export async function POST(req: Request) {
-    const session = await getServerSession(authOptions)
-    const userRole = (session?.user as any)?.role
-
-    if (!session || !['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole)) {
-        return new NextResponse("Unauthorized", { status: 401 })
-    }
-
-    const creatorCompanyId = (session.user as any).companyId
-    const json = await req.json()
-    const { title, description, assigneeId, deadline, recurrence, attachments, difficulty = 0 } = json
-
-    if (!title || title.length < 3 || title.length > 100) {
-        return new NextResponse("Title must be between 3 and 100 characters", { status: 400 })
-    }
-    if (!description || description.length < 10 || description.length > 1000) {
-        return new NextResponse("Description must be between 10 and 1000 characters", { status: 400 })
-    }
-
-    // Security: Verify Cross-Company Assignment
-    if (userRole !== 'SUPER_ADMIN') {
-        if (!creatorCompanyId) {
-            return new NextResponse("You are not part of a company", { status: 403 })
-        }
-
-        // Check if assignee is in the same company
-        const assigneeUser = await prisma.user.findUnique({
-            where: { id: assigneeId },
-            select: { companyId: true, role: true }
-        })
-
-        if (!assigneeUser || assigneeUser.companyId !== creatorCompanyId) {
-            return new NextResponse("Cannot assign obligation to user in a different company", { status: 403 })
-        }
-
-        // TEAM_LEADER Restriction: Cannot assign to ADMIN or SUPER_ADMIN
-        if (userRole === 'TEAM_LEADER' && ['ADMIN', 'SUPER_ADMIN'].includes(assigneeUser.role)) {
-            return new NextResponse("Team Leaders cannot assign obligations to Admins or Super Admins", { status: 403 })
-        }
-    } else if (userRole === 'SUPER_ADMIN') {
-        const assigneeUser = await prisma.user.findUnique({
-            where: { id: assigneeId },
-            select: { role: true }
-        })
-        if (!assigneeUser) return new NextResponse("Assignee not found", { status: 404 })
-    }
-
-    const obligation = await prisma.obligation.create({
-        data: {
-            title,
-            description,
-            assigneeId,
-            deadline: new Date(deadline),
-            recurrence: recurrence || 'ONE_TIME',
-            difficulty: Math.min(Math.max(difficulty, 0), 10), // Ensure 0-10 range
-            attachments: attachments ? JSON.stringify(attachments) : null,
-            status: 'PENDING'
-        }
-    })
-
-    return NextResponse.json(obligation)
-}
-
-export async function GET(req: Request) {
-    const session = await getServerSession(authOptions)
-    if (!session) return new NextResponse("Unauthorized", { status: 401 })
-
+export const GET = withStandardHandler(async (req, session) => {
     const role = (session.user as any).role
     const userId = (session.user as any).id
     const { searchParams } = new URL(req.url)
@@ -79,17 +12,16 @@ export async function GET(req: Request) {
 
     if (role === 'SUPER_ADMIN') {
         if (companyId) {
-            whereClause.assignee = { companyId }
+            whereClause.companyId = companyId
         }
     } else if (['ADMIN', 'TEAM_LEADER'].includes(role)) {
-        // Strict Company Isolation
         const userCompanyId = (session.user as any).companyId
         if (!userCompanyId) {
-            return NextResponse.json([]) // Unassigned Admins see nothing
+            return NextResponse.json([])
         }
-        whereClause.assignee = { companyId: userCompanyId }
+        whereClause.companyId = userCompanyId
     } else {
-        whereClause.assigneeId = userId
+        whereClause.assignees = { some: { id: userId } }
     }
 
     const employeeIdFilter = searchParams.get('employeeId')
@@ -99,7 +31,7 @@ export async function GET(req: Request) {
     const dateTo = searchParams.get('dateTo')
 
     if (employeeIdFilter && role !== 'EMPLOYEE') {
-        whereClause.assigneeId = employeeIdFilter
+        whereClause.assignees = { some: { id: employeeIdFilter } }
     }
 
     if (statusFilter) {
@@ -133,7 +65,7 @@ export async function GET(req: Request) {
     const [obligations, total] = await Promise.all([
         prisma.obligation.findMany({
             where: whereClause,
-            include: { assignee: { select: { firstName: true, lastName: true } } },
+            include: { assignees: { select: { firstName: true, lastName: true } } },
             orderBy: { deadline: 'asc' },
             skip,
             take: limit
@@ -147,4 +79,68 @@ export async function GET(req: Request) {
         page,
         totalPages: Math.ceil(total / limit)
     })
-}
+})
+
+export const POST = withStandardHandler(async (req, session, json) => {
+    const userRole = (session.user as any).role
+    if (['EMPLOYEE'].includes(userRole)) {
+        return new NextResponse("Forbidden", { status: 403 })
+    }
+
+    const creatorCompanyId = (session.user as any).companyId
+    const { title, description, assigneeIds, deadline, recurrence, attachments, difficulty = 0 } = json
+    const finalAssigneeIds: string[] = assigneeIds || []
+
+    if (!title || title.length < 3 || title.length > 100) {
+        return new NextResponse("Title must be between 3 and 100 characters", { status: 400 })
+    }
+    if (!description || description.length < 10 || description.length > 1000) {
+        return new NextResponse("Description must be between 10 and 1000 characters", { status: 400 })
+    }
+
+    if (userRole !== 'SUPER_ADMIN') {
+        if (!creatorCompanyId) return new NextResponse("You are not part of a company", { status: 403 })
+
+        const assigneeUsers = await prisma.user.findMany({
+            where: { id: { in: finalAssigneeIds } },
+            select: { id: true, companyId: true, role: true }
+        })
+
+        if (assigneeUsers.length !== finalAssigneeIds.length) return new NextResponse("One or more assignees not found", { status: 404 })
+
+        const externalAssignee = assigneeUsers.find(u => u.companyId !== creatorCompanyId)
+        if (externalAssignee) return new NextResponse("Cannot assign obligation to user in a different company", { status: 403 })
+
+        if (userRole === 'TEAM_LEADER') {
+            const adminAssignee = assigneeUsers.find(u => ['ADMIN', 'SUPER_ADMIN'].includes(u.role))
+            if (adminAssignee) return new NextResponse("Team Leaders cannot assign obligations to Admins or Super Admins", { status: 403 })
+        }
+    } else {
+        const assigneeUsersCount = await prisma.user.count({ where: { id: { in: finalAssigneeIds } } })
+        if (assigneeUsersCount !== finalAssigneeIds.length) return new NextResponse("One or more assignees not found", { status: 404 })
+    }
+
+    const obligation = await prisma.obligation.create({
+        data: {
+            title,
+            description,
+            companyId: creatorCompanyId,
+            assignees: {
+                connect: finalAssigneeIds.map(id => ({ id }))
+            },
+            deadline: new Date(deadline),
+            recurrence: recurrence || 'ONE_TIME',
+            difficulty: Math.min(Math.max(difficulty, 0), 10),
+            attachments: attachments ? JSON.stringify(attachments) : null,
+            status: 'PENDING'
+        }
+    })
+
+    return NextResponse.json(obligation)
+}, {
+    audit: {
+        action: 'CREATE_OBLIGATION',
+        entityType: 'OBLIGATION',
+        getEntityId: (res) => res.id
+    }
+})
