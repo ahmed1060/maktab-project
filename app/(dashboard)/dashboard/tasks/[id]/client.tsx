@@ -21,7 +21,27 @@ const TrashIcon = ({ size = 18, color = "#ef4444" }: { size?: number, color?: st
     </svg>
 )
 
-export default function TaskDetailClient({ task: initialTask, userRole, userId, creatorName, isRestricted }: { task: any, userRole: string, userId: string, creatorName: string, currentUserName: string, isRestricted: boolean }) {
+interface Task {
+    id: string
+    title: string
+    description: string
+    status: string
+    difficulty: number
+    deadline?: string
+    location?: string
+    attachments?: string
+    memberCosts?: string | any
+    memberPaymentStatus?: string | any
+    isEdited?: boolean
+    assignees: { id: string, firstName: string, lastName: string, avatar?: string }[]
+    comments?: any[]
+    totalCost?: number
+    paymentStatus?: string
+    companyId?: string
+    [key: string]: any // Catch-all for other prisma include fields
+}
+
+export default function TaskDetailClient({ task: initialTask, userRole, userId, creatorName, isRestricted }: { task: Task, userRole: string, userId: string, creatorName: string, currentUserName: string, isRestricted: boolean }) {
     const { t, locale } = useLanguage()
     const { data: session } = useSession()
 
@@ -30,13 +50,13 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
         if (!taskObj.memberCosts) return {}
         try {
             return typeof taskObj.memberCosts === 'string' ? JSON.parse(taskObj.memberCosts) : taskObj.memberCosts
-        } catch { return {} }
+        } catch (e) { console.error('[MEMBER_COSTS_PARSE_FAIL]', e); return {} }
     }
     const getMemberPaymentStatus = (taskObj: any) => {
         if (!taskObj.memberPaymentStatus) return {}
         try {
             return typeof taskObj.memberPaymentStatus === 'string' ? JSON.parse(taskObj.memberPaymentStatus) : taskObj.memberPaymentStatus
-        } catch { return {} }
+        } catch (e) { console.error('[MEMBER_PAYMENT_STATUS_PARSE_FAIL]', e); return {} }
     }
     const parseLocation = (locStr: string) => {
         if (!locStr) return { name: '', link: '' }
@@ -45,14 +65,14 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                 const parsed = JSON.parse(locStr)
                 return { name: parsed.name || '', link: parsed.link || '' }
             }
-        } catch { }
+        } catch (e) { console.error('[LOCATION_PARSE_FAIL]', e) }
         return { name: locStr, link: '' }
     }
     const [task, setTask] = useState(initialTask)
     const [existingAttachments, setExistingAttachments] = useState<any[]>(() => {
         try {
             return initialTask.attachments ? JSON.parse(initialTask.attachments) : []
-        } catch { return [] }
+        } catch (e) { console.error('[ATTACHMENTS_PARSE_FAIL]', e); return [] }
     })
     const [note, setNote] = useState('')
     const [cost, setCost] = useState('')
@@ -85,7 +105,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
         attachments: (() => {
             try {
                 return initialTask.attachments ? JSON.parse(initialTask.attachments) : []
-            } catch { return [] }
+            } catch (e) { console.error('[ATTACHMENTS_PARSE_FAIL]', e); return [] }
         })()
     })
     const [editPendingFiles, setEditPendingFiles] = useState<File[]>([])

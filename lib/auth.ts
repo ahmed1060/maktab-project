@@ -87,7 +87,7 @@ export const authOptions: NextAuthOptions = {
                             where: { id: user.id },
                             data: { status: 'ACTIVE', lastActivity: new Date() }
                         })
-                    } catch { }
+                    } catch (e) { console.error('[AUTH_STATUS_UPDATE_FAIL]', e) }
 
                     return {
                         id: user.id,

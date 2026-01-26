@@ -13,9 +13,11 @@ export async function POST(req: Request) {
         }
 
         const now = new Date()
-        const month = now.getMonth() + 1
-        const year = now.getFullYear()
-        const daysInMonth = new Date(year, month, 0).getDate()
+        // Use UTC to prevent local timezone shifts at midnight
+        const month = now.getUTCMonth() + 1
+        const year = now.getUTCFullYear()
+        // Last day of the specified month/year in UTC
+        const daysInMonth = new Date(Date.UTC(year, month, 0)).getUTCDate()
 
         // 1. Get all active employees (excluding soft-deleted ones)
         const employees = await prisma.user.findMany({

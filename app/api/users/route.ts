@@ -248,7 +248,9 @@ export const PUT = withStandardHandler(async (req, session, json) => {
             try {
                 const parts = oldAvatar.split('/app-assets/')
                 if (parts.length > 1) await supabase.storage.from('app-assets').remove([parts[1]])
-            } catch { }
+            } catch (e) {
+                console.error('[USER_AVATAR_DELETE_FAIL]', e)
+            }
         }
     }
 
