@@ -184,11 +184,11 @@ export async function DELETE(req: Request) {
         // 3. Transactional Cascading Delete
         await prisma.$transaction(async (tx) => {
             if (userIds.length > 0) {
-                // Delete Assigned Tasks
-                await tx.task.deleteMany({ where: { assigneeId: { in: userIds } } })
+                // Delete Company Tasks
+                await tx.task.deleteMany({ where: { companyId: id } })
 
                 // Delete Obligations
-                await tx.obligation.deleteMany({ where: { assigneeId: { in: userIds } } })
+                await tx.obligation.deleteMany({ where: { companyId: id } })
 
                 // Delete Notifications
                 await tx.notification.deleteMany({ where: { userId: { in: userIds } } })

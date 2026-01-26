@@ -41,7 +41,7 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
             // 1. Get current task to read existing comments and attachments
             const currentTask = await tx.task.findUnique({
                 where: { id: params.id },
-                include: { assignee: true }
+                include: { assignees: true }
             })
             if (!currentTask) throw new Error("Task not found")
 

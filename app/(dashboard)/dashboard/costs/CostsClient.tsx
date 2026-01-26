@@ -45,7 +45,7 @@ export default function CostsClient({ tasksWithCosts, userRole, total, page, tot
         }
 
         return userCosts.map(([uid, amount]) => {
-            const assignee = task.assignees?.find((a: any) => a.id === uid) || (task.assigneeId === uid ? task.assignee : null)
+            const assignee = task.assignees?.find((a: any) => a.id === uid)
             const mPaymentStatus = typeof task.memberPaymentStatus === 'string' ? JSON.parse(task.memberPaymentStatus) : (task.memberPaymentStatus || {})
 
             return {

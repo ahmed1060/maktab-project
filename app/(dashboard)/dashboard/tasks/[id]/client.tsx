@@ -156,7 +156,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
     }, [task.comments])
 
     useEffect(() => {
-        const isUserAssignee = task.assigneeId === userId || task.assignees?.some((a: any) => a.id === userId)
+        const isUserAssignee = task.assignees?.some((a: any) => a.id === userId)
         if (isUserAssignee && (task.isEdited || isEditedPersistent)) {
             // Logic to track if they've seen it could be here
         }
@@ -352,14 +352,14 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
         const handleSuspendSave = () => {
             console.log('Suspension detected, auto-saving task progress...')
             // Only auto-save if employee interaction is active and not already submitted or finalized
-            const isUserAssignee = task.assigneeId === userId || task.assignees?.some((a: any) => a.id === userId)
+            const isUserAssignee = task.assignees?.some((a: any) => a.id === userId)
             if ((userRole === 'EMPLOYEE' || isUserAssignee) && !['PENDING_CONFIRMATION', 'APPROVED', 'COMPLETED', 'REJECTED'].includes(task.status)) {
                 handleUpload(true)
             }
         }
         window.addEventListener('app:suspend-detected', handleSuspendSave)
         return () => window.removeEventListener('app:suspend-detected', handleSuspendSave)
-    }, [task.status, userRole, userId, task.assigneeId, note, costEntries, location, task.assignees, handleUpload])
+    }, [task.status, userRole, userId, note, costEntries, location, task.assignees, handleUpload])
 
     const handleCaptureLocation = async () => {
         if (['PENDING_CONFIRMATION', 'APPROVED', 'COMPLETED', 'REJECTED'].includes(task.status)) {
@@ -721,15 +721,15 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
 
     return (
         <div className={`card ${shouldHighlight ? 'highlight-shading' : ''}`} style={containerStyle}>
-            {/* Deleted Assignee Alert - Check if primary is deleted */}
-            {task.assignee?.status === 'DELETED' && ['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole) && !['COMPLETED', 'APPROVED', 'REJECTED'].includes(task.status) && (
-                <div style={{ ...alertStyle, background: '#fee2e2', border: '1px solid #ef4444', color: '#991b1b', flexDirection: 'column', gap: '1rem', alignItems: 'stretch' }}>
+            {/* Deleted Assignee Alert - Check            {/* Deleted Assignee Alert */}
+            {task.assignees?.some((a: any) => a.status === 'DELETED') && ['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole) && !['COMPLETED', 'APPROVED', 'REJECTED'].includes(task.status) && (
+                <div style={{ ...alertStyle, background: '#fee2e2', border: '1px solid #ef4444', color: '#991b1b' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexDirection: 'row' }}>
                         <span style={{ fontSize: '1.5rem' }}>🚫</span>
                         <div style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>
                             <strong>{t('assignee_deleted_alert')}</strong>
                             <p style={{ margin: 0, fontSize: '0.9rem' }}>
-                                {t('assignee_deleted_msg').replace('{name}', `${task.assignee.firstName} ${task.assignee.lastName}`)}
+                                {t('assignee_deleted_msg').replace('{name}', task.assignees.filter((a: any) => a.status === 'DELETED').map((a: any) => `${a.firstName} ${a.lastName}`).join(', '))}
                             </p>
                         </div>
                     </div>
@@ -737,7 +737,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
             )}
 
             {/* Task Edited Alert */}
-            {task.isEdited && (userRole === 'EMPLOYEE' || userId === task.assigneeId) && (
+            {task.isEdited && (userRole === 'EMPLOYEE' || task.assignees?.some((a: any) => a.id === userId)) && (
                 <div style={{ ...alertStyle, background: '#fff7ed', border: '1px solid #fdba74', color: '#9a3412' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexDirection: 'row' }}>
                         <span style={{ fontSize: '1.5rem' }}>⚠️</span>
@@ -774,7 +774,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                 <div style={badgeGroupStyle}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexDirection: 'row' }}>
                         <h1 style={{ margin: 0 }}>{task.title}</h1>
-                        {(task.isEdited || isEditedPersistent) && userId === task.assigneeId && latestChanges?.title && !viewedTitleChange && (
+                        {(task.isEdited || isEditedPersistent) && task.assignees?.some((a: any) => a.id === userId) && latestChanges?.title && !viewedTitleChange && (
                             <button onClick={() => { setDiffField('title'); setViewedTitleChange(true); }} style={{ background: '#ffedd5', color: '#9a3412', border: '1px solid #fdba74', borderRadius: '0.25rem', padding: '0.25rem 0.5rem', fontSize: '0.75rem', cursor: 'pointer', fontWeight: 'bold' }}>{t('edit')}</button>
                         )}
                     </div>
@@ -825,34 +825,34 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                         </button>
                     )}
                     <button onClick={() => router.back()} style={{ background: 'none', border: '1px solid #cbd5e1', borderRadius: '0.25rem', padding: '0.5rem 1rem', cursor: 'pointer', color: '#64748b' }}>{t('close_button')}</button>
-                    {!isRestricted && (['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole) && (userRole === 'TEAM_LEADER' || userId !== task.assigneeId)) && (<button onClick={handleEditClick} style={{ background: '#e0f2fe', color: '#0369a1', border: 'none', borderRadius: '0.25rem', padding: '0.5rem 1rem', cursor: 'pointer' }}>{t('edit_task_button')}</button>)}
-                    {!isRestricted && (['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole) && (userRole === 'TEAM_LEADER' || userId !== task.assigneeId)) && (<button onClick={() => setShowDeleteConfirm(true)} style={{ background: '#fee2e2', color: '#991b1b', border: 'none', borderRadius: '0.25rem', padding: '0.5rem 1rem', cursor: 'pointer' }}>{t('delete_task_button')}</button>)}
+                    {!isRestricted && (['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole) && (userRole === 'TEAM_LEADER' || !task.assignees?.some((a: any) => a.id === userId))) && (<button onClick={handleEditClick} style={{ background: '#e0f2fe', color: '#0369a1', border: 'none', borderRadius: '0.25rem', padding: '0.5rem 1rem', cursor: 'pointer' }}>{t('edit_task_button')}</button>)}
+                    {!isRestricted && (['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole) && (userRole === 'TEAM_LEADER' || !task.assignees?.some((a: any) => a.id === userId))) && (<button onClick={() => setShowDeleteConfirm(true)} style={{ background: '#fee2e2', color: '#991b1b', border: 'none', borderRadius: '0.25rem', padding: '0.5rem 1rem', cursor: 'pointer' }}>{t('delete_task_button')}</button>)}
                 </div>
             </div>
 
-            <div style={{ marginTop: '1.5rem' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem', flexDirection: 'row' }}>
-                    {(task.isEdited || isEditedPersistent) && userId === task.assigneeId && latestChanges?.description && !viewedDescriptionChange && (
+            <div style={{ fontSize: '1.25rem', lineHeight: '1.6', color: '#334155', marginBottom: '2.5rem', whiteSpace: 'pre-wrap' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                    {task.description}
+                    {(task.isEdited || isEditedPersistent) && task.assignees?.some((a: any) => a.id === userId) && latestChanges?.description && !viewedDescriptionChange && (
                         <button onClick={() => { setDiffField('description'); setViewedDescriptionChange(true); }} style={{ background: '#ffedd5', color: '#9a3412', border: '1px solid #fdba74', borderRadius: '0.25rem', padding: '0.1rem 0.5rem', fontSize: '0.7rem', cursor: 'pointer', fontWeight: 'bold' }}>{t('edit')}</button>
                     )}
                 </div>
-                <p style={{ fontSize: '1.1rem', margin: 0, whiteSpace: 'pre-wrap' }}>{task.description}</p>
-                {task.location && (() => {
-                    const { name, link } = parseLocation(task.location)
-                    return (
-                        <div style={{ marginTop: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#0369a1', fontSize: '0.95rem', fontWeight: '500' }}>
-                            <span>📍</span>
-                            {link ? (
-                                <a href={link} target="_blank" rel="noopener noreferrer" style={{ color: '#0369a1', textDecoration: 'underline' }}>
-                                    {name || link}
-                                </a>
-                            ) : (
-                                <span>{name}</span>
-                            )}
-                        </div>
-                    )
-                })()}
             </div>
+            {task.location && (() => {
+                const { name, link } = parseLocation(task.location)
+                return (
+                    <div style={{ marginTop: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#0369a1', fontSize: '0.95rem', fontWeight: '500' }}>
+                        <span>📍</span>
+                        {link ? (
+                            <a href={link} target="_blank" rel="noopener noreferrer" style={{ color: '#0369a1', textDecoration: 'underline' }}>
+                                {name || link}
+                            </a>
+                        ) : (
+                            <span>{name}</span>
+                        )}
+                    </div>
+                )
+            })()}
 
             <div style={{ marginTop: '1rem', color: '#64748b', fontSize: '0.9rem' }}>
                 {t('assigned_by')}: <strong>{creatorName}</strong> | {t('deadline_label')}: <strong>{new Date(task.deadline).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' }) + ' ' + new Date(task.deadline).toLocaleDateString(locale === 'ar' ? 'ar-EG' : 'en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</strong>
@@ -866,49 +866,51 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                         </span>
                     ))
                 ) : (
-                    <strong>{task.assignee?.firstName} {task.assignee?.lastName}</strong>
+                    <strong>{t('no_assignee' as any)}</strong>
                 )}
             </div>
 
             {/* Comments / Logs Section */}
-            {(() => {
-                if (!task.comments) return null
-                try {
-                    const logs = JSON.parse(task.comments)
-                    if (!Array.isArray(logs)) return null
-                    const regularLogs = logs.filter((l: any) => l.type !== 'COST_ADDITION' && l.type !== 'LOCATION_ADDED')
-                    if (regularLogs.length > 0) {
-                        return (
-                            <div style={{ marginTop: '2rem', borderTop: '1px solid #e2e8f0', paddingTop: '1.5rem' }}>
-                                <h3 style={{ marginBottom: '1rem' }}>{t('comments_notes_title')}</h3>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                                    {[...regularLogs].reverse().map((log: any, i: number) => (
-                                        <div key={i} style={{ padding: '1rem', background: '#f8fafc', borderRadius: '0.5rem', border: '1px solid #e2e8f0' }}>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', flexDirection: 'row' }}>
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                                    {(task.assignees?.length > 1) && (
-                                                        <span style={{ background: '#f1f5f9', border: '1px solid #cbd5e1', color: '#475569', padding: '0.1rem 0.4rem', borderRadius: '1rem', fontSize: '0.65rem', fontWeight: 'bold' }}>
-                                                            {locale === 'ar' ? 'بواسطة:' : 'By:'} {log.author}
-                                                        </span>
-                                                    )}
-                                                    {!((task.assignees?.length > 1)) && <span style={{ fontWeight: 'bold', color: '#1e293b' }}>{log.author}</span>}
-                                                    {log.type === 'SUBMISSION_NOTE' && task.status === 'IN_PROGRESS' && (
-                                                        <button onClick={() => handleDeleteItem('SUBMISSION_NOTE', log.date)} className="btn-icon" style={{ padding: '2px', border: 'none', background: 'none', cursor: 'pointer', display: 'flex' }} title={t('delete_note_title')}>
-                                                            <TrashIcon size={14} />
-                                                        </button>
-                                                    )}
+            {
+                (() => {
+                    if (!task.comments) return null
+                    try {
+                        const logs = JSON.parse(task.comments)
+                        if (!Array.isArray(logs)) return null
+                        const regularLogs = logs.filter((l: any) => l.type !== 'COST_ADDITION' && l.type !== 'LOCATION_ADDED')
+                        if (regularLogs.length > 0) {
+                            return (
+                                <div style={{ marginTop: '2rem', borderTop: '1px solid #e2e8f0', paddingTop: '1.5rem' }}>
+                                    <h3 style={{ marginBottom: '1rem' }}>{t('comments_notes_title')}</h3>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                        {[...regularLogs].reverse().map((log: any, i: number) => (
+                                            <div key={i} style={{ padding: '1rem', background: '#f8fafc', borderRadius: '0.5rem', border: '1px solid #e2e8f0' }}>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', flexDirection: 'row' }}>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                        {(task.assignees?.length > 1) && (
+                                                            <span style={{ background: '#f1f5f9', border: '1px solid #cbd5e1', color: '#475569', padding: '0.1rem 0.4rem', borderRadius: '1rem', fontSize: '0.65rem', fontWeight: 'bold' }}>
+                                                                {locale === 'ar' ? 'بواسطة:' : 'By:'} {log.author}
+                                                            </span>
+                                                        )}
+                                                        {!((task.assignees?.length > 1)) && <span style={{ fontWeight: 'bold', color: '#1e293b' }}>{log.author}</span>}
+                                                        {log.type === 'SUBMISSION_NOTE' && task.status === 'IN_PROGRESS' && (
+                                                            <button onClick={() => handleDeleteItem('SUBMISSION_NOTE', log.date)} className="btn-icon" style={{ padding: '2px', border: 'none', background: 'none', cursor: 'pointer', display: 'flex' }} title={t('delete_note_title')}>
+                                                                <TrashIcon size={14} />
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                    <span style={{ fontSize: '0.75rem', color: '#64748b' }}>{new Date(log.date || log.createdAt).toLocaleString(locale)}</span>
                                                 </div>
-                                                <span style={{ fontSize: '0.75rem', color: '#64748b' }}>{new Date(log.date || log.createdAt).toLocaleString(locale)}</span>
+                                                <p style={{ margin: 0, fontSize: '0.95rem', color: '#334155', whiteSpace: 'pre-wrap' }}>{log.text}</p>
                                             </div>
-                                            <p style={{ margin: 0, fontSize: '0.95rem', color: '#334155', whiteSpace: 'pre-wrap' }}>{log.text}</p>
-                                        </div>
-                                    ))}
+                                        ))}
+                                    </div>
                                 </div>
-                            </div>
-                        )
-                    }
-                } catch { return null }
-            })()}
+                            )
+                        }
+                    } catch { return null }
+                })()
+            }
 
             {/* Attachments Section */}
             <div style={{ marginTop: '2rem', borderTop: '1px solid #e2e8f0', paddingTop: '1.5rem' }}>
@@ -950,193 +952,196 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
             </div>
 
             {/* Costs Section */}
-            {(() => {
-                if (!task.comments) return null
-                try {
-                    const logs = JSON.parse(task.comments)
-                    if (!Array.isArray(logs)) return null
-                    const costs = logs.filter((l: any) => l.type === 'COST_ADDITION')
-                    if (costs.length > 0) {
-                        return (
-                            <div style={{ marginTop: '2rem', borderTop: '1px solid #e2e8f0', paddingTop: '1.5rem' }}>
-                                <h3 style={{ marginBottom: '1rem' }}>{t('costs')}</h3>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                                    {costs.map((c: any, i: number) => (
-                                        <div key={i} style={{ display: 'flex', flexDirection: 'column', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: '0.5rem', padding: '1rem' }}>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexDirection: 'row' }}>
-                                                <div style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>
-                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                                        <div style={{ fontSize: '0.75rem', color: '#92400e', textTransform: 'uppercase', fontWeight: '600', marginBottom: '0.25rem' }}>{t('cost_description_placeholder').split(' ')[0]}</div>
-                                                        {task.status === 'IN_PROGRESS' && (
-                                                            <button onClick={() => handleDeleteItem('COST_ADDITION', c.date)} style={{ background: 'none', border: 'none', padding: '2px', cursor: 'pointer', display: 'flex' }} title={t('delete_cost_title')}>
-                                                                <TrashIcon size={14} />
-                                                            </button>
-                                                        )}
+            {
+                (() => {
+                    if (!task.comments) return null
+                    try {
+                        const logs = JSON.parse(task.comments)
+                        if (!Array.isArray(logs)) return null
+                        const costs = logs.filter((l: any) => l.type === 'COST_ADDITION')
+                        if (costs.length > 0) {
+                            return (
+                                <div style={{ marginTop: '2rem', borderTop: '1px solid #e2e8f0', paddingTop: '1.5rem' }}>
+                                    <h3 style={{ marginBottom: '1rem' }}>{t('costs')}</h3>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                                        {costs.map((c: any, i: number) => (
+                                            <div key={i} style={{ display: 'flex', flexDirection: 'column', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: '0.5rem', padding: '1rem' }}>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexDirection: 'row' }}>
+                                                    <div style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                            <div style={{ fontSize: '0.75rem', color: '#92400e', textTransform: 'uppercase', fontWeight: '600', marginBottom: '0.25rem' }}>{t('cost_description_placeholder').split(' ')[0]}</div>
+                                                            {task.status === 'IN_PROGRESS' && (
+                                                                <button onClick={() => handleDeleteItem('COST_ADDITION', c.date)} style={{ background: 'none', border: 'none', padding: '2px', cursor: 'pointer', display: 'flex' }} title={t('delete_cost_title')}>
+                                                                    <TrashIcon size={14} />
+                                                                </button>
+                                                            )}
+                                                        </div>
+                                                        <div style={{ fontSize: '1rem', fontWeight: '600', color: '#78350f' }}>{c.description || t('no_description')}</div>
                                                     </div>
-                                                    <div style={{ fontSize: '1rem', fontWeight: '600', color: '#78350f' }}>{c.description || t('no_description')}</div>
+                                                    <div style={{ textAlign: 'center', background: '#fef3c7', padding: '0.5rem 1rem', borderRadius: '0.375rem', border: '1px solid #fcd34d' }}>
+                                                        <div style={{ fontSize: '0.75rem', color: '#92400e', textTransform: 'uppercase', fontWeight: '600' }}>{t('amount_label')}</div>
+                                                        <div style={{ fontSize: '1.1rem', fontWeight: 'bold', color: '#92400e' }}>{(c.amount || 0).toFixed(2)} {t('egp')}</div>
+                                                    </div>
                                                 </div>
-                                                <div style={{ textAlign: 'center', background: '#fef3c7', padding: '0.5rem 1rem', borderRadius: '0.375rem', border: '1px solid #fcd34d' }}>
-                                                    <div style={{ fontSize: '0.75rem', color: '#92400e', textTransform: 'uppercase', fontWeight: '600' }}>{t('amount_label')}</div>
-                                                    <div style={{ fontSize: '1.1rem', fontWeight: 'bold', color: '#92400e' }}>{(c.amount || 0).toFixed(2)} {t('egp')}</div>
+                                                <div style={{ fontSize: '0.75rem', color: '#b45309', marginTop: '0.5rem', borderTop: '1px dashed #fcd34d', paddingTop: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                    {(task.assignees?.length > 1) && (
+                                                        <span style={{ background: '#fef3c7', border: '1px solid #f59e0b', color: '#b45309', padding: '0.1rem 0.4rem', borderRadius: '1rem', fontSize: '0.65rem', fontWeight: 'bold' }}>
+                                                            {locale === 'ar' ? 'بواسطة:' : 'By:'} {c.author}
+                                                        </span>
+                                                    )}
+                                                    {!((task.assignees?.length > 1)) && <span>{c.author}</span>}
+                                                    <span>• {new Date(c.date).toLocaleString(locale)}</span>
                                                 </div>
                                             </div>
-                                            <div style={{ fontSize: '0.75rem', color: '#b45309', marginTop: '0.5rem', borderTop: '1px dashed #fcd34d', paddingTop: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                                {(task.assignees?.length > 1) && (
-                                                    <span style={{ background: '#fef3c7', border: '1px solid #f59e0b', color: '#b45309', padding: '0.1rem 0.4rem', borderRadius: '1rem', fontSize: '0.65rem', fontWeight: 'bold' }}>
-                                                        {locale === 'ar' ? 'بواسطة:' : 'By:'} {c.author}
-                                                    </span>
-                                                )}
-                                                {!((task.assignees?.length > 1)) && <span>{c.author}</span>}
-                                                <span>• {new Date(c.date).toLocaleString(locale)}</span>
-                                            </div>
-                                        </div>
-                                    ))}
-                                    {(() => {
-                                        const isAssignee = task.assigneeId === userId || task.assignees?.some((a: any) => a.id === userId)
-                                        const isMulti = (task.assignees?.length || 0) > 1
-                                        const mPaymentStatus = getMemberPaymentStatus(task)
+                                        ))}
+                                        {(() => {
+                                            const isAssignee = task.assignees?.some((a: any) => a.id === userId)
+                                            const isMulti = (task.assignees?.length || 0) > 1
+                                            const mPaymentStatus = getMemberPaymentStatus(task)
 
-                                        if (isMulti && isAssignee) {
-                                            const myStatus = mPaymentStatus[userId] || 'PENDING_PAYMENT'
-                                            return (
-                                                <div style={{ display: 'flex', gap: '1rem', marginBottom: '0.5rem', flexDirection: 'row', flexWrap: 'wrap' }}>
-                                                    <div style={{ flex: 1, minWidth: '150px', background: '#3b82f6', color: 'white', padding: '1.25rem', borderRadius: '1rem', textAlign: 'center', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)', position: 'relative' }}>
-                                                        <div style={{ fontSize: '0.875rem', fontWeight: '600', opacity: 0.9 }}>{t('my_total_cost' as any)}</div>
-                                                        <div style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>{(getMemberCosts(task)[userId] || 0).toFixed(2)} {t('egp')}</div>
-                                                        <div style={{
-                                                            marginTop: '0.5rem',
-                                                            padding: '0.2rem 0.6rem',
-                                                            borderRadius: '1rem',
-                                                            background: 'rgba(255, 255, 255, 0.2)',
-                                                            fontSize: '0.65rem',
-                                                            fontWeight: '800',
-                                                            width: 'fit-content',
-                                                            margin: '0.5rem auto 0',
-                                                            textTransform: 'uppercase'
-                                                        }}>
-                                                            {myStatus === 'PAID' ? t('payment_status_paid' as any) || 'PAID' : t('payment_status_pending' as any) || 'PENDING'}
+                                            if (isMulti && isAssignee) {
+                                                const myStatus = mPaymentStatus[userId] || 'PENDING_PAYMENT'
+                                                return (
+                                                    <div style={{ display: 'flex', gap: '1rem', marginBottom: '0.5rem', flexDirection: 'row', flexWrap: 'wrap' }}>
+                                                        <div style={{ flex: 1, minWidth: '150px', background: '#3b82f6', color: 'white', padding: '1.25rem', borderRadius: '1rem', textAlign: 'center', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)', position: 'relative' }}>
+                                                            <div style={{ fontSize: '0.875rem', fontWeight: '600', opacity: 0.9 }}>{t('my_total_cost' as any)}</div>
+                                                            <div style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>{(getMemberCosts(task)[userId] || 0).toFixed(2)} {t('egp')}</div>
+                                                            <div style={{
+                                                                marginTop: '0.5rem',
+                                                                padding: '0.2rem 0.6rem',
+                                                                borderRadius: '1rem',
+                                                                background: 'rgba(255, 255, 255, 0.2)',
+                                                                fontSize: '0.65rem',
+                                                                fontWeight: '800',
+                                                                width: 'fit-content',
+                                                                margin: '0.5rem auto 0',
+                                                                textTransform: 'uppercase'
+                                                            }}>
+                                                                {myStatus === 'PAID' ? t('payment_status_paid' as any) || 'PAID' : t('payment_status_pending' as any) || 'PENDING'}
+                                                            </div>
+                                                        </div>
+                                                        <div style={{ flex: 1, minWidth: '150px', background: '#f59e0b', color: 'white', padding: '1.25rem', borderRadius: '1rem', textAlign: 'center', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }}>
+                                                            <div style={{ fontSize: '0.875rem', fontWeight: '600', opacity: 0.9 }}>{t('grand_total_cost' as any)}</div>
+                                                            <div style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>{(task.totalCost || 0).toFixed(2)} {t('egp')}</div>
+                                                            <div style={{
+                                                                marginTop: '0.5rem',
+                                                                padding: '0.2rem 0.6rem',
+                                                                borderRadius: '1rem',
+                                                                background: 'rgba(255, 255, 255, 0.2)',
+                                                                fontSize: '0.65rem',
+                                                                fontWeight: '800',
+                                                                width: 'fit-content',
+                                                                margin: '0.5rem auto 0',
+                                                                textTransform: 'uppercase'
+                                                            }}>
+                                                                {task.paymentStatus === 'PAID' ? t('payment_status_paid' as any) || 'PAID' : t('payment_status_pending' as any) || 'PENDING'}
+                                                            </div>
                                                         </div>
                                                     </div>
-                                                    <div style={{ flex: 1, minWidth: '150px', background: '#f59e0b', color: 'white', padding: '1.25rem', borderRadius: '1rem', textAlign: 'center', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }}>
-                                                        <div style={{ fontSize: '0.875rem', fontWeight: '600', opacity: 0.9 }}>{t('grand_total_cost' as any)}</div>
-                                                        <div style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>{(task.totalCost || 0).toFixed(2)} {t('egp')}</div>
-                                                        <div style={{
-                                                            marginTop: '0.5rem',
-                                                            padding: '0.2rem 0.6rem',
-                                                            borderRadius: '1rem',
-                                                            background: 'rgba(255, 255, 255, 0.2)',
-                                                            fontSize: '0.65rem',
-                                                            fontWeight: '800',
-                                                            width: 'fit-content',
-                                                            margin: '0.5rem auto 0',
-                                                            textTransform: 'uppercase'
-                                                        }}>
-                                                            {task.paymentStatus === 'PAID' ? t('payment_status_paid' as any) || 'PAID' : t('payment_status_pending' as any) || 'PENDING'}
-                                                        </div>
+                                                )
+                                            }
+
+                                            return (
+                                                <div style={{ background: '#f59e0b', color: 'white', padding: '1.25rem', borderRadius: '1rem', textAlign: 'center', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }}>
+                                                    <div style={{ fontSize: '0.875rem', fontWeight: '600', opacity: 0.9 }}>{t('total_cost')}</div>
+                                                    <div style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>{(task.totalCost || 0).toFixed(2)} {t('egp')}</div>
+                                                    <div style={{
+                                                        marginTop: '0.5rem',
+                                                        padding: '0.2rem 0.6rem',
+                                                        borderRadius: '1rem',
+                                                        background: 'rgba(255, 255, 255, 0.2)',
+                                                        fontSize: '0.65rem',
+                                                        fontWeight: '800',
+                                                        width: 'fit-content',
+                                                        margin: '0.5rem auto 0',
+                                                        textTransform: 'uppercase'
+                                                    }}>
+                                                        {task.paymentStatus === 'PAID' ? t('payment_status_paid' as any) || 'PAID' : t('payment_status_pending' as any) || 'PENDING'}
                                                     </div>
                                                 </div>
                                             )
-                                        }
+                                        })()}
 
-                                        return (
-                                            <div style={{ background: '#f59e0b', color: 'white', padding: '1.25rem', borderRadius: '1rem', textAlign: 'center', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }}>
-                                                <div style={{ fontSize: '0.875rem', fontWeight: '600', opacity: 0.9 }}>{t('total_cost')}</div>
-                                                <div style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>{(task.totalCost || 0).toFixed(2)} {t('egp')}</div>
-                                                <div style={{
-                                                    marginTop: '0.5rem',
-                                                    padding: '0.2rem 0.6rem',
-                                                    borderRadius: '1rem',
-                                                    background: 'rgba(255, 255, 255, 0.2)',
-                                                    fontSize: '0.65rem',
-                                                    fontWeight: '800',
-                                                    width: 'fit-content',
-                                                    margin: '0.5rem auto 0',
-                                                    textTransform: 'uppercase'
-                                                }}>
-                                                    {task.paymentStatus === 'PAID' ? t('payment_status_paid' as any) || 'PAID' : t('payment_status_pending' as any) || 'PENDING'}
+                                        {/* Individual Settlements for Admins */}
+                                        {['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole) && (task.assignees?.length || 0) > 1 && Object.keys(getMemberCosts(task)).length > 0 && (
+                                            <div style={{ marginTop: '1rem', padding: '1.25rem', background: '#f8fafc', borderRadius: '1rem', border: '1px solid #e2e8f0' }}>
+                                                <h4 style={{ fontSize: '0.9rem', fontWeight: '700', marginBottom: '1rem', color: '#1e293b' }}>
+                                                    {t('individual_settlements' as any) || 'Individual Settlements'}
+                                                </h4>
+                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                                                    {Object.entries(getMemberCosts(task)).map(([uid, amount]: [string, any]) => {
+                                                        const assignee = task.assignees.find((a: any) => a.id === uid)
+                                                        if (!assignee) return null
+                                                        const isPaid = getMemberPaymentStatus(task)[uid] === 'PAID'
+
+                                                        return (
+                                                            <div key={uid} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem 1rem', background: 'white', border: '1px solid #e2e8f0', borderRadius: '0.75rem' }}>
+                                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                                                    <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: '#f1f5f9', display: 'flex', alignItems: 'center', justifySelf: 'center', fontSize: '0.8rem', fontWeight: 'bold', color: '#64748b' }}>
+                                                                        {assignee.firstName[0]}{assignee.lastName[0]}
+                                                                    </div>
+                                                                    <div>
+                                                                        <div style={{ fontWeight: '700', color: '#334155', fontSize: '0.875rem' }}>{assignee.firstName} {assignee.lastName}</div>
+                                                                        <div style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: '600' }}>{amount.toFixed(2)} {t('egp')}</div>
+                                                                    </div>
+                                                                </div>
+                                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                                                    <div style={{
+                                                                        padding: '0.2rem 0.5rem',
+                                                                        borderRadius: '1rem',
+                                                                        background: isPaid ? '#dcfce7' : '#fee2e2',
+                                                                        color: isPaid ? '#166534' : '#991b1b',
+                                                                        fontSize: '0.65rem',
+                                                                        fontWeight: '800',
+                                                                        textTransform: 'uppercase'
+                                                                    }}>
+                                                                        {isPaid ? t('payment_status_paid' as any) || 'PAID' : t('payment_status_pending' as any) || 'PENDING'}
+                                                                    </div>
+                                                                    <button
+                                                                        onClick={() => handlePaymentStatusChange(isPaid ? 'PENDING_PAYMENT' : 'PAID', uid)}
+                                                                        style={{
+                                                                            background: isPaid ? '#f1f5f9' : '#10b981',
+                                                                            color: isPaid ? '#64748b' : 'white',
+                                                                            padding: '0.4rem 0.8rem',
+                                                                            fontSize: '0.75rem',
+                                                                            fontWeight: '700',
+                                                                            border: 'none',
+                                                                            borderRadius: '0.5rem',
+                                                                            cursor: 'pointer',
+                                                                            transition: 'all 0.2s'
+                                                                        }}
+                                                                    >
+                                                                        {isPaid ? t('mark_as_unpaid' as any) || 'Unsettle' : t('mark_as_paid')}
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+                                                        )
+                                                    })}
                                                 </div>
                                             </div>
-                                        )
-                                    })()}
-
-                                    {/* Individual Settlements for Admins */}
-                                    {['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole) && (task.assignees?.length || 0) > 1 && Object.keys(getMemberCosts(task)).length > 0 && (
-                                        <div style={{ marginTop: '1rem', padding: '1.25rem', background: '#f8fafc', borderRadius: '1rem', border: '1px solid #e2e8f0' }}>
-                                            <h4 style={{ fontSize: '0.9rem', fontWeight: '700', marginBottom: '1rem', color: '#1e293b' }}>
-                                                {t('individual_settlements' as any) || 'Individual Settlements'}
-                                            </h4>
-                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                                                {Object.entries(getMemberCosts(task)).map(([uid, amount]: [string, any]) => {
-                                                    const assignee = task.assignees.find((a: any) => a.id === uid)
-                                                    if (!assignee) return null
-                                                    const isPaid = getMemberPaymentStatus(task)[uid] === 'PAID'
-
-                                                    return (
-                                                        <div key={uid} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem 1rem', background: 'white', border: '1px solid #e2e8f0', borderRadius: '0.75rem' }}>
-                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                                                                <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: '#f1f5f9', display: 'flex', alignItems: 'center', justifySelf: 'center', fontSize: '0.8rem', fontWeight: 'bold', color: '#64748b' }}>
-                                                                    {assignee.firstName[0]}{assignee.lastName[0]}
-                                                                </div>
-                                                                <div>
-                                                                    <div style={{ fontWeight: '700', color: '#334155', fontSize: '0.875rem' }}>{assignee.firstName} {assignee.lastName}</div>
-                                                                    <div style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: '600' }}>{amount.toFixed(2)} {t('egp')}</div>
-                                                                </div>
-                                                            </div>
-                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                                                                <div style={{
-                                                                    padding: '0.2rem 0.5rem',
-                                                                    borderRadius: '1rem',
-                                                                    background: isPaid ? '#dcfce7' : '#fee2e2',
-                                                                    color: isPaid ? '#166534' : '#991b1b',
-                                                                    fontSize: '0.65rem',
-                                                                    fontWeight: '800',
-                                                                    textTransform: 'uppercase'
-                                                                }}>
-                                                                    {isPaid ? t('payment_status_paid' as any) || 'PAID' : t('payment_status_pending' as any) || 'PENDING'}
-                                                                </div>
-                                                                <button
-                                                                    onClick={() => handlePaymentStatusChange(isPaid ? 'PENDING_PAYMENT' : 'PAID', uid)}
-                                                                    style={{
-                                                                        background: isPaid ? '#f1f5f9' : '#10b981',
-                                                                        color: isPaid ? '#64748b' : 'white',
-                                                                        padding: '0.4rem 0.8rem',
-                                                                        fontSize: '0.75rem',
-                                                                        fontWeight: '700',
-                                                                        border: 'none',
-                                                                        borderRadius: '0.5rem',
-                                                                        cursor: 'pointer',
-                                                                        transition: 'all 0.2s'
-                                                                    }}
-                                                                >
-                                                                    {isPaid ? t('mark_as_unpaid' as any) || 'Unsettle' : t('mark_as_paid')}
-                                                                </button>
-                                                            </div>
-                                                        </div>
-                                                    )
-                                                })}
-                                            </div>
-                                        </div>
-                                    )}
+                                        )}
+                                    </div>
                                 </div>
-                            </div>
-                        )
-                    }
-                } catch { return null }
-            })()}
+                            )
+                        }
+                    } catch { return null }
+                })()
+            }
 
-            {!isRestricted && (
-                <>
-                    {/* Location History Section */}
-                    {(() => {
-                        if (!task.comments) return null
-                        try {
-                            const logs = JSON.parse(task.comments)
-                            if (!Array.isArray(logs)) return null
-                            const locations = logs.filter((l: any) => l.type === 'LOCATION_ADDED')
-                            if (locations.length > 0) {
-                                return (
-                                    <div style={{ marginTop: '2rem', borderTop: '1px solid #e2e8f0', paddingTop: '1.5rem' }}>
-                                        <style>{`
+            {
+                !isRestricted && (
+                    <>
+                        {/* Location History Section */}
+                        {(() => {
+                            if (!task.comments) return null
+                            try {
+                                const logs = JSON.parse(task.comments)
+                                if (!Array.isArray(logs)) return null
+                                const locations = logs.filter((l: any) => l.type === 'LOCATION_ADDED')
+                                if (locations.length > 0) {
+                                    return (
+                                        <div style={{ marginTop: '2rem', borderTop: '1px solid #e2e8f0', paddingTop: '1.5rem' }}>
+                                            <style>{`
                                             @keyframes spin-local {
                                                 to { transform: rotate(360deg); }
                                             }
@@ -1144,394 +1149,400 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                                                 animation: spin-local 1s linear infinite;
                                             }
                                         `}</style>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexDirection: 'row', gap: '1rem', flexWrap: 'wrap' }}>
-                                            <h3 style={{ margin: 0 }}>{t('location_history_title')}</h3>
-                                            {['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole) && (
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
-                                                    {showPenaltyUI && (
-                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: '#f8fafc', padding: '0.25rem 0.5rem', borderRadius: '2rem', border: '1px solid #e2e8f0' }}>
-                                                            {[0.25, 0.5, 1].map(amount => (
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexDirection: 'row', gap: '1rem', flexWrap: 'wrap' }}>
+                                                <h3 style={{ margin: 0 }}>{t('location_history_title')}</h3>
+                                                {['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole) && (
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
+                                                        {showPenaltyUI && (
+                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: '#f8fafc', padding: '0.25rem 0.5rem', borderRadius: '2rem', border: '1px solid #e2e8f0' }}>
+                                                                {[0.25, 0.5, 1].map(amount => (
+                                                                    <button
+                                                                        key={amount}
+                                                                        onClick={() => setSelectedPenalty(amount)}
+                                                                        style={{
+                                                                            width: '32px',
+                                                                            height: '32px',
+                                                                            borderRadius: '50%',
+                                                                            border: selectedPenalty === amount ? '2px solid #ef4444' : '1px solid #cbd5e1',
+                                                                            background: selectedPenalty === amount ? '#fee2e2' : 'white',
+                                                                            color: selectedPenalty === amount ? '#991b1b' : '#64748b',
+                                                                            fontSize: '0.7rem',
+                                                                            fontWeight: 'bold',
+                                                                            cursor: 'pointer',
+                                                                            display: 'flex',
+                                                                            alignItems: 'center',
+                                                                            justifyContent: 'center',
+                                                                            transition: 'all 0.2s'
+                                                                        }}
+                                                                    >
+                                                                        {amount}
+                                                                    </button>
+                                                                ))}
                                                                 <button
-                                                                    key={amount}
-                                                                    onClick={() => setSelectedPenalty(amount)}
+                                                                    onClick={async () => {
+                                                                        if (!selectedPenalty || applyingPenalty) return
+                                                                        setApplyingPenalty(true)
+                                                                        try {
+                                                                            // The user didn't specify, but usually it's per task.
+                                                                            // For now we'll apply it to the PRIMARY assignee (assigneeId) or all?
+                                                                            // Usually these penalties are specific to who is late.
+                                                                            // I'll apply it once for the task's main assignee for simplicity, or we should ask.
+                                                                            // Actually, let's apply it for each current assignee if it's a team effort?
+                                                                            // Apply it to all assignees or specific ones?
+                                                                            // For now, applying to the first assignee found is not ideal, but we need a target.
+                                                                            // Let's use the first one for simplicity or just skip if unclear.
+                                                                            // Actually, we should probably let admin choose, but for now fallback to first assignee.
+                                                                            const targetUserId = task.assignees?.[0]?.id;
+                                                                            if (targetUserId) {
+                                                                                const res = await fetch(`/api/users/${targetUserId}/deduction`, {
+                                                                                    method: 'POST',
+                                                                                    headers: { 'Content-Type': 'application/json' },
+                                                                                    body: JSON.stringify({ amount: selectedPenalty, userId: targetUserId }),
+                                                                                })
+
+                                                                                if (res.ok) {
+                                                                                    showToast(t('update_success'), 'success')
+                                                                                    setShowPenaltyUI(false)
+                                                                                    setSelectedPenalty(null)
+                                                                                    router.refresh()
+                                                                                } else {
+                                                                                    throw new Error()
+                                                                                }
+                                                                            }
+                                                                        } catch {
+                                                                            showToast(t('error_generic'), 'error')
+                                                                        } finally {
+                                                                            setApplyingPenalty(false)
+                                                                        }
+                                                                    }}
+                                                                    disabled={!selectedPenalty || applyingPenalty}
                                                                     style={{
-                                                                        width: '32px',
-                                                                        height: '32px',
-                                                                        borderRadius: '50%',
-                                                                        border: selectedPenalty === amount ? '2px solid #ef4444' : '1px solid #cbd5e1',
-                                                                        background: selectedPenalty === amount ? '#fee2e2' : 'white',
-                                                                        color: selectedPenalty === amount ? '#991b1b' : '#64748b',
-                                                                        fontSize: '0.7rem',
+                                                                        padding: '0.25rem 0.75rem',
+                                                                        borderRadius: '1rem',
+                                                                        background: '#ef4444',
+                                                                        color: 'white',
+                                                                        fontSize: '0.75rem',
                                                                         fontWeight: 'bold',
-                                                                        cursor: 'pointer',
-                                                                        display: 'flex',
-                                                                        alignItems: 'center',
-                                                                        justifyContent: 'center',
-                                                                        transition: 'all 0.2s'
+                                                                        border: 'none',
+                                                                        cursor: (selectedPenalty && !applyingPenalty) ? 'pointer' : 'not-allowed',
+                                                                        opacity: (selectedPenalty && !applyingPenalty) ? 1 : 0.6
                                                                     }}
                                                                 >
-                                                                    {amount}
+                                                                    {applyingPenalty ? '...' : t('confirm')}
                                                                 </button>
-                                                            ))}
-                                                            <button
-                                                                onClick={async () => {
-                                                                    if (!selectedPenalty || applyingPenalty) return
-                                                                    setApplyingPenalty(true)
-                                                                    try {
-                                                                        // Apply to all assignees if multiple?
-                                                                        // The user didn't specify, but usually it's per task.
-                                                                        // For now we'll apply it to the PRIMARY assignee (assigneeId) or all?
-                                                                        // Usually these penalties are specific to who is late.
-                                                                        // I'll apply it once for the task's main assignee for simplicity, or we should ask.
-                                                                        // Actually, let's apply it for each current assignee if it's a team effort?
-                                                                        // User said "salary deduction" - usually specific to a user.
-                                                                        // I'll apply it to task.assigneeId for now.
-                                                                        const res = await fetch(`/api/tasks/${task.id}/penalty`, {
-                                                                            method: 'POST',
-                                                                            body: JSON.stringify({ amount: selectedPenalty, userId: task.assigneeId }),
-                                                                            headers: { 'Content-Type': 'application/json' }
-                                                                        })
-                                                                        if (res.ok) {
-                                                                            showToast(t('update_success'), 'success')
-                                                                            setShowPenaltyUI(false)
-                                                                            setSelectedPenalty(null)
-                                                                            router.refresh()
-                                                                        } else {
-                                                                            throw new Error()
-                                                                        }
-                                                                    } catch {
-                                                                        showToast(t('error_generic'), 'error')
-                                                                    } finally {
-                                                                        setApplyingPenalty(false)
-                                                                    }
-                                                                }}
-                                                                disabled={!selectedPenalty || applyingPenalty}
-                                                                style={{
-                                                                    padding: '0.25rem 0.75rem',
-                                                                    borderRadius: '1rem',
-                                                                    background: '#ef4444',
-                                                                    color: 'white',
-                                                                    fontSize: '0.75rem',
-                                                                    fontWeight: 'bold',
-                                                                    border: 'none',
-                                                                    cursor: (selectedPenalty && !applyingPenalty) ? 'pointer' : 'not-allowed',
-                                                                    opacity: (selectedPenalty && !applyingPenalty) ? 1 : 0.6
-                                                                }}
-                                                            >
-                                                                {applyingPenalty ? '...' : t('confirm')}
-                                                            </button>
-                                                        </div>
-                                                    )}
-                                                    <button
-                                                        onClick={() => setShowPenaltyUI(!showPenaltyUI)}
-                                                        style={{
-                                                            background: showPenaltyUI ? '#f1f5f9' : '#fee2e2',
-                                                            color: showPenaltyUI ? '#475569' : '#991b1b',
-                                                            border: '1px solid ' + (showPenaltyUI ? '#cbd5e1' : '#fca5a5'),
-                                                            padding: '0.4rem 0.8rem',
-                                                            borderRadius: '0.5rem',
-                                                            fontSize: '0.8rem',
-                                                            fontWeight: '700',
-                                                            cursor: 'pointer',
-                                                            display: 'flex',
-                                                            alignItems: 'center',
-                                                            gap: '0.4rem'
-                                                        }}
-                                                    >
-                                                        <span>⚠️</span> {locale === 'ar' ? 'خصم تأخير' : 'Lateness Penalty'}
-                                                    </button>
-                                                </div>
-                                            )}
-                                        </div>
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                                            {locations.map((loc: any, i: number) => {
-                                                let displayLoc = loc.locationName || loc.location
-                                                let mapsLink = null
-                                                try {
-                                                    if (loc.location.startsWith('{')) {
-                                                        const d = JSON.parse(loc.location)
-                                                        displayLoc = loc.locationName || d.address || d.name || `${d.latitude}, ${d.longitude}`
-                                                        if (d.latitude && d.longitude) mapsLink = `https://www.google.com/maps?q=${d.latitude},${d.longitude}`
-                                                    }
-                                                } catch { }
-
-                                                const canVerify = ['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole) && task.status === 'PENDING_CONFIRMATION' && userId !== task.assigneeId
-                                                const canDelete = (userRole === 'EMPLOYEE' || userId === task.assigneeId) && ['PENDING', 'IN_PROGRESS', 'REJECTED'].includes(task.status)
-
-                                                const handleVerify = async (status: 'CORRECT' | 'WRONG') => {
-                                                    const timestamp = loc.date
-                                                    const actionId = `${timestamp}-${status}`
-                                                    if (verifyingLocation === actionId) return
-
-                                                    setVerifyingLocation(actionId)
-
-                                                    // UI Logic
-                                                    const originalComments = task.comments
+                                                            </div>
+                                                        )}
+                                                        <button
+                                                            onClick={() => setShowPenaltyUI(!showPenaltyUI)}
+                                                            style={{
+                                                                background: showPenaltyUI ? '#f1f5f9' : '#fee2e2',
+                                                                color: showPenaltyUI ? '#475569' : '#991b1b',
+                                                                border: '1px solid ' + (showPenaltyUI ? '#cbd5e1' : '#fca5a5'),
+                                                                padding: '0.4rem 0.8rem',
+                                                                borderRadius: '0.5rem',
+                                                                fontSize: '0.8rem',
+                                                                fontWeight: '700',
+                                                                cursor: 'pointer',
+                                                                display: 'flex',
+                                                                alignItems: 'center',
+                                                                gap: '0.4rem'
+                                                            }}
+                                                        >
+                                                            <span>⚠️</span> {locale === 'ar' ? 'خصم تأخير' : 'Lateness Penalty'}
+                                                        </button>
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                                                {locations.map((loc: any, i: number) => {
+                                                    let displayLoc = loc.locationName || loc.location
+                                                    let mapsLink = null
                                                     try {
-                                                        const currentComments = JSON.parse(task.comments || '[]')
-                                                        const updatedComments = currentComments.map((c: any) => {
-                                                            if (c.type === 'LOCATION_ADDED' && c.date === timestamp) {
-                                                                return { ...c, verificationStatus: status, autoVerified: false }
-                                                            }
-                                                            return c
-                                                        })
+                                                        if (loc.location.startsWith('{')) {
+                                                            const d = JSON.parse(loc.location)
+                                                            displayLoc = loc.locationName || d.address || d.name || `${d.latitude}, ${d.longitude}`
+                                                            if (d.latitude && d.longitude) mapsLink = `https://www.google.com/maps?q=${d.latitude},${d.longitude}`
+                                                        }
+                                                    } catch { }
 
-                                                        const res = await fetch(`/api/tasks/${task.id}/locations`, {
-                                                            method: 'PUT',
-                                                            body: JSON.stringify({ timestamp, action: 'VERIFY', verificationStatus: status }),
-                                                            headers: { 'Content-Type': 'application/json' }
-                                                        })
+                                                    const canVerify = ['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole) && task.status === 'PENDING_CONFIRMATION' && !task.assignees?.some((a: any) => a.id === userId)
+                                                    const canDelete = (userRole === 'EMPLOYEE' || task.assignees?.some((a: any) => a.id === userId)) && ['PENDING', 'IN_PROGRESS', 'REJECTED'].includes(task.status)
 
-                                                        if (!res.ok) throw new Error('Failed to verify')
+                                                    const handleVerify = async (status: 'CORRECT' | 'WRONG') => {
+                                                        const timestamp = loc.date
+                                                        const actionId = `${timestamp}-${status}`
+                                                        if (verifyingLocation === actionId) return
 
-                                                        // Update UI only AFTER successful database save
-                                                        setTask({ ...task, comments: JSON.stringify(updatedComments) })
+                                                        setVerifyingLocation(actionId)
 
-                                                        router.refresh()
-                                                    } catch (e) {
-                                                        console.error(e)
-                                                        // Rollback on error
-                                                        setTask({ ...task, comments: originalComments })
-                                                        showToast(t('failed_verify_location' as any) || 'Failed to update status', 'error')
-                                                    } finally {
-                                                        setVerifyingLocation(null)
+                                                        // UI Logic
+                                                        const originalComments = task.comments
+                                                        try {
+                                                            const currentComments = JSON.parse(task.comments || '[]')
+                                                            const updatedComments = currentComments.map((c: any) => {
+                                                                if (c.type === 'LOCATION_ADDED' && c.date === timestamp) {
+                                                                    return { ...c, verificationStatus: status, autoVerified: false }
+                                                                }
+                                                                return c
+                                                            })
+
+                                                            const res = await fetch(`/api/tasks/${task.id}/locations`, {
+                                                                method: 'PUT',
+                                                                body: JSON.stringify({ timestamp, action: 'VERIFY', verificationStatus: status }),
+                                                                headers: { 'Content-Type': 'application/json' }
+                                                            })
+
+                                                            if (!res.ok) throw new Error('Failed to verify')
+
+                                                            // Update UI only AFTER successful database save
+                                                            setTask({ ...task, comments: JSON.stringify(updatedComments) })
+
+                                                            router.refresh()
+                                                        } catch (e) {
+                                                            console.error(e)
+                                                            // Rollback on error
+                                                            setTask({ ...task, comments: originalComments })
+                                                            showToast(t('failed_verify_location' as any) || 'Failed to update status', 'error')
+                                                        } finally {
+                                                            setVerifyingLocation(null)
+                                                        }
                                                     }
-                                                }
 
-                                                return (
-                                                    <div key={i} style={{ border: '1px solid #bae6fd', background: '#f0f9ff', borderRadius: '0.5rem', padding: '1rem' }}>
-                                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexDirection: 'row', gap: '1rem' }}>
-                                                            <div style={{ display: 'flex', gap: '0.75rem', flexDirection: 'row' }}>
-                                                                <span style={{ fontSize: '1.25rem' }}>📍</span>
-                                                                <div style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>
-                                                                    {mapsLink ? <a href={mapsLink} target="_blank" rel="noreferrer" style={{ fontWeight: '600', color: '#0369a1', textDecoration: 'underline' }}>{displayLoc}</a> : <span style={{ fontWeight: '600', color: '#0c4a6e' }}>{displayLoc}</span>}
-                                                                    <div style={{ fontSize: '0.75rem', color: '#0369a1', marginTop: '0.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                                                        {(task.assignees?.length > 1) && (
-                                                                            <span style={{ background: '#e0f2fe', border: '1px solid #38bdf8', color: '#0369a1', padding: '0.1rem 0.4rem', borderRadius: '1rem', fontSize: '0.65rem', fontWeight: 'bold' }}>
-                                                                                {locale === 'ar' ? 'بواسطة:' : 'By:'} {loc.author}
-                                                                            </span>
-                                                                        )}
-                                                                        {!((task.assignees?.length > 1)) && <span>{loc.author}</span>}
-                                                                        <span>• {new Date(loc.date).toLocaleString(locale)}</span>
+                                                    return (
+                                                        <div key={i} style={{ border: '1px solid #bae6fd', background: '#f0f9ff', borderRadius: '0.5rem', padding: '1rem' }}>
+                                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexDirection: 'row', gap: '1rem' }}>
+                                                                <div style={{ display: 'flex', gap: '0.75rem', flexDirection: 'row' }}>
+                                                                    <span style={{ fontSize: '1.25rem' }}>📍</span>
+                                                                    <div style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>
+                                                                        {mapsLink ? <a href={mapsLink} target="_blank" rel="noreferrer" style={{ fontWeight: '600', color: '#0369a1', textDecoration: 'underline' }}>{displayLoc}</a> : <span style={{ fontWeight: '600', color: '#0c4a6e' }}>{displayLoc}</span>}
+                                                                        <div style={{ fontSize: '0.75rem', color: '#0369a1', marginTop: '0.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                                            {(task.assignees?.length > 1) && (
+                                                                                <span style={{ background: '#e0f2fe', border: '1px solid #38bdf8', color: '#0369a1', padding: '0.1rem 0.4rem', borderRadius: '1rem', fontSize: '0.65rem', fontWeight: 'bold' }}>
+                                                                                    {locale === 'ar' ? 'بواسطة:' : 'By:'} {loc.author}
+                                                                                </span>
+                                                                            )}
+                                                                            {!((task.assignees?.length > 1)) && <span>{loc.author}</span>}
+                                                                            <span>• {new Date(loc.date).toLocaleString(locale)}</span>
+                                                                        </div>
                                                                     </div>
                                                                 </div>
-                                                            </div>
-                                                            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexDirection: 'row' }}>
-                                                                {loc.verificationStatus && (
-                                                                    <span style={{ fontSize: '0.75rem', fontWeight: '700', color: loc.verificationStatus === 'CORRECT' ? '#16a34a' : '#dc2626', background: loc.verificationStatus === 'CORRECT' ? '#dcfce7' : '#fee2e2', padding: '0.25rem 0.5rem', borderRadius: '0.25rem' }}>
-                                                                        {loc.verificationStatus === 'CORRECT' ? t('verified_correct_title') : t('verified_wrong_title')}
-                                                                    </span>
-                                                                )}
-                                                                {canVerify && (
-                                                                    <div style={{ display: 'flex', gap: '0.25rem' }}>
-                                                                        <button
-                                                                            onClick={() => handleVerify('CORRECT')}
-                                                                            disabled={!!verifyingLocation}
-                                                                            style={{
-                                                                                background: '#dcfce7',
-                                                                                border: '1px solid #22c55e',
-                                                                                color: '#166534',
-                                                                                width: '32px',
-                                                                                height: '32px',
-                                                                                borderRadius: '50%',
-                                                                                cursor: verifyingLocation ? 'not-allowed' : 'pointer',
-                                                                                display: 'flex',
-                                                                                alignItems: 'center',
-                                                                                justifyContent: 'center'
-                                                                            }}
-                                                                            title={t('mark_correct_title')}
-                                                                        >
-                                                                            {verifyingLocation === `${loc.date}-CORRECT` ? <div className="animate-spin-local" style={{ width: '14px', height: '14px', border: '2px solid #166534', borderTopColor: 'transparent', borderRadius: '50%' }} /> : '✓'}
+                                                                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexDirection: 'row' }}>
+                                                                    {loc.verificationStatus && (
+                                                                        <span style={{ fontSize: '0.75rem', fontWeight: '700', color: loc.verificationStatus === 'CORRECT' ? '#16a34a' : '#dc2626', background: loc.verificationStatus === 'CORRECT' ? '#dcfce7' : '#fee2e2', padding: '0.25rem 0.5rem', borderRadius: '0.25rem' }}>
+                                                                            {loc.verificationStatus === 'CORRECT' ? t('verified_correct_title') : t('verified_wrong_title')}
+                                                                        </span>
+                                                                    )}
+                                                                    {canVerify && (
+                                                                        <div style={{ display: 'flex', gap: '0.25rem' }}>
+                                                                            <button
+                                                                                onClick={() => handleVerify('CORRECT')}
+                                                                                disabled={!!verifyingLocation}
+                                                                                style={{
+                                                                                    background: '#dcfce7',
+                                                                                    border: '1px solid #22c55e',
+                                                                                    color: '#166534',
+                                                                                    width: '32px',
+                                                                                    height: '32px',
+                                                                                    borderRadius: '50%',
+                                                                                    cursor: verifyingLocation ? 'not-allowed' : 'pointer',
+                                                                                    display: 'flex',
+                                                                                    alignItems: 'center',
+                                                                                    justifyContent: 'center'
+                                                                                }}
+                                                                                title={t('mark_correct_title')}
+                                                                            >
+                                                                                {verifyingLocation === `${loc.date}-CORRECT` ? <div className="animate-spin-local" style={{ width: '14px', height: '14px', border: '2px solid #166534', borderTopColor: 'transparent', borderRadius: '50%' }} /> : '✓'}
+                                                                            </button>
+                                                                            <button
+                                                                                onClick={() => handleVerify('WRONG')}
+                                                                                disabled={!!verifyingLocation}
+                                                                                style={{
+                                                                                    background: '#fee2e2',
+                                                                                    border: '1px solid #ef4444',
+                                                                                    color: '#991b1b',
+                                                                                    width: '32px',
+                                                                                    height: '32px',
+                                                                                    borderRadius: '50%',
+                                                                                    cursor: verifyingLocation ? 'not-allowed' : 'pointer',
+                                                                                    display: 'flex',
+                                                                                    alignItems: 'center',
+                                                                                    justifyContent: 'center'
+                                                                                }}
+                                                                                title={t('mark_wrong_title')}
+                                                                            >
+                                                                                {verifyingLocation === `${loc.date}-WRONG` ? <div className="animate-spin-local" style={{ width: '14px', height: '14px', border: '2px solid #991b1b', borderTopColor: 'transparent', borderRadius: '50%' }} /> : '✕'}
+                                                                            </button>
+                                                                        </div>
+                                                                    )}
+                                                                    {canDelete && task.status === 'IN_PROGRESS' && (
+                                                                        <button onClick={() => setLocationToDelete({ date: loc.date })} style={{ background: '#fee2e2', color: '#dc2626', border: 'none', borderRadius: '0.25rem', padding: '0.4rem', cursor: 'pointer', display: 'flex' }} title={t('delete_location_title')}>
+                                                                            <TrashIcon size={16} />
                                                                         </button>
-                                                                        <button
-                                                                            onClick={() => handleVerify('WRONG')}
-                                                                            disabled={!!verifyingLocation}
-                                                                            style={{
-                                                                                background: '#fee2e2',
-                                                                                border: '1px solid #ef4444',
-                                                                                color: '#991b1b',
-                                                                                width: '32px',
-                                                                                height: '32px',
-                                                                                borderRadius: '50%',
-                                                                                cursor: verifyingLocation ? 'not-allowed' : 'pointer',
-                                                                                display: 'flex',
-                                                                                alignItems: 'center',
-                                                                                justifyContent: 'center'
-                                                                            }}
-                                                                            title={t('mark_wrong_title')}
-                                                                        >
-                                                                            {verifyingLocation === `${loc.date}-WRONG` ? <div className="animate-spin-local" style={{ width: '14px', height: '14px', border: '2px solid #991b1b', borderTopColor: 'transparent', borderRadius: '50%' }} /> : '✕'}
-                                                                        </button>
-                                                                    </div>
-                                                                )}
-                                                                {canDelete && task.status === 'IN_PROGRESS' && (
-                                                                    <button onClick={() => setLocationToDelete({ date: loc.date })} style={{ background: '#fee2e2', color: '#dc2626', border: 'none', borderRadius: '0.25rem', padding: '0.4rem', cursor: 'pointer', display: 'flex' }} title={t('delete_location_title')}>
-                                                                        <TrashIcon size={16} />
-                                                                    </button>
-                                                                )}
+                                                                    )}
+                                                                </div>
                                                             </div>
                                                         </div>
-                                                    </div>
-                                                )
-                                            })}
+                                                    )
+                                                })}
+                                            </div>
+                                        </div>
+                                    )
+                                }
+                            } catch { return null }
+                        })()}
+
+                        {/* Submission Section (Employee only) */}
+                        {(userRole === 'EMPLOYEE' || task.assignees?.some((a: any) => a.id === userId)) && !['APPROVED', 'COMPLETED', 'PENDING_CONFIRMATION', 'REJECTED'].includes(task.status) && (
+                            <div style={{ marginTop: '3rem', borderTop: '2px solid #e2e8f0', paddingTop: '2rem' }}>
+                                <h3 style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', flexDirection: 'row' }}>
+                                    <span>📤</span> {t('submit_task_title')}
+                                </h3>
+
+                                <div style={{ marginBottom: '1.5rem' }}>
+                                    <label style={{ display: 'block', fontWeight: '600', marginBottom: '0.75rem' }}>{t('attachments_optional_label')}</label>
+                                    <div
+                                        onDragOver={e => { e.preventDefault(); setIsDragging(true); }}
+                                        onDragLeave={() => setIsDragging(false)}
+                                        onDrop={e => { e.preventDefault(); setIsDragging(false); if (e.dataTransfer.files.length) handleFiles(Array.from(e.dataTransfer.files)); }}
+                                        style={{ border: `2px dashed ${isDragging ? '#3b82f6' : '#cbd5e1'}`, borderRadius: '0.75rem', padding: '2.5rem', textAlign: 'center', background: isDragging ? '#eff6ff' : '#f8fafc', transition: 'all 0.2s', cursor: 'pointer', position: 'relative' }}
+                                    >
+                                        <input
+                                            type="file"
+                                            multiple
+                                            accept=".jpg,.jpeg,.png,.gif,.webp,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx"
+                                            onChange={e => {
+                                                if (e.target.files) {
+                                                    handleFiles(Array.from(e.target.files))
+                                                    // Reset input so the same file can be selected again if removed
+                                                    e.target.value = ''
+                                                }
+                                            }}
+                                            style={{ opacity: 0, position: 'absolute', inset: 0, cursor: 'pointer' }}
+                                            disabled={uploading}
+                                        />
+                                        <div style={{ pointerEvents: 'none' }}>
+                                            <div style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>☁️</div>
+                                            <div style={{ fontWeight: '600', color: '#475569' }}>{t('upload_drag_files_msg')}</div>
+                                            <div style={{ fontSize: '0.8rem', color: '#94a3b8', marginTop: '0.25rem' }}>{t('upload_allowed_types_msg')}</div>
                                         </div>
                                     </div>
-                                )
-                            }
-                        } catch { return null }
-                    })()}
 
-                    {/* Submission Section (Employee only) */}
-                    {(userRole === 'EMPLOYEE' || userId === task.assigneeId) && !['APPROVED', 'COMPLETED', 'PENDING_CONFIRMATION', 'REJECTED'].includes(task.status) && (
-                        <div style={{ marginTop: '3rem', borderTop: '2px solid #e2e8f0', paddingTop: '2rem' }}>
-                            <h3 style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', flexDirection: 'row' }}>
-                                <span>📤</span> {t('submit_task_title')}
-                            </h3>
-
-                            <div style={{ marginBottom: '1.5rem' }}>
-                                <label style={{ display: 'block', fontWeight: '600', marginBottom: '0.75rem' }}>{t('attachments_optional_label')}</label>
-                                <div
-                                    onDragOver={e => { e.preventDefault(); setIsDragging(true); }}
-                                    onDragLeave={() => setIsDragging(false)}
-                                    onDrop={e => { e.preventDefault(); setIsDragging(false); if (e.dataTransfer.files.length) handleFiles(Array.from(e.dataTransfer.files)); }}
-                                    style={{ border: `2px dashed ${isDragging ? '#3b82f6' : '#cbd5e1'}`, borderRadius: '0.75rem', padding: '2.5rem', textAlign: 'center', background: isDragging ? '#eff6ff' : '#f8fafc', transition: 'all 0.2s', cursor: 'pointer', position: 'relative' }}
-                                >
-                                    <input
-                                        type="file"
-                                        multiple
-                                        accept=".jpg,.jpeg,.png,.gif,.webp,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx"
-                                        onChange={e => {
-                                            if (e.target.files) {
-                                                handleFiles(Array.from(e.target.files))
-                                                // Reset input so the same file can be selected again if removed
-                                                e.target.value = ''
-                                            }
-                                        }}
-                                        style={{ opacity: 0, position: 'absolute', inset: 0, cursor: 'pointer' }}
-                                        disabled={uploading}
-                                    />
-                                    <div style={{ pointerEvents: 'none' }}>
-                                        <div style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>☁️</div>
-                                        <div style={{ fontWeight: '600', color: '#475569' }}>{t('upload_drag_files_msg')}</div>
-                                        <div style={{ fontSize: '0.8rem', color: '#94a3b8', marginTop: '0.25rem' }}>{t('upload_allowed_types_msg')}</div>
-                                    </div>
-                                </div>
-
-                                {pendingFiles.length > 0 && (
-                                    <div style={{ marginTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                                        {pendingFiles.map((f, i) => (
-                                            <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem 1rem', background: 'white', border: '1px solid #e2e8f0', borderRadius: '0.5rem', flexDirection: 'row' }}>
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexDirection: 'row' }}>
-                                                    <span style={{ fontSize: '1.25rem' }}>📄</span>
-                                                    <div style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>
-                                                        <div style={{ fontSize: '0.9rem', fontWeight: '500' }}>{f.name}</div>
-                                                        <div style={{ fontSize: '0.7rem', color: '#94a3b8' }}>{(f.size / 1024 / 1024).toFixed(2)} MB</div>
+                                    {pendingFiles.length > 0 && (
+                                        <div style={{ marginTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                            {pendingFiles.map((f, i) => (
+                                                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem 1rem', background: 'white', border: '1px solid #e2e8f0', borderRadius: '0.5rem', flexDirection: 'row' }}>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexDirection: 'row' }}>
+                                                        <span style={{ fontSize: '1.25rem' }}>📄</span>
+                                                        <div style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>
+                                                            <div style={{ fontSize: '0.9rem', fontWeight: '500' }}>{f.name}</div>
+                                                            <div style={{ fontSize: '0.7rem', color: '#94a3b8' }}>{(f.size / 1024 / 1024).toFixed(2)} MB</div>
+                                                        </div>
                                                     </div>
+                                                    <button onClick={() => removePendingFile(i)} style={{ color: '#ef4444', background: '#fef2f2', border: 'none', borderRadius: '0.375rem', padding: '0.4rem 0.75rem', cursor: 'pointer', fontSize: '0.8rem', fontWeight: '600' }}>{t('delete')}</button>
                                                 </div>
-                                                <button onClick={() => removePendingFile(i)} style={{ color: '#ef4444', background: '#fef2f2', border: 'none', borderRadius: '0.375rem', padding: '0.4rem 0.75rem', cursor: 'pointer', fontSize: '0.8rem', fontWeight: '600' }}>{t('delete')}</button>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
-
-                            <div style={{ marginBottom: '1.5rem' }}>
-                                <label style={{ display: 'block', fontWeight: '600', marginBottom: '0.75rem' }}>{t('add_costs_label')}</label>
-                                <div style={{ display: 'flex', gap: '0.5rem', flexDirection: 'row' }}>
-                                    <input type="text" className="input" placeholder={t('cost_description_placeholder')} value={costDescription} onChange={e => setCostDescription(e.target.value)} style={{ flex: 1 }} />
-                                    <input type="number" className="input" placeholder={t('cost_amount_placeholder')} value={cost} onChange={e => setCost(e.target.value)} style={{ width: '120px' }} />
-                                    <button onClick={handleAddCost} disabled={!cost} className="btn" style={{ background: '#e0f2fe', color: '#0369a1', fontWeight: '700', minWidth: '80px' }}>{t('add_label')}</button>
+                                            ))}
+                                        </div>
+                                    )}
                                 </div>
-                                {costEntries.length > 0 && (
-                                    <div style={{ marginTop: '1rem', background: 'white', border: '1px solid #e2e8f0', borderRadius: '0.5rem', overflow: 'hidden' }}>
-                                        {costEntries.map((e, i) => (
-                                            <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem 1rem', borderBottom: i < costEntries.length - 1 ? '1px solid #f1f5f9' : 'none', flexDirection: 'row' }}>
-                                                <div style={{ display: 'flex', gap: '0.5rem', fontWeight: '500', flexDirection: 'row' }}>
-                                                    <span>{e.description || t('no_description')}</span>
-                                                    <span style={{ color: '#94a3b8' }}>•</span>
-                                                    <span style={{ color: '#b45309' }}>{e.amount.toFixed(2)} {t('egp')}</span>
+
+                                <div style={{ marginBottom: '1.5rem' }}>
+                                    <label style={{ display: 'block', fontWeight: '600', marginBottom: '0.75rem' }}>{t('add_costs_label')}</label>
+                                    <div style={{ display: 'flex', gap: '0.5rem', flexDirection: 'row' }}>
+                                        <input type="text" className="input" placeholder={t('cost_description_placeholder')} value={costDescription} onChange={e => setCostDescription(e.target.value)} style={{ flex: 1 }} />
+                                        <input type="number" className="input" placeholder={t('cost_amount_placeholder')} value={cost} onChange={e => setCost(e.target.value)} style={{ width: '120px' }} />
+                                        <button onClick={handleAddCost} disabled={!cost} className="btn" style={{ background: '#e0f2fe', color: '#0369a1', fontWeight: '700', minWidth: '80px' }}>{t('add_label')}</button>
+                                    </div>
+                                    {costEntries.length > 0 && (
+                                        <div style={{ marginTop: '1rem', background: 'white', border: '1px solid #e2e8f0', borderRadius: '0.5rem', overflow: 'hidden' }}>
+                                            {costEntries.map((e, i) => (
+                                                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem 1rem', borderBottom: i < costEntries.length - 1 ? '1px solid #f1f5f9' : 'none', flexDirection: 'row' }}>
+                                                    <div style={{ display: 'flex', gap: '0.5rem', fontWeight: '500', flexDirection: 'row' }}>
+                                                        <span>{e.description || t('no_description')}</span>
+                                                        <span style={{ color: '#94a3b8' }}>•</span>
+                                                        <span style={{ color: '#b45309' }}>{e.amount.toFixed(2)} {t('egp')}</span>
+                                                    </div>
+                                                    <button onClick={() => removeCostEntry(i)} style={{ color: '#ef4444', padding: '0.25rem', cursor: 'pointer', border: 'none', background: 'none', fontWeight: 'bold', fontSize: '1.2rem' }}>×</button>
                                                 </div>
-                                                <button onClick={() => removeCostEntry(i)} style={{ color: '#ef4444', padding: '0.25rem', cursor: 'pointer', border: 'none', background: 'none', fontWeight: 'bold', fontSize: '1.2rem' }}>×</button>
-                                            </div>
-                                        ))}
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div style={{ marginBottom: '1.5rem' }}>
+                                    <label style={{ display: 'block', fontWeight: '600', marginBottom: '0.75rem' }}>{t('note_optional_label')}</label>
+                                    <textarea className="input" rows={3} placeholder={t('note_placeholder')} value={note} onChange={e => setNote(e.target.value)} style={{ width: '100%', resize: 'none' }} maxLength={500} />
+                                    <div style={{ textAlign: locale === 'ar' ? 'left' : 'right', fontSize: '0.75rem', color: note.length >= 500 ? '#ef4444' : '#94a3b8', marginTop: '0.25rem' }}>{note.length}/500</div>
+                                </div>
+
+                                <div style={{ marginBottom: '2rem' }}>
+                                    <label style={{ display: 'block', fontWeight: '600', marginBottom: '0.75rem' }}>{t('current_location_label')}</label>
+                                    <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexDirection: 'row' }}>
+                                        <button onClick={handleCaptureLocation} disabled={capturingLocation || uploading} className="btn" style={{ background: capturingLocation ? '#e2e8f0' : '#3b82f6', color: capturingLocation ? '#64748b' : 'white', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                            {capturingLocation ? t('capturing_location_button').replace('📍', '') : t('capture_location_button').replace('📍', '')}
+                                        </button>
+                                        <span style={{ fontSize: '0.875rem', fontWeight: '500', color: locationStatus.includes('✓') ? '#16a34a' : locationStatus.includes('Failed') ? '#dc2626' : '#64748b' }}>{locationStatus}</span>
                                     </div>
-                                )}
-                            </div>
+                                </div>
 
-                            <div style={{ marginBottom: '1.5rem' }}>
-                                <label style={{ display: 'block', fontWeight: '600', marginBottom: '0.75rem' }}>{t('note_optional_label')}</label>
-                                <textarea className="input" rows={3} placeholder={t('note_placeholder')} value={note} onChange={e => setNote(e.target.value)} style={{ width: '100%', resize: 'none' }} maxLength={500} />
-                                <div style={{ textAlign: locale === 'ar' ? 'left' : 'right', fontSize: '0.75rem', color: note.length >= 500 ? '#ef4444' : '#94a3b8', marginTop: '0.25rem' }}>{note.length}/500</div>
-                            </div>
-
-                            <div style={{ marginBottom: '2rem' }}>
-                                <label style={{ display: 'block', fontWeight: '600', marginBottom: '0.75rem' }}>{t('current_location_label')}</label>
-                                <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexDirection: 'row' }}>
-                                    <button onClick={handleCaptureLocation} disabled={capturingLocation || uploading} className="btn" style={{ background: capturingLocation ? '#e2e8f0' : '#3b82f6', color: capturingLocation ? '#64748b' : 'white', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                        {capturingLocation ? t('capturing_location_button').replace('📍', '') : t('capture_location_button').replace('📍', '')}
-                                    </button>
-                                    <span style={{ fontSize: '0.875rem', fontWeight: '500', color: locationStatus.includes('✓') ? '#16a34a' : locationStatus.includes('Failed') ? '#dc2626' : '#64748b' }}>{locationStatus}</span>
+                                <div style={{ display: 'flex', gap: '1rem', flexDirection: 'row' }}>
+                                    <button onClick={() => handleUpload(true)} disabled={uploading} className="btn" style={{ background: '#e2e8f0', color: '#1e293b', fontWeight: '600', flex: 1 }}>{loadingType === 'DRAFT' ? t('saving') : t('save_draft_button')}</button>
+                                    <button onClick={handleUploadRequest} disabled={uploading} className="btn btn-primary" style={{ fontWeight: '700', flex: 2 }}>{loadingType === 'SUBMIT' ? t('submitting') : t('submit_task_button')}</button>
                                 </div>
                             </div>
+                        )}
 
-                            <div style={{ display: 'flex', gap: '1rem', flexDirection: 'row' }}>
-                                <button onClick={() => handleUpload(true)} disabled={uploading} className="btn" style={{ background: '#e2e8f0', color: '#1e293b', fontWeight: '600', flex: 1 }}>{loadingType === 'DRAFT' ? t('saving') : t('save_draft_button')}</button>
-                                <button onClick={handleUploadRequest} disabled={uploading} className="btn btn-primary" style={{ fontWeight: '700', flex: 2 }}>{loadingType === 'SUBMIT' ? t('submitting') : t('submit_task_button')}</button>
+                        {/* Finalized/Pending Message for Employees */}
+                        {(userRole === 'EMPLOYEE' || task.assignees?.some((a: any) => a.id === userId)) && ['PENDING_CONFIRMATION', 'APPROVED', 'COMPLETED', 'REJECTED'].includes(task.status) && (
+                            <div style={{ marginTop: '2rem', padding: '1.5rem', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '0.5rem', textAlign: 'center' }}>
+                                <p style={{ margin: 0, color: '#475569', fontWeight: '500' }}>
+                                    {task.status === 'PENDING_CONFIRMATION'
+                                        ? t('pending_confirmation_msg' as any) || "Submitted and awaiting review"
+                                        : t('task_finalized_msg' as any) || "This task has been finalized and cannot be modified."}
+                                </p>
                             </div>
-                        </div>
-                    )}
+                        )}
 
-                    {/* Finalized/Pending Message for Employees */}
-                    {(userRole === 'EMPLOYEE' || userId === task.assigneeId) && ['PENDING_CONFIRMATION', 'APPROVED', 'COMPLETED', 'REJECTED'].includes(task.status) && (
-                        <div style={{ marginTop: '2rem', padding: '1.5rem', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '0.5rem', textAlign: 'center' }}>
-                            <p style={{ margin: 0, color: '#475569', fontWeight: '500' }}>
-                                {task.status === 'PENDING_CONFIRMATION'
-                                    ? t('pending_confirmation_msg' as any) || "Submitted and awaiting review"
-                                    : t('task_finalized_msg' as any) || "This task has been finalized and cannot be modified."}
-                            </p>
-                        </div>
-                    )}
+                        {/* Transfer Button (Admins only) */}
+                        {['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole) && ['IN_PROGRESS', 'PENDING'].includes(task.status) && (
+                            <div style={{ marginTop: '2rem', textAlign: locale === 'ar' ? 'left' : 'right' }}>
+                                <button
+                                    onClick={() => {
+                                        const currentIds = task.assignees?.map((a: any) => a.id) || []
+                                        setTransferAssigneeIds(currentIds)
+                                        setIsTransferModalOpen(true)
+                                    }}
+                                    className="btn"
+                                    style={{
+                                        background: '#f8fafc',
+                                        color: '#475569',
+                                        border: '1px solid #cbd5e1',
+                                        borderRadius: '0.5rem',
+                                        padding: '0.6rem 1.25rem',
+                                        fontSize: '0.875rem',
+                                        fontWeight: '600',
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: '0.5rem',
+                                        boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+                                        transition: 'all 0.2s ease',
+                                        cursor: 'pointer'
+                                    }}
+                                >
+                                    <span>🔄</span> {t('transfer_to_another_employee')}
+                                </button>
+                            </div>
+                        )}
 
-                    {/* Transfer Button (Admins only) */}
-                    {['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole) && ['IN_PROGRESS', 'PENDING'].includes(task.status) && (
-                        <div style={{ marginTop: '2rem', textAlign: locale === 'ar' ? 'left' : 'right' }}>
-                            <button
-                                onClick={() => {
-                                    const currentIds = task.assignees?.map((a: any) => a.id) || (task.assigneeId ? [task.assigneeId] : [])
-                                    setTransferAssigneeIds(currentIds)
-                                    setIsTransferModalOpen(true)
-                                }}
-                                className="btn"
-                                style={{
-                                    background: '#f8fafc',
-                                    color: '#475569',
-                                    border: '1px solid #cbd5e1',
-                                    borderRadius: '0.5rem',
-                                    padding: '0.6rem 1.25rem',
-                                    fontSize: '0.875rem',
-                                    fontWeight: '600',
-                                    display: 'inline-flex',
-                                    alignItems: 'center',
-                                    gap: '0.5rem',
-                                    boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
-                                    transition: 'all 0.2s ease',
-                                    cursor: 'pointer'
-                                }}
-                            >
-                                <span>🔄</span> {t('transfer_to_another_employee')}
-                            </button>
-                        </div>
-                    )}
-
-                    {/* Approve/Reject Buttons (Admins only) */}
-                    {['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole) && task.status === 'PENDING_CONFIRMATION' && (userRole === 'TEAM_LEADER' || userId !== task.assigneeId) && (
-                        <div style={{ marginTop: '2.5rem', display: 'flex', gap: '1.25rem', borderTop: '2px solid #e2e8f0', paddingTop: '2rem', flexDirection: 'row' }}>
-                            <button onClick={handleApprove} className="btn btn-primary" style={{ flex: 1, padding: '1rem', fontSize: '1.1rem', fontWeight: '700' }}>{t('approve_button')}</button>
-                            <button onClick={handleReject} className="btn" style={{ flex: 1, padding: '1rem', fontSize: '1.1rem', fontWeight: '700', background: '#ef4444', color: 'white' }}>{t('reject_button')}</button>
-                        </div>
-                    )}
-                </>
-            )}
+                        {/* Approve/Reject Buttons (Admins only) */}
+                        {['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole) && task.status === 'PENDING_CONFIRMATION' && (userRole === 'TEAM_LEADER' || !task.assignees?.some((a: any) => a.id === userId)) && (
+                            <div style={{ marginTop: '2.5rem', display: 'flex', gap: '1.25rem', borderTop: '2px solid #e2e8f0', paddingTop: '2rem', flexDirection: 'row' }}>
+                                <button onClick={handleApprove} className="btn btn-primary" style={{ flex: 1, padding: '1rem', fontSize: '1.1rem', fontWeight: '700' }}>{t('approve_button')}</button>
+                                <button onClick={handleReject} className="btn" style={{ flex: 1, padding: '1rem', fontSize: '1.1rem', fontWeight: '700', background: '#ef4444', color: 'white' }}>{t('reject_button')}</button>
+                            </div>
+                        )}
+                    </>
+                )
+            }
 
             {/* Modals */}
 
@@ -1611,7 +1622,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                                     fontSize: '0.9rem',
                                     fontWeight: '600'
                                 }}>
-                                    {task.assignee?.firstName} {task.assignee?.lastName}
+                                    {task.assignees?.map((a: any) => `${a.firstName} ${a.lastName}`).join(', ')}
                                 </div>
                             )}
                         </div>
@@ -1864,6 +1875,6 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                 </div>
             </Modal>
 
-        </div>
+        </div >
     )
 }

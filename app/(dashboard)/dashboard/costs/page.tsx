@@ -71,19 +71,13 @@ export default async function CostsPage({
 
     if (finalCompanyId) {
         where.AND.push({
-            OR: [
-                { assignee: { companyId: finalCompanyId } },
-                { assignees: { some: { companyId: finalCompanyId } } }
-            ]
+            assignees: { some: { companyId: finalCompanyId } }
         })
     }
 
     if (searchParams.employeeId) {
         where.AND.push({
-            OR: [
-                { assigneeId: searchParams.employeeId },
-                { assignees: { some: { id: searchParams.employeeId } } }
-            ]
+            assignees: { some: { id: searchParams.employeeId } }
         })
     }
 
@@ -115,14 +109,6 @@ export default async function CostsPage({
                 memberPaymentStatus: true,
                 status: true,
                 updatedAt: true,
-                assigneeId: true,
-                assignee: {
-                    select: {
-                        id: true,
-                        firstName: true,
-                        lastName: true
-                    }
-                },
                 assignees: {
                     select: {
                         id: true,

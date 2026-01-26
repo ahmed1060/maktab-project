@@ -331,47 +331,23 @@ export default function ObligationDetailClient({ obligation, userRole }: { oblig
         <div className={`card ${shouldHighlight ? 'highlight-shading' : ''}`} style={containerStyle}>
 
             {/* Deleted Assignee Alert */}
-            {obligation.assignee?.status === 'DELETED' && ['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole) && (
+            {obligation.assignees?.some((a: any) => a.status === 'DELETED') && ['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole) && (
                 <div style={{ background: '#fee2e2', border: '1px solid #ef4444', color: '#991b1b', padding: '1.5rem', borderRadius: '0.5rem', marginBottom: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexDirection: 'row' }}>
                         <span style={{ fontSize: '1.5rem' }}>🚫</span>
                         <div style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>
                             <strong>{t('assignee_deleted_alert')}</strong>
                             <p style={{ margin: 0, fontSize: '0.9rem' }}>
-                                {t('assignee_deleted_msg').replace('{name}', `${obligation.assignee.firstName} ${obligation.assignee.lastName}`)}
+                                {t('assignee_deleted_msg').replace('{name}', obligation.assignees.filter((a: any) => a.status === 'DELETED').map((a: any) => `${a.firstName} ${a.lastName}`).join(', '))}
                             </p>
                         </div>
                     </div>
 
                     <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', flexDirection: 'row' }}>
-                        <button
-                            onClick={handleForceComplete}
-                            className="btn"
-                            style={{ background: '#166534', color: 'white' }}
-                        >
-                            {t('mark_as_completed')}
-                        </button>
-                        <button
-                            onClick={() => { setIsReassigning(true); loadUsers() }}
-                            className="btn"
-                            style={{ background: '#2563eb', color: 'white' }}
-                        >
-                            {t('reassign_button')}
-                        </button>
-                        <button
-                            onClick={() => setShowDeleteConfirm(true)}
-                            className="btn"
-                            style={{ background: '#b91c1c', color: 'white' }}
-                        >
-                            {t('delete')}
-                        </button>
-                        <button
-                            onClick={() => router.push('/dashboard/obligations')}
-                            className="btn"
-                            style={{ background: 'white', border: '1px solid #b91c1c', color: '#b91c1c' }}
-                        >
-                            {t('dismiss_decide_later')}
-                        </button>
+                        <button onClick={handleForceComplete} className="btn" style={{ background: '#166534', color: 'white' }}>{t('mark_as_completed')}</button>
+                        <button onClick={() => { setIsReassigning(true); loadUsers() }} className="btn" style={{ background: '#2563eb', color: 'white' }}>{t('reassign_button')}</button>
+                        <button onClick={() => setShowDeleteConfirm(true)} className="btn" style={{ background: '#b91c1c', color: 'white' }}>{t('delete')}</button>
+                        <button onClick={() => router.push('/dashboard/obligations')} className="btn" style={{ background: 'white', border: '1px solid #b91c1c', color: '#b91c1c' }}>{t('dismiss_decide_later')}</button>
                     </div>
                 </div>
             )}
@@ -433,7 +409,7 @@ export default function ObligationDetailClient({ obligation, userRole }: { oblig
                             {isReverting ? t('reverting') : t('return_to_in_progress')}
                         </button>
                     )}
-                    {['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole) && (userRole === 'TEAM_LEADER' || userId !== obligation.assigneeId) && (
+                    {['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole) && (userRole === 'TEAM_LEADER' || !obligation.assignees?.some((a: any) => a.id === userId)) && (
                         <button
                             onClick={() => setShowDeleteConfirm(true)}
                             style={{ background: '#fee2e2', color: '#991b1b', border: 'none', borderRadius: '0.25rem', padding: '0.5rem 1rem', cursor: 'pointer' }}
@@ -654,7 +630,7 @@ export default function ObligationDetailClient({ obligation, userRole }: { oblig
             )}
 
             {/* Approve/Reject Buttons (Admins only) */}
-            {['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole) && obligation.status === 'PENDING_CONFIRMATION' && (userRole === 'TEAM_LEADER' || userId !== obligation.assigneeId) && (
+            {['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole) && obligation.status === 'PENDING_CONFIRMATION' && (userRole === 'TEAM_LEADER' || !obligation.assignees?.some((a: any) => a.id === userId)) && (
                 <div style={{ marginTop: '2.5rem', display: 'flex', gap: '1.25rem', borderTop: '2px solid #e2e8f0', paddingTop: '2rem', flexDirection: 'row' }}>
                     <button onClick={handleApprove} className="btn btn-primary" style={{ flex: 1, padding: '1rem', fontSize: '1.1rem', fontWeight: '700' }}>{t('approve_button')}</button>
                     <button onClick={handleReject} className="btn" style={{ flex: 1, padding: '1rem', fontSize: '1.1rem', fontWeight: '700', background: '#ef4444', color: 'white' }}>{t('reject_button')}</button>
