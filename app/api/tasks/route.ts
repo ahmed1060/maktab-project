@@ -137,6 +137,15 @@ export const POST = withStandardHandler(async (req, session, json) => {
         if (assigneeUsersCount !== finalAssigneeIds.length) return new NextResponse("One or more assignees not found", { status: 404 })
     }
 
+    let finalCompanyId = creatorCompanyId
+    if (userRole === 'SUPER_ADMIN' && finalAssigneeIds.length > 0) {
+        const firstAssignee = await prisma.user.findUnique({
+            where: { id: finalAssigneeIds[0] },
+            select: { companyId: true }
+        })
+        if (firstAssignee) finalCompanyId = firstAssignee.companyId
+    }
+
     if (!deadline) return new NextResponse("Deadline is required", { status: 400 })
     const deadlineDate = new Date(deadline)
     if (isNaN(deadlineDate.getTime())) return new NextResponse("Invalid deadline date format", { status: 400 })
@@ -150,7 +159,7 @@ export const POST = withStandardHandler(async (req, session, json) => {
             data: {
                 title,
                 description,
-                companyId: creatorCompanyId,
+                companyId: finalCompanyId,
                 assignees: { connect: finalAssigneeIds.map(id => ({ id })) },
                 deadline: deadlineDate,
                 difficulty: Math.min(Math.max(difficulty, 0), 10),

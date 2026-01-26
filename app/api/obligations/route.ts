@@ -115,16 +115,22 @@ export const POST = withStandardHandler(async (req, session, json) => {
             const adminAssignee = assigneeUsers.find(u => ['ADMIN', 'SUPER_ADMIN'].includes(u.role))
             if (adminAssignee) return new NextResponse("Team Leaders cannot assign obligations to Admins or Super Admins", { status: 403 })
         }
-    } else {
-        const assigneeUsersCount = await prisma.user.count({ where: { id: { in: finalAssigneeIds } } })
-        if (assigneeUsersCount !== finalAssigneeIds.length) return new NextResponse("One or more assignees not found", { status: 404 })
+    }
+
+    let finalCompanyId = creatorCompanyId
+    if (userRole === 'SUPER_ADMIN' && finalAssigneeIds.length > 0) {
+        const firstAssignee = await prisma.user.findUnique({
+            where: { id: finalAssigneeIds[0] },
+            select: { companyId: true }
+        })
+        if (firstAssignee) finalCompanyId = firstAssignee.companyId
     }
 
     const obligation = await prisma.obligation.create({
         data: {
             title,
             description,
-            companyId: creatorCompanyId,
+            companyId: finalCompanyId,
             assignees: {
                 connect: finalAssigneeIds.map(id => ({ id }))
             },

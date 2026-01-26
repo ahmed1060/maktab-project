@@ -207,11 +207,11 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
 
                 const currentVal = currentMemberCosts[userId] || 0
                 currentMemberCosts[userId] = currentVal + totalAdded
-                updateData.memberCosts = currentMemberCosts
+                updateData.memberCosts = JSON.stringify(currentMemberCosts)
 
                 // Force individual payment status to PENDING_PAYMENT when new costs are added
                 currentMemberPaymentStatus[userId] = 'PENDING_PAYMENT'
-                updateData.memberPaymentStatus = currentMemberPaymentStatus
+                updateData.memberPaymentStatus = JSON.stringify(currentMemberPaymentStatus)
             }
 
             // Add cost to totalCost if cost > 0 (even for drafts)
