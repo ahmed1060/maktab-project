@@ -15,8 +15,6 @@ export const authOptions: NextAuthOptions = {
             },
             async authorize(credentials) {
                 try {
-                    console.log('--- LOGIN ATTEMPT START ---')
-                    console.log('1. Authorize called with email:', credentials?.email)
 
                     if (!credentials?.email || !credentials?.password) {
                         return null
@@ -25,12 +23,10 @@ export const authOptions: NextAuthOptions = {
                     // RESTRICTION SYNC: user(20)@domain(10).com
                     const emailRegex = /^[^@]{1,20}@[^@]{1,10}\.com$/
                     if (!emailRegex.test(credentials.email)) {
-                        console.log('Backend Validation Fail: Email Format')
                         return null
                     }
 
                     if (credentials.password.length < 6 || credentials.password.length > 20) {
-                        console.log('Backend Validation Fail: Password Length')
                         return null
                     }
 
@@ -40,7 +36,6 @@ export const authOptions: NextAuthOptions = {
                     })
 
                     if (superAdmin) {
-                        console.log('User found in SuperAdmin table')
                         const isValid = await bcrypt.compare(credentials.password, superAdmin.password)
                         if (!isValid) return null
 
@@ -62,7 +57,6 @@ export const authOptions: NextAuthOptions = {
                     }
 
                     // 2. Check Regular User Table
-                    console.log('Checking User table...')
                     const user = await prisma.user.findUnique({
                         where: { email: credentials.email },
                         include: { company: true }

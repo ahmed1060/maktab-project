@@ -35,13 +35,11 @@ export default function LoginPage() {
         }
 
         try {
-            console.log('Attempting login with:', email)
             const res = await signIn('credentials', {
                 email,
                 password,
                 redirect: false,
             })
-            console.log('Login response:', res)
 
             if (res?.error) {
                 // Check if it's a suspension error
