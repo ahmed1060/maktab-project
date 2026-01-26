@@ -159,15 +159,22 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
     }, [userId, task.assignees, task.isEdited, isEditedPersistent])
 
     // Load users once for search/filter efficiency
-    const isOverdue = new Date(task.deadline) < new Date() && !['COMPLETED', 'APPROVED', 'REJECTED'].includes(task.status)
+    const isOverdue = new Date(task.deadline) < new Date() && ['PENDING', 'IN_PROGRESS'].includes(task.status)
 
     useEffect(() => {
-        if (userRole !== 'EMPLOYEE') return
+        const isUserAssignee = task.assignees?.some((a: any) => a.id === userId)
+        const isRestrictedRole = userRole === 'EMPLOYEE' || (userRole === 'TEAM_LEADER' && isUserAssignee)
 
-        if (!isOverdue) return
+        if (!isRestrictedRole || !isOverdue) return
 
         const handleLocalClick = (e: MouseEvent) => {
             const target = e.target as HTMLElement
+
+            // Ignore clicks inside the deadline modal to allow confirm button to work
+            if (target.closest('#deadline-modal-content')) {
+                return
+            }
+
             const closestClickable = target.closest('button, a, [role="button"]')
 
             if (closestClickable) {
@@ -185,7 +192,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
 
         document.addEventListener('click', handleLocalClick, true)
         return () => document.removeEventListener('click', handleLocalClick, true)
-    }, [userRole, isOverdue, t])
+    }, [userRole, isOverdue, t, userId, task.assignees])
 
     useEffect(() => {
         if (['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole)) {
@@ -1757,8 +1764,8 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
             </Modal>
 
             {/* Deadline Passed Modal */}
-            <Modal isOpen={showDeadlineModal} onClose={() => setShowDeadlineModal(false)} title={t('deadline_passed_title' as any) || (locale === 'ar' ? 'انتهى الموعد النهائي' : 'Deadline Passed')} hideFooter>
-                <div style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>
+            <Modal isOpen={showDeadlineModal} onClose={() => setShowDeadlineModal(false)} title={t('deadline_passed_title' as any) || (locale === 'ar' ? 'انتهى الموعد النهائي' : 'Deadline Passed')} hideFooter hideCloseButton={true}>
+                <div id="deadline-modal-content" style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>
                     <p style={{ fontSize: '1.1rem', lineHeight: '1.6', marginBottom: '1.5rem' }}>
                         {t('overdue_task_alert_msg' as any)}
                     </p>

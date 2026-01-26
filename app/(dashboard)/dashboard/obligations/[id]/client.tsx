@@ -15,11 +15,12 @@ export default function ObligationDetailClient({ obligation, userRole }: { oblig
     const [userId, setUserId] = useState<string | null>(null)
     const [isReverting, setIsReverting] = useState(false)
     const [showRevertConfirm, setShowRevertConfirm] = useState(false)
+    const [showDeadlineModal, setShowDeadlineModal] = useState(false)
     const router = useRouter()
     const searchParams = useSearchParams()
     const highlightId = searchParams.get('highlight')
     const shouldHighlight = highlightId === obligation.id
-    const isOverdue = new Date(obligation.deadline) < new Date() && !['COMPLETED', 'APPROVED', 'REJECTED'].includes(obligation.status)
+    const isOverdue = new Date(obligation.deadline) < new Date() && ['PENDING', 'IN_PROGRESS'].includes(obligation.status)
 
 
     useEffect(() => {
@@ -30,12 +31,19 @@ export default function ObligationDetailClient({ obligation, userRole }: { oblig
     }, [])
 
     useEffect(() => {
-        if (userRole !== 'EMPLOYEE') return
+        const isUserAssignee = obligation.assignees?.some((a: any) => a.id === userId)
+        const isRestrictedRole = userRole === 'EMPLOYEE' || (userRole === 'TEAM_LEADER' && isUserAssignee)
 
-        if (!isOverdue) return
+        if (!isRestrictedRole || !isOverdue) return
 
         const handleLocalClick = (e: MouseEvent) => {
             const target = e.target as HTMLElement
+
+            // Ignore clicks inside the deadline modal
+            if (target.closest('#deadline-modal-content')) {
+                return
+            }
+
             const closestClickable = target.closest('button, a, [role="button"]')
 
             if (closestClickable) {
@@ -47,13 +55,13 @@ export default function ObligationDetailClient({ obligation, userRole }: { oblig
 
                 e.preventDefault()
                 e.stopPropagation()
-                alert(t('overdue_obligation_alert_msg' as any))
+                setShowDeadlineModal(true)
             }
         }
 
         document.addEventListener('click', handleLocalClick, true)
         return () => document.removeEventListener('click', handleLocalClick, true)
-    }, [userRole, isOverdue, t])
+    }, [userRole, isOverdue, t, userId, obligation.assignees])
 
     const handleUpload = useCallback(async (isDraft: boolean) => {
         setUploading(true)
@@ -733,6 +741,20 @@ export default function ObligationDetailClient({ obligation, userRole }: { oblig
                         <button onClick={() => setShowRevertConfirm(false)} className="btn" style={{ background: '#e2e8f0' }}>{t('cancel')}</button>
                         <button onClick={handleRevert} className="btn" style={{ background: '#2563eb', color: 'white' }}>
                             {isReverting ? '...' : t('confirm_action_button')}
+                        </button>
+                    </div>
+                </div>
+            </Modal>
+
+            {/* Deadline Passed Modal */}
+            <Modal isOpen={showDeadlineModal} onClose={() => setShowDeadlineModal(false)} title={t('deadline_passed_title' as any) || (locale === 'ar' ? 'انتهى الموعد النهائي' : 'Deadline Passed')} hideFooter hideCloseButton={true}>
+                <div id="deadline-modal-content" style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>
+                    <p style={{ fontSize: '1.1rem', lineHeight: '1.6', marginBottom: '1.5rem' }}>
+                        {t('overdue_obligation_alert_msg' as any) || t('overdue_task_alert_msg' as any)}
+                    </p>
+                    <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem', justifyContent: 'flex-end', flexDirection: 'row' }}>
+                        <button onClick={() => setShowDeadlineModal(false)} className="btn btn-primary" style={{ minWidth: '100px' }}>
+                            {t('confirm_action_button')}
                         </button>
                     </div>
                 </div>

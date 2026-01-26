@@ -8,9 +8,10 @@ interface ModalProps {
     title: string
     children: React.ReactNode
     hideFooter?: boolean
+    hideCloseButton?: boolean
 }
 
-export default function Modal({ isOpen, onClose, title, children, hideFooter = false }: ModalProps) {
+export default function Modal({ isOpen, onClose, title, children, hideFooter = false, hideCloseButton = false }: ModalProps) {
     const modalRef = useRef<HTMLDivElement>(null)
 
     const [mounted, setMounted] = useState(false)
@@ -18,7 +19,7 @@ export default function Modal({ isOpen, onClose, title, children, hideFooter = f
     useEffect(() => {
         setMounted(true)
         const handleEscape = (e: KeyboardEvent) => {
-            if (e.key === 'Escape') onClose()
+            if (e.key === 'Escape' && !hideCloseButton) onClose()
         }
         if (isOpen) {
             document.addEventListener('keydown', handleEscape)
@@ -46,7 +47,7 @@ export default function Modal({ isOpen, onClose, title, children, hideFooter = f
             justifyContent: 'center',
             zIndex: 9999, // Increased z-index
             animation: 'fadeIn 0.2s ease-out'
-        }} onClick={onClose}>
+        }} onClick={() => !hideCloseButton && onClose()}>
             <div
                 ref={modalRef}
                 className="glass" // Use glass class
@@ -67,27 +68,29 @@ export default function Modal({ isOpen, onClose, title, children, hideFooter = f
             >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '1px solid #f1f5f9', paddingBottom: '1rem' }}>
                     <h2 style={{ margin: 0, fontSize: '1.5rem', fontWeight: '700', color: '#0f172a' }}>{title}</h2>
-                    <button
-                        onClick={onClose}
-                        style={{
-                            background: '#f1f5f9',
-                            border: 'none',
-                            fontSize: '1.25rem',
-                            cursor: 'pointer',
-                            color: '#64748b',
-                            width: '32px',
-                            height: '32px',
-                            borderRadius: '50%',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            transition: 'all 0.2s'
-                        }}
-                        onMouseEnter={(e) => { e.currentTarget.style.background = '#e2e8f0'; e.currentTarget.style.color = '#334155' }}
-                        onMouseLeave={(e) => { e.currentTarget.style.background = '#f1f5f9'; e.currentTarget.style.color = '#64748b' }}
-                    >
-                        &times;
-                    </button>
+                    {!hideCloseButton && (
+                        <button
+                            onClick={onClose}
+                            style={{
+                                background: '#f1f5f9',
+                                border: 'none',
+                                fontSize: '1.25rem',
+                                cursor: 'pointer',
+                                color: '#64748b',
+                                width: '32px',
+                                height: '32px',
+                                borderRadius: '50%',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                transition: 'all 0.2s'
+                            }}
+                            onMouseEnter={(e) => { e.currentTarget.style.background = '#e2e8f0'; e.currentTarget.style.color = '#334155' }}
+                            onMouseLeave={(e) => { e.currentTarget.style.background = '#f1f5f9'; e.currentTarget.style.color = '#64748b' }}
+                        >
+                            &times;
+                        </button>
+                    )}
                 </div>
                 <div style={{ color: '#334155', lineHeight: '1.7' }}>{children}</div>
                 {!hideFooter && (

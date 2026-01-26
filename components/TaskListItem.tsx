@@ -68,8 +68,8 @@ export default function TaskListItem({ task, currentUserId, isHighlighted }: Tas
             marginBottom: '1rem',
             borderInlineStart: showVisualHighlight ? '4px solid #a855f7' : '',
             transition: 'all 0.3s ease',
-            background: isOverdue ? '#fff1f2' : (showVisualHighlight ? 'rgba(168, 85, 247, 0.05)' : ''),
-            borderColor: isOverdue ? '#fecaca' : undefined
+            background: isOverdue ? '#fee2e2' : (showVisualHighlight ? 'rgba(168, 85, 247, 0.05)' : ''),
+            borderColor: isOverdue ? '#fca5a5' : undefined
         }}>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
@@ -132,7 +132,7 @@ export default function TaskListItem({ task, currentUserId, isHighlighted }: Tas
                     <div style={{ fontSize: '0.75rem', opacity: 0.7, marginTop: '0.25rem' }}>
                         {mounted && (
                             <>
-                                {t('created_label')}: {new Date(task.createdAt).toLocaleDateString(locale === 'ar' ? 'ar-EG' : 'en-GB')} | {t('deadline_label')}: {new Date(task.deadline).toLocaleDateString(locale === 'ar' ? 'ar-EG' : 'en-GB')}
+                                {t('created_label')}: {new Date(task.createdAt).toLocaleTimeString(locale === 'ar' ? 'ar-EG' : 'en-GB', { hour: '2-digit', minute: '2-digit' })} - {new Date(task.createdAt).toLocaleDateString(locale === 'ar' ? 'ar-EG' : 'en-GB')} | {t('deadline_label')}: {new Date(task.deadline).toLocaleTimeString(locale === 'ar' ? 'ar-EG' : 'en-GB', { hour: '2-digit', minute: '2-digit' })} - {new Date(task.deadline).toLocaleDateString(locale === 'ar' ? 'ar-EG' : 'en-GB')}
                             </>
                         )}
                     </div>
