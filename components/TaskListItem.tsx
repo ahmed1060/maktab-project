@@ -61,14 +61,15 @@ export default function TaskListItem({ task, currentUserId, isHighlighted }: Tas
 
     const memberCostsArr = task.memberCosts ? (typeof task.memberCosts === 'string' ? JSON.parse(task.memberCosts) : task.memberCosts) : {}
     const userCost = memberCostsArr[currentUserId] || 0
-    const isMultiAssignee = (task.assignees?.length || 0) > 1
+    const isOverdue = new Date(task.deadline) < new Date() && !['COMPLETED', 'APPROVED', 'REJECTED'].includes(task.status)
 
     return (
         <div id={`task-${task.id}`} className={`glass-card ${showVisualHighlight ? 'highlight-pulse' : ''}`} style={{
             marginBottom: '1rem',
             borderInlineStart: showVisualHighlight ? '4px solid #a855f7' : '',
             transition: 'all 0.3s ease',
-            background: showVisualHighlight ? 'rgba(168, 85, 247, 0.05)' : ''
+            background: isOverdue ? '#fff1f2' : (showVisualHighlight ? 'rgba(168, 85, 247, 0.05)' : ''),
+            borderColor: isOverdue ? '#fecaca' : undefined
         }}>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>

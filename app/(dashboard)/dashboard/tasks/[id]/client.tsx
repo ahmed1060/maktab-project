@@ -107,6 +107,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
     const [showPenaltyUI, setShowPenaltyUI] = useState(false)
     const [selectedPenalty, setSelectedPenalty] = useState<number | null>(null)
     const [applyingPenalty, setApplyingPenalty] = useState(false)
+    const [showDeadlineModal, setShowDeadlineModal] = useState(false)
 
     const router = useRouter()
     const searchParams = useSearchParams()
@@ -163,10 +164,11 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
     }, [userId, task.assignees, task.isEdited, isEditedPersistent])
 
     // Load users once for search/filter efficiency
+    const isOverdue = new Date(task.deadline) < new Date() && !['COMPLETED', 'APPROVED', 'REJECTED'].includes(task.status)
+
     useEffect(() => {
         if (userRole !== 'EMPLOYEE') return
 
-        const isOverdue = new Date(task.deadline) < new Date() && !['COMPLETED', 'APPROVED'].includes(task.status)
         if (!isOverdue) return
 
         const handleLocalClick = (e: MouseEvent) => {
@@ -182,13 +184,13 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
 
                 e.preventDefault()
                 e.stopPropagation()
-                alert(t('overdue_task_alert_msg' as any))
+                setShowDeadlineModal(true)
             }
         }
 
         document.addEventListener('click', handleLocalClick, true)
         return () => document.removeEventListener('click', handleLocalClick, true)
-    }, [userRole, task.deadline, task.status, t])
+    }, [userRole, isOverdue, t])
 
     useEffect(() => {
         if (['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole)) {
@@ -693,7 +695,11 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
     }
 
     return (
-        <div className={`card ${shouldHighlight ? 'highlight-shading' : ''}`} style={containerStyle}>
+        <div className={`card ${shouldHighlight ? 'highlight-shading' : ''}`} style={{
+            ...containerStyle,
+            background: isOverdue ? '#fff1f2' : (shouldHighlight ? undefined : 'white'),
+            borderColor: isOverdue ? '#fecaca' : undefined
+        }}>
             {/* Deleted Assignee Alert - Check            {/* Deleted Assignee Alert */}
             {task.assignees?.some((a: any) => a.status === 'DELETED') && ['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole) && !['COMPLETED', 'APPROVED', 'REJECTED'].includes(task.status) && (
                 <div style={{ ...alertStyle, background: '#fee2e2', border: '1px solid #ef4444', color: '#991b1b' }}>
@@ -1390,8 +1396,8 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                                                     e.target.value = ''
                                                 }
                                             }}
-                                            style={{ opacity: 0, position: 'absolute', inset: 0, cursor: 'pointer' }}
-                                            disabled={uploading}
+                                            style={{ opacity: 0, position: 'absolute', inset: 0, cursor: isOverdue && userRole === 'EMPLOYEE' ? 'not-allowed' : 'pointer' }}
+                                            disabled={uploading || (isOverdue && userRole === 'EMPLOYEE')}
                                         />
                                         <div style={{ pointerEvents: 'none' }}>
                                             <div style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>☁️</div>
@@ -1423,7 +1429,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                                     <div style={{ display: 'flex', gap: '0.5rem', flexDirection: 'row' }}>
                                         <input type="text" className="input" placeholder={t('cost_description_placeholder')} value={costDescription} onChange={e => setCostDescription(e.target.value)} style={{ flex: 1 }} />
                                         <input type="number" className="input" placeholder={t('cost_amount_placeholder')} value={cost} onChange={e => setCost(e.target.value)} style={{ width: '120px' }} />
-                                        <button onClick={handleAddCost} disabled={!cost} className="btn" style={{ background: '#e0f2fe', color: '#0369a1', fontWeight: '700', minWidth: '80px' }}>{t('add_label')}</button>
+                                        <button onClick={handleAddCost} disabled={!cost || (isOverdue && userRole === 'EMPLOYEE')} className="btn" style={{ background: '#e2e8f0', color: '#0369a1', fontWeight: '700', minWidth: '80px', opacity: (isOverdue && userRole === 'EMPLOYEE') ? 0.6 : 1, cursor: (isOverdue && userRole === 'EMPLOYEE') ? 'not-allowed' : 'pointer' }}>{t('add_label')}</button>
                                     </div>
                                     {costEntries.length > 0 && (
                                         <div style={{ marginTop: '1rem', background: 'white', border: '1px solid #e2e8f0', borderRadius: '0.5rem', overflow: 'hidden' }}>
@@ -1450,7 +1456,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                                 <div style={{ marginBottom: '2rem' }}>
                                     <label style={{ display: 'block', fontWeight: '600', marginBottom: '0.75rem' }}>{t('current_location_label')}</label>
                                     <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexDirection: 'row' }}>
-                                        <button onClick={handleCaptureLocation} disabled={capturingLocation || uploading} className="btn" style={{ background: capturingLocation ? '#e2e8f0' : '#3b82f6', color: capturingLocation ? '#64748b' : 'white', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                        <button onClick={handleCaptureLocation} disabled={capturingLocation || uploading || (isOverdue && userRole === 'EMPLOYEE')} className="btn" style={{ background: capturingLocation ? '#e2e8f0' : (isOverdue && userRole === 'EMPLOYEE') ? '#94a3b8' : '#3b82f6', color: capturingLocation ? '#64748b' : 'white', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: (isOverdue && userRole === 'EMPLOYEE') ? 'not-allowed' : 'pointer' }}>
                                             {capturingLocation ? t('capturing_location_button').replace('📍', '') : t('capture_location_button').replace('📍', '')}
                                         </button>
                                         <span style={{ fontSize: '0.875rem', fontWeight: '500', color: locationStatus.includes('✓') ? '#16a34a' : locationStatus.includes('Failed') ? '#dc2626' : '#64748b' }}>{locationStatus}</span>
@@ -1458,8 +1464,8 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                                 </div>
 
                                 <div style={{ display: 'flex', gap: '1rem', flexDirection: 'row' }}>
-                                    <button onClick={() => handleUpload(true)} disabled={uploading} className="btn" style={{ background: '#e2e8f0', color: '#1e293b', fontWeight: '600', flex: 1 }}>{loadingType === 'DRAFT' ? t('saving') : t('save_draft_button')}</button>
-                                    <button onClick={handleUploadRequest} disabled={uploading} className="btn btn-primary" style={{ fontWeight: '700', flex: 2 }}>{loadingType === 'SUBMIT' ? t('submitting') : t('submit_task_button')}</button>
+                                    <button onClick={() => handleUpload(true)} disabled={uploading || (isOverdue && userRole === 'EMPLOYEE')} className="btn" style={{ background: '#e2e8f0', color: '#1e293b', fontWeight: '600', flex: 1, opacity: (isOverdue && userRole === 'EMPLOYEE') ? 0.6 : 1, cursor: (isOverdue && userRole === 'EMPLOYEE') ? 'not-allowed' : 'pointer' }}>{loadingType === 'DRAFT' ? t('saving') : t('save_draft_button')}</button>
+                                    <button onClick={handleUploadRequest} disabled={uploading || (isOverdue && userRole === 'EMPLOYEE')} className="btn btn-primary" style={{ fontWeight: '700', flex: 2, opacity: (isOverdue && userRole === 'EMPLOYEE') ? 0.6 : 1, cursor: (isOverdue && userRole === 'EMPLOYEE') ? 'not-allowed' : 'pointer' }}>{loadingType === 'SUBMIT' ? t('submitting') : t('submit_task_button')}</button>
                                 </div>
                             </div>
                         )}
@@ -1757,6 +1763,20 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                 </div>
             </Modal>
 
-        </div >
+            {/* Deadline Passed Modal */}
+            <Modal isOpen={showDeadlineModal} onClose={() => setShowDeadlineModal(false)} title={t('deadline_passed_title' as any) || (locale === 'ar' ? 'انتهى الموعد النهائي' : 'Deadline Passed')} hideFooter>
+                <div style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>
+                    <p style={{ fontSize: '1.1rem', lineHeight: '1.6', marginBottom: '1.5rem' }}>
+                        {t('overdue_task_alert_msg' as any)}
+                    </p>
+                    <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem', justifyContent: 'flex-end', flexDirection: 'row' }}>
+                        <button onClick={() => setShowDeadlineModal(false)} className="btn btn-primary" style={{ minWidth: '100px' }}>
+                            {t('confirm_action_button')}
+                        </button>
+                    </div>
+                </div>
+            </Modal>
+
+        </div>
     )
 }

@@ -16,10 +16,7 @@ export default function ObligationDetailClient({ obligation, userRole }: { oblig
     const isAssignee = obligation.assignees?.some((a: any) => a.id === userId)
     const [isReverting, setIsReverting] = useState(false)
     const [showRevertConfirm, setShowRevertConfirm] = useState(false)
-    const router = useRouter()
-    const searchParams = useSearchParams()
-    const highlightId = searchParams.get('highlight')
-    const shouldHighlight = highlightId === obligation.id
+    const isOverdue = new Date(obligation.deadline) < new Date() && !['COMPLETED', 'APPROVED'].includes(obligation.status)
 
 
     useEffect(() => {
@@ -32,7 +29,6 @@ export default function ObligationDetailClient({ obligation, userRole }: { oblig
     useEffect(() => {
         if (userRole !== 'EMPLOYEE') return
 
-        const isOverdue = new Date(obligation.deadline) < new Date() && !['COMPLETED', 'APPROVED'].includes(obligation.status)
         if (!isOverdue) return
 
         const handleLocalClick = (e: MouseEvent) => {
@@ -328,7 +324,11 @@ export default function ObligationDetailClient({ obligation, userRole }: { oblig
     }
 
     return (
-        <div className={`card ${shouldHighlight ? 'highlight-shading' : ''}`} style={containerStyle}>
+        <div className={`card ${shouldHighlight ? 'highlight-shading' : ''}`} style={{
+            ...containerStyle,
+            background: isOverdue ? '#fff1f2' : (shouldHighlight ? undefined : 'white'),
+            borderColor: isOverdue ? '#fecaca' : undefined
+        }}>
 
             {/* Deleted Assignee Alert */}
             {obligation.assignees?.some((a: any) => a.status === 'DELETED') && ['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole) && (

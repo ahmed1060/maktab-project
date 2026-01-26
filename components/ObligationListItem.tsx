@@ -31,14 +31,13 @@ export default function ObligationListItem({ obligation, isHighlighted }: Obliga
         setMounted(true)
     }, [])
 
-    const getButtonLabel = () => {
-        if (obligation.status === 'PENDING') return t('start_obligation')
-        if (obligation.status === 'IN_PROGRESS') return t('continue_obligation')
-        return t('open_obligation')
-    }
+    const isOverdue = new Date(obligation.deadline) < new Date() && !['COMPLETED', 'APPROVED', 'REJECTED'].includes(obligation.status)
 
     return (
-        <div id={`obligation-${obligation.id}`} className={`card ${isHighlighted ? 'highlight-shading' : ''}`}>
+        <div id={`obligation-${obligation.id}`} className={`card ${isHighlighted ? 'highlight-shading' : ''}`} style={{
+            background: isOverdue ? '#fff1f2' : undefined,
+            borderColor: isOverdue ? '#fecaca' : undefined
+        }}>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                     <h3
