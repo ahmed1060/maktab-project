@@ -53,7 +53,7 @@ export default function RequestsSection({ userRole }: { userRole: string }) {
                 setTotal(data.total || 0)
                 setTotalPages(data.totalPages || 0)
             }
-        } catch {
+        } catch (error) {
             console.error("Error fetching requests:", error)
         } finally {
             setLoading(false)
