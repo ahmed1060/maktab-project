@@ -13,10 +13,14 @@ export default function ObligationDetailClient({ obligation, userRole }: { oblig
     const [showFeedback, setShowFeedback] = useState(false)
     const [feedbackMessage, setFeedbackMessage] = useState('')
     const [userId, setUserId] = useState<string | null>(null)
-    const isAssignee = obligation.assignees?.some((a: any) => a.id === userId)
     const [isReverting, setIsReverting] = useState(false)
     const [showRevertConfirm, setShowRevertConfirm] = useState(false)
-    const isOverdue = new Date(obligation.deadline) < new Date() && !['COMPLETED', 'APPROVED'].includes(obligation.status)
+    const router = useRouter()
+    const searchParams = useSearchParams()
+    const highlightId = searchParams.get('highlight')
+    const shouldHighlight = highlightId === obligation.id
+    const isMultiAssignee = (obligation.assignees?.length || 0) > 1
+    const isOverdue = new Date(obligation.deadline) < new Date() && !['COMPLETED', 'APPROVED', 'REJECTED'].includes(obligation.status)
 
 
     useEffect(() => {
@@ -50,7 +54,7 @@ export default function ObligationDetailClient({ obligation, userRole }: { oblig
 
         document.addEventListener('click', handleLocalClick, true)
         return () => document.removeEventListener('click', handleLocalClick, true)
-    }, [userRole, obligation.deadline, obligation.status, t])
+    }, [userRole, isOverdue, t])
 
     const handleUpload = useCallback(async (isDraft: boolean) => {
         setUploading(true)

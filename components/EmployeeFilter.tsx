@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useLanguage } from '@/context/LanguageContext'
 import { useSession } from 'next-auth/react'
 import { useCompany } from '@/context/CompanyContext'
@@ -107,7 +107,7 @@ export default function EmployeeFilter({
     const [localSortBy, setLocalSortBy] = useState(sortBy || '')
     const [localSortOrder, setLocalSortOrder] = useState<'asc' | 'desc'>(sortOrder || 'asc')
 
-    const handleApplyFilters = () => {
+    const handleApplyFilters = useCallback(() => {
         onFilterChange({
             employeeId: localEmployeeId,
             dateFrom: localDateFrom,
@@ -121,7 +121,7 @@ export default function EmployeeFilter({
         if (onRoleChange && showRoleFilter) onRoleChange(localRole)
         if (onCompanyChange && showCompanyFilter) onCompanyChange(localCompanyId)
         setIsPopupOpen(false)
-    }
+    }, [onFilterChange, localEmployeeId, localDateFrom, localDateTo, localStatus, searchTerm, onSortChange, localSortBy, localSortOrder, onRoleChange, showRoleFilter, localRole, onCompanyChange, showCompanyFilter, localCompanyId])
 
     useEffect(() => {
         setLocalEmployeeId(selectedEmployeeId)

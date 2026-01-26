@@ -31,6 +31,12 @@ export default function ObligationListItem({ obligation, isHighlighted }: Obliga
         setMounted(true)
     }, [])
 
+    const getButtonLabel = () => {
+        if (obligation.status === 'PENDING') return t('start_obligation')
+        if (obligation.status === 'IN_PROGRESS') return t('continue_obligation')
+        return t('open_obligation')
+    }
+
     const isOverdue = new Date(obligation.deadline) < new Date() && !['COMPLETED', 'APPROVED', 'REJECTED'].includes(obligation.status)
 
     return (

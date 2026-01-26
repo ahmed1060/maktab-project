@@ -2,14 +2,12 @@
 'use client'
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { useSession } from 'next-auth/react'
 import Modal from '@/components/Modal'
 import DiffViewer from '@/components/DiffViewer'
 import { useToast } from '@/context/ToastContext'
 import DateTimePicker from '@/components/DateTimePicker'
 import { useLanguage } from '@/context/LanguageContext'
 import LocationSearchInput from '@/components/LocationSearchInput'
-import { useCompany } from '@/context/CompanyContext' // Added this import
 
 const TrashIcon = ({ size = 18, color = "#ef4444" }: { size?: number, color?: string }) => (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -23,7 +21,6 @@ const TrashIcon = ({ size = 18, color = "#ef4444" }: { size?: number, color?: st
 
 export default function TaskDetailClient({ task: initialTask, userRole, userId, creatorName, isRestricted }: { task: any, userRole: string, userId: string, creatorName: string, currentUserName: string, isRestricted: boolean }) {
     const { t, locale } = useLanguage()
-    const { data: session } = useSession()
 
     // Parse member costs and payment status
     const getMemberCosts = (taskObj: any) => {
@@ -88,7 +85,6 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
             } catch (e) { console.error('[ATTACHMENTS_PARSE_FAIL]', e); return [] }
         })()
     })
-    const [editPendingFiles, setEditPendingFiles] = useState<File[]>([])
     const [editFieldErrors, setEditFieldErrors] = useState({ title: '', description: '' })
     const [isReviewModalOpen, setIsReviewModalOpen] = useState(false)
     const [reviewAction, setReviewAction] = useState<'APPROVED' | 'REJECTED' | null>(null)
@@ -138,7 +134,6 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                 } catch { return [] }
             })()
         })
-        setEditPendingFiles([])
         setReviewDifficulty(initialTask.difficulty)
     }, [initialTask])
 
@@ -542,7 +537,6 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
             locationLink: parseLocation(task.location || '').link,
             attachments: existingAttachments
         })
-        setEditPendingFiles([])
         setIsEditing(true)
     }
 
@@ -577,7 +571,6 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
             if (!res.ok) throw new Error('Update failed')
             showToast(t('task_details_updated_success'), 'success')
             setIsEditing(false)
-            setEditPendingFiles([])
             router.refresh()
         } catch (e) {
             console.error(e)
