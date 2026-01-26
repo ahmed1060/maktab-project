@@ -177,7 +177,6 @@ export async function POST(
 
 export async function DELETE(
     request: NextRequest,
-    { params }: { params: { id: string, sectionId: string } }
 ) {
     try {
         const session = await getServerSession(authOptions)
@@ -256,7 +255,6 @@ export async function DELETE(
 
 export async function PUT(
     request: NextRequest,
-    { params }: { params: { id: string, sectionId: string } }
 ) {
     try {
         const session = await getServerSession(authOptions)

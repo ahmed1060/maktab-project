@@ -1,0 +1,23 @@
+
+> app@0.1.0 lint
+> next lint
+
+
+./app/(dashboard)/dashboard/companies/[id]/payments/page.tsx
+98:18  Warning: 'error' is defined but never used.  @typescript-eslint/no-unused-vars
+143:18  Warning: 'error' is defined but never used.  @typescript-eslint/no-unused-vars
+
+./app/(dashboard)/dashboard/requests/history/RequestsHistoryClient.tsx
+96:18  Warning: 'error' is defined but never used.  @typescript-eslint/no-unused-vars
+123:18  Warning: 'error' is defined but never used.  @typescript-eslint/no-unused-vars
+
+./app/(dashboard)/dashboard/tasks/new/page.tsx
+741:62  Warning: 'e' is defined but never used.  @typescript-eslint/no-unused-vars
+797:62  Warning: 'e' is defined but never used.  @typescript-eslint/no-unused-vars
+
+./components/requests/RequestsSection.tsx
+110:18  Warning: 'error' is defined but never used.  @typescript-eslint/no-unused-vars
+132:18  Warning: 'error' is defined but never used.  @typescript-eslint/no-unused-vars
+149:18  Warning: 'error' is defined but never used.  @typescript-eslint/no-unused-vars
+
+info  - Need to disable some ESLint rules? Learn more here: https://nextjs.org/docs/basic-features/eslint#disabling-rules

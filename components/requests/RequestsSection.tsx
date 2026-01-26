@@ -53,7 +53,7 @@ export default function RequestsSection({ userRole }: { userRole: string }) {
                 setTotal(data.total || 0)
                 setTotalPages(data.totalPages || 0)
             }
-        } catch (error) {
+        } catch {
             console.error("Error fetching requests:", error)
         } finally {
             setLoading(false)
@@ -107,7 +107,7 @@ export default function RequestsSection({ userRole }: { userRole: string }) {
             } else {
                 showToast(t('failed_submit_request') || 'Failed to submit request', 'error')
             }
-        } catch (error) {
+        } catch {
             showToast(t('error_generic'), 'error')
         }
     }
@@ -129,7 +129,7 @@ export default function RequestsSection({ userRole }: { userRole: string }) {
             } else {
                 showToast(t('error_generic'), 'error')
             }
-        } catch (error) {
+        } catch {
             showToast(t('error_generic'), 'error')
         }
     }
@@ -146,7 +146,7 @@ export default function RequestsSection({ userRole }: { userRole: string }) {
             } else {
                 showToast(t('error_generic'), 'error')
             }
-        } catch (error) {
+        } catch {
             showToast(t('error_generic'), 'error')
         }
     }

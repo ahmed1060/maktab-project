@@ -738,7 +738,7 @@ export default function NewTaskPage() {
                                                         } else {
                                                             showToast(result.message || 'Upload Failed', 'error')
                                                         }
-                                                    } catch (e) {
+                                                    } catch {
                                                         showToast('Upload Error', 'error')
                                                     } finally {
                                                         setIsEnUploading(false)
@@ -794,7 +794,7 @@ export default function NewTaskPage() {
                                                         } else {
                                                             showToast(result.message || 'Upload Failed', 'error')
                                                         }
-                                                    } catch (e) {
+                                                    } catch {
                                                         showToast('Upload Error', 'error')
                                                     } finally {
                                                         setIsArUploading(false)

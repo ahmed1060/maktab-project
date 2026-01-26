@@ -314,7 +314,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: { 
                                 </div>
                             </div>
                         ) : (
-                            todayTasks.map((task: any, idx: number) => (
+                            todayTasks.map((task: any) => (
                                 <Link key={task.id} href={`/dashboard/tasks/${task.id}`} style={{ textDecoration: 'none', color: 'inherit', display: 'block' }}>
                                     <div className="glass-card" style={{ height: '100%', boxSizing: 'border-box', [locale === 'ar' ? 'borderRight' : 'borderLeft']: '6px solid #ef4444', padding: '1.75rem' }}>
                                         <div style={{ marginBottom: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>

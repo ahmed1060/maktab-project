@@ -19,7 +19,6 @@ export default function ObligationDetailClient({ obligation, userRole }: { oblig
     const searchParams = useSearchParams()
     const highlightId = searchParams.get('highlight')
     const shouldHighlight = highlightId === obligation.id
-    const isMultiAssignee = (obligation.assignees?.length || 0) > 1
     const isOverdue = new Date(obligation.deadline) < new Date() && !['COMPLETED', 'APPROVED', 'REJECTED'].includes(obligation.status)
 
 

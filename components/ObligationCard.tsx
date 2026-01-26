@@ -70,8 +70,8 @@ export default function ObligationCard({ obligation, userRole, isHighlighted }: 
                 setStatus(newStatus)
                 window.location.reload() // Refresh to show updated state
             }
-        } catch (error) {
-            console.error("Update failed", error)
+        } catch (_error) {
+            console.error("Update failed", _error)
         }
     }
 

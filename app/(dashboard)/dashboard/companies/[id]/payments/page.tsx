@@ -95,7 +95,7 @@ export default function CompanyPaymentsPage() {
             } else {
                 showToast(t('error_generic'), 'error')
             }
-        } catch (error) {
+        } catch {
             showToast(t('error_generic'), 'error')
         } finally {
             setSubmitting(false)
@@ -140,7 +140,7 @@ export default function CompanyPaymentsPage() {
                 const data = await res.json()
                 showToast(data.error || t('error_generic'), 'error')
             }
-        } catch (error) {
+        } catch {
             showToast(t('error_generic'), 'error')
         } finally {
             setPaymentToDelete(null)

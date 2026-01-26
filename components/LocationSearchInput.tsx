@@ -83,7 +83,7 @@ export default function LocationSearchInput({ value, onChange, placeholder, labe
             }
         }, 800)
         return () => clearTimeout(timer)
-    }, [query])
+    }, [query, value.name])
 
     const handleSelect = (s: any) => {
         const name = s.address?.label || s.title

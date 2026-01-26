@@ -93,7 +93,7 @@ export default function RequestsHistoryClient({ userRole }: { userRole: string }
             } else {
                 showToast(t('error_generic'), 'error')
             }
-        } catch (error) {
+        } catch {
             showToast(t('error_generic'), 'error')
         }
     }
@@ -120,7 +120,7 @@ export default function RequestsHistoryClient({ userRole }: { userRole: string }
             } else {
                 showToast(t('error_generic'), 'error')
             }
-        } catch (error) {
+        } catch {
             showToast(t('error_generic'), 'error')
         }
     }

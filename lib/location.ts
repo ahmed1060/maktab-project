@@ -31,7 +31,7 @@ export function extractCoords(locationStr: string | null | undefined): Coordinat
             if (!isNaN(lat) && !isNaN(finalLng)) {
                 return { lat, lng: finalLng };
             }
-        } catch (e) { }
+        } catch { }
     }
 
     // Regex to find patterns like q=lat,lng or just lat,lng
