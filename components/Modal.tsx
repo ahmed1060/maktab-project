@@ -29,7 +29,7 @@ export default function Modal({ isOpen, onClose, title, children, hideFooter = f
             document.removeEventListener('keydown', handleEscape)
             document.body.style.overflow = 'unset'
         }
-    }, [isOpen, onClose])
+    }, [isOpen, onClose, hideCloseButton])
 
     if (!isOpen || !mounted) return null
 
