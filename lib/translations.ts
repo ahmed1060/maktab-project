@@ -654,7 +654,8 @@ export const translations = {
         overdue_task_alert_msg: "The deadline for this task has passed. Please contact the person who assigned it to discuss next steps or to request an extension",
         overdue_obligation_alert_msg: "The deadline for this obligation has passed. Please contact the person who assigned it to discuss next steps or to request an extension",
         my_tasks: "My Tasks",
-        active_tasks: "Active Tasks"
+        active_tasks: "Active Tasks",
+        deadline_passed_title: "Deadline Passed"
     },
     ar: {
         welcome_back: "مرحباً بك مجدداً",

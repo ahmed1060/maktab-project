@@ -180,14 +180,27 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
 
             if (closestClickable) {
                 const text = closestClickable.textContent?.trim().toLowerCase() || ''
+                const title = closestClickable.getAttribute('title')?.trim().toLowerCase() || ''
+
+                // Helper to strip common emojis for robust matching
+                const stripEmoji = (str: string) => str.replace(/[\u1F60-\u1F64]|[\u2702-\u27B0]|[\u1F68-\u1F6C]|[\u1F30-\u1F70]|[\u2600-\u26ff]|[\uD83C-\uDBFF\uDC00-\uDFFF]/g, '').trim().toLowerCase()
 
                 // Block ONLY these actions if overdue (they modify the submission state)
                 const isBlockedAction = [
-                    (t('add_label') || 'add').toLowerCase(), // Add Cost
-                    (t('capture_location_button' as any) || 'capture').toLowerCase(), // Capture Location
-                    (t('save_draft_button' as any) || 'save draft').toLowerCase(), // Save Draft
-                    (t('upload_drag_files_msg' as any) || 'upload').toLowerCase() // Add Attachment main area text
-                ].some(keyword => text.includes(keyword))
+                    stripEmoji(t('add_label') || 'add'), // Add Cost
+                    stripEmoji(t('capture_location_button' as any) || 'capture'), // Capture Location
+                    stripEmoji(t('save_draft_button' as any) || 'save draft'), // Save Draft
+                    stripEmoji(t('upload_drag_files_msg' as any) || 'upload'), // Add Attachment main area text
+                    stripEmoji(t('delete') || 'delete'), // Sub-item delete button text
+                    stripEmoji(t('delete_location_title' as any) || 'delete location'), // Location delete button title
+                    '×' // Cost delete icon
+                ].some(keyword => {
+                    // Exact match for the basic "Delete" text to avoid blocking "Delete Task"
+                    if (keyword === (t('delete') || 'delete').toLowerCase()) {
+                        return text === keyword || title === keyword
+                    }
+                    return text.includes(keyword) || title.includes(keyword)
+                })
 
                 // Special robust check for file input and its immediate container
                 const isFileInput = closestClickable.tagName === 'INPUT' && (closestClickable as HTMLInputElement).type === 'file'
@@ -199,6 +212,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                 }
             }
         }
+
 
 
         document.addEventListener('click', handleLocalClick, true)
