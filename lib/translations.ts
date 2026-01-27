@@ -1313,7 +1313,8 @@ export const translations = {
         global_overdue_alert_title: "مطلوب إجراء: عناصر متأخرة",
         global_overdue_alert_msg: "لديك عناصر تجاوزت الموعد النهائي. الوصول إلى ميزات لوحة التحكم الأخرى محدود حتى يتم التعامل مع هذه العناصر.",
         my_tasks: "مهامي",
-        active_tasks: "المهام النشطة"
+        active_tasks: "المهام النشطة",
+        deadline_passed_title: "انتهى الموعد النهائي"
     }
 };
 
