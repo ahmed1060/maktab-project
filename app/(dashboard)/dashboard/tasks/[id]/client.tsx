@@ -193,11 +193,16 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                     stripEmoji(t('upload_drag_files_msg' as any) || 'upload'), // Add Attachment main area text
                     stripEmoji(t('delete') || 'delete'), // Sub-item delete button text
                     stripEmoji(t('delete_location_title' as any) || 'delete location'), // Location delete button title
-                    '×' // Cost delete icon
+                    '×', // Cost delete icon (multiplication sign)
+                    'x'  // Cost delete icon (letter x)
                 ].some(keyword => {
                     // Exact match for the basic "Delete" text to avoid blocking "Delete Task"
                     if (keyword === (t('delete') || 'delete').toLowerCase()) {
                         return text === keyword || title === keyword
+                    }
+                    // Exact match for single character icons to avoid false positives
+                    if (keyword === '×' || keyword === 'x') {
+                        return text === keyword
                     }
                     return text.includes(keyword) || title.includes(keyword)
                 })
