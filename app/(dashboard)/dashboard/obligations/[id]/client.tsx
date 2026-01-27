@@ -44,41 +44,28 @@ export default function ObligationDetailClient({ obligation, userRole }: { oblig
                 return
             }
 
-            // Expanded selector to include input and label (for file uploads)
+            // Target buttons, links, labels, and inputs
             const closestClickable = target.closest('button, a, label, input, [role="button"]')
 
             if (closestClickable) {
                 const text = closestClickable.textContent?.trim().toLowerCase() || ''
 
-                // 1. Always allow Close, Logout, etc.
-                const isSystemAction = [
-                    t('close_button').toLowerCase(),
-                    'logout',
-                    'sign out'
+                // Block ONLY these actions if overdue
+                const isBlockedAction = [
+                    (t('save_draft_obligation_button' as any) || 'save draft').toLowerCase(), // Save Draft
+                    (t('upload_drag_files_msg' as any) || 'upload').toLowerCase() // Add Attachment
                 ].some(keyword => text.includes(keyword))
 
-                if (isSystemAction) return
+                const isFileInput = closestClickable.tagName === 'INPUT' && (closestClickable as HTMLInputElement).type === 'file'
 
-                // 2. For Team Leaders, allow administrative/management actions
-                if (userRole === 'TEAM_LEADER') {
-                    const allowedKeywords = [
-                        (t('edit_button' as any) || 'edit').toLowerCase(),
-                        (t('delete_obligation_button' as any) || 'delete').toLowerCase(),
-                        (t('return_to_in_progress' as any) || 'revert').toLowerCase(),
-                        (t('reassign_button' as any) || 'transfer').toLowerCase(),
-                        'reassign'
-                    ].filter(Boolean)
-
-                    const isAllowed = allowedKeywords.some(keyword => text.includes(keyword))
-                    if (isAllowed) return
+                if (isBlockedAction || isFileInput) {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    setShowDeadlineModal(true)
                 }
-
-                // 3. Block everything else (Submission, Attachments, etc.)
-                e.preventDefault()
-                e.stopPropagation()
-                setShowDeadlineModal(true)
             }
         }
+
 
         document.addEventListener('click', handleLocalClick, true)
         return () => document.removeEventListener('click', handleLocalClick, true)

@@ -170,49 +170,36 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
         const handleLocalClick = (e: MouseEvent) => {
             const target = e.target as HTMLElement
 
-            // Ignore clicks inside the deadline modal to allow confirm button to work
+            // Ignore clicks inside the deadline modal
             if (target.closest('#deadline-modal-content')) {
                 return
             }
 
-            // Expanded selector to include input and label (for file uploads)
+            // Target buttons, links, labels, and inputs
             const closestClickable = target.closest('button, a, label, input, [role="button"]')
 
             if (closestClickable) {
                 const text = closestClickable.textContent?.trim().toLowerCase() || ''
 
-                // 1. Always allow Close, Logout, etc.
-                const isSystemAction = [
-                    t('close_button').toLowerCase(),
-                    'logout',
-                    'sign out',
-                    'i_understand_button'
+                // Block ONLY these actions if overdue (they modify the submission state)
+                const isBlockedAction = [
+                    (t('add_label') || 'add').toLowerCase(), // Add Cost
+                    (t('capture_location_button' as any) || 'capture').toLowerCase(), // Capture Location
+                    (t('save_draft_button' as any) || 'save draft').toLowerCase(), // Save Draft
+                    (t('upload_drag_files_msg' as any) || 'upload').toLowerCase() // Add Attachment main area text
                 ].some(keyword => text.includes(keyword))
 
-                if (isSystemAction) return
+                // Special robust check for file input and its immediate container
+                const isFileInput = closestClickable.tagName === 'INPUT' && (closestClickable as HTMLInputElement).type === 'file'
 
-                // 2. For Team Leaders, allow administrative/management actions
-                if (userRole === 'TEAM_LEADER') {
-                    // Specific translation keys for management actions
-                    const allowedKeywords = [
-                        (t('edit_task_button' as any) || 'edit').toLowerCase(),
-                        (t('delete_task_button' as any) || 'delete').toLowerCase(),
-                        (t('transfer_to_another_employee' as any) || 'transfer').toLowerCase(),
-                        (t('return_to_in_progress' as any) || 'revert').toLowerCase(),
-                        (t('individual_settlements' as any) || 'settlements').toLowerCase(),
-                        'reassign'
-                    ].filter(Boolean)
-
-                    const isAllowed = allowedKeywords.some(keyword => text.includes(keyword))
-                    if (isAllowed) return
+                if (isBlockedAction || isFileInput) {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    setShowDeadlineModal(true)
                 }
-
-                // 3. Block everything else (Submission, Attachments, etc.)
-                e.preventDefault()
-                e.stopPropagation()
-                setShowDeadlineModal(true)
             }
         }
+
 
         document.addEventListener('click', handleLocalClick, true)
         return () => document.removeEventListener('click', handleLocalClick, true)
