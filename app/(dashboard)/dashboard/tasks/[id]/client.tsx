@@ -1285,7 +1285,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                                                         }
                                                     } catch { }
 
-                                                    const canVerify = ['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole) && task.status === 'PENDING_CONFIRMATION' && !task.assignees?.some((a: any) => a.id === userId)
+                                                    const canVerify = ['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole) && task.status === 'PENDING_CONFIRMATION'
                                                     const canDelete = (userRole === 'EMPLOYEE' || task.assignees?.some((a: any) => a.id === userId)) && ['PENDING', 'IN_PROGRESS', 'REJECTED'].includes(task.status)
 
                                                     const handleVerify = async (status: 'CORRECT' | 'WRONG') => {
