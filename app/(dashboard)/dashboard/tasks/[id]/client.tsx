@@ -1083,7 +1083,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                                         })()}
 
                                         {/* Individual Settlements for Admins */}
-                                        {['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole) && (task.assignees?.length || 0) > 1 && Object.keys(getMemberCosts(task)).length > 0 && (
+                                        {['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole) && !['PENDING', 'IN_PROGRESS'].includes(task.status) && (task.assignees?.length || 0) > 1 && Object.keys(getMemberCosts(task)).length > 0 && (
                                             <div style={{ marginTop: '1rem', padding: '1.25rem', background: '#f8fafc', borderRadius: '1rem', border: '1px solid #e2e8f0' }}>
                                                 <h4 style={{ fontSize: '0.9rem', fontWeight: '700', marginBottom: '1rem', color: '#1e293b' }}>
                                                     {t('individual_settlements' as any) || 'Individual Settlements'}
@@ -1171,7 +1171,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                                         `}</style>
                                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexDirection: 'row', gap: '1rem', flexWrap: 'wrap' }}>
                                                 <h3 style={{ margin: 0 }}>{t('location_history_title')}</h3>
-                                                {['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole) && (
+                                                {['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole) && !['PENDING', 'IN_PROGRESS'].includes(task.status) && (
                                                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
                                                         {showPenaltyUI && (
                                                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: '#f8fafc', padding: '0.25rem 0.5rem', borderRadius: '2rem', border: '1px solid #e2e8f0' }}>
