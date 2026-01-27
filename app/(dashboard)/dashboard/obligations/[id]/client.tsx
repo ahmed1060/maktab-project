@@ -44,26 +44,32 @@ export default function ObligationDetailClient({ obligation, userRole }: { oblig
                 return
             }
 
-            // Expanded selector to include label (for file uploads)
-            const closestClickable = target.closest('button, a, label, [role="button"]')
+            // Expanded selector to include input and label (for file uploads)
+            const closestClickable = target.closest('button, a, label, input, [role="button"]')
 
             if (closestClickable) {
                 const text = closestClickable.textContent?.trim().toLowerCase() || ''
 
                 // 1. Always allow Close, Logout, etc.
-                if (text.includes(t('close_button').toLowerCase()) || text.includes('logout') || text.includes('sign out')) {
-                    return
-                }
+                const isSystemAction = [
+                    t('close_button').toLowerCase(),
+                    'logout',
+                    'sign out'
+                ].some(keyword => text.includes(keyword))
+
+                if (isSystemAction) return
 
                 // 2. For Team Leaders, allow administrative/management actions
                 if (userRole === 'TEAM_LEADER') {
-                    // List of allowed management actions for TL even if overdue
-                    const allowedActions = [
+                    const allowedKeywords = [
                         (t('edit_button' as any) || 'edit').toLowerCase(),
-                        (t('delete_button' as any) || 'delete').toLowerCase()
-                    ]
+                        (t('delete_obligation_button' as any) || 'delete').toLowerCase(),
+                        (t('return_to_in_progress' as any) || 'revert').toLowerCase(),
+                        (t('reassign_button' as any) || 'transfer').toLowerCase(),
+                        'reassign'
+                    ].filter(Boolean)
 
-                    const isAllowed = allowedActions.some(action => text.includes(action))
+                    const isAllowed = allowedKeywords.some(keyword => text.includes(keyword))
                     if (isAllowed) return
                 }
 

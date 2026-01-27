@@ -175,28 +175,35 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                 return
             }
 
-            // Expanded selector to include label (for file uploads)
-            const closestClickable = target.closest('button, a, label, [role="button"]')
+            // Expanded selector to include input and label (for file uploads)
+            const closestClickable = target.closest('button, a, label, input, [role="button"]')
 
             if (closestClickable) {
                 const text = closestClickable.textContent?.trim().toLowerCase() || ''
 
                 // 1. Always allow Close, Logout, etc.
-                if (text.includes(t('close_button').toLowerCase()) || text.includes('logout') || text.includes('sign out')) {
-                    return
-                }
+                const isSystemAction = [
+                    t('close_button').toLowerCase(),
+                    'logout',
+                    'sign out',
+                    'i_understand_button'
+                ].some(keyword => text.includes(keyword))
+
+                if (isSystemAction) return
 
                 // 2. For Team Leaders, allow administrative/management actions
                 if (userRole === 'TEAM_LEADER') {
-                    // List of allowed management actions for TL even if overdue
-                    const allowedActions = [
-                        (t('edit_task' as any) || 'edit').toLowerCase(),
-                        (t('delete_button' as any) || 'delete').toLowerCase(),
-                        (t('transfer_button' as any) || 'transfer').toLowerCase(),
-                        (t('revert_button' as any) || 'revert').toLowerCase()
-                    ]
+                    // Specific translation keys for management actions
+                    const allowedKeywords = [
+                        (t('edit_task_button' as any) || 'edit').toLowerCase(),
+                        (t('delete_task_button' as any) || 'delete').toLowerCase(),
+                        (t('transfer_to_another_employee' as any) || 'transfer').toLowerCase(),
+                        (t('return_to_in_progress' as any) || 'revert').toLowerCase(),
+                        (t('individual_settlements' as any) || 'settlements').toLowerCase(),
+                        'reassign'
+                    ].filter(Boolean)
 
-                    const isAllowed = allowedActions.some(action => text.includes(action))
+                    const isAllowed = allowedKeywords.some(keyword => text.includes(keyword))
                     if (isAllowed) return
                 }
 
