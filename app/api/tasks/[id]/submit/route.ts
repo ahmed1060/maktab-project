@@ -70,6 +70,7 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
                             url: att,
                             name: att.split('/').pop() || 'Attachment',
                             uploadedBy: (session.user as any).name || 'Unknown',
+                            uploadedById: userId,
                             uploadedAt: new Date().toISOString()
                         }
                     }

@@ -112,6 +112,14 @@ export async function DELETE(
         }
 
         if (task.status === 'IN_PROGRESS') {
+            const itemToDelete = comments[locationIndex]
+            const isAuthor = itemToDelete.authorId === session.user.id
+            const isAdmin = ['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(session.user.role)
+
+            if (!isAuthor && !isAdmin) {
+                return NextResponse.json({ error: 'Only the author can delete this location' }, { status: 403 })
+            }
+
             comments.splice(locationIndex, 1)
         } else {
             return NextResponse.json({ error: 'Location deletion is only allowed when task is IN_PROGRESS' }, { status: 403 })

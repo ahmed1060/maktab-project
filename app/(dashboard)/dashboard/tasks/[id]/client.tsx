@@ -913,7 +913,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                                                             </span>
                                                         )}
                                                         {!((task.assignees?.length > 1)) && <span style={{ fontWeight: 'bold', color: '#1e293b' }}>{log.author}</span>}
-                                                        {log.type === 'SUBMISSION_NOTE' && task.status === 'IN_PROGRESS' && (
+                                                        {log.type === 'SUBMISSION_NOTE' && task.status === 'IN_PROGRESS' && (log.authorId === userId || ['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole)) && (
                                                             <button onClick={() => handleDeleteItem('SUBMISSION_NOTE', log.date)} className="btn-icon" style={{ padding: '2px', border: 'none', background: 'none', cursor: 'pointer', display: 'flex' }} title={t('delete_note_title')}>
                                                                 <TrashIcon size={14} />
                                                             </button>
@@ -954,7 +954,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                                         </div>
                                     </div>
                                 </a>
-                                {task.status === 'IN_PROGRESS' && (
+                                {task.status === 'IN_PROGRESS' && (att.uploadedById === userId || ['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole)) && (
                                     <button
                                         onClick={(e) => { e.preventDefault(); handleDeleteItem('ATTACHMENT', att.url); }}
                                         style={{ position: 'absolute', top: '5px', right: locale === 'ar' ? 'auto' : '5px', left: locale === 'ar' ? '5px' : 'auto', background: 'white', border: '1px solid #fee2e2', borderRadius: '50%', padding: '4px', cursor: 'pointer', display: 'flex' }}
@@ -990,7 +990,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                                                     <div style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>
                                                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                                             <div style={{ fontSize: '0.75rem', color: '#92400e', textTransform: 'uppercase', fontWeight: '600', marginBottom: '0.25rem' }}>{t('cost_description_placeholder').split(' ')[0]}</div>
-                                                            {task.status === 'IN_PROGRESS' && (
+                                                            {task.status === 'IN_PROGRESS' && (c.authorId === userId || ['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole)) && (
                                                                 <button onClick={() => handleDeleteItem('COST_ADDITION', c.date)} style={{ background: 'none', border: 'none', padding: '2px', cursor: 'pointer', display: 'flex' }} title={t('delete_cost_title')}>
                                                                     <TrashIcon size={14} />
                                                                 </button>
@@ -1394,7 +1394,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                                                                             </button>
                                                                         </div>
                                                                     )}
-                                                                    {canDelete && task.status === 'IN_PROGRESS' && (
+                                                                    {canDelete && task.status === 'IN_PROGRESS' && (loc.authorId === userId || ['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole)) && (
                                                                         <button onClick={() => setLocationToDelete({ date: loc.date })} style={{ background: '#fee2e2', color: '#dc2626', border: 'none', borderRadius: '0.25rem', padding: '0.4rem', cursor: 'pointer', display: 'flex' }} title={t('delete_location_title')}>
                                                                             <TrashIcon size={16} />
                                                                         </button>

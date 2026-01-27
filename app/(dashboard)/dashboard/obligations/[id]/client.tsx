@@ -4,7 +4,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import Modal from '@/components/Modal'
 import { useLanguage } from '@/context/LanguageContext'
 
-export default function ObligationDetailClient({ obligation, userRole }: { obligation: any, userRole: string }) {
+export default function ObligationDetailClient({ obligation, userRole, userId, userName }: { obligation: any, userRole: string, userId: string, userName: string }) {
     const { t, locale } = useLanguage()
     const [uploading, setUploading] = useState(false)
     const [loadingType, setLoadingType] = useState<'DRAFT' | 'SUBMIT' | null>(null)
@@ -12,7 +12,6 @@ export default function ObligationDetailClient({ obligation, userRole }: { oblig
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
     const [showFeedback, setShowFeedback] = useState(false)
     const [feedbackMessage, setFeedbackMessage] = useState('')
-    const [userId, setUserId] = useState<string | null>(null)
     const [isReverting, setIsReverting] = useState(false)
     const [showRevertConfirm, setShowRevertConfirm] = useState(false)
     const [showDeadlineModal, setShowDeadlineModal] = useState(false)
@@ -23,12 +22,6 @@ export default function ObligationDetailClient({ obligation, userRole }: { oblig
     const isOverdue = new Date(obligation.deadline) < new Date() && ['PENDING', 'IN_PROGRESS'].includes(obligation.status)
 
 
-    useEffect(() => {
-        // Fetch current user ID if needed for permission checks
-        fetch('/api/auth/session').then(r => r.json()).then(data => {
-            if (data?.user?.id) setUserId(data.user.id)
-        })
-    }, [])
 
     useEffect(() => {
         const isUserAssignee = obligation.assignees?.some((a: any) => a.id === userId)
@@ -113,6 +106,8 @@ export default function ObligationDetailClient({ obligation, userRole }: { oblig
                             name: file.name,
                             url: data.url,
                             type: file.type,
+                            uploadedBy: userName,
+                            uploadedById: userId,
                             uploadedAt: new Date().toISOString()
                         })
                     }
@@ -148,7 +143,7 @@ export default function ObligationDetailClient({ obligation, userRole }: { oblig
             setUploading(false)
             setLoadingType(null)
         }
-    }, [pendingFiles, obligation.id, router, t])
+    }, [pendingFiles, obligation.id, router, t, userId, userName])
 
     // Listen for suspension auto-save event
     useEffect(() => {
@@ -506,7 +501,7 @@ export default function ObligationDetailClient({ obligation, userRole }: { oblig
                                             </span>
                                         )}
                                     </div>
-                                    {['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole) && (
+                                    {['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole) && (att.uploadedById === userId || ['ADMIN', 'SUPER_ADMIN'].includes(userRole)) && (
                                         <button
                                             onClick={() => handleRemoveExistingAttachment(att)}
                                             style={{

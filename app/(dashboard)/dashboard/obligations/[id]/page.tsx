@@ -24,5 +24,10 @@ export default async function ObligationDetailPage({ params }: { params: { id: s
         obligation.status = 'IN_PROGRESS'
     }
 
-    return <ObligationDetailClient obligation={obligation} userRole={(session?.user as any)?.role} />
+    return <ObligationDetailClient
+        obligation={obligation}
+        userRole={(session?.user as any)?.role}
+        userId={userId || ''}
+        userName={(session?.user as any)?.name || ''}
+    />
 }

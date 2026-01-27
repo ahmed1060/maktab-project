@@ -58,6 +58,26 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
                 }
             }
 
+            // Handle existing attachments removal/update
+            if (json.attachments && Array.isArray(json.attachments)) {
+                const oldAttachments = finalAttachments
+                const requestedAttachments = json.attachments
+
+                // Identify removed items
+                const removedItems = oldAttachments.filter(old => !requestedAttachments.some((req: any) => (req.url || req) === (old.url || old)))
+
+                if (removedItems.length > 0) {
+                    const isAdmin = ['ADMIN', 'SUPER_ADMIN'].includes(userRole)
+                    for (const item of removedItems) {
+                        const isAuthor = item.uploadedById === userId
+                        if (!isAuthor && !isAdmin) {
+                            throw new Error("You are not authorized to remove attachments uploaded by others")
+                        }
+                    }
+                }
+                finalAttachments = requestedAttachments
+            }
+
             // Add new attachments
             if (newAttachments && Array.isArray(newAttachments)) {
                 finalAttachments = [...finalAttachments, ...newAttachments]
