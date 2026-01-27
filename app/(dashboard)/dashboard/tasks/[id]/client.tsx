@@ -179,32 +179,42 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
             const closestClickable = target.closest('button, a, label, input, [role="button"]')
 
             if (closestClickable) {
-                const text = closestClickable.textContent?.trim().toLowerCase() || ''
-                const title = closestClickable.getAttribute('title')?.trim().toLowerCase() || ''
+                // Helper to strip common emojis and normalize for robust matching
+                const clean = (str: string) => {
+                    if (!str) return ''
+                    return str.replace(/[\u1F60-\u1F64]|[\u2702-\u27B0]|[\u1F68-\u1F6C]|[\u1F30-\u1F70]|[\u2600-\u26ff]|[\uD83C-\uDBFF\uDC00-\uDFFF]/g, '')
+                        .trim()
+                        .toLowerCase()
+                }
 
-                // Helper to strip common emojis for robust matching
-                const stripEmoji = (str: string) => str.replace(/[\u1F60-\u1F64]|[\u2702-\u27B0]|[\u1F68-\u1F6C]|[\u1F30-\u1F70]|[\u2600-\u26ff]|[\uD83C-\uDBFF\uDC00-\uDFFF]/g, '').trim().toLowerCase()
+                const targetText = clean(closestClickable.textContent || '')
+                const targetTitle = clean(closestClickable.getAttribute('title') || '')
 
                 // Block ONLY these actions if overdue (they modify the submission state)
                 const isBlockedAction = [
-                    stripEmoji(t('add_label') || 'add'), // Add Cost
-                    stripEmoji(t('capture_location_button' as any) || 'capture'), // Capture Location
-                    stripEmoji(t('save_draft_button' as any) || 'save draft'), // Save Draft
-                    stripEmoji(t('upload_drag_files_msg' as any) || 'upload'), // Add Attachment main area text
-                    stripEmoji(t('delete') || 'delete'), // Sub-item delete button text
-                    stripEmoji(t('delete_location_title' as any) || 'delete location'), // Location delete button title
-                    '×', // Cost delete icon (multiplication sign)
-                    'x'  // Cost delete icon (letter x)
+                    t('add_label') || 'add',
+                    t('capture_location_button' as any) || 'capture',
+                    t('save_draft_button' as any) || 'save draft',
+                    t('upload_drag_files_msg' as any) || 'upload',
+                    t('delete') || 'delete',
+                    t('delete_location_title' as any) || 'delete location',
+                    t('delete_note_title' as any) || 'delete note',
+                    t('delete_cost_title' as any) || 'delete cost',
+                    t('delete_attachment_title' as any) || 'delete attachment',
+                    '×',
+                    'x'
                 ].some(keyword => {
-                    // Exact match for the basic "Delete" text to avoid blocking "Delete Task"
-                    if (keyword === (t('delete') || 'delete').toLowerCase()) {
-                        return text === keyword || title === keyword
+                    const cleanKeyword = clean(keyword)
+                    if (!cleanKeyword) return false
+
+                    // Exact match for icons and the generic "Delete" to avoid blocking "Delete Task"
+                    const isExactMatchKey = ['×', 'x', clean(t('delete') || 'delete')].includes(cleanKeyword)
+                    if (isExactMatchKey) {
+                        return targetText === cleanKeyword || targetTitle === cleanKeyword
                     }
-                    // Exact match for single character icons to avoid false positives
-                    if (keyword === '×' || keyword === 'x') {
-                        return text === keyword
-                    }
-                    return text.includes(keyword) || title.includes(keyword)
+
+                    // For more specific titles/phrases, use includes
+                    return targetText.includes(cleanKeyword) || targetTitle.includes(cleanKeyword)
                 })
 
                 // Special robust check for file input and its immediate container
@@ -217,6 +227,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                 }
             }
         }
+
 
 
 

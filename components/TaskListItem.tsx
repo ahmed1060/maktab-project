@@ -61,7 +61,7 @@ export default function TaskListItem({ task, currentUserId, isHighlighted }: Tas
     const memberCostsArr = task.memberCosts ? (typeof task.memberCosts === 'string' ? JSON.parse(task.memberCosts) : task.memberCosts) : {}
     const userCost = memberCostsArr[currentUserId] || 0
     const isMultiAssignee = (task.assignees?.length || 0) > 1
-    const isOverdue = new Date(task.deadline) < new Date() && !['COMPLETED', 'APPROVED', 'REJECTED'].includes(task.status)
+    const isOverdue = new Date(task.deadline) < new Date() && ['PENDING', 'IN_PROGRESS'].includes(task.status)
 
     return (
         <div id={`task-${task.id}`} className={`glass-card ${showVisualHighlight ? 'highlight-pulse' : ''}`} style={{

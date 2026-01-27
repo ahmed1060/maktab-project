@@ -48,13 +48,36 @@ export default function ObligationDetailClient({ obligation, userRole }: { oblig
             const closestClickable = target.closest('button, a, label, input, [role="button"]')
 
             if (closestClickable) {
-                const text = closestClickable.textContent?.trim().toLowerCase() || ''
+                // Helper to strip common emojis and normalize for robust matching
+                const clean = (str: string) => {
+                    if (!str) return ''
+                    return str.replace(/[\u1F60-\u1F64]|[\u2702-\u27B0]|[\u1F68-\u1F6C]|[\u1F30-\u1F70]|[\u2600-\u26ff]|[\uD83C-\uDBFF\uDC00-\uDFFF]/g, '')
+                        .trim()
+                        .toLowerCase()
+                }
 
-                // Block ONLY these actions if overdue
+                const targetText = clean(closestClickable.textContent || '')
+                const targetTitle = clean(closestClickable.getAttribute('title') || '')
+
+                // Block ONLY these actions if overdue (they modify the submission state)
                 const isBlockedAction = [
-                    (t('save_draft_obligation_button' as any) || 'save draft').toLowerCase(), // Save Draft
-                    (t('upload_drag_files_msg' as any) || 'upload').toLowerCase() // Add Attachment
-                ].some(keyword => text.includes(keyword))
+                    t('save_draft_obligation_button' as any) || 'save draft',
+                    t('upload_drag_files_msg' as any) || 'upload',
+                    t('delete') || 'delete',
+                    t('delete_note_title' as any) || 'delete note',
+                    t('delete_cost_title' as any) || 'delete cost',
+                    t('delete_attachment_title' as any) || 'delete attachment'
+                ].some(keyword => {
+                    const cleanKeyword = clean(keyword)
+                    if (!cleanKeyword) return false
+
+                    // Exact match for the generic "Delete" to avoid blocking "Delete Obligation"
+                    if (cleanKeyword === clean(t('delete') || 'delete')) {
+                        return targetText === cleanKeyword || targetTitle === cleanKeyword
+                    }
+
+                    return targetText.includes(cleanKeyword) || targetTitle.includes(cleanKeyword)
+                })
 
                 const isFileInput = closestClickable.tagName === 'INPUT' && (closestClickable as HTMLInputElement).type === 'file'
 

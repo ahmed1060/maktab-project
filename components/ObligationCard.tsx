@@ -75,7 +75,7 @@ export default function ObligationCard({ obligation, userRole, isHighlighted }: 
         }
     }
 
-    const isOverdue = new Date(obligation.deadline) < new Date() && !['COMPLETED', 'APPROVED', 'REJECTED'].includes(status)
+    const isOverdue = new Date(obligation.deadline) < new Date() && ['PENDING', 'IN_PROGRESS'].includes(status)
 
     return (
         <div id={`obligation-${obligation.id}`} className={`card ${showVisualHighlight ? 'highlight-pulse' : ''}`} style={{
