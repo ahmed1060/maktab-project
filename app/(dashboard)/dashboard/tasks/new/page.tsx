@@ -49,6 +49,7 @@ export default function NewTaskPage() {
     const [bulkTasks, setBulkTasks] = useState<any[]>([])
     const [users, setUsers] = useState<any[]>([])
     const [activeAssigneeEdit, setActiveAssigneeEdit] = useState<{ index: number, type: 'add' | 'remove' } | null>(null)
+    const [assigneeSearch, setAssigneeSearch] = useState('')
     const router = useRouter()
 
     const { showToast } = useToast()
@@ -582,7 +583,10 @@ export default function NewTaskPage() {
                                                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                                                             {/* Plus Button */}
                                                             <button
-                                                                onClick={() => setActiveAssigneeEdit(activeAssigneeEdit?.index === idx && activeAssigneeEdit?.type === 'add' ? null : { index: idx, type: 'add' })}
+                                                                onClick={() => {
+                                                                    setActiveAssigneeEdit(activeAssigneeEdit?.index === idx && activeAssigneeEdit?.type === 'add' ? null : { index: idx, type: 'add' })
+                                                                    setAssigneeSearch('')
+                                                                }}
                                                                 style={{
                                                                     width: '28px',
                                                                     height: '28px',
@@ -636,57 +640,78 @@ export default function NewTaskPage() {
                                                     {activeAssigneeEdit?.index === idx && (
                                                         <div style={{
                                                             position: 'absolute',
-                                                            top: '100%',
-                                                            right: '1rem',
+                                                            top: '50%',
+                                                            right: '4rem',
+                                                            transform: 'translateY(-50%)',
                                                             zIndex: 100,
-                                                            minWidth: '220px',
-                                                            maxHeight: '200px',
-                                                            overflowY: 'auto',
+                                                            minWidth: '240px',
                                                             background: 'rgba(255, 255, 255, 0.95)',
                                                             backdropFilter: 'blur(12px)',
                                                             border: '1px solid var(--glass-border)',
                                                             borderRadius: '0.75rem',
                                                             boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)',
                                                             padding: '0.5rem',
-                                                            marginTop: '0.5rem',
                                                             animation: 'fadeIn 0.2s ease-out'
                                                         }}>
                                                             {activeAssigneeEdit.type === 'add' ? (
                                                                 // Add Dropdown
                                                                 <div>
-                                                                    <div style={{ fontSize: '0.75rem', fontWeight: 'bold', color: '#64748b', padding: '0.25rem 0.5rem', borderBottom: '1px solid #e2e8f0', marginBottom: '0.25rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
-                                                                        {t('add_assignee')}
-                                                                    </div>
-                                                                    {users.filter(u => !bt.resolvedIds.includes(u.id)).map(u => (
-                                                                        <div
-                                                                            key={u.id}
-                                                                            onClick={() => {
-                                                                                const newTasks = [...bulkTasks]
-                                                                                newTasks[idx].resolvedIds = [...bt.resolvedIds, u.id]
-                                                                                newTasks[idx].resolvedNames = [...bt.resolvedNames, `${u.firstName} ${u.lastName}`]
-                                                                                newTasks[idx].unresolvedUsernames = []
-                                                                                newTasks[idx].isInvalid = !bt.title || !bt.description || !bt.deadline
-                                                                                setBulkTasks(newTasks)
-                                                                                setActiveAssigneeEdit(null)
-                                                                            }}
+                                                                    <div style={{ padding: '0.25rem 0.25rem 0.5rem 0.25rem', borderBottom: '1px solid #e2e8f0', marginBottom: '0.5rem' }}>
+                                                                        <input
+                                                                            autoFocus
+                                                                            type="text"
+                                                                            placeholder={t('search_placeholder')}
+                                                                            value={assigneeSearch}
+                                                                            onChange={(e) => setAssigneeSearch(e.target.value)}
                                                                             style={{
-                                                                                padding: '0.5rem',
-                                                                                fontSize: '0.85rem',
-                                                                                cursor: 'pointer',
-                                                                                borderRadius: '0.375rem',
-                                                                                transition: 'background 0.2s',
+                                                                                width: '100%',
+                                                                                padding: '0.4rem 0.6rem',
+                                                                                fontSize: '0.8rem',
+                                                                                borderRadius: '0.5rem',
+                                                                                border: '1px solid #e2e8f0',
+                                                                                outline: 'none',
+                                                                                background: '#f8fafc',
                                                                                 textAlign: locale === 'ar' ? 'right' : 'left'
                                                                             }}
-                                                                            onMouseEnter={(e) => e.currentTarget.style.background = '#f1f5f9'}
-                                                                            onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-                                                                        >
-                                                                            <div style={{ fontWeight: '600' }}>{u.firstName} {u.lastName}</div>
-                                                                            <div style={{ fontSize: '0.7rem', color: '#94a3b8' }}>{t(`role_${u.role?.toLowerCase()}` as any)}</div>
-                                                                        </div>
-                                                                    ))}
-                                                                    {users.filter(u => !bt.resolvedIds.includes(u.id)).length === 0 && (
-                                                                        <div style={{ padding: '1rem', textAlign: 'center', fontSize: '0.8rem', color: '#94a3b8' }}>{t('all_users_added')}</div>
-                                                                    )}
+                                                                        />
+                                                                    </div>
+                                                                    <div style={{ maxHeight: '180px', overflowY: 'auto' }}>
+                                                                        {users
+                                                                            .filter(u => !bt.resolvedIds.includes(u.id))
+                                                                            .filter(u =>
+                                                                                `${u.firstName} ${u.lastName}`.toLowerCase().includes(assigneeSearch.toLowerCase())
+                                                                            )
+                                                                            .map(u => (
+                                                                                <div
+                                                                                    key={u.id}
+                                                                                    onClick={() => {
+                                                                                        const newTasks = [...bulkTasks]
+                                                                                        newTasks[idx].resolvedIds = [...bt.resolvedIds, u.id]
+                                                                                        newTasks[idx].resolvedNames = [...bt.resolvedNames, `${u.firstName} ${u.lastName}`]
+                                                                                        newTasks[idx].unresolvedUsernames = []
+                                                                                        newTasks[idx].isInvalid = !bt.title || !bt.description || !bt.deadline
+                                                                                        setBulkTasks(newTasks)
+                                                                                        // Don't close pop-up as per request
+                                                                                    }}
+                                                                                    style={{
+                                                                                        padding: '0.5rem',
+                                                                                        fontSize: '0.85rem',
+                                                                                        cursor: 'pointer',
+                                                                                        borderRadius: '0.375rem',
+                                                                                        transition: 'background 0.2s',
+                                                                                        textAlign: locale === 'ar' ? 'right' : 'left'
+                                                                                    }}
+                                                                                    onMouseEnter={(e) => e.currentTarget.style.background = '#f1f5f9'}
+                                                                                    onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                                                                                >
+                                                                                    <div style={{ fontWeight: '600' }}>{u.firstName} {u.lastName}</div>
+                                                                                    <div style={{ fontSize: '0.7rem', color: '#94a3b8' }}>{t(`role_${u.role?.toLowerCase()}` as any)}</div>
+                                                                                </div>
+                                                                            ))}
+                                                                        {users.filter(u => !bt.resolvedIds.includes(u.id) && `${u.firstName} ${u.lastName}`.toLowerCase().includes(assigneeSearch.toLowerCase())).length === 0 && (
+                                                                            <div style={{ padding: '1rem', textAlign: 'center', fontSize: '0.8rem', color: '#94a3b8' }}>{t('no_matches_found')}</div>
+                                                                        )}
+                                                                    </div>
                                                                 </div>
                                                             ) : (
                                                                 // Remove Popup
@@ -694,52 +719,54 @@ export default function NewTaskPage() {
                                                                     <div style={{ fontSize: '0.75rem', fontWeight: 'bold', color: '#64748b', padding: '0.25rem 0.5rem', borderBottom: '1px solid #e2e8f0', marginBottom: '0.25rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
                                                                         {t('remove_assignee')}
                                                                     </div>
-                                                                    {bt.resolvedIds.map((id: string, ridx: number) => (
-                                                                        <div
-                                                                            key={id}
-                                                                            style={{
-                                                                                display: 'flex',
-                                                                                justifyContent: 'space-between',
-                                                                                alignItems: 'center',
-                                                                                padding: '0.5rem',
-                                                                                fontSize: '0.85rem',
-                                                                                borderRadius: '0.375rem',
-                                                                                flexDirection: locale === 'ar' ? 'row-reverse' : 'row'
-                                                                            }}
-                                                                        >
-                                                                            <span style={{ fontWeight: '500' }}>{bt.resolvedNames[ridx]}</span>
-                                                                            <button
-                                                                                onClick={() => {
-                                                                                    const newTasks = [...bulkTasks]
-                                                                                    const nid = bt.resolvedIds.filter((_: any, i: number) => i !== ridx)
-                                                                                    const nname = bt.resolvedNames.filter((_: any, i: number) => i !== ridx)
-                                                                                    newTasks[idx].resolvedIds = nid
-                                                                                    newTasks[idx].resolvedNames = nname
-                                                                                    newTasks[idx].isInvalid = nid.length === 0 || !bt.title || !bt.description || !bt.deadline
-                                                                                    setBulkTasks(newTasks)
-                                                                                    if (nid.length === 0) setActiveAssigneeEdit(null)
-                                                                                }}
+                                                                    <div style={{ maxHeight: '180px', overflowY: 'auto' }}>
+                                                                        {bt.resolvedIds.map((id: string, ridx: number) => (
+                                                                            <div
+                                                                                key={id}
                                                                                 style={{
-                                                                                    border: 'none',
-                                                                                    background: '#fee2e2',
-                                                                                    color: '#ef4444',
-                                                                                    borderRadius: '50%',
-                                                                                    width: '20px',
-                                                                                    height: '20px',
                                                                                     display: 'flex',
+                                                                                    justifyContent: 'space-between',
                                                                                     alignItems: 'center',
-                                                                                    justifyContent: 'center',
-                                                                                    cursor: 'pointer',
-                                                                                    fontSize: '0.9rem'
+                                                                                    padding: '0.5rem',
+                                                                                    fontSize: '0.85rem',
+                                                                                    borderRadius: '0.375rem',
+                                                                                    flexDirection: locale === 'ar' ? 'row-reverse' : 'row'
                                                                                 }}
                                                                             >
-                                                                                ×
-                                                                            </button>
-                                                                        </div>
-                                                                    ))}
-                                                                    {bt.resolvedIds.length === 0 && (
-                                                                        <div style={{ padding: '1rem', textAlign: 'center', fontSize: '0.8rem', color: '#94a3b8' }}>{t('no_assignees')}</div>
-                                                                    )}
+                                                                                <span style={{ fontWeight: '500' }}>{bt.resolvedNames[ridx]}</span>
+                                                                                <button
+                                                                                    onClick={() => {
+                                                                                        const newTasks = [...bulkTasks]
+                                                                                        const nid = bt.resolvedIds.filter((_: any, i: number) => i !== ridx)
+                                                                                        const nname = bt.resolvedNames.filter((_: any, i: number) => i !== ridx)
+                                                                                        newTasks[idx].resolvedIds = nid
+                                                                                        newTasks[idx].resolvedNames = nname
+                                                                                        newTasks[idx].isInvalid = nid.length === 0 || !bt.title || !bt.description || !bt.deadline
+                                                                                        setBulkTasks(newTasks)
+                                                                                        // Pop-up stays open as requested
+                                                                                    }}
+                                                                                    style={{
+                                                                                        border: 'none',
+                                                                                        background: '#fee2e2',
+                                                                                        color: '#ef4444',
+                                                                                        borderRadius: '50%',
+                                                                                        width: '20px',
+                                                                                        height: '20px',
+                                                                                        display: 'flex',
+                                                                                        alignItems: 'center',
+                                                                                        justifyContent: 'center',
+                                                                                        cursor: 'pointer',
+                                                                                        fontSize: '0.9rem'
+                                                                                    }}
+                                                                                >
+                                                                                    ×
+                                                                                </button>
+                                                                            </div>
+                                                                        ))}
+                                                                        {bt.resolvedIds.length === 0 && (
+                                                                            <div style={{ padding: '1rem', textAlign: 'center', fontSize: '0.8rem', color: '#94a3b8' }}>{t('no_assignees')}</div>
+                                                                        )}
+                                                                    </div>
                                                                 </div>
                                                             )}
                                                         </div>
