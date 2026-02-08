@@ -46,7 +46,8 @@ interface EmployeeFilterProps {
     selectedCompanyId?: string,
     onCompanyChange?: (id: string) => void,
     companyOptions?: SortOption[],
-    secondaryAction?: React.ReactNode
+    secondaryAction?: React.ReactNode,
+    toolkitAction?: React.ReactNode
 }
 
 // Define interface for Employee data locally since it's just for display
@@ -87,7 +88,8 @@ export default function EmployeeFilter({
     selectedCompanyId = '',
     onCompanyChange,
     companyOptions,
-    secondaryAction
+    secondaryAction,
+    toolkitAction
 }: EmployeeFilterProps) {
     const [employees, setEmployees] = useState<EmployeeType[]>([])
     const [loading, setLoading] = useState(!isEmployee && !hideEmployeeFilter)
@@ -309,6 +311,13 @@ export default function EmployeeFilter({
                                 minHeight: '48px'
                             }}
                         />
+                    </div>
+                )}
+
+                {/* Toolkit Action (e.g. ID Button) */}
+                {toolkitAction && (
+                    <div style={{ display: 'flex', alignItems: 'center' }}>
+                        {toolkitAction}
                     </div>
                 )}
 

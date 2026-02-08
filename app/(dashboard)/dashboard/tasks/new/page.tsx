@@ -317,6 +317,28 @@ export default function NewTaskPage() {
                         {t('download_template')}
                     </button>
                     <div style={{ display: 'flex', gap: '0.5rem' }}>
+                        <button
+                            type="button"
+                            onClick={() => window.open('/dashboard/usernames', '_blank')}
+                            className="btn"
+                            title={t('view_usernames')}
+                            style={{
+                                background: '#3b82f6',
+                                color: 'white',
+                                border: 'none',
+                                padding: '0.4rem 0.75rem',
+                                fontSize: '0.9rem',
+                                fontWeight: 'bold',
+                                borderRadius: '0.5rem',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                width: '50px'
+                            }}
+                        >
+                            🆔
+                        </button>
                         <label
                             className="btn btn-primary"
                             style={{
@@ -340,28 +362,6 @@ export default function NewTaskPage() {
                                 style={{ display: 'none' }}
                             />
                         </label>
-                        <button
-                            type="button"
-                            onClick={() => window.open('/dashboard/all-users/usernames', '_blank')}
-                            className="btn"
-                            title={t('view_usernames')}
-                            style={{
-                                background: '#3b82f6',
-                                color: 'white',
-                                border: 'none',
-                                padding: '0.4rem 0.75rem',
-                                fontSize: '0.9rem',
-                                fontWeight: 'bold',
-                                borderRadius: '0.5rem',
-                                cursor: 'pointer',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                width: '40px'
-                            }}
-                        >
-                            @
-                        </button>
                     </div>
                 </div>
             </div>

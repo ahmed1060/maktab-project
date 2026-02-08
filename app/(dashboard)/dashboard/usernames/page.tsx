@@ -24,12 +24,12 @@ export default function UsernamesPage() {
     useEffect(() => {
         const fetchUsers = async () => {
             try {
-                // Fetch all active users (might need pagination but for usernames cards we usually want all or filtered)
-                // For simplicity, we fetch all users the current user can see
-                const res = await fetch('/api/users?limit=1000') // Fetch many to cover small/medium companies
+                // Fetch all active users the current user can see
+                const res = await fetch('/api/users?limit=1000')
                 if (res.ok) {
-                    const data = await res.json()
-                    setUsers(data.data || [])
+                    const responseData = await res.json()
+                    const data = Array.isArray(responseData) ? responseData : (responseData.data || [])
+                    setUsers(data)
                 }
             } catch (err) {
                 console.error('Failed to fetch users', err)
@@ -51,12 +51,7 @@ export default function UsernamesPage() {
         const workbook = XLSX.utils.book_new()
         XLSX.utils.book_append_sheet(workbook, worksheet, "Users")
 
-        // Fix column widths
-        const wscols = [
-            { wch: 30 },
-            { wch: 20 },
-            { wch: 25 }
-        ]
+        const wscols = [{ wch: 30 }, { wch: 20 }, { wch: 25 }]
         worksheet['!cols'] = wscols
 
         XLSX.writeFile(workbook, `Employees_Usernames_${new Date().toISOString().split('T')[0]}.xlsx`)
@@ -67,7 +62,7 @@ export default function UsernamesPage() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
                 <div>
                     <button
-                        onClick={() => window.location.href = '/dashboard/all-users'}
+                        onClick={() => window.history.back()}
                         style={{
                             background: 'none',
                             border: 'none',
