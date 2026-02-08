@@ -256,7 +256,28 @@ export default function AllUsersPage() {
         <div style={{ direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
                 <div>
+                    <h1 style={{ fontSize: '2rem', fontWeight: 'bold', color: '#0f172a', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('all_users_label')}</h1>
                     <p style={{ color: '#64748b', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('all_users_subtitle')}</p>
+                </div>
+                <div style={{ display: 'flex', gap: '1rem' }}>
+                    <button
+                        onClick={() => window.location.href = '/dashboard/all-users/usernames'}
+                        className="btn"
+                        style={{
+                            background: 'white',
+                            border: '1px solid #e2e8f0',
+                            color: '#0f172a',
+                            fontWeight: '600',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.5rem',
+                            padding: '0.6rem 1rem'
+                        }}
+                    >
+                        <span>🆔</span>
+                        {t('view_usernames')}
+                    </button>
+                    {/* Exists in some versions, adding placeholder if needed, but the focus is the new button */}
                 </div>
             </div>
 

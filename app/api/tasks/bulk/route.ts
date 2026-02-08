@@ -86,6 +86,8 @@ export async function POST(req: Request) {
         // 2. Transactional Creation
         const createdTasks = await prisma.$transaction(async (tx) => {
             const results = []
+            const notificationsData: any[] = []
+
             for (const tData of validTasks) {
                 const { assigneeIds, ...rest } = tData
                 const createdTask = await (tx.task as any).create({
@@ -98,19 +100,27 @@ export async function POST(req: Request) {
                 })
                 results.push(createdTask)
 
-                // Create individual notifications (outside of transaction results if needed, but tx is safer)
+                // Collect notification data instead of creating them individualy
                 for (const aid of assigneeIds) {
-                    await tx.notification.create({
-                        data: {
-                            userId: aid,
-                            type: "TASK_ASSIGNED",
-                            message: `New task assigned: ${tData.title}`,
-                            relatedId: createdTask.id
-                        }
+                    notificationsData.push({
+                        userId: aid,
+                        type: "TASK_ASSIGNED",
+                        message: `New task assigned: ${tData.title}`,
+                        relatedId: createdTask.id
                     })
                 }
             }
+
+            // Batch create notifications at the end
+            if (notificationsData.length > 0) {
+                await tx.notification.createMany({
+                    data: notificationsData
+                })
+            }
+
             return results
+        }, {
+            timeout: 20000 // Increase timeout to 20 seconds for bulk operations
         })
 
         return NextResponse.json({
