@@ -211,7 +211,7 @@ export const POST = withStandardHandler(async (req, session, json) => {
 
 export const PUT = withStandardHandler(async (req, session, json) => {
     const userRole = session.user.role
-    const { id, firstName, lastName, email, password, role, gender, salary, companyId, avatar, dayOffCredit, baseDayOffCredit, username } = json
+    const { id, firstName, lastName, email, password, role, gender, salary, companyId, avatar, dayOffCredit, baseDayOffCredit, username, status } = json
 
     if (!id) return new NextResponse("User ID required", { status: 400 })
 
@@ -280,6 +280,7 @@ export const PUT = withStandardHandler(async (req, session, json) => {
         }
 
         if (companyId !== undefined && userRole === 'SUPER_ADMIN') updateData.companyId = companyId || null
+        if (status !== undefined && ['ADMIN', 'SUPER_ADMIN'].includes(userRole || '')) updateData.status = status
 
         const updated = await prisma.user.update({
             where: { id }, data: updateData,

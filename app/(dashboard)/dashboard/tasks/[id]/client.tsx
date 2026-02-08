@@ -267,7 +267,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
         } catch (e) { console.error(e) }
     }
 
-    const handleUpload = useCallback(async (isDraft: boolean) => {
+    const handleUpload = useCallback(async (isDraft: boolean, isEmergency?: boolean) => {
         if (uploading) return
         setUploading(true)
         setLoadingType(isDraft ? 'DRAFT' : 'SUBMIT')
@@ -305,6 +305,11 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                 }
             }
 
+            const headers: any = { 'Content-Type': 'application/json' }
+            if (isEmergency) {
+                headers['X-Emergency-Save'] = 'true'
+            }
+
             const res = await fetch(`/api/tasks/${task.id}/submit`, {
                 method: 'PUT',
                 body: JSON.stringify({
@@ -314,7 +319,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                     location,
                     isDraft
                 }),
-                headers: { 'Content-Type': 'application/json' }
+                headers
             })
 
             if (!res.ok) {
@@ -399,7 +404,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
             // Only auto-save if employee interaction is active and not already submitted or finalized
             const isUserAssignee = task.assignees?.some((a: any) => a.id === userId)
             if ((userRole === 'EMPLOYEE' || isUserAssignee) && !['PENDING_CONFIRMATION', 'APPROVED', 'COMPLETED', 'REJECTED'].includes(task.status)) {
-                handleUpload(true)
+                handleUpload(true, true)
             }
         }
         window.addEventListener('app:suspend-detected', handleSuspendSave)

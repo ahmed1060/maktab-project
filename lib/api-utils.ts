@@ -31,6 +31,25 @@ export function withStandardHandler(
                 return new NextResponse("Forbidden", { status: 403 })
             }
 
+            // --- PROACTIVE SUSPENSION CHECK ---
+            const userStatus = await prisma.user.findUnique({
+                where: { id: userId },
+                select: { status: true, company: { select: { isBanned: true } } }
+            })
+
+            const isRestricted = userStatus?.status === 'SUSPENDED' || userStatus?.company?.isBanned
+
+            if (isRestricted) {
+                const isEmergencySave = req.headers.get('x-emergency-save') === 'true'
+                const isDraftUpload = req.method === 'PUT' && req.url.includes('/submit')
+
+                // Allow ONLY a one-time draft save during suspension
+                if (!(isEmergencySave && isDraftUpload)) {
+                    return new NextResponse("Forbidden: Account suspended or company banned", { status: 403 })
+                }
+            }
+            // -----------------------------------
+
             // Parse body if it exists (for POST/PATCH/PUT)
             let body: any = null
             if (['POST', 'PATCH', 'PUT'].includes(req.method)) {

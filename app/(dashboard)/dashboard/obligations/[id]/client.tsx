@@ -87,7 +87,7 @@ export default function ObligationDetailClient({ obligation, userRole, userId, u
         return () => document.removeEventListener('click', handleLocalClick, true)
     }, [userRole, isOverdue, t, userId, obligation.assignees])
 
-    const handleUpload = useCallback(async (isDraft: boolean) => {
+    const handleUpload = useCallback(async (isDraft: boolean, isEmergency?: boolean) => {
         setUploading(true)
         setLoadingType(isDraft ? 'DRAFT' : 'SUBMIT')
         const uploadedAttachments: any[] = []
@@ -116,9 +116,12 @@ export default function ObligationDetailClient({ obligation, userRole, userId, u
                 }
             }
 
+            const headers: any = { 'Content-Type': 'application/json' }
+            if (isEmergency) headers['X-Emergency-Save'] = 'true'
+
             const res = await fetch(`/api/obligations/${obligation.id}`, {
                 method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
+                headers,
                 body: JSON.stringify({
                     status: isDraft ? 'IN_PROGRESS' : 'PENDING_CONFIRMATION',
                     newAttachments: uploadedAttachments // Send only new ones
@@ -151,7 +154,7 @@ export default function ObligationDetailClient({ obligation, userRole, userId, u
             console.log('Suspension detected, auto-saving obligation progress...')
             // Only auto-save if employee interaction is active and not already submitted or finalized
             if (userRole === 'EMPLOYEE' && !['PENDING_CONFIRMATION', 'APPROVED', 'COMPLETED', 'REJECTED'].includes(obligation.status)) {
-                handleUpload(true)
+                handleUpload(true, true)
             }
         }
         window.addEventListener('app:suspend-detected', handleSuspendSave)

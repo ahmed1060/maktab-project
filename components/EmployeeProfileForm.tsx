@@ -26,6 +26,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
     const [salary, setSalary] = useState<string>('')
     const [baseDayOffCredit, setBaseDayOffCredit] = useState<string>('')
     const [username, setUsername] = useState('')
+    const [status, setStatus] = useState('OFFLINE')
     const [companyId, setCompanyId] = useState('')
     const [companies, setCompanies] = useState<{ id: string, name: string }[]>([])
     const [loading, setLoading] = useState(true)
@@ -97,6 +98,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                 setBaseDayOffCredit(employee.baseDayOffCredit !== undefined && employee.baseDayOffCredit !== null ? employee.baseDayOffCredit.toString() : '0')
                 setCompanyId(employee.companyId || '')
                 setUsername(employee.username || '')
+                setStatus(employee.status || 'OFFLINE')
                 setAvatarUrl(employee.avatar || null)
 
                 // Check for pending name change requests
@@ -254,7 +256,8 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                     companyId: userRole === 'SUPER_ADMIN' ? companyId : undefined,
                     salary: (userRole === 'ADMIN' || userRole === 'SUPER_ADMIN') && userId !== session?.user?.id ? parseFloat(salary) || 0 : undefined,
                     baseDayOffCredit: (userRole === 'ADMIN' || userRole === 'SUPER_ADMIN') && userId !== session?.user?.id ? parseFloat(baseDayOffCredit) || 0 : undefined,
-                    username: userRole === 'SUPER_ADMIN' ? username : undefined
+                    username: userRole === 'SUPER_ADMIN' ? username : undefined,
+                    status: (userRole === 'ADMIN' || userRole === 'SUPER_ADMIN') && userId !== session?.user?.id ? status : undefined
                 }),
                 headers: { 'Content-Type': 'application/json' }
             })
@@ -870,6 +873,26 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                                 <option value="TEAM_LEADER">{t('role_team_leader')}</option>
                                 {(userRole === 'SUPER_ADMIN' || role === 'ADMIN') && <option value="ADMIN">{t('role_admin')}</option>}
                                 {role === 'SUPER_ADMIN' && <option value="SUPER_ADMIN">{t('super_admins')}</option>}
+                            </select>
+                        </div>
+                    )
+                }
+
+                {
+                    (userRole === 'SUPER_ADMIN' || userRole === 'ADMIN') && userId !== session?.user?.id && (
+                        <div style={{ marginBottom: '1rem' }}>
+                            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('status_label' as any) || (locale === 'ar' ? 'الحالة' : 'Status')}</label>
+                            <select
+                                className="input"
+                                value={status}
+                                onChange={e => setStatus(e.target.value)}
+                                required
+                                disabled={isViewMode}
+                                style={isViewMode ? { background: '#f1f5f9', cursor: 'not-allowed', textAlign: locale === 'ar' ? 'right' : 'left' } : { textAlign: locale === 'ar' ? 'right' : 'left' }}
+                            >
+                                <option value="ACTIVE">{t('status_active' as any) || (locale === 'ar' ? 'نشط' : 'Active')}</option>
+                                <option value="SUSPENDED">{t('status_suspended' as any) || (locale === 'ar' ? 'موقوف' : 'Suspended')}</option>
+                                <option value="OFFLINE">{t('status_offline' as any) || (locale === 'ar' ? 'غير متصل' : 'Offline')}</option>
                             </select>
                         </div>
                     )
