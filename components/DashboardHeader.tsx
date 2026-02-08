@@ -50,7 +50,7 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
     const lastProcessedCompany = useRef<string | null | undefined>(undefined)
 
     // Using SWR for data fetching with deduplication
-    const { data: _bootstrapData, mutate } = useSWR(
+    const { mutate } = useSWR(
         currentUser.id ? '/api/me/bootstrap' : null,
         fetcher,
         {
