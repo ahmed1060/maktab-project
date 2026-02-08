@@ -44,7 +44,7 @@ export default function UsernamesPage() {
         const data = users.map(u => ({
             [locale === 'ar' ? 'الاسم' : 'Name']: `${u.firstName} ${u.lastName}`,
             [locale === 'ar' ? 'اسم المستخدم' : 'Username']: u.username || '-',
-            [locale === 'ar' ? 'الشركة' : 'Company']: u.company?.name || '-'
+            [locale === 'ar' ? 'الدور' : 'Role']: t(`role_${(u as any).role?.toLowerCase()}` as any) || (u as any).role || '-'
         }))
 
         const worksheet = XLSX.utils.json_to_sheet(data)
@@ -112,9 +112,7 @@ export default function UsernamesPage() {
                                         fontWeight: 'bold',
                                         color: '#0f172a',
                                         marginBottom: '0.1rem',
-                                        whiteSpace: 'nowrap',
-                                        overflow: 'hidden',
-                                        textOverflow: 'ellipsis'
+                                        lineHeight: '1.2'
                                     }}>
                                         {user.firstName} {user.lastName}
                                     </div>
