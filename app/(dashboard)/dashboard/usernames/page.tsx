@@ -9,6 +9,7 @@ type User = {
     id: string
     firstName: string
     lastName: string
+    role: string
     username?: string | null
     email: string
     company?: {
@@ -43,8 +44,8 @@ export default function UsernamesPage() {
     const downloadExcel = () => {
         const data = users.map(u => ({
             [locale === 'ar' ? 'الاسم' : 'Name']: `${u.firstName} ${u.lastName}`,
-            [locale === 'ar' ? 'اسم المستخدم' : 'Username']: u.username || '-',
-            [locale === 'ar' ? 'الدور' : 'Role']: t(`role_${(u as any).role?.toLowerCase()}` as any) || (u as any).role || '-'
+            [locale === 'ar' ? 'الدور' : 'Role']: (u.role ? (t(`role_${u.role.toLowerCase()}` as any) || u.role) : '-'),
+            [locale === 'ar' ? 'اسم المستخدم' : 'Username']: u.username || '-'
         }))
 
         const worksheet = XLSX.utils.json_to_sheet(data)
