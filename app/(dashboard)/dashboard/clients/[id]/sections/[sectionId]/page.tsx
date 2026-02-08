@@ -404,7 +404,7 @@ export default function SectionNotesPage() {
         <div style={containerStyle}>
             <div className="space-y-6 animate-in fade-in duration-500">
                 {/* Header Row */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
                     <Link
                         href={`/dashboard/clients/${clientId}`}
                         className="glass"
@@ -428,31 +428,31 @@ export default function SectionNotesPage() {
                         </svg>
                     </Link>
                     <h1 className="text-3xl font-bold text-slate-800 tracking-tight">{t('notes_label' as any)}</h1>
-
-                    <EmployeeFilter
-                        onFilterChange={(newFilters: any) => setSearchQuery(newFilters.search)}
-                        selectedEmployeeId={''}
-                        hideEmployeeFilter={true}
-                        hideStatusFilter={true}
-                        hideDateFilter={true}
-                        hideFilterButton={true}
-                        dateFrom={''}
-                        dateTo={''}
-                        selectedStatus={''}
-                        searchQuery={searchQuery}
-                        placeholder={locale === 'ar' ? 'بحث في الملاحظات أو المنشئ' : 'Search Note Content or Creator'}
-                        totalCount={total}
-                        primaryAction={
-                            <button
-                                onClick={() => setIsModalOpen(true)}
-                                className="btn btn-primary"
-                                style={{ height: '48px', display: 'flex', alignItems: 'center', borderRadius: '1.25rem' }}
-                            >
-                                {t('add_note_button' as any)}
-                            </button>
-                        }
-                    />
                 </div>
+
+                <EmployeeFilter
+                    onFilterChange={(newFilters: any) => setSearchQuery(newFilters.search)}
+                    selectedEmployeeId={''}
+                    hideEmployeeFilter={true}
+                    hideStatusFilter={true}
+                    hideDateFilter={true}
+                    hideFilterButton={true}
+                    dateFrom={''}
+                    dateTo={''}
+                    selectedStatus={''}
+                    searchQuery={searchQuery}
+                    placeholder={locale === 'ar' ? 'بحث في الملاحظات أو المنشئ' : 'Search Note Content or Creator'}
+                    totalCount={total}
+                    primaryAction={
+                        <button
+                            onClick={() => setIsModalOpen(true)}
+                            className="btn btn-primary"
+                            style={{ height: '48px', display: 'flex', alignItems: 'center', borderRadius: '1.25rem' }}
+                        >
+                            {t('add_note_button' as any)}
+                        </button>
+                    }
+                />
 
                 {isLoading ? (
                     <LoadingSpinner />
