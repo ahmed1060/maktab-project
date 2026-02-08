@@ -50,12 +50,22 @@ export default function UsernamesPage() {
 
         const worksheet = XLSX.utils.json_to_sheet(data)
         const workbook = XLSX.utils.book_new()
-        XLSX.utils.book_append_sheet(workbook, worksheet, "Users")
+        const sheetName = locale === 'ar' ? "المستخدمين" : "Users"
+        XLSX.utils.book_append_sheet(workbook, worksheet, sheetName)
+
+        // RTL Support for Arabic
+        if (locale === 'ar') {
+            worksheet['!views'] = [{ RTL: true }]
+        }
 
         const wscols = [{ wch: 30 }, { wch: 20 }, { wch: 25 }]
         worksheet['!cols'] = wscols
 
-        XLSX.writeFile(workbook, `Employees_Usernames_${new Date().toISOString().split('T')[0]}.xlsx`)
+        const filename = locale === 'ar'
+            ? `أسماء المستخدمين_${new Date().toISOString().split('T')[0]}.xlsx`
+            : `Employees Usernames_${new Date().toISOString().split('T')[0]}.xlsx`
+
+        XLSX.writeFile(workbook, filename)
     }
 
     return (
