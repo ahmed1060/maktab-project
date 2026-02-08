@@ -254,12 +254,7 @@ export default function AllUsersPage() {
 
     return (
         <div style={{ direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-                <div>
-                    <h1 style={{ fontSize: '2rem', fontWeight: 'bold', color: '#0f172a', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('all_users_label')}</h1>
-                    <p style={{ color: '#64748b', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('all_users_subtitle')}</p>
-                </div>
-            </div>
+            {/* Header removed as it is now in the top bar */}
 
             <EmployeeFilter
                 onFilterChange={(newFilters) => setFilters(prev => ({ ...prev, ...newFilters }))}

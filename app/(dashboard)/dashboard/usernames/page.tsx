@@ -59,45 +59,31 @@ export default function UsernamesPage() {
 
     return (
         <div style={{ padding: '2rem', direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-                <div>
-                    <button
-                        onClick={() => window.history.back()}
-                        style={{
-                            background: 'none',
-                            border: 'none',
-                            color: '#3b82f6',
-                            cursor: 'pointer',
-                            marginBottom: '1rem',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '0.5rem',
-                            fontSize: '0.9rem'
-                        }}
-                    >
-                        <span>{locale === 'ar' ? '←' : '←'}</span>
-                        {t('back' as any) || 'Back'}
-                    </button>
-                    <h1 style={{ fontSize: '2rem', fontWeight: 'bold' }}>{t('usernames_list')}</h1>
-                </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginBottom: '2rem' }}>
                 <button
                     onClick={downloadExcel}
                     className="btn"
+                    title={t('download_excel')}
                     style={{
                         background: '#10b981',
                         color: 'white',
                         fontWeight: '600',
                         display: 'flex',
                         alignItems: 'center',
-                        gap: '0.5rem',
-                        padding: '0.75rem 1.5rem',
+                        justifyContent: 'center',
+                        gap: '0.4rem',
+                        padding: '0.6rem 1rem',
                         borderRadius: '0.75rem',
                         border: 'none',
-                        boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)'
+                        boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s ease'
                     }}
+                    onMouseOver={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 6px 12px -2px rgba(0,0,0,0.15)'; }}
+                    onMouseOut={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0,0,0,0.1)'; }}
                 >
-                    <span>📊</span>
-                    {t('download_excel')}
+                    <span style={{ fontSize: '1.2rem' }}>📊</span>
+                    <span style={{ fontSize: '1.2rem' }}>📥</span>
                 </button>
             </div>
 

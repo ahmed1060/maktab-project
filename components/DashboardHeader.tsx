@@ -176,6 +176,7 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
         if (path === '/dashboard/requests') return t('requests')
         if (path === '/dashboard/requests/history') return t('requests_history')
         if (path === '/dashboard/day-off-requests') return t('day_off_requests')
+        if (path === '/dashboard/usernames') return t('usernames_list')
         return t('system')
     }
 

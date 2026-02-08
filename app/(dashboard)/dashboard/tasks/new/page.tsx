@@ -326,16 +326,21 @@ export default function NewTaskPage() {
                                 background: '#3b82f6',
                                 color: 'white',
                                 border: 'none',
-                                padding: '0.4rem 0.75rem',
-                                fontSize: '0.9rem',
+                                padding: '0',
+                                fontSize: '1rem',
                                 fontWeight: 'bold',
-                                borderRadius: '0.5rem',
+                                borderRadius: '50%',
                                 cursor: 'pointer',
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
-                                width: '50px'
+                                width: '48px',
+                                height: '48px',
+                                transition: 'all 0.2s ease',
+                                boxShadow: '0 4px 12px rgba(59, 130, 246, 0.2)'
                             }}
+                            onMouseOver={(e) => { e.currentTarget.style.transform = 'scale(1.05)'; e.currentTarget.style.background = '#2563eb'; }}
+                            onMouseOut={(e) => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.background = '#3b82f6'; }}
                         >
                             🆔
                         </button>
