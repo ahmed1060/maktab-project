@@ -42,6 +42,9 @@ export default function UsernamesPage() {
     }, [])
 
     const downloadExcel = () => {
+        const now = new Date()
+        const timeStr = `${String(now.getHours()).padStart(2, '0')}-${String(now.getMinutes()).padStart(2, '0')}`
+
         const data = users.map(u => ({
             [locale === 'ar' ? 'الاسم' : 'Name']: `${u.firstName} ${u.lastName}`,
             [locale === 'ar' ? 'الدور' : 'Role']: (u.role ? (t(`role_${u.role.toLowerCase()}` as any) || u.role) : '-'),
@@ -50,12 +53,18 @@ export default function UsernamesPage() {
 
         const worksheet = XLSX.utils.json_to_sheet(data)
         const workbook = XLSX.utils.book_new()
-        const sheetName = locale === 'ar' ? "المستخدمين" : "Users"
+
+        const sheetBaseName = locale === 'ar' ? "المستخدمين" : "Users"
+        const sheetName = `${sheetBaseName}_${timeStr}`
+
         XLSX.utils.book_append_sheet(workbook, worksheet, sheetName)
 
         // RTL Support for Arabic
         if (locale === 'ar') {
             worksheet['!views'] = [{ RTL: true }]
+            // Global workbook RTL setting for better compatibility
+            if (!workbook.Workbook) workbook.Workbook = {}
+            workbook.Workbook.Views = [{ RTL: true }]
         }
 
         const wscols = [{ wch: 30 }, { wch: 20 }, { wch: 25 }]
