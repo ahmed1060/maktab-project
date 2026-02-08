@@ -90,41 +90,50 @@ export default function UsernamesPage() {
             {loading ? <LoadingSpinner message={t('loading_users')} /> : (
                 <div style={{
                     display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-                    gap: '1.5rem'
+                    gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
+                    gap: '1rem'
                 }}>
                     {users.map(user => (
                         <div
                             key={user.id}
                             style={{
                                 background: 'white',
-                                padding: '1.5rem',
+                                padding: '1rem',
                                 borderRadius: '1rem',
                                 border: '1px solid #e2e8f0',
                                 boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
                                 transition: 'transform 0.2s, box-shadow 0.2s'
                             }}
                         >
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                                <div style={{ flex: 1 }}>
-                                    <div style={{ fontSize: '1.25rem', fontWeight: 'bold', color: '#0f172a', marginBottom: '0.1rem' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                    <div style={{
+                                        fontSize: '1.1rem',
+                                        fontWeight: 'bold',
+                                        color: '#0f172a',
+                                        marginBottom: '0.1rem',
+                                        whiteSpace: 'nowrap',
+                                        overflow: 'hidden',
+                                        textOverflow: 'ellipsis'
+                                    }}>
                                         {user.firstName} {user.lastName}
                                     </div>
-                                    <div style={{ fontSize: '0.85rem', color: '#64748b', fontWeight: '500', textTransform: 'capitalize' }}>
+                                    <div style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: '500', textTransform: 'capitalize' }}>
                                         {t(`role_${(user as any).role?.toLowerCase()}` as any) || (user as any).role || '-'}
                                     </div>
                                 </div>
                                 <div style={{
                                     background: '#eff6ff',
-                                    padding: '0.3rem 0.6rem',
+                                    padding: '0.25rem 0.5rem',
                                     borderRadius: '0.5rem',
                                     border: '1px solid #dbeafe',
                                     display: 'flex',
                                     alignItems: 'center',
-                                    justifyContent: 'center'
+                                    justifyContent: 'center',
+                                    flexShrink: 0
                                 }}>
                                     <code style={{
-                                        fontSize: '0.9rem',
+                                        fontSize: '0.85rem',
                                         color: '#2563eb',
                                         fontWeight: '800',
                                         letterSpacing: '0.5px'
