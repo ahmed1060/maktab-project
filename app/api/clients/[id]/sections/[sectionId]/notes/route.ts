@@ -261,7 +261,7 @@ export async function PUT(
         const userId = (session?.user as any)?.id
         const userRole = (session?.user as any)?.role
 
-        if (!session?.user || (userRole !== 'SUPER_ADMIN' && userRole !== 'ADMIN')) {
+        if (!session?.user) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
         }
 

@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { useLanguage } from '@/context/LanguageContext'
 
 interface ModalProps {
     isOpen: boolean
@@ -11,7 +12,8 @@ interface ModalProps {
     hideCloseButton?: boolean
 }
 
-export default function Modal({ isOpen, onClose, title, children, hideFooter = false, hideCloseButton = false }: ModalProps) {
+export default function Modal({ isOpen, onClose, title, children, hideFooter = true, hideCloseButton = false }: ModalProps) {
+    const { t } = useLanguage()
     const modalRef = useRef<HTMLDivElement>(null)
 
     const [mounted, setMounted] = useState(false)
@@ -115,7 +117,7 @@ export default function Modal({ isOpen, onClose, title, children, hideFooter = f
                                 e.currentTarget.style.transform = 'translateY(0)'
                             }}
                         >
-                            Close
+                            {t('close')}
                         </button>
                     </div>
                 )}
