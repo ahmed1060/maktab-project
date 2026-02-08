@@ -48,6 +48,7 @@ export default function NewTaskPage() {
     const [isArUploading, setIsArUploading] = useState(false)
     const [bulkTasks, setBulkTasks] = useState<any[]>([])
     const [users, setUsers] = useState<any[]>([])
+    const [activeAssigneeEdit, setActiveAssigneeEdit] = useState<{ index: number, type: 'add' | 'remove' } | null>(null)
     const router = useRouter()
 
     const { showToast } = useToast()
@@ -561,58 +562,194 @@ export default function NewTaskPage() {
                                                     </div>
                                                 </td>
                                                 <td style={{ padding: '1rem', position: 'relative' }}>
-                                                    <div style={{ minWidth: '220px' }}>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', minWidth: '250px' }}>
                                                         <div style={{
-                                                            maxHeight: '120px',
-                                                            overflowY: 'auto',
-                                                            border: '1px solid var(--glass-border)',
-                                                            borderRadius: '0.5rem',
+                                                            flex: 1,
+                                                            opacity: bt.isInvalid ? 0.6 : 1,
+                                                            color: bt.unresolvedUsernames.length > 0 ? '#ef4444' : 'inherit',
+                                                            fontSize: '0.85rem',
+                                                            background: 'rgba(255, 255, 255, 0.2)',
                                                             padding: '0.5rem',
-                                                            background: 'rgba(255, 255, 255, 0.4)'
+                                                            borderRadius: '0.5rem',
+                                                            border: '1px solid var(--glass-border)',
+                                                            minHeight: '40px',
+                                                            display: 'flex',
+                                                            alignItems: 'center'
                                                         }}>
-                                                            {users.map(u => (
-                                                                <label key={u.id} style={{
+                                                            {bt.resolvedNames && bt.resolvedNames.length > 0 ? bt.resolvedNames.join(', ') : bt.usernamesRaw || t('no_assignees')}
+                                                        </div>
+
+                                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                                            {/* Plus Button */}
+                                                            <button
+                                                                onClick={() => setActiveAssigneeEdit(activeAssigneeEdit?.index === idx && activeAssigneeEdit?.type === 'add' ? null : { index: idx, type: 'add' })}
+                                                                style={{
+                                                                    width: '28px',
+                                                                    height: '28px',
+                                                                    borderRadius: '50%',
+                                                                    border: '1px solid var(--glass-border)',
+                                                                    background: 'rgba(255, 255, 255, 0.4)',
+                                                                    backdropFilter: 'blur(8px)',
                                                                     display: 'flex',
                                                                     alignItems: 'center',
-                                                                    gap: '0.5rem',
-                                                                    fontSize: '0.8rem',
-                                                                    marginBottom: '0.25rem',
-                                                                    cursor: 'pointer'
-                                                                }}>
-                                                                    <input
-                                                                        type="checkbox"
-                                                                        checked={bt.resolvedIds.includes(u.id)}
-                                                                        onChange={(e) => {
-                                                                            const newTasks = [...bulkTasks]
-                                                                            let newIds = [...bt.resolvedIds]
-                                                                            let newNames = [...bt.resolvedNames]
+                                                                    justifyContent: 'center',
+                                                                    cursor: 'pointer',
+                                                                    fontSize: '1.2rem',
+                                                                    fontWeight: 'bold',
+                                                                    color: '#3b82f6',
+                                                                    transition: 'all 0.2s'
+                                                                }}
+                                                                onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255, 255, 255, 0.6)'; e.currentTarget.style.transform = 'scale(1.1)'; }}
+                                                                onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(255, 255, 255, 0.4)'; e.currentTarget.style.transform = 'scale(1)'; }}
+                                                            >
+                                                                +
+                                                            </button>
 
-                                                                            if (e.target.checked) {
-                                                                                newIds.push(u.id)
-                                                                                newNames.push(`${u.firstName} ${u.lastName}`)
-                                                                            } else {
-                                                                                newIds = newIds.filter(id => id !== u.id)
-                                                                                newNames = newNames.filter(name => name !== `${u.firstName} ${u.lastName}`)
-                                                                            }
-
-                                                                            newTasks[idx].resolvedIds = newIds
-                                                                            newTasks[idx].resolvedNames = newNames
-                                                                            newTasks[idx].unresolvedUsernames = [] // Clear unresolved since editing manually
-                                                                            // Re-validate
-                                                                            newTasks[idx].isInvalid = newIds.length === 0 || !bt.title || !bt.description || !bt.deadline
-                                                                            setBulkTasks(newTasks)
-                                                                        }}
-                                                                    />
-                                                                    {u.firstName} {u.lastName}
-                                                                </label>
-                                                            ))}
+                                                            {/* Minus Button */}
+                                                            <button
+                                                                onClick={() => setActiveAssigneeEdit(activeAssigneeEdit?.index === idx && activeAssigneeEdit?.type === 'remove' ? null : { index: idx, type: 'remove' })}
+                                                                style={{
+                                                                    width: '28px',
+                                                                    height: '28px',
+                                                                    borderRadius: '50%',
+                                                                    border: '1px solid var(--glass-border)',
+                                                                    background: 'rgba(255, 255, 255, 0.4)',
+                                                                    backdropFilter: 'blur(8px)',
+                                                                    display: 'flex',
+                                                                    alignItems: 'center',
+                                                                    justifyContent: 'center',
+                                                                    cursor: 'pointer',
+                                                                    fontSize: '1.2rem',
+                                                                    fontWeight: 'bold',
+                                                                    color: '#ef4444',
+                                                                    transition: 'all 0.2s'
+                                                                }}
+                                                                onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255, 255, 255, 0.6)'; e.currentTarget.style.transform = 'scale(1.1)'; }}
+                                                                onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(255, 255, 255, 0.4)'; e.currentTarget.style.transform = 'scale(1)'; }}
+                                                            >
+                                                                -
+                                                            </button>
                                                         </div>
-                                                        {bt.unresolvedUsernames.length > 0 && (
-                                                            <div style={{ color: '#ef4444', fontSize: '0.7rem', fontWeight: 'bold', marginTop: '0.25rem' }}>
-                                                                {t('invalid_username')}: {bt.unresolvedUsernames.join(', ')}
-                                                            </div>
-                                                        )}
                                                     </div>
+
+                                                    {/* Dropdowns/Popups */}
+                                                    {activeAssigneeEdit?.index === idx && (
+                                                        <div style={{
+                                                            position: 'absolute',
+                                                            top: '100%',
+                                                            right: '1rem',
+                                                            zIndex: 100,
+                                                            minWidth: '220px',
+                                                            maxHeight: '200px',
+                                                            overflowY: 'auto',
+                                                            background: 'rgba(255, 255, 255, 0.95)',
+                                                            backdropFilter: 'blur(12px)',
+                                                            border: '1px solid var(--glass-border)',
+                                                            borderRadius: '0.75rem',
+                                                            boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)',
+                                                            padding: '0.5rem',
+                                                            marginTop: '0.5rem',
+                                                            animation: 'fadeIn 0.2s ease-out'
+                                                        }}>
+                                                            {activeAssigneeEdit.type === 'add' ? (
+                                                                // Add Dropdown
+                                                                <div>
+                                                                    <div style={{ fontSize: '0.75rem', fontWeight: 'bold', color: '#64748b', padding: '0.25rem 0.5rem', borderBottom: '1px solid #e2e8f0', marginBottom: '0.25rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
+                                                                        {t('add_assignee')}
+                                                                    </div>
+                                                                    {users.filter(u => !bt.resolvedIds.includes(u.id)).map(u => (
+                                                                        <div
+                                                                            key={u.id}
+                                                                            onClick={() => {
+                                                                                const newTasks = [...bulkTasks]
+                                                                                newTasks[idx].resolvedIds = [...bt.resolvedIds, u.id]
+                                                                                newTasks[idx].resolvedNames = [...bt.resolvedNames, `${u.firstName} ${u.lastName}`]
+                                                                                newTasks[idx].unresolvedUsernames = []
+                                                                                newTasks[idx].isInvalid = !bt.title || !bt.description || !bt.deadline
+                                                                                setBulkTasks(newTasks)
+                                                                                setActiveAssigneeEdit(null)
+                                                                            }}
+                                                                            style={{
+                                                                                padding: '0.5rem',
+                                                                                fontSize: '0.85rem',
+                                                                                cursor: 'pointer',
+                                                                                borderRadius: '0.375rem',
+                                                                                transition: 'background 0.2s',
+                                                                                textAlign: locale === 'ar' ? 'right' : 'left'
+                                                                            }}
+                                                                            onMouseEnter={(e) => e.currentTarget.style.background = '#f1f5f9'}
+                                                                            onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                                                                        >
+                                                                            <div style={{ fontWeight: '600' }}>{u.firstName} {u.lastName}</div>
+                                                                            <div style={{ fontSize: '0.7rem', color: '#94a3b8' }}>{t(`role_${u.role?.toLowerCase()}` as any)}</div>
+                                                                        </div>
+                                                                    ))}
+                                                                    {users.filter(u => !bt.resolvedIds.includes(u.id)).length === 0 && (
+                                                                        <div style={{ padding: '1rem', textAlign: 'center', fontSize: '0.8rem', color: '#94a3b8' }}>{t('all_users_added')}</div>
+                                                                    )}
+                                                                </div>
+                                                            ) : (
+                                                                // Remove Popup
+                                                                <div>
+                                                                    <div style={{ fontSize: '0.75rem', fontWeight: 'bold', color: '#64748b', padding: '0.25rem 0.5rem', borderBottom: '1px solid #e2e8f0', marginBottom: '0.25rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
+                                                                        {t('remove_assignee')}
+                                                                    </div>
+                                                                    {bt.resolvedIds.map((id: string, ridx: number) => (
+                                                                        <div
+                                                                            key={id}
+                                                                            style={{
+                                                                                display: 'flex',
+                                                                                justifyContent: 'space-between',
+                                                                                alignItems: 'center',
+                                                                                padding: '0.5rem',
+                                                                                fontSize: '0.85rem',
+                                                                                borderRadius: '0.375rem',
+                                                                                flexDirection: locale === 'ar' ? 'row-reverse' : 'row'
+                                                                            }}
+                                                                        >
+                                                                            <span style={{ fontWeight: '500' }}>{bt.resolvedNames[ridx]}</span>
+                                                                            <button
+                                                                                onClick={() => {
+                                                                                    const newTasks = [...bulkTasks]
+                                                                                    const nid = bt.resolvedIds.filter((_: any, i: number) => i !== ridx)
+                                                                                    const nname = bt.resolvedNames.filter((_: any, i: number) => i !== ridx)
+                                                                                    newTasks[idx].resolvedIds = nid
+                                                                                    newTasks[idx].resolvedNames = nname
+                                                                                    newTasks[idx].isInvalid = nid.length === 0 || !bt.title || !bt.description || !bt.deadline
+                                                                                    setBulkTasks(newTasks)
+                                                                                    if (nid.length === 0) setActiveAssigneeEdit(null)
+                                                                                }}
+                                                                                style={{
+                                                                                    border: 'none',
+                                                                                    background: '#fee2e2',
+                                                                                    color: '#ef4444',
+                                                                                    borderRadius: '50%',
+                                                                                    width: '20px',
+                                                                                    height: '20px',
+                                                                                    display: 'flex',
+                                                                                    alignItems: 'center',
+                                                                                    justifyContent: 'center',
+                                                                                    cursor: 'pointer',
+                                                                                    fontSize: '0.9rem'
+                                                                                }}
+                                                                            >
+                                                                                ×
+                                                                            </button>
+                                                                        </div>
+                                                                    ))}
+                                                                    {bt.resolvedIds.length === 0 && (
+                                                                        <div style={{ padding: '1rem', textAlign: 'center', fontSize: '0.8rem', color: '#94a3b8' }}>{t('no_assignees')}</div>
+                                                                    )}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    )}
+
+                                                    {bt.unresolvedUsernames.length > 0 && (
+                                                        <div style={{ color: '#ef4444', fontSize: '0.7rem', fontWeight: 'bold', marginTop: '0.25rem' }}>
+                                                            {t('invalid_username')}: {bt.unresolvedUsernames.join(', ')}
+                                                        </div>
+                                                    )}
                                                 </td>
                                                 <td style={{ padding: '1rem' }}>
                                                     <div style={{ opacity: bt.isInvalid ? 0.5 : 1 }}>
