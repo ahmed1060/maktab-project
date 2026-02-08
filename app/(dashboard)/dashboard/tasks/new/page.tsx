@@ -561,17 +561,58 @@ export default function NewTaskPage() {
                                                     </div>
                                                 </td>
                                                 <td style={{ padding: '1rem', position: 'relative' }}>
-                                                    <div style={{
-                                                        opacity: bt.isInvalid ? 0.6 : 1,
-                                                        color: bt.unresolvedUsernames.length > 0 ? '#ef4444' : 'inherit'
-                                                    }}>
-                                                        {bt.resolvedNames && bt.resolvedNames.length > 0 ? bt.resolvedNames.join(', ') : bt.usernamesRaw}
-                                                    </div>
-                                                    {bt.unresolvedUsernames.length > 0 && (
-                                                        <div style={{ color: '#ef4444', fontSize: '0.7rem', fontWeight: 'bold', marginTop: '0.25rem' }}>
-                                                            {t('invalid_username')}: {bt.unresolvedUsernames.join(', ')}
+                                                    <div style={{ minWidth: '220px' }}>
+                                                        <div style={{
+                                                            maxHeight: '120px',
+                                                            overflowY: 'auto',
+                                                            border: '1px solid var(--glass-border)',
+                                                            borderRadius: '0.5rem',
+                                                            padding: '0.5rem',
+                                                            background: 'rgba(255, 255, 255, 0.4)'
+                                                        }}>
+                                                            {users.map(u => (
+                                                                <label key={u.id} style={{
+                                                                    display: 'flex',
+                                                                    alignItems: 'center',
+                                                                    gap: '0.5rem',
+                                                                    fontSize: '0.8rem',
+                                                                    marginBottom: '0.25rem',
+                                                                    cursor: 'pointer'
+                                                                }}>
+                                                                    <input
+                                                                        type="checkbox"
+                                                                        checked={bt.resolvedIds.includes(u.id)}
+                                                                        onChange={(e) => {
+                                                                            const newTasks = [...bulkTasks]
+                                                                            let newIds = [...bt.resolvedIds]
+                                                                            let newNames = [...bt.resolvedNames]
+
+                                                                            if (e.target.checked) {
+                                                                                newIds.push(u.id)
+                                                                                newNames.push(`${u.firstName} ${u.lastName}`)
+                                                                            } else {
+                                                                                newIds = newIds.filter(id => id !== u.id)
+                                                                                newNames = newNames.filter(name => name !== `${u.firstName} ${u.lastName}`)
+                                                                            }
+
+                                                                            newTasks[idx].resolvedIds = newIds
+                                                                            newTasks[idx].resolvedNames = newNames
+                                                                            newTasks[idx].unresolvedUsernames = [] // Clear unresolved since editing manually
+                                                                            // Re-validate
+                                                                            newTasks[idx].isInvalid = newIds.length === 0 || !bt.title || !bt.description || !bt.deadline
+                                                                            setBulkTasks(newTasks)
+                                                                        }}
+                                                                    />
+                                                                    {u.firstName} {u.lastName}
+                                                                </label>
+                                                            ))}
                                                         </div>
-                                                    )}
+                                                        {bt.unresolvedUsernames.length > 0 && (
+                                                            <div style={{ color: '#ef4444', fontSize: '0.7rem', fontWeight: 'bold', marginTop: '0.25rem' }}>
+                                                                {t('invalid_username')}: {bt.unresolvedUsernames.join(', ')}
+                                                            </div>
+                                                        )}
+                                                    </div>
                                                 </td>
                                                 <td style={{ padding: '1rem' }}>
                                                     <div style={{ opacity: bt.isInvalid ? 0.5 : 1 }}>

@@ -21,6 +21,7 @@ interface Employee {
     totalDifficultyPoints: number
     gender?: string
     avatar?: string | null
+    username?: string
 }
 
 export default function EmployeesPage() {
@@ -352,6 +353,20 @@ export default function EmployeesPage() {
                                 }}>
                                     {t(`role_${emp.role.toLowerCase()}` as any) || emp.role}
                                 </span>
+                                {emp.username && (
+                                    <span style={{
+                                        display: 'inline-block',
+                                        padding: '0.25rem 0.625rem',
+                                        borderRadius: '0.5rem',
+                                        fontSize: '0.75rem',
+                                        fontWeight: '700',
+                                        background: '#f8fafc',
+                                        color: '#64748b',
+                                        border: '1px solid #e2e8f0'
+                                    }}>
+                                        @{emp.username}
+                                    </span>
+                                )}
                                 {emp.status === 'SUSPENDED' && (
                                     <span style={{
                                         padding: '0.25rem 0.625rem',
