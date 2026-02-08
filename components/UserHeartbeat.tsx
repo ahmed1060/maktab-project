@@ -50,8 +50,11 @@ export default function UserHeartbeat() {
         // Initial ping
         checkStatus()
 
-        // Ping every 30 seconds
-        const interval = setInterval(checkStatus, 30 * 1000)
+        // Ping every 120 seconds (2 minutes)
+        const interval = setInterval(() => {
+            if (document.visibilityState === 'hidden') return
+            checkStatus()
+        }, 120000)
 
         return () => clearInterval(interval)
     }, [session])

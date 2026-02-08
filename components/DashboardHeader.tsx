@@ -9,6 +9,10 @@ import { useCompany } from '@/context/CompanyContext'
 import { useHeader } from '@/context/HeaderContext'
 import { useLanguage } from '@/context/LanguageContext'
 import LanguageToggleButton from './LanguageToggleButton'
+import useSWR from 'swr'
+
+// Fetcher for SWR
+const fetcher = (url: string) => fetch(url, { cache: 'no-store' }).then(res => res.json())
 
 interface DashboardHeaderProps {
     user: {
@@ -45,41 +49,43 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
     const [headerAvatar, setHeaderAvatar] = useState<string | null>(currentUser.avatar || currentUser.image || currentUser.picture || null)
     const lastProcessedCompany = useRef<string | null | undefined>(undefined)
 
-    // Unified data fetching via bootstrap API
-    useEffect(() => {
-        const fetchBootstrapData = async () => {
-            if (!currentUser.id) return
-            try {
-                const res = await fetch('/api/me/bootstrap', { cache: 'no-store' })
-                if (res.ok) {
-                    const data = await res.json()
-                    // Update Avatar
-                    const userAvatar = data.user?.avatar || data.user?.image || data.user?.picture || null
-                    setHeaderAvatar(userAvatar)
+    // Using SWR for data fetching with deduplication
+    const { data: _bootstrapData, mutate } = useSWR(
+        currentUser.id ? '/api/me/bootstrap' : null,
+        fetcher,
+        {
+            dedupingInterval: 300000,
+            revalidateOnFocus: false,
+            onSuccess: (data) => {
+                // Update Avatar
+                const userAvatar = data.user?.avatar || data.user?.image || data.user?.picture || null
+                setHeaderAvatar(userAvatar)
 
-                    // Update Companies if Super Admin
-                    if (data.companies && Array.isArray(data.companies)) {
-                        setCompanies(data.companies)
-                    }
-
-                    // Update Pending Requests Count & Notifications
-                    if (data.counts) {
-                        setPendingRequestsCount(data.counts.pendingProfileRequests || 0)
-                        setUnreadNotificationsCount(data.counts.unreadNotifications || 0)
-                    }
-
-                    // Trigger Note Expiry Check for Admins
-                    if (['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role)) {
-                        fetch('/api/notes/check-expiry', { method: 'POST' }).catch(() => { })
-                    }
+                // Update Companies if Super Admin
+                if (data.companies && Array.isArray(data.companies)) {
+                    setCompanies(data.companies)
                 }
-            } catch (err) {
-                console.error('Bootstrap fetch error:', err)
+
+                // Update Pending Requests Count & Notifications
+                if (data.counts) {
+                    setPendingRequestsCount(data.counts.pendingProfileRequests || 0)
+                    setUnreadNotificationsCount(data.counts.unreadNotifications || 0)
+                }
+
+                // Trigger Note Expiry Check for Admins
+                if (['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role)) {
+                    fetch('/api/notes/check-expiry', { method: 'POST' }).catch(() => { })
+                }
             }
         }
+    )
 
-        fetchBootstrapData()
-    }, [currentUser.id, currentUser.role, refreshTrigger, session?.user?.image, session?.user?.avatar, session?.user?.picture])
+    // Force re-validation when trigger or profile changes
+    useEffect(() => {
+        if (refreshTrigger > 0 || session?.user?.image || session?.user?.avatar || session?.user?.picture) {
+            mutate()
+        }
+    }, [refreshTrigger, session?.user?.image, session?.user?.avatar, session?.user?.picture, mutate])
 
     // Sync URL <-> Context
     useEffect(() => {

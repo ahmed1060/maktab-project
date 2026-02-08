@@ -47,7 +47,10 @@ export default function NotificationBell({ initialUnreadCount = 0 }: { initialUn
 
     useEffect(() => {
         fetchNotifications()
-        const interval = setInterval(fetchNotifications, 60000) // Poll every minute
+        const interval = setInterval(() => {
+            if (document.visibilityState === 'hidden') return
+            fetchNotifications()
+        }, 300000) // Poll every 5 minutes
         return () => clearInterval(interval)
     }, [])
 
