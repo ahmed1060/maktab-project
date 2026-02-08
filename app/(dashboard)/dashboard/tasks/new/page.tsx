@@ -316,29 +316,53 @@ export default function NewTaskPage() {
                         <span style={{ fontSize: '1rem' }}>📥</span>
                         {t('download_template')}
                     </button>
-                    <label
-                        className="btn btn-primary"
-                        style={{
-                            cursor: 'pointer',
-                            padding: '0.4rem 0.75rem',
-                            fontSize: '0.8rem',
-                            width: '100%',
-                            justifyContent: 'flex-start'
-                        }}
-                    >
-                        <span style={{ fontSize: '1rem' }}>📤</span>
-                        {t('upload_tasks_excel')}
-                        <input
-                            type="file"
-                            accept=".xlsx, .xls"
-                            onChange={(e) => {
-                                const file = e.target.files?.[0]
-                                if (file) handleBulkUpload(file)
-                                e.target.value = '' // Reset
+                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                        <label
+                            className="btn btn-primary"
+                            style={{
+                                cursor: 'pointer',
+                                padding: '0.4rem 0.75rem',
+                                fontSize: '0.8rem',
+                                flex: 1,
+                                justifyContent: 'flex-start'
                             }}
-                            style={{ display: 'none' }}
-                        />
-                    </label>
+                        >
+                            <span style={{ fontSize: '1rem' }}>📤</span>
+                            {t('upload_tasks_excel')}
+                            <input
+                                type="file"
+                                accept=".xlsx, .xls"
+                                onChange={(e) => {
+                                    const file = e.target.files?.[0]
+                                    if (file) handleBulkUpload(file)
+                                    e.target.value = '' // Reset
+                                }}
+                                style={{ display: 'none' }}
+                            />
+                        </label>
+                        <button
+                            type="button"
+                            onClick={() => window.open('/dashboard/all-users/usernames', '_blank')}
+                            className="btn"
+                            title={t('view_usernames')}
+                            style={{
+                                background: '#3b82f6',
+                                color: 'white',
+                                border: 'none',
+                                padding: '0.4rem 0.75rem',
+                                fontSize: '0.9rem',
+                                fontWeight: 'bold',
+                                borderRadius: '0.5rem',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                width: '40px'
+                            }}
+                        >
+                            @
+                        </button>
+                    </div>
                 </div>
             </div>
             {error && (
