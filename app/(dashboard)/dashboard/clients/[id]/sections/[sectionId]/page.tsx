@@ -209,8 +209,9 @@ export default function SectionNotesPage() {
         try {
             const parsed = JSON.parse(attachment)
             if (Array.isArray(parsed)) {
-                return parsed
+                return parsed.filter(i => i !== null && i !== undefined)
             }
+            if (parsed === null) return []
             return [parsed]
         } catch {
             // Backward compatibility for single URL strings
@@ -592,7 +593,8 @@ export default function SectionNotesPage() {
                                                 onClick={() => {
                                                     setEditingNote(note)
                                                     setEditNoteContent(note.content)
-                                                    setEditExpiryDate(note.expiryDate ? new Date(note.expiryDate).toISOString().split('T')[0] : '')
+                                                    const date = note.expiryDate ? new Date(note.expiryDate) : null
+                                                    setEditExpiryDate(date && !isNaN(date.getTime()) ? date.toISOString().split('T')[0] : '')
                                                     setEditReminderDays(note.reminderDays ? note.reminderDays.toString() : '')
                                                     setIsEditModalOpen(true)
                                                 }}
@@ -886,17 +888,20 @@ export default function SectionNotesPage() {
                                     {/* Existing Attachments */}
                                     {editingNote && getNoteAttachments(editingNote.attachment).length > 0 && (
                                         <div style={{ marginBottom: '1rem', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                                            {getNoteAttachments(editingNote.attachment).map((url, i) => (
-                                                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 0.75rem', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '0.5rem' }}>
-                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', overflow: 'hidden' }}>
-                                                        <span style={{ fontSize: '1rem' }}>🔗</span>
-                                                        <div style={{ fontSize: '0.75rem', fontWeight: '500', color: '#0369a1', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                                            {url.split('/').pop()}
+                                            {getNoteAttachments(editingNote.attachment).map((url, i) => {
+                                                if (!url) return null;
+                                                return (
+                                                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 0.75rem', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '0.5rem' }}>
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', overflow: 'hidden' }}>
+                                                            <span style={{ fontSize: '1rem' }}>🔗</span>
+                                                            <div style={{ fontSize: '0.75rem', fontWeight: '500', color: '#0369a1', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                                                {typeof url === 'string' ? url.split('/').pop() : url.name}
+                                                            </div>
                                                         </div>
+                                                        <button type="button" onClick={() => handleRemoveExistingAttachment(editingNote, url)} style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', fontSize: '1rem', fontWeight: 'bold' }}>×</button>
                                                     </div>
-                                                    <button type="button" onClick={() => handleRemoveExistingAttachment(editingNote, url)} style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', fontSize: '1rem', fontWeight: 'bold' }}>×</button>
-                                                </div>
-                                            ))}
+                                                )
+                                            })}
                                         </div>
                                     )}
 
