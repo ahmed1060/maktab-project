@@ -105,34 +105,33 @@ export default function UsernamesPage() {
                                 transition: 'transform 0.2s, box-shadow 0.2s'
                             }}
                         >
-                            <div style={{ marginBottom: '1rem' }}>
-                                <div style={{ fontSize: '1.1rem', fontWeight: 'bold', color: '#0f172a' }}>
-                                    {user.firstName} {user.lastName}
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
+                                <div>
+                                    <div style={{ fontSize: '1.2rem', fontWeight: 'bold', color: '#0f172a', marginBottom: '0.25rem' }}>
+                                        {user.firstName} {user.lastName}
+                                    </div>
+                                    <div style={{ fontSize: '0.85rem', color: '#64748b' }}>
+                                        {user.company?.name || '-'}
+                                    </div>
                                 </div>
-                                <div style={{ fontSize: '0.85rem', color: '#64748b' }}>
-                                    {user.company?.name || '-'}
-                                </div>
-                            </div>
-                            <div style={{
-                                background: '#f8fafc',
-                                padding: '0.75rem',
-                                borderRadius: '0.5rem',
-                                border: '1px solid #e2e8f0',
-                                display: 'flex',
-                                justifyContent: 'space-between',
-                                alignItems: 'center'
-                            }}>
-                                <span style={{ fontSize: '0.8rem', color: '#94a3b8', fontWeight: '600', textTransform: 'uppercase' }}>
-                                    {t('username_label' as any) || 'Username'}
-                                </span>
-                                <code style={{
-                                    fontSize: '1rem',
-                                    color: '#2563eb',
-                                    fontWeight: 'bold',
-                                    letterSpacing: '0.5px'
+                                <div style={{
+                                    background: '#eff6ff',
+                                    padding: '0.4rem 0.8rem',
+                                    borderRadius: '0.5rem',
+                                    border: '1px solid #dbeafe',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    boxShadow: '0 2px 4px rgba(37, 99, 235, 0.05)'
                                 }}>
-                                    {user.username || '-'}
-                                </code>
+                                    <code style={{
+                                        fontSize: '0.95rem',
+                                        color: '#2563eb',
+                                        fontWeight: '800',
+                                        letterSpacing: '0.5px'
+                                    }}>
+                                        {user.username || '-'}
+                                    </code>
+                                </div>
                             </div>
                         </div>
                     ))}
