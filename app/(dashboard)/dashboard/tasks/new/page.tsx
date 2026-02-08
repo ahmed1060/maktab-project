@@ -320,29 +320,39 @@ export default function NewTaskPage() {
                         <button
                             type="button"
                             onClick={() => window.open('/dashboard/usernames', '_blank')}
-                            className="btn"
                             title={t('view_usernames')}
                             style={{
-                                background: '#3b82f6',
-                                color: 'white',
-                                border: 'none',
+                                background: 'rgba(255, 255, 255, 0.15)',
+                                color: '#1e293b',
+                                border: '2.5px solid white',
                                 padding: '0',
-                                fontSize: '1rem',
-                                fontWeight: 'bold',
                                 borderRadius: '50%',
                                 cursor: 'pointer',
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
-                                width: '48px',
-                                height: '48px',
-                                transition: 'all 0.2s ease',
-                                boxShadow: '0 4px 12px rgba(59, 130, 246, 0.2)'
+                                width: '46px',
+                                height: '46px',
+                                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                                boxShadow: '0 4px 15px rgba(0, 0, 0, 0.05)',
+                                backdropFilter: 'blur(4px)'
                             }}
-                            onMouseOver={(e) => { e.currentTarget.style.transform = 'scale(1.05)'; e.currentTarget.style.background = '#2563eb'; }}
-                            onMouseOut={(e) => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.background = '#3b82f6'; }}
+                            onMouseOver={(e) => {
+                                e.currentTarget.style.transform = 'scale(1.1) rotate(5deg)';
+                                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.3)';
+                                e.currentTarget.style.boxShadow = '0 8px 25px rgba(0, 0, 0, 0.1)';
+                            }}
+                            onMouseOut={(e) => {
+                                e.currentTarget.style.transform = 'scale(1) rotate(0deg)';
+                                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.15)';
+                                e.currentTarget.style.boxShadow = '0 4px 15px rgba(0, 0, 0, 0.05)';
+                            }}
                         >
-                            🆔
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                                <circle cx="8.5" cy="7" r="4" />
+                                <polyline points="17 11 19 13 23 9" />
+                            </svg>
                         </button>
                         <label
                             className="btn btn-primary"

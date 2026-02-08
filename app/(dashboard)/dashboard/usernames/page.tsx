@@ -105,26 +105,26 @@ export default function UsernamesPage() {
                                 transition: 'transform 0.2s, box-shadow 0.2s'
                             }}
                         >
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
-                                <div>
-                                    <div style={{ fontSize: '1.2rem', fontWeight: 'bold', color: '#0f172a', marginBottom: '0.25rem' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                                <div style={{ flex: 1 }}>
+                                    <div style={{ fontSize: '1.25rem', fontWeight: 'bold', color: '#0f172a', marginBottom: '0.1rem' }}>
                                         {user.firstName} {user.lastName}
                                     </div>
-                                    <div style={{ fontSize: '0.85rem', color: '#64748b' }}>
-                                        {user.company?.name || '-'}
+                                    <div style={{ fontSize: '0.85rem', color: '#64748b', fontWeight: '500', textTransform: 'capitalize' }}>
+                                        {t(`role_${(user as any).role?.toLowerCase()}` as any) || (user as any).role || '-'}
                                     </div>
                                 </div>
                                 <div style={{
                                     background: '#eff6ff',
-                                    padding: '0.4rem 0.8rem',
+                                    padding: '0.3rem 0.6rem',
                                     borderRadius: '0.5rem',
                                     border: '1px solid #dbeafe',
                                     display: 'flex',
                                     alignItems: 'center',
-                                    boxShadow: '0 2px 4px rgba(37, 99, 235, 0.05)'
+                                    justifyContent: 'center'
                                 }}>
                                     <code style={{
-                                        fontSize: '0.95rem',
+                                        fontSize: '0.9rem',
                                         color: '#2563eb',
                                         fontWeight: '800',
                                         letterSpacing: '0.5px'

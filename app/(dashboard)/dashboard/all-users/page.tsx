@@ -271,34 +271,6 @@ export default function AllUsersPage() {
                 selectedCompanyId={filters.companyId}
                 onCompanyChange={(id) => setFilters((prev: any) => ({ ...prev, companyId: id }))}
                 companyOptions={companies.map((c: Company) => ({ label: c.name, value: c.id }))}
-                toolkitAction={
-                    <button
-                        onClick={() => window.open('/dashboard/usernames', '_blank')}
-                        className="btn"
-                        title={t('view_usernames')}
-                        style={{
-                            width: '48px',
-                            height: '48px',
-                            borderRadius: '50%',
-                            background: '#3b82f6',
-                            color: 'white',
-                            border: 'none',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            fontSize: '0.8rem',
-                            fontWeight: 'bold',
-                            cursor: 'pointer',
-                            boxShadow: '0 4px 12px rgba(59, 130, 246, 0.2)',
-                            transition: 'all 0.2s ease',
-                            flexShrink: 0
-                        }}
-                        onMouseOver={(e) => { e.currentTarget.style.transform = 'scale(1.05)'; e.currentTarget.style.background = '#2563eb'; }}
-                        onMouseOut={(e) => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.background = '#3b82f6'; }}
-                    >
-                        ID
-                    </button>
-                }
             />
 
             {
