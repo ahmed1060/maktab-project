@@ -106,9 +106,10 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                 if (userId === session?.user?.id && (employee.role === 'EMPLOYEE' || employee.role === 'TEAM_LEADER')) {
                     const reqRes = await fetch(`/api/profile-requests?status=PENDING`)
                     if (reqRes.ok) {
-                        const requests = await reqRes.json()
-                        if (requests.length > 0) {
-                            setPendingRequest(requests[0])
+                        const result = await reqRes.json()
+                        const requestsData = result.data?.data || []
+                        if (requestsData.length > 0) {
+                            setPendingRequest(requestsData[0])
                         }
                     }
                 }
@@ -123,7 +124,8 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
             try {
                 const res = await fetch('/api/companies?limit=1000')
                 if (res.ok) {
-                    const data = await res.json()
+                    const result = await res.json()
+                    const data = result.data || {}
                     setCompanies(data.data || [])
                 }
             } catch (e) {
@@ -338,29 +340,29 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
             formData.append('folder', 'avatars')
 
             const res = await fetch('/api/upload', { method: 'POST', body: formData })
-            const data = await res.json()
-
-            if (data.success) {
+            const result = await res.json()
+            if (result.success) {
+                const uploadData = result.data
                 // 1. Update DB immediately
                 await fetch('/api/users', {
                     method: 'PUT',
-                    body: JSON.stringify({ id: userId, avatar: data.url }),
+                    body: JSON.stringify({ id: userId, avatar: uploadData.url }),
                     headers: { 'Content-Type': 'application/json' }
                 })
 
                 // 2. Update UI and Session
-                setAvatarUrl(data.url)
+                setAvatarUrl(uploadData.url)
                 if (userId === session?.user?.id) {
                     await update({
-                        avatar: data.url,
-                        image: data.url,
-                        picture: data.url
+                        avatar: uploadData.url,
+                        image: uploadData.url,
+                        picture: uploadData.url
                     })
                 }
                 showToast(t('photo_updated_success'), 'success')
                 setShowAvatarModal(false)
             } else {
-                throw new Error(data.error || t('photo_upload_failed'))
+                throw new Error(result.error || t('photo_upload_failed'))
             }
         } catch (err: any) {
             showToast(err.message || t('photo_upload_failed'), 'error')
