@@ -279,7 +279,7 @@ export default function ClientsPage() {
                                             marginRight: locale === 'ar' ? (isMobile ? 'auto' : '0') : '0'
                                         }}>
                                             <Link
-                                                href={`/dashboard/clients/${client.id}`}
+                                                href={`/dashboard/clients/${client.id}?name=${encodeURIComponent(client.name)}`}
                                                 className="btn btn-primary"
                                                 style={{
                                                     textDecoration: 'none',

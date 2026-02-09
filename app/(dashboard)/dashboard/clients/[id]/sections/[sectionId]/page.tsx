@@ -45,6 +45,9 @@ interface SectionData {
 export default function SectionNotesPage() {
     const { t, locale } = useLanguage()
     const params = useParams()
+    const searchParams = useSearchParams()
+    const urlTitle = searchParams.get('title')
+    const urlClientName = searchParams.get('clientName')
     const clientId = params.id as string
     const sectionId = params.sectionId as string
 
@@ -83,7 +86,6 @@ export default function SectionNotesPage() {
     const [total, setTotal] = useState(0)
     const [totalPages, setTotalPages] = useState(0)
     const limit = 10
-    const searchParams = useSearchParams()
     const highlightId = searchParams.get('highlight')
     const [visualHighlightId, setVisualHighlightId] = useState<string | null>(highlightId)
 
@@ -106,11 +108,13 @@ export default function SectionNotesPage() {
 
 
     useEffect(() => {
-        if (section?.title) {
+        if (urlTitle) {
+            setTitle(urlTitle)
+        } else if (section?.title) {
             setTitle(section.title)
         }
         return () => setTitle(null) // Reset on unmount
-    }, [section, setTitle])
+    }, [section, urlTitle, setTitle])
 
     const handleEditSection = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -407,7 +411,7 @@ export default function SectionNotesPage() {
                 {/* Header Row */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
                     <Link
-                        href={`/dashboard/clients/${clientId}`}
+                        href={`/dashboard/clients/${clientId}?name=${encodeURIComponent(urlClientName || '')}`}
                         className="glass"
                         style={{
                             width: '40px',

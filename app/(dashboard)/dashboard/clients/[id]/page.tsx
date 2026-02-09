@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
-import { useParams } from 'next/navigation'
+import { useParams, useSearchParams } from 'next/navigation'
 import { useHeader } from '@/context/HeaderContext'
 import { createPortal } from 'react-dom'
 import ConfirmModal from '@/components/ConfirmModal'
@@ -72,6 +72,8 @@ export default function ClientDetailsPage() {
     const [mounted, setMounted] = useState(false)
     const [deleteConfirm, setDeleteConfirm] = useState<{ isOpen: boolean, section: Section | null }>({ isOpen: false, section: null })
     const { showToast } = useToast()
+    const searchParams = useSearchParams()
+    const urlName = searchParams.get('name')
     const [isEditClientModalOpen, setIsEditClientModalOpen] = useState(false)
     const [editClientName, setEditClientName] = useState('')
     const [isEditingClient, setIsEditingClient] = useState(false)
@@ -95,11 +97,13 @@ export default function ClientDetailsPage() {
 
 
     useEffect(() => {
-        if (client?.name) {
+        if (urlName) {
+            setTitle(urlName)
+        } else if (client?.name) {
             setTitle(client.name)
         }
         return () => setTitle(null) // Reset on unmount
-    }, [client, setTitle])
+    }, [client, urlName, setTitle])
 
     const fetchData = useCallback(async () => {
         try {
@@ -380,7 +384,7 @@ export default function ClientDetailsPage() {
                                         marginRight: locale === 'ar' ? (isMobile ? 'auto' : '0') : '0'
                                     }}>
                                         <Link
-                                            href={`/dashboard/clients/${clientId}/sections/${section.id}`}
+                                            href={`/dashboard/clients/${clientId}/sections/${section.id}?title=${encodeURIComponent(section.title)}&clientName=${encodeURIComponent(client?.name || urlName || '')}`}
                                             className="btn btn-primary"
                                             style={{
                                                 textDecoration: 'none',
