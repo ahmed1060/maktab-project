@@ -43,7 +43,8 @@ export default function RequestsHistoryClient({ userRole }: { userRole: string }
 
             const res = await fetch(url)
             if (res.ok) {
-                const data = await res.json()
+                const result = await res.json()
+                const data = result.data
                 setRequests(data.data || [])
                 setTotal(data.total || 0)
                 setTotalPages(data.totalPages || 0)
@@ -111,11 +112,12 @@ export default function RequestsHistoryClient({ userRole }: { userRole: string }
                 body: JSON.stringify({ status })
             })
             if (res.ok) {
-                const updatedData = await res.json()
+                const result = await res.json()
+                const updatedRequest = result.data
                 showToast(t('request_action_success') || 'Status updated', 'success')
                 fetchHistory()
                 if (selectedRequest && selectedRequest.id === id) {
-                    setSelectedRequest({ ...selectedRequest, ...updatedData })
+                    setSelectedRequest({ ...selectedRequest, ...updatedRequest })
                 }
             } else {
                 showToast(t('error_generic'), 'error')

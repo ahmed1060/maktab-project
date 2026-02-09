@@ -17,7 +17,8 @@ export default function UserHeartbeat() {
         const checkStatus = async () => {
             try {
                 const res = await fetch('/api/user/activity', { method: 'POST' })
-                const data = await res.json()
+                const result = await res.json()
+                const data = result.data
 
                 if (data.status === 'SUSPENDED') {
                     // 1. Trigger Auto-Save in listeners

@@ -114,13 +114,15 @@ export default function ClientDetailsPage() {
             ])
 
             if (clientRes.ok && sectionsRes.ok) {
-                const clientData = await clientRes.json()
-                const sectionsData = await sectionsRes.json()
+                const clientResult = await clientRes.json()
+                const sectionsResult = await sectionsRes.json()
 
-                setClient(clientData)
-                setSections(sectionsData.data || [])
-                setTotal(sectionsData.total || 0)
-                setTotalPages(sectionsData.totalPages || 1)
+                setClient(clientResult.data || clientResult)
+
+                const data = sectionsResult.data
+                setSections(data.data || [])
+                setTotal(data.total || 0)
+                setTotalPages(data.totalPages || 1)
             } else {
                 if (clientRes.status === 404 || sectionsRes.status === 404) {
                     setError(t('failed_fetch_client_details' as any))
@@ -155,8 +157,8 @@ export default function ClientDetailsPage() {
             })
 
             if (res.ok) {
-                const updated = await res.json()
-                setClient(updated)
+                const result = await res.json()
+                setClient(result.data || result)
                 setIsEditClientModalOpen(false)
                 showToast(t('client_updated_success' as any) || 'Client updated successfully', 'success')
             } else {
@@ -184,7 +186,7 @@ export default function ClientDetailsPage() {
 
             if (res.ok) {
                 const updated = await res.json()
-                setSections(prev => prev.map(s => s.id === editingSectionId ? { ...s, title: updated.title } : s))
+                setSections(prev => prev.map(s => s.id === editingSectionId ? { ...s, title: updated.data.title || updated.title } : s))
                 setIsEditSectionModalOpen(false)
                 setEditingSectionId(null)
                 showToast(t('section_updated_success' as any) || 'Section updated successfully', 'success')

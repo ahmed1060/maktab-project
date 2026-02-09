@@ -105,29 +105,29 @@ export default function EmployeeHistoryPage() {
             // Fetch Employee Details (Use query param for ID)
             const userRes = await fetch(`/api/users?id=${params.id}`)
             if (userRes.ok) {
-                const userData = await userRes.json()
-                setEmployee(userData)
+                const result = await userRes.json()
+                setEmployee(result.data || result)
             }
 
             // Fetch Salary History
             const historyRes = await fetch(`/api/users/${params.id}/salary-history`)
             if (historyRes.ok) {
-                const historyData = await historyRes.json()
-                setRecords(historyData)
+                const result = await historyRes.json()
+                setRecords(result.data || result)
             }
 
             // Fetch Day Off History
             const dayOffRes = await fetch(`/api/users/${params.id}/day-off-history`)
             if (dayOffRes.ok) {
-                const dayOffData = await dayOffRes.json()
-                setDayOffHistory(dayOffData)
+                const result = await dayOffRes.json()
+                setDayOffHistory(result.data || result)
             }
 
             // Fetch User Costs
             const costsRes = await fetch(`/api/users/${params.id}/costs-history`)
             if (costsRes.ok) {
-                const costsData = await costsRes.json()
-                setUserCosts(costsData)
+                const result = await costsRes.json()
+                setUserCosts(result.data || result)
             }
         } catch {
             console.error('Error fetching data')
@@ -140,8 +140,8 @@ export default function EmployeeHistoryPage() {
         try {
             const res = await fetch(`/api/users/${params.id}/adjustments`)
             if (res.ok) {
-                const data = await res.json()
-                setAdjustments(data)
+                const result = await res.json()
+                setAdjustments(result.data || result)
             }
         } catch {
             console.error('Error fetching adjustments')

@@ -52,7 +52,8 @@ export default function ProfileRequestsPage() {
 
             const res = await fetch(`/api/profile-requests?${queryParams.toString()}`)
             if (res.ok) {
-                const data = await res.json()
+                const result = await res.json()
+                const data = result.data
                 setRequests(data.data || [])
                 setTotalPages(data.totalPages || 0)
             }

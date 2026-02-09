@@ -56,8 +56,9 @@ export default function SuperAdminsPage() {
             const res = await fetch(`/api/super-admins?page=${page}&limit=${limit}`)
             if (res.ok) {
                 const result = await res.json()
-                setAdmins(result.data)
-                setTotalPages(result.totalPages)
+                const data = result.data
+                setAdmins(data.data || data)
+                setTotalPages(data.totalPages || result.totalPages || 0)
             }
         } catch (err) {
             console.error('Failed to fetch admins', err)

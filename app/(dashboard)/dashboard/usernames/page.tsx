@@ -28,8 +28,8 @@ export default function UsernamesPage() {
                 // Fetch all active users the current user can see
                 const res = await fetch('/api/users?limit=1000')
                 if (res.ok) {
-                    const responseData = await res.json()
-                    const data = Array.isArray(responseData) ? responseData : (responseData.data || [])
+                    const result = await res.json()
+                    const data = result.data.data || result.data || []
                     setUsers(data)
                 }
             } catch (err) {

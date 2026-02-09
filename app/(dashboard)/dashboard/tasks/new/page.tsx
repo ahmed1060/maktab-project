@@ -153,7 +153,7 @@ export default function NewTaskPage() {
 
             if (!res.ok) {
                 const data = await res.json().catch(() => ({}))
-                const errorMessage = data.details || data.message || `${t('error_generic')} (${res.status})`
+                const errorMessage = data.error || data.details || data.message || `${t('error_generic')} (${res.status})`
                 throw new Error(errorMessage)
             }
 

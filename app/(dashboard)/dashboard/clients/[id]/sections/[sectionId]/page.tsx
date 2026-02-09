@@ -130,8 +130,8 @@ export default function SectionNotesPage() {
             })
 
             if (res.ok) {
-                const updated = await res.json()
-                setSection(updated)
+                const result = await res.json()
+                setSection(result.data || result)
                 setIsEditSectionModalOpen(false)
                 showToast(t('section_updated_success' as any) || 'Section updated successfully', 'success')
             } else {
@@ -157,13 +157,14 @@ export default function SectionNotesPage() {
                 const notesData = await notesRes.json()
 
                 // sections API is now paginated too, so we need to handle that if it's used for the title
-                const sectionsList = sectionsData.data || sectionsData
+                const sectionsList = sectionsData.data.data || sectionsData.data || sectionsData
                 const foundSection = sectionsList.find((s: any) => s.id === sectionId)
                 if (foundSection) setSection(foundSection)
 
-                setNotes(notesData.data || [])
-                setTotal(notesData.total || 0)
-                setTotalPages(notesData.totalPages || 1)
+                const data = notesData.data
+                setNotes(data.data || [])
+                setTotal(data.total || 0)
+                setTotalPages(data.totalPages || 1)
             } else {
                 if (notesRes.status === 404) {
                     // Using window.location instead of router since it's unused elsewhere and we removed it
@@ -243,17 +244,17 @@ export default function SectionNotesPage() {
                 formData.append('file', file)
                 formData.append('folder', 'notes')
                 const uploadRes = await fetch('/api/upload', { method: 'POST', body: formData })
-                const uploadData = await uploadRes.json()
-                if (uploadData.success) {
+                const result = await uploadRes.json()
+                if (result.success) {
                     attachmentUrls.push({
-                        url: uploadData.url,
+                        url: result.data.url,
                         name: file.name,
                         size: file.size,
                         type: file.type || 'application/octet-stream',
                         uploadedAt: new Date().toISOString()
                     } as any)
                 } else {
-                    throw new Error(uploadData.error || t('photo_upload_failed'))
+                    throw new Error(result.error || t('photo_upload_failed'))
                 }
             }
 
@@ -305,17 +306,17 @@ export default function SectionNotesPage() {
                 formData.append('file', file)
                 formData.append('folder', 'notes')
                 const uploadRes = await fetch('/api/upload', { method: 'POST', body: formData })
-                const uploadData = await uploadRes.json()
-                if (uploadData.success) {
+                const result = await uploadRes.json()
+                if (result.success) {
                     newAttachmentUrls.push({
-                        url: uploadData.url,
+                        url: result.data.url,
                         name: file.name,
                         size: file.size,
                         type: file.type || 'application/octet-stream',
                         uploadedAt: new Date().toISOString()
                     } as any)
                 } else {
-                    throw new Error(uploadData.error || t('photo_upload_failed'))
+                    throw new Error(result.error || t('photo_upload_failed'))
                 }
             }
 

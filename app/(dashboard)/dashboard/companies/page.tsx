@@ -52,8 +52,9 @@ export default function CompaniesPage() {
             const res = await fetch(`/api/companies?page=${page}&limit=${limit}`)
             if (res.ok) {
                 const result = await res.json()
-                setCompanies(result.data)
-                setTotalPages(result.totalPages)
+                const data = result.data
+                setCompanies(data.data || data)
+                setTotalPages(data.totalPages || result.totalPages || 0)
             }
         } catch (err) {
             console.error('Failed to fetch companies', err)

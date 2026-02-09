@@ -26,9 +26,10 @@ export default function NotificationBell({ initialUnreadCount = 0 }: { initialUn
         try {
             const res = await fetch('/api/notifications')
             if (res.ok) {
-                const data = await res.json()
-                setNotifications(data)
-                setUnreadCount(data.filter((n: Notification) => !n.read).length)
+                const result = await res.json()
+                const notificationsList = result.data || []
+                setNotifications(notificationsList)
+                setUnreadCount(notificationsList.filter((n: Notification) => !n.read).length)
             }
         } catch (error) {
             console.error("Failed to fetch notifications", error)
@@ -119,7 +120,8 @@ export default function NotificationBell({ initialUnreadCount = 0 }: { initialUn
                 // Fetch the current status of the request to determine redirection
                 fetch(`/api/requests/${notification.relatedId}`)
                     .then(res => res.json())
-                    .then(request => {
+                    .then(result => {
+                        const request = result.data
                         const targetPage = request.status === 'COMPLETED' ? 'history' : ''
                         const path = targetPage
                             ? `/dashboard/requests/history?highlight=${notification.relatedId}`

@@ -48,8 +48,8 @@ export default function CompanyPaymentsPage() {
         try {
             const res = await fetch(`/api/companies?id=${companyId}`)
             if (res.ok) {
-                const data = await res.json()
-                setCompany(data)
+                const result = await res.json()
+                setCompany(result.data || result)
             }
         } catch {
             console.error('Failed to fetch company')
@@ -60,8 +60,9 @@ export default function CompanyPaymentsPage() {
         try {
             const res = await fetch(`/api/companies/${companyId}/payments`)
             if (res.ok) {
-                const data = await res.json()
-                setPayments(data)
+                const result = await res.json()
+                const data = result.data
+                setPayments(data.data || data)
             }
         } catch {
             console.error('Failed to fetch payments')
