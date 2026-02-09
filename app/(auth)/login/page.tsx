@@ -14,6 +14,7 @@ export default function LoginPage() {
     const router = useRouter()
 
     const [loading, setLoading] = useState(false)
+    const [staySignedIn, setStaySignedIn] = useState(true)
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -38,6 +39,7 @@ export default function LoginPage() {
             const res = await signIn('credentials', {
                 email,
                 password,
+                remember: staySignedIn.toString(),
                 redirect: false,
             })
 
@@ -201,6 +203,42 @@ export default function LoginPage() {
                                 )}
                             </button>
                         </div>
+
+                        {/* Stay Signed In Checkbox */}
+                        <div style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.5rem',
+                            marginBottom: '1.5rem',
+                            cursor: 'pointer',
+                            userSelect: 'none',
+                            justifyContent: locale === 'ar' ? 'flex-end' : 'flex-start'
+                        }}
+                            onClick={() => setStaySignedIn(!staySignedIn)}
+                        >
+                            <div style={{
+                                width: '18px',
+                                height: '18px',
+                                borderRadius: '4px',
+                                border: '2px solid #667eea',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                background: staySignedIn ? '#667eea' : 'transparent',
+                                transition: 'all 0.2s ease',
+                                flexShrink: 0
+                            }}>
+                                {staySignedIn && (
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                                        <polyline points="20 6 9 17 4 12"></polyline>
+                                    </svg>
+                                )}
+                            </div>
+                            <span style={{ fontSize: '0.875rem', color: '#64748b' }}>
+                                {t('stay_signed_in')}
+                            </span>
+                        </div>
+
                         <button
                             type="submit"
                             disabled={loading}

@@ -11,10 +11,12 @@ export const authOptions: NextAuthOptions = {
             credentials: {
                 email: { label: "Email", type: "email" },
                 password: { label: "Password", type: "password" },
-                companyId: { label: "Company", type: "text" }
+                companyId: { label: "Company", type: "text" },
+                remember: { label: "Remember", type: "text" }
             },
             async authorize(credentials) {
                 try {
+                    const remember = credentials?.remember === 'true'
 
                     if (!credentials?.email || !credentials?.password) {
                         return null
@@ -52,7 +54,8 @@ export const authOptions: NextAuthOptions = {
                             companyId: null,
                             companyName: 'SHSD',
                             username: superAdmin.username,
-                            language: superAdmin.language || 'en'
+                            language: superAdmin.language || 'en',
+                            remember
                         }
                     }
 
@@ -102,7 +105,8 @@ export const authOptions: NextAuthOptions = {
                         companyId: user.companyId,
                         companyName: user.company?.name || null,
                         username: user.username,
-                        language: user.language || 'en'
+                        language: user.language || 'en',
+                        remember
                     }
 
                 } catch (error) {
@@ -150,6 +154,23 @@ export const authOptions: NextAuthOptions = {
                 token.username = user.username
                 token.language = user.language || 'en'
                 token.jti = uuidv4()
+
+                // Store remember flag in token
+                if ('remember' in user) {
+                    token.remember = (user as any).remember
+                }
+            }
+
+            // DYNAMIC EXPIRATION LOGIC
+            // If the user didn't check "Stay Signed In", we force the token to expire in 24 hours.
+            if (token.remember === false) {
+                const oneDayInSeconds = 24 * 60 * 60
+                const now = Math.floor(Date.now() / 1000)
+                const currentExp = token.exp as number | undefined
+
+                if (!currentExp || currentExp > now + oneDayInSeconds) {
+                    token.exp = now + oneDayInSeconds
+                }
             }
 
             // On session update (client-side update() call)
@@ -176,6 +197,7 @@ export const authOptions: NextAuthOptions = {
     },
     session: {
         strategy: "jwt",
+        maxAge: 30 * 24 * 60 * 60, // 30 Days (Persistent Cookie)
     },
     secret: process.env.NEXTAUTH_SECRET || "secret",
 }
