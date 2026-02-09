@@ -70,7 +70,12 @@ export default function NewTaskPage() {
         fetch(`/api/users?${queryParams.toString()}`)
             .then(res => res.json())
             .then(data => {
-                const usersList = data.data || []
+                const usersList = data.data?.data || data.data || []
+                if (!Array.isArray(usersList)) {
+                    console.error('Invalid users data received:', data)
+                    setUsers([])
+                    return
+                }
                 // Sort by role: EMPLOYEE -> TEAM_LEADER -> ADMIN -> SUPER_ADMIN
                 const sortedData = usersList.sort((a: any, b: any) => {
                     const rolePriority: { [key: string]: number } = {
@@ -192,7 +197,7 @@ export default function NewTaskPage() {
                     const unresolvedUsernames: string[] = []
 
                     for (const uname of usernames) {
-                        const user = users.find(u => u.username === uname)
+                        const user = users.find(u => u.username?.toLowerCase() === uname.toLowerCase())
                         if (user) {
                             resolvedIds.push(user.id)
                             resolvedNames.push(`${user.firstName} ${user.lastName}`)
