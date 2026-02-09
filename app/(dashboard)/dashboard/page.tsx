@@ -174,9 +174,11 @@ export default async function DashboardPage({ searchParams }: { searchParams: { 
                             <Link href="/dashboard/tasks/new" className="btn btn-primary" style={{ flex: 1, justifyContent: 'center', height: '3rem' }}>
                                 + {t('create_new_task')}
                             </Link>
-                            <Link href="/dashboard/employees/new" className="btn" style={{ flex: 1, justifyContent: 'center', background: 'rgba(255,255,255,0.4)', color: '#334155', height: '3rem', border: '1px solid rgba(255,255,255,0.5)' }}>
-                                + {t('add_employee')}
-                            </Link>
+                            {userRole !== 'TEAM_LEADER' && (
+                                <Link href="/dashboard/employees/new" className="btn" style={{ flex: 1, justifyContent: 'center', background: 'rgba(255,255,255,0.4)', color: '#334155', height: '3rem', border: '1px solid rgba(255,255,255,0.5)' }}>
+                                    + {t('add_employee')}
+                                </Link>
+                            )}
                         </div>
                     </div>
                 </div>
