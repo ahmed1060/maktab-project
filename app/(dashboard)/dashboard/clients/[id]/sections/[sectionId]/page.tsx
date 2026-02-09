@@ -74,6 +74,7 @@ export default function SectionNotesPage() {
     const [editNoteContent, setEditNoteContent] = useState('')
     const [editExpiryDate, setEditExpiryDate] = useState('')
     const [editReminderDays, setEditReminderDays] = useState('')
+    const [editExistingAttachments, setEditExistingAttachments] = useState<any[]>([])
 
 
     const [expiryDate, setExpiryDate] = useState('')
@@ -318,9 +319,8 @@ export default function SectionNotesPage() {
                 }
             }
 
-            // Combine with existing attachments (legacy logic handled by getNoteAttachments helper)
-            const currentAttachments = getNoteAttachments(editingNote.attachment)
-            const finalAttachments = [...currentAttachments, ...newAttachmentUrls]
+            // Combine with remaining existing attachments and new uploads
+            const finalAttachments = [...editExistingAttachments, ...newAttachmentUrls]
 
             const res = await fetch(`/api/clients/${clientId}/sections/${sectionId}/notes`, {
                 method: 'PUT',
@@ -353,35 +353,10 @@ export default function SectionNotesPage() {
         }
     }
 
-    const handleRemoveExistingAttachment = async (note: Note, itemToRemove: any) => {
-        if (!note) return
-        const currentAttachments = getNoteAttachments(note.attachment)
-        const updatedAttachments = currentAttachments.filter(item =>
+    const handleRemoveExistingAttachment = (itemToRemove: any) => {
+        setEditExistingAttachments(prev => prev.filter(item =>
             (typeof item === 'string' ? item : item.url) !== (typeof itemToRemove === 'string' ? itemToRemove : itemToRemove.url)
-        )
-
-        try {
-            const res = await fetch(`/api/clients/${clientId}/sections/${sectionId}/notes`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    noteId: note.id,
-                    content: note.content,
-                    attachment: updatedAttachments,
-                    expiryDate: note.expiryDate,
-                    reminderDays: note.reminderDays
-                })
-            })
-
-            if (res.ok) {
-                // Update local state for immediate feedback
-                setEditingNote({ ...note, attachment: JSON.stringify(updatedAttachments) })
-                showToast(t('item_deleted_success' as any) || 'Attachment removed', 'success')
-                fetchData()
-            }
-        } catch (error) {
-            console.error('Failed to remove attachment', error)
-        }
+        ))
     }
 
     const MAX_CHARS = 500
@@ -450,7 +425,10 @@ export default function SectionNotesPage() {
                     totalCount={total}
                     primaryAction={
                         <button
-                            onClick={() => setIsModalOpen(true)}
+                            onClick={() => {
+                                setPendingFiles([])
+                                setIsModalOpen(true)
+                            }}
                             className="btn btn-primary"
                             style={{ height: '48px', display: 'flex', alignItems: 'center', borderRadius: '1.25rem' }}
                         >
@@ -640,6 +618,8 @@ export default function SectionNotesPage() {
                                                         const date = note.expiryDate ? new Date(note.expiryDate) : null
                                                         setEditExpiryDate(date && !isNaN(date.getTime()) ? date.toISOString().split('T')[0] : '')
                                                         setEditReminderDays(note.reminderDays ? note.reminderDays.toString() : '')
+                                                        setEditExistingAttachments(getNoteAttachments(note.attachment))
+                                                        setPendingFiles([])
                                                         setIsEditModalOpen(true)
                                                     }}
                                                     style={{ padding: '0.4rem', color: '#64748b', background: 'none', border: 'none', cursor: 'pointer' }}
@@ -798,7 +778,10 @@ export default function SectionNotesPage() {
                                     <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
                                         <button
                                             type="button"
-                                            onClick={() => setIsModalOpen(false)}
+                                            onClick={() => {
+                                                setPendingFiles([])
+                                                setIsModalOpen(false)
+                                            }}
                                             style={{ padding: '0.75rem 1.5rem', border: '1px solid #e2e8f0', borderRadius: '0.5rem', background: 'transparent', cursor: 'pointer' }}
                                         >
                                             {t('cancel')}
@@ -955,9 +938,9 @@ export default function SectionNotesPage() {
                                         </label>
 
                                         {/* Existing Attachments */}
-                                        {editingNote && getNoteAttachments(editingNote.attachment).length > 0 && (
+                                        {editExistingAttachments.length > 0 && (
                                             <div style={{ marginBottom: '1rem', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                                                {getNoteAttachments(editingNote.attachment).map((url, i) => {
+                                                {editExistingAttachments.map((url, i) => {
                                                     if (!url) return null;
                                                     return (
                                                         <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 0.75rem', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '0.5rem' }}>
@@ -967,7 +950,7 @@ export default function SectionNotesPage() {
                                                                     {typeof url === 'string' ? url.split('/').pop() : url.name}
                                                                 </div>
                                                             </div>
-                                                            <button type="button" onClick={() => editingNote && handleRemoveExistingAttachment(editingNote, url)} style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', fontSize: '1rem', fontWeight: 'bold' }}>×</button>
+                                                            <button type="button" onClick={() => handleRemoveExistingAttachment(url)} style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', fontSize: '1rem', fontWeight: 'bold' }}>×</button>
                                                         </div>
                                                     )
                                                 })}
@@ -1036,7 +1019,10 @@ export default function SectionNotesPage() {
                                     <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
                                         <button
                                             type="button"
-                                            onClick={() => setIsEditModalOpen(false)}
+                                            onClick={() => {
+                                                setPendingFiles([])
+                                                setIsEditModalOpen(false)
+                                            }}
                                             style={{ padding: '0.75rem 1.5rem', border: '1px solid #e2e8f0', borderRadius: '0.5rem', background: 'transparent', cursor: 'pointer' }}
                                         >
                                             {t('cancel')}
