@@ -500,7 +500,7 @@ export class TaskService {
 
                 // Create notifications for all new assignees
                 await tx.notification.createMany({
-                    data: addedIds.map(id => ({
+                    data: addedIds.map((id: string) => ({
                         userId: id,
                         type: 'TASK_ASSIGNED',
                         message: `You have been assigned a transferred task: ${newTask.title}`,
