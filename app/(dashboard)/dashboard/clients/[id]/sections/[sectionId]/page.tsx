@@ -548,8 +548,8 @@ export default function SectionNotesPage() {
                                 <div style={{ height: '1px', width: '100%', background: 'rgba(226, 232, 240, 0.5)', marginBottom: '1rem' }} />
 
                                 {/* Footer Actions */}
-                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 'auto' }}>
-                                    <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                                <div style={{ display: 'flex', flexDirection: 'column', marginTop: 'auto' }}>
+                                    <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.5rem' }}>
                                         {getNoteAttachments(note.attachment).map((att, i) => {
                                             const url = typeof att === 'string' ? att : att.url
                                             const name = typeof att === 'string' ? url.split('/').pop() : att.name
@@ -580,413 +580,479 @@ export default function SectionNotesPage() {
                                                 </a>
                                             )
                                         })}
-                                        {note.lastEditedBy && (
-                                            <span style={{ fontSize: '0.7rem', color: '#94a3b8', fontStyle: 'italic', display: 'flex', alignItems: 'center' }}>
-                                                {t('updated_by' as any)} {t(`role_${(note.lastEditedBy.role || 'USER').toLowerCase()}` as any) || note.lastEditedBy.role}
-                                            </span>
-                                        )}
                                     </div>
 
-                                    <div style={{ display: 'flex', gap: '0.75rem' }}>
-                                        {canEdit && (
-                                            <button
-                                                onClick={() => {
-                                                    setEditingNote(note)
-                                                    setEditNoteContent(note.content)
-                                                    const date = note.expiryDate ? new Date(note.expiryDate) : null
-                                                    setEditExpiryDate(date && !isNaN(date.getTime()) ? date.toISOString().split('T')[0] : '')
-                                                    setEditReminderDays(note.reminderDays ? note.reminderDays.toString() : '')
-                                                    setIsEditModalOpen(true)
-                                                }}
-                                                style={{ padding: '0.4rem', color: '#64748b', background: 'none', border: 'none', cursor: 'pointer' }}
-                                                className="hover:text-blue-500 transition-colors"
-                                            >
-                                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
-                                            </button>
+                                    <div style={{
+                                        fontSize: '0.75rem',
+                                        color: '#94a3b8',
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        gap: '0.25rem',
+                                        marginTop: '0.75rem',
+                                        paddingTop: '0.75rem',
+                                        borderTop: '1px dashed #f1f5f9',
+                                        width: '100%',
+                                        position: 'relative'
+                                    }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
+                                            <span style={{
+                                                padding: '0.15rem 0.4rem',
+                                                background: '#f1f5f9',
+                                                borderRadius: '0.4rem',
+                                                fontWeight: '700',
+                                                fontSize: '0.65rem',
+                                                color: '#64748b'
+                                            }}>
+                                                {(note.createdBy?.role || 'SYSTEM').replace(/_/g, ' ')}
+                                            </span>
+                                            <span>
+                                                {t('created_by' as any) || 'Created by'} {note.createdBy ? `${note.createdBy.firstName} ${note.createdBy.lastName}` : 'System'} {t('at' as any) || 'at'} {new Date(note.createdAt).toLocaleDateString(locale === 'ar' ? 'ar-EG' : 'en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) + ', ' + new Date(note.createdAt).toLocaleTimeString(locale === 'ar' ? 'ar-EG' : 'en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}
+                                            </span>
+                                        </div>
+                                        {note.lastEditedBy && (
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
+                                                <span style={{
+                                                    padding: '0.15rem 0.4rem',
+                                                    background: '#f0f9ff',
+                                                    borderRadius: '0.4rem',
+                                                    fontWeight: '700',
+                                                    fontSize: '0.65rem',
+                                                    color: '#0ea5e9'
+                                                }}>
+                                                    {(note.lastEditedBy.role || 'SYSTEM').replace(/_/g, ' ')}
+                                                </span>
+                                                <span style={{ color: '#0ea5e9' }}>
+                                                    {t('updated_by' as any) || 'Updated by'} {note.lastEditedBy.firstName} {note.lastEditedBy.lastName} {t('at' as any) || 'at'} {note.lastEditedAt ? new Date(note.lastEditedAt).toLocaleDateString(locale === 'ar' ? 'ar-EG' : 'en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) + ', ' + new Date(note.lastEditedAt).toLocaleTimeString(locale === 'ar' ? 'ar-EG' : 'en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) : ''}
+                                                </span>
+                                            </div>
                                         )}
-                                        {canDelete && (
-                                            <button
-                                                onClick={() => setDeleteConfirm({ isOpen: true, note })}
-                                                style={{ padding: '0.4rem', color: '#64748b', background: 'none', border: 'none', cursor: 'pointer' }}
-                                                className="hover:text-red-500 transition-colors"
-                                            >
-                                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
-                                            </button>
-                                        )}
+
+                                        <div style={{ display: 'flex', gap: '0.75rem', position: 'absolute', bottom: '0', [locale === 'ar' ? 'left' : 'right']: '0' }}>
+                                            {canEdit && (
+                                                <button
+                                                    onClick={() => {
+                                                        setEditingNote(note)
+                                                        setEditNoteContent(note.content)
+                                                        const date = note.expiryDate ? new Date(note.expiryDate) : null
+                                                        setEditExpiryDate(date && !isNaN(date.getTime()) ? date.toISOString().split('T')[0] : '')
+                                                        setEditReminderDays(note.reminderDays ? note.reminderDays.toString() : '')
+                                                        setIsEditModalOpen(true)
+                                                    }}
+                                                    style={{ padding: '0.4rem', color: '#64748b', background: 'none', border: 'none', cursor: 'pointer' }}
+                                                    className="hover:text-blue-500 transition-colors"
+                                                >
+                                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                                                </button>
+                                            )}
+                                            {canDelete && (
+                                                <button
+                                                    onClick={() => setDeleteConfirm({ isOpen: true, note })}
+                                                    style={{ padding: '0.4rem', color: '#64748b', background: 'none', border: 'none', cursor: 'pointer' }}
+                                                    className="hover:text-red-500 transition-colors"
+                                                >
+                                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                                                </button>
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
                             </div>
                         ))}
                     </div>
                 )}
-
                 <Pagination
                     currentPage={page}
                     totalPages={totalPages}
                     onPageChange={(p) => setPage(p)}
                 />
-            </div>
 
-            {/* Create Note Modal - Portal */}
-            {
-                isModalOpen && createPortal(
-                    <div style={{
-                        position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-                        background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center',
-                        alignItems: 'center', zIndex: 9999
-                    }}>
-                        <div
-                            className="absolute inset-0"
-                            onClick={() => !isSubmitting && setIsModalOpen(false)}
-                        />
-                        <div style={{ background: 'white', padding: '2rem', borderRadius: '12px', width: '100%', maxWidth: '500px', position: 'relative', zIndex: 10, direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-                                <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#1e293b', margin: 0 }}>{t('add_note_button' as any)}</h2>
-                                <span style={{ fontSize: '0.75rem', color: newNoteContent.length > MAX_CHARS ? '#ef4444' : '#64748b' }}>
-                                    {newNoteContent.length}/{MAX_CHARS}
-                                </span>
-                            </div>
-                            <form onSubmit={handleCreateNote}>
-                                <div style={{ marginBottom: '1.5rem' }}>
-                                    <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', color: '#64748b', textAlign: locale === 'ar' ? 'right' : 'left' }}>
-                                        {t('note_content_label' as any)}
-                                    </label>
-                                    <textarea
-                                        value={newNoteContent}
-                                        onChange={(e) => setNewNoteContent(e.target.value)}
-                                        className="input"
-                                        style={{
-                                            width: '100%',
-                                            padding: '0.75rem',
-                                            border: `1px solid ${newNoteContent.length > MAX_CHARS ? '#ef4444' : '#e2e8f0'}`,
-                                            borderRadius: '0.5rem',
-                                            minHeight: '120px',
-                                            lineHeight: '1.5',
-                                            outline: 'none',
-                                            marginBottom: '0.5rem',
-                                            textAlign: locale === 'ar' ? 'right' : 'left'
-                                        }}
-                                        placeholder={t('note_placeholder' as any)}
-                                        autoFocus
-                                    />
-                                    {newNoteContent.length > MAX_CHARS && (
-                                        <p style={{ color: '#ef4444', fontSize: '0.75rem', marginTop: '0.5rem' }}>
-                                            {t('note_limit_exceeded' as any)}
-                                        </p>
-                                    )}
+                {/* Create Note Modal - Portal */}
+                {
+                    isModalOpen && createPortal(
+                        <div style={{
+                            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                            background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center',
+                            alignItems: 'center', zIndex: 9999
+                        }}>
+                            <div
+                                className="absolute inset-0"
+                                onClick={() => !isSubmitting && setIsModalOpen(false)}
+                            />
+                            <div style={{
+                                background: 'white',
+                                padding: '2rem',
+                                borderRadius: '1.5rem',
+                                width: '95%',
+                                maxWidth: '550px',
+                                maxHeight: '90vh',
+                                overflowY: 'auto',
+                                position: 'relative',
+                                zIndex: 10,
+                                direction: locale === 'ar' ? 'rtl' : 'ltr',
+                                boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+                                border: '1px solid rgba(255, 255, 255, 0.4)'
+                            }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                                    <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#1e293b', margin: 0 }}>{t('add_note_button' as any)}</h2>
+                                    <span style={{ fontSize: '0.75rem', color: newNoteContent.length > MAX_CHARS ? '#ef4444' : '#64748b' }}>
+                                        {newNoteContent.length}/{MAX_CHARS}
+                                    </span>
                                 </div>
-
-                                <div style={{ marginBottom: '1.5rem' }}>
-                                    <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.75rem', color: '#64748b', textAlign: locale === 'ar' ? 'right' : 'left' }}>
-                                        {t('attachment_label' as any)}
-                                    </label>
-                                    <div
-                                        onDragOver={e => { e.preventDefault(); setIsDragging(true); }}
-                                        onDragLeave={() => setIsDragging(false)}
-                                        onDrop={e => { e.preventDefault(); setIsDragging(false); if (e.dataTransfer.files.length) handleFiles(Array.from(e.dataTransfer.files)); }}
-                                        style={{ border: `2px dashed ${isDragging ? '#3b82f6' : '#cbd5e1'}`, borderRadius: '0.75rem', padding: '1.5rem', textAlign: 'center', background: isDragging ? '#eff6ff' : '#f8fafc', transition: 'all 0.2s', cursor: 'pointer', position: 'relative' }}
-                                    >
-                                        <input
-                                            type="file"
-                                            multiple
-                                            accept=".jpg,.jpeg,.png,.gif,.webp,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx"
-                                            onChange={e => { if (e.target.files) { handleFiles(Array.from(e.target.files)); e.target.value = ''; } }}
-                                            style={{ opacity: 0, position: 'absolute', inset: 0, cursor: 'pointer' }}
-                                            disabled={uploading}
-                                        />
-                                        <div style={{ pointerEvents: 'none' }}>
-                                            <div style={{ fontSize: '1.5rem', marginBottom: '0.25rem' }}>☁️</div>
-                                            <div style={{ fontSize: '0.85rem', fontWeight: '600', color: '#475569' }}>{t('upload_drag_files_msg')}</div>
-                                        </div>
-                                    </div>
-
-                                    {pendingFiles.length > 0 && (
-                                        <div style={{ marginTop: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                                            {pendingFiles.map((f, i) => (
-                                                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 0.75rem', background: 'white', border: '1px solid #e2e8f0', borderRadius: '0.5rem' }}>
-                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', overflow: 'hidden' }}>
-                                                        <span style={{ fontSize: '1rem' }}>📄</span>
-                                                        <div style={{ fontSize: '0.75rem', fontWeight: '500', color: '#1e293b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{f.name}</div>
-                                                    </div>
-                                                    <button type="button" onClick={() => removePendingFile(i)} style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', fontSize: '1rem', fontWeight: 'bold' }}>×</button>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    )}
-                                </div>
-
-                                <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem' }}>
-                                    <div style={{ flex: 1 }}>
-                                        <DatePickerSingle
-                                            label={t('expiry_date_label' as any)}
-                                            value={expiryDate}
-                                            onChange={setExpiryDate}
-                                            minDate={new Date().toISOString().split('T')[0]}
-                                        />
-                                    </div>
-                                    <div style={{ flex: 1 }}>
+                                <form onSubmit={handleCreateNote}>
+                                    <div style={{ marginBottom: '1.5rem' }}>
                                         <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', color: '#64748b', textAlign: locale === 'ar' ? 'right' : 'left' }}>
-                                            {t('reminder_days_label' as any)}
+                                            {t('note_content_label' as any)}
                                         </label>
-                                        <input
-                                            type="number"
-                                            value={reminderDays}
-                                            onChange={(e) => setReminderDays(e.target.value)}
-                                            placeholder={t('days_label')}
-                                            min="1"
+                                        <textarea
+                                            value={newNoteContent}
+                                            onChange={(e) => setNewNoteContent(e.target.value)}
                                             className="input"
-                                            style={{ width: '100%', padding: '0 1rem', borderRadius: '1.25rem', height: '48px', textAlign: locale === 'ar' ? 'right' : 'left' }}
+                                            style={{
+                                                width: '100%',
+                                                padding: '0.75rem',
+                                                border: `1px solid ${newNoteContent.length > MAX_CHARS ? '#ef4444' : '#e2e8f0'}`,
+                                                borderRadius: '0.5rem',
+                                                minHeight: '120px',
+                                                lineHeight: '1.5',
+                                                outline: 'none',
+                                                marginBottom: '0.5rem',
+                                                textAlign: locale === 'ar' ? 'right' : 'left'
+                                            }}
+                                            placeholder={t('note_placeholder' as any)}
+                                            autoFocus
                                         />
+                                        {newNoteContent.length > MAX_CHARS && (
+                                            <p style={{ color: '#ef4444', fontSize: '0.75rem', marginTop: '0.5rem' }}>
+                                                {t('note_limit_exceeded' as any)}
+                                            </p>
+                                        )}
                                     </div>
-                                </div>
-                                <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
-                                    <button
-                                        type="button"
-                                        onClick={() => setIsModalOpen(false)}
-                                        style={{ padding: '0.75rem 1.5rem', border: '1px solid #e2e8f0', borderRadius: '0.5rem', background: 'transparent', cursor: 'pointer' }}
-                                    >
-                                        {t('cancel')}
-                                    </button>
-                                    <button
-                                        type="submit"
-                                        disabled={!newNoteContent.trim() || isSubmitting || newNoteContent.length > MAX_CHARS}
-                                        className="btn btn-primary"
-                                        style={{ opacity: (!newNoteContent.trim() || isSubmitting || newNoteContent.length > MAX_CHARS) ? 0.5 : 1 }}
-                                    >
-                                        {isSubmitting ? (uploading ? t('uploading_photo') : t('saving')) : t('add_note_button' as any)}
-                                    </button>
-                                </div>
-                            </form>
-                        </div>
-                    </div>,
-                    document.body
-                )
-            }
 
-            <ConfirmModal
-                isOpen={deleteConfirm.isOpen}
-                title={t('delete_note_title' as any)}
-                message={t('delete_note_msg' as any)}
-                confirmText={t('delete')}
-                onConfirm={async () => {
-                    if (deleteConfirm.note) {
-                        try {
-                            const res = await fetch(`/api/clients/${clientId}/sections/${sectionId}/notes?noteId=${deleteConfirm.note.id}`, { method: 'DELETE' })
-                            if (res.ok) {
-                                fetchData()
-                                setDeleteConfirm({ isOpen: false, note: null })
-                            } else {
-                                const err = await res.json()
-                                alert(`${t('failed_save_generic')}: ${err.error}`)
-                            }
-                        } catch {
-                            alert(t('failed_save_generic'))
-                        }
-                    }
-                }}
-                onCancel={() => setDeleteConfirm({ isOpen: false, note: null })}
-                variant="danger"
-            />
+                                    <div style={{ marginBottom: '1.5rem' }}>
+                                        <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.75rem', color: '#64748b', textAlign: locale === 'ar' ? 'right' : 'left' }}>
+                                            {t('attachment_label' as any)}
+                                        </label>
+                                        <div
+                                            onDragOver={e => { e.preventDefault(); setIsDragging(true); }}
+                                            onDragLeave={() => setIsDragging(false)}
+                                            onDrop={e => { e.preventDefault(); setIsDragging(false); if (e.dataTransfer.files.length) handleFiles(Array.from(e.dataTransfer.files)); }}
+                                            style={{ border: `2px dashed ${isDragging ? '#3b82f6' : '#cbd5e1'}`, borderRadius: '0.75rem', padding: '1.5rem', textAlign: 'center', background: isDragging ? '#eff6ff' : '#f8fafc', transition: 'all 0.2s', cursor: 'pointer', position: 'relative' }}
+                                        >
+                                            <input
+                                                type="file"
+                                                multiple
+                                                accept=".jpg,.jpeg,.png,.gif,.webp,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx"
+                                                onChange={e => { if (e.target.files) { handleFiles(Array.from(e.target.files)); e.target.value = ''; } }}
+                                                style={{ opacity: 0, position: 'absolute', inset: 0, cursor: 'pointer' }}
+                                                disabled={uploading}
+                                            />
+                                            <div style={{ pointerEvents: 'none' }}>
+                                                <div style={{ fontSize: '1.5rem', marginBottom: '0.25rem' }}>☁️</div>
+                                                <div style={{ fontSize: '0.85rem', fontWeight: '600', color: '#475569' }}>{t('upload_drag_files_msg')}</div>
+                                            </div>
+                                        </div>
 
-            {/* Edit Section Modal */}
-            <Modal
-                isOpen={isEditSectionModalOpen}
-                onClose={() => setIsEditSectionModalOpen(false)}
-                title={t('edit_section_title' as any) || 'Edit Section Name'}
-                hideFooter={true}
-            >
-                <form onSubmit={handleEditSection} style={{ direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
-                    <div style={{ marginBottom: '1.5rem' }}>
-                        <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', color: '#64748b', textAlign: locale === 'ar' ? 'right' : 'left' }}>
-                            {t('section_title_label' as any)}
-                        </label>
-                        <input
-                            type="text"
-                            value={editSectionTitle}
-                            onChange={(e) => setEditSectionTitle(e.target.value)}
-                            className="input"
-                            style={{ width: '100%', padding: '0.5rem', border: '1px solid #e2e8f0', borderRadius: '0.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}
-                            placeholder={t('section_title_placeholder' as any)}
-                            autoFocus
-                        />
-                    </div>
-
-                    <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
-                        <button
-                            type="button"
-                            onClick={() => setIsEditSectionModalOpen(false)}
-                            className="btn"
-                            style={{ background: '#f1f5f9' }}
-                        >
-                            {t('cancel')}
-                        </button>
-                        <button
-                            type="submit"
-                            disabled={!editSectionTitle.trim() || isEditingSection}
-                            className="btn btn-primary"
-                        >
-                            {isEditingSection ? t('saving') : t('save')}
-                        </button>
-                    </div>
-                </form>
-            </Modal>
-
-            {/* Edit Note Modal - Portal */}
-            {
-                isEditModalOpen && createPortal(
-                    <div style={{
-                        position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-                        background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center',
-                        alignItems: 'center', zIndex: 9999
-                    }}>
-                        <div
-                            className="absolute inset-0"
-                            onClick={() => !isSubmitting && setIsEditModalOpen(false)}
-                        />
-                        <div style={{ background: 'white', padding: '2rem', borderRadius: '12px', width: '100%', maxWidth: '500px', position: 'relative', zIndex: 10, direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-                                <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#1e293b', margin: 0 }}>{t('edit_note_title' as any) || 'Edit Note'}</h2>
-                                <span style={{ fontSize: '0.75rem', color: editNoteContent.length > MAX_CHARS ? '#ef4444' : '#64748b' }}>
-                                    {editNoteContent.length}/{MAX_CHARS}
-                                </span>
-                            </div>
-                            <form onSubmit={handleUpdateNote}>
-                                <div style={{ marginBottom: '1.5rem' }}>
-                                    <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', color: '#64748b', textAlign: locale === 'ar' ? 'right' : 'left' }}>
-                                        {t('note_content_label' as any)}
-                                    </label>
-                                    <textarea
-                                        value={editNoteContent}
-                                        onChange={(e) => setEditNoteContent(e.target.value)}
-                                        className="input"
-                                        style={{
-                                            width: '100%',
-                                            padding: '0.75rem',
-                                            border: `1px solid ${editNoteContent.length > MAX_CHARS ? '#ef4444' : '#e2e8f0'}`,
-                                            borderRadius: '0.5rem',
-                                            minHeight: '120px',
-                                            lineHeight: '1.5',
-                                            outline: 'none',
-                                            marginBottom: '0.5rem',
-                                            textAlign: locale === 'ar' ? 'right' : 'left'
-                                        }}
-                                        placeholder={t('note_placeholder' as any)}
-                                        autoFocus
-                                    />
-                                    {editNoteContent.length > MAX_CHARS && (
-                                        <p style={{ color: '#ef4444', fontSize: '0.75rem', marginTop: '0.5rem' }}>
-                                            {t('note_limit_exceeded' as any)}
-                                        </p>
-                                    )}
-                                </div>
-
-                                <div style={{ marginBottom: '1.5rem' }}>
-                                    <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.75rem', color: '#64748b', textAlign: locale === 'ar' ? 'right' : 'left' }}>
-                                        {t('attachment_label' as any)}
-                                    </label>
-
-                                    {/* Existing Attachments */}
-                                    {editingNote && getNoteAttachments(editingNote.attachment).length > 0 && (
-                                        <div style={{ marginBottom: '1rem', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                                            {getNoteAttachments(editingNote.attachment).map((url, i) => {
-                                                if (!url) return null;
-                                                return (
-                                                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 0.75rem', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '0.5rem' }}>
+                                        {pendingFiles.length > 0 && (
+                                            <div style={{ marginTop: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                                                {pendingFiles.map((f, i) => (
+                                                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 0.75rem', background: 'white', border: '1px solid #e2e8f0', borderRadius: '0.5rem' }}>
                                                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', overflow: 'hidden' }}>
-                                                            <span style={{ fontSize: '1rem' }}>🔗</span>
-                                                            <div style={{ fontSize: '0.75rem', fontWeight: '500', color: '#0369a1', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                                                {typeof url === 'string' ? url.split('/').pop() : url.name}
-                                                            </div>
+                                                            <span style={{ fontSize: '1rem' }}>📄</span>
+                                                            <div style={{ fontSize: '0.75rem', fontWeight: '500', color: '#1e293b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{f.name}</div>
                                                         </div>
-                                                        <button type="button" onClick={() => handleRemoveExistingAttachment(editingNote, url)} style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', fontSize: '1rem', fontWeight: 'bold' }}>×</button>
+                                                        <button type="button" onClick={() => removePendingFile(i)} style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', fontSize: '1rem', fontWeight: 'bold' }}>×</button>
                                                     </div>
-                                                )
-                                            })}
-                                        </div>
-                                    )}
-
-                                    <div
-                                        onDragOver={e => { e.preventDefault(); setIsDragging(true); }}
-                                        onDragLeave={() => setIsDragging(false)}
-                                        onDrop={e => { e.preventDefault(); setIsDragging(false); if (e.dataTransfer.files.length) handleFiles(Array.from(e.dataTransfer.files)); }}
-                                        style={{ border: `2px dashed ${isDragging ? '#3b82f6' : '#cbd5e1'}`, borderRadius: '0.75rem', padding: '1.5rem', textAlign: 'center', background: isDragging ? '#eff6ff' : '#f8fafc', transition: 'all 0.2s', cursor: 'pointer', position: 'relative' }}
-                                    >
-                                        <input
-                                            type="file"
-                                            multiple
-                                            accept=".jpg,.jpeg,.png,.gif,.webp,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx"
-                                            onChange={e => { if (e.target.files) { handleFiles(Array.from(e.target.files)); e.target.value = ''; } }}
-                                            style={{ opacity: 0, position: 'absolute', inset: 0, cursor: 'pointer' }}
-                                            disabled={uploading}
-                                        />
-                                        <div style={{ pointerEvents: 'none' }}>
-                                            <div style={{ fontSize: '1.5rem', marginBottom: '0.25rem' }}>☁️</div>
-                                            <div style={{ fontSize: '0.85rem', fontWeight: '600', color: '#475569' }}>{t('upload_drag_files_msg')}</div>
-                                        </div>
+                                                ))}
+                                            </div>
+                                        )}
                                     </div>
 
-                                    {pendingFiles.length > 0 && (
-                                        <div style={{ marginTop: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                                            {pendingFiles.map((f, i) => (
-                                                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 0.75rem', background: 'white', border: '1px solid #e2e8f0', borderRadius: '0.5rem' }}>
-                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', overflow: 'hidden' }}>
-                                                        <span style={{ fontSize: '1rem' }}>📄</span>
-                                                        <div style={{ fontSize: '0.75rem', fontWeight: '500', color: '#1e293b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{f.name}</div>
-                                                    </div>
-                                                    <button type="button" onClick={() => removePendingFile(i)} style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', fontSize: '1rem', fontWeight: 'bold' }}>×</button>
-                                                </div>
-                                            ))}
+                                    <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem' }}>
+                                        <div style={{ flex: 1 }}>
+                                            <DatePickerSingle
+                                                label={t('expiry_date_label' as any)}
+                                                value={expiryDate}
+                                                onChange={setExpiryDate}
+                                                minDate={new Date().toISOString().split('T')[0]}
+                                            />
                                         </div>
-                                    )}
-                                </div>
+                                        <div style={{ flex: 1 }}>
+                                            <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', color: '#64748b', textAlign: locale === 'ar' ? 'right' : 'left' }}>
+                                                {t('reminder_days_label' as any)}
+                                            </label>
+                                            <input
+                                                type="number"
+                                                value={reminderDays}
+                                                onChange={(e) => setReminderDays(e.target.value)}
+                                                placeholder={t('days_label')}
+                                                min="1"
+                                                className="input"
+                                                style={{ width: '100%', padding: '0 1rem', borderRadius: '1.25rem', height: '48px', textAlign: locale === 'ar' ? 'right' : 'left' }}
+                                            />
+                                        </div>
+                                    </div>
+                                    <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
+                                        <button
+                                            type="button"
+                                            onClick={() => setIsModalOpen(false)}
+                                            style={{ padding: '0.75rem 1.5rem', border: '1px solid #e2e8f0', borderRadius: '0.5rem', background: 'transparent', cursor: 'pointer' }}
+                                        >
+                                            {t('cancel')}
+                                        </button>
+                                        <button
+                                            type="submit"
+                                            disabled={!newNoteContent.trim() || isSubmitting || newNoteContent.length > MAX_CHARS}
+                                            className="btn btn-primary"
+                                            style={{ opacity: (!newNoteContent.trim() || isSubmitting || newNoteContent.length > MAX_CHARS) ? 0.5 : 1 }}
+                                        >
+                                            {isSubmitting ? (uploading ? t('uploading_photo') : t('saving')) : t('add_note_button' as any)}
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>,
+                        document.body
+                    )
+                }
 
-                                <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem' }}>
-                                    <div style={{ flex: 1 }}>
-                                        <DatePickerSingle
-                                            label={t('expiry_date_label' as any)}
-                                            value={editExpiryDate}
-                                            onChange={setEditExpiryDate}
-                                            minDate={new Date().toISOString().split('T')[0]}
-                                        />
-                                    </div>
-                                    <div style={{ flex: 1 }}>
-                                        <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', color: '#64748b', textAlign: locale === 'ar' ? 'right' : 'left' }}>
-                                            {t('reminder_days_label' as any)}
-                                        </label>
-                                        <input
-                                            type="number"
-                                            value={editReminderDays}
-                                            onChange={(e) => setEditReminderDays(e.target.value)}
-                                            placeholder={t('days_label')}
-                                            min="1"
-                                            className="input"
-                                            style={{ width: '100%', padding: '0 1rem', borderRadius: '1.25rem', height: '48px', textAlign: locale === 'ar' ? 'right' : 'left' }}
-                                        />
-                                    </div>
-                                </div>
-                                <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
-                                    <button
-                                        type="button"
-                                        onClick={() => setIsEditModalOpen(false)}
-                                        style={{ padding: '0.75rem 1.5rem', border: '1px solid #e2e8f0', borderRadius: '0.5rem', background: 'transparent', cursor: 'pointer' }}
-                                    >
-                                        {t('cancel')}
-                                    </button>
-                                    <button
-                                        type="submit"
-                                        disabled={!editNoteContent.trim() || isSubmitting || editNoteContent.length > MAX_CHARS}
-                                        className="btn btn-primary"
-                                        style={{ opacity: (!editNoteContent.trim() || isSubmitting || editNoteContent.length > MAX_CHARS) ? 0.5 : 1 }}
-                                    >
-                                        {isSubmitting ? t('saving') : t('save')}
-                                    </button>
-                                </div>
-                            </form>
+                <ConfirmModal
+                    isOpen={deleteConfirm.isOpen}
+                    title={t('delete_note_title' as any)}
+                    message={t('delete_note_msg' as any)}
+                    confirmText={t('delete')}
+                    onConfirm={async () => {
+                        if (deleteConfirm.note) {
+                            try {
+                                const res = await fetch(`/api/clients/${clientId}/sections/${sectionId}/notes?noteId=${deleteConfirm.note.id}`, { method: 'DELETE' })
+                                if (res.ok) {
+                                    fetchData()
+                                    setDeleteConfirm({ isOpen: false, note: null })
+                                } else {
+                                    const err = await res.json()
+                                    alert(`${t('failed_save_generic')}: ${err.error}`)
+                                }
+                            } catch {
+                                alert(t('failed_save_generic'))
+                            }
+                        }
+                    }}
+                    onCancel={() => setDeleteConfirm({ isOpen: false, note: null })}
+                    variant="danger"
+                />
+
+                {/* Edit Section Modal */}
+                <Modal
+                    isOpen={isEditSectionModalOpen}
+                    onClose={() => setIsEditSectionModalOpen(false)}
+                    title={t('edit_section_title' as any) || 'Edit Section Name'}
+                    hideFooter={true}
+                >
+                    <form onSubmit={handleEditSection} style={{ direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
+                        <div style={{ marginBottom: '1.5rem' }}>
+                            <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', color: '#64748b', textAlign: locale === 'ar' ? 'right' : 'left' }}>
+                                {t('section_title_label' as any)}
+                            </label>
+                            <input
+                                type="text"
+                                value={editSectionTitle}
+                                onChange={(e) => setEditSectionTitle(e.target.value)}
+                                className="input"
+                                style={{ width: '100%', padding: '0.5rem', border: '1px solid #e2e8f0', borderRadius: '0.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}
+                                placeholder={t('section_title_placeholder' as any)}
+                                autoFocus
+                            />
                         </div>
-                    </div>,
-                    document.body
-                )
-            }
-        </div >
+
+                        <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
+                            <button
+                                type="button"
+                                onClick={() => setIsEditSectionModalOpen(false)}
+                                className="btn"
+                                style={{ background: '#f1f5f9' }}
+                            >
+                                {t('cancel')}
+                            </button>
+                            <button
+                                type="submit"
+                                disabled={!editSectionTitle.trim() || isEditingSection}
+                                className="btn btn-primary"
+                            >
+                                {isEditingSection ? t('saving') : t('save')}
+                            </button>
+                        </div>
+                    </form>
+                </Modal>
+
+                {/* Edit Note Modal - Portal */}
+                {
+                    isEditModalOpen && createPortal(
+                        <div style={{
+                            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                            background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center',
+                            alignItems: 'center', zIndex: 9999
+                        }}>
+                            <div
+                                className="absolute inset-0"
+                                onClick={() => !isSubmitting && setIsEditModalOpen(false)}
+                            />
+                            <div style={{
+                                background: 'white',
+                                padding: '2rem',
+                                borderRadius: '1.5rem',
+                                width: '95%',
+                                maxWidth: '550px',
+                                maxHeight: '90vh',
+                                overflowY: 'auto',
+                                position: 'relative',
+                                zIndex: 10,
+                                direction: locale === 'ar' ? 'rtl' : 'ltr',
+                                boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+                                border: '1px solid rgba(255, 255, 255, 0.4)'
+                            }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                                    <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#1e293b', margin: 0 }}>{t('edit_note_title' as any) || 'Edit Note'}</h2>
+                                    <span style={{ fontSize: '0.75rem', color: editNoteContent.length > MAX_CHARS ? '#ef4444' : '#64748b' }}>
+                                        {editNoteContent.length}/{MAX_CHARS}
+                                    </span>
+                                </div>
+                                <form onSubmit={handleUpdateNote}>
+                                    <div style={{ marginBottom: '1.5rem' }}>
+                                        <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', color: '#64748b', textAlign: locale === 'ar' ? 'right' : 'left' }}>
+                                            {t('note_content_label' as any)}
+                                        </label>
+                                        <textarea
+                                            value={editNoteContent}
+                                            onChange={(e) => setEditNoteContent(e.target.value)}
+                                            className="input"
+                                            style={{
+                                                width: '100%',
+                                                padding: '0.75rem',
+                                                border: `1px solid ${editNoteContent.length > MAX_CHARS ? '#ef4444' : '#e2e8f0'}`,
+                                                borderRadius: '0.5rem',
+                                                minHeight: '120px',
+                                                lineHeight: '1.5',
+                                                outline: 'none',
+                                                marginBottom: '0.5rem',
+                                                textAlign: locale === 'ar' ? 'right' : 'left'
+                                            }}
+                                            placeholder={t('note_placeholder' as any)}
+                                            autoFocus
+                                        />
+                                        {editNoteContent.length > MAX_CHARS && (
+                                            <p style={{ color: '#ef4444', fontSize: '0.75rem', marginTop: '0.5rem' }}>
+                                                {t('note_limit_exceeded' as any)}
+                                            </p>
+                                        )}
+                                    </div>
+
+                                    <div style={{ marginBottom: '1.5rem' }}>
+                                        <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.75rem', color: '#64748b', textAlign: locale === 'ar' ? 'right' : 'left' }}>
+                                            {t('attachment_label' as any)}
+                                        </label>
+
+                                        {/* Existing Attachments */}
+                                        {editingNote && getNoteAttachments(editingNote.attachment).length > 0 && (
+                                            <div style={{ marginBottom: '1rem', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                                                {getNoteAttachments(editingNote.attachment).map((url, i) => {
+                                                    if (!url) return null;
+                                                    return (
+                                                        <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 0.75rem', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '0.5rem' }}>
+                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', overflow: 'hidden' }}>
+                                                                <span style={{ fontSize: '1rem' }}>🔗</span>
+                                                                <div style={{ fontSize: '0.75rem', fontWeight: '500', color: '#0369a1', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                                                    {typeof url === 'string' ? url.split('/').pop() : url.name}
+                                                                </div>
+                                                            </div>
+                                                            <button type="button" onClick={() => editingNote && handleRemoveExistingAttachment(editingNote, url)} style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', fontSize: '1rem', fontWeight: 'bold' }}>×</button>
+                                                        </div>
+                                                    )
+                                                })}
+                                            </div>
+                                        )}
+
+                                        <div
+                                            onDragOver={e => { e.preventDefault(); setIsDragging(true); }}
+                                            onDragLeave={() => setIsDragging(false)}
+                                            onDrop={e => { e.preventDefault(); setIsDragging(false); if (e.dataTransfer.files.length) handleFiles(Array.from(e.dataTransfer.files)); }}
+                                            style={{ border: `2px dashed ${isDragging ? '#3b82f6' : '#cbd5e1'}`, borderRadius: '0.75rem', padding: '1.5rem', textAlign: 'center', background: isDragging ? '#eff6ff' : '#f8fafc', transition: 'all 0.2s', cursor: 'pointer', position: 'relative' }}
+                                        >
+                                            <input
+                                                type="file"
+                                                multiple
+                                                accept=".jpg,.jpeg,.png,.gif,.webp,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx"
+                                                onChange={e => { if (e.target.files) { handleFiles(Array.from(e.target.files)); e.target.value = ''; } }}
+                                                style={{ opacity: 0, position: 'absolute', inset: 0, cursor: 'pointer' }}
+                                                disabled={uploading}
+                                            />
+                                            <div style={{ pointerEvents: 'none' }}>
+                                                <div style={{ fontSize: '1.5rem', marginBottom: '0.25rem' }}>☁️</div>
+                                                <div style={{ fontSize: '0.85rem', fontWeight: '600', color: '#475569' }}>{t('upload_drag_files_msg')}</div>
+                                            </div>
+                                        </div>
+
+                                        {pendingFiles.length > 0 && (
+                                            <div style={{ marginTop: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                                                {pendingFiles.map((f, i) => (
+                                                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 0.75rem', background: 'white', border: '1px solid #e2e8f0', borderRadius: '0.5rem' }}>
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', overflow: 'hidden' }}>
+                                                            <span style={{ fontSize: '1rem' }}>📄</span>
+                                                            <div style={{ fontSize: '0.75rem', fontWeight: '500', color: '#1e293b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{f.name}</div>
+                                                        </div>
+                                                        <button type="button" onClick={() => removePendingFile(i)} style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', fontSize: '1rem', fontWeight: 'bold' }}>×</button>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem' }}>
+                                        <div style={{ flex: 1 }}>
+                                            <DatePickerSingle
+                                                label={t('expiry_date_label' as any)}
+                                                value={editExpiryDate}
+                                                onChange={setEditExpiryDate}
+                                                minDate={new Date().toISOString().split('T')[0]}
+                                            />
+                                        </div>
+                                        <div style={{ flex: 1 }}>
+                                            <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', color: '#64748b', textAlign: locale === 'ar' ? 'right' : 'left' }}>
+                                                {t('reminder_days_label' as any)}
+                                            </label>
+                                            <input
+                                                type="number"
+                                                value={editReminderDays}
+                                                onChange={(e) => setEditReminderDays(e.target.value)}
+                                                placeholder={t('days_label')}
+                                                min="1"
+                                                className="input"
+                                                style={{ width: '100%', padding: '0 1rem', borderRadius: '1.25rem', height: '48px', textAlign: locale === 'ar' ? 'right' : 'left' }}
+                                            />
+                                        </div>
+                                    </div>
+                                    <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
+                                        <button
+                                            type="button"
+                                            onClick={() => setIsEditModalOpen(false)}
+                                            style={{ padding: '0.75rem 1.5rem', border: '1px solid #e2e8f0', borderRadius: '0.5rem', background: 'transparent', cursor: 'pointer' }}
+                                        >
+                                            {t('cancel')}
+                                        </button>
+                                        <button
+                                            type="submit"
+                                            disabled={!editNoteContent.trim() || isSubmitting || editNoteContent.length > MAX_CHARS}
+                                            className="btn btn-primary"
+                                            style={{ opacity: (!editNoteContent.trim() || isSubmitting || editNoteContent.length > MAX_CHARS) ? 0.5 : 1 }}
+                                        >
+                                            {isSubmitting ? t('saving') : t('save')}
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>,
+                        document.body
+                    )
+                }
+            </div>
+        </div>
     )
 }
