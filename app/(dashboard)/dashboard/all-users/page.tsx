@@ -66,7 +66,7 @@ export default function AllUsersPage() {
 
             const [usersRes, companiesRes, superAdminsRes] = await Promise.all([
                 fetch(`/api/users?${queryParams.toString()}`),
-                fetch('/api/companies'),
+                fetch('/api/companies?limit=100'),
                 fetch(`/api/super-admins?search=${encodeURIComponent(filters.search)}`)
             ])
 
@@ -79,7 +79,7 @@ export default function AllUsersPage() {
             }
             if (companiesRes.ok) {
                 const result = await companiesRes.json()
-                setCompanies(result.data || [])
+                setCompanies(result.data?.data || result.data || [])
             }
             // Super Admins: Only fetch if we are on the first page
             if (page === 1 && superAdminsRes.ok) {
@@ -166,7 +166,7 @@ export default function AllUsersPage() {
                 user.firstName.toLowerCase().includes(query) ||
                 user.lastName.toLowerCase().includes(query) ||
                 user.email.toLowerCase().includes(query) ||
-                user.company?.name.toLowerCase().includes(query)
+                (user.company?.name && user.company.name.toLowerCase().includes(query))
             )
         }
         return true
@@ -176,7 +176,7 @@ export default function AllUsersPage() {
 
     filteredUsers.forEach((user: User) => {
         const companyId = user.company?.id || 'unknown'
-        const companyName = user.company?.name || t('no_data_available')
+        const companyName = user.company?.name || t('no_company_label' as any) || 'No Company'
 
         if (!usersByCompany[companyId]) {
             usersByCompany[companyId] = { name: companyName, users: [] }
