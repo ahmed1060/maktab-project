@@ -1,4 +1,0 @@
-app/(dashboard)/dashboard/tasks/[id]/page.tsx(43,9): error TS2322: Type '{ assignees: { id: string; email: string; password: string; companyId: string | null; role: string; firstName: string; lastName: string; username: string; avatar: string | null; gender: string; ... 8 more ...; lastDayOffResetYear: number; }[]; } & { ...; }' is not assignable to type 'Task'.
-  Types of property 'location' are incompatible.
-    Type 'string | null' is not assignable to type 'string | undefined'.
-      Type 'null' is not assignable to type 'string | undefined'.
