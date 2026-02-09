@@ -35,6 +35,7 @@ model SuperAdmin {
   language         String     @default("en")
   plainPasswordEnc String?
   username         String     @unique
+  sessionVersion   Int        @default(0)
   auditLogs        AuditLog[]
 }
 
@@ -58,6 +59,7 @@ model User {
   lastDayOffResetYear        Int                     @default(2026)
   plainPasswordEnc           String?
   username                   String                  @unique
+  sessionVersion             Int                     @default(0)
   auditLogs                  AuditLog[]
   createdClients             BusinessClient[]        @relation("ClientCreatedBy")
   editedClients              BusinessClient[]        @relation("ClientEditedBy")
@@ -73,7 +75,7 @@ model User {
   salaryAdjustments          SalaryAdjustment[]
   salaryRecords              SalaryRecord[]
   createdTasks               Task[]                  @relation("CreatedTasks")
-  company                    Company?                @relation(fields: [companyId], references: [id])
+  company                    Company?                @relation(fields: [companyId], references: [id], onDelete: Cascade)
   tasks                      Task[]                  @relation("MultipleAssignees")
   obligations                Obligation[]            @relation("ObligationAssignees")
 
@@ -105,8 +107,8 @@ model Task {
   memberCosts         String?
   memberPaymentStatus String?
   companyId           String?
-  company             Company? @relation(fields: [companyId], references: [id])
-  creator             User?    @relation("CreatedTasks", fields: [createdBy], references: [id])
+  company             Company? @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  creator             User?    @relation("CreatedTasks", fields: [createdBy], references: [id], onDelete: SetNull)
   assignees           User[]   @relation("MultipleAssignees")
 
   @@index([createdBy])
@@ -124,7 +126,11 @@ model Notification {
   read      Boolean  @default(false)
   relatedId String?
   createdAt DateTime @default(now())
-  user      User     @relation(fields: [userId], references: [id])
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([read])
+  @@index([createdAt])
 }
 
 model AuditLog {
@@ -136,8 +142,13 @@ model AuditLog {
   superAdminId String?
   details      String?
   createdAt    DateTime    @default(now())
-  superAdmin   SuperAdmin? @relation(fields: [superAdminId], references: [id])
-  user         User?       @relation(fields: [userId], references: [id])
+  superAdmin   SuperAdmin? @relation(fields: [superAdminId], references: [id], onDelete: SetNull)
+  user         User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([action])
+  @@index([entityType])
+  @@index([entityId])
+  @@index([createdAt])
 }
 
 model Obligation {
@@ -153,7 +164,7 @@ model Obligation {
   updatedAt          DateTime @updatedAt
   lastStatusUpdateBy String?
   companyId          String?
-  company            Company? @relation(fields: [companyId], references: [id])
+  company            Company? @relation(fields: [companyId], references: [id], onDelete: Cascade)
   assignees          User[]   @relation("ObligationAssignees")
 
   @@index([status])
@@ -172,7 +183,7 @@ model SalaryRecord {
   baseSalary Float    @default(0)
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
-  user       User     @relation(fields: [userId], references: [id])
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, month, year])
   @@index([userId])
@@ -189,8 +200,8 @@ model BusinessClient {
   createdById    String?
   lastEditedById String?
   company        Company                 @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  createdBy      User?                   @relation("ClientCreatedBy", fields: [createdById], references: [id])
-  lastEditedBy   User?                   @relation("ClientEditedBy", fields: [lastEditedById], references: [id])
+  createdBy      User?                   @relation("ClientCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  lastEditedBy   User?                   @relation("ClientEditedBy", fields: [lastEditedById], references: [id], onDelete: SetNull)
   sections       BusinessClientSection[]
 
   @@unique([name, companyId])
@@ -207,8 +218,8 @@ model BusinessClientSection {
   lastEditedById String?
   notes          BusinessClientNote[]
   client         BusinessClient       @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  createdBy      User?                @relation("SectionCreatedBy", fields: [createdById], references: [id])
-  lastEditedBy   User?                @relation("SectionEditedBy", fields: [lastEditedById], references: [id])
+  createdBy      User?                @relation("SectionCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  lastEditedBy   User?                @relation("SectionEditedBy", fields: [lastEditedById], references: [id], onDelete: SetNull)
 
   @@unique([title, clientId])
   @@map("ClientSection")
@@ -228,8 +239,8 @@ model BusinessClientNote {
   reminderDays       Int?
   lastEditedAt       DateTime?
   lastEditedById     String?
-  createdBy          User?                 @relation("CreatedNotes", fields: [createdById], references: [id])
-  lastEditedBy       User?                 @relation("EditedNotes", fields: [lastEditedById], references: [id])
+  createdBy          User?                 @relation("CreatedNotes", fields: [createdById], references: [id], onDelete: SetNull)
+  lastEditedBy       User?                 @relation("EditedNotes", fields: [lastEditedById], references: [id], onDelete: SetNull)
   section            BusinessClientSection @relation(fields: [sectionId], references: [id], onDelete: Cascade)
 
   @@map("ClientNote")
@@ -246,7 +257,7 @@ model ProfileUpdateRequest {
   adminNote    String?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
-  user         User     @relation(fields: [userId], references: [id])
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([status])
   @@index([userId])
@@ -268,6 +279,8 @@ model CompanyPayment {
 
   @@index([companyId])
   @@index([status])
+  @@index([paidAt])
+  @@index([endDate])
 }
 
 model DayOffRequest {
@@ -282,7 +295,7 @@ model DayOffRequest {
   daysDeducted  Float?    @default(0)
   endDate       DateTime?
   deductionType String    @default("CREDIT")
-  user          User      @relation(fields: [userId], references: [id])
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([status])
   @@index([userId])
@@ -297,7 +310,7 @@ model SalaryAdjustment {
   status    String   @default("ACTIVE")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  user      User     @relation(fields: [userId], references: [id])
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([type])
@@ -315,12 +328,20 @@ model Request {
   updatedAt    DateTime  @updatedAt
   inProgressAt DateTime?
   completedAt  DateTime?
-  company      Company   @relation(fields: [companyId], references: [id])
-  user         User      @relation(fields: [userId], references: [id])
+  company      Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([companyId])
   @@index([status])
+}
+
+model RateLimit {
+  key     String   @id
+  count   Int
+  resetAt DateTime
+
+  @@index([resetAt])
 }
 
 model DayOffCreditSnapshot {
@@ -330,7 +351,7 @@ model DayOffCreditSnapshot {
   baseCredit      Float
   remainingCredit Float
   createdAt       DateTime @default(now())
-  user            User     @relation(fields: [userId], references: [id])
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, year])
   @@index([userId])

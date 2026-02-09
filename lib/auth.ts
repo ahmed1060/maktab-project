@@ -4,6 +4,9 @@ import { prisma } from "@/lib/prisma"
 import bcrypt from "bcryptjs"
 import { v4 as uuidv4 } from 'uuid'
 
+import { headers } from "next/headers"
+import { RateLimiter } from "./api-utils"
+
 export const authOptions: NextAuthOptions = {
     providers: [
         CredentialsProvider({
@@ -16,6 +19,15 @@ export const authOptions: NextAuthOptions = {
             },
             async authorize(credentials) {
                 try {
+                    // Rate Limiting (5 attempts per 15 minutes per IP)
+                    const headerList = headers()
+                    const ip = headerList.get('x-forwarded-for') || 'unknown'
+                    const { limited, resetAt } = await RateLimiter.getLimitData(`login:${ip}`, 5, 15 * 60 * 1000)
+                    if (limited) {
+                        const timeStr = new Date(resetAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                        throw new Error(`Too many login attempts. Please try again at ${timeStr}.`)
+                    }
+
                     const remember = credentials?.remember === 'true'
 
                     if (!credentials?.email || !credentials?.password) {
@@ -28,7 +40,7 @@ export const authOptions: NextAuthOptions = {
                         return null
                     }
 
-                    if (credentials.password.length < 6 || credentials.password.length > 20) {
+                    if (credentials.password.length < 8 || credentials.password.length > 20) {
                         return null
                     }
 
@@ -39,7 +51,30 @@ export const authOptions: NextAuthOptions = {
 
                     if (superAdmin) {
                         const isValid = await bcrypt.compare(credentials.password, superAdmin.password)
-                        if (!isValid) return null
+                        if (!isValid) {
+                            // Audit Log (Failure)
+                            await prisma.auditLog.create({
+                                data: {
+                                    action: 'LOGIN_FAILURE',
+                                    entityType: 'USER',
+                                    entityId: superAdmin.id,
+                                    superAdminId: superAdmin.id,
+                                    details: JSON.stringify({ email: superAdmin.email, reason: 'INVALID_PASSWORD', ip })
+                                }
+                            })
+                            return null
+                        }
+
+                        // Audit Log (Success)
+                        await prisma.auditLog.create({
+                            data: {
+                                action: 'LOGIN',
+                                entityType: 'USER',
+                                entityId: superAdmin.id,
+                                superAdminId: superAdmin.id,
+                                details: JSON.stringify({ email: superAdmin.email, role: 'SUPER_ADMIN' })
+                            }
+                        })
 
                         return {
                             id: superAdmin.id,
@@ -55,6 +90,7 @@ export const authOptions: NextAuthOptions = {
                             companyName: 'SHSD',
                             username: superAdmin.username,
                             language: superAdmin.language || 'en',
+                            sessionVersion: (superAdmin as any).sessionVersion || 0,
                             remember
                         }
                     }
@@ -65,7 +101,18 @@ export const authOptions: NextAuthOptions = {
                         include: { company: true }
                     })
 
-                    if (!user) return null
+                    if (!user) {
+                        // Audit Log (Failure - Unknown User)
+                        await prisma.auditLog.create({
+                            data: {
+                                action: 'LOGIN_FAILURE',
+                                entityType: 'USER',
+                                entityId: 'UNKNOWN',
+                                details: JSON.stringify({ email: credentials.email, reason: 'USER_NOT_FOUND', ip })
+                            }
+                        })
+                        return null
+                    }
 
                     // Verify Company (If selected)
                     if (credentials.companyId && credentials.companyId !== user.companyId) {
@@ -82,7 +129,19 @@ export const authOptions: NextAuthOptions = {
                     }
 
                     const isValid = await bcrypt.compare(credentials.password, user.password)
-                    if (!isValid) return null
+                    if (!isValid) {
+                        // Audit Log (Failure)
+                        await prisma.auditLog.create({
+                            data: {
+                                action: 'LOGIN_FAILURE',
+                                entityType: 'USER',
+                                entityId: user.id,
+                                userId: user.id,
+                                details: JSON.stringify({ email: user.email, reason: 'INVALID_PASSWORD', ip })
+                            }
+                        })
+                        return null
+                    }
 
                     // Update generic user status
                     try {
@@ -91,6 +150,17 @@ export const authOptions: NextAuthOptions = {
                             data: { status: 'ACTIVE', lastActivity: new Date() }
                         })
                     } catch (e) { console.error('[AUTH_STATUS_UPDATE_FAIL]', e) }
+
+                    // Audit Log (Success)
+                    await prisma.auditLog.create({
+                        data: {
+                            action: 'LOGIN',
+                            entityType: 'USER',
+                            entityId: user.id,
+                            userId: user.id,
+                            details: JSON.stringify({ email: user.email, role: user.role, company: user.company?.name })
+                        }
+                    })
 
                     return {
                         id: user.id,
@@ -106,6 +176,7 @@ export const authOptions: NextAuthOptions = {
                         companyName: user.company?.name || null,
                         username: user.username,
                         language: user.language || 'en',
+                        sessionVersion: (user as any).sessionVersion || 0,
                         remember
                     }
 
@@ -144,6 +215,7 @@ export const authOptions: NextAuthOptions = {
                 token.firstName = user.firstName
                 token.lastName = user.lastName
                 token.gender = user.gender
+                token.sessionVersion = (user as any).sessionVersion || 0
                 // Store in multiple fields to be safe against stripping
                 const avatarUrl = user.avatar || user.image || null
                 token.avatar = avatarUrl
@@ -173,6 +245,39 @@ export const authOptions: NextAuthOptions = {
                 }
             }
 
+            // --- SESSION REVOCATION CHECK (Wave 8) ---
+            // On every JWT evaluation, we check if the session is still valid.
+            // This happens frequently on the server side.
+            if (token.sub) {
+                try {
+                    const userId = token.sub as string
+                    const userRole = token.role as string
+
+                    let dbVersion = 0
+                    if (userRole === 'SUPER_ADMIN') {
+                        const sa = await prisma.superAdmin.findUnique({
+                            where: { id: userId },
+                            select: { sessionVersion: true }
+                        })
+                        dbVersion = (sa as any)?.sessionVersion || 0
+                    } else {
+                        const u = await prisma.user.findUnique({
+                            where: { id: userId },
+                            select: { sessionVersion: true }
+                        })
+                        dbVersion = (u as any)?.sessionVersion || 0
+                    }
+
+                    // If DB version is higher than token version, revoke!
+                    if (dbVersion > (token.sessionVersion as number || 0)) {
+                        console.log(`[AUTH] Revoking session for user ${userId} (Token:${token.sessionVersion} vs DB:${dbVersion})`)
+                        return {} as any // Empty token = invalid session
+                    }
+                } catch (e) {
+                    console.error("[AUTH] Revocation check failed, allowing session as fallback", e)
+                }
+            }
+
             // On session update (client-side update() call)
             if (trigger === 'update' && session) {
                 console.log('JWT Update Triggered:', session)
@@ -199,5 +304,5 @@ export const authOptions: NextAuthOptions = {
         strategy: "jwt",
         maxAge: 30 * 24 * 60 * 60, // 30 Days (Persistent Cookie)
     },
-    secret: process.env.NEXTAUTH_SECRET || "secret",
+    secret: process.env.NEXTAUTH_SECRET,
 }

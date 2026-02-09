@@ -131,11 +131,9 @@ export const DELETE = withStandardHandler(async (req, session) => {
         }
 
         // 2. Service
-        await NoteService.delete(noteId)
+        await NoteService.delete(noteId, session)
         return ApiResponse.success({ success: true, id: noteId })
     } catch (error: any) {
         throw error
     }
-}, {
-    audit: { action: 'DELETE_NOTE', entityType: 'NOTE', getEntityId: (res) => res?.id }
 })

@@ -17,13 +17,27 @@ export class ClientService {
             if (!targetCompanyId) throw new Error("USER_NO_COMPANY")
         }
 
-        return await prisma.businessClient.create({
+        const client = await prisma.businessClient.create({
             data: {
                 name,
                 companyId: targetCompanyId!,
                 createdById: userRole === 'SUPER_ADMIN' ? null : userId
             }
         })
+
+        // Audit Log
+        await prisma.auditLog.create({
+            data: {
+                action: 'CREATE_CLIENT',
+                entityType: 'CLIENT',
+                entityId: client.id,
+                userId: userRole !== 'SUPER_ADMIN' ? userId : null,
+                superAdminId: userRole === 'SUPER_ADMIN' ? userId : null,
+                details: JSON.stringify({ name, companyId: targetCompanyId })
+            }
+        })
+
+        return client
     }
 
     static async update(input: UpdateClientInput, session: any) {
@@ -40,13 +54,27 @@ export class ClientService {
             throw new Error("FORBIDDEN")
         }
 
-        return await prisma.businessClient.update({
+        const updated = await prisma.businessClient.update({
             where: { id },
             data: {
                 name,
                 lastEditedById: userRole === 'SUPER_ADMIN' ? null : userId
             }
         })
+
+        // Audit Log
+        await prisma.auditLog.create({
+            data: {
+                action: 'UPDATE_CLIENT',
+                entityType: 'CLIENT',
+                entityId: id,
+                userId: userRole !== 'SUPER_ADMIN' ? userId : null,
+                superAdminId: userRole === 'SUPER_ADMIN' ? userId : null,
+                details: JSON.stringify({ name })
+            }
+        })
+
+        return updated
     }
 
     static async delete(id: string, session: any) {
@@ -60,6 +88,20 @@ export class ClientService {
             throw new Error("FORBIDDEN")
         }
 
-        return await prisma.businessClient.delete({ where: { id } })
+        const result = await prisma.businessClient.delete({ where: { id } })
+
+        // Audit Log
+        await prisma.auditLog.create({
+            data: {
+                action: 'DELETE_CLIENT',
+                entityType: 'CLIENT',
+                entityId: id,
+                userId: userRole !== 'SUPER_ADMIN' ? (session.user as any).id : null,
+                superAdminId: userRole === 'SUPER_ADMIN' ? (session.user as any).id : null,
+                details: JSON.stringify({ name: client.name })
+            }
+        })
+
+        return result
     }
 }

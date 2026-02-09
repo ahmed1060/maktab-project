@@ -36,7 +36,9 @@ export const POST = withStandardHandler(async (req, session, json) => {
 
         if (!title || title.length < 3) continue
         if (!description || description.length < 10) continue
-        if (!deadline || isNaN(new Date(deadline).getTime())) continue
+        const deadlineDate = new Date(deadline)
+        const minDeadline = new Date(Date.now() + 3 * 60 * 60 * 1000)
+        if (!deadline || isNaN(deadlineDate.getTime()) || deadlineDate < minDeadline) continue
         if (!assigneeIds || assigneeIds.length === 0) continue
 
         let isTaskValid = true

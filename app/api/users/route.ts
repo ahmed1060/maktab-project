@@ -115,8 +115,9 @@ export const GET = withStandardHandler(async (req, session) => {
         ]
     }
 
-    if (statusParam) whereClause.status = statusParam
-    else if (!includeDeleted) {
+    if (statusParam) {
+        whereClause.status = statusParam
+    } else if (!includeDeleted) {
         whereClause.AND = whereClause.AND || []
         whereClause.AND.push({ status: { not: 'DELETED' } })
     }
@@ -203,6 +204,7 @@ export const PUT = withStandardHandler(async (req, session, json) => {
         if (error.message === 'USER_NOT_FOUND') return ApiResponse.notFound("User not found")
         if (error.message === 'NAME_CHANGE_REQUIRES_ADMIN') return ApiResponse.forbidden("Name changes require admin approval")
         if (error.message === 'FORBIDDEN_ROLE_ASSIGNMENT') return ApiResponse.forbidden("Forbidden role assignment")
+        if (error.message === 'INVALID_PASSCODE') return ApiResponse.forbidden("Invalid verification passcode")
 
         throw error
     }
@@ -215,15 +217,17 @@ export const DELETE = withStandardHandler(async (req, session) => {
     if (!['ADMIN', 'SUPER_ADMIN'].includes(userRole || '')) return ApiResponse.unauthorized()
 
     const { searchParams } = new URL(req.url)
-    const userId = searchParams.get('id')
+    const id = searchParams.get('id')
     const isPermanent = searchParams.get('permanent') === 'true'
+    const passcode = searchParams.get('passcode') || ''
 
-    if (!userId) return ApiResponse.badRequest("User ID required")
+    if (!id) return ApiResponse.badRequest("User ID required")
 
     try {
-        await UserService.delete(userId, userRole!, session.user.id, isPermanent)
-        return ApiResponse.success({ id: userId, permanent: isPermanent })
+        await UserService.delete(id, session, isPermanent, passcode)
+        return ApiResponse.success({ id: id, permanent: isPermanent })
     } catch (error: any) {
+        if (error.message === 'INVALID_PASSCODE') return ApiResponse.forbidden("Invalid verification passcode")
         if (error.message === 'INVALID_ID') return ApiResponse.badRequest("Invalid ID or cannot delete self")
         if (error.message === 'USER_NOT_FOUND') return ApiResponse.notFound("User not found")
         if (error.message === 'FORBIDDEN') return ApiResponse.forbidden("Insufficient permissions to delete this user")

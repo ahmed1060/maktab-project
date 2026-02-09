@@ -41,7 +41,7 @@ export const POST = withStandardHandler(async (req, session, json) => {
     }
 
     try {
-        const result = await SuperAdminService.create(validation.data)
+        const result = await SuperAdminService.create(validation.data, session)
         return ApiResponse.success(result, 201)
     } catch (error: any) {
         if ((error as any).code === 'P2002') {

@@ -65,6 +65,18 @@ export class RequestService {
                 }
             }
 
+            // Audit Log
+            await tx.auditLog.create({
+                data: {
+                    action: 'CREATE_REQUEST',
+                    entityType: 'REQUEST',
+                    entityId: request.id,
+                    userId: userRole !== 'SUPER_ADMIN' ? userId : null,
+                    superAdminId: userRole === 'SUPER_ADMIN' ? userId : null,
+                    details: JSON.stringify({ title: input.title, companyId })
+                }
+            })
+
             return request
         })
     }
@@ -112,6 +124,18 @@ export class RequestService {
 
             const updated = await tx.request.update({ where: { id }, data })
 
+            // Audit Log
+            await tx.auditLog.create({
+                data: {
+                    action: 'UPDATE_REQUEST_STATUS',
+                    entityType: 'REQUEST',
+                    entityId: id,
+                    userId: userRole !== 'SUPER_ADMIN' ? session.user.id : null,
+                    superAdminId: userRole === 'SUPER_ADMIN' ? session.user.id : null,
+                    details: JSON.stringify({ oldStatus: request.status, newStatus: status })
+                }
+            })
+
             // Notify user
             const updaterRole = userRole.replace(/_/g, ' ')
             const statusText = status.replace(/_/g, ' ')
@@ -148,6 +172,20 @@ export class RequestService {
             if (request.userId !== userId) throw new Error("ACCESS_DENIED")
         }
 
-        return await prisma.request.delete({ where: { id } })
+        const result = await prisma.request.delete({ where: { id } })
+
+        // Audit Log
+        await prisma.auditLog.create({
+            data: {
+                action: 'DELETE_REQUEST',
+                entityType: 'REQUEST',
+                entityId: id,
+                userId: userRole !== 'SUPER_ADMIN' ? userId : null,
+                superAdminId: userRole === 'SUPER_ADMIN' ? userId : null,
+                details: JSON.stringify({ title: request.title, status: request.status })
+            }
+        })
+
+        return result
     }
 }

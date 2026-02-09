@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma"
 import { CreateObligationInput } from "../validations/obligation.schema"
+import { supabase } from "@/lib/storage"
 
 export class ObligationService {
     static async create(input: CreateObligationInput, session: any) {
@@ -29,6 +30,16 @@ export class ObligationService {
             }
         }
 
+        // 2. Deadline Safety Check (3-hour buffer)
+        const deadlineDate = new Date(deadline)
+        const minDeadline = new Date(Date.now() + 3 * 60 * 60 * 1000)
+        if (deadlineDate < minDeadline) throw new Error("DEADLINE_TOO_SOON")
+
+        // 3. Attachment Count Limit
+        if (attachments && Array.isArray(attachments) && attachments.length > 20) {
+            throw new Error("ATTACHMENT_LIMIT_EXCEEDED")
+        }
+
         // 2. Resolve Company ID
         let targetCompanyId = creatorCompanyId
         if (userRole === 'SUPER_ADMIN' && assigneeIds.length > 0) {
@@ -48,7 +59,7 @@ export class ObligationService {
                 assignees: {
                     connect: assigneeIds.map(id => ({ id }))
                 },
-                deadline: new Date(deadline),
+                deadline: deadlineDate,
                 recurrence: recurrence || 'ONE_TIME',
                 difficulty: difficulty || 0,
                 attachments: attachments ? JSON.stringify(attachments) : null,
@@ -98,6 +109,9 @@ export class ObligationService {
                 finalAttachments = input.attachments
             }
             if (newAttachments && Array.isArray(newAttachments)) {
+                if (finalAttachments.length + newAttachments.length > 20) {
+                    throw new Error("ATTACHMENT_LIMIT_EXCEEDED")
+                }
                 finalAttachments = [...finalAttachments, ...newAttachments]
             }
 
@@ -150,6 +164,18 @@ export class ObligationService {
                 })
             }
 
+            // 7. Audit Log
+            await tx.auditLog.create({
+                data: {
+                    action: 'UPDATE_OBLIGATION',
+                    entityType: 'OBLIGATION',
+                    entityId: id,
+                    userId: userRole !== 'SUPER_ADMIN' ? userId : null,
+                    superAdminId: userRole === 'SUPER_ADMIN' ? userId : null,
+                    details: JSON.stringify(input)
+                }
+            })
+
             return updated
         })
     }
@@ -163,7 +189,7 @@ export class ObligationService {
         return await prisma.$transaction(async (tx) => {
             const obligation = await tx.obligation.findUnique({
                 where: { id },
-                select: { status: true, difficulty: true, assignees: { select: { id: true } } }
+                select: { status: true, difficulty: true, assignees: { select: { id: true } }, attachments: true }
             })
 
             if (!obligation) throw new Error("OBLIGATION_NOT_FOUND")
@@ -182,7 +208,37 @@ export class ObligationService {
                 }
             }
 
+            // Storage Cleanup
+            if (obligation.attachments) {
+                try {
+                    const attachments = JSON.parse(obligation.attachments)
+                    if (Array.isArray(attachments)) {
+                        const filePaths = attachments
+                            .map((a: any) => a.url?.split('/app-assets/')?.[1])
+                            .filter(path => !!path)
+                        if (filePaths.length > 0) {
+                            await supabase.storage.from('app-assets').remove(filePaths)
+                        }
+                    }
+                } catch (e) {
+                    console.error("Failed to cleanup obligation attachments:", e)
+                }
+            }
+
             await tx.obligation.delete({ where: { id } })
+
+            // Audit Log
+            await tx.auditLog.create({
+                data: {
+                    action: 'DELETE_OBLIGATION',
+                    entityType: 'OBLIGATION',
+                    entityId: id,
+                    userId: userRole !== 'SUPER_ADMIN' ? userId : null,
+                    superAdminId: userRole === 'SUPER_ADMIN' ? userId : null,
+                    details: JSON.stringify({ title: (obligation as any).title })
+                }
+            })
+
             return { id }
         })
     }
@@ -255,5 +311,87 @@ export class ObligationService {
 
             return updatedObligation
         })
+    }
+    /**
+     * Processes recurrent obligations and creates the next instance if due.
+     * This is intended to be called by a cron job.
+     */
+    static async processRecurrentObligations() {
+        const finalizedStatuses = ['COMPLETED', 'APPROVED']
+
+        // 1. Find all finalized obligations that are recurrent
+        const recurrentObligations = await prisma.obligation.findMany({
+            where: {
+                recurrence: { not: 'ONE_TIME' },
+                status: { in: finalizedStatuses }
+            },
+            include: { assignees: { select: { id: true } } }
+        })
+
+        const creationResults = []
+
+        for (const obl of recurrentObligations) {
+            const nextDeadline = new Date(obl.deadline)
+
+            switch (obl.recurrence) {
+                case 'DAILY':
+                    nextDeadline.setDate(nextDeadline.getDate() + 1)
+                    break
+                case 'WEEKLY':
+                    nextDeadline.setDate(nextDeadline.getDate() + 7)
+                    break
+                case 'MONTHLY':
+                    nextDeadline.setMonth(nextDeadline.getMonth() + 1)
+                    break
+                case 'YEARLY':
+                    nextDeadline.setFullYear(nextDeadline.getFullYear() + 1)
+                    break
+                default:
+                    continue
+            }
+
+            // check if next instance already exists (same title, company, assignees, and exact deadline)
+            const exists = await prisma.obligation.findFirst({
+                where: {
+                    title: obl.title,
+                    companyId: obl.companyId,
+                    deadline: nextDeadline,
+                    // Note: matching exact assignees is harder with prisma filters, 
+                    // but title + company + exact deadline is usually unique enough for a sequence.
+                }
+            })
+
+            if (!exists) {
+                const newObl = await prisma.obligation.create({
+                    data: {
+                        title: obl.title,
+                        description: obl.description,
+                        companyId: obl.companyId,
+                        deadline: nextDeadline,
+                        recurrence: obl.recurrence,
+                        difficulty: obl.difficulty,
+                        status: 'PENDING',
+                        attachments: null, // Don't carry over attachments to the next instance
+                        assignees: {
+                            connect: obl.assignees.map(a => ({ id: a.id }))
+                        }
+                    }
+                })
+
+                // Create notifications
+                await prisma.notification.createMany({
+                    data: obl.assignees.map(a => ({
+                        userId: a.id,
+                        type: 'OBLIGATION_ASSIGNED',
+                        message: `New recurrent instance of "${obl.title}" has been created.`,
+                        relatedId: newObl.id
+                    }))
+                })
+
+                creationResults.push({ originalId: obl.id, nextId: newObl.id })
+            }
+        }
+
+        return creationResults
     }
 }

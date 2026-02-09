@@ -92,7 +92,8 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                     setOriginalFirstName(parts[0] || '')
                     setOriginalLastName(parts.slice(1).join(' ') || '')
                 }
-                setEmail(employee.email)
+                const cleanEmail = employee.email?.split('_DELETED_')[0] || employee.email
+                setEmail(cleanEmail)
                 setRole(employee.role)
                 setGender(employee.gender || 'MALE')
                 setSalary(employee.salary !== undefined && employee.salary !== null ? employee.salary.toString() : '')

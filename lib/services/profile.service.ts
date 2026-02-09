@@ -83,6 +83,16 @@ export class ProfileService {
                     message: `Your name change request has been approved! Your name is now ${request.newFirstName} ${request.newLastName}.`,
                     read: false
                 }
+            }),
+            prisma.auditLog.create({
+                data: {
+                    action: 'APPROVE_PROFILE_UPDATE',
+                    entityType: 'USER',
+                    entityId: request.userId,
+                    userId: session.user.role !== 'SUPER_ADMIN' ? session.user.id : null,
+                    superAdminId: session.user.role === 'SUPER_ADMIN' ? session.user.id : null,
+                    details: JSON.stringify({ requestId: id, oldName: `${request.oldFirstName} ${request.oldLastName}`, newName: `${request.newFirstName} ${request.newLastName}`, adminNote })
+                }
             })
         ])
     }
@@ -110,6 +120,16 @@ export class ProfileService {
                     type: 'PROFILE_UPDATE_REJECTED',
                     message: `Your name change request has been rejected.${adminNote ? ` Note: ${adminNote}` : ''}`,
                     read: false
+                }
+            }),
+            prisma.auditLog.create({
+                data: {
+                    action: 'REJECT_PROFILE_UPDATE',
+                    entityType: 'USER',
+                    entityId: request.userId,
+                    userId: session.user.role !== 'SUPER_ADMIN' ? session.user.id : null,
+                    superAdminId: session.user.role === 'SUPER_ADMIN' ? session.user.id : null,
+                    details: JSON.stringify({ requestId: id, name: `${request.oldFirstName} ${request.oldLastName}`, adminNote })
                 }
             })
         ])

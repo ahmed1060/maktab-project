@@ -1,4 +1,6 @@
 import { prisma } from "@/lib/prisma"
+import { ObligationService } from "./obligation.service"
+import { MaintenanceService } from "./maintenance.service"
 
 export class CronService {
     static async resetDayOffCredits() {
@@ -29,6 +31,16 @@ export class CronService {
                         data: {
                             dayOffCredit: user.baseDayOffCredit,
                             lastDayOffResetYear: currentYear
+                        }
+                    })
+
+                    // Audit Log (System)
+                    await tx.auditLog.create({
+                        data: {
+                            action: 'SYSTEM_DAY_OFF_RESET',
+                            entityType: 'USER',
+                            entityId: user.id,
+                            details: JSON.stringify({ oldYear: user.lastDayOffResetYear, newYear: currentYear, creditWas: user.dayOffCredit, creditNow: user.baseDayOffCredit })
                         }
                     })
                 })
@@ -75,6 +87,16 @@ export class CronService {
                             bonusDays: 0
                         }
                     })
+
+                    // Audit Log (System)
+                    await prisma.auditLog.create({
+                        data: {
+                            action: 'SYSTEM_SALARY_INIT',
+                            entityType: 'SALARY',
+                            entityId: employee.id,
+                            details: JSON.stringify({ month, year, baseSalary: employee.salary })
+                        }
+                    })
                     createdCount++
                 } else {
                     skippedCount++
@@ -85,5 +107,29 @@ export class CronService {
         }
 
         return { success: true, month, year, created: createdCount, skipped: skippedCount }
+    }
+
+    /**
+     * Entry point for daily automated tasks.
+     */
+    static async dailyCheck() {
+        console.log("[Cron] Running daily checks...")
+        await this.resetDayOffCredits()
+        await this.initializeSalaries()
+        await MaintenanceService.cleanupOrphanedAssets()
+        await MaintenanceService.pruneOldLogs(90)
+        await MaintenanceService.pruneOldNotifications(30)
+        await ObligationService.processRecurrentObligations()
+
+        // Audit Log (System Summary)
+        await prisma.auditLog.create({
+            data: {
+                action: 'SYSTEM_DAILY_CHECK',
+                entityType: 'SYSTEM',
+                entityId: 'CRON',
+                details: JSON.stringify({ timestamp: new Date().toISOString() })
+            }
+        })
+        console.log("[Cron] Daily checks completed.")
     }
 }

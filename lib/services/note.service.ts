@@ -41,7 +41,7 @@ export class NoteService {
         const userId = session.user.id
         const userRole = session.user.role
 
-        return await prisma.businessClientNote.create({
+        const note = await prisma.businessClientNote.create({
             data: {
                 content: input.content,
                 sectionId,
@@ -51,13 +51,27 @@ export class NoteService {
                 reminderDays: input.reminderDays ? parseInt(input.reminderDays.toString()) : null
             }
         })
+
+        // Audit Log
+        await prisma.auditLog.create({
+            data: {
+                action: 'CREATE_NOTE',
+                entityType: 'NOTE',
+                entityId: note.id,
+                userId: userRole !== 'SUPER_ADMIN' ? userId : null,
+                superAdminId: userRole === 'SUPER_ADMIN' ? userId : null,
+                details: JSON.stringify({ sectionId, hasAttachment: !!input.attachment })
+            }
+        })
+
+        return note
     }
 
     static async update(id: string, input: NoteInput, session: any) {
         const userId = session.user.id
         const userRole = session.user.role
 
-        return await prisma.businessClientNote.update({
+        const updated = await prisma.businessClientNote.update({
             where: { id },
             data: {
                 content: input.content,
@@ -68,11 +82,39 @@ export class NoteService {
                 lastEditedAt: new Date()
             }
         })
+
+        // Audit Log
+        await prisma.auditLog.create({
+            data: {
+                action: 'UPDATE_NOTE',
+                entityType: 'NOTE',
+                entityId: id,
+                userId: userRole !== 'SUPER_ADMIN' ? userId : null,
+                superAdminId: userRole === 'SUPER_ADMIN' ? userId : null,
+                details: JSON.stringify({ hasAttachment: !!input.attachment })
+            }
+        })
+
+        return updated
     }
 
-    static async delete(id: string) {
-        const note = await prisma.businessClientNote.findUnique({ where: { id } })
+    static async delete(id: string, session: any) {
+        const userRole = session.user.role
+        const userId = session.user.id
+
+        const note = await prisma.businessClientNote.findUnique({
+            where: { id },
+            include: { section: { include: { client: { select: { companyId: true } } } } }
+        })
         if (!note) throw new Error("NOTE_NOT_FOUND")
+
+        // Security: Company Isolation
+        if (userRole !== 'SUPER_ADMIN') {
+            const userCompanyId = (session.user as any).companyId
+            if (note.section.client.companyId !== userCompanyId) {
+                throw new Error("ACCESS_DENIED")
+            }
+        }
 
         if (note.attachment) {
             try {
@@ -103,7 +145,21 @@ export class NoteService {
             }
         }
 
-        return await prisma.businessClientNote.delete({ where: { id } })
+        const result = await prisma.businessClientNote.delete({ where: { id } })
+
+        // Audit Log
+        await prisma.auditLog.create({
+            data: {
+                action: 'DELETE_NOTE',
+                entityType: 'NOTE',
+                entityId: id,
+                userId: userRole !== 'SUPER_ADMIN' ? userId : null,
+                superAdminId: userRole === 'SUPER_ADMIN' ? userId : null,
+                details: JSON.stringify({ sectionId: note.sectionId })
+            }
+        })
+
+        return result
     }
 
     static async checkExpiries() {

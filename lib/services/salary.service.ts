@@ -94,9 +94,13 @@ export class SalaryService {
         })
     }
 
-    static async addAdjustment(userId: string, type: 'BONUS' | 'DEDUCTION', amount: number, reason?: string) {
+    static async addAdjustment(userId: string, type: 'BONUS' | 'DEDUCTION', amount: number, session: any, reason?: string) {
         const now = new Date()
         const m = now.getMonth() + 1, y = now.getFullYear()
+
+        if (amount <= 0 || amount > 1000) {
+            throw new Error("INVALID_ADJUSTMENT_AMOUNT")
+        }
 
         const user = await prisma.user.findUnique({ where: { id: userId }, select: { salary: true } })
         const currentBase = user?.salary || 0
@@ -130,6 +134,18 @@ export class SalaryService {
                 data: { userId, type, amount, reason: reason || null, status: 'ACTIVE' }
             })
 
+            // Audit Log
+            await tx.auditLog.create({
+                data: {
+                    action: type === 'BONUS' ? 'ADD_BONUS' : 'ADD_DEDUCTION',
+                    entityType: 'SALARY',
+                    entityId: userId,
+                    userId: session.user.role !== 'SUPER_ADMIN' ? session.user.id : null,
+                    superAdminId: session.user.role === 'SUPER_ADMIN' ? session.user.id : null,
+                    details: JSON.stringify({ amount, reason, month: m, year: y })
+                }
+            })
+
             await tx.notification.create({
                 data: {
                     userId,
@@ -145,7 +161,7 @@ export class SalaryService {
         })
     }
 
-    static async rollbackAdjustment(userId: string, adjId: string) {
+    static async rollbackAdjustment(userId: string, adjId: string, session: any) {
         const adjustment = await prisma.salaryAdjustment.findUnique({
             where: { id: adjId }
         })
@@ -175,6 +191,18 @@ export class SalaryService {
                 data: {
                     bonusDays: adjustment.type === 'BONUS' ? { decrement: adjustment.amount } : undefined,
                     deductions: adjustment.type === 'DEDUCTION' ? { decrement: adjustment.amount } : undefined
+                }
+            })
+
+            // Audit Log
+            await tx.auditLog.create({
+                data: {
+                    action: 'ROLLBACK_SALARY_ADJUSTMENT',
+                    entityType: 'SALARY',
+                    entityId: userId,
+                    userId: session.user.role !== 'SUPER_ADMIN' ? session.user.id : null,
+                    superAdminId: session.user.role === 'SUPER_ADMIN' ? session.user.id : null,
+                    details: JSON.stringify({ adjId, type: adjustment.type, amount: adjustment.amount, originalReason: adjustment.reason })
                 }
             })
 

@@ -52,14 +52,12 @@ export const POST = withStandardHandler(async (req, session, json) => {
 
     try {
         // 2. Service
-        const result = await CompanyService.create(validation.data)
+        const result = await CompanyService.create(validation.data, session)
         return ApiResponse.success(result, 201)
     } catch (error: any) {
         if ((error as any).code === 'P2002') return ApiResponse.badRequest("Company already exists")
         throw error
     }
-}, {
-    audit: { action: 'CREATE_COMPANY', entityType: 'COMPANY', getEntityId: (res) => res.id }
 })
 
 export const PUT = withStandardHandler(async (req, session, json) => {
@@ -73,7 +71,7 @@ export const PUT = withStandardHandler(async (req, session, json) => {
 
     try {
         // 2. Service
-        const result = await CompanyService.update(validation.data)
+        const result = await CompanyService.update(validation.data, session)
         return ApiResponse.success(result)
     } catch (error: any) {
         if (error.message === 'COMPANY_NOT_FOUND') return ApiResponse.notFound("Company not found")
@@ -81,8 +79,6 @@ export const PUT = withStandardHandler(async (req, session, json) => {
         if ((error as any).code === 'P2002') return ApiResponse.badRequest("Company name already exists")
         throw error
     }
-}, {
-    audit: { action: 'UPDATE_COMPANY', entityType: 'COMPANY', getEntityId: (res, body) => body.id }
 })
 
 export const DELETE = withStandardHandler(async (req, session) => {
@@ -90,16 +86,16 @@ export const DELETE = withStandardHandler(async (req, session) => {
 
     const { searchParams } = new URL(req.url)
     const id = searchParams.get('id')
+    const passcode = searchParams.get('passcode') || ''
     if (!id) return ApiResponse.badRequest("Company ID required")
 
     try {
-        await CompanyService.delete(id)
+        await CompanyService.delete(id, passcode, session)
         return ApiResponse.success({ success: true, id })
     } catch (error: any) {
+        if (error.message === 'INVALID_PASSCODE') return ApiResponse.forbidden("Invalid verification passcode")
         if (error.message === 'COMPANY_NOT_FOUND') return ApiResponse.notFound("Company not found")
         if (error.message === 'CANNOT_DELETE_SHSD') return ApiResponse.forbidden("Cannot delete the system company (SHSD)")
         throw error
     }
-}, {
-    audit: { action: 'DELETE_COMPANY', entityType: 'COMPANY', getEntityId: (res, body) => body?.id }
 })

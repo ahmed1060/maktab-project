@@ -24,6 +24,11 @@ export class DayOffService {
         const requestDateStr = new Date(input.date).toISOString().split('T')[0]
         const finalEndDateStr = input.endDate ? new Date(input.endDate).toISOString().split('T')[0] : requestDateStr
 
+        const todayStr = new Date().toISOString().split('T')[0]
+        if (requestDateStr < todayStr) {
+            throw new Error("DATE_IN_PAST")
+        }
+
         if (input.type === 'REGULAR' && finalEndDateStr < requestDateStr) {
             throw new Error("END_DATE_BEFORE_START")
         }
@@ -65,6 +70,18 @@ export class DayOffService {
                     }))
                 })
             }
+
+            // Audit Log
+            await tx.auditLog.create({
+                data: {
+                    action: 'CREATE_DAY_OFF_REQUEST',
+                    entityType: 'DAY_OFF_REQUEST',
+                    entityId: newRequest.id,
+                    userId,
+                    superAdminId: null,
+                    details: JSON.stringify({ date: requestDateStr, endDate: finalEndDateStr, type: input.type })
+                }
+            })
 
             return newRequest
         })
@@ -151,11 +168,23 @@ export class DayOffService {
                 data: updateData
             })
 
+            // Audit Log
+            await tx.auditLog.create({
+                data: {
+                    action: 'APPROVE_DAY_OFF_REQUEST',
+                    entityType: 'DAY_OFF_REQUEST',
+                    entityId: id,
+                    userId: userRole !== 'SUPER_ADMIN' ? (session.user as any).id : null,
+                    superAdminId: userRole === 'SUPER_ADMIN' ? (session.user as any).id : null,
+                    details: JSON.stringify({ daysToDeduct: input.daysToDeduct, deductionType: input.deductionType })
+                }
+            })
+
             await tx.notification.create({
                 data: {
                     userId: requestToUpdate.userId,
                     type: 'DAY_OFF_RESULT',
-                    message: `Your day off request for ${new Date(requestToUpdate.date).toLocaleDateString()} has been approved${deductionType === 'SALARY' ? ' (deducted from salary)' : ''}.`,
+                    message: `Your day off request for ${new Date(requestToUpdate.date).toLocaleDateString()} has been approved${input.deductionType === 'SALARY' ? ' (deducted from salary)' : ''}.`,
                     relatedId: id
                 }
             })
@@ -180,6 +209,18 @@ export class DayOffService {
         const result = await prisma.dayOffRequest.update({
             where: { id },
             data: { status: 'REJECTED' }
+        })
+
+        // Audit Log
+        await prisma.auditLog.create({
+            data: {
+                action: 'REJECT_DAY_OFF_REQUEST',
+                entityType: 'DAY_OFF_REQUEST',
+                entityId: id,
+                userId: userRole !== 'SUPER_ADMIN' ? (session.user as any).id : null,
+                superAdminId: userRole === 'SUPER_ADMIN' ? (session.user as any).id : null,
+                details: null
+            }
         })
 
         await prisma.notification.create({
@@ -220,6 +261,18 @@ export class DayOffService {
             await tx.dayOffRequest.update({
                 where: { id },
                 data: { daysDeducted: newDays }
+            })
+
+            // Audit Log
+            await tx.auditLog.create({
+                data: {
+                    action: 'REEVALUATE_DAY_OFF_REQUEST',
+                    entityType: 'DAY_OFF_REQUEST',
+                    entityId: id,
+                    userId: userRole !== 'SUPER_ADMIN' ? (session.user as any).id : null,
+                    superAdminId: userRole === 'SUPER_ADMIN' ? (session.user as any).id : null,
+                    details: JSON.stringify({ oldDays, newDays })
+                }
             })
 
             await tx.user.update({

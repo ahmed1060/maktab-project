@@ -43,7 +43,7 @@ export class SuperAdminService {
         }
     }
 
-    static async create(input: SuperAdminInput) {
+    static async create(input: SuperAdminInput, session?: any) {
         const hashedPassword = await bcrypt.hash(input.password, 12)
 
         const newAdmin = await prisma.superAdmin.create({
@@ -51,7 +51,7 @@ export class SuperAdminService {
                 firstName: input.firstName,
                 lastName: input.lastName,
                 email: input.email,
-                username: input.username || "", // Default to empty string if somehow missing, though validation should catch it
+                username: input.username || "",
                 password: hashedPassword,
                 gender: input.gender || 'MALE'
             }
@@ -61,6 +61,20 @@ export class SuperAdminService {
         /* eslint-disable @typescript-eslint/no-unused-vars */
         const unused = _password
         /* eslint-enable @typescript-eslint/no-unused-vars */
+
+        // Audit Log
+        if (session) {
+            await prisma.auditLog.create({
+                data: {
+                    action: 'CREATE_SUPER_ADMIN',
+                    entityType: 'SUPER_ADMIN',
+                    entityId: newAdmin.id,
+                    superAdminId: session.user.id,
+                    details: JSON.stringify({ email: input.email })
+                }
+            })
+        }
+
         return {
             ...adminWithoutPassword,
             role: 'SUPER_ADMIN',

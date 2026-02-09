@@ -23,12 +23,10 @@ export const POST = withStandardHandler(async (req, session, json, { params }) =
     }
 
     try {
-        const payment = await CompanyService.createPayment(params.id, parseFloat(cost), subscriptionType)
+        const payment = await CompanyService.createPayment(params.id, parseFloat(cost), subscriptionType, session)
         return ApiResponse.success(payment, 201)
     } catch (error: any) {
         console.error('Create payment error:', error)
         return ApiResponse.error("Failed to create payment")
     }
-}, {
-    audit: { action: 'CREATE_COMPANY_PAYMENT', entityType: 'COMPANY_PAYMENT', getEntityId: (res) => res.id }
 })

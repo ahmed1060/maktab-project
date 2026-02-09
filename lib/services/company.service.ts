@@ -1,14 +1,28 @@
 import { prisma } from "@/lib/prisma"
+import { VerificationService } from "./verification.service"
 import { CreateCompanyInput, UpdateCompanyInput } from "../validations/company.schema"
 
 export class CompanyService {
-    static async create(input: CreateCompanyInput) {
-        return await prisma.company.create({
+    static async create(input: CreateCompanyInput, session: any) {
+        const company = await prisma.company.create({
             data: { name: input.name }
         })
+
+        // Audit Log
+        await prisma.auditLog.create({
+            data: {
+                action: 'CREATE_COMPANY',
+                entityType: 'COMPANY',
+                entityId: company.id,
+                superAdminId: session.user.id,
+                details: JSON.stringify({ name: input.name })
+            }
+        })
+
+        return company
     }
 
-    static async update(input: UpdateCompanyInput) {
+    static async update(input: UpdateCompanyInput, session: any) {
         const { id, name, isBanned } = input
 
         const existing = await prisma.company.findUnique({ where: { id } })
@@ -19,36 +33,69 @@ export class CompanyService {
             throw new Error("CANNOT_RENAME_SHSD")
         }
 
-        return await prisma.company.update({
+        const updated = await prisma.company.update({
             where: { id },
             data: {
                 ...(name && { name }),
                 ...(isBanned !== undefined && { isBanned })
             }
         })
+
+        // Audit Log
+        const changes: any = {}
+        if (name && name !== existing.name) changes.name = { old: existing.name, new: name }
+        if (isBanned !== undefined && isBanned !== existing.isBanned) changes.isBanned = { old: existing.isBanned, new: isBanned }
+
+        if (Object.keys(changes).length > 0) {
+            await prisma.auditLog.create({
+                data: {
+                    action: 'UPDATE_COMPANY',
+                    entityType: 'COMPANY',
+                    entityId: id,
+                    superAdminId: session.user.id,
+                    details: JSON.stringify(changes)
+                }
+            })
+        }
+
+        return updated
     }
 
-    static async delete(id: string) {
+    static async delete(id: string, passcode: string, session: any) {
+        if (!VerificationService.isValid(passcode)) {
+            throw new Error("INVALID_PASSCODE")
+        }
         const company = await prisma.company.findUnique({
             where: { id },
-            include: { users: { select: { id: true } } }
+            include: {
+                users: { select: { id: true } },
+                businessClients: { select: { id: true } }
+            }
         })
 
         if (!company) throw new Error("COMPANY_NOT_FOUND")
         if (company.name === 'SHSD') throw new Error("CANNOT_DELETE_SHSD")
 
-        const userIds = company.users.map(u => u.id)
-
         return await prisma.$transaction(async (tx) => {
-            if (userIds.length > 0) {
-                await tx.task.deleteMany({ where: { companyId: id } })
-                await tx.obligation.deleteMany({ where: { companyId: id } })
-                await tx.notification.deleteMany({ where: { userId: { in: userIds } } })
-                await tx.salaryRecord.deleteMany({ where: { userId: { in: userIds } } })
-                await tx.auditLog.deleteMany({ where: { userId: { in: userIds } } })
-                await tx.user.deleteMany({ where: { id: { in: userIds } } })
-            }
-            return await tx.company.delete({ where: { id } })
+            // Prisma cascades (onDelete: Cascade) in schema.prisma will handle:
+            // - Tasks, Obligations, Requests, Payments
+            // - Users and their personal data (Notifications, Salary, etc.)
+            // - Clients, Sections, and Notes
+
+            const deleted = await tx.company.delete({ where: { id } })
+
+            // Audit Log
+            await tx.auditLog.create({
+                data: {
+                    action: 'DELETE_COMPANY',
+                    entityType: 'COMPANY',
+                    entityId: id,
+                    superAdminId: session.user.id,
+                    details: JSON.stringify({ name: company.name })
+                }
+            })
+
+            return deleted
         })
     }
 
@@ -66,8 +113,8 @@ export class CompanyService {
     /**
      * Create a new unpaid payment record for a company.
      */
-    static async createPayment(companyId: string, cost: number, subscriptionType: string) {
-        return await prisma.companyPayment.create({
+    static async createPayment(companyId: string, cost: number, subscriptionType: string, session: any) {
+        const payment = await prisma.companyPayment.create({
             data: {
                 companyId,
                 cost,
@@ -75,12 +122,25 @@ export class CompanyService {
                 status: 'UNPAID'
             }
         })
+
+        // Audit Log
+        await prisma.auditLog.create({
+            data: {
+                action: 'CREATE_COMPANY_PAYMENT',
+                entityType: 'COMPANY_PAYMENT',
+                entityId: payment.id,
+                superAdminId: session.user.id,
+                details: JSON.stringify({ companyId, cost, subscriptionType })
+            }
+        })
+
+        return payment
     }
 
     /**
      * Mark a payment as PAID and calculate expiration.
      */
-    static async updatePaymentStatus(paymentId: string, status: string) {
+    static async updatePaymentStatus(paymentId: string, status: string, session: any) {
         if (status !== 'PAID') throw new Error("ONLY_PAID_SUPPORTED")
 
         const payment = await prisma.companyPayment.findUnique({ where: { id: paymentId } })
@@ -95,7 +155,7 @@ export class CompanyService {
             endDate.setFullYear(startDate.getFullYear() + 1)
         }
 
-        return await prisma.companyPayment.update({
+        const updated = await prisma.companyPayment.update({
             where: { id: paymentId },
             data: {
                 status: 'PAID',
@@ -104,17 +164,43 @@ export class CompanyService {
                 endDate
             }
         })
+
+        // Audit Log
+        await prisma.auditLog.create({
+            data: {
+                action: 'CONFIRM_COMPANY_PAYMENT',
+                entityType: 'COMPANY_PAYMENT',
+                entityId: paymentId,
+                superAdminId: session.user.id,
+                details: JSON.stringify({ companyId: payment.companyId, cost: payment.cost, endDate })
+            }
+        })
+
+        return updated
     }
 
     /**
      * Delete an UNPAID payment record.
      */
-    static async deletePayment(paymentId: string) {
+    static async deletePayment(paymentId: string, session: any) {
         const payment = await prisma.companyPayment.findUnique({ where: { id: paymentId } })
         if (!payment) throw new Error("PAYMENT_NOT_FOUND")
         if (payment.status === 'PAID') throw new Error("CANNOT_DELETE_PAID")
 
-        return await prisma.companyPayment.delete({ where: { id: paymentId } })
+        const deleted = await prisma.companyPayment.delete({ where: { id: paymentId } })
+
+        // Audit Log
+        await prisma.auditLog.create({
+            data: {
+                action: 'DELETE_COMPANY_PAYMENT',
+                entityType: 'COMPANY_PAYMENT',
+                entityId: paymentId,
+                superAdminId: session.user.id,
+                details: JSON.stringify({ companyId: payment.companyId, cost: payment.cost })
+            }
+        })
+
+        return deleted
     }
 
     /**

@@ -14,7 +14,7 @@ export const POST = withStandardHandler(async (req, session, json, { params }) =
     if (!status) return ApiResponse.badRequest("Status is required")
 
     try {
-        const result = await UserService.updateStatus(userId, status, session.user.role)
+        const result = await UserService.updateStatus(userId, status, session)
         return ApiResponse.success(result)
     } catch (error: any) {
         if (error.message === 'FORBIDDEN') return ApiResponse.forbidden("Super Admin only")

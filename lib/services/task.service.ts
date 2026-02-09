@@ -44,10 +44,14 @@ export class TaskService {
             }
         }
 
-        // 2. Deadline Safety Check
-        const today = new Date()
-        today.setHours(0, 0, 0, 0)
-        if (deadlineDate < today) throw new Error("DEADLINE_IN_PAST")
+        // 2. Deadline Safety Check (Strengthened to 3-hour minimum)
+        const minDeadline = new Date(Date.now() + 3 * 60 * 60 * 1000)
+        if (deadlineDate < minDeadline) throw new Error("DEADLINE_TOO_SOON")
+
+        // 3. Attachment Count Limit
+        if (input.attachments && Array.isArray(input.attachments) && input.attachments.length > 20) {
+            throw new Error("ATTACHMENT_LIMIT_EXCEEDED")
+        }
 
         // 3. Determine target Company ID
         let targetCompanyId = userCompanyId
@@ -141,12 +145,18 @@ export class TaskService {
         const updateData: any = {
             ...(title && { title }),
             ...(description && { description }),
-            ...(deadline && { deadline: new Date(deadline) }),
             ...(difficulty !== undefined && { difficulty }),
             ...(location !== undefined && { location }),
             ...(attachments && { attachments: typeof attachments === 'string' ? attachments : JSON.stringify(attachments) }),
             isEdited: true,
             comments: JSON.stringify(finalComments)
+        }
+
+        if (deadline) {
+            const deadlineDate = new Date(deadline as string)
+            const minDeadline = new Date(Date.now() + 3 * 60 * 60 * 1000)
+            if (deadlineDate < minDeadline) throw new Error("DEADLINE_TOO_SOON")
+            updateData.deadline = deadlineDate
         }
 
         if (assigneeIds) {
@@ -157,6 +167,18 @@ export class TaskService {
             const task = await tx.task.update({
                 where: { id },
                 data: updateData
+            })
+
+            // Audit Log
+            await tx.auditLog.create({
+                data: {
+                    action: 'UPDATE_TASK_DETAILS',
+                    entityType: 'TASK',
+                    entityId: id,
+                    userId: userRole !== 'SUPER_ADMIN' ? session.user.id : null,
+                    superAdminId: userRole === 'SUPER_ADMIN' ? session.user.id : null,
+                    details: JSON.stringify({ changes, deadline: updateData.deadline, difficulty: updateData.difficulty, assigneeIds })
+                }
             })
 
             if (assigneeIds) {
@@ -198,6 +220,9 @@ export class TaskService {
             }
 
             if (newAttachments && Array.isArray(newAttachments)) {
+                if (finalAttachments.length + newAttachments.length > 20) {
+                    throw new Error("ATTACHMENT_LIMIT_EXCEEDED")
+                }
                 const formattedNew = newAttachments.map(att => typeof att === 'string' ? {
                     url: att,
                     name: att.split('/').pop() || 'Attachment',
@@ -213,6 +238,17 @@ export class TaskService {
             if (note) comments.push({ text: note, author: session.user.name, authorId: userId, date: new Date().toISOString(), type: 'SUBMISSION_NOTE' })
 
             let totalAdded = costValue
+            if (inputCosts && Array.isArray(inputCosts)) {
+                for (const c of inputCosts) {
+                    const cVal = Number(c.amount)
+                    if (cVal > 0) {
+                        totalAdded += cVal
+                    }
+                }
+            }
+
+            if (totalAdded > 10000) throw new Error("COST_LIMIT_EXCEEDED")
+
             if (costValue > 0) {
                 comments.push({ text: `Added cost: ${costValue.toFixed(2)} EGP`, amount: costValue, author: session.user.name, authorId: userId, date: new Date().toISOString(), type: 'COST_ADDITION' })
             }
@@ -222,7 +258,6 @@ export class TaskService {
                     const cVal = Number(c.amount)
                     if (cVal > 0) {
                         comments.push({ text: `Added cost: ${cVal.toFixed(2)} EGP`, amount: cVal, author: session.user.name, authorId: userId, date: new Date().toISOString(), type: 'COST_ADDITION' })
-                        totalAdded += cVal
                     }
                 }
             }
@@ -329,6 +364,39 @@ export class TaskService {
                 }))
             })
 
+            // 5. Audit Log
+            await tx.auditLog.create({
+                data: {
+                    action: 'REVIEW_TASK',
+                    entityType: 'TASK',
+                    entityId: id,
+                    userId: userRole !== 'SUPER_ADMIN' ? userId : null,
+                    superAdminId: userRole === 'SUPER_ADMIN' ? userId : null,
+                    details: JSON.stringify({ oldStatus: oldTask.status, newStatus, pointsChange: pointDelta })
+                }
+            })
+
+            // 6. Lateness Flagging
+            if (['APPROVED', 'COMPLETED'].includes(newStatus)) {
+                const submissionTime = new Date(task.updatedAt)
+                const deadlineTime = new Date(task.deadline)
+
+                if (submissionTime > deadlineTime) {
+                    const comments = task.comments ? JSON.parse(task.comments) : []
+                    comments.push({
+                        text: `Lateness detected: Submitted on ${submissionTime.toLocaleString()} (Deadline: ${deadlineTime.toLocaleString()})`,
+                        author: "System",
+                        date: new Date().toISOString(),
+                        type: 'SYSTEM_FLAG'
+                    })
+
+                    await tx.task.update({
+                        where: { id },
+                        data: { comments: JSON.stringify(comments) }
+                    })
+                }
+            }
+
             return task
         })
     }
@@ -337,7 +405,6 @@ export class TaskService {
      * Applies a manual penalty.
      */
     static async applyPenalty(id: string, targetUserId: string, amount: number, session: any) {
-        const userRole = session.user.role
         const now = new Date()
         const currentMonth = now.getMonth() + 1
         const currentYear = now.getFullYear()
@@ -394,6 +461,18 @@ export class TaskService {
                 data: { comments: JSON.stringify(comments) }
             })
 
+            // Audit Log
+            await tx.auditLog.create({
+                data: {
+                    action: 'APPLY_TASK_PENALTY',
+                    entityType: 'TASK',
+                    entityId: id,
+                    userId: session.user.role !== 'SUPER_ADMIN' ? session.user.id : null,
+                    superAdminId: session.user.role === 'SUPER_ADMIN' ? session.user.id : null,
+                    details: JSON.stringify({ targetUserId, amount, reason: "Lateness Penalty Deduction" })
+                }
+            })
+
             return { id }
         })
     }
@@ -422,19 +501,25 @@ export class TaskService {
                 throw new Error("UNAUTHORIZED_TRANSFER")
             }
 
-            // Identify changes
+            // Identification and Company Isolation Check
             const keptIds = newAssigneeIds.filter((id: string) => currentAssigneeIds.includes(id))
             const addedIds = newAssigneeIds.filter((id: string) => !currentAssigneeIds.includes(id))
             const removedIds = currentAssigneeIds.filter((id: string) => !newAssigneeIds.includes(id))
 
-            // TEAM_LEADER Restriction check for ADDED users
-            if (userRole === 'TEAM_LEADER' && addedIds.length > 0) {
+            if (userRole !== 'SUPER_ADMIN' && addedIds.length > 0) {
                 const targetUsers = await tx.user.findMany({
                     where: { id: { in: addedIds } },
-                    select: { role: true }
+                    select: { companyId: true, role: true }
                 })
-                if (targetUsers.some(u => ['ADMIN', 'SUPER_ADMIN'].includes(u.role))) {
-                    throw new Error("TL_RESTRICTION")
+                const userCompanyId = session.user.companyId
+                if (targetUsers.some(u => u.companyId !== userCompanyId)) {
+                    throw new Error("CROSS_COMPANY_TRANSFER_FORBIDDEN")
+                }
+                // TEAM_LEADER Restriction check for ADDED users
+                if (userRole === 'TEAM_LEADER') {
+                    if (targetUsers.some(u => ['ADMIN', 'SUPER_ADMIN'].includes(u.role))) {
+                        throw new Error("TL_RESTRICTION")
+                    }
                 }
             }
 
@@ -582,6 +667,19 @@ export class TaskService {
             }
 
             await tx.task.delete({ where: { id } })
+
+            // Audit Log
+            await tx.auditLog.create({
+                data: {
+                    action: 'DELETE_TASK',
+                    entityType: 'TASK',
+                    entityId: id,
+                    userId: userRole !== 'SUPER_ADMIN' ? userId : null,
+                    superAdminId: userRole === 'SUPER_ADMIN' ? userId : null,
+                    details: JSON.stringify({ status: task.status, difficulty: task.difficulty })
+                }
+            })
+
             return { success: true, id }
         })
     }
@@ -729,6 +827,14 @@ export class TaskService {
                 const isAdmin = ['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole)
                 if (!isAuthor && !isAdmin) throw new Error("UNAUTHORIZED_ITEM_DELETE")
 
+                // Physical Deletion
+                try {
+                    const parts = att.url.split('/app-assets/')
+                    if (parts.length > 1) await supabase.storage.from('app-assets').remove([parts[1]])
+                } catch (e) {
+                    console.error("Task item attachment cleanup failed:", e)
+                }
+
                 updateData.attachments = JSON.stringify(attachments.filter((a: any) => a.url !== itemId))
             } else if (type === 'COST_ADDITION' || type === 'SUBMISSION_NOTE' || type === 'LOCATION_ADDED') {
                 const comments = task.comments ? JSON.parse(task.comments) : []
@@ -753,7 +859,21 @@ export class TaskService {
                 throw new Error("INVALID_ITEM_TYPE")
             }
 
-            return await tx.task.update({ where: { id }, data: updateData })
+            const updated = await tx.task.update({ where: { id }, data: updateData })
+
+            // Audit Log
+            await tx.auditLog.create({
+                data: {
+                    action: 'DELETE_TASK_ITEM',
+                    entityType: 'TASK',
+                    entityId: id,
+                    userId: userRole !== 'SUPER_ADMIN' ? userId : null,
+                    superAdminId: userRole === 'SUPER_ADMIN' ? userId : null,
+                    details: JSON.stringify({ type, itemId })
+                }
+            })
+
+            return updated
         })
     }
 
@@ -787,11 +907,19 @@ export class TaskService {
 
             for (const task of tasks) {
                 const { assigneeIds, deadline, ...rest } = task
+                const deadlineDate = new Date(deadline)
+                const minDeadline = new Date(Date.now() + 3 * 60 * 60 * 1000)
+                if (deadlineDate < minDeadline) throw new Error(`DEADLINE_TOO_SOON: ${task.title}`)
+
+                if (task.attachments && Array.isArray(task.attachments) && task.attachments.length > 20) {
+                    throw new Error(`ATTACHMENT_LIMIT: ${task.title}`)
+                }
+
                 const createdTask = await (tx.task as any).create({
                     data: {
                         ...rest,
                         status: "PENDING",
-                        deadline: new Date(deadline),
+                        deadline: deadlineDate,
                         createdBy: userRole === 'SUPER_ADMIN' ? null : userId,
                         companyId: userRole === 'SUPER_ADMIN' ? (await tx.user.findUnique({ where: { id: assigneeIds[0] }, select: { companyId: true } }))?.companyId : userCompanyId,
                         assignees: {
@@ -814,6 +942,18 @@ export class TaskService {
             if (notificationsData.length > 0) {
                 await tx.notification.createMany({ data: notificationsData })
             }
+
+            // Audit Log
+            await tx.auditLog.create({
+                data: {
+                    action: 'BULK_CREATE_TASKS',
+                    entityType: 'TASK',
+                    entityId: 'BATCH',
+                    userId: userRole !== 'SUPER_ADMIN' ? userId : null,
+                    superAdminId: userRole === 'SUPER_ADMIN' ? userId : null,
+                    details: JSON.stringify({ count: results.length, taskTitles: results.map(t => t.title) })
+                }
+            })
 
             return results
         }, { timeout: 30000 })

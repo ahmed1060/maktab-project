@@ -11,6 +11,84 @@ type HandlerOptions = {
         entityType: string
         getEntityId?: (response: any, body: any) => string
     }
+    rateLimit?: {
+        maxRequests: number
+        windowMs: number
+    }
+}
+
+// Simple in-memory rate limiter
+export class RateLimiter {
+    private static limits = new Map<string, { count: number; resetAt: number }>()
+
+    static async getLimitData(key: string, limit: number, windowMs: number): Promise<{ limited: boolean; resetAt: number }> {
+        const now = Date.now()
+
+        // 1. Memory Check (Fastest)
+        const entry = this.limits.get(key)
+        if (entry && now <= entry.resetAt) {
+            if (entry.count >= limit) return { limited: true, resetAt: entry.resetAt }
+            entry.count++
+            return { limited: false, resetAt: entry.resetAt }
+        }
+
+        // 2. Database Sync (Fallback for Serverless/Distributed)
+        // If we are in Vercel/Production, we use the DB to synchronize across instances
+        try {
+            const dbLimit = await prisma.rateLimit.findUnique({ where: { key } })
+
+            if (!dbLimit || now > dbLimit.resetAt.getTime()) {
+                const resetAt = new Date(now + windowMs)
+                await prisma.rateLimit.upsert({
+                    where: { key },
+                    update: { count: 1, resetAt },
+                    create: { key, count: 1, resetAt }
+                })
+                this.limits.set(key, { count: 1, resetAt: resetAt.getTime() })
+                return { limited: false, resetAt: resetAt.getTime() }
+            }
+
+            if (dbLimit.count >= limit) {
+                return { limited: true, resetAt: dbLimit.resetAt.getTime() }
+            }
+
+            const updated = await prisma.rateLimit.update({
+                where: { key },
+                data: { count: { increment: 1 } }
+            })
+
+            this.limits.set(key, { count: updated.count, resetAt: updated.resetAt.getTime() })
+            return { limited: false, resetAt: updated.resetAt.getTime() }
+        } catch (e) {
+            console.error("[RateLimiter] DB sync failed, falling back to local memory", e)
+            // Local fallback logic
+            const resetAt = now + windowMs
+            this.limits.set(key, { count: 1, resetAt })
+            return { limited: false, resetAt }
+        }
+    }
+
+    static async clear(key: string) {
+        this.limits.delete(key)
+        try {
+            await prisma.rateLimit.delete({ where: { key } }).catch(() => { })
+        } catch { }
+    }
+
+    static async clearByPrefix(prefix: string) {
+        // Clear Memory
+        for (const key of this.limits.keys()) {
+            if (key.startsWith(prefix)) {
+                this.limits.delete(key)
+            }
+        }
+        // Clear DB
+        try {
+            await prisma.rateLimit.deleteMany({
+                where: { key: { startsWith: prefix } }
+            })
+        } catch { }
+    }
 }
 
 export function withStandardHandler(
@@ -26,6 +104,17 @@ export function withStandardHandler(
 
             const userRole = (session.user as any).role
             const userId = (session.user as any).id
+
+            // Rate Limiting
+            if (options.rateLimit) {
+                const ip = req.headers.get('x-forwarded-for') || 'unknown'
+                const key = `${userId || ip}:${options.audit?.action || 'generic'}`
+                const { limited, resetAt } = await RateLimiter.getLimitData(key, options.rateLimit.maxRequests, options.rateLimit.windowMs)
+                if (limited) {
+                    const timeStr = new Date(resetAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                    return ApiResponse.error(`Too many requests. Please try again at ${timeStr}.`, 429)
+                }
+            }
 
             // Role Check
             if (options.allowedRoles && !options.allowedRoles.includes(userRole)) {

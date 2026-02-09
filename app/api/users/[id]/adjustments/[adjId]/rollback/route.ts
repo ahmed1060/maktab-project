@@ -16,7 +16,7 @@ export const POST = withStandardHandler(async (req, session, json, { params }) =
     }
 
     try {
-        const result = await SalaryService.rollbackAdjustment(userId, adjId)
+        const result = await SalaryService.rollbackAdjustment(userId, adjId, session)
         return ApiResponse.success(result)
     } catch (error: any) {
         if (error.message === 'INVALID_ADJUSTMENT') {

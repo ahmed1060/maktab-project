@@ -13,6 +13,7 @@ export default function NewObligationPage() {
     const [assigneeIds, setAssigneeIds] = useState<string[]>([])
     const [deadline, setDeadline] = useState('')
     const [difficulty, setDifficulty] = useState('')
+    const [recurrence, setRecurrence] = useState('ONE_TIME')
     const [searchTerm, setSearchTerm] = useState('')
     const [users, setUsers] = useState<any[]>([])
     const router = useRouter()
@@ -99,6 +100,7 @@ export default function NewObligationPage() {
                     assigneeIds,
                     deadline,
                     difficulty: parseInt(difficulty) || 0,
+                    recurrence,
                     attachments: []
                 }),
                 headers: { 'Content-Type': 'application/json' }
@@ -247,6 +249,20 @@ export default function NewObligationPage() {
                         onChange={setDeadline}
                         min={new Date(Date.now() + 3 * 60 * 60 * 1000).toISOString()}
                     />
+                </div>
+                <div style={{ marginBottom: '1.5rem' }}>
+                    <label style={{ display: 'block', marginBottom: '0.5rem' }}>{t('recurrence_label')}</label>
+                    <select
+                        className="input"
+                        value={recurrence}
+                        onChange={e => setRecurrence(e.target.value)}
+                        required
+                    >
+                        <option value="ONE_TIME">{t('recurrence_one_time')}</option>
+                        <option value="DAILY">{t('recurrence_daily')}</option>
+                        <option value="WEEKLY">{t('recurrence_weekly')}</option>
+                        <option value="MONTHLY">{t('recurrence_monthly')}</option>
+                    </select>
                 </div>
                 <div style={{ marginBottom: '1.5rem' }}>
                     <label style={{ display: 'block', marginBottom: '0.5rem' }}>{t('difficulty')}</label>

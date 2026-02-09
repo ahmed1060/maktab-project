@@ -87,4 +87,63 @@ export class SystemService {
             }
         }
     }
+
+    static async getHealthMetrics() {
+        const now = new Date()
+        const last24h = new Date(now.getTime() - 24 * 60 * 60 * 1000)
+
+        const [
+            failedLogins,
+            blockedIps,
+            totalUsers,
+            suspendedUsers,
+            totalAuditLogs,
+            totalNotifications,
+            totalTasks,
+            totalObligations,
+            lastHourLogs
+        ] = await Promise.all([
+            prisma.auditLog.count({
+                where: { action: 'LOGIN_FAILURE', createdAt: { gt: last24h } }
+            }),
+            prisma.auditLog.groupBy({
+                by: ['entityId'],
+                where: { action: 'ADMIN_UNBLOCK_RATE_LIMIT', createdAt: { gt: last24h } },
+                _count: { entityId: true },
+                orderBy: { _count: { entityId: 'desc' } },
+                take: 5
+            }),
+            prisma.user.count({ where: { status: { not: 'DELETED' } } }),
+            prisma.user.count({ where: { status: 'SUSPENDED' } }),
+            prisma.auditLog.count(),
+            prisma.notification.count(),
+            prisma.task.count(),
+            prisma.obligation.count(),
+            prisma.auditLog.count({
+                where: { createdAt: { gt: new Date(now.getTime() - 60 * 60 * 1000) } }
+            })
+        ])
+
+        return {
+            security: {
+                failedLogins24h: failedLogins,
+                topBlockedIps: blockedIps.map(item => ({ ip: item.entityId, count: item._count.entityId })),
+                lastHourActivity: lastHourLogs
+            },
+            usage: {
+                totalUsers,
+                suspendedUsers,
+                activeUsers: totalUsers - suspendedUsers,
+                totalTasks,
+                totalObligations
+            },
+            database: {
+                totalAuditLogs,
+                totalNotifications,
+                estimatedRowcount: totalAuditLogs + totalNotifications + totalTasks + totalObligations + totalUsers,
+                status: 'HEALTHY'
+            },
+            timestamp: now.toISOString()
+        }
+    }
 }

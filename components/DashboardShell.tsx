@@ -341,7 +341,8 @@ export default function DashboardShell({ children, user }: DashboardShellProps) 
                             {[
                                 { href: '/dashboard/super-admins', label: t('super_admins'), icon: '🛡️' },
                                 { href: '/dashboard/companies', label: t('companies'), icon: '🏢' },
-                                { href: '/dashboard/all-users', label: t('all_users'), icon: '👥' }
+                                { href: '/dashboard/all-users', label: t('all_users'), icon: '👥' },
+                                { href: '/dashboard/audit-logs', label: t('audit_logs'), icon: '📜' }
                             ].map(link => (
                                 <Link key={link.href} href={link.href} onClick={() => isMobile && setIsSidebarOpen(false)} title={isCollapsed ? link.label : ''} className="nav-link" style={{
                                     color: 'rgba(255,255,255,0.8)',

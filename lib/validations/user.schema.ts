@@ -6,7 +6,7 @@ export const createUserSchema = z.object({
     firstName: z.string().min(1).max(15, "First name too long"),
     lastName: z.string().min(1).max(15, "Last name too long"),
     email: z.string().regex(emailRegex, "Email format invalid (must be user(20)@domain(10).com)"),
-    password: z.string().min(6).max(20, "Password must be 6-20 characters"),
+    password: z.string().min(8).max(20, "Password must be 8-20 characters"),
     role: z.enum(['SUPER_ADMIN', 'ADMIN', 'TEAM_LEADER', 'EMPLOYEE']).optional().default('EMPLOYEE'),
     gender: z.enum(['MALE', 'FEMALE']).optional().default('MALE'),
     companyId: z.string().optional(),
@@ -20,6 +20,7 @@ export const updateUserSchema = createUserSchema.partial().extend({
     id: z.string().min(1, "User ID is required"),
     status: z.enum(['ACTIVE', 'INACTIVE', 'SUSPENDED', 'DELETED', 'OFFLINE']).optional(),
     avatar: z.string().nullable().optional(),
+    passcode: z.string().optional(),
 })
 
 export type CreateUserInput = z.infer<typeof createUserSchema>

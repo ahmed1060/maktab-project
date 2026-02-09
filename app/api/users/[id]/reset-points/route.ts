@@ -11,7 +11,7 @@ export const POST = withStandardHandler(async (req, session, json, { params }) =
     if (!hasAccess) return ApiResponse.forbidden("Access denied")
 
     try {
-        const result = await UserService.resetPoints(userId, session.user.role)
+        const result = await UserService.resetPoints(userId, session)
         return ApiResponse.success(result)
     } catch (error: any) {
         if (error.message === 'FORBIDDEN') return ApiResponse.forbidden("Unauthorized")

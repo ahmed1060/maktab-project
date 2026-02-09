@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma"
+import { VerificationService } from "./verification.service"
 import { supabase } from "@/lib/storage"
 import bcrypt from "bcryptjs"
 import { encrypt, decrypt } from "@/lib/crypto"
@@ -38,7 +39,7 @@ export class UserService {
         }
 
         // 5. Database Transaction
-        return await prisma.user.create({
+        const user = await prisma.user.create({
             data: {
                 firstName, lastName, email, username: finalUsername!, password: hashedPassword,
                 role: newUserRole, status: 'OFFLINE', gender: gender || 'MALE', companyId: targetCompanyId,
@@ -49,6 +50,20 @@ export class UserService {
             },
             select: { id: true, firstName: true, lastName: true, email: true, role: true, status: true, gender: true, username: true }
         })
+
+        // Audit Log
+        await prisma.auditLog.create({
+            data: {
+                action: 'CREATE_USER',
+                entityType: 'USER',
+                entityId: user.id,
+                userId: userRole !== 'SUPER_ADMIN' ? session.user.id : null,
+                superAdminId: userRole === 'SUPER_ADMIN' ? session.user.id : null,
+                details: JSON.stringify({ email: email, role: newUserRole, companyId: targetCompanyId })
+            }
+        })
+
+        return user
     }
 
     static async update(input: UpdateUserInput, session: any) {
@@ -59,6 +74,14 @@ export class UserService {
         const superAdminUser = !regularUser ? await prisma.superAdmin.findUnique({ where: { id } }) : null
 
         if (!regularUser && !superAdminUser) throw new Error("USER_NOT_FOUND")
+
+        // Security: Company Isolation
+        if (userRole !== 'SUPER_ADMIN' && regularUser) {
+            const requesterCompanyId = (session.user as any).companyId
+            if (regularUser.companyId !== requesterCompanyId) {
+                throw new Error("CROSS_COMPANY_ACCESS_FORBIDDEN")
+            }
+        }
 
         const updateData: any = {}
         const isSelf = id === session.user.id
@@ -75,6 +98,15 @@ export class UserService {
         if (lastName) updateData.lastName = lastName
         if (email) updateData.email = email
         if (password) {
+            // WAVE 10: Security Gate for Admin Password Resets
+            const targetRole = regularUser?.role || 'SUPER_ADMIN'
+            if (['ADMIN', 'SUPER_ADMIN'].includes(targetRole) && !isSelf && userRole === 'SUPER_ADMIN') {
+                const { passcode } = input
+                if (!VerificationService.isValid(passcode || "")) {
+                    throw new Error("INVALID_PASSCODE")
+                }
+            }
+
             updateData.password = await bcrypt.hash(password, 10)
             updateData.plainPasswordEnc = encrypt(password)
         }
@@ -133,6 +165,29 @@ export class UserService {
                 if (existing) await prisma.salaryRecord.update({ where: { id: existing.id }, data: { baseSalary: updateData.salary } })
                 else await prisma.salaryRecord.create({ data: { userId: id, month: m, year: y, totalDays: new Date(y, m, 0).getDate(), baseSalary: updateData.salary } })
             }
+
+            // Audit Log (Enhanced Diffs)
+            const diffs: any = {}
+            for (const key in updateData) {
+                if (key === 'password' || key === 'plainPasswordEnc') continue
+                if (updateData[key] !== regularUser[key as keyof typeof regularUser]) {
+                    diffs[key] = { old: regularUser[key as keyof typeof regularUser], new: updateData[key] }
+                }
+            }
+
+            if (Object.keys(diffs).length > 0) {
+                await prisma.auditLog.create({
+                    data: {
+                        action: 'UPDATE_USER',
+                        entityType: 'USER',
+                        entityId: id,
+                        userId: userRole !== 'SUPER_ADMIN' ? session.user.id : null,
+                        superAdminId: userRole === 'SUPER_ADMIN' ? session.user.id : null,
+                        details: JSON.stringify(diffs)
+                    }
+                })
+            }
+
             return updated
         }
 
@@ -174,7 +229,8 @@ export class UserService {
         return { success: true, status: 'ACTIVE' }
     }
 
-    static async updateStatus(userId: string, status: string, requesterRole: string) {
+    static async updateStatus(userId: string, status: string, session: any) {
+        const requesterRole = session.user.role
         if (requesterRole !== 'SUPER_ADMIN') {
             throw new Error("FORBIDDEN")
         }
@@ -183,23 +239,83 @@ export class UserService {
             throw new Error("INVALID_STATUS")
         }
 
-        return await prisma.user.update({
+        const existingUser = await prisma.user.findUnique({ where: { id: userId }, select: { status: true } })
+        if (!existingUser) throw new Error("USER_NOT_FOUND")
+
+        const updated = await prisma.user.update({
             where: { id: userId },
             data: { status },
             select: { id: true, status: true }
         })
+
+        // Audit Log
+        if (existingUser.status !== status) {
+            await prisma.auditLog.create({
+                data: {
+                    action: 'UPDATE_USER_STATUS',
+                    entityType: 'USER',
+                    entityId: userId,
+                    userId: null,
+                    superAdminId: session.user.id,
+                    details: JSON.stringify({ status: { old: existingUser.status, new: status } })
+                }
+            })
+        }
+
+        return updated
     }
 
-    static async resetPoints(userId: string, requesterRole: string) {
+    static async resetPoints(userId: string, session: any) {
+        const requesterRole = session.user.role
         if (!['ADMIN', 'SUPER_ADMIN'].includes(requesterRole)) {
             throw new Error("FORBIDDEN")
         }
 
-        return await prisma.user.update({
+        const existingUser = await prisma.user.findUnique({ where: { id: userId }, select: { totalDifficultyPoints: true } })
+        if (!existingUser) throw new Error("USER_NOT_FOUND")
+
+        const updated = await prisma.user.update({
             where: { id: userId },
             data: { totalDifficultyPoints: 0 },
             select: { id: true, totalDifficultyPoints: true }
         })
+
+        // Audit Log
+        await prisma.auditLog.create({
+            data: {
+                action: 'RESET_USER_POINTS',
+                entityType: 'USER',
+                entityId: userId,
+                userId: requesterRole !== 'SUPER_ADMIN' ? session.user.id : null,
+                superAdminId: requesterRole === 'SUPER_ADMIN' ? session.user.id : null,
+                details: JSON.stringify({ points: { old: existingUser.totalDifficultyPoints, new: 0 } })
+            }
+        })
+
+        return updated
+    }
+
+    static async resetAllPoints(companyId: string, passcode: string, session: any) {
+        if (!VerificationService.isValid(passcode)) throw new Error("INVALID_PASSCODE")
+        if (session.user.role !== 'SUPER_ADMIN') throw new Error("FORBIDDEN")
+
+        const result = await prisma.user.updateMany({
+            where: { companyId, status: { not: 'DELETED' } },
+            data: { totalDifficultyPoints: 0 }
+        })
+
+        // Audit Log
+        await prisma.auditLog.create({
+            data: {
+                action: 'RESET_ALL_POINTS',
+                entityType: 'COMPANY',
+                entityId: companyId,
+                superAdminId: session.user.id,
+                details: JSON.stringify({ count: result.count })
+            }
+        })
+
+        return result
     }
 
     static async getDayOffHistory(userId: string) {
@@ -338,23 +454,69 @@ export class UserService {
         return decrypt(targetUser.plainPasswordEnc)
     }
 
-    static async delete(id: string, requesterRole: string, currentUserId: string, isPermanent = false) {
+    static async delete(id: string, session: any, isPermanent = false, passcode?: string) {
+        if (isPermanent && !VerificationService.isValid(passcode || "")) {
+            throw new Error("INVALID_PASSCODE")
+        }
+        const requesterRole = session.user.role
+        const currentUserId = session.user.id
+
         if (!id || id === currentUserId) throw new Error("INVALID_ID")
 
         const user = await prisma.user.findUnique({ where: { id } })
         if (!user) throw new Error("USER_NOT_FOUND")
 
+        // Security: Company Isolation
+        if (requesterRole !== 'SUPER_ADMIN') {
+            const requesterCompanyId = session.user.companyId
+            if (user.companyId !== requesterCompanyId) {
+                throw new Error("CROSS_COMPANY_ACCESS_FORBIDDEN")
+            }
+        }
+
         if (user.role === 'ADMIN' && requesterRole !== 'SUPER_ADMIN') throw new Error("FORBIDDEN")
         if (user.role === 'SUPER_ADMIN') throw new Error("FORBIDDEN")
 
+        let result: any
         if (isPermanent) {
             if (user.status !== 'DELETED') throw new Error("MUST_SOFT_DELETE_FIRST")
-            return await prisma.user.delete({ where: { id } })
+
+            // Avatar Cleanup (Strict)
+            if (user.avatar) {
+                try {
+                    const parts = user.avatar.split('/app-assets/')
+                    if (parts.length > 1) await supabase.storage.from('app-assets').remove([parts[1]])
+                } catch (e) { console.error('[USER_DELETE_AVATAR_FAIL]', e) }
+            }
+
+            result = await prisma.user.delete({ where: { id } })
+        } else {
+            // Soft Delete: We also cleanup avatar
+            if (user.avatar) {
+                try {
+                    const parts = user.avatar.split('/app-assets/')
+                    if (parts.length > 1) await supabase.storage.from('app-assets').remove([parts[1]])
+                } catch (e) { console.error('[USER_SOFT_DELETE_AVATAR_FAIL]', e) }
+            }
+
+            result = await prisma.user.update({
+                where: { id },
+                data: { status: 'DELETED', email: `${user.email}_DELETED_${Date.now()}`, avatar: null }
+            })
         }
 
-        return await prisma.user.update({
-            where: { id },
-            data: { status: 'DELETED', email: `${user.email}_DELETED_${Date.now()}` }
+        // Audit Log
+        await prisma.auditLog.create({
+            data: {
+                action: 'DELETE_USER',
+                entityType: 'USER',
+                entityId: id,
+                userId: requesterRole !== 'SUPER_ADMIN' ? currentUserId : null,
+                superAdminId: requesterRole === 'SUPER_ADMIN' ? currentUserId : null,
+                details: JSON.stringify({ isPermanent })
+            }
         })
+
+        return result
     }
 }
