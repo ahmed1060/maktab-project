@@ -1,24 +1,23 @@
-import { NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
+import { withStandardHandler } from "@/lib/api-utils"
+import { ApiResponse } from "@/lib/api-response"
+import { SalaryService } from "@/lib/services/salary.service"
+import { verifyResourceAccess } from "@/lib/security"
 
-export async function GET(req: Request, { params }: { params: { id: string } }) {
-    const session = await getServerSession(authOptions)
-    const userRole = (session?.user as any)?.role
+export const GET = withStandardHandler(async (req, session, json, { params }) => {
+    const userRole = session.user.role
 
-    if (!session || !['ADMIN', 'SUPER_ADMIN'].includes(userRole)) {
-        return new NextResponse("Unauthorized", { status: 401 })
+    if (!['ADMIN', 'SUPER_ADMIN'].includes(userRole)) {
+        return ApiResponse.unauthorized()
     }
+
+    const hasAccess = await verifyResourceAccess(session, params.id, 'USER')
+    if (!hasAccess) return ApiResponse.forbidden("Access Denied")
 
     try {
-        const adjustments = await prisma.salaryAdjustment.findMany({
-            where: { userId: params.id },
-            orderBy: { createdAt: 'desc' }
-        })
-        return NextResponse.json(adjustments)
+        const adjustments = await SalaryService.getAdjustments(params.id)
+        return ApiResponse.success(adjustments)
     } catch (error) {
         console.error('Error fetching adjustments:', error)
-        return new NextResponse("Failed to fetch adjustments", { status: 500 })
+        return ApiResponse.error("Failed to fetch adjustments")
     }
-}
+})

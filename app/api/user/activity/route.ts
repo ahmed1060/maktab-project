@@ -1,42 +1,12 @@
-import { NextResponse } from "next/server"
-import { prisma } from "@/lib/prisma"
-import { getServerSession } from "next-auth"
-import { authOptions } from "@/lib/auth"
+import { withStandardHandler } from "@/lib/api-utils"
+import { ApiResponse } from "@/lib/api-response"
+import { UserService } from "@/lib/services/user.service"
 
-export async function POST() {
-    const session = await getServerSession(authOptions)
-    if (!session || !session.user || !session.user.id) {
-        return new NextResponse("Unauthorized", { status: 401 })
-    }
-
-    // Super Admins are in a separate table and don't have lastActivity tracking like regular users
-    if (session.user.role === 'SUPER_ADMIN') {
-        return NextResponse.json({ success: true, status: 'ACTIVE' })
-    }
-
+export const POST = withStandardHandler(async (req, session) => {
     try {
-        const user = await prisma.user.update({
-            where: { id: session.user.id },
-            data: { lastActivity: new Date() },
-            select: {
-                status: true,
-                company: {
-                    select: { isBanned: true }
-                }
-            }
-        })
-
-        if (user.status === 'SUSPENDED') {
-            return NextResponse.json({ success: true, status: 'SUSPENDED' })
-        }
-
-        if (user.company?.isBanned) {
-            return NextResponse.json({ success: true, status: 'COMPANY_BANNED' })
-        }
-
-        return NextResponse.json({ success: true, status: 'ACTIVE' })
-
-    } catch {
-        return new NextResponse("Error updating activity", { status: 500 })
+        const result = await UserService.updateActivity(session.user.id, session.user.role)
+        return ApiResponse.success(result)
+    } catch (error: any) {
+        throw error
     }
-}
+})

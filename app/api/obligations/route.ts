@@ -1,6 +1,8 @@
 import { withStandardHandler } from "@/lib/api-utils"
-import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
+import { ApiResponse } from "@/lib/api-response"
+import { createObligationSchema } from "@/lib/validations/obligation.schema"
+import { ObligationService } from "@/lib/services/obligation.service"
 
 export const GET = withStandardHandler(async (req, session) => {
     const role = (session.user as any).role
@@ -10,20 +12,18 @@ export const GET = withStandardHandler(async (req, session) => {
 
     const whereClause: any = {}
 
+    // 1. Authorization & Base Filtering
     if (role === 'SUPER_ADMIN') {
-        if (companyId) {
-            whereClause.companyId = companyId
-        }
+        if (companyId) whereClause.companyId = companyId
     } else if (['ADMIN', 'TEAM_LEADER'].includes(role)) {
         const userCompanyId = (session.user as any).companyId
-        if (!userCompanyId) {
-            return NextResponse.json([])
-        }
+        if (!userCompanyId) return ApiResponse.success({ data: [], total: 0, page: 1, totalPages: 0 })
         whereClause.companyId = userCompanyId
     } else {
         whereClause.assignees = { some: { id: userId } }
     }
 
+    // 2. Extra Filters
     const employeeIdFilter = searchParams.get('employeeId')
     const statusFilter = searchParams.get('status')
     const searchFilter = searchParams.get('search')
@@ -34,9 +34,7 @@ export const GET = withStandardHandler(async (req, session) => {
         whereClause.assignees = { some: { id: employeeIdFilter } }
     }
 
-    if (statusFilter) {
-        whereClause.status = statusFilter
-    }
+    if (statusFilter) whereClause.status = statusFilter
 
     if (searchFilter) {
         whereClause.AND = whereClause.AND || []
@@ -73,7 +71,7 @@ export const GET = withStandardHandler(async (req, session) => {
         prisma.obligation.count({ where: whereClause })
     ])
 
-    return NextResponse.json({
+    return ApiResponse.success({
         data: obligations,
         total,
         page,
@@ -82,71 +80,26 @@ export const GET = withStandardHandler(async (req, session) => {
 })
 
 export const POST = withStandardHandler(async (req, session, json) => {
-    const userRole = (session.user as any).role
-    if (['EMPLOYEE'].includes(userRole)) {
-        return new NextResponse("Forbidden", { status: 403 })
+    // 1. Validation
+    const validation = createObligationSchema.safeParse(json)
+    if (!validation.success) {
+        return ApiResponse.badRequest("Validation Error", validation.error.format())
     }
 
-    const creatorCompanyId = (session.user as any).companyId
-    const { title, description, assigneeIds, deadline, recurrence, attachments, difficulty = 0 } = json
-    const finalAssigneeIds: string[] = assigneeIds || []
+    try {
+        // 2. Service
+        const result = await ObligationService.create(validation.data, session)
+        return ApiResponse.success(result, 201)
+    } catch (error: any) {
+        // 3. Error Mapping
+        if (error.message === 'EMPLOYEES_CANNOT_CREATE_OBLIGATIONS') return ApiResponse.forbidden("Employees cannot create obligations")
+        if (error.message === 'USER_NO_COMPANY') return ApiResponse.forbidden("You must be part of a company to create obligations")
+        if (error.message === 'ASSIGNEE_NOT_FOUND') return ApiResponse.notFound("One or more assignees not found")
+        if (error.message === 'CROSS_COMPANY_ASSIGNMENT_FORBIDDEN') return ApiResponse.forbidden("Cannot assign obligations across companies")
+        if (error.message === 'TEAM_LEADER_CANNOT_ASSIGN_TO_ADMIN') return ApiResponse.forbidden("Team Leaders cannot assign obligations to Admins")
 
-    if (!title || title.length < 3 || title.length > 100) {
-        return new NextResponse("Title must be between 3 and 100 characters", { status: 400 })
+        throw error
     }
-    if (!description || description.length < 10 || description.length > 1000) {
-        return new NextResponse("Description must be between 10 and 1000 characters", { status: 400 })
-    }
-
-    if (userRole !== 'SUPER_ADMIN') {
-        if (!creatorCompanyId) return new NextResponse("You are not part of a company", { status: 403 })
-
-        const assigneeUsers = await prisma.user.findMany({
-            where: { id: { in: finalAssigneeIds } },
-            select: { id: true, companyId: true, role: true }
-        })
-
-        if (assigneeUsers.length !== finalAssigneeIds.length) return new NextResponse("One or more assignees not found", { status: 404 })
-
-        const externalAssignee = assigneeUsers.find(u => u.companyId !== creatorCompanyId)
-        if (externalAssignee) return new NextResponse("Cannot assign obligation to user in a different company", { status: 403 })
-
-        if (userRole === 'TEAM_LEADER') {
-            const adminAssignee = assigneeUsers.find(u => ['ADMIN', 'SUPER_ADMIN'].includes(u.role))
-            if (adminAssignee) return new NextResponse("Team Leaders cannot assign obligations to Admins or Super Admins", { status: 403 })
-        }
-    }
-
-    let finalCompanyId = creatorCompanyId
-    if (userRole === 'SUPER_ADMIN' && finalAssigneeIds.length > 0) {
-        const firstAssignee = await prisma.user.findUnique({
-            where: { id: finalAssigneeIds[0] },
-            select: { companyId: true }
-        })
-        if (firstAssignee) finalCompanyId = firstAssignee.companyId
-    }
-
-    const obligation = await prisma.obligation.create({
-        data: {
-            title,
-            description,
-            companyId: finalCompanyId,
-            assignees: {
-                connect: finalAssigneeIds.map(id => ({ id }))
-            },
-            deadline: new Date(deadline),
-            recurrence: recurrence || 'ONE_TIME',
-            difficulty: Math.min(Math.max(difficulty, 0), 10),
-            attachments: attachments ? JSON.stringify(attachments) : null,
-            status: 'PENDING'
-        }
-    })
-
-    return NextResponse.json(obligation)
 }, {
-    audit: {
-        action: 'CREATE_OBLIGATION',
-        entityType: 'OBLIGATION',
-        getEntityId: (res) => res.id
-    }
+    audit: { action: 'CREATE_OBLIGATION', entityType: 'OBLIGATION', getEntityId: (res) => res.id }
 })

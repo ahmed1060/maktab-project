@@ -1,60 +1,17 @@
-import { NextResponse } from "next/server"
-import { prisma } from "@/lib/prisma"
-import { getServerSession } from "next-auth"
-import { authOptions } from "@/lib/auth"
+import { withStandardHandler } from "@/lib/api-utils"
+import { ApiResponse } from "@/lib/api-response"
+import { ProfileService } from "@/lib/services/profile.service"
 
-export async function POST(req: Request, { params }: { params: { id: string } }) {
-    const session = await getServerSession(authOptions)
-    const userRole = session?.user?.role
+export const POST = withStandardHandler(async (req, session, json, { params }) => {
+    const { adminNote } = json || {}
 
-    if (!session || !['ADMIN', 'SUPER_ADMIN'].includes(userRole || '')) {
-        return new NextResponse("Unauthorized", { status: 401 })
+    try {
+        await ProfileService.approveRequest(params.id, adminNote, session)
+        return ApiResponse.success({ success: true })
+    } catch (error: any) {
+        if (error.message === 'REQUEST_NOT_FOUND') return ApiResponse.notFound("Request not found")
+        if (error.message === 'ACCESS_DENIED') return ApiResponse.forbidden("Access denied")
+        if (error.message === 'REQUEST_ALREADY_PROCESSED') return ApiResponse.badRequest("Request already processed")
+        throw error
     }
-
-    const { id } = params
-    const { adminNote } = await req.json().catch(() => ({ adminNote: '' }))
-
-    const request = await prisma.profileUpdateRequest.findUnique({
-        where: { id },
-        include: { user: true }
-    })
-
-    if (!request) return new NextResponse("Request not found", { status: 404 })
-
-    // Company Isolation Check
-    const { verifyResourceAccess } = await import("@/lib/security")
-    const hasAccess = await verifyResourceAccess(session, request.userId, 'USER')
-    if (!hasAccess) {
-        return new NextResponse("Forbidden: Access Denied", { status: 403 })
-    }
-
-    if (request.status !== 'PENDING') return new NextResponse("Request already processed", { status: 400 })
-
-    // Update User
-    await prisma.$transaction([
-        prisma.user.update({
-            where: { id: request.userId },
-            data: {
-                firstName: request.newFirstName,
-                lastName: request.newLastName
-            }
-        }),
-        prisma.profileUpdateRequest.update({
-            where: { id },
-            data: {
-                status: 'APPROVED',
-                adminNote
-            }
-        }),
-        prisma.notification.create({
-            data: {
-                userId: request.userId,
-                type: 'PROFILE_UPDATE',
-                message: `Your name change request has been approved! Your name is now ${request.newFirstName} ${request.newLastName}.`,
-                read: false
-            }
-        })
-    ])
-
-    return NextResponse.json({ success: true })
-}
+})

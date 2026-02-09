@@ -1,93 +1,34 @@
-import { NextResponse } from "next/server"
-import { getServerSession } from "next-auth"
-import { authOptions } from "@/lib/auth"
-import { prisma } from "@/lib/prisma"
-import { supabase } from "@/lib/storage"
+import { withStandardHandler } from "@/lib/api-utils"
+import { ApiResponse } from "@/lib/api-response"
+import { TaskService } from "@/lib/services/task.service"
 import { verifyResourceAccess } from "@/lib/security"
 
-export async function DELETE(
-    request: Request,
-    { params }: { params: { id: string } }
-) {
-    const session = await getServerSession(authOptions)
-    if (!session) return new NextResponse("Unauthorized", { status: 401 })
+export const DELETE = withStandardHandler(async (req, session, json, { params }) => {
+    const taskId = params.id
+    const userRole = session.user.role
+    const userId = session.user.id
+
+    if (!['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole)) {
+        return ApiResponse.forbidden("Only Admins and Team Leaders can delete tasks")
+    }
 
     // Company Isolation Check
-    const hasAccess = await verifyResourceAccess(session, params.id, 'TASK')
-    if (!hasAccess) {
-        return new NextResponse("Access Denied: Task belongs to a different company", { status: 403 })
-    }
-
-    const userRole = (session?.user as any)?.role
-    const currentUserId = (session?.user as any).id
-
-    // Only ADMIN, SUPER_ADMIN and TEAM_LEADER can delete tasks
-    if (!['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole)) {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 403 })
-    }
+    const hasAccess = await verifyResourceAccess(session, taskId, 'TASK')
+    if (!hasAccess) return ApiResponse.forbidden("Access denied")
 
     try {
-        await prisma.$transaction(async (tx) => {
-            const task = await tx.task.findUnique({
-                where: { id: params.id },
-                select: { status: true, difficulty: true, assignees: { select: { id: true } }, attachments: true }
-            })
-
-            if (!task) throw new Error("Task not found")
-
-            // Self-deletion restriction for ADMIN and SUPER_ADMIN
-            const isSelfAssigned = (task.assignees as any[]).some((a: any) => a.id === currentUserId)
-            if (['ADMIN', 'SUPER_ADMIN'].includes(userRole) && isSelfAssigned) {
-                throw new Error("Admins cannot delete their own tasks")
-            }
-            // TEAM_LEADER is allowed to delete their own tasks (per user request)
-
-            if (task && ['APPROVED', 'COMPLETED'].includes(task.status)) {
-                const assigneeIds = (task.assignees as any[]).map((a: any) => a.id)
-                for (const aId of assigneeIds) {
-                    try {
-                        await tx.user.update({
-                            where: { id: aId },
-                            data: {
-                                totalDifficultyPoints: {
-                                    decrement: task.difficulty
-                                }
-                            }
-                        })
-                    } catch (error) {
-                        console.error(`Failed to deduct points from user ${aId} during task deletion:`, error)
-                    }
-                }
-            }
-
-            if (task?.attachments) {
-                try {
-                    const attachments = JSON.parse(task.attachments)
-                    if (Array.isArray(attachments)) {
-                        const filePaths = attachments
-                            .map((a: any) => a.url?.split('/app-assets/')?.[1])
-                            .filter(path => !!path)
-
-                        if (filePaths.length > 0) {
-                            await supabase.storage.from('app-assets').remove(filePaths)
-                        }
-                    }
-                } catch (e) {
-                    console.error("Failed to cleanup task attachments:", e)
-                }
-            }
-
-            await tx.task.delete({
-                where: { id: params.id }
-            })
-        })
-
-        return NextResponse.json({ success: true })
-    } catch (error) {
-        console.error("Error deleting task:", error)
-        return NextResponse.json(
-            { error: "Failed to delete task" },
-            { status: 500 }
-        )
+        await TaskService.delete(taskId, userId, userRole)
+        return ApiResponse.success({ success: true })
+    } catch (error: any) {
+        if (error.message === 'TASK_NOT_FOUND') return ApiResponse.notFound("Task not found")
+        if (error.message === 'SELF_DELETION_FORBIDDEN') return ApiResponse.forbidden("Admins cannot delete their own tasks")
+        console.error("Task deletion error:", error)
+        return ApiResponse.error("Failed to delete task")
     }
-}
+}, {
+    audit: {
+        action: 'DELETE_TASK',
+        entityType: 'TASK',
+        getEntityId: (res: any) => res.id
+    }
+})

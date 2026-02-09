@@ -1,96 +1,39 @@
-import { NextResponse } from "next/server"
-import { prisma } from "@/lib/prisma"
-import { getServerSession } from "next-auth"
-import { authOptions } from "@/lib/auth"
+import { withStandardHandler } from "@/lib/api-utils"
+import { ApiResponse } from "@/lib/api-response"
+import { CompanyService } from "@/lib/services/company.service"
 
-export async function PATCH(
-    req: Request,
-    { params }: { params: { id: string, paymentId: string } }
-) {
+export const PATCH = withStandardHandler(async (req, session, json, { params }) => {
+    if (session.user.role !== 'SUPER_ADMIN') return ApiResponse.unauthorized()
+
+    const { status } = json
+    if (status !== 'PAID') {
+        return ApiResponse.badRequest("Only marking as PAID is supported via PATCH")
+    }
+
     try {
-        const session = await getServerSession(authOptions)
-        if (!session?.user || session.user.role !== 'SUPER_ADMIN') {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-        }
-
-        const { paymentId } = params
-        const { status } = await req.json()
-
-        if (status !== 'PAID') {
-            return NextResponse.json({ error: "Only marking as PAID is supported via PATCH" }, { status: 400 })
-        }
-
-        // Get current payment to check type
-        const payment = await prisma.companyPayment.findUnique({
-            where: { id: paymentId }
-        })
-
-        if (!payment) {
-            return NextResponse.json({ error: "Payment not found" }, { status: 404 })
-        }
-
-        const startDate = new Date()
-        const endDate = new Date()
-
-        if (payment.subscriptionType === 'MONTHLY') {
-            endDate.setDate(startDate.getDate() + 30)
-        } else if (payment.subscriptionType === 'ANNUALLY') {
-            endDate.setFullYear(startDate.getFullYear() + 1)
-        }
-
-        const updatedPayment = await prisma.companyPayment.update({
-            where: { id: paymentId },
-            data: {
-                status: 'PAID',
-                paidAt: startDate,
-                startDate,
-                endDate
-            }
-        })
-
-        return NextResponse.json(updatedPayment)
-    } catch (error) {
+        const updatedPayment = await CompanyService.updatePaymentStatus(params.paymentId, status)
+        return ApiResponse.success(updatedPayment)
+    } catch (error: any) {
         console.error('Update payment error:', error)
-        return NextResponse.json(
-            { error: "Failed to update payment" },
-            { status: 500 }
-        )
+        if (error.message === 'PAYMENT_NOT_FOUND') return ApiResponse.notFound("Payment not found")
+        return ApiResponse.error("Failed to update payment")
     }
-}
-export async function DELETE(
-    req: Request,
-    { params }: { params: { id: string, paymentId: string } }
-) {
+}, {
+    audit: { action: 'UPDATE_COMPANY_PAYMENT', entityType: 'COMPANY_PAYMENT', getEntityId: (res) => res.id }
+})
+
+export const DELETE = withStandardHandler(async (req, session, json, { params }) => {
+    if (session.user.role !== 'SUPER_ADMIN') return ApiResponse.unauthorized()
+
     try {
-        const session = await getServerSession(authOptions)
-        if (!session?.user || session.user.role !== 'SUPER_ADMIN') {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-        }
-
-        const { paymentId } = params
-
-        const payment = await prisma.companyPayment.findUnique({
-            where: { id: paymentId }
-        })
-
-        if (!payment) {
-            return NextResponse.json({ error: "Payment not found" }, { status: 404 })
-        }
-
-        if (payment.status === 'PAID') {
-            return NextResponse.json({ error: "Cannot delete a PAID payment record" }, { status: 400 })
-        }
-
-        await prisma.companyPayment.delete({
-            where: { id: paymentId }
-        })
-
-        return NextResponse.json({ success: true })
-    } catch (error) {
+        await CompanyService.deletePayment(params.paymentId)
+        return ApiResponse.success({ success: true, id: params.paymentId })
+    } catch (error: any) {
         console.error('Delete payment error:', error)
-        return NextResponse.json(
-            { error: "Failed to delete payment" },
-            { status: 500 }
-        )
+        if (error.message === 'PAYMENT_NOT_FOUND') return ApiResponse.notFound("Payment not found")
+        if (error.message === 'CANNOT_DELETE_PAID') return ApiResponse.badRequest("Cannot delete a PAID payment record")
+        return ApiResponse.error("Failed to delete payment")
     }
-}
+}, {
+    audit: { action: 'DELETE_COMPANY_PAYMENT', entityType: 'COMPANY_PAYMENT', getEntityId: (res) => res?.id }
+})

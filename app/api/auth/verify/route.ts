@@ -1,63 +1,20 @@
-import { NextResponse } from "next/server"
-import { prisma } from "@/lib/prisma"
-import { getServerSession } from "next-auth"
-import { authOptions } from "@/lib/auth"
-import bcrypt from "bcryptjs"
-import { encrypt } from "@/lib/crypto"
+import { withStandardHandler } from "@/lib/api-utils"
+import { ApiResponse } from "@/lib/api-response"
+import { UserService } from "@/lib/services/user.service"
 
-export async function POST(req: Request) {
-    try {
-        const session = await getServerSession(authOptions)
-        if (!session) {
-            return new NextResponse("Unauthorized", { status: 401 })
-        }
+export const POST = withStandardHandler(async (req, session, json) => {
+    const { password } = json
 
-        const { password } = await req.json()
-
-        if (!password) {
-            return new NextResponse("Password required", { status: 400 })
-        }
-
-        const userId = session.user.id
-
-        // 1. Try finding in regular User table
-        const user = await prisma.user.findUnique({
-            where: { id: userId }
-        })
-
-        if (user) {
-            const isValid = await bcrypt.compare(password, user.password)
-            if (isValid && !user.plainPasswordEnc) {
-                // Auto-heal missing plainPasswordEnc for legacy users
-                await prisma.user.update({
-                    where: { id: userId },
-                    data: { plainPasswordEnc: encrypt(password) }
-                })
-            }
-            return NextResponse.json({ valid: isValid })
-        }
-
-        // 2. Try SuperAdmin table
-        const superAdmin = await prisma.superAdmin.findUnique({
-            where: { id: userId }
-        })
-
-        if (superAdmin) {
-            const isValid = await bcrypt.compare(password, superAdmin.password)
-            if (isValid && !superAdmin.plainPasswordEnc) {
-                // Auto-heal missing plainPasswordEnc for legacy Super Admins
-                await prisma.superAdmin.update({
-                    where: { id: userId },
-                    data: { plainPasswordEnc: encrypt(password) }
-                })
-            }
-            return NextResponse.json({ valid: isValid })
-        }
-
-        return new NextResponse("User not found", { status: 404 })
-
-    } catch (error) {
-        console.error('Password verification error:', error)
-        return new NextResponse("Internal Server Error", { status: 500 })
+    if (!password) {
+        return ApiResponse.badRequest("Password required")
     }
-}
+
+    try {
+        const result = await UserService.verifyPassword(session.user.id, password)
+        return ApiResponse.success(result)
+    } catch (error: any) {
+        if (error.message === 'USER_NOT_FOUND') return ApiResponse.notFound("User not found")
+        console.error('Password verification error:', error)
+        throw error
+    }
+})

@@ -1,25 +1,20 @@
 import { withStandardHandler } from "@/lib/api-utils"
-import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { supabase } from "@/lib/storage"
-import bcrypt from "bcryptjs"
-import { encrypt } from "@/lib/crypto"
-import { generateUsername } from "@/lib/username"
+import { ApiResponse } from "@/lib/api-response"
+import { createUserSchema, updateUserSchema } from "@/lib/validations/user.schema"
+import { UserService } from "@/lib/services/user.service"
 
 export const GET = withStandardHandler(async (req, session) => {
     const userRole = session.user.role
     const { searchParams } = new URL(req.url)
     const userId = searchParams.get('id')
 
-    if (!userId && !['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole || '')) {
-        return new NextResponse("Unauthorized", { status: 401 })
-    }
-
-    if (userId && userId !== session.user.id && !['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole || '')) {
-        return new NextResponse("Unauthorized", { status: 401 })
-    }
-
+    // 1. Authorization & Single User Fetch
     if (userId) {
+        if (userId !== session.user.id && !['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole || '')) {
+            return ApiResponse.unauthorized()
+        }
+
         const user = await prisma.user.findUnique({
             where: { id: userId },
             select: {
@@ -32,7 +27,7 @@ export const GET = withStandardHandler(async (req, session) => {
 
         if (user) {
             const canViewSalary = ['ADMIN', 'SUPER_ADMIN'].includes(userRole || '') || session.user.id === userId
-            return NextResponse.json({
+            return ApiResponse.success({
                 ...user,
                 salary: canViewSalary ? user.salary : undefined
             })
@@ -47,7 +42,7 @@ export const GET = withStandardHandler(async (req, session) => {
         })
 
         if (superAdmin) {
-            return NextResponse.json({
+            return ApiResponse.success({
                 ...superAdmin,
                 status: 'ACTIVE',
                 role: 'SUPER_ADMIN',
@@ -55,7 +50,12 @@ export const GET = withStandardHandler(async (req, session) => {
                 totalDifficultyPoints: 0
             })
         }
-        return new NextResponse("User not found", { status: 404 })
+        return ApiResponse.notFound("User not found")
+    }
+
+    // 2. Multi-User Fetch (Filtered)
+    if (!['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole || '')) {
+        return ApiResponse.unauthorized()
     }
 
     const companyIdParam = searchParams.get('companyId')
@@ -74,14 +74,15 @@ export const GET = withStandardHandler(async (req, session) => {
         if (filterCompanyId) whereClause.companyId = filterCompanyId
     } else {
         const userCompanyId = (session.user as any).companyId
-        if (!userCompanyId) return NextResponse.json([])
+        if (!userCompanyId) return ApiResponse.success({ data: [], total: 0, page: 1, totalPages: 0 })
         whereClause.companyId = userCompanyId
     }
 
+    // Special count for deleted users
     const countOnly = searchParams.get('countOnly')
     if (countOnly === 'deleted') {
         const deletedCount = await prisma.user.count({ where: { ...whereClause, status: 'DELETED' } })
-        return NextResponse.json({ total: deletedCount })
+        return ApiResponse.success({ total: deletedCount })
     }
 
     const includeDeleted = searchParams.get('includeDeleted') === 'true'
@@ -149,191 +150,87 @@ export const GET = withStandardHandler(async (req, session) => {
         return { ...user, status: effectiveStatus }
     })
 
-    return NextResponse.json({
+    return ApiResponse.success({
         data: usersWithStatus, total, page, totalPages: Math.ceil(total / limit)
     })
 })
 
 export const POST = withStandardHandler(async (req, session, json) => {
-    const userRole = session.user.role
-    if (!['ADMIN', 'SUPER_ADMIN'].includes(userRole || '')) {
-        return new NextResponse("Unauthorized", { status: 401 })
+    // 1. Validation
+    const validation = createUserSchema.safeParse(json)
+    if (!validation.success) {
+        return ApiResponse.badRequest("Validation Error", validation.error.format())
     }
 
-    const { firstName, lastName, email, password, role, gender, companyId, salary, dayOffCredit, baseDayOffCredit, username } = json
+    try {
+        // 2. Service
+        const result = await UserService.create(validation.data, session)
+        return ApiResponse.success(result, 201)
+    } catch (error: any) {
+        // 3. Error Mapping
+        if (error.message === 'ONLY_SUPER_ADMIN_CAN_CREATE_ADMIN') return ApiResponse.forbidden("Only Super Admin can create Admin users")
+        if (error.message === 'TARGET_COMPANY_NOT_FOUND') return ApiResponse.forbidden("Target company not found or access restricted")
+        if (error.message === 'USER_ALREADY_EXISTS') return ApiResponse.badRequest("User already exists")
+        if (error.message === 'USERNAME_IN_USE') return ApiResponse.badRequest("Username in use")
 
-    if (firstName.length > 15 || lastName.length > 15 || password.length > 20) {
-        return new NextResponse("Field limits exceeded", { status: 400 })
+        throw error
     }
-
-    const emailRegex = /^[^@]{1,20}@[^@]{1,10}\.com$/
-    if (!emailRegex.test(email)) return new NextResponse("Email format invalid", { status: 400 })
-
-    const newUserRole = role || 'EMPLOYEE'
-    if ((newUserRole === 'ADMIN' || newUserRole === 'SUPER_ADMIN') && userRole !== 'SUPER_ADMIN') {
-        return new NextResponse("Only Super Admin can create Admin users", { status: 403 })
-    }
-
-    let targetCompanyId = (session.user as any).companyId
-    if (userRole === 'SUPER_ADMIN' && companyId) targetCompanyId = companyId
-
-    if (!targetCompanyId && userRole !== 'SUPER_ADMIN') return new NextResponse("Target company not found", { status: 403 })
-
-    const existingUser = await prisma.user.findUnique({ where: { email } })
-    if (existingUser) return new NextResponse("User already exists", { status: 400 })
-
-    const hashedPassword = await bcrypt.hash(password, 10)
-
-    let finalUsername = username
-    if (finalUsername) {
-        const conflict = await prisma.user.findFirst({ where: { username: { equals: finalUsername, mode: 'insensitive' } } })
-        if (conflict) return new NextResponse("Username in use", { status: 400 })
-    } else if (targetCompanyId) {
-        finalUsername = await generateUsername(targetCompanyId)
-    }
-
-    const user = await prisma.user.create({
-        data: {
-            firstName, lastName, email, username: finalUsername, password: hashedPassword,
-            role: newUserRole, status: 'OFFLINE', gender: gender || 'MALE', companyId: targetCompanyId,
-            salary: salary ? parseFloat(salary) : 0,
-            dayOffCredit: baseDayOffCredit ? parseFloat(baseDayOffCredit) : (dayOffCredit ? parseFloat(dayOffCredit) : 0),
-            baseDayOffCredit: baseDayOffCredit ? parseFloat(baseDayOffCredit) : (dayOffCredit ? parseFloat(dayOffCredit) : 0),
-            plainPasswordEnc: encrypt(password)
-        },
-        select: { id: true, firstName: true, lastName: true, email: true, role: true, status: true, gender: true, username: true }
-    })
-
-    return NextResponse.json(user)
 }, {
     audit: { action: 'CREATE_USER', entityType: 'USER', getEntityId: (res) => res.id }
 })
 
 export const PUT = withStandardHandler(async (req, session, json) => {
+    // 1. Validation
+    const validation = updateUserSchema.safeParse(json)
+    if (!validation.success) {
+        return ApiResponse.badRequest("Validation Error", validation.error.format())
+    }
+
+    const { id } = validation.data
     const userRole = session.user.role
-    const { id, firstName, lastName, email, password, role, gender, salary, companyId, avatar, dayOffCredit, baseDayOffCredit, username, status } = json
 
-    if (!id) return new NextResponse("User ID required", { status: 400 })
-
+    // 2. Authorization check
     if (id !== session.user.id && !['ADMIN', 'SUPER_ADMIN'].includes(userRole || '')) {
-        return new NextResponse("Unauthorized", { status: 401 })
+        return ApiResponse.unauthorized()
     }
 
-    const regularUser = await prisma.user.findUnique({ where: { id } })
-    const superAdminUser = !regularUser ? await prisma.superAdmin.findUnique({ where: { id } }) : null
+    try {
+        // 3. Service
+        const result = await UserService.update(validation.data, session)
+        return ApiResponse.success(result)
+    } catch (error: any) {
+        // 4. Error Mapping
+        if (error.message === 'USER_NOT_FOUND') return ApiResponse.notFound("User not found")
+        if (error.message === 'NAME_CHANGE_REQUIRES_ADMIN') return ApiResponse.forbidden("Name changes require admin approval")
+        if (error.message === 'FORBIDDEN_ROLE_ASSIGNMENT') return ApiResponse.forbidden("Forbidden role assignment")
 
-    if (!regularUser && !superAdminUser) return new NextResponse("User not found", { status: 404 })
-
-    const updateData: any = {}
-    const isSelf = id === session.user.id
-
-    if (isSelf && (regularUser?.role === 'EMPLOYEE' || regularUser?.role === 'TEAM_LEADER')) {
-        if ((firstName && firstName !== regularUser.firstName) || (lastName && lastName !== regularUser.lastName)) {
-            return new NextResponse("Name changes require admin approval", { status: 403 })
-        }
+        throw error
     }
-
-    if (firstName) updateData.firstName = firstName
-    if (lastName) updateData.lastName = lastName
-    if (email) updateData.email = email
-    if (password) {
-        updateData.password = await bcrypt.hash(password, 10)
-        updateData.plainPasswordEnc = encrypt(password)
-    }
-    if (gender) updateData.gender = gender
-    if (avatar !== undefined) {
-        updateData.avatar = avatar
-        const oldAvatar = regularUser?.avatar || superAdminUser?.avatar
-        if (oldAvatar && oldAvatar !== avatar) {
-            try {
-                const parts = oldAvatar.split('/app-assets/')
-                if (parts.length > 1) await supabase.storage.from('app-assets').remove([parts[1]])
-            } catch (e) {
-                console.error('[USER_AVATAR_DELETE_FAIL]', e)
-            }
-        }
-    }
-
-    if (regularUser) {
-        if (role && ['ADMIN', 'SUPER_ADMIN'].includes(userRole || '')) {
-            if ((role === 'ADMIN' || role === 'SUPER_ADMIN') && userRole !== 'SUPER_ADMIN') {
-                return new NextResponse("Forbidden role assignment", { status: 403 })
-            }
-            updateData.role = role
-        }
-
-        if (username !== undefined && userRole === 'SUPER_ADMIN') updateData.username = username || null
-
-        if (['ADMIN', 'SUPER_ADMIN'].includes(userRole || '')) {
-            if (salary !== undefined) updateData.salary = salary
-            if (dayOffCredit !== undefined) updateData.dayOffCredit = parseFloat(dayOffCredit)
-            if (baseDayOffCredit !== undefined) {
-                const newBase = parseFloat(baseDayOffCredit)
-                updateData.baseDayOffCredit = newBase
-                const currentYear = new Date().getFullYear()
-                const deductions = await prisma.dayOffRequest.aggregate({
-                    where: { userId: id, status: 'APPROVED', deductionType: 'CREDIT', date: { gte: new Date(currentYear, 0, 1), lt: new Date(currentYear + 1, 0, 1) } },
-                    _sum: { daysDeducted: true }
-                })
-                updateData.dayOffCredit = newBase - (deductions._sum.daysDeducted || 0)
-            }
-        }
-
-        if (companyId !== undefined && userRole === 'SUPER_ADMIN') updateData.companyId = companyId || null
-        if (status !== undefined && ['ADMIN', 'SUPER_ADMIN'].includes(userRole || '')) updateData.status = status
-
-        const updated = await prisma.user.update({
-            where: { id }, data: updateData,
-            select: { id: true, firstName: true, lastName: true, email: true, role: true, gender: true, salary: true, companyId: true, avatar: true, dayOffCredit: true, baseDayOffCredit: true, username: true }
-        })
-
-        if (updateData.salary !== undefined) {
-            const now = new Date()
-            const m = now.getMonth() + 1, y = now.getFullYear()
-            const existing = await prisma.salaryRecord.findUnique({ where: { userId_month_year: { userId: id, month: m, year: y } } })
-            if (existing) await prisma.salaryRecord.update({ where: { id: existing.id }, data: { baseSalary: updateData.salary } })
-            else await prisma.salaryRecord.create({ data: { userId: id, month: m, year: y, totalDays: new Date(y, m, 0).getDate(), baseSalary: updateData.salary } })
-        }
-        return NextResponse.json(updated)
-    }
-
-    if (superAdminUser) {
-        const updated = await prisma.superAdmin.update({ where: { id }, data: updateData, select: { id: true, firstName: true, lastName: true, email: true, gender: true, avatar: true, username: true } })
-        return NextResponse.json({ ...updated, role: 'SUPER_ADMIN', status: 'ACTIVE', salary: 0 })
-    }
-
-    return new NextResponse("Error", { status: 500 })
 }, {
     audit: { action: 'UPDATE_USER', entityType: 'USER', getEntityId: (res) => res.id }
 })
 
 export const DELETE = withStandardHandler(async (req, session) => {
     const userRole = session.user.role
-    if (!['ADMIN', 'SUPER_ADMIN'].includes(userRole || '')) return new NextResponse("Unauthorized", { status: 401 })
+    if (!['ADMIN', 'SUPER_ADMIN'].includes(userRole || '')) return ApiResponse.unauthorized()
 
     const { searchParams } = new URL(req.url)
     const userId = searchParams.get('id')
     const isPermanent = searchParams.get('permanent') === 'true'
 
-    if (!userId || userId === session.user.id) return new NextResponse("Invalid ID", { status: 400 })
+    if (!userId) return ApiResponse.badRequest("User ID required")
 
-    const user = await prisma.user.findUnique({ where: { id: userId } })
-    if (!user) return new NextResponse("Not found", { status: 404 })
+    try {
+        await UserService.delete(userId, userRole!, session.user.id, isPermanent)
+        return ApiResponse.success({ id: userId, permanent: isPermanent })
+    } catch (error: any) {
+        if (error.message === 'INVALID_ID') return ApiResponse.badRequest("Invalid ID or cannot delete self")
+        if (error.message === 'USER_NOT_FOUND') return ApiResponse.notFound("User not found")
+        if (error.message === 'FORBIDDEN') return ApiResponse.forbidden("Insufficient permissions to delete this user")
+        if (error.message === 'MUST_SOFT_DELETE_FIRST') return ApiResponse.badRequest("Must soft-delete the user first")
 
-    if (user.role === 'ADMIN' && userRole !== 'SUPER_ADMIN') return new NextResponse("Forbidden", { status: 403 })
-    if (user.role === 'SUPER_ADMIN') return new NextResponse("Forbidden", { status: 403 })
-
-    if (isPermanent) {
-        if (user.status !== 'DELETED') return new NextResponse("Must soft-delete first", { status: 400 })
-        await prisma.user.delete({ where: { id: userId } })
-        return NextResponse.json({ success: true, id: userId })
+        throw error
     }
-
-    await prisma.user.update({
-        where: { id: userId },
-        data: { status: 'DELETED', email: `${user.email}_DELETED_${Date.now()}` }
-    })
-    return NextResponse.json({ success: true, id: userId })
 }, {
     audit: { action: 'DELETE_USER', entityType: 'USER', getEntityId: (res) => res.id }
 })

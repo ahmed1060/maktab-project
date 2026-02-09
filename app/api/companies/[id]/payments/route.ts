@@ -1,67 +1,34 @@
-import { NextResponse } from "next/server"
-import { prisma } from "@/lib/prisma"
-import { getServerSession } from "next-auth"
-import { authOptions } from "@/lib/auth"
+import { withStandardHandler } from "@/lib/api-utils"
+import { ApiResponse } from "@/lib/api-response"
+import { CompanyService } from "@/lib/services/company.service"
 
-export async function GET(
-    req: Request,
-    { params }: { params: { id: string } }
-) {
+export const GET = withStandardHandler(async (req, session, json, { params }) => {
+    if (session.user.role !== 'SUPER_ADMIN') return ApiResponse.unauthorized()
+
     try {
-        const session = await getServerSession(authOptions)
-        if (!session?.user || session.user.role !== 'SUPER_ADMIN') {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-        }
-
-        const { id } = params
-
-        const payments = await prisma.companyPayment.findMany({
-            where: { companyId: id },
-            orderBy: { createdAt: 'desc' }
-        })
-
-        return NextResponse.json(payments)
-    } catch (error) {
+        const payments = await CompanyService.getPayments(params.id)
+        return ApiResponse.success(payments)
+    } catch (error: any) {
         console.error('Fetch payments error:', error)
-        return NextResponse.json(
-            { error: "Failed to fetch payments" },
-            { status: 500 }
-        )
+        return ApiResponse.error("Failed to fetch payments")
     }
-}
+})
 
-export async function POST(
-    req: Request,
-    { params }: { params: { id: string } }
-) {
+export const POST = withStandardHandler(async (req, session, json, { params }) => {
+    if (session.user.role !== 'SUPER_ADMIN') return ApiResponse.unauthorized()
+
+    const { cost, subscriptionType } = json
+    if (!cost || !subscriptionType) {
+        return ApiResponse.badRequest("Cost and subscription type are required")
+    }
+
     try {
-        const session = await getServerSession(authOptions)
-        if (!session?.user || session.user.role !== 'SUPER_ADMIN') {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-        }
-
-        const { id } = params
-        const { cost, subscriptionType } = await req.json()
-
-        if (!cost || !subscriptionType) {
-            return NextResponse.json({ error: "Cost and subscription type are required" }, { status: 400 })
-        }
-
-        const payment = await prisma.companyPayment.create({
-            data: {
-                companyId: id,
-                cost: parseFloat(cost),
-                subscriptionType,
-                status: 'UNPAID'
-            }
-        })
-
-        return NextResponse.json(payment)
-    } catch (error) {
+        const payment = await CompanyService.createPayment(params.id, parseFloat(cost), subscriptionType)
+        return ApiResponse.success(payment, 201)
+    } catch (error: any) {
         console.error('Create payment error:', error)
-        return NextResponse.json(
-            { error: "Failed to create payment" },
-            { status: 500 }
-        )
+        return ApiResponse.error("Failed to create payment")
     }
-}
+}, {
+    audit: { action: 'CREATE_COMPANY_PAYMENT', entityType: 'COMPANY_PAYMENT', getEntityId: (res) => res.id }
+})

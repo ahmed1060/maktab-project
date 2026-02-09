@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server"
+import { ApiResponse } from "@/lib/api-response"
 import { uploadToCloud } from "@/lib/storage"
 
 export async function POST(req: Request) {
@@ -21,10 +21,8 @@ export async function POST(req: Request) {
             files.push(singularFile)
         }
 
-
-
         if (files.length === 0) {
-            return NextResponse.json({ success: false, error: 'No files provided' }, { status: 400 })
+            return ApiResponse.badRequest("No files provided")
         }
 
         const MAX_SIZE = 4 * 1024 * 1024 // 4MB
@@ -39,16 +37,13 @@ export async function POST(req: Request) {
         for (const file of files) {
             // 1. Validate Size
             if (file.size > MAX_SIZE) {
-                return NextResponse.json({ success: false, error: `File ${file.name} exceeds 4MB limit` }, { status: 400 })
+                return ApiResponse.badRequest(`File ${file.name} exceeds 4MB limit`)
             }
 
             // 2. Validate Extension
             const ext = file.name.substring(file.name.lastIndexOf('.')).toLowerCase()
             if (!allowedExtensions.includes(ext)) {
-                return NextResponse.json({
-                    success: false,
-                    error: `Invalid file type for ${file.name}. Only Images, PDFs, and Office documents are allowed.`
-                }, { status: 400 })
+                return ApiResponse.badRequest(`Invalid file type for ${file.name}. Only Images, PDFs, and Office documents are allowed.`)
             }
 
             // 3. Upload to Supabase via helper
@@ -56,17 +51,12 @@ export async function POST(req: Request) {
             publicUrls.push(publicUrl)
         }
 
-        // Return single url for legacy single-file components, and urls array for multi-file components
-        return NextResponse.json({
-            success: true,
-            url: publicUrls[0], // For legacy support
-            urls: publicUrls    // For multi-file support
+        return ApiResponse.success({
+            url: publicUrls[0],
+            urls: publicUrls
         })
     } catch (error: any) {
         console.error('Upload route error:', error)
-        return NextResponse.json({
-            success: false,
-            error: error.message || 'Failed to upload file to cloud storage'
-        }, { status: 500 })
+        return ApiResponse.error(error.message || 'Failed to upload file to cloud storage')
     }
 }

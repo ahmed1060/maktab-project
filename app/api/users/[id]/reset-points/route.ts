@@ -1,41 +1,20 @@
-import { NextResponse } from "next/server"
-import { getServerSession } from "next-auth"
-import { authOptions } from "@/lib/auth"
-import { prisma } from "@/lib/prisma"
+import { withStandardHandler } from "@/lib/api-utils"
+import { ApiResponse } from "@/lib/api-response"
+import { UserService } from "@/lib/services/user.service"
 import { verifyResourceAccess } from "@/lib/security"
 
-export async function POST(
-    request: Request,
-    { params }: { params: { id: string } }
-) {
-    const session = await getServerSession(authOptions)
-    if (!session) return new NextResponse("Unauthorized", { status: 401 })
+export const POST = withStandardHandler(async (req, session, json, { params }) => {
+    const userId = params.id
 
-    // Company Isolation Check
-    const hasAccess = await verifyResourceAccess(session, params.id, 'USER')
-    if (!hasAccess) {
-        return new NextResponse("Access Denied: User belongs to a different company", { status: 403 })
-    }
-
-    const userRole = (session?.user as any)?.role
-
-    // Only ADMIN and SUPER_ADMIN can reset points
-    if (!['ADMIN', 'SUPER_ADMIN'].includes(userRole)) {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 403 })
-    }
+    // 1. Company Isolation
+    const hasAccess = await verifyResourceAccess(session, userId, 'USER')
+    if (!hasAccess) return ApiResponse.forbidden("Access denied")
 
     try {
-        await prisma.user.update({
-            where: { id: params.id },
-            data: { totalDifficultyPoints: 0 }
-        })
-
-        return NextResponse.json({ success: true })
-    } catch (error) {
-        console.error("Error resetting points:", error)
-        return NextResponse.json(
-            { error: "Failed to reset points" },
-            { status: 500 }
-        )
+        const result = await UserService.resetPoints(userId, session.user.role)
+        return ApiResponse.success(result)
+    } catch (error: any) {
+        if (error.message === 'FORBIDDEN') return ApiResponse.forbidden("Unauthorized")
+        throw error
     }
-}
+})

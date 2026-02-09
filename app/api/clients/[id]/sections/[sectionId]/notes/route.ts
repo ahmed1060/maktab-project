@@ -1,313 +1,141 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { withStandardHandler } from "@/lib/api-utils"
+import { ApiResponse } from "@/lib/api-response"
+import { noteSchema } from "@/lib/validations/note.schema"
+import { NoteService } from "@/lib/services/note.service"
+import { prisma } from "@/lib/prisma"
 
-import { getServerSession } from "next-auth"
-import { authOptions } from "@/lib/auth"
-import { supabase } from "@/lib/storage"
+export const GET = withStandardHandler(async (req, session, _body, { params }) => {
+    const { sectionId } = params
+    const { searchParams } = new URL(req.url)
+    const page = parseInt(searchParams.get('page') || '1')
+    const limit = parseInt(searchParams.get('limit') || '10')
+    const search = searchParams.get('search') || ''
+    const skip = (page - 1) * limit
 
-export async function GET(
-    request: Request,
-    { params }: { params: { id: string, sectionId: string } }
-) {
     try {
-        const session = await getServerSession(authOptions)
-        const userId = (session?.user as any)?.id
-
-        if (!userId) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-        }
-
-        let user = await prisma.user.findUnique({
-            where: { id: userId },
-            select: { companyId: true, role: true }
-        }) as any
-
-        if (!user) {
-            const superAdmin = await prisma.superAdmin.findUnique({ where: { id: userId } })
-            if (superAdmin) {
-                user = { ...superAdmin, role: 'SUPER_ADMIN', companyId: null }
-            }
-        }
-
-        if (!user) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-        }
-
-        // Verify section ownership via BusinessClient
+        // Auth Check: Verify section belongs to company
         const section = await prisma.businessClientSection.findUnique({
-            where: { id: params.sectionId },
+            where: { id: sectionId },
             include: { client: { select: { companyId: true } } }
         })
 
-        if (!section) {
-            return NextResponse.json({ error: 'Section not found' }, { status: 404 })
-        }
+        if (!section) return ApiResponse.notFound("Section not found")
 
-        // Auth Logic: Super Admin OR Matching Company
-        if (user?.role !== 'SUPER_ADMIN') {
-            if (!user?.companyId || user.companyId !== section.client.companyId) {
-                return NextResponse.json({ error: 'Access denied' }, { status: 404 })
+        if (session.user.role !== 'SUPER_ADMIN') {
+            if (section.client.companyId !== session.user.companyId) {
+                return ApiResponse.forbidden("Access denied")
             }
         }
 
-        const { searchParams } = new URL(request.url)
-        const page = parseInt(searchParams.get('page') || '1')
-        const limit = parseInt(searchParams.get('limit') || '10')
-        const search = searchParams.get('search') || ''
-        const skip = (page - 1) * limit
-
-        const where: any = {
-            sectionId: params.sectionId
-        }
-
-        if (search) {
-            where.OR = [
-                { content: { contains: search, mode: 'insensitive' } },
-                {
-                    createdBy: {
-                        OR: [
-                            { firstName: { contains: search, mode: 'insensitive' } },
-                            { lastName: { contains: search, mode: 'insensitive' } }
-                        ]
-                    }
-                }
-            ]
-        }
-
-        const [notes, total] = await Promise.all([
-            prisma.businessClientNote.findMany({
-                where,
-                include: {
-                    createdBy: {
-                        select: { firstName: true, lastName: true, avatar: true, role: true }
-                    },
-                    lastEditedBy: {
-                        select: { firstName: true, lastName: true, role: true }
-                    }
-                },
-                orderBy: {
-                    createdAt: 'desc'
-                },
-                skip,
-                take: limit
-            }),
-            prisma.businessClientNote.count({
-                where
-            })
-        ])
-
-        return NextResponse.json({
-            data: notes,
-            total,
+        const result = await NoteService.getMany(sectionId, skip, limit, search)
+        return ApiResponse.success({
+            data: result.notes,
+            total: result.total,
             page,
-            totalPages: Math.ceil(total / limit)
+            totalPages: Math.ceil(result.total / limit)
         })
-
-    } catch (error) {
-        console.error('Error fetching notes:', error)
-        return NextResponse.json({ error: 'Failed to fetch notes' }, { status: 500 })
+    } catch (error: any) {
+        throw error
     }
-}
+})
 
-export async function POST(
-    request: Request,
-    { params }: { params: { id: string, sectionId: string } }
-) {
+export const POST = withStandardHandler(async (req, session, json, { params }) => {
+    const { sectionId } = params
+
+    // 1. Validation
+    const validation = noteSchema.safeParse(json)
+    if (!validation.success) {
+        return ApiResponse.badRequest("Validation Error", validation.error.format())
+    }
+
     try {
-        const session = await getServerSession(authOptions)
-        const userId = (session?.user as any)?.id
-        const userRole = (session?.user as any)?.role
-
-        if (!userId) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-        }
-
-        let user = await prisma.user.findUnique({
-            where: { id: userId },
-            select: { companyId: true, role: true }
-        }) as any
-
-        if (!user) {
-            const superAdmin = await prisma.superAdmin.findUnique({ where: { id: userId } })
-            if (superAdmin) {
-                user = { ...superAdmin, role: 'SUPER_ADMIN', companyId: null }
-            }
-        }
-
-        // Verify section ownership via BusinessClient
+        // 2. Auth Check
         const section = await prisma.businessClientSection.findUnique({
-            where: { id: params.sectionId },
+            where: { id: sectionId },
             include: { client: { select: { companyId: true } } }
         })
 
-        if (!section) {
-            return NextResponse.json({ error: 'Section not found' }, { status: 404 })
-        }
+        if (!section) return ApiResponse.notFound("Section not found")
 
-        if (user?.role !== 'SUPER_ADMIN') {
-            if (!user?.companyId || user.companyId !== section.client.companyId) {
-                return NextResponse.json({ error: 'Access denied' }, { status: 404 })
+        if (session.user.role !== 'SUPER_ADMIN') {
+            if (section.client.companyId !== session.user.companyId) {
+                return ApiResponse.forbidden("Access denied")
             }
         }
 
-        const body = await request.json()
-        const { content, attachment, expiryDate, reminderDays } = body
+        // 3. Service
+        const result = await NoteService.create(sectionId, validation.data, session)
+        return ApiResponse.success(result, 201)
+    } catch (error: any) {
+        throw error
+    }
+})
 
-        if (!content) return NextResponse.json({ error: 'Content required' }, { status: 400 })
+export const PUT = withStandardHandler(async (req, session, json) => {
+    const { noteId } = json
 
+    if (!noteId) return ApiResponse.badRequest("Note ID required")
 
-        const note = await prisma.businessClientNote.create({
-            data: {
-                content,
-                sectionId: params.sectionId,
-                createdById: userRole === 'SUPER_ADMIN' ? null : userId,
-                attachment: Array.isArray(attachment) ? JSON.stringify(attachment) : attachment, // Now expects standardized objects
-                expiryDate: expiryDate ? new Date(expiryDate) : null,
-                reminderDays: reminderDays ? parseInt(reminderDays) : null
-            }
+    // 1. Validation
+    const validation = noteSchema.safeParse(json)
+    if (!validation.success) {
+        return ApiResponse.badRequest("Validation Error", validation.error.format())
+    }
+
+    try {
+        // 2. Auth Check
+        const note = await prisma.businessClientNote.findUnique({
+            where: { id: noteId },
+            include: { section: { include: { client: { select: { companyId: true } } } } }
         })
 
-        return NextResponse.json(note)
+        if (!note) return ApiResponse.notFound("Note not found")
 
-    } catch (error) {
-        console.error('Error creating note:', error)
-        return NextResponse.json({ error: 'Failed to create note', details: String(error) }, { status: 500 })
-    }
-}
-
-export async function DELETE(
-    request: NextRequest,
-) {
-    try {
-        const session = await getServerSession(authOptions)
-
-        if (!session?.user || (session.user.role !== 'SUPER_ADMIN' && session.user.role !== 'ADMIN')) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+        if (session.user.role !== 'SUPER_ADMIN') {
+            if (note.section.client.companyId !== session.user.companyId) {
+                return ApiResponse.forbidden("Access denied")
+            }
         }
 
-        const noteId = request.nextUrl.searchParams.get('noteId') || request.nextUrl.searchParams.get('id')
+        // 3. Service
+        const result = await NoteService.update(noteId, validation.data, session)
+        return ApiResponse.success(result)
+    } catch (error: any) {
+        throw error
+    }
+})
 
-        if (!noteId) {
-            return NextResponse.json({ error: 'ID is required' }, { status: 400 })
+export const DELETE = withStandardHandler(async (req, session) => {
+    const { searchParams } = new URL(req.url)
+    const noteId = searchParams.get('id') || searchParams.get('noteId')
+
+    if (!noteId) return ApiResponse.badRequest("Note ID required")
+
+    try {
+        // 1. Auth Check: Super Admin or Admin only
+        if (!['SUPER_ADMIN', 'ADMIN'].includes(session.user.role)) {
+            return ApiResponse.forbidden("Unauthorized")
         }
 
         const note = await prisma.businessClientNote.findUnique({
             where: { id: noteId },
-            include: {
-                section: {
-                    include: {
-                        client: {
-                            select: { companyId: true }
-                        }
-                    }
-                }
-            }
+            include: { section: { include: { client: { select: { companyId: true } } } } }
         })
 
-        if (!note) return NextResponse.json({ error: 'Note not found' }, { status: 404 })
+        if (!note) return ApiResponse.notFound("Note not found")
 
         if (session.user.role !== 'SUPER_ADMIN') {
             if (note.section.client.companyId !== session.user.companyId) {
-                return NextResponse.json({ error: 'Access denied' }, { status: 403 })
+                return ApiResponse.forbidden("Access denied")
             }
         }
 
-        if (note.attachment) {
-            try {
-                // Handle both single string and JSON array
-                let filesToDelete: string[] = []
-                if (note.attachment.startsWith('[')) {
-                    try {
-                        filesToDelete = JSON.parse(note.attachment)
-                    } catch {
-                        filesToDelete = [note.attachment]
-                    }
-                } else {
-                    filesToDelete = [note.attachment]
-                }
-
-                for (const fileItem of filesToDelete) {
-                    if (!fileItem) continue
-                    const fileUrl = typeof fileItem === 'string' ? fileItem : (fileItem as any).url
-                    if (!fileUrl) continue
-
-                    // Extract file path from URL (e.g., "notes/filename.ext")
-                    const urlParts = fileUrl.split('/app-assets/')
-                    if (urlParts.length > 1) {
-                        const filePath = urlParts[1]
-                        await supabase.storage.from('app-assets').remove([filePath])
-                    }
-                }
-            } catch (storageError) {
-                console.error('Failed to delete attachment from storage:', storageError)
-            }
-        }
-
-        await prisma.businessClientNote.delete({ where: { id: noteId } })
-
-        return NextResponse.json({ success: true })
-
-    } catch (error) {
-        console.error('Error deleting note:', error)
-        return NextResponse.json({ error: 'Failed to delete note' }, { status: 500 })
+        // 2. Service
+        await NoteService.delete(noteId)
+        return ApiResponse.success({ success: true, id: noteId })
+    } catch (error: any) {
+        throw error
     }
-}
-
-export async function PUT(
-    request: NextRequest,
-) {
-    try {
-        const session = await getServerSession(authOptions)
-        const userId = (session?.user as any)?.id
-        const userRole = (session?.user as any)?.role
-
-        if (!session?.user) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-        }
-
-        const body = await request.json()
-        const { noteId, content, expiryDate, reminderDays } = body
-
-        if (!noteId) return NextResponse.json({ error: 'Note ID required' }, { status: 400 })
-
-        const note = await prisma.businessClientNote.findUnique({
-            where: { id: noteId },
-            include: {
-                section: {
-                    include: {
-                        client: {
-                            select: { companyId: true }
-                        }
-                    }
-                }
-            }
-        })
-
-        if (!note) return NextResponse.json({ error: 'Note not found' }, { status: 404 })
-
-        // Auth Logic: Super Admin OR Matching Company
-        if (session.user.role !== 'SUPER_ADMIN') {
-            if (note.section.client.companyId !== session.user.companyId) {
-                return NextResponse.json({ error: 'Access denied' }, { status: 403 })
-            }
-        }
-
-        const updatedNote = await prisma.businessClientNote.update({
-            where: { id: noteId },
-            data: {
-                content,
-                attachment: Array.isArray(body.attachment) ? JSON.stringify(body.attachment) : body.attachment, // Now expects standardized objects
-                expiryDate: expiryDate ? new Date(expiryDate) : null,
-                reminderDays: reminderDays ? parseInt(reminderDays) : null,
-                lastEditedById: userRole === 'SUPER_ADMIN' ? null : userId,
-                lastEditedAt: new Date()
-            }
-        })
-
-        return NextResponse.json(updatedNote)
-
-    } catch (error) {
-        console.error('Error updating note:', error)
-        return NextResponse.json({ error: 'Failed to update note' }, { status: 500 })
-    }
-}
+}, {
+    audit: { action: 'DELETE_NOTE', entityType: 'NOTE', getEntityId: (res) => res?.id }
+})

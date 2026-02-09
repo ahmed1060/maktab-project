@@ -1,10 +1,11 @@
-import { NextResponse } from 'next/server';
-import { getEgyptTodayStr, getEgyptNow } from '@/lib/time';
+import { withStandardHandler } from "@/lib/api-utils"
+import { ApiResponse } from "@/lib/api-response"
+import { getEgyptTodayStr, getEgyptNow } from '@/lib/time'
 
-export async function GET() {
-    return NextResponse.json({
+export const GET = withStandardHandler(async () => {
+    return ApiResponse.success({
         today: getEgyptTodayStr(),
         now: getEgyptNow().toISOString(),
         timezone: 'Africa/Cairo'
-    });
-}
+    })
+})

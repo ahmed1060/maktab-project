@@ -1,14 +1,10 @@
-import { NextResponse } from "next/server"
-import { getServerSession } from "next-auth"
-import { authOptions } from "@/lib/auth"
+import { withStandardHandler } from "@/lib/api-utils"
+import { ApiResponse } from "@/lib/api-response"
 import { uploadTemplateToCloud } from "@/lib/storage"
 
-export async function POST(req: Request) {
-    const session = await getServerSession(authOptions)
-    const userRole = (session?.user as any)?.role
-
-    if (!session || userRole !== 'SUPER_ADMIN') {
-        return new NextResponse("Unauthorized. Only Super Admins can upload templates.", { status: 401 })
+export const POST = withStandardHandler(async (req, session) => {
+    if (session.user.role !== 'SUPER_ADMIN') {
+        return ApiResponse.unauthorized("Only Super Admins can upload templates")
     }
 
     try {
@@ -17,22 +13,16 @@ export async function POST(req: Request) {
         const locale = formData.get('locale') as string // 'en' or 'ar'
 
         if (!file) {
-            return new NextResponse(JSON.stringify({ message: "No file provided" }), { status: 400 })
+            return ApiResponse.badRequest("No file provided")
         }
 
         const publicUrl = await uploadTemplateToCloud(file, locale)
 
-        return NextResponse.json({
-            success: true,
+        return ApiResponse.success({
             message: `Template for ${locale} uploaded successfully`,
             url: publicUrl
         })
-
     } catch (error: any) {
-        console.error("[TEMPLATE_UPLOAD_ERROR]", error)
-        return new NextResponse(JSON.stringify({
-            message: error.message || "Internal Server Error",
-            details: error.stack
-        }), { status: 500 })
+        throw error
     }
-}
+})

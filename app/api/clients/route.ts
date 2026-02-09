@@ -1,6 +1,8 @@
 import { withStandardHandler } from "@/lib/api-utils"
-import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
+import { ApiResponse } from "@/lib/api-response"
+import { createClientSchema, updateClientSchema } from "@/lib/validations/client.schema"
+import { ClientService } from "@/lib/services/client.service"
 
 export const GET = withStandardHandler(async (req, session) => {
     const { searchParams } = new URL(req.url)
@@ -9,6 +11,7 @@ export const GET = withStandardHandler(async (req, session) => {
     const userRole = session.user.role
     const userCompanyId = (session.user as any).companyId
 
+    // 1. Single Client Fetch
     if (clientId) {
         const client = await prisma.businessClient.findUnique({
             where: { id: clientId },
@@ -19,13 +22,14 @@ export const GET = withStandardHandler(async (req, session) => {
             }
         })
 
-        if (!client) return new NextResponse("Client not found", { status: 404 })
-        if (userRole !== 'SUPER_ADMIN' && client.companyId !== userCompanyId) return new NextResponse("Forbidden", { status: 403 })
+        if (!client) return ApiResponse.notFound("Client not found")
+        if (userRole !== 'SUPER_ADMIN' && client.companyId !== userCompanyId) return ApiResponse.forbidden()
 
-        return NextResponse.json(client)
+        return ApiResponse.success(client)
     }
 
-    if (!userCompanyId && userRole !== 'SUPER_ADMIN') return NextResponse.json([])
+    // 2. Multi-Client Fetch
+    if (!userCompanyId && userRole !== 'SUPER_ADMIN') return ApiResponse.success({ data: [], total: 0, page: 1, totalPages: 0 })
 
     const where: any = {}
     if (userRole === 'SUPER_ADMIN') {
@@ -53,7 +57,7 @@ export const GET = withStandardHandler(async (req, session) => {
         prisma.businessClient.count({ where })
     ])
 
-    return NextResponse.json({
+    return ApiResponse.success({
         data: clients,
         total,
         page,
@@ -62,81 +66,71 @@ export const GET = withStandardHandler(async (req, session) => {
 })
 
 export const POST = withStandardHandler(async (req, session, json) => {
-    const userRole = session.user.role
-    const userId = session.user.id
-    const userCompanyId = (session.user as any).companyId
-
-    const { name, companyId } = json
-    if (!name) return new NextResponse("Name is required", { status: 400 })
-
-    let targetCompanyId = userCompanyId
-    if (userRole === 'SUPER_ADMIN') {
-        if (companyId) targetCompanyId = companyId
-        else if (!targetCompanyId) return new NextResponse("Company selection required", { status: 400 })
-    } else {
-        if (!targetCompanyId) return new NextResponse("User not assigned to a company", { status: 404 })
+    // 1. Validation
+    const validation = createClientSchema.safeParse(json)
+    if (!validation.success) {
+        return ApiResponse.badRequest("Validation Error", validation.error.format())
     }
 
-    const client = await prisma.businessClient.create({
-        data: {
-            name,
-            companyId: targetCompanyId!,
-            createdById: userRole === 'SUPER_ADMIN' ? null : userId
-        }
-    })
+    try {
+        // 2. Service
+        const result = await ClientService.create(validation.data, session)
+        return ApiResponse.success(result, 201)
+    } catch (error: any) {
+        // 3. Error Mapping
+        if (error.message === 'COMPANY_SELECTION_REQUIRED') return ApiResponse.badRequest("Company selection required for Super Admin")
+        if (error.message === 'USER_NO_COMPANY') return ApiResponse.forbidden("User is not assigned to a company")
 
-    return NextResponse.json(client)
+        throw error
+    }
 }, {
     audit: { action: 'CREATE_CLIENT', entityType: 'CLIENT', getEntityId: (res) => res.id }
 })
 
 export const PUT = withStandardHandler(async (req, session, json) => {
-    const userRole = session.user.role
-    const userId = session.user.id
-    const userCompanyId = (session.user as any).companyId
-
-    if (!['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole || '')) {
-        return new NextResponse("Unauthorized", { status: 401 })
+    // 1. Validation
+    const validation = updateClientSchema.safeParse(json)
+    if (!validation.success) {
+        return ApiResponse.badRequest("Validation Error", validation.error.format())
     }
 
-    const { id, name } = json
-    if (!id || !name) return new NextResponse("ID and Name are required", { status: 400 })
+    const userRole = session.user.role
+    if (!['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole || '')) {
+        return ApiResponse.unauthorized()
+    }
 
-    const client = await prisma.businessClient.findUnique({ where: { id } })
-    if (!client) return new NextResponse("Client not found", { status: 404 })
+    try {
+        // 2. Service
+        const result = await ClientService.update(validation.data, session)
+        return ApiResponse.success(result)
+    } catch (error: any) {
+        // 3. Error Mapping
+        if (error.message === 'CLIENT_NOT_FOUND') return ApiResponse.notFound("Client not found")
+        if (error.message === 'FORBIDDEN') return ApiResponse.forbidden()
 
-    if (userRole !== 'SUPER_ADMIN' && client.companyId !== userCompanyId) return new NextResponse("Forbidden", { status: 403 })
-
-    const updated = await prisma.businessClient.update({
-        where: { id },
-        data: {
-            name,
-            lastEditedById: userRole === 'SUPER_ADMIN' ? null : userId
-        }
-    })
-
-    return NextResponse.json(updated)
+        throw error
+    }
 }, {
     audit: { action: 'UPDATE_CLIENT', entityType: 'CLIENT', getEntityId: (res) => res.id }
 })
 
 export const DELETE = withStandardHandler(async (req, session) => {
     const userRole = session.user.role
-    const userCompanyId = (session.user as any).companyId
-
-    if (!['ADMIN', 'SUPER_ADMIN'].includes(userRole || '')) return new NextResponse("Unauthorized", { status: 401 })
+    if (!['ADMIN', 'SUPER_ADMIN'].includes(userRole || '')) return ApiResponse.unauthorized()
 
     const { searchParams } = new URL(req.url)
     const id = searchParams.get('id')
-    if (!id) return new NextResponse("ID required", { status: 400 })
+    if (!id) return ApiResponse.badRequest("ID required")
 
-    const client = await prisma.businessClient.findUnique({ where: { id } })
-    if (!client) return new NextResponse("Client not found", { status: 404 })
+    try {
+        await ClientService.delete(id, session)
+        return ApiResponse.success({ success: true, id })
+    } catch (error: any) {
+        if (error.message === 'CLIENT_NOT_FOUND') return ApiResponse.notFound("Client not found")
+        if (error.message === 'FORBIDDEN') return ApiResponse.forbidden()
 
-    if (userRole !== 'SUPER_ADMIN' && client.companyId !== userCompanyId) return new NextResponse("Forbidden", { status: 403 })
-
-    await prisma.businessClient.delete({ where: { id } })
-    return NextResponse.json({ success: true, id })
+        throw error
+    }
 }, {
     audit: { action: 'DELETE_CLIENT', entityType: 'CLIENT', getEntityId: (res) => res.id }
 })

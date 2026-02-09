@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
+import { ApiResponse } from "./api-response"
 
 type HandlerOptions = {
     allowedRoles?: string[]
@@ -20,7 +21,7 @@ export function withStandardHandler(
         try {
             const session = await getServerSession(authOptions)
             if (!session) {
-                return new NextResponse("Unauthorized", { status: 401 })
+                return ApiResponse.unauthorized()
             }
 
             const userRole = (session.user as any).role
@@ -28,7 +29,7 @@ export function withStandardHandler(
 
             // Role Check
             if (options.allowedRoles && !options.allowedRoles.includes(userRole)) {
-                return new NextResponse("Forbidden", { status: 403 })
+                return ApiResponse.forbidden()
             }
 
             // --- PROACTIVE SUSPENSION CHECK ---
@@ -45,7 +46,7 @@ export function withStandardHandler(
 
                 // Allow ONLY a one-time draft save during suspension
                 if (!(isEmergencySave && isDraftUpload)) {
-                    return new NextResponse("Forbidden: Account suspended or company banned", { status: 403 })
+                    return ApiResponse.forbidden("Account suspended or company banned")
                 }
             }
             // -----------------------------------
@@ -71,7 +72,9 @@ export function withStandardHandler(
                     try {
                         const resClone = response.clone()
                         const resData = await resClone.json()
-                        entityId = options.audit.getEntityId(resData, body)
+                        // Extract from standardized structure if present
+                        const data = resData.success ? resData.data : resData
+                        entityId = options.audit.getEntityId(data, body)
                     } catch {
                         // Ignore if response is not JSON
                     }
@@ -92,7 +95,7 @@ export function withStandardHandler(
             return response
         } catch (error: any) {
             console.error("API Standard Handler Error:", error)
-            return new NextResponse(error.message || "Internal Server Error", { status: 500 })
+            return ApiResponse.error(error.message || "Internal Server Error")
         }
     }
 }

@@ -1,63 +1,30 @@
-import { NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
+import { withStandardHandler } from "@/lib/api-utils"
+import { ApiResponse } from "@/lib/api-response"
+import { SalaryService } from "@/lib/services/salary.service"
 import { verifyResourceAccess } from "@/lib/security"
 
-export async function POST(req: Request, { params }: { params: { id: string, adjId: string } }) {
-    const session = await getServerSession(authOptions)
-    if (!session) return new NextResponse("Unauthorized", { status: 401 })
+export const POST = withStandardHandler(async (req, session, json, { params }) => {
+    const { id: userId, adjId } = params
 
-    // Company Isolation Check
-    const hasAccess = await verifyResourceAccess(session, params.id, 'USER')
-    if (!hasAccess) {
-        return new NextResponse("Access Denied: User belongs to a different company", { status: 403 })
-    }
+    // 1. Company Isolation
+    const hasAccess = await verifyResourceAccess(session, userId, 'USER')
+    if (!hasAccess) return ApiResponse.forbidden("Access denied")
 
-    const userRole = (session?.user as any)?.role
-
+    const userRole = session.user.role
     if (!['ADMIN', 'SUPER_ADMIN'].includes(userRole)) {
-        return new NextResponse("Unauthorized", { status: 401 })
+        return ApiResponse.unauthorized()
     }
 
     try {
-        const adjustment = await prisma.salaryAdjustment.findUnique({
-            where: { id: params.adjId }
-        })
-
-        if (!adjustment || adjustment.status === 'ROLLED_BACK') {
-            return new NextResponse("Invalid adjustment or already rolled back", { status: 400 })
+        const result = await SalaryService.rollbackAdjustment(userId, adjId)
+        return ApiResponse.success(result)
+    } catch (error: any) {
+        if (error.message === 'INVALID_ADJUSTMENT') {
+            return ApiResponse.badRequest("Invalid adjustment or already rolled back")
         }
-
-        const date = new Date(adjustment.createdAt)
-        const month = date.getMonth() + 1
-        const year = date.getFullYear()
-
-        const record = await prisma.salaryRecord.findUnique({
-            where: { userId_month_year: { userId: params.id, month, year } }
-        })
-
-        if (!record) {
-            return new NextResponse("Salary record not found for this month", { status: 404 })
+        if (error.message === 'RECORD_NOT_FOUND') {
+            return ApiResponse.notFound("Salary record not found for this month")
         }
-
-        await prisma.$transaction([
-            prisma.salaryAdjustment.update({
-                where: { id: params.adjId },
-                data: { status: 'ROLLED_BACK' }
-            }),
-            prisma.salaryRecord.update({
-                where: { id: record.id },
-                data: {
-                    bonusDays: adjustment.type === 'BONUS' ? { decrement: adjustment.amount } : undefined,
-                    deductions: adjustment.type === 'DEDUCTION' ? { decrement: adjustment.amount } : undefined
-                }
-            })
-        ])
-
-        return NextResponse.json({ success: true })
-    } catch (error) {
-        console.error('Error rolling back adjustment:', error)
-        return new NextResponse("Failed to rollback adjustment", { status: 500 })
+        throw error
     }
-}
+})

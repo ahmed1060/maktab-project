@@ -1,6 +1,8 @@
 import { withStandardHandler } from "@/lib/api-utils"
-import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
+import { ApiResponse } from "@/lib/api-response"
+import { createTaskSchema } from "@/lib/validations/task.schema"
+import { TaskService } from "@/lib/services/task.service"
 
 export const GET = withStandardHandler(async (req, session) => {
     const userRole = (session.user as any).role
@@ -25,7 +27,7 @@ export const GET = withStandardHandler(async (req, session) => {
     } else if (['ADMIN', 'TEAM_LEADER'].includes(userRole)) {
         const userCompanyId = (session.user as any).companyId
         if (!userCompanyId) {
-            return NextResponse.json([])
+            return ApiResponse.success({ data: [], total: 0, page: 1, totalPages: 0 })
         }
         whereClause.companyId = userCompanyId
     } else {
@@ -88,7 +90,7 @@ export const GET = withStandardHandler(async (req, session) => {
         (prisma.task as any).count({ where: whereClause })
     ])
 
-    return NextResponse.json({
+    return ApiResponse.success({
         data: tasks,
         total,
         page,
@@ -97,95 +99,25 @@ export const GET = withStandardHandler(async (req, session) => {
 })
 
 export const POST = withStandardHandler(async (req, session, json) => {
-    const userRole = (session.user as any).role
-    if (['EMPLOYEE'].includes(userRole)) {
-        return new NextResponse("Forbidden", { status: 403 })
+    // 1. Zod Validation
+    const validation = createTaskSchema.safeParse(json)
+    if (!validation.success) {
+        return ApiResponse.badRequest("Validation Error", validation.error.format())
     }
 
-    const { title, description, assigneeIds, deadline, difficulty = 0, location, attachments } = json
-    const finalAssigneeIds: string[] = assigneeIds || []
+    try {
+        // 2. Delegate to Service
+        const result = await TaskService.create(validation.data, session)
+        return ApiResponse.success(result, 201)
+    } catch (error: any) {
+        // 3. Error Mapping
+        if (error.message === 'DEADLINE_IN_PAST') return ApiResponse.badRequest("Deadline cannot be in the past")
+        if (error.message === 'CROSS_COMPANY_ASSIGNMENT_FORBIDDEN') return ApiResponse.forbidden("Cannot assign task to user in a different company")
+        if (error.message === 'TL_CANNOT_ASSIGN_TO_ADMIN') return ApiResponse.forbidden("Team Leaders cannot assign tasks to Admins or Super Admins")
+        if (error.message === 'ASSIGNEE_NOT_FOUND') return ApiResponse.notFound("One or more assignees not found")
 
-    if (!title || title.length < 3 || title.length > 100) {
-        return new NextResponse(JSON.stringify({ message: "Title must be between 3 and 100 characters" }), { status: 400 })
+        throw error // bubble up to withStandardHandler for 500
     }
-    if (!description || description.length < 10 || description.length > 1000) {
-        return new NextResponse(JSON.stringify({ message: "Description must be between 10 and 1000 characters" }), { status: 400 })
-    }
-
-    const creatorId = (session.user as any).id
-    const creatorCompanyId = (session.user as any).companyId
-
-    if (userRole !== 'SUPER_ADMIN') {
-        if (!creatorCompanyId) return new NextResponse("You are not part of a company", { status: 403 })
-
-        const assigneeUsers = await prisma.user.findMany({
-            where: { id: { in: finalAssigneeIds } },
-            select: { id: true, companyId: true, role: true }
-        })
-
-        if (assigneeUsers.length !== finalAssigneeIds.length) return new NextResponse("One or more assignees not found", { status: 404 })
-
-        const externalAssignee = assigneeUsers.find(u => u.companyId !== creatorCompanyId)
-        if (externalAssignee) return new NextResponse("Cannot assign task to user in a different company", { status: 403 })
-
-        if (userRole === 'TEAM_LEADER') {
-            const adminAssignee = assigneeUsers.find(u => ['ADMIN', 'SUPER_ADMIN'].includes(u.role))
-            if (adminAssignee) return new NextResponse("Team Leaders cannot assign tasks to Admins or Super Admins", { status: 403 })
-        }
-    } else {
-        const assigneeUsersCount = await prisma.user.count({ where: { id: { in: finalAssigneeIds } } })
-        if (assigneeUsersCount !== finalAssigneeIds.length) return new NextResponse("One or more assignees not found", { status: 404 })
-    }
-
-    let finalCompanyId = creatorCompanyId
-    if (userRole === 'SUPER_ADMIN' && finalAssigneeIds.length > 0) {
-        const firstAssignee = await prisma.user.findUnique({
-            where: { id: finalAssigneeIds[0] },
-            select: { companyId: true }
-        })
-        if (firstAssignee) finalCompanyId = firstAssignee.companyId
-    }
-
-    if (!deadline) return new NextResponse("Deadline is required", { status: 400 })
-    const deadlineDate = new Date(deadline)
-    if (isNaN(deadlineDate.getTime())) return new NextResponse("Invalid deadline date format", { status: 400 })
-
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
-    if (deadlineDate < today) return new NextResponse("Deadline cannot be in the past", { status: 400 })
-
-    const result = await prisma.$transaction(async (tx) => {
-        const task = await tx.task.create({
-            data: {
-                title,
-                description,
-                companyId: finalCompanyId,
-                assignees: { connect: finalAssigneeIds.map(id => ({ id })) },
-                deadline: deadlineDate,
-                difficulty: Math.min(Math.max(difficulty, 0), 10),
-                status: 'PENDING',
-                location: location,
-                attachments: attachments ? JSON.stringify(attachments) : null,
-                createdBy: userRole === 'SUPER_ADMIN' ? null : creatorId,
-                comments: userRole === 'SUPER_ADMIN' ? JSON.stringify([{
-                    text: "Task created by Super Admin", author: "System", date: new Date().toISOString()
-                }]) : undefined
-            }
-        })
-
-        await tx.notification.createMany({
-            data: finalAssigneeIds.map(id => ({
-                userId: id,
-                type: 'TASK_ASSIGNED',
-                message: `You have been assigned a new task: ${title}`,
-                relatedId: task.id
-            }))
-        })
-
-        return task
-    })
-
-    return NextResponse.json(result)
 }, {
     audit: {
         action: 'CREATE_TASK',

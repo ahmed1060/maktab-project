@@ -1,31 +1,23 @@
-import { NextResponse } from "next/server"
-import { getServerSession } from "next-auth"
-import { authOptions } from "@/lib/auth"
+import { withStandardHandler } from "@/lib/api-utils"
+import { ApiResponse } from "@/lib/api-response"
 import { getTemplateUrl } from "@/lib/storage"
-import fs from "fs" // Keep for fallback if needed
+import fs from "fs"
 import path from "path"
+import { NextResponse } from "next/server"
 
-export async function GET(req: Request) {
-    const session = await getServerSession(authOptions)
-    if (!session) {
-        return new NextResponse("Unauthorized", { status: 401 })
-    }
-
+export const GET = withStandardHandler(async (req) => {
     const { searchParams } = new URL(req.url)
     const locale = searchParams.get('locale') || 'en'
 
     // 1. Try to get from cloud first
     const cloudUrl = getTemplateUrl(locale)
     if (cloudUrl) {
-        console.log("[TEMPLATE_DOWNLOAD] Redirecting to cloud:", cloudUrl)
         return NextResponse.redirect(cloudUrl)
     }
 
-    // 2. Fallback to local (for local development or if cloud fails)
+    // 2. Fallback to local
     const fileName = locale === 'ar' ? 'template_ar.xlsx' : 'template_en.xlsx'
     const filePath = path.join(process.cwd(), 'public', 'templates', fileName)
-
-    console.log("[TEMPLATE_DOWNLOAD] Fallback to local path:", filePath)
 
     if (fs.existsSync(filePath)) {
         const fileBuffer = fs.readFileSync(filePath)
@@ -37,5 +29,5 @@ export async function GET(req: Request) {
         })
     }
 
-    return new NextResponse(JSON.stringify({ message: "Template file not found" }), { status: 404 })
-}
+    return ApiResponse.notFound("Template file not found")
+})

@@ -1,48 +1,24 @@
-import { NextResponse } from "next/server"
-import { getServerSession } from "next-auth"
-import { authOptions } from "@/lib/auth"
-import { prisma } from "@/lib/prisma"
+import { withStandardHandler } from "@/lib/api-utils"
+import { ApiResponse } from "@/lib/api-response"
+import { UserService } from "@/lib/services/user.service"
 import { verifyResourceAccess } from "@/lib/security"
 
-export async function POST(
-    request: Request,
-    { params }: { params: { id: string } }
-) {
-    const session = await getServerSession(authOptions)
-    if (!session) return new NextResponse("Unauthorized", { status: 401 })
+export const POST = withStandardHandler(async (req, session, json, { params }) => {
+    const userId = params.id
 
-    // Company Isolation Check
-    const hasAccess = await verifyResourceAccess(session, params.id, 'USER')
-    if (!hasAccess) {
-        return new NextResponse("Access Denied: User belongs to a different company", { status: 403 })
-    }
+    // 1. Company Isolation
+    const hasAccess = await verifyResourceAccess(session, userId, 'USER')
+    if (!hasAccess) return ApiResponse.forbidden("Access denied")
 
-    const userRole = (session?.user as any)?.role
-
-    // Only SUPER_ADMIN can change status (suspend/unsuspend)
-    if (userRole !== 'SUPER_ADMIN') {
-        return NextResponse.json({ error: "Only Super Admin can suspend/unsuspend users" }, { status: 403 })
-    }
+    const { status } = json
+    if (!status) return ApiResponse.badRequest("Status is required")
 
     try {
-        const { status } = await request.json()
-
-        // Validate status
-        if (!['ACTIVE', 'OFFLINE', 'SUSPENDED'].includes(status)) {
-            return NextResponse.json({ error: "Invalid status" }, { status: 400 })
-        }
-
-        const user = await prisma.user.update({
-            where: { id: params.id },
-            data: { status }
-        })
-
-        return NextResponse.json({ success: true, status: user.status })
-    } catch (error) {
-        console.error("Error updating status:", error)
-        return NextResponse.json(
-            { error: "Failed to update status" },
-            { status: 500 }
-        )
+        const result = await UserService.updateStatus(userId, status, session.user.role)
+        return ApiResponse.success(result)
+    } catch (error: any) {
+        if (error.message === 'FORBIDDEN') return ApiResponse.forbidden("Super Admin only")
+        if (error.message === 'INVALID_STATUS') return ApiResponse.badRequest("Invalid status")
+        throw error
     }
-}
+})

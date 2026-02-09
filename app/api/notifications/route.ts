@@ -1,58 +1,21 @@
-import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth"; // Assuming authOptions is exported from here
+import { withStandardHandler } from "@/lib/api-utils"
+import { ApiResponse } from "@/lib/api-response"
+import { NotificationService } from "@/lib/services/notification.service"
 
-export async function GET() {
-    const session = await getServerSession(authOptions);
-    if (!session || !session.user) {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
+export const GET = withStandardHandler(async (req, session) => {
     try {
-        const notifications = await prisma.notification.findMany({
-            where: {
-                userId: session.user.id,
-            },
-            orderBy: {
-                createdAt: "desc",
-            },
-        });
-
-        return NextResponse.json(notifications);
-    } catch (error) {
-        console.error("Error fetching notifications:", error);
-        return NextResponse.json(
-            { error: "Failed to fetch notifications" },
-            { status: 500 }
-        );
+        const result = await NotificationService.getByUser(session.user.id)
+        return ApiResponse.success(result)
+    } catch (error: any) {
+        throw error
     }
-}
+})
 
-export async function PATCH() {
-    const session = await getServerSession(authOptions);
-    if (!session || !session.user) {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
+export const PATCH = withStandardHandler(async (req, session) => {
     try {
-        // Mark all as read for now, or we could accept specific IDs
-        await prisma.notification.updateMany({
-            where: {
-                userId: session.user.id,
-                read: false,
-            },
-            data: {
-                read: true,
-            },
-        });
-
-        return NextResponse.json({ success: true });
-    } catch (error) {
-        console.error("Error updating notifications:", error);
-        return NextResponse.json(
-            { error: "Failed to update notifications" },
-            { status: 500 }
-        );
+        await NotificationService.markAllAsRead(session.user.id)
+        return ApiResponse.success({ success: true })
+    } catch (error: any) {
+        throw error
     }
-}
+})

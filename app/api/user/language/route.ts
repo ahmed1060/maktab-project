@@ -1,38 +1,29 @@
-import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
-import { prisma } from '@/lib/prisma';
+import { withStandardHandler } from '@/lib/api-utils'
+import { ApiResponse } from '@/lib/api-response'
+import { UserService } from '@/lib/services/user.service'
+import { prisma } from '@/lib/prisma'
 
-export async function POST(request: Request) {
+export const POST = withStandardHandler(async (req, session, json) => {
+    const { language } = json
+    if (!language || !['en', 'ar'].includes(language)) {
+        return ApiResponse.badRequest("Invalid language")
+    }
+
     try {
-        const session = await getServerSession(authOptions);
-        if (!session || !session.user) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 1 });
-        }
-
-        const { language } = await request.json();
-        if (!language || !['en', 'ar'].includes(language)) {
-            return NextResponse.json({ error: 'Invalid language' }, { status: 400 });
-        }
-
-        const userId = session.user.id;
-        const role = session.user.role;
+        const userId = session.user.id
+        const role = session.user.role
 
         if (role === 'SUPER_ADMIN') {
             await prisma.superAdmin.update({
                 where: { id: userId },
                 data: { language }
-            });
+            })
         } else {
-            await prisma.user.update({
-                where: { id: userId },
-                data: { language }
-            });
+            await UserService.updateLanguage(userId, language)
         }
 
-        return NextResponse.json({ success: true });
-    } catch (error) {
-        console.error('Error updating language:', error);
-        return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+        return ApiResponse.success({ success: true })
+    } catch (error: any) {
+        throw error
     }
-}
+})

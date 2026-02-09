@@ -1,72 +1,29 @@
-import { NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
-import { getServerSession } from "next-auth"
-import { authOptions } from "@/lib/auth"
+import { withStandardHandler } from "@/lib/api-utils"
+import { ApiResponse } from "@/lib/api-response"
+import { UserService } from "@/lib/services/user.service"
+import { verifyResourceAccess } from "@/lib/security"
 
-export async function GET(req: Request, { params }: { params: { id: string } }) {
-    const session = await getServerSession(authOptions)
-    const isSelf = session?.user?.id === params.id
-    const isAdmin = ['ADMIN', 'SUPER_ADMIN'].includes(session?.user?.role || '')
+export const GET = withStandardHandler(async (req, session, json, { params }) => {
+    const userId = params.id
+    const currentUserId = session.user.id
+    const userRole = session.user.role
 
-    if (!session || (!isSelf && !isAdmin)) {
-        return new NextResponse("Unauthorized", { status: 401 })
+    const isSelf = currentUserId === userId
+    const isAdmin = ['ADMIN', 'SUPER_ADMIN'].includes(userRole)
+
+    if (!isSelf && !isAdmin) {
+        return ApiResponse.unauthorized()
     }
+
+    // Company Isolation
+    const hasAccess = await verifyResourceAccess(session, userId, 'USER')
+    if (!hasAccess) return ApiResponse.forbidden("Access denied")
 
     try {
-        const user = await prisma.user.findUnique({
-            where: { id: params.id },
-            select: {
-                dayOffCredit: true,
-                baseDayOffCredit: true,
-            }
-        })
-
-        if (!user) {
-            return new NextResponse("User not found", { status: 404 })
-        }
-
-        // Fetch all APPROVED requests (both CREDIT and SALARY)
-        const requests = await prisma.dayOffRequest.findMany({
-            where: {
-                userId: params.id,
-                status: 'APPROVED'
-            },
-            orderBy: {
-                date: 'desc'
-            }
-        })
-
-        // Fetch all snapshots
-        const snapshots = await prisma.dayOffCreditSnapshot.findMany({
-            where: {
-                userId: params.id
-            },
-            orderBy: {
-                year: 'desc'
-            }
-        })
-
-        // Grouping logic
-        const years = Array.from(new Set([
-            ...requests.map(r => new Date(r.date).getFullYear()),
-            ...snapshots.map(s => s.year)
-        ])).sort((a, b) => b - a)
-
-        const historyByYear = years.map(year => {
-            return {
-                year,
-                snapshot: snapshots.find(s => s.year === year) || null,
-                requests: requests.filter(r => new Date(r.date).getFullYear() === year)
-            }
-        })
-
-        return NextResponse.json({
-            baseCredit: user.baseDayOffCredit,
-            remainingCredit: user.dayOffCredit,
-            history: historyByYear
-        })
-    } catch (error) {
-        console.error('Error fetching day off history:', error)
-        return NextResponse.json({ error: 'Failed to fetch' }, { status: 500 })
+        const history = await UserService.getDayOffHistory(userId)
+        return ApiResponse.success(history)
+    } catch (error: any) {
+        if (error.message === 'USER_NOT_FOUND') return ApiResponse.notFound("User not found")
+        throw error
     }
-}
+})

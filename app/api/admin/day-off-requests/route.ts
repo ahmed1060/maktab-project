@@ -1,18 +1,18 @@
-import { NextRequest, NextResponse } from "next/server"
+import { withStandardHandler } from "@/lib/api-utils"
+import { ApiResponse } from "@/lib/api-response"
 import { prisma } from "@/lib/prisma"
-import { getServerSession } from "next-auth"
-import { authOptions } from "@/lib/auth"
 
-export async function GET(request: NextRequest) {
-    const { searchParams } = new URL(request.url)
+export const GET = withStandardHandler(async (req, session) => {
+    const { searchParams } = new URL(req.url)
     const companyId = searchParams.get('companyId')
-    const session = await getServerSession(authOptions)
-    if (!session || !['ADMIN', 'SUPER_ADMIN'].includes(session.user.role)) {
-        return new NextResponse("Unauthorized", { status: 401 })
+    const userRole = session.user.role
+
+    if (!['ADMIN', 'SUPER_ADMIN'].includes(userRole)) {
+        return ApiResponse.forbidden("Unauthorized")
     }
 
     const where: any = {}
-    if (session.user.role === 'SUPER_ADMIN') {
+    if (userRole === 'SUPER_ADMIN') {
         if (companyId) {
             where.user = { companyId }
         }
@@ -24,32 +24,36 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '10')
     const skip = (page - 1) * limit
 
-    const [requests, total] = await Promise.all([
-        prisma.dayOffRequest.findMany({
-            where,
-            include: {
-                user: {
-                    select: {
-                        id: true,
-                        firstName: true,
-                        lastName: true,
-                        email: true,
-                        role: true,
-                        dayOffCredit: true
+    try {
+        const [requests, total] = await Promise.all([
+            prisma.dayOffRequest.findMany({
+                where,
+                include: {
+                    user: {
+                        select: {
+                            id: true,
+                            firstName: true,
+                            lastName: true,
+                            email: true,
+                            role: true,
+                            dayOffCredit: true
+                        }
                     }
-                }
-            },
-            orderBy: { createdAt: 'desc' },
-            skip,
-            take: limit
-        }),
-        prisma.dayOffRequest.count({ where })
-    ])
+                },
+                orderBy: { createdAt: 'desc' },
+                skip,
+                take: limit
+            }),
+            prisma.dayOffRequest.count({ where })
+        ])
 
-    return NextResponse.json({
-        data: requests,
-        total,
-        page,
-        totalPages: Math.ceil(total / limit)
-    })
-}
+        return ApiResponse.success({
+            data: requests,
+            total,
+            page,
+            totalPages: Math.ceil(total / limit)
+        })
+    } catch (error: any) {
+        throw error
+    }
+})
