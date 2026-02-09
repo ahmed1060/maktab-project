@@ -65,9 +65,10 @@ export default function EmployeesPage() {
         try {
             const res = await fetch(`/api/users?${queryParams.toString()}`, { cache: 'no-store' })
             const result = await res.json()
-            setEmployees(result.data)
-            setTotalPages(result.totalPages)
-            setTotalEmployees(result.total)
+            const data = result.data
+            setEmployees(data.data)
+            setTotalPages(data.totalPages)
+            setTotalEmployees(data.total)
         } catch (error) {
             console.error('Fetch error:', error)
         } finally {

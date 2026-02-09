@@ -27,7 +27,8 @@ export default function NewObligationPage() {
 
         fetch(`/api/users?${queryParams.toString()}`)
             .then(res => res.json())
-            .then(data => {
+            .then(result => {
+                const data = result.data
                 const usersList = data.data || []
                 // Sort by role: EMPLOYEE -> TEAM_LEADER -> ADMIN -> SUPER_ADMIN
                 const sortedData = usersList.sort((a: any, b: any) => {

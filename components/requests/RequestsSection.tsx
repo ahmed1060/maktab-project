@@ -47,8 +47,9 @@ export default function RequestsSection({ userRole }: { userRole: string }) {
             if (filters.employeeId) url += `&userId=${filters.employeeId}`
 
             const res = await fetch(url)
-            if (res.ok) {
-                const data = await res.json()
+            const result = await res.json()
+            if (res.ok && result.success) {
+                const data = result.data
                 setRequests(data.data || [])
                 setTotal(data.total || 0)
                 setTotalPages(data.totalPages || 0)
@@ -120,11 +121,12 @@ export default function RequestsSection({ userRole }: { userRole: string }) {
                 body: JSON.stringify({ status })
             })
             if (res.ok) {
-                const updatedData = await res.json()
+                const result = await res.json()
+                const updatedRequest = result.data
                 showToast(t('request_action_success') || 'Status updated', 'success')
                 fetchRequests()
                 if (selectedRequest && selectedRequest.id === id) {
-                    setSelectedRequest({ ...selectedRequest, ...updatedData })
+                    setSelectedRequest({ ...selectedRequest, ...updatedRequest })
                 }
             } else {
                 showToast(t('error_generic'), 'error')

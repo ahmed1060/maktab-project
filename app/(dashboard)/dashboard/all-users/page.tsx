@@ -71,18 +71,20 @@ export default function AllUsersPage() {
             ])
 
             if (usersRes.ok) {
-                const data = await usersRes.json()
+                const result = await usersRes.json()
+                const data = result.data
                 setUsers(data.data || [])
                 setTotal(data.total || 0)
                 setTotalPages(data.totalPages || 0)
             }
             if (companiesRes.ok) {
-                const data = await companiesRes.json()
-                setCompanies(data.data || [])
+                const result = await companiesRes.json()
+                setCompanies(result.data || [])
             }
             // Super Admins: Only fetch if we are on the first page
             if (page === 1 && superAdminsRes.ok) {
-                const data = await superAdminsRes.json()
+                const result = await superAdminsRes.json()
+                const data = result.data
                 setSuperAdminsList(data.data || [])
                 setSuperAdminsTotal(data.total || 0)
             } else if (page > 1) {
@@ -115,7 +117,8 @@ export default function AllUsersPage() {
 
             const res = await fetch(`/api/users?${queryParams.toString()}`)
             if (res.ok) {
-                const data = await res.json()
+                const result = await res.json()
+                const data = result.data
                 setDeletedUsersList(data.data || [])
                 setDeletedTotalPages(data.totalPages || 0)
             }
@@ -141,8 +144,8 @@ export default function AllUsersPage() {
 
                 const res = await fetch(`/api/users?${queryParams.toString()}`)
                 if (res.ok) {
-                    const data = await res.json()
-                    setRealDeletedCount(data.total || 0)
+                    const result = await res.json()
+                    setRealDeletedCount(result.data?.total || 0)
                 }
             } catch (err) {
                 console.error('Failed to fetch deleted count', err)

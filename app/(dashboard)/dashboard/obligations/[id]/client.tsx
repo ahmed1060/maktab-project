@@ -100,8 +100,9 @@ export default function ObligationDetailClient({ obligation, userRole, userId, u
 
                 try {
                     const res = await fetch('/api/upload', { method: 'POST', body: formData })
-                    const data = await res.json()
-                    if (data.success) {
+                    const result = await res.json()
+                    const data = result.data
+                    if (result.success && data.url) {
                         uploadedAttachments.push({
                             name: file.name,
                             url: data.url,
@@ -308,7 +309,8 @@ export default function ObligationDetailClient({ obligation, userRole, userId, u
 
         const res = await fetch(`/api/users?${queryParams.toString()}`)
         if (res.ok) {
-            const data = await res.json()
+            const result = await res.json()
+            const data = result.data
             const usersList = data.data || []
             const filtered = userRole === 'TEAM_LEADER' ? usersList.filter((u: any) => !['ADMIN', 'SUPER_ADMIN'].includes(u.role)) : usersList
             setAllUsers(filtered)

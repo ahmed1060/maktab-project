@@ -76,8 +76,9 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
             if (!session) return // Don't fetch if no session (avoids errors on signout)
             try {
                 const res = await fetch(`/api/users?id=${userId}`, { cache: 'no-store' })
-                if (!res.ok) throw new Error('Failed to fetch employee')
-                const employee = await res.json()
+                const result = await res.json()
+                if (!result.success) throw new Error(result.error || 'Failed to fetch employee')
+                const employee = result.data
 
                 if (employee.firstName) {
                     setFirstName(employee.firstName)
@@ -155,8 +156,8 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                 throw new Error(text || t('incorrect_password'))
             }
 
-            const data = await res.json()
-            setRevealPassword(data.password)
+            const result = await res.json()
+            setRevealPassword(result.data.password)
             showToast(t('password_revealed'), 'success')
             setVerificationModalOpen(false)
             setVerificationPassword('')
@@ -177,8 +178,8 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                 headers: { 'Content-Type': 'application/json' }
             })
 
-            const data = await res.json()
-            if (!data.valid) {
+            const result = await res.json()
+            if (!result.data || !result.data.valid) {
                 throw new Error(t('incorrect_password'))
             }
 

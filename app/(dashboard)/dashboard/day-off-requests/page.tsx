@@ -101,9 +101,10 @@ export default function DayOffRequestsPage() {
             const res = await fetch(`${endpoint}?${queryParams.toString()}`)
             if (res.ok) {
                 const result = await res.json()
-                setRequests(result.data)
-                setTotal(result.total)
-                setTotalPages(result.totalPages)
+                const data = result.data
+                setRequests(data.data || data)
+                setTotal(data.total || (Array.isArray(data) ? data.length : 0))
+                setTotalPages(data.totalPages || 1)
             }
         } catch {
             console.error('Failed to fetch requests')
@@ -117,11 +118,12 @@ export default function DayOffRequestsPage() {
         try {
             const res = await fetch(`/api/users?id=${user.id}`)
             if (res.ok) {
-                const data = await res.json()
-                const foundUser = Array.isArray(data.data) ? data.data[0] : (data.id ? data : null)
+                const result = await res.json()
+                const data = result.data
+                const foundUser = Array.isArray(data.data) ? data.data[0] : (data?.id ? data : null)
                 if (foundUser) {
                     setUserCredit(foundUser.dayOffCredit)
-                    setBaseCredit(foundUser.baseDayOffCredit || foundUser.dayOffCredit)
+                    setBaseCredit(foundUser.baseDayOffCredit !== undefined && foundUser.baseDayOffCredit !== null ? foundUser.baseDayOffCredit : foundUser.dayOffCredit)
                 }
             }
         } catch {

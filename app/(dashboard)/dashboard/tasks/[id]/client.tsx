@@ -246,7 +246,8 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                     if (!r.ok) throw new Error()
                     return r.json()
                 })
-                .then(data => {
+                .then(result => {
+                    const data = result.data
                     const usersList = data.data || []
                     // TEAM_LEADER Restriction: Hide ADMIN and SUPER_ADMIN from assignee list
                     const filteredData = userRole === 'TEAM_LEADER'
@@ -288,8 +289,9 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                         })
 
                         if (uploadRes.ok) {
-                            const data = await uploadRes.json()
-                            if (data.success && data.url) {
+                            const result = await uploadRes.json()
+                            const data = result.data
+                            if (result.success && data.url) {
                                 uploadedUrls.push(data.url)
                             }
                         } else {
@@ -445,7 +447,8 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                     try {
                         const res = await fetch(`https://revgeocode.search.hereapi.com/v1/revgeocode?at=${latitude},${longitude}&apiKey=${apiKey}&lang=${locale === 'ar' ? 'ar' : 'en'}`)
                         if (res.ok) {
-                            const data = await res.json()
+                            const result = await res.json()
+                            const data = result.data
                             if (data.items && data.items.length > 0) {
                                 locationName = data.items[0].address.label
                             }
