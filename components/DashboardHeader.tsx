@@ -56,7 +56,10 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
         {
             dedupingInterval: 300000,
             revalidateOnFocus: false,
-            onSuccess: (data) => {
+            onSuccess: (res) => {
+                const data = res.data
+                if (!data) return
+
                 // Update Avatar
                 const userAvatar = data.user?.avatar || data.user?.image || data.user?.picture || null
                 setHeaderAvatar(userAvatar)
