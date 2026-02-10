@@ -196,7 +196,11 @@ export default function NewTaskPage() {
                 const deadlineTimeStr = row[4] // Column E
                 const diffPoints = parseInt(row[5]) || 0 // Column F
 
-                const validationErrors: string[] = []
+                const validationErrors: Record<string, string[]> = {}
+                const addError = (field: string, msg: string) => {
+                    if (!validationErrors[field]) validationErrors[field] = []
+                    validationErrors[field].push(msg)
+                }
 
                 // 1. Resolve usernames to IDs
                 const usernames = usernamesRaw.split(',').map(u => u.trim()).filter(u => u)
@@ -204,7 +208,7 @@ export default function NewTaskPage() {
                 const resolvedNames: string[] = []
                 const unresolvedUsernames: string[] = []
 
-                if (usernames.length === 0) validationErrors.push(t('no_assignees' as any) || 'Missing assignees')
+                if (usernames.length === 0) addError('assignees', t('no_assignees' as any) || 'Missing assignees')
 
                 for (const uname of usernames) {
                     const user = users.find(u => u.username?.toLowerCase() === uname.toLowerCase())
@@ -215,7 +219,7 @@ export default function NewTaskPage() {
                         unresolvedUsernames.push(uname)
                     }
                 }
-                if (unresolvedUsernames.length > 0) validationErrors.push(`${t('invalid_username' as any) || 'Invalid user'}: ${unresolvedUsernames.join(', ')}`)
+                if (unresolvedUsernames.length > 0) addError('assignees', `${t('invalid_username' as any) || 'Invalid user'}: ${unresolvedUsernames.join(', ')}`)
 
                 // 2. Process Deadline
                 let finalDeadline = ''
@@ -259,22 +263,22 @@ export default function NewTaskPage() {
                         finalDeadline = baseDate.toISOString()
 
                         const minDeadline = new Date(Date.now() + 3 * 60 * 60 * 1000)
-                        if (baseDate < minDeadline) validationErrors.push(t('deadline_too_soon' as any) || 'Deadline must be at least 3h from now')
+                        if (baseDate < minDeadline) addError('deadline', t('deadline_too_soon' as any) || 'Deadline must be at least 3h from now')
                     } else {
-                        validationErrors.push(t('invalid_date' as any) || 'Invalid date')
+                        addError('deadline', t('invalid_date' as any) || 'Invalid date')
                     }
                 } else {
-                    validationErrors.push(t('missing_deadline' as any) || 'Missing deadline')
+                    addError('deadline', t('missing_deadline' as any) || 'Missing deadline')
                 }
 
                 // 3. String Lengths
-                if (title.length < 3) validationErrors.push(t('title_too_short' as any) || 'Title too short')
-                if (title.length > 100) validationErrors.push(t('title_too_long' as any) || 'Title too long')
-                if (description.length < 10) validationErrors.push(t('desc_too_short' as any) || 'Description too short')
-                if (description.length > 1000) validationErrors.push(t('desc_too_long' as any) || 'Description too long')
+                if (title.length < 3) addError('title', t('title_too_short' as any) || 'Title too short')
+                if (title.length > 100) addError('title', t('title_too_long' as any) || 'Title too long')
+                if (description.length < 10) addError('description', t('desc_too_short' as any) || 'Description too short')
+                if (description.length > 1000) addError('description', t('desc_too_long' as any) || 'Description too long')
 
                 // 4. Difficulty
-                if (diffPoints < 0 || diffPoints > 10) validationErrors.push(t('invalid_difficulty' as any) || 'Difficulty must be 0-10')
+                if (diffPoints < 0 || diffPoints > 10) addError('difficulty', t('invalid_difficulty' as any) || 'Difficulty must be 0-10')
 
                 return {
                     title,
@@ -287,7 +291,7 @@ export default function NewTaskPage() {
                     difficulty: diffPoints,
                     location: '',
                     validationErrors,
-                    isInvalid: validationErrors.length > 0
+                    isInvalid: Object.keys(validationErrors).length > 0
                 }
             })
 
@@ -618,9 +622,9 @@ export default function NewTaskPage() {
                                                     }}>
                                                         {bt.title || t('missing_title' as any)}
                                                     </div>
-                                                    {bt.validationErrors?.length > 0 && (
-                                                        <div style={{ color: '#ef4444', fontSize: '0.7rem', marginTop: '0.25rem', padding: '0.25rem', background: 'rgba(239, 68, 68, 0.05)', borderRadius: '0.25rem' }}>
-                                                            {bt.validationErrors.map((err: string, i: number) => (
+                                                    {bt.validationErrors?.title && (
+                                                        <div style={{ color: '#ef4444', fontSize: '0.7rem', marginTop: '0.25rem' }}>
+                                                            {bt.validationErrors.title.map((err: string, i: number) => (
                                                                 <div key={i}>• {err}</div>
                                                             ))}
                                                         </div>
@@ -630,6 +634,13 @@ export default function NewTaskPage() {
                                                     <div style={{ opacity: bt.isInvalid ? 0.5 : 1, fontSize: '0.85rem' }}>
                                                         {bt.description?.substring(0, 50)}...
                                                     </div>
+                                                    {bt.validationErrors?.description && (
+                                                        <div style={{ color: '#ef4444', fontSize: '0.7rem', marginTop: '0.25rem' }}>
+                                                            {bt.validationErrors.description.map((err: string, i: number) => (
+                                                                <div key={i}>• {err}</div>
+                                                            ))}
+                                                        </div>
+                                                    )}
                                                 </td>
                                                 <td style={{ padding: '1rem', position: 'relative' }}>
                                                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', minWidth: '250px' }}>
@@ -648,6 +659,13 @@ export default function NewTaskPage() {
                                                         }}>
                                                             {bt.resolvedNames && bt.resolvedNames.length > 0 ? bt.resolvedNames.join(', ') : bt.usernamesRaw || t('no_assignees')}
                                                         </div>
+                                                        {bt.validationErrors?.assignees && (
+                                                            <div style={{ color: '#ef4444', fontSize: '0.7rem', marginTop: '0.25rem' }}>
+                                                                {bt.validationErrors.assignees.map((err: string, i: number) => (
+                                                                    <div key={i}>• {err}</div>
+                                                                ))}
+                                                            </div>
+                                                        )}
 
                                                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                                                             {/* Plus Button */}
@@ -774,9 +792,10 @@ export default function NewTaskPage() {
                                                                                             newTasks[idx].unresolvedUsernames = []
 
                                                                                             // Re-validate row after edit
-                                                                                            const updatedErrors = (bt.validationErrors || []).filter((e: string) => !e.includes('Missing assignees') && !e.includes('Invalid user'))
+                                                                                            const updatedErrors = { ...(bt.validationErrors || {}) }
+                                                                                            delete updatedErrors.assignees
                                                                                             newTasks[idx].validationErrors = updatedErrors
-                                                                                            newTasks[idx].isInvalid = updatedErrors.length > 0
+                                                                                            newTasks[idx].isInvalid = Object.keys(updatedErrors).length > 0
 
                                                                                             setBulkTasks(newTasks)
                                                                                             // Don't close pop-up as per request
@@ -831,12 +850,14 @@ export default function NewTaskPage() {
                                                                                             newTasks[idx].resolvedNames = nname
 
                                                                                             // Re-validate row after remove
-                                                                                            const updatedErrors = (bt.validationErrors || [])
-                                                                                            if (nid.length === 0 && !updatedErrors.includes(t('no_assignees' as any) || 'Missing assignees')) {
-                                                                                                updatedErrors.push(t('no_assignees' as any) || 'Missing assignees')
+                                                                                            const updatedErrors = { ...(bt.validationErrors || {}) }
+                                                                                            if (nid.length === 0) {
+                                                                                                updatedErrors.assignees = [t('no_assignees' as any) || 'Missing assignees']
+                                                                                            } else {
+                                                                                                delete updatedErrors.assignees
                                                                                             }
                                                                                             newTasks[idx].validationErrors = updatedErrors
-                                                                                            newTasks[idx].isInvalid = updatedErrors.length > 0
+                                                                                            newTasks[idx].isInvalid = Object.keys(updatedErrors).length > 0
 
                                                                                             setBulkTasks(newTasks)
                                                                                             // Pop-up stays open as requested
@@ -876,9 +897,20 @@ export default function NewTaskPage() {
                                                     )}
                                                 </td>
                                                 <td style={{ padding: '1rem' }}>
-                                                    <div style={{ opacity: bt.isInvalid ? 0.5 : 1 }}>
-                                                        {bt.deadline ? new Date(bt.deadline).toLocaleString(locale) : t('invalid_date' as any)}
+                                                    <div style={{ opacity: bt.isInvalid ? 0.5 : 1, whiteSpace: 'nowrap', fontSize: '0.85rem' }}>
+                                                        {bt.deadline ? new Date(bt.deadline).toLocaleString(locale === 'ar' ? 'ar-EG' : 'en-US', {
+                                                            year: 'numeric', month: 'numeric', day: 'numeric',
+                                                            hour: 'numeric', minute: 'numeric', second: 'numeric',
+                                                            hour12: true
+                                                        }) : t('invalid_date' as any)}
                                                     </div>
+                                                    {bt.validationErrors?.deadline && (
+                                                        <div style={{ color: '#ef4444', fontSize: '0.7rem', marginTop: '0.25rem' }}>
+                                                            {bt.validationErrors.deadline.map((err: string, i: number) => (
+                                                                <div key={i}>• {err}</div>
+                                                            ))}
+                                                        </div>
+                                                    )}
                                                 </td>
                                                 <td style={{ padding: '1rem' }}>
                                                     <div style={{ minWidth: '150px' }}>

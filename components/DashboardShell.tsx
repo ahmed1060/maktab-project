@@ -391,7 +391,6 @@ export default function DashboardShell({ children, user }: DashboardShellProps) 
                 background: 'transparent',
                 transition: 'margin 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
                 direction: isRtl ? 'rtl' : 'ltr',
-                overflowX: 'hidden'
             }}>
                 {/* Floating Glass Header */}
                 <div style={{

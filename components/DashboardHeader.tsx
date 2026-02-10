@@ -267,7 +267,7 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
                     }}>
                         {title}
                     </h1>
-                    {contextSubtitle && (
+                    {contextSubtitle && !isMobile && (
                         <p style={{
                             fontSize: '0.75rem',
                             color: 'var(--text-muted)',
