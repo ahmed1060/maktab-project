@@ -185,7 +185,7 @@ export default function AuditLogsPage() {
                                         <th style={{ textAlign: locale === 'ar' ? 'right' : 'left', padding: '1rem', color: '#64748b', fontSize: '0.75rem', fontWeight: '800', textTransform: 'uppercase' }}>{t('action')}</th>
                                         <th style={{ textAlign: locale === 'ar' ? 'right' : 'left', padding: '1rem', color: '#64748b', fontSize: '0.75rem', fontWeight: '800', textTransform: 'uppercase' }}>{t('entity')}</th>
                                         <th style={{ textAlign: locale === 'ar' ? 'right' : 'left', padding: '1rem', color: '#64748b', fontSize: '0.75rem', fontWeight: '800', textTransform: 'uppercase' }}>{t('performed_by')}</th>
-                                        <th style={{ textAlign: locale === 'ar' ? 'right' : 'left', padding: '1rem', color: '#64748b', fontSize: '0.75rem', fontWeight: '800', textTransform: 'uppercase' }}>{t('details')}</th>
+                                        <th style={{ textAlign: locale === 'ar' ? 'right' : 'left', padding: '1rem', color: '#64748b', fontSize: '0.75rem', fontWeight: '800', textTransform: 'uppercase', width: '400px' }}>{t('details')}</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -218,7 +218,7 @@ export default function AuditLogsPage() {
                                                     {log.superAdmin ? 'Super Admin' : log.user ? log.user.role : 'Automated Task'}
                                                 </div>
                                             </td>
-                                            <td style={{ padding: '1rem', minWidth: '250px' }}>
+                                            <td style={{ padding: '1rem', width: '400px', maxWidth: '400px' }}>
                                                 {renderDetails(log.details)}
                                             </td>
                                         </tr>
