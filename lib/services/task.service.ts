@@ -967,6 +967,9 @@ export class TaskService {
                     throw new Error(`ATTACHMENT_LIMIT: ${task.title}`)
                 }
 
+                // difficulty safety clamping/rejection
+                const difficulty = typeof task.difficulty === 'number' ? Math.min(Math.max(task.difficulty, 0), 10) : 0
+
                 // Resolve companyId: From map (SA) or session (Admin)
                 const taskCompanyId = userRole === 'SUPER_ADMIN'
                     ? (assigneeIds[0] ? assigneeToCompanyMap.get(assigneeIds[0]) : null)
@@ -977,6 +980,7 @@ export class TaskService {
                         ...rest,
                         status: "PENDING",
                         deadline: deadlineDate,
+                        difficulty: difficulty,
                         createdBy: userRole === 'SUPER_ADMIN' ? null : userId,
                         companyId: taskCompanyId,
                         assignees: {

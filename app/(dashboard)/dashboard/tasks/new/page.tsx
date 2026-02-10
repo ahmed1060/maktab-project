@@ -181,96 +181,115 @@ export default function NewTaskPage() {
             const jsonData: any[] = XLSX.utils.sheet_to_json(worksheet, { header: 1 })
 
             // Process data starting from Row 3 (index 2)
-            const tasks = jsonData.slice(2).filter(row => row[0]) // row[0] is Title
-                .map(row => {
-                    const title = row[0]
-                    const description = row[1]
-                    const usernamesRaw = row[2] ? String(row[2]) : ''
-                    const deadlineDateStr = row[3] // Column D
-                    const deadlineTimeStr = row[4] // Column E
-                    const diffPoints = parseInt(row[5]) || 0 // Column F
+            const rows = jsonData.slice(2).filter(row => row[0]) // row[0] is Title
 
-                    // Resolve usernames to IDs
-                    const usernames = usernamesRaw.split(',').map(u => u.trim()).filter(u => u)
-                    const resolvedIds: string[] = []
-                    const resolvedNames: string[] = []
-                    const unresolvedUsernames: string[] = []
+            if (rows.length > 50) {
+                showToast(t('bulk_limit_exceeded' as any) || 'Maximum 50 tasks allowed per batch', 'error')
+                return
+            }
 
-                    for (const uname of usernames) {
-                        const user = users.find(u => u.username?.toLowerCase() === uname.toLowerCase())
-                        if (user) {
-                            resolvedIds.push(user.id)
-                            resolvedNames.push(`${user.firstName} ${user.lastName}`)
+            const tasks = rows.map(row => {
+                const title = row[0] || ''
+                const description = row[1] || ''
+                const usernamesRaw = row[2] ? String(row[2]) : ''
+                const deadlineDateStr = row[3] // Column D
+                const deadlineTimeStr = row[4] // Column E
+                const diffPoints = parseInt(row[5]) || 0 // Column F
+
+                const validationErrors: string[] = []
+
+                // 1. Resolve usernames to IDs
+                const usernames = usernamesRaw.split(',').map(u => u.trim()).filter(u => u)
+                const resolvedIds: string[] = []
+                const resolvedNames: string[] = []
+                const unresolvedUsernames: string[] = []
+
+                if (usernames.length === 0) validationErrors.push(t('no_assignees' as any) || 'Missing assignees')
+
+                for (const uname of usernames) {
+                    const user = users.find(u => u.username?.toLowerCase() === uname.toLowerCase())
+                    if (user) {
+                        resolvedIds.push(user.id)
+                        resolvedNames.push(`${user.firstName} ${user.lastName}`)
+                    } else {
+                        unresolvedUsernames.push(uname)
+                    }
+                }
+                if (unresolvedUsernames.length > 0) validationErrors.push(`${t('invalid_username' as any) || 'Invalid user'}: ${unresolvedUsernames.join(', ')}`)
+
+                // 2. Process Deadline
+                let finalDeadline = ''
+                if (deadlineDateStr) {
+                    let baseDate: Date | null = null
+                    if (typeof deadlineDateStr === 'number') {
+                        const excelDate = new Date((deadlineDateStr - 25569) * 86400 * 1000)
+                        baseDate = excelDate
+                    } else {
+                        const dStr = String(deadlineDateStr).trim()
+                        const dParts = dStr.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/)
+                        if (dParts) {
+                            baseDate = new Date(Number(dParts[3]), Number(dParts[2]) - 1, Number(dParts[1]))
                         } else {
-                            unresolvedUsernames.push(uname)
+                            const fallback = new Date(dStr)
+                            if (!isNaN(fallback.getTime())) baseDate = fallback
                         }
                     }
 
-                    // Process Deadline (Merge Date and Time)
-                    let finalDeadline = ''
-                    if (deadlineDateStr) {
-                        let baseDate: Date | null = null
-
-                        // 1. Handle Date Part
-                        if (typeof deadlineDateStr === 'number') {
-                            // Excel serial date
-                            const excelDate = new Date((deadlineDateStr - 25569) * 86400 * 1000)
-                            baseDate = excelDate
-                        } else {
-                            const dStr = String(deadlineDateStr).trim()
-                            // Try DD/MM/YYYY
-                            const dParts = dStr.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/)
-                            if (dParts) {
-                                baseDate = new Date(Number(dParts[3]), Number(dParts[2]) - 1, Number(dParts[1]))
+                    if (baseDate && !isNaN(baseDate.getTime())) {
+                        let hours = 0
+                        let minutes = 0
+                        if (deadlineTimeStr !== undefined && deadlineTimeStr !== null && deadlineTimeStr !== '') {
+                            if (typeof deadlineTimeStr === 'number') {
+                                const totalSeconds = Math.round(deadlineTimeStr * 24 * 3600)
+                                hours = Math.floor(totalSeconds / 3600)
+                                minutes = Math.floor((totalSeconds % 3600) / 60)
                             } else {
-                                const fallback = new Date(dStr)
-                                if (!isNaN(fallback.getTime())) baseDate = fallback
-                            }
-                        }
-
-                        if (baseDate && !isNaN(baseDate.getTime())) {
-                            let hours = 0
-                            let minutes = 0
-
-                            // 2. Handle Time Part
-                            if (deadlineTimeStr !== undefined && deadlineTimeStr !== null && deadlineTimeStr !== '') {
-                                if (typeof deadlineTimeStr === 'number') {
-                                    // Excel time decimal (0.5 = 12:00 PM)
-                                    const totalSeconds = Math.round(deadlineTimeStr * 24 * 3600)
-                                    hours = Math.floor(totalSeconds / 3600)
-                                    minutes = Math.floor((totalSeconds % 3600) / 60)
-                                } else {
-                                    const tStr = String(deadlineTimeStr).trim().toUpperCase()
-                                    // Try HH:MM AM/PM or HH:MM
-                                    const tParts = tStr.match(/^(\d{1,2}):(\d{1,2})(?:\s*(AM|PM))?$/)
-                                    if (tParts) {
-                                        hours = Number(tParts[1])
-                                        minutes = Number(tParts[2])
-                                        const ampm = tParts[3]
-                                        if (ampm === 'PM' && hours < 12) hours += 12
-                                        if (ampm === 'AM' && hours === 12) hours = 0
-                                    }
+                                const tStr = String(deadlineTimeStr).trim().toUpperCase()
+                                const tParts = tStr.match(/^(\d{1,2}):(\d{1,2})(?:\s*(AM|PM))?$/)
+                                if (tParts) {
+                                    hours = Number(tParts[1])
+                                    minutes = Number(tParts[2])
+                                    const ampm = tParts[3]
+                                    if (ampm === 'PM' && hours < 12) hours += 12
+                                    if (ampm === 'AM' && hours === 12) hours = 0
                                 }
                             }
-
-                            baseDate.setHours(hours, minutes, 0, 0)
-                            finalDeadline = baseDate.toISOString()
                         }
-                    }
+                        baseDate.setHours(hours, minutes, 0, 0)
+                        finalDeadline = baseDate.toISOString()
 
-                    return {
-                        title,
-                        description,
-                        usernamesRaw,
-                        resolvedIds,
-                        resolvedNames,
-                        unresolvedUsernames,
-                        deadline: finalDeadline,
-                        difficulty: diffPoints,
-                        location: '', // Added later in modal
-                        isInvalid: unresolvedUsernames.length > 0 || !title || !description || !finalDeadline
+                        const minDeadline = new Date(Date.now() + 3 * 60 * 60 * 1000)
+                        if (baseDate < minDeadline) validationErrors.push(t('deadline_too_soon' as any) || 'Deadline must be at least 3h from now')
+                    } else {
+                        validationErrors.push(t('invalid_date' as any) || 'Invalid date')
                     }
-                })
+                } else {
+                    validationErrors.push(t('missing_deadline' as any) || 'Missing deadline')
+                }
+
+                // 3. String Lengths
+                if (title.length < 3) validationErrors.push(t('title_too_short' as any) || 'Title too short')
+                if (title.length > 100) validationErrors.push(t('title_too_long' as any) || 'Title too long')
+                if (description.length < 10) validationErrors.push(t('desc_too_short' as any) || 'Description too short')
+                if (description.length > 1000) validationErrors.push(t('desc_too_long' as any) || 'Description too long')
+
+                // 4. Difficulty
+                if (diffPoints < 0 || diffPoints > 10) validationErrors.push(t('invalid_difficulty' as any) || 'Difficulty must be 0-10')
+
+                return {
+                    title,
+                    description,
+                    usernamesRaw,
+                    resolvedIds,
+                    resolvedNames,
+                    unresolvedUsernames,
+                    deadline: finalDeadline,
+                    difficulty: diffPoints,
+                    location: '',
+                    validationErrors,
+                    isInvalid: validationErrors.length > 0
+                }
+            })
 
             if (tasks.length === 0) {
                 showToast(t('no_data_available'), 'error')
@@ -599,6 +618,13 @@ export default function NewTaskPage() {
                                                     }}>
                                                         {bt.title || t('missing_title' as any)}
                                                     </div>
+                                                    {bt.validationErrors?.length > 0 && (
+                                                        <div style={{ color: '#ef4444', fontSize: '0.7rem', marginTop: '0.25rem', padding: '0.25rem', background: 'rgba(239, 68, 68, 0.05)', borderRadius: '0.25rem' }}>
+                                                            {bt.validationErrors.map((err: string, i: number) => (
+                                                                <div key={i}>• {err}</div>
+                                                            ))}
+                                                        </div>
+                                                    )}
                                                 </td>
                                                 <td style={{ padding: '1rem' }}>
                                                     <div style={{ opacity: bt.isInvalid ? 0.5 : 1, fontSize: '0.85rem' }}>
@@ -746,7 +772,12 @@ export default function NewTaskPage() {
                                                                                             newTasks[idx].resolvedIds = [...bt.resolvedIds, u.id]
                                                                                             newTasks[idx].resolvedNames = [...bt.resolvedNames, `${u.firstName} ${u.lastName}`]
                                                                                             newTasks[idx].unresolvedUsernames = []
-                                                                                            newTasks[idx].isInvalid = !bt.title || !bt.description || !bt.deadline
+
+                                                                                            // Re-validate row after edit
+                                                                                            const updatedErrors = (bt.validationErrors || []).filter((e: string) => !e.includes('Missing assignees') && !e.includes('Invalid user'))
+                                                                                            newTasks[idx].validationErrors = updatedErrors
+                                                                                            newTasks[idx].isInvalid = updatedErrors.length > 0
+
                                                                                             setBulkTasks(newTasks)
                                                                                             // Don't close pop-up as per request
                                                                                         }}
@@ -798,7 +829,15 @@ export default function NewTaskPage() {
                                                                                             const nname = bt.resolvedNames.filter((_: any, i: number) => i !== ridx)
                                                                                             newTasks[idx].resolvedIds = nid
                                                                                             newTasks[idx].resolvedNames = nname
-                                                                                            newTasks[idx].isInvalid = nid.length === 0 || !bt.title || !bt.description || !bt.deadline
+
+                                                                                            // Re-validate row after remove
+                                                                                            const updatedErrors = (bt.validationErrors || [])
+                                                                                            if (nid.length === 0 && !updatedErrors.includes(t('no_assignees' as any) || 'Missing assignees')) {
+                                                                                                updatedErrors.push(t('no_assignees' as any) || 'Missing assignees')
+                                                                                            }
+                                                                                            newTasks[idx].validationErrors = updatedErrors
+                                                                                            newTasks[idx].isInvalid = updatedErrors.length > 0
+
                                                                                             setBulkTasks(newTasks)
                                                                                             // Pop-up stays open as requested
                                                                                         }}
@@ -916,7 +955,8 @@ export default function NewTaskPage() {
 
                                         if (!res.ok) {
                                             const errorData = await res.json().catch(() => ({}))
-                                            throw new Error(errorData.message || t('bulk_create_failed'))
+                                            const msg = errorData.error || errorData.details || errorData.message || (errorData.data?.error) || t('bulk_create_failed')
+                                            throw new Error(msg)
                                         }
 
                                         showToast(t('bulk_create_success'), 'success')

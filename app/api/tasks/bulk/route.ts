@@ -31,15 +31,33 @@ export const POST = withStandardHandler(async (req, session, json) => {
 
     const userMap = new Map(assigneeUsers.map(u => [u.id, u]))
 
-    for (const task of tasks) {
-        const { title, description, assigneeIds, deadline } = task
+    const validationSummary = {
+        total: tasks.length,
+        titleTooShort: 0,
+        titleTooLong: 0,
+        descTooShort: 0,
+        descTooLong: 0,
+        deadlineTooSoon: 0,
+        noAssignees: 0,
+        invalidAssignees: 0,
+        invalidDifficulty: 0
+    }
 
-        if (!title || title.length < 3) continue
-        if (!description || description.length < 10) continue
+    for (const task of tasks) {
+        const { title, description, assigneeIds, deadline, difficulty } = task
+
+        if (!title || title.length < 3) { validationSummary.titleTooShort++; continue }
+        if (title.length > 100) { validationSummary.titleTooLong++; continue }
+        if (!description || description.length < 10) { validationSummary.descTooShort++; continue }
+        if (description.length > 1000) { validationSummary.descTooLong++; continue }
+
+        const diffInt = parseInt(difficulty) || 0
+        if (diffInt < 0 || diffInt > 10) { validationSummary.invalidDifficulty++; continue }
+
         const deadlineDate = new Date(deadline)
         const minDeadline = new Date(Date.now() + 3 * 60 * 60 * 1000)
-        if (!deadline || isNaN(deadlineDate.getTime()) || deadlineDate < minDeadline) continue
-        if (!assigneeIds || assigneeIds.length === 0) continue
+        if (!deadline || isNaN(deadlineDate.getTime()) || deadlineDate < minDeadline) { validationSummary.deadlineTooSoon++; continue }
+        if (!assigneeIds || assigneeIds.length === 0) { validationSummary.noAssignees++; continue }
 
         let isTaskValid = true
         for (const aid of assigneeIds) {
@@ -53,10 +71,15 @@ export const POST = withStandardHandler(async (req, session, json) => {
         }
 
         if (isTaskValid) validTasks.push(task)
+        else validationSummary.invalidAssignees++
     }
 
     if (validTasks.length === 0) {
-        return ApiResponse.badRequest("No valid tasks found to create")
+        let errorMsg = "No valid tasks found to create."
+        if (validationSummary.deadlineTooSoon > 0) errorMsg += ` ${validationSummary.deadlineTooSoon} tasks had deadlines too soon.`
+        if (validationSummary.titleTooShort > 0 || validationSummary.titleTooLong > 0) errorMsg += ` Some tasks had invalid title lengths.`
+        if (validationSummary.noAssignees > 0) errorMsg += ` ${validationSummary.noAssignees} tasks had no assignees.`
+        return ApiResponse.badRequest(errorMsg)
     }
 
     try {
