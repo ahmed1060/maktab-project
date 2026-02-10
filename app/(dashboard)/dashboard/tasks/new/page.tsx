@@ -49,6 +49,7 @@ export default function NewTaskPage() {
     const [bulkTasks, setBulkTasks] = useState<any[]>([])
     const [users, setUsers] = useState<any[]>([])
     const [activeAssigneeEdit, setActiveAssigneeEdit] = useState<{ index: number, type: 'add' | 'remove' } | null>(null)
+    const [activeCellEdit, setActiveCellEdit] = useState<{ index: number, field: 'title' | 'description' | 'deadline' } | null>(null)
     const [assigneeSearch, setAssigneeSearch] = useState('')
     const router = useRouter()
 
@@ -304,6 +305,42 @@ export default function NewTaskPage() {
             setIsBulkModalOpen(true)
         }
         reader.readAsArrayBuffer(file)
+    }
+
+    const revalidateRow = (task: any) => {
+        const errors: Record<string, string[]> = {}
+        const addError = (f: string, m: string) => {
+            if (!errors[f]) errors[f] = []
+            errors[f].push(m)
+        }
+
+        if (task.title.length < 3) addError('title', t('title_too_short' as any) || 'Title too short')
+        if (task.title.length > 100) addError('title', t('title_too_long' as any) || 'Title too long')
+        if (task.description.length < 10) addError('description', t('desc_too_short' as any) || 'Description too short')
+        if (task.description.length > 1000) addError('description', t('desc_too_long' as any) || 'Description too long')
+
+        if (task.resolvedIds.length === 0) {
+            addError('assignees', t('no_assignees' as any) || 'Missing assignees')
+        }
+
+        if (task.deadline) {
+            const date = new Date(task.deadline)
+            const min = new Date(Date.now() + 3 * 60 * 60 * 1000)
+            if (isNaN(date.getTime())) addError('deadline', t('invalid_date' as any) || 'Invalid date')
+            else if (date < min) addError('deadline', t('deadline_too_soon' as any) || 'Deadline must be at least 3h from now')
+        } else {
+            addError('deadline', t('missing_deadline' as any) || 'Missing deadline')
+        }
+
+        if (task.difficulty < 0 || task.difficulty > 10) {
+            addError('difficulty', t('invalid_difficulty' as any) || 'Difficulty must be 0-10')
+        }
+
+        return {
+            ...task,
+            validationErrors: errors,
+            isInvalid: Object.keys(errors).length > 0
+        }
     }
 
     const containerStyle: React.CSSProperties = {
@@ -616,11 +653,27 @@ export default function NewTaskPage() {
                                             }}>
                                                 <td style={{ padding: '1rem' }}>{idx + 1}</td>
                                                 <td style={{ padding: '1rem' }}>
-                                                    <div style={{
-                                                        opacity: bt.isInvalid ? 0.5 : 1,
-                                                        textDecoration: bt.isInvalid && !bt.title ? 'line-through' : 'none'
-                                                    }}>
-                                                        {bt.title || t('missing_title' as any)}
+                                                    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '0.5rem' }}>
+                                                        <div style={{
+                                                            opacity: bt.isInvalid ? 0.5 : 1,
+                                                            textDecoration: bt.isInvalid && !bt.title ? 'line-through' : 'none',
+                                                            flex: 1
+                                                        }}>
+                                                            {bt.title || t('missing_title' as any)}
+                                                        </div>
+                                                        <button
+                                                            onClick={() => setActiveCellEdit({ index: idx, field: 'title' })}
+                                                            style={{
+                                                                background: 'none', border: 'none', cursor: 'pointer', padding: '0.2rem',
+                                                                borderRadius: '0.3rem', transition: 'all 0.2s', fontSize: '1rem',
+                                                                opacity: bt.validationErrors?.title ? 1 : 0.4
+                                                            }}
+                                                            onMouseEnter={e => e.currentTarget.style.background = 'rgba(0,0,0,0.05)'}
+                                                            onMouseLeave={e => e.currentTarget.style.background = 'none'}
+                                                            title={t('edit')}
+                                                        >
+                                                            ✍️
+                                                        </button>
                                                     </div>
                                                     {bt.validationErrors?.title && (
                                                         <div style={{ color: '#ef4444', fontSize: '0.7rem', marginTop: '0.25rem' }}>
@@ -629,10 +682,58 @@ export default function NewTaskPage() {
                                                             ))}
                                                         </div>
                                                     )}
+
+                                                    {/* Title Pop-up */}
+                                                    {activeCellEdit?.index === idx && activeCellEdit?.field === 'title' && (
+                                                        <>
+                                                            <div onClick={() => setActiveCellEdit(null)} style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 99 }} />
+                                                            <div style={{
+                                                                position: 'absolute', top: '50%', left: '4rem', transform: 'translateY(-50%)',
+                                                                zIndex: 100, minWidth: '280px', background: 'white', padding: '1rem',
+                                                                borderRadius: '0.75rem', boxShadow: '0 10px 25px rgba(0,0,0,0.2)', border: '1px solid #e2e8f0'
+                                                            }}>
+                                                                <input
+                                                                    autoFocus
+                                                                    className="input"
+                                                                    style={{ width: '100%' }}
+                                                                    value={bt.title || ''}
+                                                                    onChange={e => {
+                                                                        const newTasks = [...bulkTasks]
+                                                                        newTasks[idx].title = e.target.value
+                                                                        const validated = revalidateRow(newTasks[idx])
+                                                                        newTasks[idx] = validated
+                                                                        setBulkTasks(newTasks)
+                                                                    }}
+                                                                />
+                                                                <button
+                                                                    className="btn btn-primary"
+                                                                    style={{ width: '100%', marginTop: '1rem' }}
+                                                                    onClick={() => setActiveCellEdit(null)}
+                                                                >
+                                                                    {t('done' as any) || 'Done'}
+                                                                </button>
+                                                            </div>
+                                                        </>
+                                                    )}
                                                 </td>
                                                 <td style={{ padding: '1rem' }}>
-                                                    <div style={{ opacity: bt.isInvalid ? 0.5 : 1, fontSize: '0.85rem' }}>
-                                                        {bt.description?.substring(0, 50)}...
+                                                    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '0.5rem' }}>
+                                                        <div style={{ opacity: bt.isInvalid ? 0.5 : 1, fontSize: '0.85rem', flex: 1 }}>
+                                                            {bt.description?.substring(0, 50)}...
+                                                        </div>
+                                                        <button
+                                                            onClick={() => setActiveCellEdit({ index: idx, field: 'description' })}
+                                                            style={{
+                                                                background: 'none', border: 'none', cursor: 'pointer', padding: '0.2rem',
+                                                                borderRadius: '0.3rem', transition: 'all 0.2s', fontSize: '1rem',
+                                                                opacity: bt.validationErrors?.description ? 1 : 0.4
+                                                            }}
+                                                            onMouseEnter={e => e.currentTarget.style.background = 'rgba(0,0,0,0.05)'}
+                                                            onMouseLeave={e => e.currentTarget.style.background = 'none'}
+                                                            title={t('edit')}
+                                                        >
+                                                            ✍️
+                                                        </button>
                                                     </div>
                                                     {bt.validationErrors?.description && (
                                                         <div style={{ color: '#ef4444', fontSize: '0.7rem', marginTop: '0.25rem' }}>
@@ -640,6 +741,39 @@ export default function NewTaskPage() {
                                                                 <div key={i}>• {err}</div>
                                                             ))}
                                                         </div>
+                                                    )}
+
+                                                    {/* Description Pop-up */}
+                                                    {activeCellEdit?.index === idx && activeCellEdit?.field === 'description' && (
+                                                        <>
+                                                            <div onClick={() => setActiveCellEdit(null)} style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 99 }} />
+                                                            <div style={{
+                                                                position: 'absolute', top: '50%', right: '4rem', transform: 'translateY(-50%)',
+                                                                zIndex: 100, minWidth: '320px', background: 'white', padding: '1rem',
+                                                                borderRadius: '0.75rem', boxShadow: '0 10px 25px rgba(0,0,0,0.2)', border: '1px solid #e2e8f0'
+                                                            }}>
+                                                                <textarea
+                                                                    autoFocus
+                                                                    className="input"
+                                                                    style={{ width: '100%', minHeight: '150px' }}
+                                                                    value={bt.description || ''}
+                                                                    onChange={e => {
+                                                                        const newTasks = [...bulkTasks]
+                                                                        newTasks[idx].description = e.target.value
+                                                                        const validated = revalidateRow(newTasks[idx])
+                                                                        newTasks[idx] = validated
+                                                                        setBulkTasks(newTasks)
+                                                                    }}
+                                                                />
+                                                                <button
+                                                                    className="btn btn-primary"
+                                                                    style={{ width: '100%', marginTop: '1rem' }}
+                                                                    onClick={() => setActiveCellEdit(null)}
+                                                                >
+                                                                    {t('done' as any) || 'Done'}
+                                                                </button>
+                                                            </div>
+                                                        </>
                                                     )}
                                                 </td>
                                                 <td style={{ padding: '1rem', position: 'relative' }}>
@@ -890,19 +1024,29 @@ export default function NewTaskPage() {
                                                         </>
                                                     )}
 
-                                                    {bt.unresolvedUsernames.length > 0 && (
-                                                        <div style={{ color: '#ef4444', fontSize: '0.7rem', fontWeight: 'bold', marginTop: '0.25rem' }}>
-                                                            {t('invalid_username')}: {bt.unresolvedUsernames.join(', ')}
-                                                        </div>
-                                                    )}
                                                 </td>
                                                 <td style={{ padding: '1rem' }}>
-                                                    <div style={{ opacity: bt.isInvalid ? 0.5 : 1, whiteSpace: 'nowrap', fontSize: '0.85rem' }}>
-                                                        {bt.deadline ? new Date(bt.deadline).toLocaleString(locale === 'ar' ? 'ar-EG' : 'en-US', {
-                                                            year: 'numeric', month: 'numeric', day: 'numeric',
-                                                            hour: 'numeric', minute: 'numeric', second: 'numeric',
-                                                            hour12: true
-                                                        }) : t('invalid_date' as any)}
+                                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem' }}>
+                                                        <div style={{ opacity: bt.isInvalid ? 0.5 : 1, whiteSpace: 'nowrap', fontSize: '0.85rem', flex: 1 }}>
+                                                            {bt.deadline ? new Date(bt.deadline).toLocaleString(locale === 'ar' ? 'ar-EG' : 'en-US', {
+                                                                year: 'numeric', month: 'numeric', day: 'numeric',
+                                                                hour: 'numeric', minute: 'numeric', second: 'numeric',
+                                                                hour12: true
+                                                            }) : t('invalid_date' as any)}
+                                                        </div>
+                                                        <button
+                                                            onClick={() => setActiveCellEdit({ index: idx, field: 'deadline' })}
+                                                            style={{
+                                                                background: 'none', border: 'none', cursor: 'pointer', padding: '0.2rem',
+                                                                borderRadius: '0.3rem', transition: 'all 0.2s', fontSize: '1.1rem',
+                                                                opacity: bt.validationErrors?.deadline ? 1 : 0.4
+                                                            }}
+                                                            onMouseEnter={e => e.currentTarget.style.background = 'rgba(0,0,0,0.05)'}
+                                                            onMouseLeave={e => e.currentTarget.style.background = 'none'}
+                                                            title={t('edit_deadline' as any) || 'Edit Deadline'}
+                                                        >
+                                                            📅
+                                                        </button>
                                                     </div>
                                                     {bt.validationErrors?.deadline && (
                                                         <div style={{ color: '#ef4444', fontSize: '0.7rem', marginTop: '0.25rem' }}>
@@ -910,6 +1054,38 @@ export default function NewTaskPage() {
                                                                 <div key={i}>• {err}</div>
                                                             ))}
                                                         </div>
+                                                    )}
+
+                                                    {/* Deadline Pop-up */}
+                                                    {activeCellEdit?.index === idx && activeCellEdit?.field === 'deadline' && (
+                                                        <>
+                                                            <div onClick={() => setActiveCellEdit(null)} style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 99 }} />
+                                                            <div style={{
+                                                                position: 'absolute', top: '50%', right: '4rem', transform: 'translateY(-50%)',
+                                                                zIndex: 100, minWidth: '320px', background: 'white', padding: '1rem',
+                                                                borderRadius: '0.75rem', boxShadow: '0 10px 25px rgba(0,0,0,0.2)', border: '1px solid #e2e8f0'
+                                                            }}>
+                                                                <DateTimePicker
+                                                                    label={t('deadline_label')}
+                                                                    value={bt.deadline || ''}
+                                                                    onChange={v => {
+                                                                        const newTasks = [...bulkTasks]
+                                                                        newTasks[idx].deadline = v
+                                                                        const validated = revalidateRow(newTasks[idx])
+                                                                        newTasks[idx] = validated
+                                                                        setBulkTasks(newTasks)
+                                                                    }}
+                                                                    min={new Date(Date.now() + 3 * 60 * 60 * 1000).toISOString()}
+                                                                />
+                                                                <button
+                                                                    className="btn btn-primary"
+                                                                    style={{ width: '100%', marginTop: '1rem' }}
+                                                                    onClick={() => setActiveCellEdit(null)}
+                                                                >
+                                                                    {t('done' as any) || 'Done'}
+                                                                </button>
+                                                            </div>
+                                                        </>
                                                     )}
                                                 </td>
                                                 <td style={{ padding: '1rem' }}>
@@ -1013,161 +1189,164 @@ export default function NewTaskPage() {
                     </div>
                 </div>,
                 document.body
-            )}
+            )
+            }
 
             {/* Manage Templates Modal (Super Admin) */}
-            {mounted && isManageTemplatesOpen && createPortal(
-                <div className="modal-overlay" style={{ zIndex: 10000 }}>
-                    <div className="modal-content glass" style={{ width: '90%', maxWidth: '550px' }}>
-                        <div className="modal-header">
-                            <h2 className="modal-title">{t('manage_templates')}</h2>
-                            <button className="modal-close" onClick={() => {
-                                setIsManageTemplatesOpen(false)
-                                setEnTemplateFile(null)
-                                setArTemplateFile(null)
-                            }}>×</button>
-                        </div>
+            {
+                mounted && isManageTemplatesOpen && createPortal(
+                    <div className="modal-overlay" style={{ zIndex: 10000 }}>
+                        <div className="modal-content glass" style={{ width: '90%', maxWidth: '550px' }}>
+                            <div className="modal-header">
+                                <h2 className="modal-title">{t('manage_templates')}</h2>
+                                <button className="modal-close" onClick={() => {
+                                    setIsManageTemplatesOpen(false)
+                                    setEnTemplateFile(null)
+                                    setArTemplateFile(null)
+                                }}>×</button>
+                            </div>
 
-                        <div className="modal-body">
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-                                <div className="glass" style={{ padding: '1.25rem', background: 'rgba(255, 255, 255, 0.3)' }}>
-                                    <label style={{ display: 'flex', alignItems: 'center', marginBottom: '1rem', fontWeight: '600', color: 'var(--text-main)' }}>
-                                        <UKFlag /> {t('upload_en_template')}
-                                    </label>
-                                    <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-                                        <label className="btn" style={{
-                                            flex: 1,
-                                            cursor: 'pointer',
-                                            background: 'rgba(255, 255, 255, 0.6)',
-                                            fontSize: '0.85rem',
-                                            justifyContent: 'flex-start',
-                                            overflow: 'hidden',
-                                            textOverflow: 'ellipsis',
-                                            whiteSpace: 'nowrap'
-                                        }}>
-                                            <span>📂</span>
-                                            {enTemplateFile ? enTemplateFile.name : t('choose_file')}
-                                            <input
-                                                type="file"
-                                                accept=".xlsx"
-                                                style={{ display: 'none' }}
-                                                onChange={(e) => setEnTemplateFile(e.target.files?.[0] || null)}
-                                            />
+                            <div className="modal-body">
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+                                    <div className="glass" style={{ padding: '1.25rem', background: 'rgba(255, 255, 255, 0.3)' }}>
+                                        <label style={{ display: 'flex', alignItems: 'center', marginBottom: '1rem', fontWeight: '600', color: 'var(--text-main)' }}>
+                                            <UKFlag /> {t('upload_en_template')}
                                         </label>
-                                        {enTemplateFile && (
-                                            <button
-                                                className="btn btn-primary"
-                                                style={{ padding: '0.5rem 1rem', fontSize: '0.85rem', minWidth: '100px' }}
-                                                disabled={isEnUploading}
-                                                onClick={async () => {
-                                                    setIsEnUploading(true)
-                                                    const fd = new FormData()
-                                                    fd.append('file', enTemplateFile)
-                                                    fd.append('locale', 'en')
-                                                    try {
-                                                        const res = await fetch('/api/templates/upload', { method: 'POST', body: fd })
-                                                        const result = await res.json().catch(() => ({}))
-                                                        if (res.ok) {
-                                                            showToast('English Template Updated', 'success')
-                                                            setEnTemplateFile(null)
-                                                        } else {
-                                                            showToast(result.message || 'Upload Failed', 'error')
+                                        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+                                            <label className="btn" style={{
+                                                flex: 1,
+                                                cursor: 'pointer',
+                                                background: 'rgba(255, 255, 255, 0.6)',
+                                                fontSize: '0.85rem',
+                                                justifyContent: 'flex-start',
+                                                overflow: 'hidden',
+                                                textOverflow: 'ellipsis',
+                                                whiteSpace: 'nowrap'
+                                            }}>
+                                                <span>📂</span>
+                                                {enTemplateFile ? enTemplateFile.name : t('choose_file')}
+                                                <input
+                                                    type="file"
+                                                    accept=".xlsx"
+                                                    style={{ display: 'none' }}
+                                                    onChange={(e) => setEnTemplateFile(e.target.files?.[0] || null)}
+                                                />
+                                            </label>
+                                            {enTemplateFile && (
+                                                <button
+                                                    className="btn btn-primary"
+                                                    style={{ padding: '0.5rem 1rem', fontSize: '0.85rem', minWidth: '100px' }}
+                                                    disabled={isEnUploading}
+                                                    onClick={async () => {
+                                                        setIsEnUploading(true)
+                                                        const fd = new FormData()
+                                                        fd.append('file', enTemplateFile)
+                                                        fd.append('locale', 'en')
+                                                        try {
+                                                            const res = await fetch('/api/templates/upload', { method: 'POST', body: fd })
+                                                            const result = await res.json().catch(() => ({}))
+                                                            if (res.ok) {
+                                                                showToast('English Template Updated', 'success')
+                                                                setEnTemplateFile(null)
+                                                            } else {
+                                                                showToast(result.message || 'Upload Failed', 'error')
+                                                            }
+                                                        } catch {
+                                                            showToast('Upload Error', 'error')
+                                                        } finally {
+                                                            setIsEnUploading(false)
                                                         }
-                                                    } catch {
-                                                        showToast('Upload Error', 'error')
-                                                    } finally {
-                                                        setIsEnUploading(false)
-                                                    }
-                                                }}
-                                            >
-                                                {isEnUploading ? <div className="spinner-small" style={{ width: '16px', height: '16px' }} /> : 'Upload'}
-                                            </button>
-                                        )}
+                                                    }}
+                                                >
+                                                    {isEnUploading ? <div className="spinner-small" style={{ width: '16px', height: '16px' }} /> : 'Upload'}
+                                                </button>
+                                            )}
+                                        </div>
                                     </div>
-                                </div>
 
-                                <div className="glass" style={{ padding: '1.25rem', background: 'rgba(255, 255, 255, 0.3)' }}>
-                                    <label style={{ display: 'flex', alignItems: 'center', marginBottom: '1rem', fontWeight: '600', color: 'var(--text-main)' }}>
-                                        <SAFlag /> {t('upload_ar_template')}
-                                    </label>
-                                    <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-                                        <label className="btn" style={{
-                                            flex: 1,
-                                            cursor: 'pointer',
-                                            background: 'rgba(255, 255, 255, 0.6)',
-                                            fontSize: '0.85rem',
-                                            justifyContent: 'flex-start',
-                                            overflow: 'hidden',
-                                            textOverflow: 'ellipsis',
-                                            whiteSpace: 'nowrap'
-                                        }}>
-                                            <span>📂</span>
-                                            {arTemplateFile ? arTemplateFile.name : t('choose_file')}
-                                            <input
-                                                type="file"
-                                                accept=".xlsx"
-                                                style={{ display: 'none' }}
-                                                onChange={(e) => setArTemplateFile(e.target.files?.[0] || null)}
-                                            />
+                                    <div className="glass" style={{ padding: '1.25rem', background: 'rgba(255, 255, 255, 0.3)' }}>
+                                        <label style={{ display: 'flex', alignItems: 'center', marginBottom: '1rem', fontWeight: '600', color: 'var(--text-main)' }}>
+                                            <SAFlag /> {t('upload_ar_template')}
                                         </label>
-                                        {arTemplateFile && (
-                                            <button
-                                                className="btn btn-primary"
-                                                style={{ padding: '0.5rem 1rem', fontSize: '0.85rem', minWidth: '100px' }}
-                                                disabled={isArUploading}
-                                                onClick={async () => {
-                                                    setIsArUploading(true)
-                                                    const fd = new FormData()
-                                                    fd.append('file', arTemplateFile)
-                                                    fd.append('locale', 'ar')
-                                                    try {
-                                                        const res = await fetch('/api/templates/upload', { method: 'POST', body: fd })
-                                                        const result = await res.json().catch(() => ({}))
-                                                        if (res.ok) {
-                                                            showToast('Arabic Template Updated', 'success')
-                                                            setArTemplateFile(null)
-                                                        } else {
-                                                            showToast(result.message || 'Upload Failed', 'error')
+                                        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+                                            <label className="btn" style={{
+                                                flex: 1,
+                                                cursor: 'pointer',
+                                                background: 'rgba(255, 255, 255, 0.6)',
+                                                fontSize: '0.85rem',
+                                                justifyContent: 'flex-start',
+                                                overflow: 'hidden',
+                                                textOverflow: 'ellipsis',
+                                                whiteSpace: 'nowrap'
+                                            }}>
+                                                <span>📂</span>
+                                                {arTemplateFile ? arTemplateFile.name : t('choose_file')}
+                                                <input
+                                                    type="file"
+                                                    accept=".xlsx"
+                                                    style={{ display: 'none' }}
+                                                    onChange={(e) => setArTemplateFile(e.target.files?.[0] || null)}
+                                                />
+                                            </label>
+                                            {arTemplateFile && (
+                                                <button
+                                                    className="btn btn-primary"
+                                                    style={{ padding: '0.5rem 1rem', fontSize: '0.85rem', minWidth: '100px' }}
+                                                    disabled={isArUploading}
+                                                    onClick={async () => {
+                                                        setIsArUploading(true)
+                                                        const fd = new FormData()
+                                                        fd.append('file', arTemplateFile)
+                                                        fd.append('locale', 'ar')
+                                                        try {
+                                                            const res = await fetch('/api/templates/upload', { method: 'POST', body: fd })
+                                                            const result = await res.json().catch(() => ({}))
+                                                            if (res.ok) {
+                                                                showToast('Arabic Template Updated', 'success')
+                                                                setArTemplateFile(null)
+                                                            } else {
+                                                                showToast(result.message || 'Upload Failed', 'error')
+                                                            }
+                                                        } catch {
+                                                            showToast('Upload Error', 'error')
+                                                        } finally {
+                                                            setIsArUploading(false)
                                                         }
-                                                    } catch {
-                                                        showToast('Upload Error', 'error')
-                                                    } finally {
-                                                        setIsArUploading(false)
-                                                    }
-                                                }}
-                                            >
-                                                {isArUploading ? <div className="spinner-small" style={{ width: '16px', height: '16px' }} /> : 'Upload'}
-                                            </button>
-                                        )}
+                                                    }}
+                                                >
+                                                    {isArUploading ? <div className="spinner-small" style={{ width: '16px', height: '16px' }} /> : 'Upload'}
+                                                </button>
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
                             </div>
-                        </div>
 
-                        <div className="modal-footer" style={{ background: 'rgba(0, 0, 0, 0.03)' }}>
-                            <button
-                                className="btn"
-                                style={{
-                                    background: 'rgba(255, 255, 255, 0.6)',
-                                    border: '1px solid var(--glass-border)',
-                                    flex: 1
-                                }}
-                                onClick={() => window.open(`/api/templates/download?locale=${locale}`, '_blank')}
-                            >
-                                📥 {t('download_current_template')}
-                            </button>
-                            <button className="btn btn-primary" onClick={() => {
-                                setIsManageTemplatesOpen(false)
-                                setEnTemplateFile(null)
-                                setArTemplateFile(null)
-                            }} style={{ flex: 1 }}>
-                                {t('cancel')}
-                            </button>
+                            <div className="modal-footer" style={{ background: 'rgba(0, 0, 0, 0.03)' }}>
+                                <button
+                                    className="btn"
+                                    style={{
+                                        background: 'rgba(255, 255, 255, 0.6)',
+                                        border: '1px solid var(--glass-border)',
+                                        flex: 1
+                                    }}
+                                    onClick={() => window.open(`/api/templates/download?locale=${locale}`, '_blank')}
+                                >
+                                    📥 {t('download_current_template')}
+                                </button>
+                                <button className="btn btn-primary" onClick={() => {
+                                    setIsManageTemplatesOpen(false)
+                                    setEnTemplateFile(null)
+                                    setArTemplateFile(null)
+                                }} style={{ flex: 1 }}>
+                                    {t('cancel')}
+                                </button>
+                            </div>
                         </div>
-                    </div>
-                </div>,
-                document.body
-            )}
-        </div>
+                    </div>,
+                    document.body
+                )
+            }
+        </div >
     )
 }
