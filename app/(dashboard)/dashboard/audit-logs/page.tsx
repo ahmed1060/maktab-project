@@ -88,8 +88,44 @@ export default function AuditLogsPage() {
         if (!details) return '-'
         try {
             const parsed = JSON.parse(details)
+            if (typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)) {
+                const entries = Object.entries(parsed)
+                return (
+                    <div style={{
+                        background: '#f8fafc',
+                        padding: '0.5rem',
+                        borderRadius: '0.5rem',
+                        border: '1px solid #e2e8f0',
+                        fontSize: '0.7rem',
+                        fontFamily: 'monospace',
+                        maxHeight: '120px',
+                        overflowY: 'auto'
+                    }}>
+                        <div style={{ color: '#94a3b8', marginBottom: '4px' }}>{'{'}</div>
+                        {entries.map(([key, value], i) => (
+                            <div key={key} style={{
+                                display: 'flex',
+                                gap: '6px',
+                                paddingLeft: '0.75rem',
+                                marginBottom: i === entries.length - 1 ? '4px' : '2px'
+                            }}>
+                                <span style={{ color: '#475569', fontWeight: 'bold', whiteSpace: 'nowrap' }}>&quot;{key}&quot;:</span>
+                                <span style={{
+                                    color: '#1e293b',
+                                    wordBreak: 'break-all',
+                                    flex: 1
+                                }}>
+                                    {typeof value === 'string' ? <>&quot;{value}&quot;</> : JSON.stringify(value)}
+                                    {i < entries.length - 1 ? ',' : ''}
+                                </span>
+                            </div>
+                        ))}
+                        <div style={{ color: '#94a3b8' }}>{'}'}</div>
+                    </div>
+                )
+            }
             return (
-                <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                <div style={{ fontSize: '0.7rem' }}>
                     <pre style={{
                         margin: 0,
                         whiteSpace: 'pre-wrap',
@@ -107,7 +143,7 @@ export default function AuditLogsPage() {
                 </div>
             )
         } catch {
-            return <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>{String(details)}</span>
+            return <span style={{ fontSize: '0.7rem', color: '#94a3b8', wordBreak: 'break-all' }}>{String(details)}</span>
         }
     }
 
