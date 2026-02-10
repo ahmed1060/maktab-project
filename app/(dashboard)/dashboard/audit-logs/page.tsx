@@ -213,21 +213,21 @@ export default function AuditLogsPage() {
             ) : (
                 <>
                     <div style={{ background: 'white', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', border: '1px solid #e2e8f0' }}>
-                        <div style={{ overflow: 'hidden' }}>
-                            <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
+                        <div style={{ overflowX: 'auto' }}>
+                            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                                 <thead>
                                     <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
-                                        <th style={{ textAlign: locale === 'ar' ? 'right' : 'left', padding: '1rem', color: '#64748b', fontSize: '0.75rem', fontWeight: '800', textTransform: 'uppercase', width: '160px' }}>{t('timestamp')}</th>
-                                        <th style={{ textAlign: locale === 'ar' ? 'right' : 'left', padding: '1rem', color: '#64748b', fontSize: '0.75rem', fontWeight: '800', textTransform: 'uppercase', width: '120px' }}>{t('action')}</th>
-                                        <th style={{ textAlign: locale === 'ar' ? 'right' : 'left', padding: '1rem', color: '#64748b', fontSize: '0.75rem', fontWeight: '800', textTransform: 'uppercase', width: '130px' }}>{t('entity')}</th>
-                                        <th style={{ textAlign: locale === 'ar' ? 'right' : 'left', padding: '1rem', color: '#64748b', fontSize: '0.75rem', fontWeight: '800', textTransform: 'uppercase', width: '180px' }}>{t('performed_by')}</th>
-                                        <th style={{ textAlign: locale === 'ar' ? 'right' : 'left', padding: '1rem', color: '#64748b', fontSize: '0.75rem', fontWeight: '800', textTransform: 'uppercase' }}>{t('details')}</th>
+                                        <th style={{ textAlign: locale === 'ar' ? 'right' : 'left', padding: '1rem', color: '#64748b', fontSize: '0.75rem', fontWeight: '800', textTransform: 'uppercase', minWidth: '160px' }}>{t('timestamp')}</th>
+                                        <th style={{ textAlign: locale === 'ar' ? 'right' : 'left', padding: '1rem', color: '#64748b', fontSize: '0.75rem', fontWeight: '800', textTransform: 'uppercase', minWidth: '120px' }}>{t('action')}</th>
+                                        <th style={{ textAlign: locale === 'ar' ? 'right' : 'left', padding: '1rem', color: '#64748b', fontSize: '0.75rem', fontWeight: '800', textTransform: 'uppercase', minWidth: '130px' }}>{t('entity')}</th>
+                                        <th style={{ textAlign: locale === 'ar' ? 'right' : 'left', padding: '1rem', color: '#64748b', fontSize: '0.75rem', fontWeight: '800', textTransform: 'uppercase', minWidth: '180px' }}>{t('performed_by')}</th>
+                                        <th style={{ textAlign: locale === 'ar' ? 'right' : 'left', padding: '1rem', color: '#64748b', fontSize: '0.75rem', fontWeight: '800', textTransform: 'uppercase', minWidth: '300px' }}>{t('details')}</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {logs.map((log) => (
                                         <tr key={log.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                                            <td style={{ padding: '1rem', fontSize: '0.8rem', color: '#64748b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                            <td style={{ padding: '1rem', fontSize: '0.8rem', color: '#64748b' }}>
                                                 {formatDate(log.createdAt)}
                                             </td>
                                             <td style={{ padding: '1rem' }}>
@@ -239,23 +239,20 @@ export default function AuditLogsPage() {
                                                     padding: '0.2rem 0.4rem',
                                                     borderRadius: '4px',
                                                     display: 'inline-block',
-                                                    whiteSpace: 'nowrap',
-                                                    overflow: 'hidden',
-                                                    textOverflow: 'ellipsis',
-                                                    maxWidth: '100%'
+                                                    whiteSpace: 'nowrap'
                                                 }}>
                                                     {log.action}
                                                 </span>
                                             </td>
                                             <td style={{ padding: '1rem', fontSize: '0.8rem' }}>
-                                                <div style={{ fontWeight: '600', color: '#1e293b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{log.entityType}</div>
+                                                <div style={{ fontWeight: '600', color: '#1e293b' }}>{log.entityType}</div>
                                                 <div style={{ color: '#94a3b8', fontSize: '0.7rem', fontFamily: 'monospace' }}>{log.entityId?.slice(0, 8)}...</div>
                                             </td>
                                             <td style={{ padding: '1rem', fontSize: '0.8rem' }}>
-                                                <div style={{ fontWeight: '600', color: '#1e293b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                                <div style={{ fontWeight: '600', color: '#1e293b' }}>
                                                     {log.superAdmin ? `${log.superAdmin.firstName} ${log.superAdmin.lastName}` : log.user ? `${log.user.firstName} ${log.user.lastName}` : 'System'}
                                                 </div>
-                                                <div style={{ color: '#64748b', fontSize: '0.7rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                                <div style={{ color: '#64748b', fontSize: '0.7rem' }}>
                                                     {log.superAdmin ? 'Super Admin' : log.user ? log.user.role : 'Automated Task'}
                                                 </div>
                                             </td>
