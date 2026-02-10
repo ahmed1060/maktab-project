@@ -191,7 +191,7 @@ export default function DateTimePicker({ value, onChange, label, min }: DateTime
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        zIndex: 9999,
+                        zIndex: 11000,
                         animation: 'fadeIn 0.2s ease-out'
                     }}
                 >

@@ -50,6 +50,7 @@ export default function NewTaskPage() {
     const [users, setUsers] = useState<any[]>([])
     const [activeAssigneeEdit, setActiveAssigneeEdit] = useState<{ index: number, type: 'add' | 'remove' } | null>(null)
     const [activeCellEdit, setActiveCellEdit] = useState<{ index: number, field: 'title' | 'description' | 'deadline' } | null>(null)
+    const [editAnchorRect, setEditAnchorRect] = useState<DOMRect | null>(null)
     const [assigneeSearch, setAssigneeSearch] = useState('')
     const router = useRouter()
 
@@ -662,7 +663,11 @@ export default function NewTaskPage() {
                                                             {bt.title || t('missing_title')}
                                                         </div>
                                                         <button
-                                                            onClick={() => setActiveCellEdit({ index: idx, field: 'title' })}
+                                                            onClick={(e) => {
+                                                                const rect = e.currentTarget.getBoundingClientRect()
+                                                                setEditAnchorRect(rect)
+                                                                setActiveCellEdit({ index: idx, field: 'title' })
+                                                            }}
                                                             style={{
                                                                 background: 'none', border: 'none', cursor: 'pointer', padding: '0.2rem',
                                                                 borderRadius: '0.3rem', transition: 'all 0.2s', fontSize: '1rem',
@@ -684,13 +689,17 @@ export default function NewTaskPage() {
                                                     )}
 
                                                     {/* Title Pop-up */}
-                                                    {activeCellEdit?.index === idx && activeCellEdit?.field === 'title' && (
+                                                    {activeCellEdit?.index === idx && activeCellEdit?.field === 'title' && editAnchorRect && createPortal(
                                                         <>
-                                                            <div onClick={() => setActiveCellEdit(null)} style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 99 }} />
+                                                            <div onClick={() => setActiveCellEdit(null)} style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 10500 }} />
                                                             <div style={{
-                                                                position: 'absolute', top: '50%', left: '4rem', transform: 'translateY(-50%)',
-                                                                zIndex: 100, minWidth: '280px', background: 'white', padding: '1rem',
-                                                                borderRadius: '0.75rem', boxShadow: '0 10px 25px rgba(0,0,0,0.2)', border: '1px solid #e2e8f0'
+                                                                position: 'fixed',
+                                                                top: editAnchorRect.top + editAnchorRect.height / 2,
+                                                                left: locale === 'ar' ? editAnchorRect.left - 200 : editAnchorRect.right + 20,
+                                                                transform: 'translateY(-50%)',
+                                                                zIndex: 10501, minWidth: '280px', background: 'white', padding: '1rem',
+                                                                borderRadius: '0.75rem', boxShadow: '0 10px 25px rgba(0,0,0,0.2)', border: '1px solid #e2e8f0',
+                                                                direction: locale === 'ar' ? 'rtl' : 'ltr'
                                                             }}>
                                                                 <input
                                                                     autoFocus
@@ -713,7 +722,8 @@ export default function NewTaskPage() {
                                                                     {t('done')}
                                                                 </button>
                                                             </div>
-                                                        </>
+                                                        </>,
+                                                        document.body
                                                     )}
                                                 </td>
                                                 <td style={{ padding: '1rem', position: 'relative' }}>
@@ -722,7 +732,11 @@ export default function NewTaskPage() {
                                                             {bt.description?.substring(0, 50)}...
                                                         </div>
                                                         <button
-                                                            onClick={() => setActiveCellEdit({ index: idx, field: 'description' })}
+                                                            onClick={(e) => {
+                                                                const rect = e.currentTarget.getBoundingClientRect()
+                                                                setEditAnchorRect(rect)
+                                                                setActiveCellEdit({ index: idx, field: 'description' })
+                                                            }}
                                                             style={{
                                                                 background: 'none', border: 'none', cursor: 'pointer', padding: '0.2rem',
                                                                 borderRadius: '0.3rem', transition: 'all 0.2s', fontSize: '1rem',
@@ -744,13 +758,17 @@ export default function NewTaskPage() {
                                                     )}
 
                                                     {/* Description Pop-up */}
-                                                    {activeCellEdit?.index === idx && activeCellEdit?.field === 'description' && (
+                                                    {activeCellEdit?.index === idx && activeCellEdit?.field === 'description' && editAnchorRect && createPortal(
                                                         <>
-                                                            <div onClick={() => setActiveCellEdit(null)} style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 99 }} />
+                                                            <div onClick={() => setActiveCellEdit(null)} style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 10500 }} />
                                                             <div style={{
-                                                                position: 'absolute', top: '50%', right: '4rem', transform: 'translateY(-50%)',
-                                                                zIndex: 100, minWidth: '320px', background: 'white', padding: '1rem',
-                                                                borderRadius: '0.75rem', boxShadow: '0 10px 25px rgba(0,0,0,0.2)', border: '1px solid #e2e8f0'
+                                                                position: 'fixed',
+                                                                top: editAnchorRect.top + editAnchorRect.height / 2,
+                                                                left: locale === 'ar' ? editAnchorRect.left - 340 : editAnchorRect.right + 20,
+                                                                transform: 'translateY(-50%)',
+                                                                zIndex: 10501, minWidth: '320px', background: 'white', padding: '1rem',
+                                                                borderRadius: '0.75rem', boxShadow: '0 10px 25px rgba(0,0,0,0.2)', border: '1px solid #e2e8f0',
+                                                                direction: locale === 'ar' ? 'rtl' : 'ltr'
                                                             }}>
                                                                 <textarea
                                                                     autoFocus
@@ -773,7 +791,8 @@ export default function NewTaskPage() {
                                                                     {t('done')}
                                                                 </button>
                                                             </div>
-                                                        </>
+                                                        </>,
+                                                        document.body
                                                     )}
                                                 </td>
                                                 <td style={{ padding: '1rem', position: 'relative' }}>
@@ -804,7 +823,9 @@ export default function NewTaskPage() {
                                                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                                                             {/* Plus Button */}
                                                             <button
-                                                                onClick={() => {
+                                                                onClick={(e) => {
+                                                                    const rect = e.currentTarget.getBoundingClientRect()
+                                                                    setEditAnchorRect(rect)
                                                                     setActiveAssigneeEdit(activeAssigneeEdit?.index === idx && activeAssigneeEdit?.type === 'add' ? null : { index: idx, type: 'add' })
                                                                     setAssigneeSearch('')
                                                                 }}
@@ -832,7 +853,11 @@ export default function NewTaskPage() {
 
                                                             {/* Minus Button */}
                                                             <button
-                                                                onClick={() => setActiveAssigneeEdit(activeAssigneeEdit?.index === idx && activeAssigneeEdit?.type === 'remove' ? null : { index: idx, type: 'remove' })}
+                                                                onClick={(e) => {
+                                                                    const rect = e.currentTarget.getBoundingClientRect()
+                                                                    setEditAnchorRect(rect)
+                                                                    setActiveAssigneeEdit(activeAssigneeEdit?.index === idx && activeAssigneeEdit?.type === 'remove' ? null : { index: idx, type: 'remove' })
+                                                                }}
                                                                 style={{
                                                                     width: '28px',
                                                                     height: '28px',
@@ -858,7 +883,7 @@ export default function NewTaskPage() {
                                                     </div>
 
                                                     {/* Dropdowns/Popups */}
-                                                    {activeAssigneeEdit?.index === idx && (
+                                                    {activeAssigneeEdit?.index === idx && editAnchorRect && createPortal(
                                                         <>
                                                             <div
                                                                 onClick={() => setActiveAssigneeEdit(null)}
@@ -868,17 +893,17 @@ export default function NewTaskPage() {
                                                                     left: 0,
                                                                     right: 0,
                                                                     bottom: 0,
-                                                                    zIndex: 99,
+                                                                    zIndex: 10500,
                                                                     background: 'transparent',
                                                                     cursor: 'default'
                                                                 }}
                                                             />
                                                             <div style={{
-                                                                position: 'absolute',
-                                                                top: '50%',
-                                                                right: '4rem',
+                                                                position: 'fixed',
+                                                                top: editAnchorRect.top + editAnchorRect.height / 2,
+                                                                left: locale === 'ar' ? editAnchorRect.left - 260 : editAnchorRect.right + 20,
                                                                 transform: 'translateY(-50%)',
-                                                                zIndex: 100,
+                                                                zIndex: 10501,
                                                                 minWidth: '240px',
                                                                 background: 'rgba(255, 255, 255, 0.95)',
                                                                 backdropFilter: 'blur(12px)',
@@ -886,7 +911,8 @@ export default function NewTaskPage() {
                                                                 borderRadius: '0.75rem',
                                                                 boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)',
                                                                 padding: '0.5rem',
-                                                                animation: 'fadeIn 0.2s ease-out'
+                                                                animation: 'fadeIn 0.2s ease-out',
+                                                                direction: locale === 'ar' ? 'rtl' : 'ltr'
                                                             }}>
                                                                 {activeAssigneeEdit.type === 'add' ? (
                                                                     // Add Dropdown
@@ -1021,7 +1047,8 @@ export default function NewTaskPage() {
                                                                     </div>
                                                                 )}
                                                             </div>
-                                                        </>
+                                                        </>,
+                                                        document.body
                                                     )}
 
                                                 </td>
@@ -1035,7 +1062,11 @@ export default function NewTaskPage() {
                                                             }) : t('invalid_date')}
                                                         </div>
                                                         <button
-                                                            onClick={() => setActiveCellEdit({ index: idx, field: 'deadline' })}
+                                                            onClick={(e) => {
+                                                                const rect = e.currentTarget.getBoundingClientRect()
+                                                                setEditAnchorRect(rect)
+                                                                setActiveCellEdit({ index: idx, field: 'deadline' })
+                                                            }}
                                                             style={{
                                                                 background: 'none', border: 'none', cursor: 'pointer', padding: '0.2rem',
                                                                 borderRadius: '0.3rem', transition: 'all 0.2s', fontSize: '1.1rem',
@@ -1056,13 +1087,17 @@ export default function NewTaskPage() {
                                                     )}
 
                                                     {/* Deadline Pop-up */}
-                                                    {activeCellEdit?.index === idx && activeCellEdit?.field === 'deadline' && (
+                                                    {activeCellEdit?.index === idx && activeCellEdit?.field === 'deadline' && editAnchorRect && createPortal(
                                                         <>
-                                                            <div onClick={() => setActiveCellEdit(null)} style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 99 }} />
+                                                            <div onClick={() => setActiveCellEdit(null)} style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 10500 }} />
                                                             <div style={{
-                                                                position: 'absolute', top: '50%', right: '4rem', transform: 'translateY(-50%)',
-                                                                zIndex: 100, minWidth: '320px', background: 'white', padding: '1rem',
-                                                                borderRadius: '0.75rem', boxShadow: '0 10px 25px rgba(0,0,0,0.2)', border: '1px solid #e2e8f0'
+                                                                position: 'fixed',
+                                                                top: editAnchorRect.top + editAnchorRect.height / 2,
+                                                                left: locale === 'ar' ? editAnchorRect.left - 340 : editAnchorRect.right + 20,
+                                                                transform: 'translateY(-50%)',
+                                                                zIndex: 10501, minWidth: '320px', background: 'white', padding: '1rem',
+                                                                borderRadius: '0.75rem', boxShadow: '0 10px 25px rgba(0,0,0,0.2)', border: '1px solid #e2e8f0',
+                                                                direction: locale === 'ar' ? 'rtl' : 'ltr'
                                                             }}>
                                                                 <DateTimePicker
                                                                     label={t('deadline_label')}
@@ -1084,7 +1119,8 @@ export default function NewTaskPage() {
                                                                     {t('done')}
                                                                 </button>
                                                             </div>
-                                                        </>
+                                                        </>,
+                                                        document.body
                                                     )}
                                                 </td>
                                                 <td style={{ padding: '1rem' }}>
