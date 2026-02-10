@@ -521,7 +521,7 @@ export default function DayOffRequestsPage() {
                                                 fontStyle: 'italic',
                                                 maxHeight: '80px', // Lower threshold
                                                 overflowY: 'auto',
-                                                wordBreak: 'break-all', // Better for long gibberish
+                                                overflowWrap: 'anywhere', // Better for long strings while keeping words whole
                                                 scrollbarWidth: 'thin',
                                                 display: 'block'
                                             }}>

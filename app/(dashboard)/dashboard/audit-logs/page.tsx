@@ -112,7 +112,7 @@ export default function AuditLogsPage() {
                                 <span style={{ color: '#475569', fontWeight: 'bold', whiteSpace: 'nowrap' }}>&quot;{key}&quot;:</span>
                                 <span style={{
                                     color: '#1e293b',
-                                    wordBreak: 'break-all',
+                                    overflowWrap: 'anywhere',
                                     flex: 1
                                 }}>
                                     {typeof value === 'string' ? <>&quot;{value}&quot;</> : JSON.stringify(value)}
@@ -143,7 +143,7 @@ export default function AuditLogsPage() {
                 </div>
             )
         } catch {
-            return <span style={{ fontSize: '0.7rem', color: '#94a3b8', wordBreak: 'break-all' }}>{String(details)}</span>
+            return <span style={{ fontSize: '0.7rem', color: '#94a3b8', overflowWrap: 'anywhere' }}>{String(details)}</span>
         }
     }
 
