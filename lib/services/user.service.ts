@@ -172,15 +172,11 @@ export class UserService {
             }
 
             if (Object.keys(diffs).length > 0) {
-                await prisma.auditLog.create({
-                    data: {
-                        action: 'UPDATE_USER',
-                        entityType: 'USER',
-                        entityId: id,
-                        userId: userRole !== 'SUPER_ADMIN' ? session.user.id : null,
-                        superAdminId: userRole === 'SUPER_ADMIN' ? session.user.id : null,
-                        details: JSON.stringify(diffs)
-                    }
+                const { AuditLogService } = await import("./audit-log.service")
+                await AuditLogService.log('UPDATE_USER', 'USER', id, {
+                    userId: userRole !== 'SUPER_ADMIN' ? session.user.id : null,
+                    superAdminId: userRole === 'SUPER_ADMIN' ? session.user.id : null,
+                    details: diffs
                 })
             }
 

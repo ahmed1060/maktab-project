@@ -67,6 +67,20 @@ export class NoteService {
         const userId = session.user.id
         const userRole = session.user.role
 
+        const note = await prisma.businessClientNote.findUnique({
+            where: { id },
+            include: { section: { include: { client: { select: { companyId: true } } } } }
+        })
+        if (!note) throw new Error("NOTE_NOT_FOUND")
+
+        // Security: Company Isolation
+        if (userRole !== 'SUPER_ADMIN') {
+            const userCompanyId = (session.user as any).companyId
+            if (note.section.client.companyId !== userCompanyId) {
+                throw new Error("ACCESS_DENIED")
+            }
+        }
+
         const updated = await prisma.businessClientNote.update({
             where: { id },
             data: {
@@ -143,16 +157,12 @@ export class NoteService {
 
         const result = await prisma.businessClientNote.delete({ where: { id } })
 
-        // Audit Log
-        await prisma.auditLog.create({
-            data: {
-                action: 'DELETE_NOTE',
-                entityType: 'NOTE',
-                entityId: id,
-                userId: userRole !== 'SUPER_ADMIN' ? userId : null,
-                superAdminId: userRole === 'SUPER_ADMIN' ? userId : null,
-                details: JSON.stringify({ sectionId: note.sectionId })
-            }
+        // Audit Log (Centralized)
+        const { AuditLogService } = await import("./audit-log.service")
+        await AuditLogService.log('DELETE_NOTE', 'NOTE', id, {
+            userId: userRole !== 'SUPER_ADMIN' ? userId : null,
+            superAdminId: userRole === 'SUPER_ADMIN' ? userId : null,
+            details: { sectionId: note.sectionId }
         })
 
         return result

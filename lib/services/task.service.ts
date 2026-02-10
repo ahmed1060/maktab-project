@@ -105,10 +105,18 @@ export class TaskService {
 
         const existingTask = await prisma.task.findUnique({
             where: { id },
-            select: { title: true, description: true, location: true, attachments: true, comments: true }
+            select: { title: true, description: true, location: true, attachments: true, comments: true, companyId: true }
         })
 
         if (!existingTask) throw new Error("TASK_NOT_FOUND")
+
+        // Security: Company Isolation
+        if (userRole !== 'SUPER_ADMIN') {
+            const userCompanyId = (session.user as any).companyId
+            if (existingTask.companyId !== userCompanyId) {
+                throw new Error("ACCESS_DENIED")
+            }
+        }
 
         const changes: any = {}
         if (title && existingTask.title !== title) changes.title = { from: existingTask.title, to: title }
@@ -206,6 +214,19 @@ export class TaskService {
                 include: { assignees: true }
             })
             if (!currentTask) throw new Error("TASK_NOT_FOUND")
+
+            // Security: Company Isolation
+            const userRole = session.user.role
+            if (userRole !== 'SUPER_ADMIN') {
+                const userCompanyId = (session.user as any).companyId
+                if (currentTask.companyId !== userCompanyId) {
+                    throw new Error("ACCESS_DENIED")
+                }
+            }
+
+            // Also check if submitting for self unless Admin
+            const isAssignee = currentTask.assignees.some((a: any) => a.id === userId)
+            if (userRole === 'EMPLOYEE' && !isAssignee) throw new Error("ACCESS_DENIED")
 
             // Handle Attachments
             let finalAttachments: any[] = []
@@ -320,9 +341,17 @@ export class TaskService {
         return await prisma.$transaction(async (tx) => {
             const oldTask = await tx.task.findUnique({
                 where: { id },
-                select: { status: true, difficulty: true, totalCost: true, title: true, assignees: { select: { id: true } } }
+                select: { status: true, difficulty: true, totalCost: true, title: true, companyId: true, assignees: { select: { id: true } } }
             })
             if (!oldTask) throw new Error("TASK_NOT_FOUND")
+
+            // Security: Company Isolation
+            if (userRole !== 'SUPER_ADMIN') {
+                const userCompanyId = (session.user as any).companyId
+                if (oldTask.companyId !== userCompanyId) {
+                    throw new Error("ACCESS_DENIED")
+                }
+            }
 
             if (['ADMIN', 'SUPER_ADMIN'].includes(userRole) && oldTask.assignees.some(a => a.id === userId)) {
                 throw new Error("SELF_REVIEW_FORBIDDEN")
@@ -622,26 +651,28 @@ export class TaskService {
     /**
      * Deletes a task.
      */
-    static async delete(id: string, userId: string, userRole: string) {
+    static async delete(id: string, session: any) {
+        const userId = session.user.id
+        const userRole = session.user.role
+
         return await prisma.$transaction(async (tx) => {
             const task = await tx.task.findUnique({
                 where: { id },
-                select: { status: true, difficulty: true, assignees: { select: { id: true } }, attachments: true }
+                select: { status: true, difficulty: true, assignees: { select: { id: true } }, attachments: true, companyId: true, title: true }
             })
             if (!task) throw new Error("TASK_NOT_FOUND")
+
+            // Security: Company Isolation
+            if (userRole !== 'SUPER_ADMIN') {
+                const userCompanyId = (session.user as any).companyId
+                if (task.companyId !== userCompanyId) {
+                    throw new Error("ACCESS_DENIED")
+                }
+            }
 
             const isSelfAssigned = task.assignees.some((a: any) => a.id === userId)
             if (['ADMIN', 'SUPER_ADMIN'].includes(userRole) && isSelfAssigned) {
                 throw new Error("SELF_DELETION_FORBIDDEN")
-            }
-
-            if (['APPROVED', 'COMPLETED'].includes(task.status)) {
-                for (const a of task.assignees) {
-                    await tx.user.update({
-                        where: { id: a.id },
-                        data: { totalDifficultyPoints: { decrement: task.difficulty } }
-                    })
-                }
             }
 
             if (task.attachments) {
@@ -668,7 +699,7 @@ export class TaskService {
                 tx,
                 userId: userRole !== 'SUPER_ADMIN' ? userId : null,
                 superAdminId: userRole === 'SUPER_ADMIN' ? userId : null,
-                details: { status: task.status, difficulty: task.difficulty }
+                details: { status: task.status, title: task.title }
             })
 
             return { success: true, id }
@@ -688,6 +719,13 @@ export class TaskService {
             }) as any
 
             if (!task) throw new Error("TASK_NOT_FOUND")
+
+            // Security: Company Isolation
+            if (session.user.role !== 'SUPER_ADMIN') {
+                if (task.companyId !== session.user.companyId) {
+                    throw new Error("ACCESS_DENIED")
+                }
+            }
             if (!['APPROVED', 'COMPLETED', 'REJECTED', 'PENDING_CONFIRMATION'].includes(task.status)) {
                 throw new Error(`CANNOT_REVERT_STATUS_${task.status}`)
             }
@@ -736,18 +774,26 @@ export class TaskService {
      */
     static async updatePayment(id: string, session: any, data: any) {
         const { paymentStatus, targetUserId } = data
-        const userId = session.user.id
         const userRole = session.user.role
+        const userId = session.user.id
 
         return await prisma.$transaction(async (tx) => {
-            const currentTask = await tx.task.findUnique({
+            const task = await tx.task.findUnique({
                 where: { id },
-                include: { assignees: true }
+                include: { assignees: { select: { id: true, companyId: true } } }
             })
-            if (!currentTask) throw new Error("TASK_NOT_FOUND")
+            if (!task) throw new Error("TASK_NOT_FOUND")
+
+            // Security: Company Isolation
+            if (userRole !== 'SUPER_ADMIN') {
+                const userCompanyId = (session.user as any).companyId
+                if (task.companyId !== userCompanyId) {
+                    throw new Error("ACCESS_DENIED")
+                }
+            }
 
             const updateData: any = {}
-            const memberPayments = currentTask.memberPaymentStatus ? (typeof currentTask.memberPaymentStatus === 'string' ? JSON.parse(currentTask.memberPaymentStatus) : currentTask.memberPaymentStatus) : {}
+            const memberPayments = task.memberPaymentStatus ? (typeof task.memberPaymentStatus === 'string' ? JSON.parse(task.memberPaymentStatus) : task.memberPaymentStatus) : {}
 
             if (targetUserId) {
                 memberPayments[targetUserId] = paymentStatus
@@ -765,17 +811,17 @@ export class TaskService {
                 if (paymentStatus === 'PAID') {
                     updateData.status = 'COMPLETED'
                     const newPayments: any = {}
-                    currentTask.assignees.forEach(a => newPayments[a.id] = 'PAID')
+                    task.assignees.forEach(a => newPayments[a.id] = 'PAID')
                     updateData.memberPaymentStatus = JSON.stringify(newPayments)
                 } else {
                     updateData.status = 'APPROVED'
                     const newPayments: any = {}
-                    currentTask.assignees.forEach(a => newPayments[a.id] = 'PENDING_PAYMENT')
+                    task.assignees.forEach(a => newPayments[a.id] = 'PENDING_PAYMENT')
                     updateData.memberPaymentStatus = JSON.stringify(newPayments)
                 }
             }
 
-            const task = await tx.task.update({ where: { id }, data: updateData })
+            const updatedTaskRecord = await tx.task.update({ where: { id }, data: updateData })
 
             await tx.auditLog.create({
                 data: {
@@ -784,11 +830,11 @@ export class TaskService {
                     entityId: id,
                     userId: userRole === 'SUPER_ADMIN' ? null : userId,
                     superAdminId: userRole === 'SUPER_ADMIN' ? userId : null,
-                    details: JSON.stringify({ paymentStatus: updateData.paymentStatus || task.paymentStatus, targetUserId, taskStatus: updateData.status || task.status })
+                    details: JSON.stringify({ paymentStatus: updateData.paymentStatus || updatedTaskRecord.paymentStatus, targetUserId, taskStatus: updateData.status || updatedTaskRecord.status })
                 }
             })
 
-            return task
+            return updatedTaskRecord
         })
     }
 
@@ -803,6 +849,14 @@ export class TaskService {
         return await prisma.$transaction(async (tx) => {
             const task = await tx.task.findUnique({ where: { id } })
             if (!task) throw new Error("TASK_NOT_FOUND")
+
+            // Security: Company Isolation
+            if (userRole !== 'SUPER_ADMIN') {
+                if (task.companyId !== (session.user as any).companyId) {
+                    throw new Error("ACCESS_DENIED")
+                }
+            }
+
             if (task.status !== 'IN_PROGRESS') throw new Error("TASK_NOT_IN_PROGRESS")
 
             const updateData: any = {}
@@ -972,13 +1026,24 @@ export class TaskService {
         const userRole = session.user.role
 
         return await prisma.$transaction(async (tx) => {
+            const whereClause: any = {
+                id: { in: taskIds },
+                paymentStatus: 'PENDING_PAYMENT'
+            }
+
+            // Security: Company Isolation
+            if (userRole !== 'SUPER_ADMIN') {
+                whereClause.companyId = (session.user as any).companyId
+            }
+
             const tasks = await tx.task.findMany({
-                where: {
-                    id: { in: taskIds },
-                    paymentStatus: 'PENDING_PAYMENT'
-                },
+                where: whereClause,
                 select: { id: true, memberCosts: true } as any
             })
+
+            if (tasks.length !== taskIds.length && userRole !== 'SUPER_ADMIN') {
+                throw new Error("SOME_TASKS_NOT_FOUND_OR_ACCESS_DENIED")
+            }
 
             for (const task of tasks) {
                 const mCosts = typeof task.memberCosts === 'string'

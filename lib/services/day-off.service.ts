@@ -209,16 +209,11 @@ export class DayOffService {
             data: { status: 'REJECTED' }
         })
 
-        // Audit Log
-        await prisma.auditLog.create({
-            data: {
-                action: 'REJECT_DAY_OFF_REQUEST',
-                entityType: 'DAY_OFF_REQUEST',
-                entityId: id,
-                userId: userRole !== 'SUPER_ADMIN' ? (session.user as any).id : null,
-                superAdminId: userRole === 'SUPER_ADMIN' ? (session.user as any).id : null,
-                details: null
-            }
+        const { AuditLogService } = await import("./audit-log.service")
+        await AuditLogService.log('REJECT_DAY_OFF_REQUEST', 'DAY_OFF_REQUEST', id, {
+            userId: userRole !== 'SUPER_ADMIN' ? (session.user as any).id : null,
+            superAdminId: userRole === 'SUPER_ADMIN' ? (session.user as any).id : null,
+            details: { date: requestToUpdate.date }
         })
 
         await prisma.notification.create({
@@ -281,22 +276,30 @@ export class DayOffService {
                 }
             } else {
                 // Adjust Credit
-                await tx.user.update({
-                    where: { id: requestToUpdate.userId },
-                    data: { dayOffCredit: { increment: diff } }
-                })
+                if (diff < 0) { // Increasing deduction, check if user has enough credit
+                    const guardCheck = await tx.user.update({
+                        where: {
+                            id: requestToUpdate.userId,
+                            dayOffCredit: { gte: Math.abs(diff) }
+                        },
+                        data: { dayOffCredit: { increment: diff } }
+                    })
+                    if (!guardCheck) throw new Error("INSUFFICIENT_CREDIT")
+                } else {
+                    await tx.user.update({
+                        where: { id: requestToUpdate.userId },
+                        data: { dayOffCredit: { increment: diff } }
+                    })
+                }
             }
 
-            // Audit Log
-            await tx.auditLog.create({
-                data: {
-                    action: 'REEVALUATE_DAY_OFF_REQUEST',
-                    entityType: 'DAY_OFF_REQUEST',
-                    entityId: id,
-                    userId: userRole !== 'SUPER_ADMIN' ? (session.user as any).id : null,
-                    superAdminId: userRole === 'SUPER_ADMIN' ? (session.user as any).id : null,
-                    details: JSON.stringify({ oldDays, newDays, deductionType: requestToUpdate.deductionType })
-                }
+            // Audit Log (Centralized)
+            const { AuditLogService } = await import("./audit-log.service")
+            await AuditLogService.log('REEVALUATE_DAY_OFF_REQUEST', 'DAY_OFF_REQUEST', id, {
+                tx,
+                userId: userRole !== 'SUPER_ADMIN' ? (session.user as any).id : null,
+                superAdminId: userRole === 'SUPER_ADMIN' ? (session.user as any).id : null,
+                details: { oldDays, newDays, deductionType: requestToUpdate.deductionType }
             })
 
             await tx.notification.create({

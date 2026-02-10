@@ -6,7 +6,7 @@ import { verifyResourceAccess } from "@/lib/security"
 export const DELETE = withStandardHandler(async (req, session, json, { params }) => {
     const taskId = params.id
     const userRole = session.user.role
-    const userId = session.user.id
+    // userRole already declared above
 
     if (!['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole)) {
         return ApiResponse.forbidden("Only Admins and Team Leaders can delete tasks")
@@ -17,7 +17,7 @@ export const DELETE = withStandardHandler(async (req, session, json, { params })
     if (!hasAccess) return ApiResponse.forbidden("Access denied")
 
     try {
-        await TaskService.delete(taskId, userId, userRole)
+        await TaskService.delete(taskId, session)
         return ApiResponse.success({ success: true })
     } catch (error: any) {
         if (error.message === 'TASK_NOT_FOUND') return ApiResponse.notFound("Task not found")

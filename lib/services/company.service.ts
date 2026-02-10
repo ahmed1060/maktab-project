@@ -112,15 +112,11 @@ export class CompanyService {
             }
         })
 
-        // Audit Log
-        await prisma.auditLog.create({
-            data: {
-                action: 'CREATE_COMPANY_PAYMENT',
-                entityType: 'COMPANY_PAYMENT',
-                entityId: payment.id,
-                superAdminId: session.user.id,
-                details: JSON.stringify({ companyId, cost, subscriptionType })
-            }
+        // Audit Log (Centralized)
+        const { AuditLogService } = await import("./audit-log.service")
+        await AuditLogService.log('CREATE_COMPANY_PAYMENT', 'COMPANY_PAYMENT', payment.id, {
+            superAdminId: session.user.id,
+            details: { companyId, cost, subscriptionType }
         })
 
         return payment
@@ -154,15 +150,11 @@ export class CompanyService {
             }
         })
 
-        // Audit Log
-        await prisma.auditLog.create({
-            data: {
-                action: 'CONFIRM_COMPANY_PAYMENT',
-                entityType: 'COMPANY_PAYMENT',
-                entityId: paymentId,
-                superAdminId: session.user.id,
-                details: JSON.stringify({ companyId: payment.companyId, cost: payment.cost, endDate })
-            }
+        // Audit Log (Centralized)
+        const { AuditLogService } = await import("./audit-log.service")
+        await AuditLogService.log('CONFIRM_COMPANY_PAYMENT', 'COMPANY_PAYMENT', paymentId, {
+            superAdminId: session.user.id,
+            details: { companyId: payment.companyId, cost: payment.cost, endDate }
         })
 
         return updated
@@ -178,15 +170,11 @@ export class CompanyService {
 
         const deleted = await prisma.companyPayment.delete({ where: { id: paymentId } })
 
-        // Audit Log
-        await prisma.auditLog.create({
-            data: {
-                action: 'DELETE_COMPANY_PAYMENT',
-                entityType: 'COMPANY_PAYMENT',
-                entityId: paymentId,
-                superAdminId: session.user.id,
-                details: JSON.stringify({ companyId: payment.companyId, cost: payment.cost })
-            }
+        // Audit Log (Centralized)
+        const { AuditLogService } = await import("./audit-log.service")
+        await AuditLogService.log('DELETE_COMPANY_PAYMENT', 'COMPANY_PAYMENT', paymentId, {
+            superAdminId: session.user.id,
+            details: { companyId: payment.companyId, cost: payment.cost }
         })
 
         return deleted

@@ -81,6 +81,13 @@ export class ObligationService {
             })
             if (!current) throw new Error("OBLIGATION_NOT_FOUND")
 
+            // Security: Company Isolation
+            if (userRole !== 'SUPER_ADMIN') {
+                if (current.companyId !== (session.user as any).companyId) {
+                    throw new Error("ACCESS_DENIED")
+                }
+            }
+
             // 1. Authorization
             const isManager = ['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole)
             const isAssignee = current.assignees.some((a: any) => a.id === userId)
@@ -186,10 +193,17 @@ export class ObligationService {
         return await prisma.$transaction(async (tx) => {
             const obligation = await tx.obligation.findUnique({
                 where: { id },
-                select: { status: true, difficulty: true, assignees: { select: { id: true } }, attachments: true }
+                select: { status: true, difficulty: true, assignees: { select: { id: true } }, attachments: true, companyId: true, title: true }
             })
 
             if (!obligation) throw new Error("OBLIGATION_NOT_FOUND")
+
+            // Security: Company Isolation
+            if (userRole !== 'SUPER_ADMIN') {
+                if (obligation.companyId !== (session.user as any).companyId) {
+                    throw new Error("ACCESS_DENIED")
+                }
+            }
 
             // Self-delete rule
             const isSelfAssigned = obligation.assignees.some((a: any) => a.id === userId)
@@ -251,6 +265,13 @@ export class ObligationService {
             }) as any
 
             if (!obligation) throw new Error("OBLIGATION_NOT_FOUND")
+
+            // Security: Company Isolation
+            if (session.user.role !== 'SUPER_ADMIN') {
+                if (obligation.companyId !== (session.user as any).companyId) {
+                    throw new Error("ACCESS_DENIED")
+                }
+            }
             if (!['APPROVED', 'COMPLETED', 'REJECTED', 'PENDING_CONFIRMATION'].includes(obligation.status)) {
                 throw new Error(`CANNOT_REVERT_STATUS_${obligation.status}`)
             }
@@ -287,19 +308,15 @@ export class ObligationService {
                 }))
             })
 
-            const isSuperAdminEntity = await tx.superAdmin.findUnique({ where: { id: userId } })
-            await tx.auditLog.create({
-                data: {
-                    action: 'REVERT_OBLIGATION',
-                    entityType: 'OBLIGATION',
-                    entityId: obligation.id,
-                    superAdminId: isSuperAdminEntity ? userId : null,
-                    userId: isSuperAdminEntity ? null : userId,
-                    details: JSON.stringify({
-                        oldStatus: obligation.status,
-                        newStatus: 'IN_PROGRESS',
-                        pointsDeducted: pointDeduction
-                    })
+            const { AuditLogService } = await import("./audit-log.service")
+            await AuditLogService.log('REVERT_OBLIGATION', 'OBLIGATION', obligation.id, {
+                tx,
+                superAdminId: session.user.role === 'SUPER_ADMIN' ? userId : null,
+                userId: session.user.role !== 'SUPER_ADMIN' ? userId : null,
+                details: {
+                    oldStatus: obligation.status,
+                    newStatus: 'IN_PROGRESS',
+                    pointsDeducted: pointDeduction
                 }
             })
 
@@ -322,38 +339,37 @@ export class ObligationService {
             include: { assignees: { select: { id: true } } }
         })
 
+        // 2. Optimization: Batch check for existing instances
+        const checkPayloads = recurrentObligations.map(obl => {
+            const nextDeadline = new Date(obl.deadline)
+            switch (obl.recurrence) {
+                case 'DAILY': nextDeadline.setDate(nextDeadline.getDate() + 1); break
+                case 'WEEKLY': nextDeadline.setDate(nextDeadline.getDate() + 7); break
+                case 'MONTHLY': nextDeadline.setMonth(nextDeadline.getMonth() + 1); break
+                case 'YEARLY': nextDeadline.setFullYear(nextDeadline.getFullYear() + 1); break
+            }
+            return { obl, nextDeadline }
+        })
+
+        const existingInstances = await prisma.obligation.findMany({
+            where: {
+                OR: checkPayloads.map(p => ({
+                    title: p.obl.title,
+                    companyId: p.obl.companyId,
+                    deadline: p.nextDeadline
+                }))
+            },
+            select: { title: true, companyId: true, deadline: true }
+        })
+
         const creationResults = []
 
-        for (const obl of recurrentObligations) {
-            const nextDeadline = new Date(obl.deadline)
-
-            switch (obl.recurrence) {
-                case 'DAILY':
-                    nextDeadline.setDate(nextDeadline.getDate() + 1)
-                    break
-                case 'WEEKLY':
-                    nextDeadline.setDate(nextDeadline.getDate() + 7)
-                    break
-                case 'MONTHLY':
-                    nextDeadline.setMonth(nextDeadline.getMonth() + 1)
-                    break
-                case 'YEARLY':
-                    nextDeadline.setFullYear(nextDeadline.getFullYear() + 1)
-                    break
-                default:
-                    continue
-            }
-
-            // check if next instance already exists (same title, company, assignees, and exact deadline)
-            const exists = await prisma.obligation.findFirst({
-                where: {
-                    title: obl.title,
-                    companyId: obl.companyId,
-                    deadline: nextDeadline,
-                    // Note: matching exact assignees is harder with prisma filters, 
-                    // but title + company + exact deadline is usually unique enough for a sequence.
-                }
-            })
+        for (const { obl, nextDeadline } of checkPayloads) {
+            const exists = existingInstances.some(inst =>
+                inst.title === obl.title &&
+                inst.companyId === obl.companyId &&
+                inst.deadline.getTime() === nextDeadline.getTime()
+            )
 
             if (!exists) {
                 const newObl = await prisma.obligation.create({
@@ -365,7 +381,7 @@ export class ObligationService {
                         recurrence: obl.recurrence,
                         difficulty: obl.difficulty,
                         status: 'PENDING',
-                        attachments: null, // Don't carry over attachments to the next instance
+                        attachments: null,
                         assignees: {
                             connect: obl.assignees.map(a => ({ id: a.id }))
                         }
@@ -373,14 +389,13 @@ export class ObligationService {
                 })
 
                 // Create notifications
-                await prisma.notification.createMany({
-                    data: obl.assignees.map(a => ({
-                        userId: a.id,
-                        type: 'OBLIGATION_ASSIGNED',
-                        message: `New recurrent instance of "${obl.title}" has been created.`,
-                        relatedId: newObl.id
-                    }))
-                })
+                const { NotificationService } = await import("./notification.service")
+                await NotificationService.notifyMany(
+                    obl.assignees.map(a => a.id),
+                    'OBLIGATION_ASSIGNED',
+                    `New recurrent instance of "${obl.title}" has been created.`,
+                    newObl.id
+                )
 
                 creationResults.push({ originalId: obl.id, nextId: newObl.id })
             }

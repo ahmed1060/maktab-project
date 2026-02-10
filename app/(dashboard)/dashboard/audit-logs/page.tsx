@@ -88,108 +88,133 @@ export default function AuditLogsPage() {
         }
     }
 
-    const getPerformerName = (log: AuditLog) => {
-        if (log.superAdmin) {
-            return `${log.superAdmin.firstName} ${log.superAdmin.lastName} (Super Admin)`
-        }
-        if (log.user) {
-            return `${log.user.firstName} ${log.user.lastName} (${log.user.role})`
-        }
-        return 'System'
-    }
 
     return (
-        <div style={{ direction: locale === 'ar' ? 'rtl' : 'ltr', padding: '1.5rem' }}>
-            <div style={{ marginBottom: '2rem' }}>
-                <h1 style={{ fontSize: '1.8rem', fontWeight: 'bold', color: '#0f172a' }}>{t('audit_logs')}</h1>
-                <p style={{ color: '#64748b' }}>{t('audit_logs_subtitle')}</p>
-            </div>
+        <div className="animate-fade-in" style={{ direction: locale === 'ar' ? 'rtl' : 'ltr', padding: '1.5rem', minHeight: '100vh' }}>
+            <header style={{ marginBottom: '2.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
+                <h1 style={{ fontSize: '2.25rem', fontWeight: '800', color: '#1e293b', marginBottom: '0.5rem' }}>
+                    {t('audit_logs')}
+                </h1>
+                <p style={{ color: '#64748b', fontSize: '1.1rem', fontWeight: '500' }}>{t('audit_logs_subtitle')}</p>
+            </header>
 
-            {/* Simple Filters */}
-            <div style={{ display: 'flex', gap: '1rem', marginBottom: '2rem', flexWrap: 'wrap' }}>
-                <input
-                    type="text"
-                    placeholder={locale === 'ar' ? 'تصفية حسب الكيان...' : 'Filter by Entity...'}
-                    value={filters.entityType}
-                    onChange={(e) => setFilters(f => ({ ...f, entityType: e.target.value }))}
-                    style={{ padding: '0.5rem 1rem', borderRadius: '8px', border: '1px solid #e2e8f0', minWidth: '200px' }}
-                />
-                <input
-                    type="text"
-                    placeholder={locale === 'ar' ? 'تصفية حسب الإجراء...' : 'Filter by Action...'}
-                    value={filters.action}
-                    onChange={(e) => setFilters(f => ({ ...f, action: e.target.value }))}
-                    style={{ padding: '0.5rem 1rem', borderRadius: '8px', border: '1px solid #e2e8f0', minWidth: '200px' }}
-                />
-                <button
-                    onClick={() => { setFilters({ entityType: '', action: '' }); setPage(1); }}
-                    className="btn"
-                    style={{ background: '#f1f5f9', color: '#475569' }}
-                >
-                    {t('reset_filters' as any) || 'Reset'}
-                </button>
-            </div>
+            {/* Glass Filters Section */}
+            <section className="glass-card" style={{ marginBottom: '2rem', display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                <div style={{ flex: 1, minWidth: '200px' }}>
+                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: '700', textTransform: 'uppercase', color: '#64748b', marginBottom: '0.5rem', marginInlineStart: '0.5rem' }}>
+                        {locale === 'ar' ? 'الكيان' : 'Entity Type'}
+                    </label>
+                    <input
+                        type="text"
+                        className="input"
+                        placeholder={locale === 'ar' ? 'تصفية حسب الكيان...' : 'Filter by Entity...'}
+                        value={filters.entityType}
+                        onChange={(e) => setFilters(f => ({ ...f, entityType: e.target.value }))}
+                    />
+                </div>
+                <div style={{ flex: 1, minWidth: '200px' }}>
+                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: '700', textTransform: 'uppercase', color: '#64748b', marginBottom: '0.5rem', marginInlineStart: '0.5rem' }}>
+                        {locale === 'ar' ? 'الإجراء' : 'Action'}
+                    </label>
+                    <input
+                        type="text"
+                        className="input"
+                        placeholder={locale === 'ar' ? 'تصفية حسب الإجراء...' : 'Filter by Action...'}
+                        value={filters.action}
+                        onChange={(e) => setFilters(f => ({ ...f, action: e.target.value }))}
+                    />
+                </div>
+                <div style={{ alignSelf: 'flex-end', paddingTop: '1.5rem' }}>
+                    <button
+                        onClick={() => { setFilters({ entityType: '', action: '' }); setPage(1); }}
+                        className="btn"
+                        style={{ background: 'rgba(255,255,255,0.4)', color: '#475569', border: '1px solid rgba(255,255,255,0.5)' }}
+                    >
+                        {t('reset_filters' as any) || 'Reset'}
+                    </button>
+                </div>
+            </section>
 
             {loading ? (
-                <LoadingSpinner message={t('loading_data')} />
+                <div style={{ display: 'flex', justifyContent: 'center', padding: '4rem' }}>
+                    <LoadingSpinner message={t('loading_data')} />
+                </div>
             ) : (
                 <>
-                    <div style={{ background: 'white', borderRadius: '12px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', overflowX: 'auto' }}>
-                        <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '800px' }}>
-                            <thead style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
-                                <tr>
-                                    <th style={{ textAlign: locale === 'ar' ? 'right' : 'left', padding: '1rem', color: '#64748b', fontSize: '0.875rem' }}>{t('timestamp')}</th>
-                                    <th style={{ textAlign: locale === 'ar' ? 'right' : 'left', padding: '1rem', color: '#64748b', fontSize: '0.875rem' }}>{t('action')}</th>
-                                    <th style={{ textAlign: locale === 'ar' ? 'right' : 'left', padding: '1rem', color: '#64748b', fontSize: '0.875rem' }}>{t('entity')}</th>
-                                    <th style={{ textAlign: locale === 'ar' ? 'right' : 'left', padding: '1rem', color: '#64748b', fontSize: '0.875rem' }}>{t('performed_by')}</th>
-                                    <th style={{ textAlign: locale === 'ar' ? 'right' : 'left', padding: '1rem', color: '#64748b', fontSize: '0.875rem' }}>{t('details')}</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {logs.map((log) => (
-                                    <tr key={log.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                                        <td style={{ padding: '1rem', fontSize: '0.875rem', color: '#475569' }}>
-                                            {formatDate(log.createdAt)}
-                                        </td>
-                                        <td style={{ padding: '1rem' }}>
-                                            <span style={{
-                                                fontSize: '0.75rem',
-                                                fontWeight: '600',
-                                                padding: '0.2rem 0.5rem',
-                                                borderRadius: '4px',
-                                                background: '#f1f5f9',
-                                                color: '#475569'
-                                            }}>
-                                                {log.action}
-                                            </span>
-                                        </td>
-                                        <td style={{ padding: '1rem', fontSize: '0.875rem', color: '#475569' }}>
-                                            {log.entityType} ({log.entityId.slice(0, 8)}...)
-                                        </td>
-                                        <td style={{ padding: '1rem', fontSize: '0.875rem', color: '#475569' }}>
-                                            {getPerformerName(log)}
-                                        </td>
-                                        <td style={{ padding: '1rem' }}>
-                                            {renderDetails(log.details)}
-                                        </td>
+                    <section className="glass-card" style={{ padding: 0, overflow: 'hidden' }}>
+                        <div style={{ overflowX: 'auto' }}>
+                            <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0 }}>
+                                <thead>
+                                    <tr style={{ background: 'rgba(241, 245, 249, 0.4)' }}>
+                                        <th style={{ textAlign: locale === 'ar' ? 'right' : 'left', padding: '1.25rem 1.5rem', color: '#475569', fontSize: '0.75rem', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('timestamp')}</th>
+                                        <th style={{ textAlign: locale === 'ar' ? 'right' : 'left', padding: '1.25rem 1.5rem', color: '#475569', fontSize: '0.75rem', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('action')}</th>
+                                        <th style={{ textAlign: locale === 'ar' ? 'right' : 'left', padding: '1.25rem 1.5rem', color: '#475569', fontSize: '0.75rem', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('entity')}</th>
+                                        <th style={{ textAlign: locale === 'ar' ? 'right' : 'left', padding: '1.25rem 1.5rem', color: '#475569', fontSize: '0.75rem', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('performed_by')}</th>
+                                        <th style={{ textAlign: locale === 'ar' ? 'right' : 'left', padding: '1.25rem 1.5rem', color: '#475569', fontSize: '0.75rem', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('details')}</th>
                                     </tr>
-                                ))}
-                                {logs.length === 0 && (
-                                    <tr>
-                                        <td colSpan={5} style={{ padding: '3rem', textAlign: 'center', color: '#94a3b8' }}>
-                                            {t('no_audit_logs_found')}
-                                        </td>
-                                    </tr>
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
+                                </thead>
+                                <tbody>
+                                    {logs.map((log) => {
+                                        const isDelete = log.action.includes('DELETE')
+                                        const isCreate = log.action.includes('CREATE')
+                                        const isUpdate = log.action.includes('UPDATE')
+                                        const isAuth = log.action.includes('LOGIN') || log.action.includes('LOGOUT')
 
-                    <Pagination
-                        currentPage={page}
-                        totalPages={totalPages}
-                        onPageChange={setPage}
-                    />
+                                        return (
+                                            <tr key={log.id} className="hover:bg-white/30 transition-colors" style={{ borderBottom: '1px solid rgba(226, 232, 240, 0.4)' }}>
+                                                <td style={{ padding: '1.25rem 1.5rem', fontSize: '0.875rem', color: '#1e293b', fontWeight: '500' }}>
+                                                    {formatDate(log.createdAt)}
+                                                </td>
+                                                <td style={{ padding: '1.25rem 1.5rem' }}>
+                                                    <span className="badge" style={{
+                                                        fontSize: '0.65rem',
+                                                        fontWeight: '800',
+                                                        background: isDelete ? '#fee2e2' : isCreate ? '#dcfce7' : isUpdate ? '#e0e7ff' : isAuth ? '#fef3c7' : '#f1f5f9',
+                                                        color: isDelete ? '#991b1b' : isCreate ? '#166534' : isUpdate ? '#3730a3' : isAuth ? '#92400e' : '#475569',
+                                                        border: 'none',
+                                                        padding: '0.25rem 0.6rem'
+                                                    }}>
+                                                        {log.action}
+                                                    </span>
+                                                </td>
+                                                <td style={{ padding: '1.25rem 1.5rem', fontSize: '0.875rem' }}>
+                                                    <div style={{ color: '#1e293b', fontWeight: '600' }}>{log.entityType}</div>
+                                                    <div style={{ color: '#94a3b8', fontSize: '0.75rem', fontFamily: 'monospace' }}>{log.entityId.slice(0, 12)}...</div>
+                                                </td>
+                                                <td style={{ padding: '1.25rem 1.5rem', fontSize: '0.875rem' }}>
+                                                    <div style={{ color: '#1e293b', fontWeight: '600' }}>
+                                                        {log.superAdmin ? `${log.superAdmin.firstName} ${log.superAdmin.lastName}` : log.user ? `${log.user.firstName} ${log.user.lastName}` : 'System'}
+                                                    </div>
+                                                    <div style={{ color: '#64748b', fontSize: '0.75rem' }}>
+                                                        {log.superAdmin ? 'Super Admin' : log.user ? log.user.role : 'Automated Task'}
+                                                    </div>
+                                                </td>
+                                                <td style={{ padding: '1.25rem 1.5rem' }}>
+                                                    {renderDetails(log.details)}
+                                                </td>
+                                            </tr>
+                                        )
+                                    })}
+                                    {logs.length === 0 && (
+                                        <tr>
+                                            <td colSpan={5} style={{ padding: '5rem', textAlign: 'center' }}>
+                                                <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🔍</div>
+                                                <div style={{ color: '#94a3b8', fontWeight: '500' }}>{t('no_audit_logs_found')}</div>
+                                            </td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    </section>
+
+                    <footer style={{ marginTop: '2rem' }}>
+                        <Pagination
+                            currentPage={page}
+                            totalPages={totalPages}
+                            onPageChange={setPage}
+                        />
+                    </footer>
                 </>
             )}
         </div>
