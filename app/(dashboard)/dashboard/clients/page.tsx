@@ -247,9 +247,9 @@ export default function ClientsPage() {
                                         }}>
                                             <h3 className="text-lg font-bold text-slate-800 leading-tight" style={{
                                                 margin: 0,
-                                                wordBreak: 'break-word',
+                                                wordBreak: 'normal',
                                                 whiteSpace: 'normal',
-                                                overflowWrap: 'anywhere'
+                                                overflowWrap: 'break-word'
                                             }}>
                                                 {client.name}
                                             </h3>

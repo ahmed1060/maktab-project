@@ -345,9 +345,9 @@ export default function ClientDetailsPage() {
                                     }}>
                                         <h3 className="text-lg font-semibold text-slate-800 leading-tight" style={{
                                             margin: 0,
-                                            wordBreak: 'break-word',
+                                            wordBreak: 'normal',
                                             whiteSpace: 'normal',
-                                            overflowWrap: 'anywhere'
+                                            overflowWrap: 'break-word'
                                         }}>
                                             {section.title}
                                         </h3>

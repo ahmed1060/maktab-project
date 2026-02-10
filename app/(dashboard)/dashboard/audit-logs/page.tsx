@@ -115,7 +115,7 @@ export default function AuditLogsPage() {
                                     overflowWrap: 'anywhere',
                                     flex: 1
                                 }}>
-                                    {typeof value === 'string' ? <>&quot;{value}&quot;</> : JSON.stringify(value)}
+                                    {typeof value === 'string' ? <>&quot;{value}&quot;</> : JSON.stringify(value).replace(/,/g, ', ')}
                                     {i < entries.length - 1 ? ',' : ''}
                                 </span>
                             </div>
@@ -136,7 +136,8 @@ export default function AuditLogsPage() {
                         padding: '0.5rem',
                         borderRadius: '0.5rem',
                         border: '1px solid #e2e8f0',
-                        fontSize: '0.7rem'
+                        fontSize: '0.7rem',
+                        overflowWrap: 'break-word'
                     }}>
                         {JSON.stringify(parsed, null, 2)}
                     </pre>
@@ -246,7 +247,15 @@ export default function AuditLogsPage() {
                                             </td>
                                             <td style={{ padding: '1rem', fontSize: '0.8rem' }}>
                                                 <div style={{ fontWeight: '600', color: '#1e293b' }}>{log.entityType}</div>
-                                                <div style={{ color: '#94a3b8', fontSize: '0.7rem', fontFamily: 'monospace' }}>{log.entityId?.slice(0, 8)}...</div>
+                                                <div style={{
+                                                    color: '#94a3b8',
+                                                    fontSize: '0.7rem',
+                                                    fontFamily: 'monospace',
+                                                    overflowWrap: 'anywhere',
+                                                    maxWidth: '120px'
+                                                }}>
+                                                    {log.entityId}
+                                                </div>
                                             </td>
                                             <td style={{ padding: '1rem', fontSize: '0.8rem' }}>
                                                 <div style={{ fontWeight: '600', color: '#1e293b' }}>
