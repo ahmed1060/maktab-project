@@ -54,27 +54,24 @@ export class RequestService {
                 })
 
                 if (admins.length > 0) {
-                    await tx.notification.createMany({
-                        data: admins.map(admin => ({
-                            userId: admin.id,
-                            type: 'NEW_REQUEST',
-                            message: `New request from ${userFirstName}: ${input.title}`,
-                            relatedId: request.id
-                        }))
-                    })
+                    const { NotificationService } = await import("./notification.service")
+                    await NotificationService.notifyMany(
+                        admins.map(admin => admin.id),
+                        'NEW_REQUEST',
+                        `New request from ${userFirstName}: ${input.title}`,
+                        request.id,
+                        tx
+                    )
                 }
             }
 
-            // Audit Log
-            await tx.auditLog.create({
-                data: {
-                    action: 'CREATE_REQUEST',
-                    entityType: 'REQUEST',
-                    entityId: request.id,
-                    userId: userRole !== 'SUPER_ADMIN' ? userId : null,
-                    superAdminId: userRole === 'SUPER_ADMIN' ? userId : null,
-                    details: JSON.stringify({ title: input.title, companyId })
-                }
+            // Audit Log (Centralized)
+            const { AuditLogService } = await import("./audit-log.service")
+            await AuditLogService.log('CREATE_REQUEST', 'REQUEST', request.id, {
+                tx,
+                userId: userRole !== 'SUPER_ADMIN' ? userId : null,
+                superAdminId: userRole === 'SUPER_ADMIN' ? userId : null,
+                details: { title: input.title, companyId }
             })
 
             return request
@@ -118,36 +115,37 @@ export class RequestService {
 
             if (userRole !== 'SUPER_ADMIN' && request.companyId !== userCompanyId) throw new Error("ACCESS_DENIED")
 
+            // --- NEW: State Transition Guard ---
+            if (request.status === 'COMPLETED' && ['PENDING', 'IN_PROGRESS'].includes(status)) {
+                throw new Error("COMPLETED_REQUEST_STATUS_LOCKED")
+            }
+
             const data: any = { status }
             if (status === 'IN_PROGRESS') data.inProgressAt = new Date()
             if (status === 'COMPLETED') data.completedAt = new Date()
 
             const updated = await tx.request.update({ where: { id }, data })
 
-            // Audit Log
-            await tx.auditLog.create({
-                data: {
-                    action: 'UPDATE_REQUEST_STATUS',
-                    entityType: 'REQUEST',
-                    entityId: id,
-                    userId: userRole !== 'SUPER_ADMIN' ? session.user.id : null,
-                    superAdminId: userRole === 'SUPER_ADMIN' ? session.user.id : null,
-                    details: JSON.stringify({ oldStatus: request.status, newStatus: status })
-                }
+            // Audit Log (Centralized)
+            const { AuditLogService } = await import("./audit-log.service")
+            await AuditLogService.log('UPDATE_REQUEST_STATUS', 'REQUEST', id, {
+                tx,
+                userId: userRole !== 'SUPER_ADMIN' ? session.user.id : null,
+                superAdminId: userRole === 'SUPER_ADMIN' ? session.user.id : null,
+                details: { oldStatus: request.status, newStatus: status }
             })
 
-            // Notify user
+            // Notify user (Centralized)
             const updaterRole = userRole.replace(/_/g, ' ')
             const statusText = status.replace(/_/g, ' ')
-
-            await tx.notification.create({
-                data: {
-                    userId: request.userId,
-                    type: 'REQUEST_STATUS_UPDATED',
-                    message: `Your request "${request.title}" is ${statusText}. (Done by ${updaterRole} ${updaterName})`,
-                    relatedId: id
-                }
-            })
+            const { NotificationService } = await import("./notification.service")
+            await NotificationService.notify(
+                request.userId,
+                'REQUEST_STATUS_UPDATED',
+                `Your request "${request.title}" is ${statusText}. (Done by ${updaterRole} ${updaterName})`,
+                id,
+                tx
+            )
 
             return updated
         })
@@ -174,16 +172,12 @@ export class RequestService {
 
         const result = await prisma.request.delete({ where: { id } })
 
-        // Audit Log
-        await prisma.auditLog.create({
-            data: {
-                action: 'DELETE_REQUEST',
-                entityType: 'REQUEST',
-                entityId: id,
-                userId: userRole !== 'SUPER_ADMIN' ? userId : null,
-                superAdminId: userRole === 'SUPER_ADMIN' ? userId : null,
-                details: JSON.stringify({ title: request.title, status: request.status })
-            }
+        // Audit Log (Centralized)
+        const { AuditLogService } = await import("./audit-log.service")
+        await AuditLogService.log('DELETE_REQUEST', 'REQUEST', id, {
+            userId: userRole !== 'SUPER_ADMIN' ? userId : null,
+            superAdminId: userRole === 'SUPER_ADMIN' ? userId : null,
+            details: { title: request.title, status: request.status }
         })
 
         return result

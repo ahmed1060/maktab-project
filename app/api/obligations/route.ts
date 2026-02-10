@@ -100,6 +100,4 @@ export const POST = withStandardHandler(async (req, session, json) => {
 
         throw error
     }
-}, {
-    audit: { action: 'CREATE_OBLIGATION', entityType: 'OBLIGATION', getEntityId: (res) => res.id }
 })

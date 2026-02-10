@@ -25,16 +25,12 @@ export class ClientService {
             }
         })
 
-        // Audit Log
-        await prisma.auditLog.create({
-            data: {
-                action: 'CREATE_CLIENT',
-                entityType: 'CLIENT',
-                entityId: client.id,
-                userId: userRole !== 'SUPER_ADMIN' ? userId : null,
-                superAdminId: userRole === 'SUPER_ADMIN' ? userId : null,
-                details: JSON.stringify({ name, companyId: targetCompanyId })
-            }
+        // Audit Log (Centralized)
+        const { AuditLogService } = await import("./audit-log.service")
+        await AuditLogService.log('CREATE_CLIENT', 'CLIENT', client.id, {
+            userId: userRole !== 'SUPER_ADMIN' ? userId : null,
+            superAdminId: userRole === 'SUPER_ADMIN' ? userId : null,
+            details: { name, companyId: targetCompanyId }
         })
 
         return client
@@ -62,16 +58,12 @@ export class ClientService {
             }
         })
 
-        // Audit Log
-        await prisma.auditLog.create({
-            data: {
-                action: 'UPDATE_CLIENT',
-                entityType: 'CLIENT',
-                entityId: id,
-                userId: userRole !== 'SUPER_ADMIN' ? userId : null,
-                superAdminId: userRole === 'SUPER_ADMIN' ? userId : null,
-                details: JSON.stringify({ name })
-            }
+        // Audit Log (Centralized)
+        const { AuditLogService } = await import("./audit-log.service")
+        await AuditLogService.log('UPDATE_CLIENT', 'CLIENT', id, {
+            userId: userRole !== 'SUPER_ADMIN' ? userId : null,
+            superAdminId: userRole === 'SUPER_ADMIN' ? userId : null,
+            details: { name }
         })
 
         return updated
@@ -90,16 +82,13 @@ export class ClientService {
 
         const result = await prisma.businessClient.delete({ where: { id } })
 
-        // Audit Log
-        await prisma.auditLog.create({
-            data: {
-                action: 'DELETE_CLIENT',
-                entityType: 'CLIENT',
-                entityId: id,
-                userId: userRole !== 'SUPER_ADMIN' ? (session.user as any).id : null,
-                superAdminId: userRole === 'SUPER_ADMIN' ? (session.user as any).id : null,
-                details: JSON.stringify({ name: client.name })
-            }
+        // Audit Log (Centralized)
+        const userId = session.user.id
+        const { AuditLogService } = await import("./audit-log.service")
+        await AuditLogService.log('DELETE_CLIENT', 'CLIENT', id, {
+            userId: userRole !== 'SUPER_ADMIN' ? userId : null,
+            superAdminId: userRole === 'SUPER_ADMIN' ? userId : null,
+            details: { name: client.name }
         })
 
         return result

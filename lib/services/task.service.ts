@@ -169,16 +169,13 @@ export class TaskService {
                 data: updateData
             })
 
-            // Audit Log
-            await tx.auditLog.create({
-                data: {
-                    action: 'UPDATE_TASK_DETAILS',
-                    entityType: 'TASK',
-                    entityId: id,
-                    userId: userRole !== 'SUPER_ADMIN' ? session.user.id : null,
-                    superAdminId: userRole === 'SUPER_ADMIN' ? session.user.id : null,
-                    details: JSON.stringify({ changes, deadline: updateData.deadline, difficulty: updateData.difficulty, assigneeIds })
-                }
+            // Audit Log (Centralized)
+            const { AuditLogService } = await import("./audit-log.service")
+            await AuditLogService.log('UPDATE_TASK_DETAILS', 'TASK', id, {
+                tx,
+                userId: userRole !== 'SUPER_ADMIN' ? session.user.id : null,
+                superAdminId: userRole === 'SUPER_ADMIN' ? session.user.id : null,
+                details: { changes, deadline: updateData.deadline, difficulty: updateData.difficulty, assigneeIds }
             })
 
             if (assigneeIds) {
@@ -355,24 +352,27 @@ export class TaskService {
                 })
             }
 
-            await tx.notification.createMany({
-                data: task.assignees.map(a => ({
-                    userId: a.id,
-                    type: newStatus === 'APPROVED' ? 'TASK_APPROVED' : newStatus === 'COMPLETED' ? 'TASK_COMPLETED' : 'TASK_REJECTED',
-                    message: `Your task "${task.title}" has been ${newStatus.toLowerCase()}`,
-                    relatedId: id
-                }))
-            })
+            const { NotificationService } = await import("./notification.service")
+            await NotificationService.notifyMany(
+                task.assignees.map(a => a.id),
+                newStatus === 'APPROVED' ? 'TASK_APPROVED' : newStatus === 'COMPLETED' ? 'TASK_COMPLETED' : 'TASK_REJECTED',
+                `Your task "${task.title}" has been ${newStatus.toLowerCase()}`,
+                id,
+                tx
+            )
 
-            // 5. Audit Log
-            await tx.auditLog.create({
-                data: {
-                    action: 'REVIEW_TASK',
-                    entityType: 'TASK',
-                    entityId: id,
-                    userId: userRole !== 'SUPER_ADMIN' ? userId : null,
-                    superAdminId: userRole === 'SUPER_ADMIN' ? userId : null,
-                    details: JSON.stringify({ oldStatus: oldTask.status, newStatus, pointsChange: pointDelta })
+            // 5. Audit Log (Centralized)
+            const { AuditLogService } = await import("./audit-log.service")
+            await AuditLogService.log('REVIEW_TASK', 'TASK', id, {
+                tx,
+                userId: userRole !== 'SUPER_ADMIN' ? userId : null,
+                superAdminId: userRole === 'SUPER_ADMIN' ? userId : null,
+                details: {
+                    taskTitle: task.title,
+                    oldStatus: oldTask.status,
+                    newStatus,
+                    pointsChange: pointDelta,
+                    difficulty: newDifficulty
                 }
             })
 
@@ -461,16 +461,13 @@ export class TaskService {
                 data: { comments: JSON.stringify(comments) }
             })
 
-            // Audit Log
-            await tx.auditLog.create({
-                data: {
-                    action: 'APPLY_TASK_PENALTY',
-                    entityType: 'TASK',
-                    entityId: id,
-                    userId: session.user.role !== 'SUPER_ADMIN' ? session.user.id : null,
-                    superAdminId: session.user.role === 'SUPER_ADMIN' ? session.user.id : null,
-                    details: JSON.stringify({ targetUserId, amount, reason: "Lateness Penalty Deduction" })
-                }
+            // Audit Log (Centralized)
+            const { AuditLogService } = await import("./audit-log.service")
+            await AuditLogService.log('APPLY_TASK_PENALTY', 'TASK', id, {
+                tx,
+                userId: session.user.role !== 'SUPER_ADMIN' ? session.user.id : null,
+                superAdminId: session.user.role === 'SUPER_ADMIN' ? session.user.id : null,
+                details: { targetUserId, amount, reason: "Lateness Penalty Deduction" }
             })
 
             return { id }
@@ -594,20 +591,17 @@ export class TaskService {
                 })
             }
 
-            // 4. Audit
-            await tx.auditLog.create({
-                data: {
-                    action: 'TRANSFER_TASK',
-                    entityType: 'TASK',
-                    entityId: originalTask.id,
-                    userId: userRole === 'SUPER_ADMIN' ? null : userId,
-                    superAdminId: userRole === 'SUPER_ADMIN' ? userId : null,
-                    details: JSON.stringify({
-                        addedCount: addedIds.length,
-                        removedCount: removedIds.length,
-                        keptCount: keptIds.length,
-                        newAssigneeIds: addedIds.map((id: string) => id)
-                    })
+            // Audit Log (Centralized)
+            const { AuditLogService } = await import("./audit-log.service")
+            await AuditLogService.log('TRANSFER_TASK', 'TASK', originalTask.id, {
+                tx,
+                userId: userRole === 'SUPER_ADMIN' ? null : userId,
+                superAdminId: userRole === 'SUPER_ADMIN' ? userId : null,
+                details: {
+                    addedCount: addedIds.length,
+                    removedCount: removedIds.length,
+                    keptCount: keptIds.length,
+                    newAssigneeIds: addedIds.map((id: string) => id)
                 }
             })
 
@@ -668,16 +662,13 @@ export class TaskService {
 
             await tx.task.delete({ where: { id } })
 
-            // Audit Log
-            await tx.auditLog.create({
-                data: {
-                    action: 'DELETE_TASK',
-                    entityType: 'TASK',
-                    entityId: id,
-                    userId: userRole !== 'SUPER_ADMIN' ? userId : null,
-                    superAdminId: userRole === 'SUPER_ADMIN' ? userId : null,
-                    details: JSON.stringify({ status: task.status, difficulty: task.difficulty })
-                }
+            // Audit Log (Centralized)
+            const { AuditLogService } = await import("./audit-log.service")
+            await AuditLogService.log('DELETE_TASK', 'TASK', id, {
+                tx,
+                userId: userRole !== 'SUPER_ADMIN' ? userId : null,
+                superAdminId: userRole === 'SUPER_ADMIN' ? userId : null,
+                details: { status: task.status, difficulty: task.difficulty }
             })
 
             return { success: true, id }
@@ -727,15 +718,13 @@ export class TaskService {
             })
 
             const isSuperAdminEntity = await tx.superAdmin.findUnique({ where: { id: userId } })
-            await tx.auditLog.create({
-                data: {
-                    action: 'REVERT_TASK',
-                    entityType: 'TASK',
-                    entityId: task.id,
-                    superAdminId: isSuperAdminEntity ? userId : null,
-                    userId: isSuperAdminEntity ? null : userId,
-                    details: JSON.stringify({ oldStatus: task.status, newStatus: 'IN_PROGRESS', pointsDeducted: pointDeduction })
-                }
+            // Audit Log (Centralized)
+            const { AuditLogService } = await import("./audit-log.service")
+            await AuditLogService.log('REVERT_TASK', 'TASK', task.id, {
+                tx,
+                superAdminId: isSuperAdminEntity ? userId : null,
+                userId: isSuperAdminEntity ? null : userId,
+                details: { oldStatus: task.status, newStatus: 'IN_PROGRESS', pointsDeducted: pointDeduction }
             })
 
             return updatedTask
@@ -905,6 +894,17 @@ export class TaskService {
             const results = []
             const notificationsData: any[] = []
 
+            // Pre-fetch company mappings for Super Admin path to avoid N+1
+            const assigneeToCompanyMap = new Map<string, string>()
+            if (userRole === 'SUPER_ADMIN') {
+                const allAssigneeIds = Array.from(new Set(tasks.flatMap(t => t.assigneeIds || [])))
+                const users = await tx.user.findMany({
+                    where: { id: { in: allAssigneeIds } },
+                    select: { id: true, companyId: true }
+                })
+                users.forEach(u => u.companyId && assigneeToCompanyMap.set(u.id, u.companyId))
+            }
+
             for (const task of tasks) {
                 const { assigneeIds, deadline, ...rest } = task
                 const deadlineDate = new Date(deadline)
@@ -915,13 +915,18 @@ export class TaskService {
                     throw new Error(`ATTACHMENT_LIMIT: ${task.title}`)
                 }
 
+                // Resolve companyId: From map (SA) or session (Admin)
+                const taskCompanyId = userRole === 'SUPER_ADMIN'
+                    ? (assigneeIds[0] ? assigneeToCompanyMap.get(assigneeIds[0]) : null)
+                    : userCompanyId
+
                 const createdTask = await (tx.task as any).create({
                     data: {
                         ...rest,
                         status: "PENDING",
                         deadline: deadlineDate,
                         createdBy: userRole === 'SUPER_ADMIN' ? null : userId,
-                        companyId: userRole === 'SUPER_ADMIN' ? (await tx.user.findUnique({ where: { id: assigneeIds[0] }, select: { companyId: true } }))?.companyId : userCompanyId,
+                        companyId: taskCompanyId,
                         assignees: {
                             connect: assigneeIds.map((id: string) => ({ id }))
                         }
@@ -976,21 +981,23 @@ export class TaskService {
             })
 
             for (const task of tasks) {
-                const newMemberPaymentStatus: Record<string, string> = {}
-                const mCosts = typeof (task as any).memberCosts === 'string'
-                    ? JSON.parse((task as any).memberCosts)
-                    : ((task as any).memberCosts as any || {})
+                const mCosts = typeof task.memberCosts === 'string'
+                    ? JSON.parse(task.memberCosts)
+                    : (task.memberCosts || {})
 
+                // Mark all members as PAID
+                const newMemberPaymentStatus: Record<string, string> = {}
                 Object.keys(mCosts).forEach(uid => {
                     newMemberPaymentStatus[uid] = 'PAID'
                 })
 
                 await tx.task.update({
-                    where: { id: (task as any).id as string },
+                    where: { id: (task as any).id },
                     data: {
                         paymentStatus: 'PAID',
                         status: 'COMPLETED',
-                        memberPaymentStatus: JSON.stringify(newMemberPaymentStatus)
+                        memberPaymentStatus: JSON.stringify(newMemberPaymentStatus),
+                        updatedAt: new Date() // Force timestamp update for history
                     } as any
                 })
             }

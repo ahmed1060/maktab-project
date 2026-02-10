@@ -51,16 +51,12 @@ export class UserService {
             select: { id: true, firstName: true, lastName: true, email: true, role: true, status: true, gender: true, username: true }
         })
 
-        // Audit Log
-        await prisma.auditLog.create({
-            data: {
-                action: 'CREATE_USER',
-                entityType: 'USER',
-                entityId: user.id,
-                userId: userRole !== 'SUPER_ADMIN' ? session.user.id : null,
-                superAdminId: userRole === 'SUPER_ADMIN' ? session.user.id : null,
-                details: JSON.stringify({ email: email, role: newUserRole, companyId: targetCompanyId })
-            }
+        // Audit Log (Centralized)
+        const { AuditLogService } = await import("./audit-log.service")
+        await AuditLogService.log('CREATE_USER', 'USER', user.id, {
+            userId: userRole !== 'SUPER_ADMIN' ? session.user.id : null,
+            superAdminId: userRole === 'SUPER_ADMIN' ? session.user.id : null,
+            details: { email: email, role: newUserRole, companyId: targetCompanyId }
         })
 
         return user
@@ -161,10 +157,10 @@ export class UserService {
             if (updateData.salary !== undefined) {
                 const now = new Date()
                 const m = now.getMonth() + 1, y = now.getFullYear()
-                const existing = await prisma.salaryRecord.findUnique({ where: { userId_month_year: { userId: id, month: m, year: y } } })
-                if (existing) await prisma.salaryRecord.update({ where: { id: existing.id }, data: { baseSalary: updateData.salary } })
-                else await prisma.salaryRecord.create({ data: { userId: id, month: m, year: y, totalDays: new Date(y, m, 0).getDate(), baseSalary: updateData.salary } })
+                const { SalaryService } = await import("./salary.service")
+                await SalaryService.ensureRecordExists(id, m, y, updateData.salary)
             }
+
 
             // Audit Log (Enhanced Diffs)
             const diffs: any = {}
@@ -248,17 +244,12 @@ export class UserService {
             select: { id: true, status: true }
         })
 
-        // Audit Log
+        // Audit Log (Centralized)
         if (existingUser.status !== status) {
-            await prisma.auditLog.create({
-                data: {
-                    action: 'UPDATE_USER_STATUS',
-                    entityType: 'USER',
-                    entityId: userId,
-                    userId: null,
-                    superAdminId: session.user.id,
-                    details: JSON.stringify({ status: { old: existingUser.status, new: status } })
-                }
+            const { AuditLogService } = await import("./audit-log.service")
+            await AuditLogService.log('UPDATE_USER_STATUS', 'USER', userId, {
+                superAdminId: session.user.id,
+                details: { status: { old: existingUser.status, new: status } }
             })
         }
 
@@ -280,16 +271,12 @@ export class UserService {
             select: { id: true, totalDifficultyPoints: true }
         })
 
-        // Audit Log
-        await prisma.auditLog.create({
-            data: {
-                action: 'RESET_USER_POINTS',
-                entityType: 'USER',
-                entityId: userId,
-                userId: requesterRole !== 'SUPER_ADMIN' ? session.user.id : null,
-                superAdminId: requesterRole === 'SUPER_ADMIN' ? session.user.id : null,
-                details: JSON.stringify({ points: { old: existingUser.totalDifficultyPoints, new: 0 } })
-            }
+        // Audit Log (Centralized)
+        const { AuditLogService } = await import("./audit-log.service")
+        await AuditLogService.log('RESET_USER_POINTS', 'USER', userId, {
+            userId: requesterRole !== 'SUPER_ADMIN' ? session.user.id : null,
+            superAdminId: requesterRole === 'SUPER_ADMIN' ? session.user.id : null,
+            details: { points: { old: existingUser.totalDifficultyPoints, new: 0 } }
         })
 
         return updated
@@ -304,15 +291,11 @@ export class UserService {
             data: { totalDifficultyPoints: 0 }
         })
 
-        // Audit Log
-        await prisma.auditLog.create({
-            data: {
-                action: 'RESET_ALL_POINTS',
-                entityType: 'COMPANY',
-                entityId: companyId,
-                superAdminId: session.user.id,
-                details: JSON.stringify({ count: result.count })
-            }
+        // Audit Log (Centralized)
+        const { AuditLogService } = await import("./audit-log.service")
+        await AuditLogService.log('RESET_ALL_POINTS', 'COMPANY', companyId, {
+            superAdminId: session.user.id,
+            details: { count: result.count, action: 'Bulk Reset Points' }
         })
 
         return result
@@ -501,20 +484,23 @@ export class UserService {
 
             result = await prisma.user.update({
                 where: { id },
-                data: { status: 'DELETED', email: `${user.email}_DELETED_${Date.now()}`, avatar: null }
+                data: {
+                    status: 'DELETED',
+                    email: `${user.email}_DELETED_${Date.now()}`,
+                    firstName: 'Ghost',
+                    lastName: 'User',
+                    username: `deleted_${Date.now()}`,
+                    avatar: null
+                }
             })
         }
 
-        // Audit Log
-        await prisma.auditLog.create({
-            data: {
-                action: 'DELETE_USER',
-                entityType: 'USER',
-                entityId: id,
-                userId: requesterRole !== 'SUPER_ADMIN' ? currentUserId : null,
-                superAdminId: requesterRole === 'SUPER_ADMIN' ? currentUserId : null,
-                details: JSON.stringify({ isPermanent })
-            }
+        // Audit Log (Centralized)
+        const { AuditLogService } = await import("./audit-log.service")
+        await AuditLogService.log('DELETE_USER', 'USER', id, {
+            userId: requesterRole !== 'SUPER_ADMIN' ? currentUserId : null,
+            superAdminId: requesterRole === 'SUPER_ADMIN' ? currentUserId : null,
+            details: { isPermanent }
         })
 
         return result

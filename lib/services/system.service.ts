@@ -124,6 +124,11 @@ export class SystemService {
             })
         ])
 
+        // Fetch storage asset count estimate (limited for speed, just to see if it's healthy)
+        const { supabase } = await import("@/lib/storage")
+        const { data: files } = await supabase.storage.from('app-assets').list('', { limit: 1 })
+        const hasAssets = files && files.length > 0
+
         return {
             security: {
                 failedLogins24h: failedLogins,
@@ -142,6 +147,10 @@ export class SystemService {
                 totalNotifications,
                 estimatedRowcount: totalAuditLogs + totalNotifications + totalTasks + totalObligations + totalUsers,
                 status: 'HEALTHY'
+            },
+            storage: {
+                hasAppAssets: hasAssets,
+                bucket: 'app-assets'
             },
             timestamp: now.toISOString()
         }

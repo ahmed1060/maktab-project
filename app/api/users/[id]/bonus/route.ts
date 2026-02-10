@@ -26,6 +26,4 @@ export const POST = withStandardHandler(async (req, session, json, { params }) =
         console.error("Error adding bonus:", error)
         return ApiResponse.error("Failed to add bonus")
     }
-}, {
-    audit: { action: 'ADD_BONUS', entityType: 'SALARY_ADJUSTMENT', getEntityId: (res) => res.adjustmentId }
 })

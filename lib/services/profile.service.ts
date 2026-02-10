@@ -67,34 +67,35 @@ export class ProfileService {
         const hasAccess = await verifyResourceAccess(session, request.userId, 'USER')
         if (!hasAccess) throw new Error("ACCESS_DENIED")
 
-        return await prisma.$transaction([
-            prisma.user.update({
+        return await prisma.$transaction(async (tx) => {
+            await tx.user.update({
                 where: { id: request.userId },
                 data: { firstName: request.newFirstName, lastName: request.newLastName }
-            }),
-            prisma.profileUpdateRequest.update({
+            })
+            await tx.profileUpdateRequest.update({
                 where: { id },
                 data: { status: 'APPROVED', adminNote }
-            }),
-            prisma.notification.create({
-                data: {
-                    userId: request.userId,
-                    type: 'PROFILE_UPDATE',
-                    message: `Your name change request has been approved! Your name is now ${request.newFirstName} ${request.newLastName}.`,
-                    read: false
-                }
-            }),
-            prisma.auditLog.create({
-                data: {
-                    action: 'APPROVE_PROFILE_UPDATE',
-                    entityType: 'USER',
-                    entityId: request.userId,
-                    userId: session.user.role !== 'SUPER_ADMIN' ? session.user.id : null,
-                    superAdminId: session.user.role === 'SUPER_ADMIN' ? session.user.id : null,
-                    details: JSON.stringify({ requestId: id, oldName: `${request.oldFirstName} ${request.oldLastName}`, newName: `${request.newFirstName} ${request.newLastName}`, adminNote })
-                }
             })
-        ])
+
+            // Notify user (Centralized)
+            const { NotificationService } = await import("./notification.service")
+            await NotificationService.notify(
+                request.userId,
+                'PROFILE_UPDATE',
+                `Your name change request has been approved! Your name is now ${request.newFirstName} ${request.newLastName}.`,
+                request.userId,
+                tx
+            )
+
+            // Audit Log (Centralized)
+            const { AuditLogService } = await import("./audit-log.service")
+            await AuditLogService.log('APPROVE_PROFILE_UPDATE', 'USER', request.userId, {
+                tx,
+                userId: session.user.role !== 'SUPER_ADMIN' ? session.user.id : null,
+                superAdminId: session.user.role === 'SUPER_ADMIN' ? session.user.id : null,
+                details: { requestId: id, oldName: `${request.oldFirstName} ${request.oldLastName}`, newName: `${request.newFirstName} ${request.newLastName}`, adminNote }
+            })
+        })
     }
 
     static async rejectRequest(id: string, adminNote: string, session: any) {
@@ -109,29 +110,30 @@ export class ProfileService {
         const hasAccess = await verifyResourceAccess(session, request.userId, 'USER')
         if (!hasAccess) throw new Error("ACCESS_DENIED")
 
-        return await prisma.$transaction([
-            prisma.profileUpdateRequest.update({
+        return await prisma.$transaction(async (tx) => {
+            await tx.profileUpdateRequest.update({
                 where: { id },
                 data: { status: 'REJECTED', adminNote }
-            }),
-            prisma.notification.create({
-                data: {
-                    userId: request.userId,
-                    type: 'PROFILE_UPDATE_REJECTED',
-                    message: `Your name change request has been rejected.${adminNote ? ` Note: ${adminNote}` : ''}`,
-                    read: false
-                }
-            }),
-            prisma.auditLog.create({
-                data: {
-                    action: 'REJECT_PROFILE_UPDATE',
-                    entityType: 'USER',
-                    entityId: request.userId,
-                    userId: session.user.role !== 'SUPER_ADMIN' ? session.user.id : null,
-                    superAdminId: session.user.role === 'SUPER_ADMIN' ? session.user.id : null,
-                    details: JSON.stringify({ requestId: id, name: `${request.oldFirstName} ${request.oldLastName}`, adminNote })
-                }
             })
-        ])
+
+            // Notify user (Centralized)
+            const { NotificationService } = await import("./notification.service")
+            await NotificationService.notify(
+                request.userId,
+                'PROFILE_UPDATE_REJECTED',
+                `Your name change request has been rejected.${adminNote ? ` Note: ${adminNote}` : ''}`,
+                request.userId,
+                tx
+            )
+
+            // Audit Log (Centralized)
+            const { AuditLogService } = await import("./audit-log.service")
+            await AuditLogService.log('REJECT_PROFILE_UPDATE', 'USER', request.userId, {
+                tx,
+                userId: session.user.role !== 'SUPER_ADMIN' ? session.user.id : null,
+                superAdminId: session.user.role === 'SUPER_ADMIN' ? session.user.id : null,
+                details: { requestId: id, name: `${request.oldFirstName} ${request.oldLastName}`, adminNote }
+            })
+        })
     }
 }

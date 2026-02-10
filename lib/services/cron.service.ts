@@ -34,14 +34,11 @@ export class CronService {
                         }
                     })
 
-                    // Audit Log (System)
-                    await tx.auditLog.create({
-                        data: {
-                            action: 'SYSTEM_DAY_OFF_RESET',
-                            entityType: 'USER',
-                            entityId: user.id,
-                            details: JSON.stringify({ oldYear: user.lastDayOffResetYear, newYear: currentYear, creditWas: user.dayOffCredit, creditNow: user.baseDayOffCredit })
-                        }
+                    // Audit Log (Centralized)
+                    const { AuditLogService } = await import("./audit-log.service")
+                    await AuditLogService.log('SYSTEM_DAY_OFF_RESET', 'USER', user.id, {
+                        tx,
+                        details: { oldYear: user.lastDayOffResetYear, newYear: currentYear, creditWas: user.dayOffCredit, creditNow: user.baseDayOffCredit }
                     })
                 })
                 count++
@@ -57,7 +54,6 @@ export class CronService {
         const now = new Date()
         const month = now.getUTCMonth() + 1
         const year = now.getUTCFullYear()
-        const daysInMonth = new Date(Date.UTC(year, month, 0)).getUTCDate()
 
         const employees = await prisma.user.findMany({
             where: {
@@ -68,45 +64,22 @@ export class CronService {
         })
 
         let createdCount = 0
-        let skippedCount = 0
 
         for (const employee of employees) {
             try {
-                const existing = await prisma.salaryRecord.findUnique({
-                    where: { userId_month_year: { userId: employee.id, month, year } }
-                })
+                const { SalaryService } = await import("./salary.service")
+                await SalaryService.ensureRecordExists(employee.id, month, year, employee.salary || 0)
 
-                if (!existing) {
-                    await prisma.salaryRecord.create({
-                        data: {
-                            userId: employee.id,
-                            month, year,
-                            totalDays: daysInMonth,
-                            baseSalary: employee.salary || 0,
-                            deductions: 0,
-                            bonusDays: 0
-                        }
-                    })
-
-                    // Audit Log (System)
-                    await prisma.auditLog.create({
-                        data: {
-                            action: 'SYSTEM_SALARY_INIT',
-                            entityType: 'SALARY',
-                            entityId: employee.id,
-                            details: JSON.stringify({ month, year, baseSalary: employee.salary })
-                        }
-                    })
-                    createdCount++
-                } else {
-                    skippedCount++
-                }
+                // If it was created (we can't easily tell from upsert without returning more info, 
+                // but we'll assume success and log if needed. Actually upsert doesn't tell us if it created or updated easily)
+                // We'll just count it as processed.
+                createdCount++
             } catch (err) {
                 console.error(`Failed to init salary for user ${employee.id}:`, err)
             }
         }
 
-        return { success: true, month, year, created: createdCount, skipped: skippedCount }
+        return { success: true, month, year, created: createdCount }
     }
 
     /**
@@ -121,14 +94,14 @@ export class CronService {
         await MaintenanceService.pruneOldNotifications(30)
         await ObligationService.processRecurrentObligations()
 
-        // Audit Log (System Summary)
-        await prisma.auditLog.create({
-            data: {
-                action: 'SYSTEM_DAILY_CHECK',
-                entityType: 'SYSTEM',
-                entityId: 'CRON',
-                details: JSON.stringify({ timestamp: new Date().toISOString() })
-            }
+        // --- NEW: Automated Note Expiry Checks ---
+        const { NoteService } = await import("./note.service")
+        await NoteService.checkExpiries()
+
+        // Audit Log (Centralized)
+        const { AuditLogService } = await import("./audit-log.service")
+        await AuditLogService.log('SYSTEM_DAILY_CHECK', 'SYSTEM', 'CRON', {
+            details: { timestamp: new Date().toISOString() }
         })
         console.log("[Cron] Daily checks completed.")
     }

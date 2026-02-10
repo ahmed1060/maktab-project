@@ -34,6 +34,4 @@ export const PATCH = withStandardHandler(async (req, session, json, { params }) 
         if (error.message === 'INSUFFICIENT_CREDIT') return ApiResponse.badRequest("Insufficient credit")
         throw error
     }
-}, {
-    audit: { action: 'APPROVE_DAY_OFF', entityType: 'DAY_OFF_REQUEST', getEntityId: (res) => res.id }
 })

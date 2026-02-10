@@ -62,16 +62,12 @@ export class SuperAdminService {
         const unused = _password
         /* eslint-enable @typescript-eslint/no-unused-vars */
 
-        // Audit Log
+        // Audit Log (Centralized)
         if (session) {
-            await prisma.auditLog.create({
-                data: {
-                    action: 'CREATE_SUPER_ADMIN',
-                    entityType: 'SUPER_ADMIN',
-                    entityId: newAdmin.id,
-                    superAdminId: session.user.id,
-                    details: JSON.stringify({ email: input.email })
-                }
+            const { AuditLogService } = await import("./audit-log.service")
+            await AuditLogService.log('CREATE_SUPER_ADMIN', 'SUPER_ADMIN', newAdmin.id, {
+                superAdminId: session.user.id,
+                details: { email: input.email }
             })
         }
 

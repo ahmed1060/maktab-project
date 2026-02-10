@@ -73,8 +73,6 @@ export const POST = withStandardHandler(async (req, session, json, context) => {
         if (error.message === 'ACCESS_DENIED') return ApiResponse.forbidden()
         throw error
     }
-}, {
-    audit: { action: 'CREATE_SECTION', entityType: 'SECTION', getEntityId: (res) => res.id }
 })
 
 export const PUT = withStandardHandler(async (req, session, json) => {

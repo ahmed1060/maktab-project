@@ -176,8 +176,6 @@ export const POST = withStandardHandler(async (req, session, json) => {
 
         throw error
     }
-}, {
-    audit: { action: 'CREATE_USER', entityType: 'USER', getEntityId: (res) => res.id }
 })
 
 export const PUT = withStandardHandler(async (req, session, json) => {
@@ -208,8 +206,6 @@ export const PUT = withStandardHandler(async (req, session, json) => {
 
         throw error
     }
-}, {
-    audit: { action: 'UPDATE_USER', entityType: 'USER', getEntityId: (res) => res.id }
 })
 
 export const DELETE = withStandardHandler(async (req, session) => {
@@ -235,6 +231,4 @@ export const DELETE = withStandardHandler(async (req, session) => {
 
         throw error
     }
-}, {
-    audit: { action: 'DELETE_USER', entityType: 'USER', getEntityId: (res) => res.id }
 })

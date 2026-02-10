@@ -1,6 +1,27 @@
 import { prisma } from "@/lib/prisma"
 
+export interface AuditLogOptions {
+    tx?: any
+    userId?: string | null
+    superAdminId?: string | null
+    details?: any
+}
+
 export class AuditLogService {
+    static async log(action: string, entityType: string, entityId: string, options: AuditLogOptions = {}) {
+        const prismaClient = options.tx || prisma
+        return await prismaClient.auditLog.create({
+            data: {
+                action,
+                entityType,
+                entityId,
+                userId: options.userId || null,
+                superAdminId: options.superAdminId || null,
+                details: options.details ? JSON.stringify(options.details) : null
+            }
+        })
+    }
+
     static async getMany(skip: number, limit: number, filters: { entityType?: string, action?: string, userId?: string } = {}) {
         const where: any = {}
 

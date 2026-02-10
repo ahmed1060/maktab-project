@@ -52,16 +52,12 @@ export class NoteService {
             }
         })
 
-        // Audit Log
-        await prisma.auditLog.create({
-            data: {
-                action: 'CREATE_NOTE',
-                entityType: 'NOTE',
-                entityId: note.id,
-                userId: userRole !== 'SUPER_ADMIN' ? userId : null,
-                superAdminId: userRole === 'SUPER_ADMIN' ? userId : null,
-                details: JSON.stringify({ sectionId, hasAttachment: !!input.attachment })
-            }
+        // Audit Log (Centralized)
+        const { AuditLogService } = await import("./audit-log.service")
+        await AuditLogService.log('CREATE_NOTE', 'NOTE', note.id, {
+            userId: userRole !== 'SUPER_ADMIN' ? userId : null,
+            superAdminId: userRole === 'SUPER_ADMIN' ? userId : null,
+            details: { sectionId, hasAttachment: !!input.attachment }
         })
 
         return note
@@ -83,16 +79,12 @@ export class NoteService {
             }
         })
 
-        // Audit Log
-        await prisma.auditLog.create({
-            data: {
-                action: 'UPDATE_NOTE',
-                entityType: 'NOTE',
-                entityId: id,
-                userId: userRole !== 'SUPER_ADMIN' ? userId : null,
-                superAdminId: userRole === 'SUPER_ADMIN' ? userId : null,
-                details: JSON.stringify({ hasAttachment: !!input.attachment })
-            }
+        // Audit Log (Centralized)
+        const { AuditLogService } = await import("./audit-log.service")
+        await AuditLogService.log('UPDATE_NOTE', 'NOTE', id, {
+            userId: userRole !== 'SUPER_ADMIN' ? userId : null,
+            superAdminId: userRole === 'SUPER_ADMIN' ? userId : null,
+            details: { hasAttachment: !!input.attachment }
         })
 
         return updated
@@ -118,30 +110,34 @@ export class NoteService {
 
         if (note.attachment) {
             try {
-                let filesToDelete: any[] = []
+                let attachments: any[] = []
                 if (note.attachment.startsWith('[')) {
                     try {
-                        filesToDelete = JSON.parse(note.attachment)
+                        attachments = JSON.parse(note.attachment)
                     } catch {
-                        filesToDelete = [note.attachment]
+                        attachments = [note.attachment]
                     }
                 } else {
-                    filesToDelete = [note.attachment]
+                    attachments = [note.attachment]
                 }
 
-                for (const fileItem of filesToDelete) {
-                    if (!fileItem) continue
-                    const fileUrl = typeof fileItem === 'string' ? fileItem : fileItem.url
+                const pathsToDelete: string[] = []
+                for (const item of attachments) {
+                    if (!item) continue
+                    const fileUrl = typeof item === 'string' ? item : item.url
                     if (!fileUrl) continue
 
                     const urlParts = fileUrl.split('/app-assets/')
                     if (urlParts.length > 1) {
-                        const filePath = urlParts[1]
-                        await supabase.storage.from('app-assets').remove([filePath])
+                        pathsToDelete.push(urlParts[1])
                     }
                 }
+
+                if (pathsToDelete.length > 0) {
+                    await supabase.storage.from('app-assets').remove(pathsToDelete)
+                }
             } catch (storageError) {
-                console.error('Failed to delete attachment from storage:', storageError)
+                console.error('Failed to delete attachments from storage:', storageError)
             }
         }
 

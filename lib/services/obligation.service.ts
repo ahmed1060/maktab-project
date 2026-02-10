@@ -152,28 +152,25 @@ export class ObligationService {
                 }
             }
 
-            // 6. Notifications
+            // 6. Notifications (Centralized)
             if (['APPROVED', 'REJECTED'].includes(status)) {
-                await tx.notification.createMany({
-                    data: updated.assignees.map((a: any) => ({
-                        userId: a.id,
-                        type: status === 'APPROVED' ? 'OBLIGATION_APPROVED' : 'OBLIGATION_REJECTED',
-                        message: `Your obligation "${updated.title}" has been ${status === 'APPROVED' ? 'approved' : 'rejected'}.`,
-                        relatedId: id
-                    }))
-                })
+                const { NotificationService } = await import("./notification.service")
+                await NotificationService.notifyMany(
+                    updated.assignees.map((a: any) => a.id),
+                    status === 'APPROVED' ? 'OBLIGATION_APPROVED' : 'OBLIGATION_REJECTED',
+                    `Your obligation "${updated.title}" has been ${status === 'APPROVED' ? 'approved' : 'rejected'}.`,
+                    id,
+                    tx
+                )
             }
 
-            // 7. Audit Log
-            await tx.auditLog.create({
-                data: {
-                    action: 'UPDATE_OBLIGATION',
-                    entityType: 'OBLIGATION',
-                    entityId: id,
-                    userId: userRole !== 'SUPER_ADMIN' ? userId : null,
-                    superAdminId: userRole === 'SUPER_ADMIN' ? userId : null,
-                    details: JSON.stringify(input)
-                }
+            // 7. Audit Log (Centralized)
+            const { AuditLogService } = await import("./audit-log.service")
+            await AuditLogService.log('UPDATE_OBLIGATION', 'OBLIGATION', id, {
+                tx,
+                userId: userRole !== 'SUPER_ADMIN' ? userId : null,
+                superAdminId: userRole === 'SUPER_ADMIN' ? userId : null,
+                details: input
             })
 
             return updated
@@ -227,16 +224,13 @@ export class ObligationService {
 
             await tx.obligation.delete({ where: { id } })
 
-            // Audit Log
-            await tx.auditLog.create({
-                data: {
-                    action: 'DELETE_OBLIGATION',
-                    entityType: 'OBLIGATION',
-                    entityId: id,
-                    userId: userRole !== 'SUPER_ADMIN' ? userId : null,
-                    superAdminId: userRole === 'SUPER_ADMIN' ? userId : null,
-                    details: JSON.stringify({ title: (obligation as any).title })
-                }
+            // 5. Audit Log (Centralized)
+            const { AuditLogService } = await import("./audit-log.service")
+            await AuditLogService.log('DELETE_OBLIGATION', 'OBLIGATION', id, {
+                tx,
+                userId: userRole !== 'SUPER_ADMIN' ? userId : null,
+                superAdminId: userRole === 'SUPER_ADMIN' ? userId : null,
+                details: { status: obligation.status, title: (obligation as any).title }
             })
 
             return { id }

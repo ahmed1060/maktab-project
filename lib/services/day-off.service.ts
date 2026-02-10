@@ -34,6 +34,25 @@ export class DayOffService {
         }
 
         return await prisma.$transaction(async (tx) => {
+            // --- NEW: Overlap Protection ---
+            const overlap = await tx.dayOffRequest.findFirst({
+                where: {
+                    userId,
+                    status: { in: ['PENDING', 'APPROVED'] },
+                    OR: [
+                        { // Start date inside existing range
+                            date: { lte: new Date(finalEndDateStr) },
+                            endDate: { gte: new Date(requestDateStr) }
+                        },
+                        { // No endDate means it's a single day
+                            date: { gte: new Date(requestDateStr), lte: new Date(finalEndDateStr) },
+                            endDate: null
+                        }
+                    ]
+                }
+            })
+            if (overlap) throw new Error("OVERLAPPING_REQUEST")
+
             const newRequest = await tx.dayOffRequest.create({
                 data: {
                     userId,
@@ -44,7 +63,7 @@ export class DayOffService {
                     status: 'PENDING'
                 }
             })
-
+            // ... (rest of notification and audit logic unchanged)
             // Notify Admins
             const admins = await tx.user.findMany({
                 where: {
@@ -60,27 +79,22 @@ export class DayOffService {
                 ? new Date(requestDateStr).toLocaleDateString()
                 : `${new Date(requestDateStr).toLocaleDateString()} to ${new Date(finalEndDateStr).toLocaleDateString()}`
 
-            if (admins.length > 0) {
-                await tx.notification.createMany({
-                    data: admins.map(admin => ({
-                        userId: admin.id,
-                        type: 'DAY_OFF_REQUEST',
-                        message: `${userName} has requested a ${input.type.toLowerCase()} day off on ${dateDisplay}.`,
-                        relatedId: newRequest.id
-                    }))
-                })
-            }
+            // Notify Admins (Centralized)
+            const { NotificationService } = await import("./notification.service")
+            await NotificationService.notifyMany(
+                admins.map(admin => admin.id),
+                'DAY_OFF_REQUEST',
+                `${userName} has requested a ${input.type.toLowerCase()} day off on ${dateDisplay}.`,
+                newRequest.id,
+                tx
+            )
 
-            // Audit Log
-            await tx.auditLog.create({
-                data: {
-                    action: 'CREATE_DAY_OFF_REQUEST',
-                    entityType: 'DAY_OFF_REQUEST',
-                    entityId: newRequest.id,
-                    userId,
-                    superAdminId: null,
-                    details: JSON.stringify({ date: requestDateStr, endDate: finalEndDateStr, type: input.type })
-                }
+            // Audit Log (Centralized)
+            const { AuditLogService } = await import("./audit-log.service")
+            await AuditLogService.log('CREATE_DAY_OFF_REQUEST', 'DAY_OFF_REQUEST', newRequest.id, {
+                tx,
+                userId,
+                details: { date: requestDateStr, endDate: finalEndDateStr, type: input.type }
             })
 
             return newRequest
@@ -97,6 +111,7 @@ export class DayOffService {
         })
 
         if (!requestToUpdate) throw new Error("REQUEST_NOT_FOUND")
+        if (requestToUpdate.status !== 'PENDING') throw new Error("INVALID_STATUS")
 
         // Authorization & Isolation
         if (userRole !== 'SUPER_ADMIN' && requestToUpdate.user.companyId !== session.user.companyId) {
@@ -117,27 +132,14 @@ export class DayOffService {
                     const now = new Date()
                     const m = now.getMonth() + 1, y = now.getFullYear()
 
-                    const existingRecord = await tx.salaryRecord.findUnique({
-                        where: { userId_month_year: { userId: requestToUpdate.userId, month: m, year: y } }
-                    })
+                    // USE CONSOLIDATED HELPER
+                    const { SalaryService } = await import("./salary.service")
+                    const record = await SalaryService.ensureRecordExists(requestToUpdate.userId, m, y, requestToUpdate.user.salary || 0, tx)
 
-                    if (existingRecord) {
-                        await tx.salaryRecord.update({
-                            where: { id: existingRecord.id },
-                            data: { deductions: { increment: deduction } }
-                        })
-                    } else {
-                        await tx.salaryRecord.create({
-                            data: {
-                                userId: requestToUpdate.userId,
-                                month: m, year: y,
-                                totalDays: new Date(y, m, 0).getDate(),
-                                deductions: deduction,
-                                baseSalary: requestToUpdate.user.salary || 0,
-                                bonusDays: 0
-                            }
-                        })
-                    }
+                    await tx.salaryRecord.update({
+                        where: { id: record.id },
+                        data: { deductions: { increment: deduction } }
+                    })
 
                     await tx.salaryAdjustment.create({
                         data: {
@@ -149,17 +151,15 @@ export class DayOffService {
                         }
                     })
                 } else {
-                    const currentUser = await tx.user.findUnique({
-                        where: { id: requestToUpdate.userId },
-                        select: { dayOffCredit: true }
-                    })
-                    if (!currentUser || currentUser.dayOffCredit < deduction) {
-                        throw new Error("INSUFFICIENT_CREDIT")
-                    }
-                    await tx.user.update({
-                        where: { id: requestToUpdate.userId },
+                    // CONCURRENCY SAFE CREDIT DEDUCTION
+                    const updatedUser = await tx.user.update({
+                        where: {
+                            id: requestToUpdate.userId,
+                            dayOffCredit: { gte: deduction } // Atomic guard
+                        },
                         data: { dayOffCredit: { decrement: deduction } }
                     })
+                    if (!updatedUser) throw new Error("INSUFFICIENT_CREDIT")
                 }
             }
 
@@ -168,26 +168,23 @@ export class DayOffService {
                 data: updateData
             })
 
-            // Audit Log
-            await tx.auditLog.create({
-                data: {
-                    action: 'APPROVE_DAY_OFF_REQUEST',
-                    entityType: 'DAY_OFF_REQUEST',
-                    entityId: id,
-                    userId: userRole !== 'SUPER_ADMIN' ? (session.user as any).id : null,
-                    superAdminId: userRole === 'SUPER_ADMIN' ? (session.user as any).id : null,
-                    details: JSON.stringify({ daysToDeduct: input.daysToDeduct, deductionType: input.deductionType })
-                }
+            // Audit Log (Centralized)
+            const { AuditLogService } = await import("./audit-log.service")
+            await AuditLogService.log('APPROVE_DAY_OFF_REQUEST', 'DAY_OFF_REQUEST', id, {
+                tx,
+                userId: userRole !== 'SUPER_ADMIN' ? (session.user as any).id : null,
+                superAdminId: userRole === 'SUPER_ADMIN' ? (session.user as any).id : null,
+                details: { daysToDeduct: input.daysToDeduct, deductionType: input.deductionType }
             })
 
-            await tx.notification.create({
-                data: {
-                    userId: requestToUpdate.userId,
-                    type: 'DAY_OFF_RESULT',
-                    message: `Your day off request for ${new Date(requestToUpdate.date).toLocaleDateString()} has been approved${input.deductionType === 'SALARY' ? ' (deducted from salary)' : ''}.`,
-                    relatedId: id
-                }
-            })
+            const { NotificationService } = await import("./notification.service")
+            await NotificationService.notify(
+                requestToUpdate.userId,
+                'DAY_OFF_RESULT',
+                `Your day off request for ${new Date(requestToUpdate.date).toLocaleDateString()} has been approved${input.deductionType === 'SALARY' ? ' (deducted from salary)' : ''}.`,
+                id,
+                tx
+            )
 
             return updatedRequest
         })
@@ -201,6 +198,7 @@ export class DayOffService {
         })
 
         if (!requestToUpdate) throw new Error("REQUEST_NOT_FOUND")
+        if (requestToUpdate.status !== 'PENDING') throw new Error("INVALID_STATUS")
 
         if (userRole !== 'SUPER_ADMIN' && requestToUpdate.user.companyId !== session.user.companyId) {
             throw new Error("ACCESS_DENIED")
@@ -245,13 +243,10 @@ export class DayOffService {
         })
 
         if (!requestToUpdate) throw new Error("REQUEST_NOT_FOUND")
+        if (requestToUpdate.status !== 'APPROVED') throw new Error("INVALID_STATE")
 
         if (userRole !== 'SUPER_ADMIN' && requestToUpdate.user.companyId !== session.user.companyId) {
             throw new Error("ACCESS_DENIED")
-        }
-
-        if (requestToUpdate.status !== 'APPROVED' || requestToUpdate.deductionType !== 'CREDIT') {
-            throw new Error("INVALID_STATE")
         }
 
         const oldDays = requestToUpdate.daysDeducted || 0
@@ -263,6 +258,35 @@ export class DayOffService {
                 data: { daysDeducted: newDays }
             })
 
+            if (requestToUpdate.deductionType === 'SALARY') {
+                // Adjust Salary Deduction
+                const adj = await tx.salaryAdjustment.findFirst({
+                    where: { userId: requestToUpdate.userId, reason: { contains: id }, status: 'ACTIVE' }
+                })
+                if (adj) {
+                    await tx.salaryAdjustment.update({
+                        where: { id: adj.id },
+                        data: { amount: newDays }
+                    })
+                    // Also update the record (diff)
+                    const date = new Date(adj.createdAt)
+                    const m = date.getMonth() + 1, y = date.getFullYear()
+                    const record = await tx.salaryRecord.findUnique({ where: { userId_month_year: { userId: requestToUpdate.userId, month: m, year: y } } })
+                    if (record) {
+                        await tx.salaryRecord.update({
+                            where: { id: record.id },
+                            data: { deductions: { decrement: diff } }
+                        })
+                    }
+                }
+            } else {
+                // Adjust Credit
+                await tx.user.update({
+                    where: { id: requestToUpdate.userId },
+                    data: { dayOffCredit: { increment: diff } }
+                })
+            }
+
             // Audit Log
             await tx.auditLog.create({
                 data: {
@@ -271,13 +295,8 @@ export class DayOffService {
                     entityId: id,
                     userId: userRole !== 'SUPER_ADMIN' ? (session.user as any).id : null,
                     superAdminId: userRole === 'SUPER_ADMIN' ? (session.user as any).id : null,
-                    details: JSON.stringify({ oldDays, newDays })
+                    details: JSON.stringify({ oldDays, newDays, deductionType: requestToUpdate.deductionType })
                 }
-            })
-
-            await tx.user.update({
-                where: { id: requestToUpdate.userId },
-                data: { dayOffCredit: { increment: diff } }
             })
 
             await tx.notification.create({

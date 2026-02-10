@@ -30,16 +30,12 @@ export class SectionService {
             }
         })
 
-        // Audit Log
-        await prisma.auditLog.create({
-            data: {
-                action: 'CREATE_SECTION',
-                entityType: 'SECTION',
-                entityId: section.id,
-                userId: userRole !== 'SUPER_ADMIN' ? userId : null,
-                superAdminId: userRole === 'SUPER_ADMIN' ? userId : null,
-                details: JSON.stringify({ title, clientId })
-            }
+        // Audit Log (Centralized)
+        const { AuditLogService } = await import("./audit-log.service")
+        await AuditLogService.log('CREATE_SECTION', 'SECTION', section.id, {
+            userId: userRole !== 'SUPER_ADMIN' ? userId : null,
+            superAdminId: userRole === 'SUPER_ADMIN' ? userId : null,
+            details: { title, clientId }
         })
 
         return section
@@ -72,16 +68,12 @@ export class SectionService {
             }
         })
 
-        // Audit Log
-        await prisma.auditLog.create({
-            data: {
-                action: 'UPDATE_SECTION',
-                entityType: 'SECTION',
-                entityId: id,
-                userId: userRole !== 'SUPER_ADMIN' ? userId : null,
-                superAdminId: userRole === 'SUPER_ADMIN' ? userId : null,
-                details: JSON.stringify({ title })
-            }
+        // Audit Log (Centralized)
+        const { AuditLogService } = await import("./audit-log.service")
+        await AuditLogService.log('UPDATE_SECTION', 'SECTION', id, {
+            userId: userRole !== 'SUPER_ADMIN' ? userId : null,
+            superAdminId: userRole === 'SUPER_ADMIN' ? userId : null,
+            details: { title }
         })
 
         return updated
@@ -89,6 +81,7 @@ export class SectionService {
 
     static async delete(id: string, session: any) {
         const userRole = session.user.role
+        const userId = session.user.id
 
         const section = await prisma.businessClientSection.findUnique({
             where: { id },
@@ -106,16 +99,12 @@ export class SectionService {
 
         const result = await prisma.businessClientSection.delete({ where: { id } })
 
-        // Audit Log
-        await prisma.auditLog.create({
-            data: {
-                action: 'DELETE_SECTION',
-                entityType: 'SECTION',
-                entityId: id,
-                userId: userRole !== 'SUPER_ADMIN' ? (session.user as any).id : null,
-                superAdminId: userRole === 'SUPER_ADMIN' ? (session.user as any).id : null,
-                details: JSON.stringify({ title: section.title, clientId: section.clientId })
-            }
+        // Audit Log (Centralized)
+        const { AuditLogService } = await import("./audit-log.service")
+        await AuditLogService.log('DELETE_SECTION', 'SECTION', id, {
+            userId: userRole !== 'SUPER_ADMIN' ? userId : null,
+            superAdminId: userRole === 'SUPER_ADMIN' ? userId : null,
+            details: { title: section.title, clientId: section.clientId }
         })
 
         return result

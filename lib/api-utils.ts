@@ -161,11 +161,17 @@ export function withStandardHandler(
                     try {
                         const resClone = response.clone()
                         const resData = await resClone.json()
-                        // Extract from standardized structure if present
                         const data = resData.success ? resData.data : resData
                         entityId = options.audit.getEntityId(data, body)
-                    } catch {
-                        // Ignore if response is not JSON
+                    } catch { }
+                }
+
+                // --- Wave 16: Strict Sanitization ---
+                const sanitizedBody = body ? { ...body } : null
+                if (sanitizedBody) {
+                    const sensitiveKeys = ['password', 'passcode', 'token', 'secret', 'plainPassword']
+                    for (const key of sensitiveKeys) {
+                        if (key in sanitizedBody) sanitizedBody[key] = '[REDACTED]'
                     }
                 }
 
@@ -176,7 +182,7 @@ export function withStandardHandler(
                         entityId: (entityId as unknown as string) || 'N/A',
                         userId: userRole !== 'SUPER_ADMIN' ? userId : null,
                         superAdminId: userRole === 'SUPER_ADMIN' ? userId : null,
-                        details: body ? JSON.stringify(body) : null
+                        details: sanitizedBody ? JSON.stringify(sanitizedBody) : null
                     }
                 })
             }

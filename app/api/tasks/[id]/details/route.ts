@@ -27,6 +27,4 @@ export const PUT = withStandardHandler(async (req, session, json, { params }) =>
         if (error.message === 'TASK_NOT_FOUND') return ApiResponse.notFound("Task not found")
         throw error
     }
-}, {
-    audit: { action: 'UPDATE_TASK_DETAILS', entityType: 'TASK', getEntityId: (res) => res.id }
 })

@@ -8,7 +8,7 @@ import { prisma } from "./prisma";
 export async function verifyResourceAccess(
     session: any,
     resourceId: string,
-    resourceType: 'USER' | 'TASK' | 'OBLIGATION' | 'CLIENT'
+    resourceType: 'USER' | 'TASK' | 'OBLIGATION' | 'CLIENT' | 'SECTION' | 'NOTE'
 ) {
     if (!session || !session.user) return false;
 
@@ -53,6 +53,20 @@ export async function verifyResourceAccess(
                 select: { companyId: true }
             });
             return client?.companyId === userCompanyId;
+        }
+        case 'SECTION': {
+            const section = await prisma.businessClientSection.findUnique({
+                where: { id: resourceId },
+                include: { client: { select: { companyId: true } } }
+            });
+            return section?.client.companyId === userCompanyId;
+        }
+        case 'NOTE': {
+            const note = await prisma.businessClientNote.findUnique({
+                where: { id: resourceId },
+                include: { section: { include: { client: { select: { companyId: true } } } } }
+            });
+            return note?.section.client.companyId === userCompanyId;
         }
         default:
             return false;

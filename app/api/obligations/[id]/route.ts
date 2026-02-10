@@ -24,8 +24,6 @@ export const PUT = withStandardHandler(async (req, session, json, { params }) =>
         if (error.message === 'TL_CANNOT_REASSIGN_TO_ADMIN') return ApiResponse.forbidden("Team Leaders cannot reassign to Admins")
         throw error
     }
-}, {
-    audit: { action: 'UPDATE_OBLIGATION', entityType: 'OBLIGATION', getEntityId: (res) => res.id }
 })
 
 export const DELETE = withStandardHandler(async (req, session, _body, { params }) => {
@@ -38,6 +36,4 @@ export const DELETE = withStandardHandler(async (req, session, _body, { params }
         if (error.message === 'ADMIN_CANNOT_DELETE_SELF_OBLIGATION') return ApiResponse.forbidden("Admins cannot delete their own obligations")
         throw error
     }
-}, {
-    audit: { action: 'DELETE_OBLIGATION', entityType: 'OBLIGATION', getEntityId: (res) => res?.id }
 })

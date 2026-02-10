@@ -52,28 +52,20 @@ export const authOptions: NextAuthOptions = {
                     if (superAdmin) {
                         const isValid = await bcrypt.compare(credentials.password, superAdmin.password)
                         if (!isValid) {
-                            // Audit Log (Failure)
-                            await prisma.auditLog.create({
-                                data: {
-                                    action: 'LOGIN_FAILURE',
-                                    entityType: 'USER',
-                                    entityId: superAdmin.id,
-                                    superAdminId: superAdmin.id,
-                                    details: JSON.stringify({ email: superAdmin.email, reason: 'INVALID_PASSWORD', ip })
-                                }
+                            // Audit Log (Failure - Centralized)
+                            const { AuditLogService } = await import("./services/audit-log.service")
+                            await AuditLogService.log('LOGIN_FAILURE', 'USER', superAdmin.id, {
+                                superAdminId: superAdmin.id,
+                                details: { email: superAdmin.email, reason: 'INVALID_PASSWORD', ip }
                             })
                             return null
                         }
 
-                        // Audit Log (Success)
-                        await prisma.auditLog.create({
-                            data: {
-                                action: 'LOGIN',
-                                entityType: 'USER',
-                                entityId: superAdmin.id,
-                                superAdminId: superAdmin.id,
-                                details: JSON.stringify({ email: superAdmin.email, role: 'SUPER_ADMIN' })
-                            }
+                        // Audit Log (Success - Centralized)
+                        const { AuditLogService } = await import("./services/audit-log.service")
+                        await AuditLogService.log('LOGIN', 'USER', superAdmin.id, {
+                            superAdminId: superAdmin.id,
+                            details: { email: superAdmin.email, role: 'SUPER_ADMIN' }
                         })
 
                         return {
@@ -102,14 +94,10 @@ export const authOptions: NextAuthOptions = {
                     })
 
                     if (!user) {
-                        // Audit Log (Failure - Unknown User)
-                        await prisma.auditLog.create({
-                            data: {
-                                action: 'LOGIN_FAILURE',
-                                entityType: 'USER',
-                                entityId: 'UNKNOWN',
-                                details: JSON.stringify({ email: credentials.email, reason: 'USER_NOT_FOUND', ip })
-                            }
+                        // Audit Log (Failure - Unknown User - Centralized)
+                        const { AuditLogService } = await import("./services/audit-log.service")
+                        await AuditLogService.log('LOGIN_FAILURE', 'USER', 'UNKNOWN', {
+                            details: { email: credentials.email, reason: 'USER_NOT_FOUND', ip }
                         })
                         return null
                     }
@@ -130,15 +118,11 @@ export const authOptions: NextAuthOptions = {
 
                     const isValid = await bcrypt.compare(credentials.password, user.password)
                     if (!isValid) {
-                        // Audit Log (Failure)
-                        await prisma.auditLog.create({
-                            data: {
-                                action: 'LOGIN_FAILURE',
-                                entityType: 'USER',
-                                entityId: user.id,
-                                userId: user.id,
-                                details: JSON.stringify({ email: user.email, reason: 'INVALID_PASSWORD', ip })
-                            }
+                        // Audit Log (Failure - Centralized)
+                        const { AuditLogService } = await import("./services/audit-log.service")
+                        await AuditLogService.log('LOGIN_FAILURE', 'USER', user.id, {
+                            userId: user.id,
+                            details: { email: user.email, reason: 'INVALID_PASSWORD', ip }
                         })
                         return null
                     }
@@ -151,15 +135,11 @@ export const authOptions: NextAuthOptions = {
                         })
                     } catch (e) { console.error('[AUTH_STATUS_UPDATE_FAIL]', e) }
 
-                    // Audit Log (Success)
-                    await prisma.auditLog.create({
-                        data: {
-                            action: 'LOGIN',
-                            entityType: 'USER',
-                            entityId: user.id,
-                            userId: user.id,
-                            details: JSON.stringify({ email: user.email, role: user.role, company: user.company?.name })
-                        }
+                    // Audit Log (Success - Centralized)
+                    const { AuditLogService } = await import("./services/audit-log.service")
+                    await AuditLogService.log('LOGIN', 'USER', user.id, {
+                        userId: user.id,
+                        details: { email: user.email, role: user.role, company: user.company?.name }
                     })
 
                     return {
@@ -257,13 +237,13 @@ export const authOptions: NextAuthOptions = {
                     if (userRole === 'SUPER_ADMIN') {
                         const sa = await prisma.superAdmin.findUnique({
                             where: { id: userId },
-                            select: { sessionVersion: true }
+                            select: { sessionVersion: true } as any
                         })
                         dbVersion = (sa as any)?.sessionVersion || 0
                     } else {
                         const u = await prisma.user.findUnique({
                             where: { id: userId },
-                            select: { sessionVersion: true }
+                            select: { sessionVersion: true } as any
                         })
                         dbVersion = (u as any)?.sessionVersion || 0
                     }

@@ -8,15 +8,11 @@ export class CompanyService {
             data: { name: input.name }
         })
 
-        // Audit Log
-        await prisma.auditLog.create({
-            data: {
-                action: 'CREATE_COMPANY',
-                entityType: 'COMPANY',
-                entityId: company.id,
-                superAdminId: session.user.id,
-                details: JSON.stringify({ name: input.name })
-            }
+        // Audit Log (Centralized)
+        const { AuditLogService } = await import("./audit-log.service")
+        await AuditLogService.log('CREATE_COMPANY', 'COMPANY', company.id, {
+            superAdminId: session.user.id,
+            details: { name: input.name }
         })
 
         return company
@@ -41,20 +37,16 @@ export class CompanyService {
             }
         })
 
-        // Audit Log
+        // Audit Log (Centralized)
         const changes: any = {}
         if (name && name !== existing.name) changes.name = { old: existing.name, new: name }
         if (isBanned !== undefined && isBanned !== existing.isBanned) changes.isBanned = { old: existing.isBanned, new: isBanned }
 
         if (Object.keys(changes).length > 0) {
-            await prisma.auditLog.create({
-                data: {
-                    action: 'UPDATE_COMPANY',
-                    entityType: 'COMPANY',
-                    entityId: id,
-                    superAdminId: session.user.id,
-                    details: JSON.stringify(changes)
-                }
+            const { AuditLogService } = await import("./audit-log.service")
+            await AuditLogService.log('UPDATE_COMPANY', 'COMPANY', id, {
+                superAdminId: session.user.id,
+                details: changes
             })
         }
 
@@ -84,15 +76,12 @@ export class CompanyService {
 
             const deleted = await tx.company.delete({ where: { id } })
 
-            // Audit Log
-            await tx.auditLog.create({
-                data: {
-                    action: 'DELETE_COMPANY',
-                    entityType: 'COMPANY',
-                    entityId: id,
-                    superAdminId: session.user.id,
-                    details: JSON.stringify({ name: company.name })
-                }
+            // Audit Log (Centralized)
+            const { AuditLogService } = await import("./audit-log.service")
+            await AuditLogService.log('DELETE_COMPANY', 'COMPANY', id, {
+                tx,
+                superAdminId: session.user.id,
+                details: { name: company.name }
             })
 
             return deleted

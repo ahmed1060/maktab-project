@@ -83,8 +83,6 @@ export const POST = withStandardHandler(async (req, session, json) => {
 
         throw error
     }
-}, {
-    audit: { action: 'CREATE_CLIENT', entityType: 'CLIENT', getEntityId: (res) => res.id }
 })
 
 export const PUT = withStandardHandler(async (req, session, json) => {

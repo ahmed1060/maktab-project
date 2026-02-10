@@ -26,6 +26,4 @@ export const POST = withStandardHandler(async (req, session, json, { params }) =
         console.error("Error adding deduction:", error)
         return ApiResponse.error("Failed to add deduction")
     }
-}, {
-    audit: { action: 'ADD_DEDUCTION', entityType: 'SALARY_ADJUSTMENT', getEntityId: (res) => res.adjustmentId }
 })

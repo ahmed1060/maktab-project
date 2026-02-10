@@ -61,5 +61,5 @@ export const POST = withStandardHandler(async (req, session, json) => {
         return ApiResponse.error("Failed to update payment status")
     }
 }, {
-    audit: { action: 'BULK_UPDATE_PAYMENT', entityType: 'TASK', getEntityId: () => "BULK" }
+    audit: { action: 'BULK_UPDATE_PAYMENT', entityType: 'TASK' }
 })
