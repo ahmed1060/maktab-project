@@ -413,7 +413,7 @@ export default function DashboardShell({ children, user }: DashboardShellProps) 
                     />
                 </div>
 
-                <div style={{ padding: '2rem', maxWidth: '1400px', width: '100%', margin: '0 auto', boxSizing: 'border-box' }}>
+                <div style={{ padding: '2rem', maxWidth: '1600px', width: '100%', margin: '0 auto', boxSizing: 'border-box' }}>
                     {children}
                 </div>
                 {/* Floating Attribution - Minimalist CYSHIELD style */}

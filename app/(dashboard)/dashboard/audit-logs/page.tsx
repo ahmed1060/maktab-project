@@ -185,16 +185,16 @@ export default function AuditLogsPage() {
                                         <th style={{ textAlign: locale === 'ar' ? 'right' : 'left', padding: '1rem', color: '#64748b', fontSize: '0.75rem', fontWeight: '800', textTransform: 'uppercase' }}>{t('action')}</th>
                                         <th style={{ textAlign: locale === 'ar' ? 'right' : 'left', padding: '1rem', color: '#64748b', fontSize: '0.75rem', fontWeight: '800', textTransform: 'uppercase' }}>{t('entity')}</th>
                                         <th style={{ textAlign: locale === 'ar' ? 'right' : 'left', padding: '1rem', color: '#64748b', fontSize: '0.75rem', fontWeight: '800', textTransform: 'uppercase' }}>{t('performed_by')}</th>
-                                        <th style={{ textAlign: locale === 'ar' ? 'right' : 'left', padding: '1rem', color: '#64748b', fontSize: '0.75rem', fontWeight: '800', textTransform: 'uppercase', width: '400px' }}>{t('details')}</th>
+                                        <th style={{ textAlign: locale === 'ar' ? 'right' : 'left', padding: '1rem', color: '#64748b', fontSize: '0.75rem', fontWeight: '800', textTransform: 'uppercase' }}>{t('details')}</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {logs.map((log) => (
                                         <tr key={log.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                                            <td style={{ padding: '1rem', fontSize: '0.8rem', color: '#64748b', whiteSpace: 'nowrap' }}>
+                                            <td style={{ padding: '1rem', fontSize: '0.8rem', color: '#64748b', whiteSpace: 'nowrap', width: '180px' }}>
                                                 {formatDate(log.createdAt)}
                                             </td>
-                                            <td style={{ padding: '1rem' }}>
+                                            <td style={{ padding: '1rem', width: '130px' }}>
                                                 <span style={{
                                                     fontSize: '0.7rem',
                                                     fontWeight: '700',
@@ -206,11 +206,11 @@ export default function AuditLogsPage() {
                                                     {log.action}
                                                 </span>
                                             </td>
-                                            <td style={{ padding: '1rem', fontSize: '0.85rem' }}>
+                                            <td style={{ padding: '1rem', fontSize: '0.85rem', width: '160px' }}>
                                                 <div style={{ fontWeight: '600', color: '#1e293b' }}>{log.entityType}</div>
                                                 <div style={{ color: '#94a3b8', fontSize: '0.7rem', fontFamily: 'monospace' }}>{log.entityId?.slice(0, 8)}...</div>
                                             </td>
-                                            <td style={{ padding: '1rem', fontSize: '0.85rem' }}>
+                                            <td style={{ padding: '1rem', fontSize: '0.85rem', width: '200px' }}>
                                                 <div style={{ fontWeight: '600', color: '#1e293b' }}>
                                                     {log.superAdmin ? `${log.superAdmin.firstName} ${log.superAdmin.lastName}` : log.user ? `${log.user.firstName} ${log.user.lastName}` : 'System'}
                                                 </div>
@@ -218,7 +218,7 @@ export default function AuditLogsPage() {
                                                     {log.superAdmin ? 'Super Admin' : log.user ? log.user.role : 'Automated Task'}
                                                 </div>
                                             </td>
-                                            <td style={{ padding: '1rem', width: '400px', maxWidth: '400px' }}>
+                                            <td style={{ padding: '1rem' }}>
                                                 {renderDetails(log.details)}
                                             </td>
                                         </tr>
