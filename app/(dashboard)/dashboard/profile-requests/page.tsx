@@ -8,6 +8,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { useLanguage } from '@/context/LanguageContext'
 import LoadingSpinner from '@/components/LoadingSpinner'
 import Pagination from '@/components/Pagination'
+import { useHeader } from '@/context/HeaderContext'
 
 type Request = {
     id: string
@@ -29,6 +30,7 @@ type Request = {
 
 export default function ProfileRequestsPage() {
     const { t, locale } = useLanguage()
+    const { setTitle, setSubtitle } = useHeader()
     const { data: session } = useSession()
     const [requests, setRequests] = useState<Request[]>([])
     const [loading, setLoading] = useState(true)
@@ -70,6 +72,15 @@ export default function ProfileRequestsPage() {
             fetchRequests()
         }
     }, [session, fetchRequests])
+
+    useEffect(() => {
+        setTitle(t('profile_name_requests'))
+        setSubtitle(t('profile_requests_subtitle' as any))
+        return () => {
+            setTitle(null)
+            setSubtitle(null)
+        }
+    }, [setTitle, setSubtitle, t])
 
     // Scroll to highlighted request
     useEffect(() => {
@@ -150,10 +161,6 @@ export default function ProfileRequestsPage() {
                         <polyline points="12 19 5 12 12 5"></polyline>
                     </svg>
                 </button>
-                <div style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>
-                    <h1 style={{ fontSize: '1.8rem', fontWeight: 'bold', margin: 0 }}>{t('profile_name_requests')}</h1>
-                    <p style={{ color: '#64748b', margin: 0 }}>{t('profile_requests_subtitle')}</p>
-                </div>
             </div>
 
             {loading ? <LoadingSpinner message={t('loading_requests')} /> : (

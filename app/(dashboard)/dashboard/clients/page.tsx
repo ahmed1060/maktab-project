@@ -6,6 +6,7 @@ import { createPortal } from 'react-dom'
 import ConfirmModal from '@/components/ConfirmModal'
 import EmployeeFilter from '@/components/EmployeeFilter'
 import { useLanguage } from '@/context/LanguageContext'
+import { useHeader } from '@/context/HeaderContext'
 import LoadingSpinner from '@/components/LoadingSpinner'
 import { useToast } from '@/context/ToastContext'
 import { useCompany } from '@/context/CompanyContext'
@@ -33,6 +34,7 @@ interface Client {
 
 export default function ClientsPage() {
     const { t, locale } = useLanguage()
+    const { setTitle, setSubtitle } = useHeader()
     const [filteredClients, setFilteredClients] = useState<Client[]>([])
     const [searchQuery, setSearchQuery] = useState('')
     const [isLoading, setIsLoading] = useState(true)
@@ -59,6 +61,15 @@ export default function ClientsPage() {
     useEffect(() => {
         setMounted(true)
     }, [])
+
+    useEffect(() => {
+        setTitle(t('clients'))
+        setSubtitle(t('clients_subtitle' as any))
+        return () => {
+            setTitle(null)
+            setSubtitle(null)
+        }
+    }, [setTitle, setSubtitle, t])
 
     const [companies, setCompanies] = useState<{ id: string, name: string }[]>([])
     const [selectedCompanyId, setSelectedCompanyId] = useState('')

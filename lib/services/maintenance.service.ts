@@ -3,6 +3,67 @@ import { supabase } from "@/lib/storage"
 
 export class MaintenanceService {
     /**
+     * Get system health statistics.
+     */
+    static async getStats() {
+        const ninetyDaysAgo = new Date()
+        ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90)
+
+        const thirtyDaysAgo = new Date()
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+
+        const [
+            totalLogs,
+            oldLogs,
+            totalNotifications,
+            oldNotifications,
+            storageFiles
+        ] = await Promise.all([
+            prisma.auditLog.count(),
+            prisma.auditLog.count({ where: { createdAt: { lt: ninetyDaysAgo } } }),
+            prisma.notification.count(),
+            prisma.notification.count({ where: { read: true, createdAt: { lt: thirtyDaysAgo } } }),
+            this.listAllAssets()
+        ])
+
+        return {
+            auditing: {
+                total: totalLogs,
+                prunable: oldLogs,
+                retentionDays: 90
+            },
+            notifications: {
+                total: totalNotifications,
+                prunable: oldNotifications,
+                retentionDays: 30
+            },
+            storage: {
+                totalFiles: storageFiles.length,
+            }
+        }
+    }
+
+    /**
+     * List all assets in the storage bucket.
+     */
+    static async listAllAssets() {
+        let allFiles: { name: string }[] = []
+        let offset = 0
+        const LIMIT = 1000
+
+        while (true) {
+            const { data: batch, error } = await supabase.storage.from('app-assets').list('', { limit: LIMIT, offset })
+            if (error) throw error
+            if (!batch || batch.length === 0) break
+
+            allFiles = allFiles.concat(batch)
+            if (batch.length < LIMIT) break
+            offset += LIMIT
+        }
+        return allFiles
+    }
+
+    /**
      * Cleanup orphaned assets from Supabase storage.
      * This compares files in the 'app-assets' bucket against database records.
      */
@@ -10,21 +71,8 @@ export class MaintenanceService {
         console.log("[Maintenance] Starting orphaned asset cleanup...")
 
         try {
-            // 1. List all files in the bucket (with pagination support)
-            let allFiles: { name: string }[] = []
-            let offset = 0
-            const LIMIT = 1000
-
-            while (true) {
-                const { data: batch, error } = await supabase.storage.from('app-assets').list('', { limit: LIMIT, offset })
-                if (error) throw error
-                if (!batch || batch.length === 0) break
-
-                allFiles = allFiles.concat(batch)
-                if (batch.length < LIMIT) break
-                offset += LIMIT
-            }
-
+            // 1. List all files in the bucket
+            const allFiles = await this.listAllAssets()
             if (allFiles.length === 0) return { deleted: 0, total: 0 }
             const fileNames = allFiles.map(f => f.name)
 

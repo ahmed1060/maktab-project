@@ -8,6 +8,7 @@ import ConfirmModal from '@/components/ConfirmModal'
 import Modal from '@/components/Modal'
 import { useLanguage } from '@/context/LanguageContext'
 import LoadingSpinner from '@/components/LoadingSpinner'
+import { useHeader } from '@/context/HeaderContext'
 
 type User = {
     id: string
@@ -32,6 +33,7 @@ type Company = {
 
 export default function AllUsersPage() {
     const { t, locale } = useLanguage()
+    const { setTitle, setSubtitle } = useHeader()
     const [users, setUsers] = useState<User[]>([])
     const [companies, setCompanies] = useState<Company[]>([])
     const [superAdminsList, setSuperAdminsList] = useState<User[]>([])
@@ -101,6 +103,15 @@ export default function AllUsersPage() {
     useEffect(() => {
         fetchData()
     }, [fetchData])
+
+    useEffect(() => {
+        setTitle(t('all_users'))
+        setSubtitle(t('all_users_subtitle' as any))
+        return () => {
+            setTitle(null)
+            setSubtitle(null)
+        }
+    }, [setTitle, setSubtitle, t])
 
     useEffect(() => {
         setPage(1)

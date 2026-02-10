@@ -35,11 +35,11 @@ export class RateLimiter {
         // 2. Database Sync (Fallback for Serverless/Distributed)
         // If we are in Vercel/Production, we use the DB to synchronize across instances
         try {
-            const dbLimit = await prisma.rateLimit.findUnique({ where: { key } })
+            const dbLimit = await (prisma as any).rateLimit.findUnique({ where: { key } })
 
             if (!dbLimit || now > dbLimit.resetAt.getTime()) {
                 const resetAt = new Date(now + windowMs)
-                await prisma.rateLimit.upsert({
+                await (prisma as any).rateLimit.upsert({
                     where: { key },
                     update: { count: 1, resetAt },
                     create: { key, count: 1, resetAt }
@@ -52,7 +52,7 @@ export class RateLimiter {
                 return { limited: true, resetAt: dbLimit.resetAt.getTime() }
             }
 
-            const updated = await prisma.rateLimit.update({
+            const updated = await (prisma as any).rateLimit.update({
                 where: { key },
                 data: { count: { increment: 1 } }
             })
@@ -71,7 +71,7 @@ export class RateLimiter {
     static async clear(key: string) {
         this.limits.delete(key)
         try {
-            await prisma.rateLimit.delete({ where: { key } }).catch(() => { })
+            await (prisma as any).rateLimit.delete({ where: { key } }).catch(() => { })
         } catch { }
     }
 
@@ -84,7 +84,7 @@ export class RateLimiter {
         }
         // Clear DB
         try {
-            await prisma.rateLimit.deleteMany({
+            await (prisma as any).rateLimit.deleteMany({
                 where: { key: { startsWith: prefix } }
             })
         } catch { }

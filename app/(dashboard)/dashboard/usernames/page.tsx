@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useLanguage } from '@/context/LanguageContext'
 import LoadingSpinner from '@/components/LoadingSpinner'
+import { useHeader } from '@/context/HeaderContext'
 import * as XLSX from 'xlsx'
 
 type User = {
@@ -19,6 +20,7 @@ type User = {
 
 export default function UsernamesPage() {
     const { t, locale } = useLanguage()
+    const { setTitle, setSubtitle } = useHeader()
     const [users, setUsers] = useState<User[]>([])
     const [loading, setLoading] = useState(true)
 
@@ -40,6 +42,15 @@ export default function UsernamesPage() {
         }
         fetchUsers()
     }, [])
+
+    useEffect(() => {
+        setTitle(t('usernames' as any))
+        setSubtitle(t('usernames_subtitle' as any))
+        return () => {
+            setTitle(null)
+            setSubtitle(null)
+        }
+    }, [setTitle, setSubtitle, t])
 
     const downloadExcel = () => {
         const now = new Date()

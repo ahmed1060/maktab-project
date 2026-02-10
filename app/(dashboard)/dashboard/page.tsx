@@ -3,6 +3,7 @@ import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import Link from "next/link"
 import { DonutChart, StatMetric } from "@/components/DashboardCharts"
+import HeaderSetter from "@/components/HeaderSetter"
 import { cookies } from "next/headers"
 import { Locale, translations } from "@/lib/translations"
 
@@ -57,11 +58,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: { 
 
             return (
                 <div className="animate-fade-in" style={{ direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
-                    <header style={{ marginBottom: '2.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
-                        <h1 style={{ fontSize: '2rem', fontWeight: '800', color: '#1e293b' }}>
-                            {t('system_overview')}
-                        </h1>
-                    </header>
+                    <HeaderSetter title={t('system_overview')} subtitle={t('dashboard_subtitle' as any)} />
 
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2rem', marginBottom: '3rem' }}>
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', gridColumn: 'span 2' }}>
@@ -148,11 +145,10 @@ export default async function DashboardPage({ searchParams }: { searchParams: { 
 
         return (
             <div className="animate-fade-in" style={{ direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
-                <header style={{ marginBottom: '2.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
-                    <h1 style={{ fontSize: '2rem', fontWeight: '800', color: '#1e293b' }}>
-                        {userRole === 'TEAM_LEADER' ? t('team_performance') : t('admin_overview')}
-                    </h1>
-                </header>
+                <HeaderSetter
+                    title={userRole === 'TEAM_LEADER' ? t('team_performance') : t('admin_overview')}
+                    subtitle={t('dashboard_subtitle' as any)}
+                />
 
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2rem', marginBottom: '3rem' }}>
                     <div className="glass-card">
@@ -263,22 +259,13 @@ export default async function DashboardPage({ searchParams }: { searchParams: { 
             { label: t('status_rejected'), value: rejectedTasks, color: '#ef4444' }
         ]
 
-        const dateString = new Date().toLocaleDateString(locale === 'ar' ? 'ar-EG' : 'en-US', { weekday: 'long', month: 'long', day: 'numeric' })
 
         return (
             <div className="animate-fade-in">
-                <header style={{ marginBottom: '3rem', borderBottom: '1px solid #e2e8f0', paddingBottom: '2rem' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'end' }}>
-                        <div>
-                            <h1 style={{ fontSize: '2.25rem', fontWeight: '800', color: '#1e293b', marginBottom: '0.5rem' }}>
-                                {t('hello')}, {(session?.user as any)?.firstName}! 👋
-                            </h1>
-                        </div>
-                        <div style={{ textAlign: locale === 'ar' ? 'left' : 'right' }}>
-                            <div style={{ fontSize: '0.9rem', color: '#64748b', fontWeight: '500' }}>{dateString}</div>
-                        </div>
-                    </div>
-                </header>
+                <HeaderSetter
+                    title={`${t('hello')}, ${(session?.user as any)?.firstName}! 👋`}
+                    subtitle={t('dashboard_subtitle' as any)}
+                />
 
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2rem', marginBottom: '3rem' }}>
                     <div className="glass-card dashboard-chart-grid" style={{ display: 'grid', gap: '1.5rem' }}>

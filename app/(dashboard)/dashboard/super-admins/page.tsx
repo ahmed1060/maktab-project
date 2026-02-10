@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useSession } from 'next-auth/react'
 import AccessDenied from '@/components/AccessDenied'
 import { useLanguage } from '@/context/LanguageContext'
+import { useHeader } from '@/context/HeaderContext'
 import Pagination from '@/components/Pagination'
 
 type Admin = {
@@ -18,6 +19,7 @@ type Admin = {
 
 export default function SuperAdminsPage() {
     const { t, locale } = useLanguage()
+    const { setTitle, setSubtitle } = useHeader()
     const [admins, setAdmins] = useState<Admin[]>([])
     const [loading, setLoading] = useState(true)
     const [showCreateModal, setShowCreateModal] = useState(false)
@@ -72,6 +74,15 @@ export default function SuperAdminsPage() {
             fetchAdmins()
         }
     }, [userRole, fetchAdmins])
+
+    useEffect(() => {
+        setTitle(t('super_admins'))
+        setSubtitle(t('super_admins_subtitle' as any))
+        return () => {
+            setTitle(null)
+            setSubtitle(null)
+        }
+    }, [setTitle, setSubtitle, t])
 
     if (userRole !== 'SUPER_ADMIN') {
         return <AccessDenied />

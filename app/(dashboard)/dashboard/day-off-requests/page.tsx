@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { useLanguage } from '@/context/LanguageContext'
+import { useHeader } from '@/context/HeaderContext'
 import LoadingSpinner from '@/components/LoadingSpinner'
 import DateRangePicker from '@/components/DateRangePicker'
 import DatePickerSingle from '@/components/DatePickerSingle'
@@ -32,6 +33,7 @@ interface DayOffRequest {
 
 export default function DayOffRequestsPage() {
     const { t, locale } = useLanguage()
+    const { setTitle, setSubtitle } = useHeader()
     const { data: session, status } = useSession()
     const user = session?.user
     const isAdmin = ['ADMIN', 'SUPER_ADMIN'].includes(user?.role || '')
@@ -139,6 +141,15 @@ export default function DayOffRequestsPage() {
             }
         }
     }, [status, fetchRequests, fetchUserCredit, isAdmin, user?.id])
+
+    useEffect(() => {
+        setTitle(t('day_off_requests' as any))
+        setSubtitle(t('day_off_requests_subtitle' as any))
+        return () => {
+            setTitle(null)
+            setSubtitle(null)
+        }
+    }, [setTitle, setSubtitle, t])
 
     // Scroll to highlighted request
     useEffect(() => {

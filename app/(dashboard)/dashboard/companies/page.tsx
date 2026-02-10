@@ -12,6 +12,7 @@ import ConfirmModal from '@/components/ConfirmModal'
 import { useLanguage } from '@/context/LanguageContext'
 import Pagination from '@/components/Pagination'
 import LoadingSpinner from '@/components/LoadingSpinner'
+import { useHeader } from '@/context/HeaderContext'
 
 type Company = {
     id: string
@@ -20,6 +21,7 @@ type Company = {
 
 export default function CompaniesPage() {
     const { t, locale } = useLanguage()
+    const { setTitle, setSubtitle } = useHeader()
     const router = useRouter()
     const [companies, setCompanies] = useState<Company[]>([])
     const [loading, setLoading] = useState(true)
@@ -66,6 +68,15 @@ export default function CompaniesPage() {
     useEffect(() => {
         fetchCompanies()
     }, [fetchCompanies])
+
+    useEffect(() => {
+        setTitle(t('companies'))
+        setSubtitle(t('companies_subtitle' as any))
+        return () => {
+            setTitle(null)
+            setSubtitle(null)
+        }
+    }, [setTitle, setSubtitle, t])
 
     const handleOpenModal = (company?: Company) => {
         setError('')

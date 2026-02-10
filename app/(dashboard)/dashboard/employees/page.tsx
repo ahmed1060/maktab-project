@@ -9,6 +9,7 @@ import AccessDenied from '@/components/AccessDenied'
 import Modal from '@/components/Modal'
 import Pagination from '@/components/Pagination'
 import { useLanguage } from '@/context/LanguageContext'
+import { useHeader } from '@/context/HeaderContext'
 import LoadingSpinner from '@/components/LoadingSpinner'
 
 interface Employee {
@@ -26,6 +27,7 @@ interface Employee {
 
 export default function EmployeesPage() {
     const { t, locale } = useLanguage()
+    const { setTitle, setSubtitle } = useHeader()
     const [employees, setEmployees] = useState<Employee[]>([])
     const [loading, setLoading] = useState(true)
     const { data: session } = useSession()
@@ -104,6 +106,15 @@ export default function EmployeesPage() {
             fetchEmployees()
         }
     }, [session, fetchEmployees, selectedCompanyId, page, filters.search, filters.status])
+
+    useEffect(() => {
+        setTitle(t('employees'))
+        setSubtitle(t('employees_subtitle' as any))
+        return () => {
+            setTitle(null)
+            setSubtitle(null)
+        }
+    }, [setTitle, setSubtitle, t])
 
     const handleDelete = async (id: string, name: string) => {
         setDeleteConfirm({ id, name })

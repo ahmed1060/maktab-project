@@ -6,6 +6,7 @@ import TaskListItem from '@/components/TaskListItem'
 import EmployeeFilter from '@/components/EmployeeFilter'
 import Pagination from '@/components/Pagination'
 import { useLanguage } from '@/context/LanguageContext'
+import { useHeader } from '@/context/HeaderContext'
 
 interface TasksClientProps {
     tasks: any[]
@@ -19,6 +20,7 @@ interface TasksClientProps {
 
 export default function TasksClient({ tasks, total, page, totalPages, role, currentUserId, view }: TasksClientProps) {
     const { t, locale } = useLanguage()
+    const { setTitle, setSubtitle } = useHeader()
     const router = useRouter()
     const searchParams = useSearchParams()
     const highlightId = searchParams?.get('highlight')
@@ -101,7 +103,6 @@ export default function TasksClient({ tasks, total, page, totalPages, role, curr
         return sortOrder === 'asc' ? comparison : -comparison
     })
 
-    // Scroll to highlighted task
     useEffect(() => {
         if (highlightId && tasks.length > 0) {
             const element = document.getElementById(`task-${highlightId}`);
@@ -110,6 +111,15 @@ export default function TasksClient({ tasks, total, page, totalPages, role, curr
             }
         }
     }, [highlightId, tasks]);
+
+    useEffect(() => {
+        setTitle(t('tasks'))
+        setSubtitle(t('tasks_subtitle' as any))
+        return () => {
+            setTitle(null)
+            setSubtitle(null)
+        }
+    }, [setTitle, setSubtitle, t])
 
     return (
         <div>

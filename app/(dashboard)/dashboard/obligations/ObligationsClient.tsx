@@ -6,6 +6,7 @@ import ObligationListItem from '@/components/ObligationListItem'
 import EmployeeFilter from '@/components/EmployeeFilter'
 import Pagination from '@/components/Pagination'
 import { useLanguage } from '@/context/LanguageContext'
+import { useHeader } from '@/context/HeaderContext'
 
 interface ObligationsClientProps {
     obligations: any[]
@@ -17,6 +18,7 @@ interface ObligationsClientProps {
 
 export default function ObligationsClient({ obligations, total, page, totalPages, role }: ObligationsClientProps) {
     const { t, locale } = useLanguage()
+    const { setTitle, setSubtitle } = useHeader()
     const router = useRouter()
     const searchParams = useSearchParams()
     const highlightId = searchParams?.get('highlight')
@@ -83,7 +85,6 @@ export default function ObligationsClient({ obligations, total, page, totalPages
         return sortOrder === 'asc' ? comparison : -comparison
     })
 
-    // Scroll to highlighted obligation
     useEffect(() => {
         if (highlightId && obligations.length > 0) {
             const element = document.getElementById(`obligation-${highlightId}`);
@@ -92,6 +93,15 @@ export default function ObligationsClient({ obligations, total, page, totalPages
             }
         }
     }, [highlightId, obligations]);
+
+    useEffect(() => {
+        setTitle(t('obligations'))
+        setSubtitle(t('obligations_subtitle' as any))
+        return () => {
+            setTitle(null)
+            setSubtitle(null)
+        }
+    }, [setTitle, setSubtitle, t])
 
     return (
         <div>
