@@ -314,26 +314,26 @@ export default function NewTaskPage() {
             errors[f].push(m)
         }
 
-        if (task.title.length < 3) addError('title', t('title_too_short' as any) || 'Title too short')
-        if (task.title.length > 100) addError('title', t('title_too_long' as any) || 'Title too long')
-        if (task.description.length < 10) addError('description', t('desc_too_short' as any) || 'Description too short')
-        if (task.description.length > 1000) addError('description', t('desc_too_long' as any) || 'Description too long')
+        if (task.title.length < 3) addError('title', t('title_too_short'))
+        if (task.title.length > 100) addError('title', t('title_too_long'))
+        if (task.description.length < 10) addError('description', t('desc_too_short'))
+        if (task.description.length > 1000) addError('description', t('desc_too_long'))
 
         if (task.resolvedIds.length === 0) {
-            addError('assignees', t('no_assignees' as any) || 'Missing assignees')
+            addError('assignees', t('no_assignees'))
         }
 
         if (task.deadline) {
             const date = new Date(task.deadline)
             const min = new Date(Date.now() + 3 * 60 * 60 * 1000)
-            if (isNaN(date.getTime())) addError('deadline', t('invalid_date' as any) || 'Invalid date')
-            else if (date < min) addError('deadline', t('deadline_too_soon' as any) || 'Deadline must be at least 3h from now')
+            if (isNaN(date.getTime())) addError('deadline', t('invalid_date'))
+            else if (date < min) addError('deadline', t('deadline_too_soon'))
         } else {
-            addError('deadline', t('missing_deadline' as any) || 'Missing deadline')
+            addError('deadline', t('missing_deadline'))
         }
 
         if (task.difficulty < 0 || task.difficulty > 10) {
-            addError('difficulty', t('invalid_difficulty' as any) || 'Difficulty must be 0-10')
+            addError('difficulty', t('invalid_difficulty'))
         }
 
         return {
@@ -652,14 +652,14 @@ export default function NewTaskPage() {
                                                 transition: 'background 0.3s'
                                             }}>
                                                 <td style={{ padding: '1rem' }}>{idx + 1}</td>
-                                                <td style={{ padding: '1rem' }}>
+                                                <td style={{ padding: '1rem', position: 'relative' }}>
                                                     <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '0.5rem' }}>
                                                         <div style={{
                                                             opacity: bt.isInvalid ? 0.5 : 1,
                                                             textDecoration: bt.isInvalid && !bt.title ? 'line-through' : 'none',
                                                             flex: 1
                                                         }}>
-                                                            {bt.title || t('missing_title' as any)}
+                                                            {bt.title || t('missing_title')}
                                                         </div>
                                                         <button
                                                             onClick={() => setActiveCellEdit({ index: idx, field: 'title' })}
@@ -710,13 +710,13 @@ export default function NewTaskPage() {
                                                                     style={{ width: '100%', marginTop: '1rem' }}
                                                                     onClick={() => setActiveCellEdit(null)}
                                                                 >
-                                                                    {t('done' as any) || 'Done'}
+                                                                    {t('done')}
                                                                 </button>
                                                             </div>
                                                         </>
                                                     )}
                                                 </td>
-                                                <td style={{ padding: '1rem' }}>
+                                                <td style={{ padding: '1rem', position: 'relative' }}>
                                                     <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '0.5rem' }}>
                                                         <div style={{ opacity: bt.isInvalid ? 0.5 : 1, fontSize: '0.85rem', flex: 1 }}>
                                                             {bt.description?.substring(0, 50)}...
@@ -770,7 +770,7 @@ export default function NewTaskPage() {
                                                                     style={{ width: '100%', marginTop: '1rem' }}
                                                                     onClick={() => setActiveCellEdit(null)}
                                                                 >
-                                                                    {t('done' as any) || 'Done'}
+                                                                    {t('done')}
                                                                 </button>
                                                             </div>
                                                         </>
@@ -1025,14 +1025,14 @@ export default function NewTaskPage() {
                                                     )}
 
                                                 </td>
-                                                <td style={{ padding: '1rem' }}>
+                                                <td style={{ padding: '1rem', position: 'relative' }}>
                                                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem' }}>
                                                         <div style={{ opacity: bt.isInvalid ? 0.5 : 1, whiteSpace: 'nowrap', fontSize: '0.85rem', flex: 1 }}>
                                                             {bt.deadline ? new Date(bt.deadline).toLocaleString(locale === 'ar' ? 'ar-EG' : 'en-US', {
                                                                 year: 'numeric', month: 'numeric', day: 'numeric',
                                                                 hour: 'numeric', minute: 'numeric', second: 'numeric',
                                                                 hour12: true
-                                                            }) : t('invalid_date' as any)}
+                                                            }) : t('invalid_date')}
                                                         </div>
                                                         <button
                                                             onClick={() => setActiveCellEdit({ index: idx, field: 'deadline' })}
@@ -1041,9 +1041,8 @@ export default function NewTaskPage() {
                                                                 borderRadius: '0.3rem', transition: 'all 0.2s', fontSize: '1.1rem',
                                                                 opacity: bt.validationErrors?.deadline ? 1 : 0.4
                                                             }}
-                                                            onMouseEnter={e => e.currentTarget.style.background = 'rgba(0,0,0,0.05)'}
                                                             onMouseLeave={e => e.currentTarget.style.background = 'none'}
-                                                            title={t('edit_deadline' as any) || 'Edit Deadline'}
+                                                            title={t('edit_deadline')}
                                                         >
                                                             📅
                                                         </button>
@@ -1082,7 +1081,7 @@ export default function NewTaskPage() {
                                                                     style={{ width: '100%', marginTop: '1rem' }}
                                                                     onClick={() => setActiveCellEdit(null)}
                                                                 >
-                                                                    {t('done' as any) || 'Done'}
+                                                                    {t('done')}
                                                                 </button>
                                                             </div>
                                                         </>
