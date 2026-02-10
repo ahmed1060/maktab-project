@@ -22,7 +22,7 @@ export class AuditLogService {
         })
     }
 
-    static async getMany(skip: number, limit: number, filters: { entityType?: string, action?: string, userId?: string } = {}) {
+    static async getMany(skip: number, limit: number, filters: { entityType?: string, action?: string, userId?: string, companyId?: string } = {}) {
         const where: any = {}
 
         if (filters.entityType) where.entityType = filters.entityType
@@ -32,6 +32,9 @@ export class AuditLogService {
                 { userId: filters.userId },
                 { superAdminId: filters.userId }
             ]
+        }
+        if (filters.companyId) {
+            where.user = { companyId: filters.companyId }
         }
 
         const [logs, total] = await Promise.all([

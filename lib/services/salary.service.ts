@@ -134,7 +134,14 @@ export class SalaryService {
                 tx,
                 userId: session.user.role !== 'SUPER_ADMIN' ? session.user.id : null,
                 superAdminId: session.user.role === 'SUPER_ADMIN' ? session.user.id : null,
-                details: { amount, reason, month: m, year: y, recordId: record.id }
+                details: {
+                    amount,
+                    reason,
+                    month: m,
+                    year: y,
+                    recordId: record.id,
+                    targetUserId: userId
+                }
             })
 
             const { NotificationService } = await import("./notification.service")
@@ -191,7 +198,13 @@ export class SalaryService {
                 tx,
                 userId: session.user.role !== 'SUPER_ADMIN' ? session.user.id : null,
                 superAdminId: session.user.role === 'SUPER_ADMIN' ? session.user.id : null,
-                details: { adjId, type: adjustment.type, amount: adjustment.amount, originalReason: adjustment.reason }
+                details: {
+                    adjId,
+                    type: adjustment.type,
+                    amount: adjustment.amount,
+                    originalReason: adjustment.reason,
+                    targetUserId: userId
+                }
             })
 
             return updatedAdj

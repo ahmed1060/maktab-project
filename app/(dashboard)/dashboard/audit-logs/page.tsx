@@ -5,6 +5,7 @@ import Pagination from '@/components/Pagination'
 import { useLanguage } from '@/context/LanguageContext'
 import LoadingSpinner from '@/components/LoadingSpinner'
 import { useHeader } from '@/context/HeaderContext'
+import { useCompany } from '@/context/CompanyContext'
 
 type AuditLog = {
     id: string
@@ -31,6 +32,7 @@ type AuditLog = {
 export default function AuditLogsPage() {
     const { t, locale } = useLanguage()
     const { setTitle, setSubtitle } = useHeader()
+    const { selectedCompanyId } = useCompany()
     const [logs, setLogs] = useState<AuditLog[]>([])
     const [loading, setLoading] = useState(true)
     const [page, setPage] = useState(1)
@@ -55,11 +57,11 @@ export default function AuditLogsPage() {
             queryParams.set('limit', limit.toString())
             if (filters.entityType) queryParams.set('entityType', filters.entityType)
             if (filters.action) queryParams.set('action', filters.action)
+            if (selectedCompanyId) queryParams.set('companyId', selectedCompanyId)
 
             const res = await fetch(`/api/admin/audit-logs?${queryParams.toString()}`)
             if (res.ok) {
                 const result = await res.json()
-                // Assuming result.data follows { data: AuditLog[], totalPages: number }
                 setLogs(result.data?.data || [])
                 setTotalPages(result.data?.totalPages || 0)
             }
@@ -68,7 +70,7 @@ export default function AuditLogsPage() {
         } finally {
             setLoading(false)
         }
-    }, [page, filters, limit])
+    }, [page, filters.entityType, filters.action, limit, selectedCompanyId])
 
     useEffect(() => {
         fetchLogs()
@@ -93,46 +95,77 @@ export default function AuditLogsPage() {
                     </pre>
                 </div>
             )
-        } catch (e) {
+        } catch {
             return <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>{String(details)}</span>
         }
     }
 
+    const entityTypes = ['TASK', 'OBLIGATION', 'CLIENT', 'SECTION', 'NOTE', 'USER', 'COMPANY', 'SALARY', 'DAY_OFF_REQUEST', 'COMPANY_PAYMENT', 'AUTH']
+    const actions = ['CREATE', 'UPDATE', 'DELETE', 'LOGIN', 'LOGOUT', 'APPROVE', 'REJECT', 'REVIEW', 'TRANSFER', 'REVERT', 'APPLY_PENALTY']
+
     return (
         <div className="animate-fade-in" style={{ direction: locale === 'ar' ? 'rtl' : 'ltr', padding: '0.5rem', minHeight: '100vh' }}>
             {/* Filters Section */}
-            <section className="glass-card" style={{ marginBottom: '2rem', display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
-                <div style={{ flex: 1, minWidth: '200px' }}>
-                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: '700', textTransform: 'uppercase', color: '#64748b', marginBottom: '0.5rem', marginInlineStart: '0.5rem' }}>
-                        {locale === 'ar' ? 'الكيان' : 'Entity Type'}
+            <section className="glass-card" style={{
+                marginBottom: '2rem',
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+                gap: '1.5rem',
+                alignItems: 'end',
+                padding: '1.5rem'
+            }}>
+                <div>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.75rem', fontWeight: '700', textTransform: 'uppercase', color: '#64748b', marginBottom: '0.75rem', marginInlineStart: '0.25rem' }}>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
+                        {locale === 'ar' ? 'نوع الكيان' : 'Entity Type'}
                     </label>
-                    <input
-                        type="text"
+                    <select
                         className="input"
-                        placeholder={locale === 'ar' ? 'تصفية حسب الكيان...' : 'Filter by Entity...'}
                         value={filters.entityType}
-                        onChange={(e) => setFilters(f => ({ ...f, entityType: e.target.value }))}
-                    />
+                        onChange={(e) => { setFilters(f => ({ ...f, entityType: e.target.value })); setPage(1); }}
+                        style={{ cursor: 'pointer', appearance: 'auto' }}
+                    >
+                        <option value="">{locale === 'ar' ? 'جميع الكيانات' : 'All Entities'}</option>
+                        {entityTypes.sort().map(et => (
+                            <option key={et} value={et}>{et}</option>
+                        ))}
+                    </select>
                 </div>
-                <div style={{ flex: 1, minWidth: '200px' }}>
-                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: '700', textTransform: 'uppercase', color: '#64748b', marginBottom: '0.5rem', marginInlineStart: '0.5rem' }}>
+                <div>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.75rem', fontWeight: '700', textTransform: 'uppercase', color: '#64748b', marginBottom: '0.75rem', marginInlineStart: '0.25rem' }}>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
                         {locale === 'ar' ? 'الإجراء' : 'Action'}
                     </label>
-                    <input
-                        type="text"
+                    <select
                         className="input"
-                        placeholder={locale === 'ar' ? 'تصفية حسب الإجراء...' : 'Filter by Action...'}
                         value={filters.action}
-                        onChange={(e) => setFilters(f => ({ ...f, action: e.target.value }))}
-                    />
+                        onChange={(e) => { setFilters(f => ({ ...f, action: e.target.value })); setPage(1); }}
+                        style={{ cursor: 'pointer', appearance: 'auto' }}
+                    >
+                        <option value="">{locale === 'ar' ? 'جميع الإجراءات' : 'All Actions'}</option>
+                        {actions.sort().map(a => (
+                            <option key={a} value={a}>{a}</option>
+                        ))}
+                    </select>
                 </div>
-                <div style={{ alignSelf: 'flex-end', paddingTop: '1.5rem' }}>
+                <div style={{ display: 'flex', gap: '1rem' }}>
                     <button
                         onClick={() => { setFilters({ entityType: '', action: '' }); setPage(1); }}
                         className="btn"
-                        style={{ background: 'rgba(255,255,255,0.4)', color: '#475569', border: '1px solid rgba(255,255,255,0.5)' }}
+                        style={{
+                            flex: 1,
+                            background: 'white',
+                            color: '#475569',
+                            border: '1px solid #e2e8f0',
+                            boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '0.5rem'
+                        }}
                     >
-                        {t('reset_filters' as any) || 'Reset'}
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><polyline points="3 3 3 8 8 8"></polyline></svg>
+                        {locale === 'ar' ? 'إعادة تعيين' : 'Reset'}
                     </button>
                 </div>
             </section>

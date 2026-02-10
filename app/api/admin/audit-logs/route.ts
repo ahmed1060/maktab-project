@@ -16,9 +16,10 @@ export const GET = withStandardHandler(async (req, session) => {
     const entityType = searchParams.get('entityType') || undefined
     const action = searchParams.get('action') || undefined
     const userId = searchParams.get('userId') || undefined
+    const companyId = searchParams.get('companyId') || undefined
 
     try {
-        const result = await AuditLogService.getMany(skip, limit, { entityType, action, userId })
+        const result = await AuditLogService.getMany(skip, limit, { entityType, action, userId, companyId })
         return ApiResponse.success({
             data: result.logs,
             total: result.total,

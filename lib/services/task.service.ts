@@ -381,15 +381,6 @@ export class TaskService {
                 })
             }
 
-            const { NotificationService } = await import("./notification.service")
-            await NotificationService.notifyMany(
-                task.assignees.map(a => a.id),
-                newStatus === 'APPROVED' ? 'TASK_APPROVED' : newStatus === 'COMPLETED' ? 'TASK_COMPLETED' : 'TASK_REJECTED',
-                `Your task "${task.title}" has been ${newStatus.toLowerCase()}`,
-                id,
-                tx
-            )
-
             // 5. Audit Log (Centralized)
             const { AuditLogService } = await import("./audit-log.service")
             await AuditLogService.log('REVIEW_TASK', 'TASK', id, {
@@ -401,7 +392,8 @@ export class TaskService {
                     oldStatus: oldTask.status,
                     newStatus,
                     pointsChange: pointDelta,
-                    difficulty: newDifficulty
+                    difficulty: newDifficulty,
+                    assigneeCount: task.assignees.length
                 }
             })
 
@@ -588,9 +580,10 @@ export class TaskService {
 
             let newTask: any = null
             if (addedIds.length > 0) {
+                const baseTitle = originalTask.title.replace(/\s\(Transfer Copy\)$/, '')
                 newTask = await (tx.task as any).create({
                     data: {
-                        title: originalTask.title + " (Transfer Copy)",
+                        title: baseTitle + " (Transfer Copy)",
                         description: originalTask.description,
                         companyId: originalTask.companyId,
                         assignees: { connect: addedIds.map((id: string) => ({ id })) },
@@ -699,7 +692,12 @@ export class TaskService {
                 tx,
                 userId: userRole !== 'SUPER_ADMIN' ? userId : null,
                 superAdminId: userRole === 'SUPER_ADMIN' ? userId : null,
-                details: { status: task.status, title: task.title }
+                details: {
+                    status: task.status,
+                    title: task.title,
+                    assigneeCount: task.assignees.length,
+                    hasAttachments: !!task.attachments
+                }
             })
 
             return { success: true, id }

@@ -57,7 +57,11 @@ export class NoteService {
         await AuditLogService.log('CREATE_NOTE', 'NOTE', note.id, {
             userId: userRole !== 'SUPER_ADMIN' ? userId : null,
             superAdminId: userRole === 'SUPER_ADMIN' ? userId : null,
-            details: { sectionId, hasAttachment: !!input.attachment }
+            details: {
+                sectionId,
+                hasAttachment: !!input.attachment,
+                contentPreview: input.content.substring(0, 50) + (input.content.length > 50 ? '...' : '')
+            }
         })
 
         return note
@@ -98,7 +102,10 @@ export class NoteService {
         await AuditLogService.log('UPDATE_NOTE', 'NOTE', id, {
             userId: userRole !== 'SUPER_ADMIN' ? userId : null,
             superAdminId: userRole === 'SUPER_ADMIN' ? userId : null,
-            details: { hasAttachment: !!input.attachment }
+            details: {
+                hasAttachment: !!input.attachment,
+                contentPreview: input.content.substring(0, 50) + (input.content.length > 50 ? '...' : '')
+            }
         })
 
         return updated
@@ -125,27 +132,16 @@ export class NoteService {
         if (note.attachment) {
             try {
                 let attachments: any[] = []
-                if (note.attachment.startsWith('[')) {
-                    try {
-                        attachments = JSON.parse(note.attachment)
-                    } catch {
-                        attachments = [note.attachment]
-                    }
-                } else {
-                    attachments = [note.attachment]
+                try {
+                    const parsed = JSON.parse(note.attachment)
+                    attachments = Array.isArray(parsed) ? parsed : [parsed]
+                } catch {
+                    attachments = [{ url: note.attachment }]
                 }
 
-                const pathsToDelete: string[] = []
-                for (const item of attachments) {
-                    if (!item) continue
-                    const fileUrl = typeof item === 'string' ? item : item.url
-                    if (!fileUrl) continue
-
-                    const urlParts = fileUrl.split('/app-assets/')
-                    if (urlParts.length > 1) {
-                        pathsToDelete.push(urlParts[1])
-                    }
-                }
+                const pathsToDelete = attachments
+                    .map(item => (typeof item === 'string' ? item : item.url)?.split('/app-assets/')?.[1])
+                    .filter(Boolean) as string[]
 
                 if (pathsToDelete.length > 0) {
                     await supabase.storage.from('app-assets').remove(pathsToDelete)
@@ -162,7 +158,11 @@ export class NoteService {
         await AuditLogService.log('DELETE_NOTE', 'NOTE', id, {
             userId: userRole !== 'SUPER_ADMIN' ? userId : null,
             superAdminId: userRole === 'SUPER_ADMIN' ? userId : null,
-            details: { sectionId: note.sectionId }
+            details: {
+                sectionId: note.sectionId,
+                contentPreview: note.content.substring(0, 50) + (note.content.length > 50 ? '...' : ''),
+                hadAttachment: !!note.attachment
+            }
         })
 
         return result

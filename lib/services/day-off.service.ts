@@ -174,7 +174,12 @@ export class DayOffService {
                 tx,
                 userId: userRole !== 'SUPER_ADMIN' ? (session.user as any).id : null,
                 superAdminId: userRole === 'SUPER_ADMIN' ? (session.user as any).id : null,
-                details: { daysToDeduct: input.daysToDeduct, deductionType: input.deductionType }
+                details: {
+                    daysToDeduct: input.daysToDeduct,
+                    deductionType: input.deductionType,
+                    requestDate: requestToUpdate.date,
+                    userName: requestToUpdate.user.firstName + (requestToUpdate.user.lastName ? ' ' + requestToUpdate.user.lastName : '')
+                }
             })
 
             const { NotificationService } = await import("./notification.service")
@@ -213,7 +218,10 @@ export class DayOffService {
         await AuditLogService.log('REJECT_DAY_OFF_REQUEST', 'DAY_OFF_REQUEST', id, {
             userId: userRole !== 'SUPER_ADMIN' ? (session.user as any).id : null,
             superAdminId: userRole === 'SUPER_ADMIN' ? (session.user as any).id : null,
-            details: { date: requestToUpdate.date }
+            details: {
+                date: requestToUpdate.date,
+                userName: requestToUpdate.user.firstName + (requestToUpdate.user.lastName ? ' ' + requestToUpdate.user.lastName : '')
+            }
         })
 
         await prisma.notification.create({
@@ -299,7 +307,12 @@ export class DayOffService {
                 tx,
                 userId: userRole !== 'SUPER_ADMIN' ? (session.user as any).id : null,
                 superAdminId: userRole === 'SUPER_ADMIN' ? (session.user as any).id : null,
-                details: { oldDays, newDays, deductionType: requestToUpdate.deductionType }
+                details: {
+                    oldDays,
+                    newDays,
+                    deductionType: requestToUpdate.deductionType,
+                    userName: requestToUpdate.user.firstName + (requestToUpdate.user.lastName ? ' ' + requestToUpdate.user.lastName : '')
+                }
             })
 
             await tx.notification.create({
