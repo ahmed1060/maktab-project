@@ -177,48 +177,53 @@ export default function AuditLogsPage() {
             ) : (
                 <>
                     <div style={{ background: 'white', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', border: '1px solid #e2e8f0' }}>
-                        <div style={{ overflowX: 'auto' }}>
-                            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                        <div style={{ overflow: 'hidden' }}>
+                            <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
                                 <thead>
                                     <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
-                                        <th style={{ textAlign: locale === 'ar' ? 'right' : 'left', padding: '1rem', color: '#64748b', fontSize: '0.75rem', fontWeight: '800', textTransform: 'uppercase' }}>{t('timestamp')}</th>
-                                        <th style={{ textAlign: locale === 'ar' ? 'right' : 'left', padding: '1rem', color: '#64748b', fontSize: '0.75rem', fontWeight: '800', textTransform: 'uppercase' }}>{t('action')}</th>
-                                        <th style={{ textAlign: locale === 'ar' ? 'right' : 'left', padding: '1rem', color: '#64748b', fontSize: '0.75rem', fontWeight: '800', textTransform: 'uppercase' }}>{t('entity')}</th>
-                                        <th style={{ textAlign: locale === 'ar' ? 'right' : 'left', padding: '1rem', color: '#64748b', fontSize: '0.75rem', fontWeight: '800', textTransform: 'uppercase' }}>{t('performed_by')}</th>
+                                        <th style={{ textAlign: locale === 'ar' ? 'right' : 'left', padding: '1rem', color: '#64748b', fontSize: '0.75rem', fontWeight: '800', textTransform: 'uppercase', width: '160px' }}>{t('timestamp')}</th>
+                                        <th style={{ textAlign: locale === 'ar' ? 'right' : 'left', padding: '1rem', color: '#64748b', fontSize: '0.75rem', fontWeight: '800', textTransform: 'uppercase', width: '120px' }}>{t('action')}</th>
+                                        <th style={{ textAlign: locale === 'ar' ? 'right' : 'left', padding: '1rem', color: '#64748b', fontSize: '0.75rem', fontWeight: '800', textTransform: 'uppercase', width: '130px' }}>{t('entity')}</th>
+                                        <th style={{ textAlign: locale === 'ar' ? 'right' : 'left', padding: '1rem', color: '#64748b', fontSize: '0.75rem', fontWeight: '800', textTransform: 'uppercase', width: '180px' }}>{t('performed_by')}</th>
                                         <th style={{ textAlign: locale === 'ar' ? 'right' : 'left', padding: '1rem', color: '#64748b', fontSize: '0.75rem', fontWeight: '800', textTransform: 'uppercase' }}>{t('details')}</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {logs.map((log) => (
                                         <tr key={log.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                                            <td style={{ padding: '1rem', fontSize: '0.8rem', color: '#64748b', whiteSpace: 'nowrap', width: '180px' }}>
+                                            <td style={{ padding: '1rem', fontSize: '0.8rem', color: '#64748b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                                 {formatDate(log.createdAt)}
                                             </td>
-                                            <td style={{ padding: '1rem', width: '130px' }}>
+                                            <td style={{ padding: '1rem' }}>
                                                 <span style={{
-                                                    fontSize: '0.7rem',
+                                                    fontSize: '0.65rem',
                                                     fontWeight: '700',
                                                     background: log.action.includes('DELETE') ? '#fee2e2' : log.action.includes('CREATE') ? '#dcfce7' : '#e0e7ff',
                                                     color: log.action.includes('DELETE') ? '#991b1b' : log.action.includes('CREATE') ? '#166534' : '#3730a3',
-                                                    padding: '0.2rem 0.5rem',
-                                                    borderRadius: '4px'
+                                                    padding: '0.2rem 0.4rem',
+                                                    borderRadius: '4px',
+                                                    display: 'inline-block',
+                                                    whiteSpace: 'nowrap',
+                                                    overflow: 'hidden',
+                                                    textOverflow: 'ellipsis',
+                                                    maxWidth: '100%'
                                                 }}>
                                                     {log.action}
                                                 </span>
                                             </td>
-                                            <td style={{ padding: '1rem', fontSize: '0.85rem', width: '160px' }}>
-                                                <div style={{ fontWeight: '600', color: '#1e293b' }}>{log.entityType}</div>
+                                            <td style={{ padding: '1rem', fontSize: '0.8rem' }}>
+                                                <div style={{ fontWeight: '600', color: '#1e293b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{log.entityType}</div>
                                                 <div style={{ color: '#94a3b8', fontSize: '0.7rem', fontFamily: 'monospace' }}>{log.entityId?.slice(0, 8)}...</div>
                                             </td>
-                                            <td style={{ padding: '1rem', fontSize: '0.85rem', width: '200px' }}>
-                                                <div style={{ fontWeight: '600', color: '#1e293b' }}>
+                                            <td style={{ padding: '1rem', fontSize: '0.8rem' }}>
+                                                <div style={{ fontWeight: '600', color: '#1e293b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                                     {log.superAdmin ? `${log.superAdmin.firstName} ${log.superAdmin.lastName}` : log.user ? `${log.user.firstName} ${log.user.lastName}` : 'System'}
                                                 </div>
-                                                <div style={{ color: '#64748b', fontSize: '0.7rem' }}>
+                                                <div style={{ color: '#64748b', fontSize: '0.7rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                                     {log.superAdmin ? 'Super Admin' : log.user ? log.user.role : 'Automated Task'}
                                                 </div>
                                             </td>
-                                            <td style={{ padding: '1rem' }}>
+                                            <td style={{ padding: '1rem', verticalAlign: 'top' }}>
                                                 {renderDetails(log.details)}
                                             </td>
                                         </tr>
