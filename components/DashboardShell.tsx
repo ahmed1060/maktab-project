@@ -389,9 +389,9 @@ export default function DashboardShell({ children, user }: DashboardShellProps) 
                 [isRtl ? 'marginRight' : 'marginLeft']: (!isMobile) ? sidebarWidth : '0', // Dynamic margin based on collapse state
                 minHeight: '100vh',
                 background: 'transparent',
-                width: '100%',
                 transition: 'margin 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
-                direction: isRtl ? 'rtl' : 'ltr'
+                direction: isRtl ? 'rtl' : 'ltr',
+                overflowX: 'hidden'
             }}>
                 {/* Floating Glass Header */}
                 <div style={{
