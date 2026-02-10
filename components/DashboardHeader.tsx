@@ -34,7 +34,7 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
     const searchParams = useSearchParams()
     const [isMenuOpen, setIsMenuOpen] = useState(false)
     const { selectedCompanyId, setSelectedCompanyId, refreshTrigger } = useCompany()
-    const { title: contextTitle } = useHeader()
+    const { title: contextTitle, subtitle: contextSubtitle } = useHeader()
     const [companies, setCompanies] = useState<any[]>([])
     const [pendingRequestsCount, setPendingRequestsCount] = useState(0)
     const [unreadNotificationsCount, setUnreadNotificationsCount] = useState(0)
@@ -254,17 +254,34 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
                         ☰
                     </button>
                 )}
-                <h1 style={{
-                    fontSize: 'clamp(1rem, 4vw, 1.5rem)',
-                    fontWeight: 'bold',
-                    margin: 0,
-                    color: 'var(--text-main)',
-                    whiteSpace: 'nowrap',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis'
-                }}>
-                    {title}
-                </h1>
+                <div>
+                    <h1 style={{
+                        fontSize: 'clamp(1rem, 4.5vw, 1.4rem)',
+                        fontWeight: '800',
+                        margin: 0,
+                        color: 'var(--text-main)',
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        lineHeight: 1.2
+                    }}>
+                        {title}
+                    </h1>
+                    {contextSubtitle && (
+                        <p style={{
+                            fontSize: '0.75rem',
+                            color: 'var(--text-muted)',
+                            margin: 0,
+                            fontWeight: '500',
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            marginTop: '0.1rem'
+                        }}>
+                            {contextSubtitle}
+                        </p>
+                    )}
+                </div>
             </div>
 
             {/* Right: Actions & Profile */}

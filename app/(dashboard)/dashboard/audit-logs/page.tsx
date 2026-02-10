@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import Pagination from '@/components/Pagination'
 import { useLanguage } from '@/context/LanguageContext'
 import LoadingSpinner from '@/components/LoadingSpinner'
+import { useHeader } from '@/context/HeaderContext'
 
 type AuditLog = {
     id: string
@@ -29,12 +30,22 @@ type AuditLog = {
 
 export default function AuditLogsPage() {
     const { t, locale } = useLanguage()
+    const { setTitle, setSubtitle } = useHeader()
     const [logs, setLogs] = useState<AuditLog[]>([])
     const [loading, setLoading] = useState(true)
     const [page, setPage] = useState(1)
     const [totalPages, setTotalPages] = useState(0)
     const [filters, setFilters] = useState({ entityType: '', action: '' })
     const limit = 20
+
+    useEffect(() => {
+        setTitle(t('audit_logs'))
+        setSubtitle(t('audit_logs_subtitle'))
+        return () => {
+            setTitle(null)
+            setSubtitle(null)
+        }
+    }, [setTitle, setSubtitle, t])
 
     const fetchLogs = useCallback(async () => {
         setLoading(true)
@@ -48,15 +59,16 @@ export default function AuditLogsPage() {
             const res = await fetch(`/api/admin/audit-logs?${queryParams.toString()}`)
             if (res.ok) {
                 const result = await res.json()
-                setLogs(result.data.data || [])
-                setTotalPages(result.data.totalPages || 0)
+                // Assuming result.data follows { data: AuditLog[], totalPages: number }
+                setLogs(result.data?.data || [])
+                setTotalPages(result.data?.totalPages || 0)
             }
         } catch (error) {
             console.error('Failed to fetch audit logs', error)
         } finally {
             setLoading(false)
         }
-    }, [page, filters])
+    }, [page, filters, limit])
 
     useEffect(() => {
         fetchLogs()
@@ -75,30 +87,20 @@ export default function AuditLogsPage() {
         try {
             const parsed = JSON.parse(details)
             return (
-                <div style={{ fontSize: '0.8rem', color: '#64748b', maxWidth: '300px', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    {Object.entries(parsed).map(([key, value]) => (
-                        <div key={key}>
-                            <span style={{ fontWeight: '600' }}>{key}:</span> {String(value)}
-                        </div>
-                    ))}
+                <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                    <pre style={{ margin: 0, whiteSpace: 'pre-wrap', fontFamily: 'monospace', maxHeight: '100px', overflowY: 'auto' }}>
+                        {JSON.stringify(parsed, null, 2)}
+                    </pre>
                 </div>
             )
-        } catch {
-            return details
+        } catch (e) {
+            return <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>{String(details)}</span>
         }
     }
 
-
     return (
-        <div className="animate-fade-in" style={{ direction: locale === 'ar' ? 'rtl' : 'ltr', padding: '1.5rem', minHeight: '100vh' }}>
-            <header style={{ marginBottom: '2.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
-                <h1 style={{ fontSize: '2.25rem', fontWeight: '800', color: '#1e293b', marginBottom: '0.5rem' }}>
-                    {t('audit_logs')}
-                </h1>
-                <p style={{ color: '#64748b', fontSize: '1.1rem', fontWeight: '500' }}>{t('audit_logs_subtitle')}</p>
-            </header>
-
-            {/* Glass Filters Section */}
+        <div className="animate-fade-in" style={{ direction: locale === 'ar' ? 'rtl' : 'ltr', padding: '0.5rem', minHeight: '100vh' }}>
+            {/* Filters Section */}
             <section className="glass-card" style={{ marginBottom: '2rem', display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
                 <div style={{ flex: 1, minWidth: '200px' }}>
                     <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: '700', textTransform: 'uppercase', color: '#64748b', marginBottom: '0.5rem', marginInlineStart: '0.5rem' }}>
@@ -179,7 +181,7 @@ export default function AuditLogsPage() {
                                                 </td>
                                                 <td style={{ padding: '1.25rem 1.5rem', fontSize: '0.875rem' }}>
                                                     <div style={{ color: '#1e293b', fontWeight: '600' }}>{log.entityType}</div>
-                                                    <div style={{ color: '#94a3b8', fontSize: '0.75rem', fontFamily: 'monospace' }}>{log.entityId.slice(0, 12)}...</div>
+                                                    <div style={{ color: '#94a3b8', fontSize: '0.75rem', fontFamily: 'monospace' }}>{log.entityId?.slice(0, 12)}...</div>
                                                 </td>
                                                 <td style={{ padding: '1.25rem 1.5rem', fontSize: '0.875rem' }}>
                                                     <div style={{ color: '#1e293b', fontWeight: '600' }}>
