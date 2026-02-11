@@ -3,6 +3,8 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useLanguage } from '@/context/LanguageContext'
 import Modal from './Modal'
+import SafeDate from './SafeDate'
+
 
 interface ObligationListItemProps {
     obligation: {
@@ -97,7 +99,7 @@ export default function ObligationListItem({ obligation, isHighlighted }: Obliga
                     <div style={{ marginTop: '0.25rem' }}>
                         {mounted && (
                             <>
-                                {t('created_label')}: {new Date(obligation.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} {new Date(obligation.createdAt).toLocaleDateString(locale === 'ar' ? 'ar-EG' : 'en-GB')} | {t('deadline_label')}: {new Date(obligation.deadline).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} {new Date(obligation.deadline).toLocaleDateString(locale === 'ar' ? 'ar-EG' : 'en-GB')}
+                                {t('created_label')}: <SafeDate date={obligation.createdAt} locale={locale} format="short" /> | {t('deadline_label')}: <SafeDate date={obligation.deadline} locale={locale} format="short" />
                             </>
                         )}
                     </div>

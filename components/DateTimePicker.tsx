@@ -32,10 +32,18 @@ export default function DateTimePicker({ value, onChange, label, min, customTrig
     }, [])
 
     useEffect(() => {
-        if (selectedDate && isOpen) {
-            setCurrentMonth(new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1))
+        if (isOpen) {
+            const now = new Date()
+            const minDate = min ? new Date(min) : now
+
+            if (selectedDate && selectedDate >= minDate) {
+                setCurrentMonth(new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1))
+            } else {
+                // If past date or no date, show current month (or min date month)
+                setCurrentMonth(new Date(minDate.getFullYear(), minDate.getMonth(), 1))
+            }
         }
-    }, [isOpen, selectedDate])
+    }, [isOpen, selectedDate, min])
 
     // Close dropdown when clicking outside
     useEffect(() => {
@@ -235,18 +243,18 @@ export default function DateTimePicker({ value, onChange, label, min, customTrig
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
                                     <button
                                         type="button"
-                                        onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1))}
+                                        onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + (locale === 'ar' ? 1 : -1)))}
                                         style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '0.5rem', padding: '0.3rem', cursor: 'pointer' }}
                                     >
-                                        ←
+                                        {locale === 'ar' ? '→' : '←'}
                                     </button>
                                     <div style={{ fontWeight: '800', color: '#1e293b', fontSize: '0.9rem' }}>{monthYear}</div>
                                     <button
                                         type="button"
-                                        onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1))}
+                                        onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + (locale === 'ar' ? -1 : 1)))}
                                         style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '0.5rem', padding: '0.3rem', cursor: 'pointer' }}
                                     >
-                                        →
+                                        {locale === 'ar' ? '←' : '→'}
                                     </button>
                                 </div>
 

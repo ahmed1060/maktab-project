@@ -8,6 +8,8 @@ import { useToast } from '@/context/ToastContext'
 import DateTimePicker from '@/components/DateTimePicker'
 import { useLanguage } from '@/context/LanguageContext'
 import LocationSearchInput from '@/components/LocationSearchInput'
+import SafeDate from '@/components/SafeDate'
+
 
 const TrashIcon = ({ size = 18, color = "#ef4444" }: { size?: number, color?: string }) => (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -1350,7 +1352,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                                                                                 </span>
                                                                             )}
                                                                             {!((task.assignees?.length > 1)) && <span>{loc.author}</span>}
-                                                                            <span>• {new Date(loc.date).toLocaleString(locale)}</span>
+                                                                            <span>• <SafeDate date={loc.date} locale={locale} /></span>
                                                                         </div>
                                                                     </div>
                                                                 </div>

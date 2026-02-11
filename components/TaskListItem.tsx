@@ -3,6 +3,8 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useLanguage } from '@/context/LanguageContext'
 import Modal from './Modal'
+import SafeDate from './SafeDate'
+
 
 interface TaskListItemProps {
     task: {
@@ -132,7 +134,7 @@ export default function TaskListItem({ task, currentUserId, isHighlighted }: Tas
                     <div style={{ fontSize: '0.75rem', opacity: 0.7, marginTop: '0.25rem' }}>
                         {mounted && (
                             <>
-                                {t('created_label')}: {new Date(task.createdAt).toLocaleTimeString(locale === 'ar' ? 'ar-EG' : 'en-GB', { hour: '2-digit', minute: '2-digit' })} - {new Date(task.createdAt).toLocaleDateString(locale === 'ar' ? 'ar-EG' : 'en-GB')} | {t('deadline_label')}: {new Date(task.deadline).toLocaleTimeString(locale === 'ar' ? 'ar-EG' : 'en-GB', { hour: '2-digit', minute: '2-digit' })} - {new Date(task.deadline).toLocaleDateString(locale === 'ar' ? 'ar-EG' : 'en-GB')}
+                                {t('created_label')}: <SafeDate date={task.createdAt} locale={locale} format="short" /> | {t('deadline_label')}: <SafeDate date={task.deadline} locale={locale} format="short" />
                             </>
                         )}
                     </div>

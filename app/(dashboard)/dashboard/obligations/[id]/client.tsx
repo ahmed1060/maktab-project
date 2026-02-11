@@ -3,6 +3,8 @@ import { useState, useEffect, useCallback } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Modal from '@/components/Modal'
 import { useLanguage } from '@/context/LanguageContext'
+import SafeDate from '@/components/SafeDate'
+
 
 export default function ObligationDetailClient({ obligation, userRole, userId, userName }: { obligation: any, userRole: string, userId: string, userName: string }) {
     const { t, locale } = useLanguage()
@@ -464,7 +466,7 @@ export default function ObligationDetailClient({ obligation, userRole, userId, u
             <p style={{ fontSize: '1.1rem', margin: '1rem 0' }}>{obligation.description}</p>
 
             <div style={{ marginTop: '1rem', color: '#64748b' }}>
-                {t('deadline_label')}: {new Date(obligation.deadline).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' })} {new Date(obligation.deadline).toLocaleDateString(locale === 'ar' ? 'ar-EG' : 'en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                {t('deadline_label')}: <SafeDate date={obligation.deadline} locale={locale} showTime />
             </div>
 
             {/* Existing Attachments */}
@@ -502,7 +504,7 @@ export default function ObligationDetailClient({ obligation, userRole, userId, u
                                         </a>
                                         {att.uploadedAt && (
                                             <span style={{ fontSize: '0.7rem', color: '#64748b' }}>
-                                                {new Date(att.uploadedAt).toLocaleTimeString(locale, { timeStyle: 'short' }) + ' ' + new Date(att.uploadedAt).toLocaleDateString(locale === 'ar' ? 'ar-EG' : 'en-GB', { day: 'numeric', month: 'short' })}
+                                                <SafeDate date={att.uploadedAt} locale={locale} showTime />
                                             </span>
                                         )}
                                     </div>

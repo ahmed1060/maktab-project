@@ -93,6 +93,7 @@ export default function EmployeeFilter({
 }: EmployeeFilterProps) {
     const [employees, setEmployees] = useState<EmployeeType[]>([])
     const [loading, setLoading] = useState(!isEmployee && !hideEmployeeFilter)
+    const [error, setError] = useState<string | null>(null)
     const [isPopupOpen, setIsPopupOpen] = useState(false)
     const [isMobile, setIsMobile] = useState(false)
     const { t, locale } = useLanguage()
@@ -160,6 +161,7 @@ export default function EmployeeFilter({
     useEffect(() => {
         if (!isEmployee && !hideEmployeeFilter) {
             setLoading(true)
+            setError(null)
             const role = session?.user?.role as string
             let url = '/api/users?limit=1000'
 
@@ -191,6 +193,7 @@ export default function EmployeeFilter({
                 })
                 .catch(err => {
                     console.error('Failed to load employees:', err)
+                    setError(t('failed_load_employees' as any) || 'Failed to load employees')
                     setLoading(false)
                 })
         } else {
@@ -477,7 +480,7 @@ export default function EmployeeFilter({
                                                         color: '#475569'
                                                     }}
                                                 >
-                                                    {sortOrder === 'asc' ? '↑' : '↓'}
+                                                    {localSortOrder === 'asc' ? '↑' : '↓'}
                                                 </button>
                                             </div>
                                         </div>
@@ -487,14 +490,14 @@ export default function EmployeeFilter({
                                         <div>
                                             <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '700', fontSize: '0.875rem' }}>{t('filter_by_employee')}</label>
                                             <SearchableSelect
-                                                options={employees.map(emp => ({
+                                                options={error ? [] : employees.map(emp => ({
                                                     label: `${emp.firstName} ${emp.lastName}`,
                                                     value: emp.id,
                                                     subLabel: t(getRoleKey(emp.role) as any)
                                                 }))}
                                                 value={localEmployeeId}
                                                 onChange={setLocalEmployeeId}
-                                                placeholder={t('placeholder_all_employees')}
+                                                placeholder={error || t('placeholder_all_employees')}
                                             />
                                         </div>
                                     )}
@@ -723,7 +726,7 @@ export default function EmployeeFilter({
                         </div>
                         <span style={{ fontSize: '0.7rem', fontWeight: '800', opacity: 0.8, textTransform: 'uppercase' }}>{t('total_cost')}:</span>
                         <span style={{ fontSize: '1.125rem', fontWeight: '900' }}>
-                            {totalCost.toLocaleString(undefined, { minimumFractionDigits: 2 })} <span style={{ fontSize: '0.75rem' }}>{locale === 'ar' ? 'ج.م' : 'EGP'}</span>
+                            {totalCost.toLocaleString(locale === 'ar' ? 'ar-EG' : 'en-GB', { minimumFractionDigits: 2 })} <span style={{ fontSize: '0.75rem' }}>{locale === 'ar' ? 'ج.م' : 'EGP'}</span>
                         </span>
                     </div>
                 </div>

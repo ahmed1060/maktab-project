@@ -4,6 +4,8 @@ import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { useLanguage } from '@/context/LanguageContext'
 import { useSession } from 'next-auth/react'
 import LoadingSpinner from '@/components/LoadingSpinner'
+import SafeDate from '@/components/SafeDate'
+
 
 interface SalaryRecord {
     id: string
@@ -435,7 +437,7 @@ export default function EmployeeHistoryPage() {
                                                 {formattedCalculated}
                                             </td>
                                             <td style={{ padding: '1rem', color: '#64748b', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
-                                                {t('created_label')}: {new Date(record.createdAt).toLocaleDateString(locale === 'ar' ? 'ar-EG' : 'en-US')}
+                                                {t('created_label')}: <SafeDate date={record.createdAt} locale={locale} format="dateOnly" />
                                             </td>
                                         </tr>
                                     )
@@ -469,7 +471,7 @@ export default function EmployeeHistoryPage() {
                                 userCosts.map(cost => (
                                     <tr key={cost.id} style={{ borderBottom: '1px solid #e2e8f0' }}>
                                         <td style={{ padding: '0.75rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
-                                            {new Date(cost.date).toLocaleDateString(locale)}
+                                            <SafeDate date={cost.date} locale={locale} format="dateOnly" />
                                         </td>
                                         <td style={{ padding: '0.75rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
                                             {cost.title}
@@ -524,7 +526,7 @@ export default function EmployeeHistoryPage() {
                                     ) : (
                                         yearData.requests.map(req => (
                                             <tr key={req.id} style={{ borderBottom: '1px solid #e2e8f0' }}>
-                                                <td style={{ padding: '0.75rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{new Date(req.date).toLocaleDateString(locale)}</td>
+                                                <td style={{ padding: '0.75rem', textAlign: locale === 'ar' ? 'right' : 'left' }}><SafeDate date={req.date} locale={locale} format="dateOnly" /></td>
                                                 <td style={{ padding: '0.75rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t(req.type as any) || req.type}</td>
                                                 <td style={{ padding: '0.75rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{req.reason || '-'}</td>
                                                 <td style={{ padding: '0.75rem', textAlign: locale === 'ar' ? 'right' : 'left', fontWeight: 'bold' }}>{req.daysDeducted}</td>
@@ -626,7 +628,7 @@ export default function EmployeeHistoryPage() {
                                                 </div>
                                             )}
                                             <div style={{ fontSize: '0.875rem', color: '#94a3b8', marginTop: '0.25rem' }}>
-                                                {new Date(adj.createdAt).toLocaleString(locale)}
+                                                <SafeDate date={adj.createdAt} locale={locale} showTime />
                                             </div>
                                         </div>
 
@@ -681,7 +683,7 @@ export default function EmployeeHistoryPage() {
                     }}>
                         <h2 style={{ marginBottom: '1rem' }}>{t('reevaluate')}</h2>
                         <p style={{ color: '#64748b', fontSize: '0.9rem', marginBottom: '1.5rem' }}>
-                            {new Date(selectedRequest.date).toLocaleDateString(locale)} - {t(selectedRequest.type as any) || selectedRequest.type}
+                            <SafeDate date={selectedRequest.date} locale={locale} format="dateOnly" /> - {t(selectedRequest.type as any) || selectedRequest.type}
                         </p>
                         <div style={{ marginBottom: '1.5rem' }}>
                             <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', color: '#475569', marginBottom: '0.5rem' }}>
@@ -748,7 +750,7 @@ export default function EmployeeHistoryPage() {
                                         <div key={req.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1.25rem', background: 'white', borderRadius: '1.25rem', border: '1px solid #e2e8f0' }}>
                                             <div>
                                                 <div style={{ fontWeight: 'bold', fontSize: '1.05rem' }}>{t(req.type as any) || req.type}</div>
-                                                <div style={{ fontSize: '0.85rem', color: '#64748b' }}>{new Date(req.date).toLocaleDateString(locale)}</div>
+                                                <div style={{ fontSize: '0.85rem', color: '#64748b' }}><SafeDate date={req.date} locale={locale} format="dateOnly" /></div>
                                                 {req.reason && <div style={{ fontSize: '0.85rem', color: '#94a3b8', fontStyle: 'italic' }}>{req.reason}</div>}
                                             </div>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>

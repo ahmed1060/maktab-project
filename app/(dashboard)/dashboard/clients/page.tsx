@@ -11,6 +11,8 @@ import LoadingSpinner from '@/components/LoadingSpinner'
 import { useToast } from '@/context/ToastContext'
 import { useCompany } from '@/context/CompanyContext'
 import Pagination from '@/components/Pagination'
+import SafeDate from '@/components/SafeDate'
+
 
 interface Client {
     id: string
@@ -378,7 +380,7 @@ export default function ClientsPage() {
                                                 {(client.createdBy?.role || 'SYSTEM').replace(/_/g, ' ')}
                                             </span>
                                             <span>
-                                                {t('created_by' as any) || 'Created by'} {client.createdBy ? `${client.createdBy.firstName} ${client.createdBy.lastName}` : 'System'} {t('at' as any) || 'at'} {new Date(client.createdAt).toLocaleDateString(locale === 'ar' ? 'ar-EG' : 'en-GB', { day: 'numeric', month: 'short' }) + ', ' + new Date(client.createdAt).toLocaleDateString(locale === 'ar' ? 'ar-EG' : 'en-GB', { year: 'numeric' }) + ', ' + new Date(client.createdAt).toLocaleTimeString(locale === 'ar' ? 'ar-EG' : 'en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}
+                                                {t('created_by' as any) || 'Created by'} {client.createdBy ? `${client.createdBy.firstName} ${client.createdBy.lastName}` : 'System'} {t('at' as any) || 'at'} <SafeDate date={client.createdAt} locale={locale} />
                                             </span>
                                         </div>
                                         {client.lastEditedBy && (
@@ -394,7 +396,7 @@ export default function ClientsPage() {
                                                     {client.lastEditedBy.role.replace(/_/g, ' ')}
                                                 </span>
                                                 <span>
-                                                    {t('updated_by' as any) || 'Updated by'} {client.lastEditedBy.firstName} {client.lastEditedBy.lastName} {t('at' as any) || 'at'} {new Date(client.updatedAt).toLocaleDateString(locale === 'ar' ? 'ar-EG' : 'en-GB', { day: 'numeric', month: 'short' }) + ', ' + new Date(client.updatedAt).toLocaleDateString(locale === 'ar' ? 'ar-EG' : 'en-GB', { year: 'numeric' }) + ', ' + new Date(client.updatedAt).toLocaleTimeString(locale === 'ar' ? 'ar-EG' : 'en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}
+                                                    {t('updated_by' as any) || 'Updated by'} {client.lastEditedBy.firstName} {client.lastEditedBy.lastName} {t('at' as any) || 'at'} <SafeDate date={client.updatedAt} locale={locale} />
                                                 </span>
                                             </div>
                                         )}

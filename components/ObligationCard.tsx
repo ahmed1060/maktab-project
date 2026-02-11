@@ -1,6 +1,8 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import SafeDate from "./SafeDate"
+
 
 interface Obligation {
     id: string
@@ -101,7 +103,7 @@ export default function ObligationCard({ obligation, userRole, isHighlighted }: 
             </div>
             <p style={{ margin: '0.5rem 0' }}>{obligation.description}</p>
             <div style={{ fontSize: '0.875rem', color: '#64748b', marginBottom: '1rem' }}>
-                Assignee: {obligation.assignee.firstName} {obligation.assignee.lastName} | Deadline: {new Date(obligation.deadline).toLocaleDateString()}
+                Assignee: {obligation.assignee.firstName} {obligation.assignee.lastName} | Deadline: <SafeDate date={obligation.deadline} locale="en" format="dateOnly" />
             </div>
 
             {userRole === 'EMPLOYEE' && status === 'PENDING' && (
