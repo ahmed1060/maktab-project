@@ -6,6 +6,7 @@ import { useLanguage } from '@/context/LanguageContext'
 import LoadingSpinner from '@/components/LoadingSpinner'
 import { useHeader } from '@/context/HeaderContext'
 import { useCompany } from '@/context/CompanyContext'
+import AuditLogFilter from '@/components/AuditLogFilter'
 
 type AuditLog = {
     id: string
