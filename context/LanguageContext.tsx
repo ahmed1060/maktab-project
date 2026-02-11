@@ -20,7 +20,7 @@ export function LanguageProvider({ children, initialLocale }: { children: React.
     const [locale, setLocale] = useState<Locale>(initialLocale);
     const [hasSyncedWithSession, setHasSyncedWithSession] = useState(false);
     const [isChangingLocale, setIsChangingLocale] = useState(false);
-    const [isPending, startTransition] = useTransition();
+    const [, startTransition] = useTransition();
 
     // Initial language detection
     useEffect(() => {
@@ -98,7 +98,8 @@ export function LanguageProvider({ children, initialLocale }: { children: React.
     };
 
     const t = (key: TranslationKey): string => {
-        return translations[locale][key] || key;
+        const currentTranslations = translations[locale] || translations['en'];
+        return currentTranslations[key] || translations['en'][key] || key;
     };
 
     return (

@@ -1061,22 +1061,31 @@ export default function NewTaskPage() {
                                                                 hour12: true
                                                             }) : t('invalid_date')}
                                                         </div>
-                                                        <button
-                                                            onClick={(e) => {
-                                                                const rect = e.currentTarget.getBoundingClientRect()
-                                                                setEditAnchorRect(rect)
-                                                                setActiveCellEdit({ index: idx, field: 'deadline' })
+                                                        <DateTimePicker
+                                                            value={bt.deadline || ''}
+                                                            onChange={v => {
+                                                                const newTasks = [...bulkTasks]
+                                                                newTasks[idx].deadline = v
+                                                                const validated = revalidateRow(newTasks[idx])
+                                                                newTasks[idx] = validated
+                                                                setBulkTasks(newTasks)
                                                             }}
-                                                            style={{
-                                                                background: 'none', border: 'none', cursor: 'pointer', padding: '0.2rem',
-                                                                borderRadius: '0.3rem', transition: 'all 0.2s', fontSize: '1.1rem',
-                                                                opacity: bt.validationErrors?.deadline ? 1 : 0.4
-                                                            }}
-                                                            onMouseLeave={e => e.currentTarget.style.background = 'none'}
-                                                            title={t('edit_deadline')}
-                                                        >
-                                                            📅
-                                                        </button>
+                                                            min={new Date(Date.now() + 3 * 60 * 60 * 1000).toISOString()}
+                                                            customTrigger={
+                                                                <button
+                                                                    style={{
+                                                                        background: 'none', border: 'none', cursor: 'pointer', padding: '0.2rem',
+                                                                        borderRadius: '0.3rem', transition: 'all 0.2s', fontSize: '1.1rem',
+                                                                        opacity: bt.validationErrors?.deadline ? 1 : 0.4
+                                                                    }}
+                                                                    onMouseEnter={e => e.currentTarget.style.background = 'rgba(0,0,0,0.05)'}
+                                                                    onMouseLeave={e => e.currentTarget.style.background = 'none'}
+                                                                    title={t('edit_deadline')}
+                                                                >
+                                                                    📅
+                                                                </button>
+                                                            }
+                                                        />
                                                     </div>
                                                     {bt.validationErrors?.deadline && (
                                                         <div style={{ color: '#ef4444', fontSize: '0.7rem', marginTop: '0.25rem' }}>
@@ -1086,42 +1095,6 @@ export default function NewTaskPage() {
                                                         </div>
                                                     )}
 
-                                                    {/* Deadline Pop-up */}
-                                                    {activeCellEdit?.index === idx && activeCellEdit?.field === 'deadline' && editAnchorRect && createPortal(
-                                                        <>
-                                                            <div onClick={() => setActiveCellEdit(null)} style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 10500 }} />
-                                                            <div style={{
-                                                                position: 'fixed',
-                                                                top: editAnchorRect.top + editAnchorRect.height / 2,
-                                                                left: locale === 'ar' ? editAnchorRect.left - 340 : editAnchorRect.right + 20,
-                                                                transform: 'translateY(-50%)',
-                                                                zIndex: 10501, minWidth: '320px', background: 'white', padding: '1rem',
-                                                                borderRadius: '0.75rem', boxShadow: '0 10px 25px rgba(0,0,0,0.2)', border: '1px solid #e2e8f0',
-                                                                direction: locale === 'ar' ? 'rtl' : 'ltr'
-                                                            }}>
-                                                                <DateTimePicker
-                                                                    label={t('deadline_label')}
-                                                                    value={bt.deadline || ''}
-                                                                    onChange={v => {
-                                                                        const newTasks = [...bulkTasks]
-                                                                        newTasks[idx].deadline = v
-                                                                        const validated = revalidateRow(newTasks[idx])
-                                                                        newTasks[idx] = validated
-                                                                        setBulkTasks(newTasks)
-                                                                    }}
-                                                                    min={new Date(Date.now() + 3 * 60 * 60 * 1000).toISOString()}
-                                                                />
-                                                                <button
-                                                                    className="btn btn-primary"
-                                                                    style={{ width: '100%', marginTop: '1rem' }}
-                                                                    onClick={() => setActiveCellEdit(null)}
-                                                                >
-                                                                    {t('done')}
-                                                                </button>
-                                                            </div>
-                                                        </>,
-                                                        document.body
-                                                    )}
                                                 </td>
                                                 <td style={{ padding: '1rem' }}>
                                                     <div style={{ minWidth: '150px' }}>

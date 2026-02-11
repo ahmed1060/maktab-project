@@ -9,6 +9,8 @@ type Company = {
     name: string
 }
 
+export const dynamic = 'force-dynamic'
+
 export default function NewEmployeePage() {
     const { t, locale } = useLanguage()
     const [firstName, setFirstName] = useState('')

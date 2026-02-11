@@ -7,6 +7,8 @@ import HeaderSetter from "@/components/HeaderSetter"
 import { cookies } from "next/headers"
 import { Locale, translations } from "@/lib/translations"
 
+export const dynamic = 'force-dynamic'
+
 export default async function DashboardPage({ searchParams }: { searchParams: { company?: string } }) {
     const session = await getServerSession(authOptions)
     const userRole = (session?.user as any)?.role

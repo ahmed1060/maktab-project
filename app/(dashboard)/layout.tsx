@@ -4,6 +4,11 @@ import UserHeartbeat from "@/components/UserHeartbeat"
 import { authOptions } from "@/lib/auth"
 import DashboardShell from "@/components/DashboardShell"
 
+import { Suspense } from "react"
+import DashboardErrorBoundary from "@/components/DashboardErrorBoundary"
+
+export const dynamic = 'force-dynamic'
+
 export default async function DashboardLayout({
     children,
 }: {
@@ -20,7 +25,11 @@ export default async function DashboardLayout({
     return (
         <DashboardShell user={user}>
             <UserHeartbeat />
-            {children}
+            <DashboardErrorBoundary>
+                <Suspense fallback={<div className="p-8 text-center opacity-50">Loading section...</div>}>
+                    {children}
+                </Suspense>
+            </DashboardErrorBoundary>
         </DashboardShell>
     )
 }

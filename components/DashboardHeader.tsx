@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, Suspense } from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { signOut, useSession } from 'next-auth/react'
@@ -422,62 +422,66 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
 
                 {/* Profile Name Requests Counter (for admin/super_admin) */}
                 {['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role) && (
-                    <Link
-                        href="/dashboard/profile-requests"
-                        title={t('profile_name_requests')}
-                        style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            width: '45px',
-                            height: '45px',
-                            borderRadius: '50%',
-                            background: 'rgba(255,255,255,0.5)',
-                            border: '2px solid rgba(255,255,255,0.8)',
-                            color: 'var(--text-main)',
-                            position: 'relative',
-                            transition: 'all 0.2s ease',
-                            boxShadow: '0 4px 6px rgba(0,0,0,0.05)'
-                        }}
-                        onMouseEnter={(e) => {
-                            e.currentTarget.style.transform = 'scale(1.05)'
-                            e.currentTarget.style.background = 'white'
-                        }}
-                        onMouseLeave={(e) => {
-                            e.currentTarget.style.transform = 'scale(1)'
-                            e.currentTarget.style.background = 'rgba(255,255,255,0.5)'
-                        }}
-                    >
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-                            <circle cx="8.5" cy="7" r="4"></circle>
-                            <polyline points="17 11 19 13 23 9"></polyline>
-                        </svg>
-                        {pendingRequestsCount > 0 && (
-                            <span style={{
-                                position: 'absolute',
-                                top: '-5px',
-                                right: '-5px',
-                                background: '#ef4444',
-                                color: 'white',
-                                fontSize: '0.7rem',
-                                fontWeight: 'bold',
-                                minWidth: '18px',
-                                height: '18px',
-                                borderRadius: '50%',
+                    <Suspense fallback={<div style={{ width: '45px', height: '45px', borderRadius: '50%', background: 'rgba(255,255,255,0.2)' }} />}>
+                        <Link
+                            href="/dashboard/profile-requests"
+                            title={t('profile_name_requests')}
+                            style={{
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
-                                border: '2px solid white',
-                                boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
-                            }}>
-                                {pendingRequestsCount}
-                            </span>
-                        )}
-                    </Link>
+                                width: '45px',
+                                height: '45px',
+                                borderRadius: '50%',
+                                background: 'rgba(255,255,255,0.5)',
+                                border: '2px solid rgba(255,255,255,0.8)',
+                                color: 'var(--text-main)',
+                                position: 'relative',
+                                transition: 'all 0.2s ease',
+                                boxShadow: '0 4px 6px rgba(0,0,0,0.05)'
+                            }}
+                            onMouseEnter={(e) => {
+                                e.currentTarget.style.transform = 'scale(1.05)'
+                                e.currentTarget.style.background = 'white'
+                            }}
+                            onMouseLeave={(e) => {
+                                e.currentTarget.style.transform = 'scale(1)'
+                                e.currentTarget.style.background = 'rgba(255,255,255,0.5)'
+                            }}
+                        >
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                                <circle cx="8.5" cy="7" r="4"></circle>
+                                <polyline points="17 11 19 13 23 9"></polyline>
+                            </svg>
+                            {pendingRequestsCount > 0 && (
+                                <span style={{
+                                    position: 'absolute',
+                                    top: '-5px',
+                                    right: '-5px',
+                                    background: '#ef4444',
+                                    color: 'white',
+                                    fontSize: '0.7rem',
+                                    fontWeight: 'bold',
+                                    minWidth: '18px',
+                                    height: '18px',
+                                    borderRadius: '50%',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    border: '2px solid white',
+                                    boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                                }}>
+                                    {pendingRequestsCount}
+                                </span>
+                            )}
+                        </Link>
+                    </Suspense>
                 )}
 
-                <NotificationBell initialUnreadCount={unreadNotificationsCount} />
+                <Suspense fallback={<div style={{ width: '24px', height: '24px' }} />}>
+                    <NotificationBell initialUnreadCount={unreadNotificationsCount} />
+                </Suspense>
 
                 {/* Avatar area - Grouped for desktop info, but direct child for mobile gap consistency */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>

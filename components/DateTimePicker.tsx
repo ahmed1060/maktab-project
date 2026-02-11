@@ -8,9 +8,10 @@ interface DateTimePickerProps {
     onChange: (value: string) => void
     label?: string
     min?: string
+    customTrigger?: React.ReactNode
 }
 
-export default function DateTimePicker({ value, onChange, label, min }: DateTimePickerProps) {
+export default function DateTimePicker({ value, onChange, label, min, customTrigger }: DateTimePickerProps) {
 
     const { t, locale } = useLanguage()
     const [isOpen, setIsOpen] = useState(false)
@@ -153,30 +154,36 @@ export default function DateTimePicker({ value, onChange, label, min }: DateTime
     return (
         <div ref={containerRef} style={{ position: 'relative', width: '100%', direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
             {label && <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600', textAlign: locale === 'ar' ? 'right' : 'left' }}>{label}</label>}
-            <div
-                onClick={() => setIsOpen(!isOpen)}
-                style={{
-                    padding: '0.625rem 1rem',
-                    borderRadius: '1rem',
-                    border: '1px solid rgba(255, 255, 255, 0.4)',
-                    fontSize: '1rem',
-                    cursor: 'pointer',
-                    background: 'rgba(255, 255, 255, 0.6)',
-                    backdropFilter: 'blur(4px)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    minHeight: '42px',
-                    transition: 'all 0.2s',
-                    boxShadow: isOpen ? '0 0 0 4px rgba(99, 102, 241, 0.15)' : 'none',
-                    borderColor: isOpen ? '#6366f1' : 'rgba(255, 255, 255, 0.4)'
-                }}
-            >
-                <span style={{ color: value ? 'var(--text-main)' : '#94a3b8', fontWeight: value ? '600' : '400' }}>
-                    {selectedDate ? `${formatDate(selectedDate)} - ${formatTime(selectedDate)}` : t('select_deadline')}
-                </span>
-                <span style={{ color: '#6366f1', fontSize: '1.2rem' }}>📅</span>
-            </div>
+            {customTrigger ? (
+                <div onClick={() => setIsOpen(!isOpen)}>
+                    {customTrigger}
+                </div>
+            ) : (
+                <div
+                    onClick={() => setIsOpen(!isOpen)}
+                    style={{
+                        padding: '0.625rem 1rem',
+                        borderRadius: '1rem',
+                        border: '1px solid rgba(255, 255, 255, 0.4)',
+                        fontSize: '1rem',
+                        cursor: 'pointer',
+                        background: 'rgba(255, 255, 255, 0.6)',
+                        backdropFilter: 'blur(4px)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        minHeight: '42px',
+                        transition: 'all 0.2s',
+                        boxShadow: isOpen ? '0 0 0 4px rgba(99, 102, 241, 0.15)' : 'none',
+                        borderColor: isOpen ? '#6366f1' : 'rgba(255, 255, 255, 0.4)'
+                    }}
+                >
+                    <span style={{ color: value ? 'var(--text-main)' : '#94a3b8', fontWeight: value ? '600' : '400' }}>
+                        {selectedDate ? `${formatDate(selectedDate)} - ${formatTime(selectedDate)}` : t('select_deadline')}
+                    </span>
+                    <span style={{ color: '#6366f1', fontSize: '1.2rem' }}>📅</span>
+                </div>
+            )}
 
             {isOpen && mounted && createPortal(
                 <div

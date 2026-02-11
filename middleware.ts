@@ -14,6 +14,14 @@ export default withAuth(
         // 2. Unauthenticated users trying to access /dashboard are handled by withAuth automatically
         // but the matcher below ensures it only runs for protected routes.
 
+        // 3. Locale Validation
+        const locale = req.cookies.get('NEXT_LOCALE')?.value
+        if (locale && !['en', 'ar'].includes(locale)) {
+            const response = NextResponse.next()
+            response.cookies.set('NEXT_LOCALE', 'en', { path: '/', maxAge: 31536000 })
+            return response
+        }
+
         return NextResponse.next()
     },
     {
