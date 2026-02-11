@@ -34,7 +34,10 @@ export default function NewEmployeePage() {
         if (userRole === 'SUPER_ADMIN') {
             fetch('/api/companies?limit=1000')
                 .then(res => res.json())
-                .then(data => setCompanies(data.data || []))
+                .then(result => {
+                    const companiesData = result.data?.data || []
+                    setCompanies(Array.isArray(companiesData) ? companiesData : [])
+                })
                 .catch(err => console.error('Failed to fetch companies', err))
         }
     }, [userRole])
