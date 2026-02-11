@@ -48,6 +48,17 @@ export default function AuditLogsPage() {
     const [users, setUsers] = useState<{ id: string, firstName: string, lastName: string, role: string }[]>([])
     const limit = 20
 
+    const entityTypes = [
+        'USER', 'TASK', 'SUPER_ADMIN', 'SECTION', 'SALARY',
+        'REQUEST', 'OBLIGATION', 'NOTE', 'SYSTEM',
+        'DAY_OFF_REQUEST', 'COMPANY', 'COMPANY_PAYMENT', 'CLIENT'
+    ]
+    const actionGroups = ['CREATE', 'UPDATE', 'DELETE', 'SYSTEM']
+    const specificActions = [
+        'LOGIN', 'LOGIN_FAILURE', 'APPROVE_PROFILE_UPDATE', 'REJECT_PROFILE_UPDATE',
+        'APPROVE', 'REJECT', 'REVIEW', 'TRANSFER', 'REVERT', 'APPLY_PENALTY'
+    ]
+
     useEffect(() => {
         setTitle(t('audit_logs'))
         setSubtitle(t('audit_logs_subtitle'))
@@ -102,6 +113,11 @@ export default function AuditLogsPage() {
     useEffect(() => {
         fetchLogs()
     }, [fetchLogs])
+
+    const handleFilterChange = (newFilters: typeof filters) => {
+        setFilters(newFilters)
+        setPage(1)
+    }
 
     const formatDate = (dateString: string) => {
         const date = new Date(dateString)
@@ -175,150 +191,17 @@ export default function AuditLogsPage() {
         }
     }
 
-    const entityTypes = [
-        'USER', 'TASK', 'SUPER_ADMIN', 'SECTION', 'SALARY',
-        'REQUEST', 'OBLIGATION', 'NOTE', 'SYSTEM',
-        'DAY_OFF_REQUEST', 'COMPANY', 'COMPANY_PAYMENT', 'CLIENT'
-    ]
-    const actionGroups = ['CREATE', 'UPDATE', 'DELETE', 'SYSTEM']
-    const specificActions = ['LOGIN', 'LOGIN_FAILURE', 'APPROVE_PROFILE_UPDATE', 'REJECT_PROFILE_UPDATE', 'APPROVE', 'REJECT', 'REVIEW', 'TRANSFER', 'REVERT', 'APPLY_PENALTY']
-
     return (
         <div className="animate-fade-in" style={{ direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
-            {/* Filter Bar */}
-            <div className="glass-card" style={{
-                marginBottom: '1.5rem',
-                padding: '1.25rem',
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
-                gap: '1rem',
-                alignItems: 'end'
-            }}>
-                {/* Date Filters */}
-                <div>
-                    <label className="text-[10px] font-bold text-slate-500 uppercase mb-1.5 block">
-                        {(t as any)('audit_filter_start_date')}
-                    </label>
-                    <input
-                        type="date"
-                        className="input h-[42px] text-sm"
-                        value={filters.startDate}
-                        onChange={(e) => { setFilters(f => ({ ...f, startDate: e.target.value })); setPage(1); }}
-                    />
-                </div>
-
-                <div>
-                    <label className="text-[10px] font-bold text-slate-500 uppercase mb-1.5 block">
-                        {(t as any)('audit_filter_end_date')}
-                    </label>
-                    <input
-                        type="date"
-                        className="input h-[42px] text-sm"
-                        value={filters.endDate}
-                        onChange={(e) => { setFilters(f => ({ ...f, endDate: e.target.value })); setPage(1); }}
-                    />
-                </div>
-
-                {/* Performed By Filter */}
-                <div>
-                    <label className="text-[10px] font-bold text-slate-500 uppercase mb-1.5 block">
-                        {t('performed_by')}
-                    </label>
-                    <select
-                        className="input h-[42px] text-sm"
-                        value={filters.performedById}
-                        onChange={(e) => { setFilters(f => ({ ...f, performedById: e.target.value })); setPage(1); }}
-                    >
-                        <option value="">{t('all_users')}</option>
-                        {users.map(user => (
-                            <option key={user.id} value={user.id}>
-                                {user.firstName} {user.lastName} ({user.role})
-                            </option>
-                        ))}
-                    </select>
-                </div>
-
-                {/* Entity Type Filter */}
-                <div>
-                    <label className="text-[10px] font-bold text-slate-500 uppercase mb-1.5 block">
-                        {t('entity')}
-                    </label>
-                    <select
-                        className="input h-[42px] text-sm"
-                        value={filters.entityType}
-                        onChange={(e) => { setFilters(f => ({ ...f, entityType: e.target.value })); setPage(1); }}
-                    >
-                        <option value="">{t('all_entities')}</option>
-                        {entityTypes.map(et => (
-                            <option key={et} value={et}>{(t as any)(`audit_entity_${et}`)}</option>
-                        ))}
-                    </select>
-                </div>
-
-                {/* Action Filter */}
-                <div>
-                    <label className="text-[10px] font-bold text-slate-500 uppercase mb-1.5 block">
-                        {t('action')}
-                    </label>
-                    <select
-                        className="input h-[42px] text-sm"
-                        value={filters.action}
-                        onChange={(e) => { setFilters(f => ({ ...f, action: e.target.value })); setPage(1); }}
-                    >
-                        <option value="">{t('all_actions')}</option>
-                        <optgroup label={locale === 'ar' ? 'فئات الإجراءات' : 'Action Groups'}>
-                            {actionGroups.map(g => (
-                                <option key={g} value={g}>{(t as any)(`audit_action_${g}`)}</option>
-                            ))}
-                        </optgroup>
-                        <optgroup label={locale === 'ar' ? 'إجراءات محددة' : 'Specific Actions'}>
-                            {specificActions.map(a => (
-                                <option key={a} value={a}>{(t as any)(`audit_action_${a}`)}</option>
-                            ))}
-                        </optgroup>
-                    </select>
-                </div>
-
-                {/* Entity ID Filter */}
-                <div>
-                    <label className="text-[10px] font-bold text-slate-500 uppercase mb-1.5 block">
-                        {(t as any)('entity_id')}
-                    </label>
-                    <input
-                        type="text"
-                        className="input h-[42px] text-sm"
-                        placeholder="ID..."
-                        value={filters.entityId}
-                        onChange={(e) => { setFilters(f => ({ ...f, entityId: e.target.value })); setPage(1); }}
-                    />
-                </div>
-
-                {/* Buttons */}
-                <div className="flex gap-2">
-                    <button
-                        onClick={() => {
-                            setFilters({
-                                entityType: '',
-                                action: '',
-                                startDate: '',
-                                endDate: '',
-                                entityId: '',
-                                performedById: ''
-                            });
-                            setPage(1);
-                        }}
-                        className="btn bg-white border border-slate-200 text-slate-500 h-[42px] px-6"
-                    >
-                        {t('reset')}
-                    </button>
-                    <button
-                        onClick={() => fetchLogs()}
-                        className="btn h-[42px] px-6"
-                    >
-                        {locale === 'ar' ? 'بحث' : 'Search'}
-                    </button>
-                </div>
-            </div>
+            <AuditLogFilter
+                filters={filters}
+                onFilterChange={handleFilterChange}
+                totalCount={logs.length > 0 ? (totalPages * limit) : 0} // Approximate total for UI badge
+                users={users}
+                entityTypes={entityTypes}
+                actionGroups={actionGroups}
+                specificActions={specificActions}
+            />
 
             {loading ? (
                 <div style={{ display: 'flex', justifyContent: 'center', padding: '4rem' }}>
