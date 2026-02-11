@@ -234,7 +234,7 @@ export default function DashboardShell({ children, user }: DashboardShellProps) 
                     overflowX: 'hidden',
                     scrollbarGutter: 'stable'
                 }}>
-                    {!isCollapsed && <p style={{ fontSize: '0.75rem', fontWeight: 'bold', textTransform: 'uppercase', color: '#94a3b8', [isRtl ? 'paddingRight' : 'paddingLeft']: '1rem', marginBottom: '0.25rem', letterSpacing: '0.1em' }}>{t('menu' as any)}</p>}
+                    {!isCollapsed && <p style={{ fontSize: '0.75rem', fontWeight: 'bold', textTransform: 'uppercase', color: '#94a3b8', [isRtl ? 'paddingRight' : 'paddingLeft']: '1rem', marginBottom: '0.25rem', letterSpacing: '0.1em' }}>{t('menu')}</p>}
 
                     {[
                         { href: '/dashboard', label: t('dashboard'), icon: '📊' },
@@ -285,7 +285,7 @@ export default function DashboardShell({ children, user }: DashboardShellProps) 
                             {isCollapsed ? (
                                 <hr style={{ border: 'none', borderTop: '1px solid rgba(255, 255, 255, 0.3)', margin: '1rem auto', width: '50%' }} />
                             ) : (
-                                <p style={{ fontSize: '0.75rem', fontWeight: 'bold', textTransform: 'uppercase', color: '#94a3b8', [isRtl ? 'paddingRight' : 'paddingLeft']: '1rem', marginTop: '1.5rem', marginBottom: '0.25rem', letterSpacing: '0.1em' }}>{t('management' as any)}</p>
+                                <p style={{ fontSize: '0.75rem', fontWeight: 'bold', textTransform: 'uppercase', color: '#94a3b8', [isRtl ? 'paddingRight' : 'paddingLeft']: '1rem', marginTop: '1.5rem', marginBottom: '0.25rem', letterSpacing: '0.1em' }}>{t('management')}</p>
                             )}
 
                             {[
@@ -343,7 +343,7 @@ export default function DashboardShell({ children, user }: DashboardShellProps) 
                                 { href: '/dashboard/companies', label: t('companies'), icon: '🏢' },
                                 { href: '/dashboard/all-users', label: t('all_users'), icon: '👥' },
                                 { href: '/dashboard/audit-logs', label: t('audit_logs'), icon: '📜' },
-                                { href: '/dashboard/health', label: t('system_health' as any) || 'System Health', icon: '❤️' }
+                                { href: '/dashboard/health', label: t('system_health') || 'System Health', icon: '❤️' }
                             ].map(link => (
                                 <Link key={link.href} href={link.href} onClick={() => isMobile && setIsSidebarOpen(false)} title={isCollapsed ? link.label : ''} className="nav-link" style={{
                                     color: 'rgba(255,255,255,0.8)',
@@ -437,7 +437,7 @@ export default function DashboardShell({ children, user }: DashboardShellProps) 
                         letterSpacing: '0.1em',
                         fontFamily: "'Inter', sans-serif"
                     }}>
-                        {t('powered_by' as any) || 'Powered by'}
+                        {t('powered_by') || 'Powered by'}
                     </span>
                     <span style={{
                         fontSize: '1.35rem',

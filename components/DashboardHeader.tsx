@@ -4,6 +4,7 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { signOut, useSession } from 'next-auth/react'
 import Image from 'next/image'
+import { TranslationKey } from '@/lib/translations'
 import NotificationBell from './NotificationBell'
 import { useCompany } from '@/context/CompanyContext'
 import { useHeader } from '@/context/HeaderContext'
@@ -190,7 +191,7 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
         return t('system')
     }
 
-    const getRoleKey = (role: string) => {
+    const getRoleKey = (role: string): TranslationKey => {
         switch (role) {
             case 'EMPLOYEE': return 'role_employee'
             case 'TEAM_LEADER': return 'role_team_leader'
@@ -488,7 +489,7 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
                     {/* User Info - Hidden on mobile, grouped with avatar on desktop */}
                     <div className="md-hidden" style={{ textAlign: locale === 'ar' ? 'left' : 'right', flexShrink: 1, minWidth: 0 }}>
                         <div style={{ fontSize: '0.75rem', fontWeight: 'bold', color: 'var(--text-muted)', textTransform: 'uppercase', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                            {t(getRoleKey(currentUser.role) as any)}
+                            {t(getRoleKey(currentUser.role))}
                         </div>
                         <div style={{ fontSize: '0.9rem', fontWeight: '600', color: 'var(--text-main)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                             {currentUser.firstName} {currentUser.lastName}
