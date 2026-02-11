@@ -37,12 +37,35 @@ export default function AuditLogsPage() {
     const [loading, setLoading] = useState(true)
     const [page, setPage] = useState(1)
     const [totalPages, setTotalPages] = useState(0)
-    const [filters, setFilters] = useState({ entityType: '', action: '' })
+    const [filters, setFilters] = useState({
+        entityType: '',
+        action: '',
+        startDate: '',
+        endDate: '',
+        entityId: '',
+        performedById: ''
+    })
+    const [users, setUsers] = useState<{ id: string, firstName: string, lastName: string, role: string }[]>([])
     const limit = 20
 
     useEffect(() => {
         setTitle(t('audit_logs'))
         setSubtitle(t('audit_logs_subtitle'))
+
+        // Fetch all users for "Performed By" filter
+        const fetchUsers = async () => {
+            try {
+                const res = await fetch('/api/all-users?limit=1000')
+                if (res.ok) {
+                    const result = await res.json()
+                    setUsers(result.data?.users || [])
+                }
+            } catch (err) {
+                console.error('Failed to fetch users', err)
+            }
+        }
+        fetchUsers()
+
         return () => {
             setTitle(null)
             setSubtitle(null)
@@ -57,6 +80,10 @@ export default function AuditLogsPage() {
             queryParams.set('limit', limit.toString())
             if (filters.entityType) queryParams.set('entityType', filters.entityType)
             if (filters.action) queryParams.set('action', filters.action)
+            if (filters.startDate) queryParams.set('startDate', filters.startDate)
+            if (filters.endDate) queryParams.set('endDate', filters.endDate)
+            if (filters.entityId) queryParams.set('entityId', filters.entityId)
+            if (filters.performedById) queryParams.set('performedById', filters.performedById)
             if (selectedCompanyId) queryParams.set('companyId', selectedCompanyId)
 
             const res = await fetch(`/api/admin/audit-logs?${queryParams.toString()}`)
@@ -70,7 +97,7 @@ export default function AuditLogsPage() {
         } finally {
             setLoading(false)
         }
-    }, [page, filters.entityType, filters.action, limit, selectedCompanyId])
+    }, [page, filters, limit, selectedCompanyId])
 
     useEffect(() => {
         fetchLogs()
@@ -148,61 +175,147 @@ export default function AuditLogsPage() {
         }
     }
 
-    const entityTypes = ['TASK', 'OBLIGATION', 'CLIENT', 'SECTION', 'NOTE', 'USER', 'COMPANY', 'SALARY', 'DAY_OFF_REQUEST', 'COMPANY_PAYMENT', 'AUTH']
-    const actions = ['CREATE', 'UPDATE', 'DELETE', 'LOGIN', 'LOGOUT', 'APPROVE', 'REJECT', 'REVIEW', 'TRANSFER', 'REVERT', 'APPLY_PENALTY']
+    const entityTypes = [
+        'USER', 'TASK', 'SUPER_ADMIN', 'SECTION', 'SALARY',
+        'REQUEST', 'OBLIGATION', 'NOTE', 'SYSTEM',
+        'DAY_OFF_REQUEST', 'COMPANY', 'COMPANY_PAYMENT', 'CLIENT'
+    ]
+    const actionGroups = ['CREATE', 'UPDATE', 'DELETE', 'SYSTEM']
+    const specificActions = ['LOGIN', 'LOGIN_FAILURE', 'APPROVE_PROFILE_UPDATE', 'REJECT_PROFILE_UPDATE', 'APPROVE', 'REJECT', 'REVIEW', 'TRANSFER', 'REVERT', 'APPLY_PENALTY']
 
     return (
         <div className="animate-fade-in" style={{ direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
-            {/* Standard Filter Bar */}
+            {/* Filter Bar */}
             <div className="glass-card" style={{
                 marginBottom: '1.5rem',
-                display: 'flex',
-                alignItems: 'center',
+                padding: '1.25rem',
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
                 gap: '1rem',
-                padding: '1rem',
-                flexWrap: 'wrap'
+                alignItems: 'end'
             }}>
-                <div style={{ flex: 1, minWidth: '200px' }}>
-                    <label style={{ fontSize: '0.7rem', fontWeight: '800', color: '#64748b', textTransform: 'uppercase', marginBottom: '0.4rem', display: 'block' }}>
-                        {locale === 'ar' ? 'نوع الكيان' : 'Entity Type'}
+                {/* Date Filters */}
+                <div>
+                    <label className="text-[10px] font-bold text-slate-500 uppercase mb-1.5 block">
+                        {(t as any)('audit_filter_start_date')}
+                    </label>
+                    <input
+                        type="date"
+                        className="input h-[42px] text-sm"
+                        value={filters.startDate}
+                        onChange={(e) => { setFilters(f => ({ ...f, startDate: e.target.value })); setPage(1); }}
+                    />
+                </div>
+
+                <div>
+                    <label className="text-[10px] font-bold text-slate-500 uppercase mb-1.5 block">
+                        {(t as any)('audit_filter_end_date')}
+                    </label>
+                    <input
+                        type="date"
+                        className="input h-[42px] text-sm"
+                        value={filters.endDate}
+                        onChange={(e) => { setFilters(f => ({ ...f, endDate: e.target.value })); setPage(1); }}
+                    />
+                </div>
+
+                {/* Performed By Filter */}
+                <div>
+                    <label className="text-[10px] font-bold text-slate-500 uppercase mb-1.5 block">
+                        {t('performed_by')}
                     </label>
                     <select
-                        className="input"
+                        className="input h-[42px] text-sm"
+                        value={filters.performedById}
+                        onChange={(e) => { setFilters(f => ({ ...f, performedById: e.target.value })); setPage(1); }}
+                    >
+                        <option value="">{t('all_users')}</option>
+                        {users.map(user => (
+                            <option key={user.id} value={user.id}>
+                                {user.firstName} {user.lastName} ({user.role})
+                            </option>
+                        ))}
+                    </select>
+                </div>
+
+                {/* Entity Type Filter */}
+                <div>
+                    <label className="text-[10px] font-bold text-slate-500 uppercase mb-1.5 block">
+                        {t('entity')}
+                    </label>
+                    <select
+                        className="input h-[42px] text-sm"
                         value={filters.entityType}
                         onChange={(e) => { setFilters(f => ({ ...f, entityType: e.target.value })); setPage(1); }}
-                        style={{ height: '42px', fontSize: '0.85rem' }}
                     >
-                        <option value="">{locale === 'ar' ? 'جميع الكيانات' : 'All Entities'}</option>
-                        {entityTypes.sort().map(et => (
-                            <option key={et} value={et}>{et}</option>
+                        <option value="">{t('all_entities')}</option>
+                        {entityTypes.map(et => (
+                            <option key={et} value={et}>{(t as any)(`audit_entity_${et}`)}</option>
                         ))}
                     </select>
                 </div>
 
-                <div style={{ flex: 1, minWidth: '200px' }}>
-                    <label style={{ fontSize: '0.7rem', fontWeight: '800', color: '#64748b', textTransform: 'uppercase', marginBottom: '0.4rem', display: 'block' }}>
-                        {locale === 'ar' ? 'الإجراء' : 'Action'}
+                {/* Action Filter */}
+                <div>
+                    <label className="text-[10px] font-bold text-slate-500 uppercase mb-1.5 block">
+                        {t('action')}
                     </label>
                     <select
-                        className="input"
+                        className="input h-[42px] text-sm"
                         value={filters.action}
                         onChange={(e) => { setFilters(f => ({ ...f, action: e.target.value })); setPage(1); }}
-                        style={{ height: '42px', fontSize: '0.85rem' }}
                     >
-                        <option value="">{locale === 'ar' ? 'جميع الإجراءات' : 'All Actions'}</option>
-                        {actions.sort().map(a => (
-                            <option key={a} value={a}>{a}</option>
-                        ))}
+                        <option value="">{t('all_actions')}</option>
+                        <optgroup label={locale === 'ar' ? 'فئات الإجراءات' : 'Action Groups'}>
+                            {actionGroups.map(g => (
+                                <option key={g} value={g}>{(t as any)(`audit_action_${g}`)}</option>
+                            ))}
+                        </optgroup>
+                        <optgroup label={locale === 'ar' ? 'إجراءات محددة' : 'Specific Actions'}>
+                            {specificActions.map(a => (
+                                <option key={a} value={a}>{(t as any)(`audit_action_${a}`)}</option>
+                            ))}
+                        </optgroup>
                     </select>
                 </div>
 
-                <div style={{ alignSelf: 'flex-end' }}>
+                {/* Entity ID Filter */}
+                <div>
+                    <label className="text-[10px] font-bold text-slate-500 uppercase mb-1.5 block">
+                        {(t as any)('entity_id')}
+                    </label>
+                    <input
+                        type="text"
+                        className="input h-[42px] text-sm"
+                        placeholder="ID..."
+                        value={filters.entityId}
+                        onChange={(e) => { setFilters(f => ({ ...f, entityId: e.target.value })); setPage(1); }}
+                    />
+                </div>
+
+                {/* Buttons */}
+                <div className="flex gap-2">
                     <button
-                        onClick={() => { setFilters({ entityType: '', action: '' }); setPage(1); }}
-                        className="btn"
-                        style={{ height: '42px', padding: '0 1.25rem', background: 'white', color: '#64748b', border: '1px solid #e2e8f0' }}
+                        onClick={() => {
+                            setFilters({
+                                entityType: '',
+                                action: '',
+                                startDate: '',
+                                endDate: '',
+                                entityId: '',
+                                performedById: ''
+                            });
+                            setPage(1);
+                        }}
+                        className="btn bg-white border border-slate-200 text-slate-500 h-[42px] px-6"
                     >
-                        {locale === 'ar' ? 'إعادة تعيين' : 'Reset'}
+                        {t('reset')}
+                    </button>
+                    <button
+                        onClick={() => fetchLogs()}
+                        className="btn h-[42px] px-6"
+                    >
+                        {locale === 'ar' ? 'بحث' : 'Search'}
                     </button>
                 </div>
             </div>
@@ -242,11 +355,13 @@ export default function AuditLogsPage() {
                                                     display: 'inline-block',
                                                     whiteSpace: 'nowrap'
                                                 }}>
-                                                    {log.action}
+                                                    {(t as any)(`audit_action_${log.action}`) || log.action}
                                                 </span>
                                             </td>
                                             <td style={{ padding: '1rem', fontSize: '0.8rem' }}>
-                                                <div style={{ fontWeight: '600', color: '#1e293b' }}>{log.entityType}</div>
+                                                <div style={{ fontWeight: '600', color: '#1e293b' }}>
+                                                    {(t as any)(`audit_entity_${log.entityType}`) || log.entityType}
+                                                </div>
                                                 <div style={{
                                                     color: '#94a3b8',
                                                     fontSize: '0.7rem',
@@ -259,10 +374,10 @@ export default function AuditLogsPage() {
                                             </td>
                                             <td style={{ padding: '1rem', fontSize: '0.8rem' }}>
                                                 <div style={{ fontWeight: '600', color: '#1e293b' }}>
-                                                    {log.superAdmin ? `${log.superAdmin.firstName} ${log.superAdmin.lastName}` : log.user ? `${log.user.firstName} ${log.user.lastName}` : 'System'}
+                                                    {log.superAdmin ? `${log.superAdmin.firstName} ${log.superAdmin.lastName}` : log.user ? `${log.user.firstName} ${log.user.lastName}` : (locale === 'ar' ? 'النظام' : 'System')}
                                                 </div>
                                                 <div style={{ color: '#64748b', fontSize: '0.7rem' }}>
-                                                    {log.superAdmin ? 'Super Admin' : log.user ? log.user.role : 'Automated Task'}
+                                                    {log.superAdmin ? (locale === 'ar' ? 'مسؤول عام' : 'Super Admin') : log.user ? log.user.role : (locale === 'ar' ? 'مهمة تلقائية' : 'Automated Task')}
                                                 </div>
                                             </td>
                                             <td style={{ padding: '1rem', verticalAlign: 'top' }}>

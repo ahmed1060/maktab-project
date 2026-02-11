@@ -22,17 +22,43 @@ export class AuditLogService {
         })
     }
 
-    static async getMany(skip: number, limit: number, filters: { entityType?: string, action?: string, userId?: string, companyId?: string } = {}) {
+    static async getMany(skip: number, limit: number, filters: {
+        entityType?: string,
+        action?: string,
+        companyId?: string,
+        startDate?: string,
+        endDate?: string,
+        entityId?: string,
+        performedById?: string
+    } = {}) {
         const where: any = {}
 
         if (filters.entityType) where.entityType = filters.entityType
-        if (filters.action) where.action = filters.action
-        if (filters.userId) {
+
+        if (filters.action) {
+            // If it's a generic action (like CREATE, UPDATE, DELETE), use startsWith
+            if (['CREATE', 'UPDATE', 'DELETE', 'SYSTEM'].includes(filters.action)) {
+                where.action = { startsWith: `${filters.action}_` }
+            } else {
+                where.action = filters.action
+            }
+        }
+
+        if (filters.entityId) where.entityId = filters.entityId
+
+        if (filters.performedById) {
             where.OR = [
-                { userId: filters.userId },
-                { superAdminId: filters.userId }
+                { userId: filters.performedById },
+                { superAdminId: filters.performedById }
             ]
         }
+
+        if (filters.startDate || filters.endDate) {
+            where.createdAt = {}
+            if (filters.startDate) where.createdAt.gte = new Date(filters.startDate)
+            if (filters.endDate) where.createdAt.lte = new Date(filters.endDate)
+        }
+
         if (filters.companyId) {
             where.user = { companyId: filters.companyId }
         }
