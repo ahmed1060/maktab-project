@@ -57,7 +57,10 @@ export default function AuditLogsPage() {
     const actionGroups = ['CREATE', 'UPDATE', 'DELETE', 'SYSTEM']
     const specificActions = [
         'LOGIN', 'LOGIN_FAILURE', 'APPROVE_PROFILE_UPDATE', 'REJECT_PROFILE_UPDATE',
-        'APPROVE', 'REJECT', 'REVIEW', 'TRANSFER', 'REVERT', 'APPLY_PENALTY'
+        'APPROVE', 'REJECT', 'REVIEW', 'TRANSFER', 'REVERT', 'APPLY_PENALTY',
+        'BULK_CREATE_TASK', 'BULK_UPDATE_PAYMENT', 'UPDATE_PAYMENT_STATUS',
+        'DELETE_TASK_ITEM', 'VERIFY_LOCATION', 'ACKNOWLEDGE_TASK_EDIT',
+        'REVEAL_PASSWORD', 'ADMIN_UNBLOCK_RATE_LIMIT'
     ]
 
     useEffect(() => {
