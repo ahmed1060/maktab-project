@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic'
+
 import { withStandardHandler } from "@/lib/api-utils"
 import { ApiResponse } from "@/lib/api-response"
 import { prisma } from "@/lib/prisma"
