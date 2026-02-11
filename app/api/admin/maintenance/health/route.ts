@@ -3,7 +3,7 @@ import { ApiResponse } from "@/lib/api-response"
 import { SystemService } from "@/lib/services/system.service"
 
 export const GET = withStandardHandler(
-    async (_req, _session) => {
+    async () => {
         try {
             const metrics = await SystemService.getHealthMetrics()
             return ApiResponse.success(metrics)
