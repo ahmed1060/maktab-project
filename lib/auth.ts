@@ -237,15 +237,15 @@ export const authOptions: NextAuthOptions = {
                     if (userRole === 'SUPER_ADMIN') {
                         const sa = await prisma.superAdmin.findUnique({
                             where: { id: userId },
-                            select: { sessionVersion: true }
+                            select: { sessionVersion: true } as any
                         })
-                        dbVersion = sa?.sessionVersion || 0
+                        dbVersion = (sa as any)?.sessionVersion || 0
                     } else {
                         const u = await prisma.user.findUnique({
                             where: { id: userId },
-                            select: { sessionVersion: true }
+                            select: { sessionVersion: true } as any
                         })
-                        dbVersion = u?.sessionVersion || 0
+                        dbVersion = (u as any)?.sessionVersion || 0
                     }
 
                     const tokenVersion = token.sessionVersion as number || 0

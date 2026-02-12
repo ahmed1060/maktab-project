@@ -14,7 +14,7 @@ export default function LoginPage() {
     const router = useRouter()
 
     const [loading, setLoading] = useState(false)
-    const [staySignedIn, setStaySignedIn] = useState(true)
+    const [staySignedIn, setStaySignedIn] = useState(false)
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()

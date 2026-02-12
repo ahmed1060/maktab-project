@@ -333,8 +333,8 @@ body::before {
   /* Reduced padding for compact inputs */
   height: 42px;
   /* Fixed height instead of min-height */
-  background: rgba(255, 255, 255, 0.6);
-  border: 1px solid rgba(255, 255, 255, 0.4);
+  background: rgba(255, 255, 255, 0.85); /* Slightly more opaque background */
+  border: 1px solid rgba(99, 102, 241, 0.25); /* Subtle Indigo border for better visibility */
   border-radius: 1rem;
   font-family: inherit;
   font-size: 1rem;
