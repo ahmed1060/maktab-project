@@ -174,15 +174,13 @@ export default function CompaniesPage() {
     return (
         <>
             <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', flexDirection: 'row' }}>
-                    <div>
-                        <p style={{ color: '#64748b' }}>{t('manage_registered_companies')}</p>
-                    </div>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginBottom: '2rem' }}>
                     <button
                         className="btn btn-primary"
                         onClick={() => handleOpenModal()}
+                        style={{ height: '48px', display: 'flex', alignItems: 'center', borderRadius: '1.25rem' }}
                     >
-                        {t('add_company')}
+                        + {t('add_company')}
                     </button>
                 </div>
 

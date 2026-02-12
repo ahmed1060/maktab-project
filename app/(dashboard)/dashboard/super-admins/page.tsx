@@ -181,13 +181,11 @@ export default function SuperAdminsPage() {
 
     return (
         <div style={{ direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', flexDirection: 'row' }}>
-                <div style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>
-                    <p style={{ color: '#64748b' }}>{t('manage_super_admins_subtitle')}</p>
-                </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginBottom: '2rem' }}>
                 <button
                     className="btn btn-primary"
                     onClick={() => setShowCreateModal(true)}
+                    style={{ height: '48px', display: 'flex', alignItems: 'center', borderRadius: '1.25rem' }}
                 >
                     + {t('add_super_admin_button')}
                 </button>
