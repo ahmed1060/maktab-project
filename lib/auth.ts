@@ -248,12 +248,17 @@ export const authOptions: NextAuthOptions = {
                         dbVersion = (u as any)?.sessionVersion || 0
                     }
 
-                    const tokenVersion = token.sessionVersion as number || 0
+                    if (token.sessionVersion === undefined) {
+                        token.sessionVersion = dbVersion
+                        console.log(`[AUTH] Initialized missing sessionVersion for user ${userId} to ${dbVersion}`)
+                    } else {
+                        const tokenVersion = token.sessionVersion as number
 
-                    // If DB version is higher than token version, revoke!
-                    if (dbVersion > tokenVersion) {
-                        console.log(`[AUTH] Revoking session for user ${userId} (Token:${tokenVersion} vs DB:${dbVersion})`)
-                        return {} as any // Empty token = invalid session
+                        // If DB version is higher than token version, revoke!
+                        if (dbVersion > tokenVersion) {
+                            console.log(`[AUTH] REVOKING session for user ${userId} (Token:${tokenVersion} vs DB:${dbVersion})`)
+                            return {} as any // Empty token = invalid session
+                        }
                     }
                 } catch (e) {
                     console.error("[AUTH] Revocation check failed, allowing session as fallback", e)

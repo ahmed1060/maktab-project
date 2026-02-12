@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { useSession } from 'next-auth/react'
 import Link from 'next/link'
 import { createPortal } from 'react-dom'
 import ConfirmModal from '@/components/ConfirmModal'
@@ -35,6 +36,7 @@ interface Client {
 }
 
 export default function ClientsPage() {
+    const { data: session } = useSession()
     const { t, locale } = useLanguage()
     const { setTitle, setSubtitle } = useHeader()
     const [filteredClients, setFilteredClients] = useState<Client[]>([])
@@ -78,6 +80,7 @@ export default function ClientsPage() {
     const [showCompanySelect, setShowCompanySelect] = useState(false)
 
     const checkSuperAdmin = useCallback(async () => {
+        if (session?.user?.role !== 'SUPER_ADMIN') return
         try {
             const res = await fetch('/api/companies?limit=1000')
             if (res.ok) {
@@ -89,7 +92,7 @@ export default function ClientsPage() {
         } catch (err) {
             console.error('Failed to check Super Admin status', err)
         }
-    }, [])
+    }, [session])
 
     const [page, setPage] = useState(1)
     const [totalPages, setTotalPages] = useState(0)

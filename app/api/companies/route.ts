@@ -5,7 +5,7 @@ import { createCompanySchema, updateCompanySchema } from "@/lib/validations/comp
 import { CompanyService } from "@/lib/services/company.service"
 
 export const GET = withStandardHandler(async (req, session) => {
-    if (session.user.role !== 'SUPER_ADMIN') return ApiResponse.unauthorized()
+    if (session.user.role !== 'SUPER_ADMIN') return ApiResponse.forbidden()
 
     const { searchParams } = new URL(req.url)
     const id = searchParams.get('id')

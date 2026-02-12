@@ -114,7 +114,7 @@ export const PUT = withStandardHandler(async (req, session, json) => {
 
 export const DELETE = withStandardHandler(async (req, session) => {
     const userRole = session.user.role
-    if (!['ADMIN', 'SUPER_ADMIN'].includes(userRole || '')) return ApiResponse.unauthorized()
+    if (!['ADMIN', 'SUPER_ADMIN'].includes(userRole || '')) return ApiResponse.forbidden()
 
     const { searchParams } = new URL(req.url)
     const id = searchParams.get('id')
