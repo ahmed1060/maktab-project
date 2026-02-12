@@ -81,12 +81,13 @@ export default function ClientsPage() {
         try {
             const res = await fetch('/api/companies?limit=1000')
             if (res.ok) {
-                const data = await res.json()
-                setCompanies(data.data || data) // Handle both paginated and flat responses
+                const result = await res.json()
+                const companiesData = result.data?.data || result.data || result // Handle both paginated and flat responses
+                setCompanies(Array.isArray(companiesData) ? companiesData : [])
                 setShowCompanySelect(true)
             }
-        } catch {
-            // Not a super admin or failed to fetch companies
+        } catch (err) {
+            console.error('Failed to check Super Admin status', err)
         }
     }, [])
 

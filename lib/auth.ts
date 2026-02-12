@@ -227,8 +227,8 @@ export const authOptions: NextAuthOptions = {
 
             // --- SESSION REVOCATION CHECK (Wave 8) ---
             // On every JWT evaluation, we check if the session is still valid.
-            // This happens frequently on the server side.
-            if (token.sub) {
+            // Skip check on initial sign-in (!user check)
+            if (token.sub && !user) {
                 try {
                     const userId = token.sub as string
                     const userRole = token.role as string
@@ -237,20 +237,22 @@ export const authOptions: NextAuthOptions = {
                     if (userRole === 'SUPER_ADMIN') {
                         const sa = await prisma.superAdmin.findUnique({
                             where: { id: userId },
-                            select: { sessionVersion: true } as any
+                            select: { sessionVersion: true }
                         })
-                        dbVersion = (sa as any)?.sessionVersion || 0
+                        dbVersion = sa?.sessionVersion || 0
                     } else {
                         const u = await prisma.user.findUnique({
                             where: { id: userId },
-                            select: { sessionVersion: true } as any
+                            select: { sessionVersion: true }
                         })
-                        dbVersion = (u as any)?.sessionVersion || 0
+                        dbVersion = u?.sessionVersion || 0
                     }
 
+                    const tokenVersion = token.sessionVersion as number || 0
+
                     // If DB version is higher than token version, revoke!
-                    if (dbVersion > (token.sessionVersion as number || 0)) {
-                        console.log(`[AUTH] Revoking session for user ${userId} (Token:${token.sessionVersion} vs DB:${dbVersion})`)
+                    if (dbVersion > tokenVersion) {
+                        console.log(`[AUTH] Revoking session for user ${userId} (Token:${tokenVersion} vs DB:${dbVersion})`)
                         return {} as any // Empty token = invalid session
                     }
                 } catch (e) {
