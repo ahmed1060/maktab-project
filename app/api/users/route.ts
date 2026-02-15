@@ -108,6 +108,7 @@ export const GET = withStandardHandler(async (req, session) => {
 
     if (searchParam) {
         whereClause.OR = [
+            { id: { contains: searchParam, mode: 'insensitive' } },
             { firstName: { contains: searchParam, mode: 'insensitive' } },
             { lastName: { contains: searchParam, mode: 'insensitive' } },
             { email: { contains: searchParam, mode: 'insensitive' } },

@@ -174,6 +174,7 @@ export default function AllUsersPage() {
         if (filters.search) {
             const query = filters.search.toLowerCase()
             return (
+                user.id.toLowerCase().includes(query) ||
                 user.firstName.toLowerCase().includes(query) ||
                 user.lastName.toLowerCase().includes(query) ||
                 user.email.toLowerCase().includes(query) ||
@@ -280,7 +281,7 @@ export default function AllUsersPage() {
                 dateTo=""
                 totalCount={total + (filters.companyId ? 0 : superAdminsTotal)}
                 searchQuery={filters.search}
-                placeholder={locale === 'ar' ? 'بحث بالاسم، أو البريد الإلكتروني، أو الشركة' : 'Search Name, Email, or Company'}
+                placeholder={locale === 'ar' ? 'بحث بالـ ID، أو الاسم، أو البريد الإلكتروني، أو الشركة' : 'Search ID, Name, Email, or Company'}
                 showCompanyFilter={true}
                 selectedCompanyId={filters.companyId}
                 onCompanyChange={(id) => setFilters((prev: any) => ({ ...prev, companyId: id }))}

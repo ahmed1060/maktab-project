@@ -7,6 +7,7 @@ export class SuperAdminService {
         const where: any = {}
         if (search) {
             where.OR = [
+                { id: { contains: search, mode: 'insensitive' } },
                 { firstName: { contains: search, mode: 'insensitive' } },
                 { lastName: { contains: search, mode: 'insensitive' } },
                 { email: { contains: search, mode: 'insensitive' } }
