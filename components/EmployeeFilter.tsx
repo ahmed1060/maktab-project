@@ -199,7 +199,7 @@ export default function EmployeeFilter({
         } else {
             setLoading(false)
         }
-    }, [isEmployee, hideEmployeeFilter, session?.user?.role, globalCompanyId])
+    }, [isEmployee, hideEmployeeFilter, session?.user?.role, globalCompanyId, t])
 
     // Removed auto-apply search effect to wait for "Show Results"
 
