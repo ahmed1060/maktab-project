@@ -549,7 +549,7 @@ export class TaskService {
             } catch { existingComments = [] }
 
             const transferComment = {
-                text: `Task transfer processed. (Assigned to ${addedIds.length} new users).`,
+                text: `Task transfer processed. (Transferred to ${newAssigneeIds.length} users).`,
                 author: "System",
                 date: new Date().toISOString(),
                 type: 'TASK_TRANSFERRED'
@@ -559,9 +559,6 @@ export class TaskService {
                 where: { id },
                 data: {
                     status: 'PENDING_CONFIRMATION',
-                    assignees: {
-                        set: keptIds.map((id: string) => ({ id }))
-                    },
                     comments: JSON.stringify([...existingComments, transferComment]),
                     lastStatusUpdateBy: `${userRole} ${session.user.name}`
                 }
@@ -586,7 +583,7 @@ export class TaskService {
                         title: baseTitle + " (Transfer Copy)",
                         description: originalTask.description,
                         companyId: originalTask.companyId,
-                        assignees: { connect: addedIds.map((id: string) => ({ id })) },
+                        assignees: { connect: newAssigneeIds.map((id: string) => ({ id })) },
                         deadline: originalTask.deadline,
                         difficulty: originalTask.difficulty,
                         status: 'PENDING',
@@ -623,7 +620,7 @@ export class TaskService {
                     addedCount: addedIds.length,
                     removedCount: removedIds.length,
                     keptCount: keptIds.length,
-                    newAssigneeIds: addedIds.map((id: string) => id)
+                    newAssigneeIds: newAssigneeIds.map((id: string) => id)
                 }
             })
 
