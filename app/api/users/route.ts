@@ -1,9 +1,18 @@
 import { withStandardHandler } from "@/lib/api-utils"
 import { prisma } from "@/lib/prisma"
+import { UserRole, UserStatus } from "@prisma/client"
 import { ApiResponse } from "@/lib/api-response"
 import { createUserSchema, updateUserSchema } from "@/lib/validations/user.schema"
 import { UserService } from "@/lib/services/user.service"
 import { parsePaging } from "@/lib/pagination"
+
+// F-13: role/status are now Postgres enums, not free text — a query-param
+// value that isn't a real enum member makes Postgres reject the whole
+// query ("invalid input value for enum") instead of the harmless
+// zero-match a plain String column used to give a garbage filter value.
+// Validate before it reaches Prisma.
+const VALID_ROLES: UserRole[] = ['SUPER_ADMIN', 'ADMIN', 'TEAM_LEADER', 'EMPLOYEE']
+const VALID_STATUSES: UserStatus[] = ['ACTIVE', 'INACTIVE', 'SUSPENDED', 'DELETED', 'OFFLINE']
 
 export const GET = withStandardHandler(async (req, session) => {
     const userRole = session.user.role
@@ -93,8 +102,10 @@ export const GET = withStandardHandler(async (req, session) => {
     const excludeUserId = searchParams.get('excludeUserId')
 
     if (excludeRole) {
-        const rolesToExclude = excludeRole.split(',')
-        whereClause.role = { ...(whereClause.role || {}), notIn: rolesToExclude }
+        const rolesToExclude = excludeRole.split(',').filter((r): r is UserRole => VALID_ROLES.includes(r as UserRole))
+        if (rolesToExclude.length > 0) {
+            whereClause.role = { ...(whereClause.role || {}), notIn: rolesToExclude }
+        }
     }
 
     if (userRole === 'TEAM_LEADER') {
@@ -120,7 +131,16 @@ export const GET = withStandardHandler(async (req, session) => {
     }
 
     if (statusParam) {
-        whereClause.status = statusParam
+        if (VALID_STATUSES.includes(statusParam as UserStatus)) {
+            whereClause.status = statusParam
+        } else {
+            // Not a real status — preserve the old String-column behavior
+            // (a filter that matches nothing) instead of letting an
+            // invalid enum value reject the whole query, or silently
+            // falling through to "no status filter at all".
+            whereClause.AND = whereClause.AND || []
+            whereClause.AND.push({ id: '__no_match__' })
+        }
     } else if (!includeDeleted) {
         whereClause.AND = whereClause.AND || []
         whereClause.AND.push({ status: { not: 'DELETED' } })

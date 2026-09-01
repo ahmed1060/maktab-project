@@ -1,6 +1,7 @@
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { isValidTaskStatus } from "@/lib/valid-enums"
 import TasksClient from "./TasksClient"
 
 export default async function TasksPage({ searchParams }: { searchParams: { company?: string, page?: string, status?: string, search?: string, employeeId?: string, view?: string, dateFrom?: string, dateTo?: string } }) {
@@ -51,7 +52,10 @@ export default async function TasksPage({ searchParams }: { searchParams: { comp
 
     // Apply Filters from searchParams
     if (searchParams.status) {
-        whereClause.status = searchParams.status
+        // F-13: Task.status is a Postgres enum now — an invalid value would
+        // make Postgres reject the whole query instead of the harmless
+        // zero-match a plain String column gave a garbage filter value.
+        whereClause.status = isValidTaskStatus(searchParams.status) ? searchParams.status : '__no_match__'
     }
     if (searchParams.search) {
         whereClause.title = { contains: searchParams.search, mode: 'insensitive' }

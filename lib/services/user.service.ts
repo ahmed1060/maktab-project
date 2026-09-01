@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma"
+import { UserStatus } from "@prisma/client"
 import { VerificationService } from "./verification.service"
 import { supabase } from "@/lib/storage"
 import bcrypt from "bcryptjs"
@@ -243,7 +244,8 @@ export class UserService {
             throw new Error("FORBIDDEN")
         }
 
-        if (!['ACTIVE', 'OFFLINE', 'SUSPENDED'].includes(status)) {
+        const allowedStatuses: UserStatus[] = ['ACTIVE', 'OFFLINE', 'SUSPENDED']
+        if (!allowedStatuses.includes(status as UserStatus)) {
             throw new Error("INVALID_STATUS")
         }
 
@@ -252,7 +254,7 @@ export class UserService {
 
         const updated = await prisma.user.update({
             where: { id: userId },
-            data: { status },
+            data: { status: status as UserStatus },
             select: { id: true, status: true }
         })
 

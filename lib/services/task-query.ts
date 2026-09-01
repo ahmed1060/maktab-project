@@ -1,3 +1,5 @@
+import { isValidTaskStatus } from "@/lib/valid-enums"
+
 export type TaskQuerySession = {
     user: {
         id: string
@@ -55,7 +57,12 @@ export function buildTaskWhereClause(
     if (employeeIdFilter && userRole !== 'EMPLOYEE') {
         filters.push({ assignees: { some: { id: employeeIdFilter } } })
     }
-    if (statusFilter) filters.push({ status: statusFilter })
+    if (statusFilter) {
+        // F-13: Task.status is a Postgres enum now — an invalid value would
+        // make Postgres reject the whole query instead of the harmless
+        // zero-match a plain String column gave. Preserve that zero-match.
+        filters.push(isValidTaskStatus(statusFilter) ? { status: statusFilter } : { id: '__no_match__' })
+    }
 
     if (searchFilter) {
         filters.push({

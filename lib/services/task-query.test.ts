@@ -81,4 +81,18 @@ describe("buildTaskWhereClause (F-03 tenancy scoping)", () => {
             })
         )
     })
+
+    it("makes an invalid status value match nothing instead of reaching Postgres (F-13)", () => {
+        // Task.status is a Postgres enum now — a value that isn't one of its
+        // members would make Postgres reject the whole query ("invalid input
+        // value for enum") instead of the harmless zero-match a plain String
+        // column gave a garbage filter value.
+        const session = { user: { id: "admin-1", role: "ADMIN", companyId: "co-1" } }
+        const result = buildTaskWhereClause(session, params({ status: "NOT_A_REAL_STATUS" }), null)
+
+        expect(result.empty).toBe(false)
+        if (result.empty) return
+        expect(result.whereClause.AND).toContainEqual({ id: "__no_match__" })
+        expect(JSON.stringify(result.whereClause)).not.toContain("NOT_A_REAL_STATUS")
+    })
 })

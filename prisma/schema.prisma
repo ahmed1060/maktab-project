@@ -2,6 +2,56 @@ generator client {
   provider = "prisma-client-js"
 }
 
+// F-13: real enums, not bare String. Zod validates the API path, but
+// nothing guarded a Prisma Studio edit, a seed script, or a manual SQL fix
+// — a single 'Pending' where the code expects 'PENDING' made a row
+// invisible to every filter, with no error anywhere. Value sets below are
+// taken from actual usage (grepped across the codebase and cross-checked
+// against the matching Zod schema), not assumed.
+enum UserRole {
+  SUPER_ADMIN
+  ADMIN
+  TEAM_LEADER
+  EMPLOYEE
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+  DELETED
+  OFFLINE
+}
+
+enum TaskStatus {
+  PENDING
+  IN_PROGRESS
+  PENDING_CONFIRMATION
+  APPROVED
+  REJECTED
+  COMPLETED
+}
+
+enum TaskPaymentStatus {
+  PENDING_PAYMENT
+  PAID
+}
+
+enum ObligationRecurrence {
+  ONE_TIME
+  DAILY
+  WEEKLY
+  MONTHLY
+  YEARLY
+}
+
+enum DayOffType {
+  REGULAR
+  SICK
+  EMERGENCY
+  UNPAID
+}
+
 datasource db {
   provider  = "postgresql"
   url       = env("DATABASE_URL")
@@ -45,11 +95,11 @@ model User {
   password                   String
   firstName                  String
   lastName                   String
-  role                       String
+  role                       UserRole
   avatar                     String?
   gender                     String                  @default("MALE")
   companyId                  String?
-  status                     String                  @default("OFFLINE")
+  status                     UserStatus              @default(OFFLINE)
   lastActivity               DateTime                @default(now())
   totalDifficultyPoints      Int                     @default(0)
   // F-07: Decimal, not Float. Float is IEEE-754 double precision; repeated
@@ -98,7 +148,7 @@ model Task {
   id                  String   @id @default(uuid())
   title               String
   description         String
-  status              String
+  status              TaskStatus
   deadline            DateTime
   difficulty          Int      @default(0)
   totalCost           Decimal  @default(0) @db.Decimal(12, 2)
@@ -113,7 +163,7 @@ model Task {
   updatedAt           DateTime @updatedAt
   isEdited            Boolean  @default(false)
   isTransfer          Boolean  @default(false)
-  paymentStatus       String   @default("PENDING_PAYMENT")
+  paymentStatus       TaskPaymentStatus @default(PENDING_PAYMENT)
   location            String?
   lastStatusUpdateBy  String?
   lastEditBy          String?
@@ -169,7 +219,7 @@ model Obligation {
   id                 String   @id @default(uuid())
   title              String
   description        String
-  recurrence         String   @default("ONE_TIME")
+  recurrence         ObligationRecurrence @default(ONE_TIME)
   deadline           DateTime
   difficulty         Int      @default(0)
   status             String
@@ -300,7 +350,7 @@ model CompanyPayment {
 model DayOffRequest {
   id            String    @id @default(uuid())
   userId        String
-  type          String
+  type          DayOffType
   status        String    @default("PENDING")
   reason        String?
   date          DateTime
