@@ -50,7 +50,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
     const [task, setTask] = useState(initialTask)
     const [existingAttachments, setExistingAttachments] = useState<any[]>(() => {
         try {
-            return initialTask.attachments ? JSON.parse(initialTask.attachments) : []
+            return Array.isArray(initialTask.attachments) ? initialTask.attachments : []
         } catch (e) { console.error('[ATTACHMENTS_PARSE_FAIL]', e); return [] }
     })
     const [note, setNote] = useState('')
@@ -83,7 +83,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
         locationLink: parseLocation(initialTask.location || '').link,
         attachments: (() => {
             try {
-                return initialTask.attachments ? JSON.parse(initialTask.attachments) : []
+                return Array.isArray(initialTask.attachments) ? initialTask.attachments : []
             } catch (e) { console.error('[ATTACHMENTS_PARSE_FAIL]', e); return [] }
         })()
     })
@@ -120,7 +120,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
     useEffect(() => {
         setTask(initialTask)
         try {
-            setExistingAttachments(initialTask.attachments ? JSON.parse(initialTask.attachments) : [])
+            setExistingAttachments(Array.isArray(initialTask.attachments) ? initialTask.attachments : [])
         } catch { setExistingAttachments([]) }
         setEditForm({
             title: initialTask.title,
@@ -132,7 +132,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
             locationLink: parseLocation(initialTask.location || '').link,
             attachments: (() => {
                 try {
-                    return initialTask.attachments ? JSON.parse(initialTask.attachments) : []
+                    return Array.isArray(initialTask.attachments) ? initialTask.attachments : []
                 } catch { return [] }
             })()
         })
@@ -140,16 +140,13 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
     }, [initialTask])
 
     useEffect(() => {
-        if (task.comments) {
-            try {
-                const logs = typeof task.comments === 'string' ? JSON.parse(task.comments) : task.comments
-                if (Array.isArray(logs)) {
-                    const lastEdit = [...logs].reverse().find((l: any) => l.type === 'TASK_EDITED')
-                    if (lastEdit && lastEdit.changes) {
-                        setLatestChanges(lastEdit.changes)
-                    }
-                }
-            } catch (e) { console.error('Error parsing changes:', e) }
+        // task.comments arrives already parsed (F-12: Json, not a
+        // JSON-in-string column) — no JSON.parse needed anymore.
+        if (Array.isArray(task.comments)) {
+            const lastEdit = [...task.comments].reverse().find((l: any) => l.type === 'TASK_EDITED')
+            if (lastEdit && lastEdit.changes) {
+                setLatestChanges(lastEdit.changes)
+            }
         }
     }, [task.comments])
 
@@ -427,7 +424,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
         }
 
         try {
-            const comments = JSON.parse(task.comments || '[]')
+            const comments = (Array.isArray(task.comments) ? task.comments : [])
             const userLocationCount = Array.isArray(comments) ? comments.filter((c: any) => c.type === 'LOCATION_ADDED' && c.authorId === userId).length : 0
             if (userLocationCount >= 10) {
                 showToast(t('max_locations_error'), 'error')
@@ -575,7 +572,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
 
     const isTransferredTask = () => {
         try {
-            const logs = JSON.parse(task.comments || '[]')
+            const logs = (Array.isArray(task.comments) ? task.comments : [])
             return Array.isArray(logs) && logs.some((l: any) => l.type === 'TASK_TRANSFERRED')
         } catch { return false }
     }
@@ -776,7 +773,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                             <p style={{ margin: 0, fontSize: '0.9rem' }}>
                                 {t('task_updated_msg').replace('{author}', (() => {
                                     try {
-                                        const logs = JSON.parse(task.comments || '[]')
+                                        const logs = (Array.isArray(task.comments) ? task.comments : [])
                                         if (Array.isArray(logs)) {
                                             const lastEdit = [...logs].reverse().find((l: any) => l.type === 'TASK_EDITED')
                                             return lastEdit?.author || t('an_admin')
@@ -905,7 +902,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                 (() => {
                     if (!task.comments) return null
                     try {
-                        const logs = JSON.parse(task.comments)
+                        const logs = Array.isArray(task.comments) ? task.comments : []
                         if (!Array.isArray(logs)) return null
                         const regularLogs = logs.filter((l: any) => l.type !== 'COST_ADDITION' && l.type !== 'LOCATION_ADDED')
                         if (regularLogs.length > 0) {
@@ -986,7 +983,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                 (() => {
                     if (!task.comments) return null
                     try {
-                        const logs = JSON.parse(task.comments)
+                        const logs = Array.isArray(task.comments) ? task.comments : []
                         if (!Array.isArray(logs)) return null
                         const costs = logs.filter((l: any) => l.type === 'COST_ADDITION')
                         if (costs.length > 0) {
@@ -1165,7 +1162,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                         {(() => {
                             if (!task.comments) return null
                             try {
-                                const logs = JSON.parse(task.comments)
+                                const logs = Array.isArray(task.comments) ? task.comments : []
                                 if (!Array.isArray(logs)) return null
                                 const locations = logs.filter((l: any) => l.type === 'LOCATION_ADDED')
                                 if (locations.length > 0) {
@@ -1308,7 +1305,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                                                         // UI Logic
                                                         const originalComments = task.comments
                                                         try {
-                                                            const currentComments = JSON.parse(task.comments || '[]')
+                                                            const currentComments = (Array.isArray(task.comments) ? task.comments : [])
                                                             const updatedComments = currentComments.map((c: any) => {
                                                                 if (c.type === 'LOCATION_ADDED' && c.date === timestamp) {
                                                                     return { ...c, verificationStatus: status, autoVerified: false }
@@ -1324,8 +1321,11 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
 
                                                             if (!res.ok) throw new Error('Failed to verify')
 
-                                                            // Update UI only AFTER successful database save
-                                                            setTask({ ...task, comments: JSON.stringify(updatedComments) })
+                                                            // Update UI only AFTER successful database save.
+                                                            // (F-12: task.comments is a real array now, not a
+                                                            // JSON string — stringifying it here would make
+                                                            // every other read on this page treat it as empty.)
+                                                            setTask({ ...task, comments: updatedComments })
 
                                                             router.refresh()
                                                         } catch (e) {

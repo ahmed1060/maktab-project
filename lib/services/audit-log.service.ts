@@ -17,7 +17,7 @@ export class AuditLogService {
                 entityId,
                 userId: options.userId || null,
                 superAdminId: options.superAdminId || null,
-                details: options.details ? JSON.stringify(options.details) : null
+                details: options.details ?? undefined
             }
         })
     }

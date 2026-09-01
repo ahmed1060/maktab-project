@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma"
+import { Prisma } from "@prisma/client"
 import { supabase } from "@/lib/storage"
 
 export class MaintenanceService {
@@ -103,7 +104,7 @@ export class MaintenanceService {
             let taskSkip = 0
             while (true) {
                 const tasks = await prisma.task.findMany({
-                    where: { attachments: { not: null } },
+                    where: { attachments: { not: Prisma.DbNull } },
                     select: { attachments: true },
                     skip: taskSkip,
                     take: BATCH_SIZE
@@ -111,16 +112,16 @@ export class MaintenanceService {
                 if (tasks.length === 0) break
 
                 tasks.forEach(t => {
-                    try {
-                        const attachments = JSON.parse(t.attachments!)
-                        if (Array.isArray(attachments)) {
-                            attachments.forEach((a: any) => {
-                                const parts = a.url?.split('/app-assets/')
-                                if (parts && parts.length > 1) activeFiles.add(parts[1])
-                            })
-                        }
-                    } catch {
-                        console.log("[Maintenance] Skipping malformed JSON in task attachments")
+                    // No JSON.parse needed (F-12: attachments is Json now) — a
+                    // malformed row already became NULL at migration time, so
+                    // anything reaching here is either an array or something
+                    // the migration's quarantine didn't anticipate; the
+                    // Array.isArray guard covers the latter case too.
+                    if (Array.isArray(t.attachments)) {
+                        t.attachments.forEach((a: any) => {
+                            const parts = a.url?.split('/app-assets/')
+                            if (parts && parts.length > 1) activeFiles.add(parts[1])
+                        })
                     }
                 })
                 if (tasks.length < BATCH_SIZE) break

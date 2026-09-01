@@ -15,7 +15,7 @@ type AuditLog = {
     entityId: string
     userId: string | null
     superAdminId: string | null
-    details: string | null
+    details: any // F-12: Json on the backend, not a JSON-in-string column
     createdAt: string
     user?: {
         firstName: string
@@ -137,10 +137,12 @@ export default function AuditLogsPage() {
         }).format(date)
     }
 
-    const renderDetails = (details: string | null) => {
-        if (!details) return '-'
+    // details arrives already parsed (F-12: AuditLog.details is Json, not a
+    // JSON-in-string column) — no JSON.parse needed here anymore.
+    const renderDetails = (details: any) => {
+        if (details === null || details === undefined) return '-'
         try {
-            const parsed = JSON.parse(details)
+            const parsed = details
             if (typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)) {
                 const entries = Object.entries(parsed)
                 return (

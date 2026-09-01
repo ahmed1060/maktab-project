@@ -34,7 +34,7 @@ export const POST = withStandardHandler(
                 entityType: 'SYSTEM',
                 entityId: identifier,
                 superAdminId: session.user.id,
-                details: JSON.stringify({ identifier, type })
+                details: { identifier, type }
             }
         })
 

@@ -2,10 +2,11 @@ import { prisma } from "@/lib/prisma"
 import { CreateTaskInput, UpdateTaskInput } from "../validations/task.schema"
 import { extractCoords, calculateDistance } from "@/lib/location"
 import { supabase } from "@/lib/storage"
+import { normalizeJsonInput } from "@/lib/json-input"
 
 /**
  * TaskService
- * 
+ *
  * Handles business logic for Tasks, decoupling it from the API routes.
  */
 export class TaskService {
@@ -72,13 +73,15 @@ export class TaskService {
                     assignees: { connect: assigneeIds.map(id => ({ id })) },
                     deadline: deadlineDate,
                     status: 'PENDING',
-                    attachments: input.attachments ? (typeof input.attachments === 'string' ? input.attachments : JSON.stringify(input.attachments)) : null,
+                    ...(input.attachments ? { attachments: normalizeJsonInput(input.attachments) } : {}),
                     createdBy: userRole === 'SUPER_ADMIN' ? null : userId,
-                    comments: userRole === 'SUPER_ADMIN' ? JSON.stringify([{
-                        text: "Task created by Super Admin",
-                        author: "System",
-                        date: new Date().toISOString()
-                    }]) : undefined
+                    ...(userRole === 'SUPER_ADMIN' ? {
+                        comments: [{
+                            text: "Task created by Super Admin",
+                            author: "System",
+                            date: new Date().toISOString()
+                        }]
+                    } : {})
                 }
             })
 
@@ -123,7 +126,7 @@ export class TaskService {
         if (description && existingTask.description !== description) changes.description = { from: existingTask.description, to: description }
         if (location && existingTask.location !== location) changes.location = { from: existingTask.location, to: location }
 
-        const existingComments = existingTask.comments ? JSON.parse(existingTask.comments) : []
+        const existingComments: any[] = Array.isArray(existingTask.comments) ? existingTask.comments : []
         let finalComments = [...existingComments, {
             text: "Task details updated",
             type: "TASK_EDITED",
@@ -155,9 +158,9 @@ export class TaskService {
             ...(description && { description }),
             ...(difficulty !== undefined && { difficulty }),
             ...(location !== undefined && { location }),
-            ...(attachments && { attachments: typeof attachments === 'string' ? attachments : JSON.stringify(attachments) }),
+            ...(attachments && { attachments: normalizeJsonInput(attachments) }),
             isEdited: true,
-            comments: JSON.stringify(finalComments)
+            comments: finalComments
         }
 
         if (deadline) {
@@ -231,10 +234,8 @@ export class TaskService {
             // Handle Attachments
             let finalAttachments: any[] = []
             if (currentTask.attachments) {
-                try {
-                    const parsed = JSON.parse(currentTask.attachments)
-                    finalAttachments = Array.isArray(parsed) ? parsed : (parsed?.url ? [parsed] : [])
-                } catch { finalAttachments = [] }
+                const parsed = currentTask.attachments as any
+                finalAttachments = Array.isArray(parsed) ? parsed : (parsed?.url ? [parsed] : [])
             }
 
             if (newAttachments && Array.isArray(newAttachments)) {
@@ -252,7 +253,7 @@ export class TaskService {
             }
 
             // Handle Comments (Notes, Costs, Location)
-            const comments = currentTask.comments ? JSON.parse(currentTask.comments) : []
+            const comments: any[] = Array.isArray(currentTask.comments) ? currentTask.comments : []
             if (note) comments.push({ text: note, author: session.user.name, authorId: userId, date: new Date().toISOString(), type: 'SUBMISSION_NOTE' })
 
             let totalAdded = costValue
@@ -301,19 +302,19 @@ export class TaskService {
             // Update data
             const updateData: any = {
                 status: isDraft ? 'IN_PROGRESS' : 'PENDING_CONFIRMATION',
-                attachments: JSON.stringify(finalAttachments),
-                comments: JSON.stringify(comments)
+                attachments: finalAttachments,
+                comments: comments
             }
 
             if (totalAdded > 0) {
-                const memberCosts = currentTask.memberCosts ? JSON.parse(currentTask.memberCosts as string) : {}
-                const memberPaymentStatus = currentTask.memberPaymentStatus ? JSON.parse(currentTask.memberPaymentStatus as string) : {}
+                const memberCosts: Record<string, number> = (currentTask.memberCosts as any) || {}
+                const memberPaymentStatus: Record<string, string> = (currentTask.memberPaymentStatus as any) || {}
 
                 memberCosts[userId] = (memberCosts[userId] || 0) + totalAdded
                 memberPaymentStatus[userId] = 'PENDING_PAYMENT'
 
-                updateData.memberCosts = JSON.stringify(memberCosts)
-                updateData.memberPaymentStatus = JSON.stringify(memberPaymentStatus)
+                updateData.memberCosts = memberCosts
+                updateData.memberPaymentStatus = memberPaymentStatus
                 updateData.totalCost = { increment: totalAdded }
             }
 
@@ -403,7 +404,7 @@ export class TaskService {
                 const deadlineTime = new Date(task.deadline)
 
                 if (submissionTime > deadlineTime) {
-                    const comments = task.comments ? JSON.parse(task.comments) : []
+                    const comments: any[] = Array.isArray(task.comments) ? task.comments : []
                     comments.push({
                         text: `Lateness detected: Submitted on ${submissionTime.toLocaleString()} (Deadline: ${deadlineTime.toLocaleString()})`,
                         author: "System",
@@ -413,7 +414,7 @@ export class TaskService {
 
                     await tx.task.update({
                         where: { id },
-                        data: { comments: JSON.stringify(comments) }
+                        data: { comments }
                     })
                 }
             }
@@ -468,7 +469,7 @@ export class TaskService {
                 }
             })
 
-            const comments = task.comments ? JSON.parse(task.comments) : []
+            const comments: any[] = Array.isArray(task.comments) ? task.comments : []
             comments.push({
                 text: `Lateness Penalty Deduction applied with ${amount} days`,
                 author: "System",
@@ -479,7 +480,7 @@ export class TaskService {
 
             await tx.task.update({
                 where: { id },
-                data: { comments: JSON.stringify(comments) }
+                data: { comments }
             })
 
             // Audit Log (Centralized)
@@ -542,11 +543,7 @@ export class TaskService {
             }
 
             // 2. Prepare original task update
-            let existingComments: any[] = []
-            try {
-                existingComments = originalTask.comments ? JSON.parse(originalTask.comments) : []
-                if (!Array.isArray(existingComments)) existingComments = []
-            } catch { existingComments = [] }
+            const existingComments: any[] = Array.isArray(originalTask.comments) ? originalTask.comments : []
 
             const transferComment = {
                 text: `Task transfer processed. (Transferred to ${newAssigneeIds.length} users).`,
@@ -559,21 +556,15 @@ export class TaskService {
                 where: { id },
                 data: {
                     status: 'PENDING_CONFIRMATION',
-                    comments: JSON.stringify([...existingComments, transferComment]),
+                    comments: [...existingComments, transferComment],
                     lastStatusUpdateBy: `${userRole} ${session.user.name}`
                 }
             })
 
             // 3. Create Copy for ADDED assignees
-            let commentsToClone: any[] = []
-            try {
-                if (originalTask.comments) {
-                    const parsed = JSON.parse(originalTask.comments)
-                    if (Array.isArray(parsed)) {
-                        commentsToClone = parsed.filter((c: any) => c.type !== 'COST_ADDITION' && c.type !== 'LOCATION_ADDED' && c.type !== 'TASK_TRANSFERRED')
-                    }
-                }
-            } catch { commentsToClone = [] }
+            const commentsToClone: any[] = Array.isArray(originalTask.comments)
+                ? originalTask.comments.filter((c: any) => c.type !== 'COST_ADDITION' && c.type !== 'LOCATION_ADDED' && c.type !== 'TASK_TRANSFERRED')
+                : []
 
             let newTask: any = null
             if (addedIds.length > 0) {
@@ -590,12 +581,12 @@ export class TaskService {
                         createdBy: originalTask.createdBy,
                         attachments: originalTask.attachments,
                         location: originalTask.location,
-                        comments: JSON.stringify([...commentsToClone, {
+                        comments: [...commentsToClone, {
                             text: `Transferred from task "${originalTask.title}".`,
                             author: "System",
                             date: new Date().toISOString(),
                             type: 'TASK_CREATED'
-                        }])
+                        }]
                     }
                 })
 
@@ -665,16 +656,13 @@ export class TaskService {
                 throw new Error("SELF_DELETION_FORBIDDEN")
             }
 
-            if (task.attachments) {
+            if (Array.isArray(task.attachments)) {
                 try {
-                    const attachments = JSON.parse(task.attachments)
-                    if (Array.isArray(attachments)) {
-                        const filePaths = attachments
-                            .map((a: any) => a.url?.split('/app-assets/')?.[1])
-                            .filter(path => !!path)
-                        if (filePaths.length > 0) {
-                            await supabase.storage.from('app-assets').remove(filePaths)
-                        }
+                    const filePaths = task.attachments
+                        .map((a: any) => a.url?.split('/app-assets/')?.[1])
+                        .filter(path => !!path)
+                    if (filePaths.length > 0) {
+                        await supabase.storage.from('app-assets').remove(filePaths)
                     }
                 } catch (e) {
                     console.error("Task attachment cleanup failed:", e)
@@ -788,11 +776,11 @@ export class TaskService {
             }
 
             const updateData: any = {}
-            const memberPayments = task.memberPaymentStatus ? (typeof task.memberPaymentStatus === 'string' ? JSON.parse(task.memberPaymentStatus) : task.memberPaymentStatus) : {}
+            const memberPayments: Record<string, string> = (task.memberPaymentStatus as any) || {}
 
             if (targetUserId) {
                 memberPayments[targetUserId] = paymentStatus
-                updateData.memberPaymentStatus = JSON.stringify(memberPayments)
+                updateData.memberPaymentStatus = memberPayments
                 const allPaid = Object.values(memberPayments).every(s => s === 'PAID')
                 if (allPaid) {
                     updateData.paymentStatus = 'PAID'
@@ -807,12 +795,12 @@ export class TaskService {
                     updateData.status = 'COMPLETED'
                     const newPayments: any = {}
                     task.assignees.forEach(a => newPayments[a.id] = 'PAID')
-                    updateData.memberPaymentStatus = JSON.stringify(newPayments)
+                    updateData.memberPaymentStatus = newPayments
                 } else {
                     updateData.status = 'APPROVED'
                     const newPayments: any = {}
                     task.assignees.forEach(a => newPayments[a.id] = 'PENDING_PAYMENT')
-                    updateData.memberPaymentStatus = JSON.stringify(newPayments)
+                    updateData.memberPaymentStatus = newPayments
                 }
             }
 
@@ -825,7 +813,7 @@ export class TaskService {
                     entityId: id,
                     userId: userRole === 'SUPER_ADMIN' ? null : userId,
                     superAdminId: userRole === 'SUPER_ADMIN' ? userId : null,
-                    details: JSON.stringify({ paymentStatus: updateData.paymentStatus || updatedTaskRecord.paymentStatus, targetUserId, taskStatus: updateData.status || updatedTaskRecord.status })
+                    details: { paymentStatus: updateData.paymentStatus || updatedTaskRecord.paymentStatus, targetUserId, taskStatus: updateData.status || updatedTaskRecord.status }
                 }
             })
 
@@ -857,7 +845,7 @@ export class TaskService {
             const updateData: any = {}
 
             if (type === 'ATTACHMENT') {
-                const attachments = task.attachments ? JSON.parse(task.attachments) : []
+                const attachments: any[] = Array.isArray(task.attachments) ? task.attachments : []
                 const att = attachments.find((a: any) => a.url === itemId)
                 if (!att) throw new Error("ITEM_NOT_FOUND")
 
@@ -873,9 +861,9 @@ export class TaskService {
                     console.error("Task item attachment cleanup failed:", e)
                 }
 
-                updateData.attachments = JSON.stringify(attachments.filter((a: any) => a.url !== itemId))
+                updateData.attachments = attachments.filter((a: any) => a.url !== itemId)
             } else if (type === 'COST_ADDITION' || type === 'SUBMISSION_NOTE' || type === 'LOCATION_ADDED') {
-                const comments = task.comments ? JSON.parse(task.comments) : []
+                const comments: any[] = Array.isArray(task.comments) ? task.comments : []
                 const item = comments.find((c: any) => c.type === type && (c.date === itemId || c.timestamp === itemId))
                 if (!item) throw new Error("ITEM_NOT_FOUND")
 
@@ -883,14 +871,14 @@ export class TaskService {
                 const isAdmin = ['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole)
                 if (!isAuthor && !isAdmin) throw new Error("UNAUTHORIZED_ITEM_DELETE")
 
-                updateData.comments = JSON.stringify(comments.filter((c: any) => !(c.type === type && (c.date === itemId || c.timestamp === itemId))))
+                updateData.comments = comments.filter((c: any) => !(c.type === type && (c.date === itemId || c.timestamp === itemId)))
 
                 if (type === 'COST_ADDITION' && item.amount) {
                     updateData.totalCost = { decrement: item.amount }
-                    const memberCosts = task.memberCosts ? (typeof task.memberCosts === 'string' ? JSON.parse(task.memberCosts) : task.memberCosts) : {}
+                    const memberCosts: Record<string, number> = (task.memberCosts as any) || {}
                     if (item.authorId && memberCosts[item.authorId]) {
                         memberCosts[item.authorId] = Math.max(0, memberCosts[item.authorId] - item.amount)
-                        updateData.memberCosts = JSON.stringify(memberCosts)
+                        updateData.memberCosts = memberCosts
                     }
                 }
             } else {
@@ -907,7 +895,7 @@ export class TaskService {
                     entityId: id,
                     userId: userRole !== 'SUPER_ADMIN' ? userId : null,
                     superAdminId: userRole === 'SUPER_ADMIN' ? userId : null,
-                    details: JSON.stringify({ type, itemId })
+                    details: { type, itemId }
                 }
             })
 
@@ -923,12 +911,12 @@ export class TaskService {
             const task = await tx.task.findUnique({ where: { id } })
             if (!task) throw new Error("TASK_NOT_FOUND")
 
-            const comments = task.comments ? JSON.parse(task.comments) : []
+            const comments: any[] = Array.isArray(task.comments) ? task.comments : []
             const idx = comments.findIndex((c: any) => c.type === 'LOCATION_ADDED' && c.date === timestamp)
             if (idx === -1) throw new Error("ITEM_NOT_FOUND")
 
             comments[idx].verificationStatus = status
-            return await tx.task.update({ where: { id }, data: { comments: JSON.stringify(comments) } })
+            return await tx.task.update({ where: { id }, data: { comments } })
         })
     }
     /**
@@ -975,6 +963,11 @@ export class TaskService {
                 const createdTask = await (tx.task as any).create({
                     data: {
                         ...rest,
+                        // rest.attachments/comments may still arrive as a JSON
+                        // string from the bulk-import payload (same shape as
+                        // the single-task create path) — normalize the same way.
+                        ...(rest.attachments !== undefined ? { attachments: normalizeJsonInput(rest.attachments) } : {}),
+                        ...(rest.comments !== undefined ? { comments: normalizeJsonInput(rest.comments) } : {}),
                         status: "PENDING",
                         deadline: deadlineDate,
                         difficulty: difficulty,
@@ -1009,7 +1002,7 @@ export class TaskService {
                     entityId: 'BATCH',
                     userId: userRole !== 'SUPER_ADMIN' ? userId : null,
                     superAdminId: userRole === 'SUPER_ADMIN' ? userId : null,
-                    details: JSON.stringify({ count: results.length, taskTitles: results.map(t => t.title) })
+                    details: { count: results.length, taskTitles: results.map(t => t.title) }
                 }
             })
 
@@ -1045,9 +1038,7 @@ export class TaskService {
             }
 
             for (const task of tasks) {
-                const mCosts = typeof task.memberCosts === 'string'
-                    ? JSON.parse(task.memberCosts)
-                    : (task.memberCosts || {})
+                const mCosts: Record<string, number> = (task.memberCosts as any) || {}
 
                 // Mark all members as PAID
                 const newMemberPaymentStatus: Record<string, string> = {}
@@ -1060,7 +1051,7 @@ export class TaskService {
                     data: {
                         paymentStatus: 'PAID',
                         status: 'COMPLETED',
-                        memberPaymentStatus: JSON.stringify(newMemberPaymentStatus),
+                        memberPaymentStatus: newMemberPaymentStatus,
                         updatedAt: new Date() // Force timestamp update for history
                     } as any
                 })
@@ -1073,7 +1064,7 @@ export class TaskService {
                     entityId: 'BULK',
                     userId: userRole === 'SUPER_ADMIN' ? null : userId,
                     superAdminId: userRole === 'SUPER_ADMIN' ? userId : null,
-                    details: JSON.stringify({ taskIds, count: tasks.length, paymentStatus: 'PAID' })
+                    details: { taskIds, count: tasks.length, paymentStatus: 'PAID' }
                 }
             })
 

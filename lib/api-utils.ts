@@ -187,7 +187,7 @@ export function withStandardHandler(
                         entityId: (entityId as unknown as string) || 'N/A',
                         userId: userRole !== 'SUPER_ADMIN' ? userId : null,
                         superAdminId: userRole === 'SUPER_ADMIN' ? userId : null,
-                        details: sanitizedBody ? JSON.stringify(sanitizedBody) : null
+                        details: sanitizedBody ?? undefined
                     }
                 })
             }

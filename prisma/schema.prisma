@@ -103,8 +103,12 @@ model Task {
   difficulty          Int      @default(0)
   totalCost           Decimal  @default(0) @db.Decimal(12, 2)
   createdBy           String?
-  attachments         String?
-  comments            String?
+  // F-12: Json, not String. These held JSON serialized into text — Postgres
+  // couldn't validate, index, or query any of it, and the app already had to
+  // defend itself against malformed rows (maintenance.service.ts silently
+  // treats an unparseable attachments row as orphaned and deletes it).
+  attachments         Json?
+  comments            Json?
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
   isEdited            Boolean  @default(false)
@@ -113,8 +117,8 @@ model Task {
   location            String?
   lastStatusUpdateBy  String?
   lastEditBy          String?
-  memberCosts         String?
-  memberPaymentStatus String?
+  memberCosts         Json?
+  memberPaymentStatus Json?
   companyId           String?
   company             Company? @relation(fields: [companyId], references: [id], onDelete: Cascade)
   creator             User?    @relation("CreatedTasks", fields: [createdBy], references: [id], onDelete: SetNull)
@@ -149,7 +153,8 @@ model AuditLog {
   entityId     String
   userId       String?
   superAdminId String?
-  details      String?
+  // F-12: Json, not String — see the note on Task.attachments above.
+  details      Json?
   createdAt    DateTime    @default(now())
   superAdmin   SuperAdmin? @relation(fields: [superAdminId], references: [id], onDelete: SetNull)
   user         User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
