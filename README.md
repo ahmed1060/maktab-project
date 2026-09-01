@@ -22,9 +22,13 @@ Create a file named `.env` in the root folder and add your Supabase credentials:
 DATABASE_URL="postgresql://postgres.[YOUR-ID]:[PASSWORD]@aws-0-eu-central-1.pooler.supabase.com:6543/postgres?pgbouncer=true"
 DIRECT_URL="postgresql://postgres.[YOUR-ID]:[PASSWORD]@aws-0-eu-central-1.pooler.supabase.com:5432/postgres"
 
-# Auth Secret (Use a secure random string)
+# Auth Secret (Use a secure random string, e.g. `openssl rand -base64 32`)
 NEXTAUTH_SECRET="your-generated-secret"
 NEXTAUTH_URL="http://localhost:3000"
+
+# Seed Super Admin (required to run prisma/seed.ts — see step 3)
+SEED_ADMIN_EMAIL_1="you@example.com"
+SEED_ADMIN_PASSWORD_1="choose-a-strong-password-12+chars"
 ```
 
 ### 3. Initialize Database
@@ -33,7 +37,7 @@ Apply the schema and seed the initial Super Admin:
 # Push schema to Supabase
 npx prisma db push
 
-# Create default Super Admin
+# Create the Super Admin from SEED_ADMIN_EMAIL_1 / SEED_ADMIN_PASSWORD_1 in your .env
 npx tsx prisma/seed.ts
 ```
 
@@ -42,5 +46,4 @@ npx tsx prisma/seed.ts
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000)
-Initial Login: `ahmed.hossam1060@gmail.com` / `12345678` (configured in `seed.ts`)
+Open [http://localhost:3000](http://localhost:3000) and log in with the `SEED_ADMIN_EMAIL_1` / `SEED_ADMIN_PASSWORD_1` you set above.

@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic'
 import { withStandardHandler } from "@/lib/api-utils"
 import { ApiResponse } from "@/lib/api-response"
 import { AuditLogService } from "@/lib/services/audit-log.service"
+import { parsePaging } from "@/lib/pagination"
 
 export const GET = withStandardHandler(async (req, session) => {
     // 1. Auth Check: Super Admin only
@@ -11,9 +12,7 @@ export const GET = withStandardHandler(async (req, session) => {
     }
 
     const { searchParams } = new URL(req.url)
-    const page = parseInt(searchParams.get('page') || '1')
-    const limit = parseInt(searchParams.get('limit') || '20')
-    const skip = (page - 1) * limit
+    const { page, limit, skip } = parsePaging(searchParams, 20)
 
     const entityType = searchParams.get('entityType') || undefined
     const action = searchParams.get('action') || undefined

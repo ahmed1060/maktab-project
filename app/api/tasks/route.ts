@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma"
 import { ApiResponse } from "@/lib/api-response"
 import { createTaskSchema } from "@/lib/validations/task.schema"
 import { TaskService } from "@/lib/services/task.service"
+import { parsePaging } from "@/lib/pagination"
 
 export const GET = withStandardHandler(async (req, session) => {
     const userRole = (session.user as any).role
@@ -17,64 +18,65 @@ export const GET = withStandardHandler(async (req, session) => {
         if (comp) companyId = comp.id
     }
 
-    const whereClause: any = {}
-
-    // 1. GET Logic Hardening
+    // 1. Tenancy/role scope. This is a non-negotiable base: it goes into its
+    // own AND branch below so a later query-param filter can only narrow it,
+    // never replace it (F-03: `employeeIdFilter` used to overwrite this
+    // exact field, letting any employee read any other employee's tasks).
+    const scope: any[] = []
     if (userRole === 'SUPER_ADMIN') {
         if (companyId) {
-            whereClause.companyId = companyId
+            scope.push({ companyId })
         }
     } else if (['ADMIN', 'TEAM_LEADER'].includes(userRole)) {
         const userCompanyId = (session.user as any).companyId
         if (!userCompanyId) {
             return ApiResponse.success({ data: [], total: 0, page: 1, totalPages: 0 })
         }
-        whereClause.companyId = userCompanyId
+        scope.push({ companyId: userCompanyId })
     } else {
-        whereClause.assignees = { some: { id: userId } }
+        scope.push({ assignees: { some: { id: userId } } })
     }
 
-    // Filters
+    // 2. Filters — additive only. Each pushes onto `filters`, never assigns
+    // straight onto `whereClause`, so none of them can clobber the scope above.
+    const filters: any[] = []
+
     const employeeIdFilter = searchParams.get('employeeId')
     const statusFilter = searchParams.get('status')
     const searchFilter = searchParams.get('search')
     const dateFrom = searchParams.get('dateFrom')
     const dateTo = searchParams.get('dateTo')
 
-    if (employeeIdFilter) whereClause.assignees = { some: { id: employeeIdFilter } }
-    if (statusFilter) whereClause.status = statusFilter
+    // Only a privileged role may narrow to an arbitrary employee — a plain
+    // employee is already scoped to their own tasks by `scope` above.
+    if (employeeIdFilter && userRole !== 'EMPLOYEE') {
+        filters.push({ assignees: { some: { id: employeeIdFilter } } })
+    }
+    if (statusFilter) filters.push({ status: statusFilter })
 
     if (searchFilter) {
-        const searchOR = {
+        filters.push({
             OR: [
                 { title: { contains: searchFilter, mode: 'insensitive' } },
                 { description: { contains: searchFilter, mode: 'insensitive' } }
             ]
-        }
-        if (whereClause.OR) {
-            whereClause.AND = whereClause.AND || []
-            whereClause.AND.push({ OR: whereClause.OR })
-            delete whereClause.OR
-            whereClause.AND.push(searchOR)
-        } else {
-            whereClause.AND = whereClause.AND || []
-            whereClause.AND.push(searchOR)
-        }
+        })
     }
 
     if (dateFrom || dateTo) {
-        whereClause.updatedAt = {}
-        if (dateFrom) whereClause.updatedAt.gte = new Date(dateFrom)
+        const updatedAt: any = {}
+        if (dateFrom) updatedAt.gte = new Date(dateFrom)
         if (dateTo) {
             const end = new Date(dateTo)
             end.setHours(23, 59, 59, 999)
-            whereClause.updatedAt.lte = end
+            updatedAt.lte = end
         }
+        filters.push({ updatedAt })
     }
 
-    const page = parseInt(searchParams.get('page') || '1')
-    const limit = parseInt(searchParams.get('limit') || '10')
-    const skip = (page - 1) * limit
+    const whereClause = { AND: [...scope, ...filters] }
+
+    const { page, limit, skip } = parsePaging(searchParams, 10)
 
     const [tasks, total] = await Promise.all([
         prisma.task.findMany({

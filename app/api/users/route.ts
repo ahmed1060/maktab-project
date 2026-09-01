@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma"
 import { ApiResponse } from "@/lib/api-response"
 import { createUserSchema, updateUserSchema } from "@/lib/validations/user.schema"
 import { UserService } from "@/lib/services/user.service"
+import { parsePaging } from "@/lib/pagination"
 
 export const GET = withStandardHandler(async (req, session) => {
     const userRole = session.user.role
@@ -123,9 +124,7 @@ export const GET = withStandardHandler(async (req, session) => {
         whereClause.AND.push({ status: { not: 'DELETED' } })
     }
 
-    const page = parseInt(searchParams.get('page') || '1')
-    const limit = parseInt(searchParams.get('limit') || '10')
-    const skip = (page - 1) * limit
+    const { page, limit, skip } = parsePaging(searchParams, 10)
 
     const [users, total] = await Promise.all([
         prisma.user.findMany({

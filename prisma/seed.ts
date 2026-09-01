@@ -4,28 +4,52 @@ import { encrypt } from '../lib/crypto'
 
 const prisma = new PrismaClient()
 
+// Seed credentials must come from the environment. This used to hardcode
+// ahmed.hossam1060@gmail.com / mohamedsadek@gmail.com with the password
+// "12345678" directly in this file — and print both in README.md /
+// DATABASE_SETUP.md — so anyone with read access to the repo (or its
+// history) had two live super-admin passwords. Set SEED_ADMIN_EMAIL_1 /
+// SEED_ADMIN_PASSWORD_1 (and optionally _2 for a second account) before
+// running this script; it refuses to run without at least one.
+type SeedAdmin = {
+    email: string
+    username: string
+    firstName: string
+    lastName: string
+    password: string
+    gender: string
+}
+
+function readAdmin(n: 1 | 2): SeedAdmin | null {
+    const email = process.env[`SEED_ADMIN_EMAIL_${n}`]
+    const password = process.env[`SEED_ADMIN_PASSWORD_${n}`]
+    if (!email || !password) return null
+
+    if (password.length < 12) {
+        throw new Error(`SEED_ADMIN_PASSWORD_${n} must be at least 12 characters`)
+    }
+
+    return {
+        email,
+        username: process.env[`SEED_ADMIN_USERNAME_${n}`] || email.split('@')[0],
+        firstName: process.env[`SEED_ADMIN_FIRST_NAME_${n}`] || 'Super',
+        lastName: process.env[`SEED_ADMIN_LAST_NAME_${n}`] || 'Admin',
+        password,
+        gender: process.env[`SEED_ADMIN_GENDER_${n}`] || 'MALE',
+    }
+}
+
 async function main() {
     console.log('🌱 Seeding database...')
 
-    // List of Super Admins to create
-    const superAdmins = [
-        {
-            email: 'ahmed.hossam1060@gmail.com',
-            username: 'ahmed_hossam',
-            firstName: 'Ahmed',
-            lastName: 'Hossam',
-            password: '12345678',
-            gender: 'MALE'
-        },
-        {
-            email: 'mohamedsadek@gmail.com',
-            username: 'mohamed_sadek',
-            firstName: 'Mohamed',
-            lastName: 'Sadek',
-            password: '12345678',
-            gender: 'MALE'
-        }
-    ]
+    const superAdmins = [readAdmin(1), readAdmin(2)].filter((a): a is SeedAdmin => a !== null)
+
+    if (superAdmins.length === 0) {
+        throw new Error(
+            'No seed admin configured. Set SEED_ADMIN_EMAIL_1 and SEED_ADMIN_PASSWORD_1 ' +
+            '(and optionally _2 for a second account) as environment variables before running this script.'
+        )
+    }
 
     for (const admin of superAdmins) {
         const existingSuperAdmin = await prisma.superAdmin.findUnique({
@@ -46,7 +70,7 @@ async function main() {
                 password: hashedPassword,
                 firstName: admin.firstName,
                 lastName: admin.lastName,
-                gender: 'MALE',
+                gender: admin.gender,
                 plainPasswordEnc: encrypt(admin.password)
             }
         })

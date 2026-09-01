@@ -1,0 +1,105 @@
+name: Backup to Google Drive
+
+on:
+  schedule:
+    - cron: '0 1 * * *'          # 01:00 UTC = 03:00 Africa/Cairo (UTC+2 winter)
+  workflow_dispatch:              # manual "Run workflow" button
+    inputs:
+      label:
+        description: 'Optional label for this backup'
+        required: false
+        default: 'manual'
+  repository_dispatch:            # fired from the dashboard maintenance page
+    types: [manual-backup]
+
+concurrency:
+  group: maktab-backup
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Install tools
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y postgresql-client-16 age
+          curl -fsSL https://rclone.org/install.sh | sudo bash
+
+      - name: Configure rclone remote
+        run: |
+          mkdir -p ~/.config/rclone
+          cat > ~/.config/rclone/rclone.conf <<EOF
+          [gdrive]
+          type = drive
+          scope = drive.file
+          client_id = ${{ secrets.GDRIVE_CLIENT_ID }}
+          client_secret = ${{ secrets.GDRIVE_CLIENT_SECRET }}
+          token = ${{ secrets.RCLONE_CONFIG_GDRIVE_TOKEN }}
+          root_folder_id = ${{ secrets.GDRIVE_FOLDER_ID }}
+          EOF
+
+      - name: Dump database
+        env:
+          PGCONN: ${{ secrets.SUPABASE_DIRECT_URL }}
+        run: |
+          STAMP=$(TZ=Africa/Cairo date +%Y-%m-%d_%H%M)
+          KIND="${{ github.event_name == 'schedule' && 'auto' || 'manual' }}"
+          echo "NAME=maktab_${STAMP}_${KIND}" >> $GITHUB_ENV
+          pg_dump "$PGCONN" \
+            --no-owner --no-privileges --clean --if-exists \
+            --exclude-schema='auth|storage|graphql|realtime|extensions|vault|_realtime|supabase_*' \
+            | gzip -9 > db.sql.gz
+          ls -lh db.sql.gz
+
+      - name: Verify the dump is not empty or truncated
+        run: |
+          test "$(stat -c%s db.sql.gz)" -gt 10240 || { echo "Dump suspiciously small"; exit 1; }
+          gzip -t db.sql.gz
+          zcat db.sql.gz | tail -5 | grep -q "PostgreSQL database dump complete" \
+            || { echo "Dump is truncated"; exit 1; }
+
+      - name: Mirror the storage bucket
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SERVICE_KEY:  ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          cat >> ~/.config/rclone/rclone.conf <<EOF
+          [supa]
+          type = s3
+          provider = Other
+          access_key_id = ${SERVICE_KEY}
+          secret_access_key = ${SERVICE_KEY}
+          endpoint = ${SUPABASE_URL}/storage/v1/s3
+          region = auto
+          EOF
+          rclone copy supa:app-assets ./assets --transfers 8 --fast-list || true
+          tar -czf assets.tar.gz assets
+
+      - name: Encrypt
+        run: |
+          echo "${{ secrets.AGE_PUBLIC_KEY }}" > key.pub
+          age -R key.pub -o "${NAME}_db.sql.gz.age"     db.sql.gz
+          age -R key.pub -o "${NAME}_assets.tar.gz.age" assets.tar.gz
+          rm -f db.sql.gz assets.tar.gz key.pub
+
+      - name: Upload to Google Drive
+        run: |
+          DEST="daily"
+          [ "$(date +%u)" = "7" ] && DEST="weekly"
+          [ "$(date +%d)" = "01" ] && DEST="monthly"
+          rclone copy "${NAME}_db.sql.gz.age"     "gdrive:${DEST}/" -P
+          rclone copy "${NAME}_assets.tar.gz.age" "gdrive:${DEST}/" -P
+
+      - name: Prune old backups
+        run: |
+          rclone delete gdrive:daily   --min-age 7d
+          rclone delete gdrive:weekly  --min-age 28d
+          rclone delete gdrive:monthly --min-age 365d
+
+      - name: Report
+        if: always()
+        run: |
+          echo "### Backup ${{ job.status }} — $NAME" >> $GITHUB_STEP_SUMMARY
+          rclone size gdrive: >> $GITHUB_STEP_SUMMARY
