@@ -2,12 +2,12 @@ import { ApiResponse } from "@/lib/api-response"
 import { CronService } from "@/lib/services/cron.service"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
+import { isValidCronRequest } from "@/lib/cron-auth"
 
 export async function GET(req: Request) {
     const session = await getServerSession(authOptions)
-    const authHeader = req.headers.get('authorization')
 
-    const isCron = authHeader === `Bearer ${process.env.CRON_SECRET}`
+    const isCron = isValidCronRequest(req)
     const isSuperAdmin = session?.user?.role === 'SUPER_ADMIN'
 
     if (!isCron && !isSuperAdmin) {

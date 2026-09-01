@@ -1,10 +1,10 @@
 import { ApiResponse } from "@/lib/api-response"
 import { CronService } from "@/lib/services/cron.service"
+import { isValidCronRequest } from "@/lib/cron-auth"
 
 export async function POST(req: Request) {
     try {
-        const authHeader = req.headers.get('Authorization')
-        if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+        if (!isValidCronRequest(req)) {
             return ApiResponse.unauthorized("Unauthorized")
         }
 

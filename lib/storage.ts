@@ -11,6 +11,31 @@ export const supabase = (supabaseUrl && supabaseServiceKey)
     ? createClient(supabaseUrl, supabaseServiceKey)
     : null as any
 
+// Server-trusted extension -> MIME map. `file.type` on an uploaded File is
+// whatever the client claims it is, so it must never be written straight
+// into `contentType` — a file named invoice.pdf could otherwise be stored
+// (and served back from the public bucket) as text/html. Only extensions the
+// upload routes already allow appear here.
+const EXTENSION_MIME: Record<string, string> = {
+    '.jpg': 'image/jpeg',
+    '.jpeg': 'image/jpeg',
+    '.png': 'image/png',
+    '.gif': 'image/gif',
+    '.webp': 'image/webp',
+    '.pdf': 'application/pdf',
+    '.doc': 'application/msword',
+    '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    '.xls': 'application/vnd.ms-excel',
+    '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    '.ppt': 'application/vnd.ms-powerpoint',
+    '.pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+}
+
+function safeContentType(fileName: string): string {
+    const ext = fileName.slice(fileName.lastIndexOf('.')).toLowerCase()
+    return EXTENSION_MIME[ext] || 'application/octet-stream'
+}
+
 /**
  * Uploads a file to Supabase Storage in the 'app-assets' bucket.
  * @param file The file object to upload
@@ -34,7 +59,7 @@ export async function uploadToCloud(file: File, folder: string) {
     const { error } = await supabase.storage
         .from('app-assets')
         .upload(fileName, buffer, {
-            contentType: file.type,
+            contentType: safeContentType(file.name),
             cacheControl: '3600',
             upsert: false
         })

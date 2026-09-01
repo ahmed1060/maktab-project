@@ -2,12 +2,12 @@ import { ApiResponse } from "@/lib/api-response"
 import { NoteService } from "@/lib/services/note.service"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
+import { isValidCronRequest } from "@/lib/cron-auth"
 
 export async function POST(req: Request) {
     try {
         // Support both Session (Manual) and Cron Secret (Automated)
-        const authHeader = req.headers.get('Authorization')
-        const isCron = authHeader === `Bearer ${process.env.CRON_SECRET}`
+        const isCron = isValidCronRequest(req)
 
         const session = await getServerSession(authOptions)
         const isAdmin = session && ['ADMIN', 'SUPER_ADMIN'].includes((session.user as any).role)

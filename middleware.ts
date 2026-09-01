@@ -1,6 +1,14 @@
 import { withAuth } from "next-auth/middleware"
 import { NextResponse } from "next/server"
 
+// Fail loudly rather than silently verifying session tokens against a
+// publicly known string. lib/auth.ts already has no fallback here — the two
+// halves of the auth system must agree on the real secret or not run at all.
+const nextAuthSecret = process.env.NEXTAUTH_SECRET
+if (!nextAuthSecret) {
+    throw new Error("NEXTAUTH_SECRET is not set — refusing to start with an insecure fallback secret")
+}
+
 export default withAuth(
     function middleware(req) {
         const token = req.nextauth.token
@@ -38,7 +46,7 @@ export default withAuth(
                 return true
             },
         },
-        secret: process.env.NEXTAUTH_SECRET || "secret",
+        secret: nextAuthSecret,
     }
 )
 

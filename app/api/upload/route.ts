@@ -1,7 +1,8 @@
 import { ApiResponse } from "@/lib/api-response"
 import { uploadToCloud } from "@/lib/storage"
+import { withStandardHandler } from "@/lib/api-utils"
 
-export async function POST(req: Request) {
+export const POST = withStandardHandler(async (req, session) => {
     try {
         const data = await req.formData()
         const folder = (data.get('folder') as string) || 'misc'
@@ -32,6 +33,12 @@ export async function POST(req: Request) {
             '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx' // Office
         ]
 
+        // Scope uploads under the caller's company so one tenant can't fill
+        // another's folder, and sanitize the client-supplied folder name.
+        const companyScope = (session.user as any).companyId || 'platform'
+        const cleanFolder = folder.replace(/[^a-zA-Z0-9_-]/g, '') || 'misc'
+        const scopedFolder = `${companyScope}/${cleanFolder}`
+
         const publicUrls: string[] = []
 
         for (const file of files) {
@@ -46,8 +53,9 @@ export async function POST(req: Request) {
                 return ApiResponse.badRequest(`Invalid file type for ${file.name}. Only Images, PDFs, and Office documents are allowed.`)
             }
 
-            // 3. Upload to Supabase via helper
-            const publicUrl = await uploadToCloud(file, folder)
+            // 3. Upload to Supabase via helper (content-type is derived server-side
+            // from the validated extension, not trusted from the client — see F-01)
+            const publicUrl = await uploadToCloud(file, scopedFolder)
             publicUrls.push(publicUrl)
         }
 
@@ -59,4 +67,6 @@ export async function POST(req: Request) {
         console.error('Upload route error:', error)
         return ApiResponse.error(error.message || 'Failed to upload file to cloud storage')
     }
-}
+}, {
+    rateLimit: { maxRequests: 20, windowMs: 60_000 }
+})

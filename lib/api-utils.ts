@@ -140,13 +140,18 @@ export function withStandardHandler(
             }
             // -----------------------------------
 
-            // Parse body if it exists (for POST/PATCH/PUT)
+            // Parse body if it exists (for POST/PATCH/PUT).
+            // Only attempt this for JSON bodies — calling req.json() on a
+            // multipart/form-data request consumes the body stream, which then
+            // makes a later req.formData() call in the handler throw. Handlers
+            // that need multipart data read it themselves via req.formData().
             let body: any = null
-            if (['POST', 'PATCH', 'PUT'].includes(req.method)) {
+            const contentType = req.headers.get('content-type') || ''
+            if (['POST', 'PATCH', 'PUT'].includes(req.method) && contentType.includes('application/json')) {
                 try {
                     body = await req.json()
                 } catch {
-                    // Fallback for empty bodies or non-JSON
+                    // Fallback for empty bodies or malformed JSON
                 }
             }
 

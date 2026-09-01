@@ -2,12 +2,12 @@ import { ApiResponse } from "@/lib/api-response"
 import { CompanyService } from "@/lib/services/company.service"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
+import { isValidCronRequest } from "@/lib/cron-auth"
 
 export async function POST(req: Request) {
     try {
         const session = await getServerSession(authOptions)
-        const authHeader = req.headers.get('Authorization')
-        const isCron = authHeader === `Bearer ${process.env.CRON_SECRET}`
+        const isCron = isValidCronRequest(req)
         const isSuperAdmin = session?.user?.role === 'SUPER_ADMIN'
 
         if (!isCron && !isSuperAdmin && process.env.NODE_ENV === 'production') {
