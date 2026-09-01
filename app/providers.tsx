@@ -6,10 +6,10 @@ import { CompanyProvider } from "@/context/CompanyContext"
 import { ToastProvider } from "@/context/ToastContext"
 import { HeaderProvider } from "@/context/HeaderContext"
 import { LanguageProvider } from "@/context/LanguageContext"
-import { Locale } from "@/lib/translations"
+import type { Locale, TranslationDict } from "@/lib/translations"
 import AuthInterceptor from "@/components/AuthInterceptor"
 
-export function Providers({ children, initialLocale }: { children: React.ReactNode, initialLocale: Locale }) {
+export function Providers({ children, initialLocale, initialDict }: { children: React.ReactNode, initialLocale: Locale, initialDict: TranslationDict }) {
     return (
         <SessionProvider
             refetchOnWindowFocus={false}
@@ -20,7 +20,7 @@ export function Providers({ children, initialLocale }: { children: React.ReactNo
                 shouldRetryOnError: false
             }}>
                 <AuthInterceptor />
-                <LanguageProvider initialLocale={initialLocale}>
+                <LanguageProvider initialLocale={initialLocale} initialDict={initialDict}>
                     <CompanyProvider>
                         <HeaderProvider>
                             <ToastProvider>

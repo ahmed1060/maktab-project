@@ -3,7 +3,8 @@
 import React, { createContext, useContext, useState, useEffect, useTransition } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import { Locale, TranslationKey, translations } from '@/lib/translations';
+import type { Locale, TranslationKey, TranslationDict } from '@/lib/translations';
+import { loadTranslations } from '@/lib/translations';
 import LoadingSpinner from '@/components/LoadingSpinner';
 
 interface LanguageContextType {
@@ -14,13 +15,35 @@ interface LanguageContextType {
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
 
-export function LanguageProvider({ children, initialLocale }: { children: React.ReactNode, initialLocale: Locale }) {
+export function LanguageProvider({ children, initialLocale, initialDict }: { children: React.ReactNode, initialLocale: Locale, initialDict: TranslationDict }) {
     const { data: session, status, update } = useSession();
     const router = useRouter();
     const [locale, setLocale] = useState<Locale>(initialLocale);
     const [hasSyncedWithSession, setHasSyncedWithSession] = useState(false);
     const [isChangingLocale, setIsChangingLocale] = useState(false);
     const [, startTransition] = useTransition();
+
+    // F-24: seeded synchronously from the server-resolved initial locale's
+    // dictionary (see app/layout.tsx) so first paint never waits on a
+    // client-side fetch or shows a loading flash — this is the only
+    // dictionary guaranteed present on mount. Every other locale is
+    // fetched on demand: once here for a locale switch that bypasses
+    // toggleLanguage (the detection/session-sync effects below), and
+    // pre-fetched in toggleLanguage itself before it flips `locale`.
+    const [dicts, setDicts] = useState<Partial<Record<Locale, TranslationDict>>>({ [initialLocale]: initialDict });
+
+    // Keeps `dicts[locale]` populated if `locale` ever changes through a
+    // path other than toggleLanguage (which pre-loads its target locale
+    // itself) — e.g. the browser-language detection and session-sync
+    // effects below both call setLocale directly.
+    useEffect(() => {
+        if (dicts[locale]) return;
+        let cancelled = false;
+        loadTranslations(locale).then(dict => {
+            if (!cancelled) setDicts(prev => (prev[locale] ? prev : { ...prev, [locale]: dict }));
+        });
+        return () => { cancelled = true };
+    }, [locale, dicts]);
 
     // Initial language detection
     useEffect(() => {
@@ -59,8 +82,18 @@ export function LanguageProvider({ children, initialLocale }: { children: React.
         const newLocale = locale === 'en' ? 'ar' : 'en';
         setIsChangingLocale(true);
 
+        // F-24: kick off loading the target locale's dictionary (if it
+        // isn't already cached from a previous toggle) in parallel with
+        // everything below, but only flip `locale` once it resolves — see
+        // the .then() a few lines down. Without this, `locale` could
+        // update before its dictionary exists, and t() would fall through
+        // to the initial locale via `dicts[locale] || dicts[initialLocale]`
+        // for a brief flash instead of showing a stale-but-real page under
+        // the loading overlay.
+        const dictPromise = dicts[newLocale] ? Promise.resolve(dicts[newLocale]!) : loadTranslations(newLocale);
+
         // 1. Update the cookie immediately on the client side
-        // This is necessary so that the router.refresh() (the GET request) 
+        // This is necessary so that the router.refresh() (the GET request)
         // will carry the correct locale to the server.
         document.cookie = `NEXT_LOCALE=${newLocale};path=/;max-age=31536000`;
 
@@ -81,15 +114,17 @@ export function LanguageProvider({ children, initialLocale }: { children: React.
                 ]).catch(console.error);
             }
 
-            // 4. Update the Client state
-            // By doing this inside startTransition, React will wait for the router.refresh()
-            // to be partially ready or coordinated before applying the state change.
-            setLocale(newLocale);
-            document.documentElement.dir = newLocale === 'ar' ? 'rtl' : 'ltr';
-            document.documentElement.lang = newLocale;
+            // 4. Update the Client state once the new locale's dictionary
+            // has actually arrived.
+            dictPromise.then(dict => {
+                setDicts(prev => (prev[newLocale] ? prev : { ...prev, [newLocale]: dict }));
+                setLocale(newLocale);
+                document.documentElement.dir = newLocale === 'ar' ? 'rtl' : 'ltr';
+                document.documentElement.lang = newLocale;
+            });
 
             // 5. Hide the loading screen after a small buffer to ensure paint completion
-            // Note: In Next.js, useTransition's `isPending` might not perfectly 
+            // Note: In Next.js, useTransition's `isPending` might not perfectly
             // track the RSC payload application, so we use a small timeout for safety.
             setTimeout(() => {
                 setIsChangingLocale(false);
@@ -98,8 +133,8 @@ export function LanguageProvider({ children, initialLocale }: { children: React.
     };
 
     const t = (key: TranslationKey): string => {
-        const currentTranslations = translations[locale] || translations['en'];
-        return currentTranslations[key] || translations['en'][key] || key;
+        const currentDict = dicts[locale] || dicts[initialLocale];
+        return currentDict?.[key] || dicts.en?.[key] || key;
     };
 
     return (

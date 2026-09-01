@@ -5,7 +5,9 @@ import Link from "next/link"
 import { DonutChart, StatMetric } from "@/components/DashboardCharts"
 import HeaderSetter from "@/components/HeaderSetter"
 import { cookies } from "next/headers"
-import { Locale, translations } from "@/lib/translations"
+import type { Locale, TranslationKey } from "@/lib/translations"
+import { en } from "@/lib/translations/en"
+import { ar } from "@/lib/translations/ar"
 
 export const dynamic = 'force-dynamic'
 
@@ -17,15 +19,16 @@ export default async function DashboardPage({ searchParams }: { searchParams: { 
     // Server-side localization
     const cookieStore = cookies()
     const locale = (cookieStore.get('NEXT_LOCALE')?.value || 'en') as Locale
-    const t = (key: keyof typeof translations.en) => translations[locale][key] || translations.en[key]
+    const dict = locale === 'ar' ? ar : en
+    const t = (key: TranslationKey) => dict[key] || en[key]
 
     const formatDays = (days: number) => {
         if (locale === 'ar') {
-            if (days === 1) return translations.ar.day_singular
-            if (days === 2) return translations.ar.day_dual
-            return `${days} ${translations.ar.days_label}`
+            if (days === 1) return ar.day_singular
+            if (days === 2) return ar.day_dual
+            return `${days} ${ar.days_label}`
         }
-        return `${days} ${days === 1 ? translations.en.day_singular : translations.en.days_label}`
+        return `${days} ${days === 1 ? en.day_singular : en.days_label}`
     }
 
     let companyId: string | undefined = undefined
