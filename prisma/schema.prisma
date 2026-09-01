@@ -179,6 +179,11 @@ model Task {
   @@index([status])
   @@index([createdAt])
   @@index([paymentStatus])
+  // F-26: the hot paths filter on these pairs together (company task lists
+  // scoped by status; deadline-sorted views scoped by company) — a
+  // single-column index can only serve one side of that filter per scan.
+  @@index([companyId, status])
+  @@index([companyId, deadline])
 }
 
 model Notification {
@@ -194,6 +199,8 @@ model Notification {
   @@index([userId])
   @@index([read])
   @@index([createdAt])
+  // F-26: the notification bell always filters "this user's unread items".
+  @@index([userId, read])
 }
 
 model AuditLog {
@@ -213,6 +220,9 @@ model AuditLog {
   @@index([entityType])
   @@index([entityId])
   @@index([createdAt])
+  // F-26: the audit log page's default view is newest-first, filterable by
+  // action — the two are always sorted/filtered together there.
+  @@index([createdAt, action])
 }
 
 model Obligation {
@@ -363,6 +373,9 @@ model DayOffRequest {
 
   @@index([status])
   @@index([userId])
+  // F-26: "this user's requests, filtered by status" is the shape both the
+  // employee view and the admin approval queue query.
+  @@index([userId, status])
 }
 
 model SalaryAdjustment {
