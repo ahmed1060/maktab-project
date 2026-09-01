@@ -144,10 +144,10 @@ export default function LoginPage() {
                                 type="email"
                                 className="input"
                                 value={email}
-                                onChange={(e) => setEmail(e.target.value.slice(0, 35))}
+                                onChange={(e) => setEmail(e.target.value.slice(0, 254))}
                                 required
                                 placeholder={locale === 'ar' ? 'أدخل البريد الإلكتروني' : 'Enter Email'}
-                                maxLength={35}
+                                maxLength={254}
                                 style={{
                                     padding: '0.625rem 1rem',
                                     height: '42px',
@@ -162,10 +162,10 @@ export default function LoginPage() {
                                 type={showPassword ? "text" : "password"}
                                 className="input"
                                 value={password}
-                                onChange={(e) => setPassword(e.target.value.slice(0, 20))}
+                                onChange={(e) => setPassword(e.target.value.slice(0, 72))}
                                 required
                                 placeholder={locale === 'ar' ? 'أدخل كلمة المرور' : 'Enter Password'}
-                                maxLength={20}
+                                maxLength={72}
                                 style={{
                                     padding: '0.625rem 1rem',
                                     height: '42px',

@@ -768,8 +768,8 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                                     className="input"
                                     value={password}
                                     onChange={e => setPassword(e.target.value)}
-                                    minLength={6}
-                                    maxLength={20}
+                                    minLength={12}
+                                    maxLength={72}
                                     placeholder={t('keep_current_password_placeholder')}
                                     style={{
                                         textAlign: locale === 'ar' ? 'right' : 'left',

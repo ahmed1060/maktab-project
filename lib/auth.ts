@@ -7,6 +7,17 @@ import { v4 as uuidv4 } from 'uuid'
 import { headers } from "next/headers"
 import { RateLimiter } from "./api-utils"
 
+// F-17: a bcrypt.compare against a real hash takes measurably longer than
+// returning immediately, so an unknown email used to return in ~0ms while a
+// known one took ~80-150ms — a clear timing side-channel for enumerating
+// accounts, on top of the status-check throws below leaking the same thing
+// outright. Comparing against this fixed dummy hash for an unknown email
+// keeps that comparison's cost in the same ballpark as a real one. This
+// closes the "unknown email" gap specifically; SuperAdmin and User accounts
+// still hash at different bcrypt cost factors (12 vs 10) elsewhere in the
+// app, so it isn't a fully constant-time login path end to end.
+const DUMMY_PASSWORD_HASH = '$2b$10$8l1DIcjsHF.SoFHAsE28xOtbx8gG8u0PwT7GhO1wvcDXHycZLKgB.'
+
 export const authOptions: NextAuthOptions = {
     providers: [
         CredentialsProvider({
@@ -34,34 +45,52 @@ export const authOptions: NextAuthOptions = {
                         return null
                     }
 
-                    // RESTRICTION SYNC: user(20)@domain(10).com
-                    const emailRegex = /^[^@]{1,20}@[^@]{1,10}\.com$/
-                    if (!emailRegex.test(credentials.email)) {
-                        return null
-                    }
+                    // F-15: login shouldn't re-validate email format at all — it should
+                    // only compare credentials against whatever's on file. (The old
+                    // regex here also rejected most real addresses: no .com, no
+                    // local part over 20 chars, no domain label over 10.)
+                    // F-16: no password length gate on login either — bcrypt truncates
+                    // at 72 bytes, and whatever length restriction applied when the
+                    // password was *set* already constrains what a legitimate login
+                    // attempt looks like.
 
-                    if (credentials.password.length < 8 || credentials.password.length > 20) {
-                        return null
-                    }
-
-                    // 1. Check SuperAdmin Table first
+                    // F-17: look up the account and run bcrypt.compare exactly once,
+                    // before any account-state branching, so neither the timing nor
+                    // an early-thrown error can reveal whether the email is registered
+                    // or what state that account is in to someone who doesn't already
+                    // have the correct password.
                     const superAdmin = await prisma.superAdmin.findUnique({
                         where: { email: credentials.email }
                     })
+                    const user = superAdmin ? null : await prisma.user.findUnique({
+                        where: { email: credentials.email },
+                        include: { company: true }
+                    })
 
-                    if (superAdmin) {
-                        const isValid = await bcrypt.compare(credentials.password, superAdmin.password)
-                        if (!isValid) {
-                            // Audit Log (Failure - Centralized)
+                    const passwordHash = superAdmin?.password || user?.password || DUMMY_PASSWORD_HASH
+                    const isValid = await bcrypt.compare(credentials.password, passwordHash)
+
+                    if (!isValid) {
+                        if (superAdmin || user) {
                             const { AuditLogService } = await import("./services/audit-log.service")
-                            await AuditLogService.log('LOGIN_FAILURE', 'USER', superAdmin.id, {
-                                superAdminId: superAdmin.id,
-                                details: { email: superAdmin.email, reason: 'INVALID_PASSWORD', ip }
+                            await AuditLogService.log('LOGIN_FAILURE', 'USER', (superAdmin || user)!.id, {
+                                userId: user ? user.id : null,
+                                superAdminId: superAdmin ? superAdmin.id : null,
+                                details: { email: credentials.email, reason: 'INVALID_PASSWORD', ip }
                             })
-                            return null
                         }
+                        // F-18: no audit row for an unknown email — that was one
+                        // AuditLog insert per guess, an unbounded, attacker-controlled
+                        // write. The rate limiter above already tracks this IP; a
+                        // failed guess against a real account is still logged, since
+                        // that volume is bounded by how many accounts actually exist.
+                        return null
+                    }
 
-                        // Audit Log (Success - Centralized)
+                    // Password confirmed correct — only now do account-state checks,
+                    // so their specific error messages only ever reach someone who
+                    // already holds the real password.
+                    if (superAdmin) {
                         const { AuditLogService } = await import("./services/audit-log.service")
                         await AuditLogService.log('LOGIN', 'USER', superAdmin.id, {
                             superAdminId: superAdmin.id,
@@ -88,77 +117,56 @@ export const authOptions: NextAuthOptions = {
                         }
                     }
 
-                    // 2. Check Regular User Table
-                    const user = await prisma.user.findUnique({
-                        where: { email: credentials.email },
-                        include: { company: true }
-                    })
-
-                    if (!user) {
-                        // Audit Log (Failure - Unknown User - Centralized)
-                        const { AuditLogService } = await import("./services/audit-log.service")
-                        await AuditLogService.log('LOGIN_FAILURE', 'USER', 'UNKNOWN', {
-                            details: { email: credentials.email, reason: 'USER_NOT_FOUND', ip }
-                        })
-                        return null
-                    }
+                    // user is guaranteed set here: isValid was only true because either
+                    // superAdmin or user's real hash matched, and the superAdmin branch
+                    // above already returned.
+                    const validatedUser = user!
 
                     // Verify Company (If selected)
-                    if (credentials.companyId && credentials.companyId !== user.companyId) {
+                    if (credentials.companyId && credentials.companyId !== validatedUser.companyId) {
                         throw new Error('This user does not belong to the selected company.')
                     }
 
                     // Check for Company Ban Status
-                    if (user.company?.isBanned) {
+                    if (validatedUser.company?.isBanned) {
                         throw new Error('Company access restricted. Please contact support.')
                     }
 
-                    if (user.status === 'SUSPENDED' || user.status === 'DELETED') {
+                    if (validatedUser.status === 'SUSPENDED' || validatedUser.status === 'DELETED') {
                         throw new Error('Your account has been suspended or deleted.')
-                    }
-
-                    const isValid = await bcrypt.compare(credentials.password, user.password)
-                    if (!isValid) {
-                        // Audit Log (Failure - Centralized)
-                        const { AuditLogService } = await import("./services/audit-log.service")
-                        await AuditLogService.log('LOGIN_FAILURE', 'USER', user.id, {
-                            userId: user.id,
-                            details: { email: user.email, reason: 'INVALID_PASSWORD', ip }
-                        })
-                        return null
                     }
 
                     // Update generic user status
                     try {
                         await prisma.user.update({
-                            where: { id: user.id },
+                            where: { id: validatedUser.id },
                             data: { status: 'ACTIVE', lastActivity: new Date() }
                         })
                     } catch (e) { console.error('[AUTH_STATUS_UPDATE_FAIL]', e) }
 
                     // Audit Log (Success - Centralized)
                     const { AuditLogService } = await import("./services/audit-log.service")
-                    await AuditLogService.log('LOGIN', 'USER', user.id, {
-                        userId: user.id,
-                        details: { email: user.email, role: user.role, company: user.company?.name }
+                    await AuditLogService.log('LOGIN', 'USER', validatedUser.id, {
+                        userId: validatedUser.id,
+                        details: { email: validatedUser.email, role: validatedUser.role, company: validatedUser.company?.name }
                     })
 
                     return {
-                        id: user.id,
-                        name: `${user.firstName} ${user.lastName}`,
-                        email: user.email,
-                        role: user.role,
-                        firstName: user.firstName,
-                        lastName: user.lastName,
-                        gender: user.gender || 'MALE',
-                        avatar: user.avatar || null,
-                        image: user.avatar || null, // Map to standard NextAuth field
-                        companyId: user.companyId,
-                        companyName: user.company?.name || null,
-                        username: user.username,
-                        language: user.language || 'en',
-                        sessionVersion: (user as any).sessionVersion || 0,
-                        mustChangePassword: (user as any).mustChangePassword || false,
+                        id: validatedUser.id,
+                        name: `${validatedUser.firstName} ${validatedUser.lastName}`,
+                        email: validatedUser.email,
+                        role: validatedUser.role,
+                        firstName: validatedUser.firstName,
+                        lastName: validatedUser.lastName,
+                        gender: validatedUser.gender || 'MALE',
+                        avatar: validatedUser.avatar || null,
+                        image: validatedUser.avatar || null, // Map to standard NextAuth field
+                        companyId: validatedUser.companyId,
+                        companyName: validatedUser.company?.name || null,
+                        username: validatedUser.username,
+                        language: validatedUser.language || 'en',
+                        sessionVersion: (validatedUser as any).sessionVersion || 0,
+                        mustChangePassword: (validatedUser as any).mustChangePassword || false,
                         remember
                     }
 

@@ -1,12 +1,17 @@
 import { z } from "zod"
 
-const emailRegex = /^[^@]{1,20}@[^@]{1,10}\.com$/
-
 export const createUserSchema = z.object({
     firstName: z.string().min(1).max(15, "First name too long"),
     lastName: z.string().min(1).max(15, "Last name too long"),
-    email: z.string().regex(emailRegex, "Email format invalid (must be user(20)@domain(10).com)"),
-    password: z.string().min(8).max(20, "Password must be 8-20 characters"),
+    // F-15: was a regex requiring `user(20)@domain(10).com` — rejected
+    // most real addresses (anything not .com, any local part over 20
+    // chars, any domain label over 10). A proper email format check plus a
+    // generous length cap is what an email field actually needs.
+    email: z.string().email("Invalid email address").max(254),
+    // F-16: was capped at 20 — bcrypt truncates at 72 bytes, so there's no
+    // technical reason for a ceiling that low; it only blocked password
+    // managers and passphrases. Floor of 12 replaces the old floor of 8.
+    password: z.string().min(12, "Password must be at least 12 characters").max(72, "Password must be at most 72 characters"),
     role: z.enum(['SUPER_ADMIN', 'ADMIN', 'TEAM_LEADER', 'EMPLOYEE']).optional().default('EMPLOYEE'),
     gender: z.enum(['MALE', 'FEMALE']).optional().default('MALE'),
     companyId: z.string().optional(),

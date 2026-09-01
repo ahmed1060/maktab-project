@@ -19,7 +19,6 @@
 
 # production
 /build
-/public/uploads/
 
 # misc
 .DS_Store

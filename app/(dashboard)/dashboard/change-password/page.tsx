@@ -25,8 +25,8 @@ export default function ChangePasswordPage() {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
 
-        if (newPassword.length < 8 || newPassword.length > 72) {
-            showToast(isAr ? 'يجب أن تتكون كلمة المرور من 8 إلى 72 حرفًا' : 'Password must be 8–72 characters', 'error')
+        if (newPassword.length < 12 || newPassword.length > 72) {
+            showToast(isAr ? 'يجب أن تتكون كلمة المرور من 12 إلى 72 حرفًا' : 'Password must be 12–72 characters', 'error')
             return
         }
         if (newPassword !== confirmPassword) {
@@ -80,7 +80,7 @@ export default function ChangePasswordPage() {
                             className="input"
                             value={newPassword}
                             onChange={e => setNewPassword(e.target.value)}
-                            minLength={8}
+                            minLength={12}
                             maxLength={72}
                             required
                             autoFocus
@@ -95,7 +95,7 @@ export default function ChangePasswordPage() {
                             className="input"
                             value={confirmPassword}
                             onChange={e => setConfirmPassword(e.target.value)}
-                            minLength={8}
+                            minLength={12}
                             maxLength={72}
                             required
                         />

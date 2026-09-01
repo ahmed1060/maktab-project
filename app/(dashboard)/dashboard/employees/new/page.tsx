@@ -57,7 +57,7 @@ export default function NewEmployeePage() {
         }
         if (!firstName || firstName.length > 15) errors.firstName = "First Name max 15 chars"
         if (!lastName || lastName.length > 15) errors.lastName = "Last Name max 15 chars"
-        if (!password || password.length < 6 || password.length > 20) errors.password = "Password must be 6-20 chars"
+        if (!password || password.length < 12 || password.length > 72) errors.password = "Password must be 12-72 chars"
 
         if (Object.keys(errors).length > 0) {
             setFieldErrors(errors)
@@ -214,9 +214,9 @@ export default function NewEmployeePage() {
                             textAlign: locale === 'ar' ? 'right' : 'left'
                         }}
                         required
-                        minLength={6}
-                        maxLength={20}
-                        placeholder={locale === 'ar' ? '٦ أحرف على الأقل' : "Minimum 6 characters"}
+                        minLength={12}
+                        maxLength={72}
+                        placeholder={locale === 'ar' ? '١٢ حرفًا على الأقل' : "Minimum 12 characters"}
                     />
                     <button
                         type="button"

@@ -5,7 +5,9 @@ export const superAdminSchema = z.object({
     lastName: z.string().min(1, "Last name is required"),
     email: z.string().email("Invalid email address"),
     username: z.string().min(3, "Username must be at least 3 characters").optional(),
-    password: z.string().min(8, "Password must be at least 8 characters"),
+    // F-16: floor raised from 8 to 12 for consistency with the regular
+    // user schema; capped at 72 since bcrypt truncates beyond that.
+    password: z.string().min(12, "Password must be at least 12 characters").max(72, "Password must be at most 72 characters"),
     gender: z.enum(['MALE', 'FEMALE']).optional(),
 })
 
