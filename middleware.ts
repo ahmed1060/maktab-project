@@ -22,6 +22,13 @@ export default withAuth(
         // 2. Unauthenticated users trying to access /dashboard are handled by withAuth automatically
         // but the matcher below ensures it only runs for protected routes.
 
+        // 2b. A user with a pending forced password reset (F-02: replaces the
+        // old password-reveal feature) can't use the rest of the dashboard
+        // until they set a new password.
+        if (token?.mustChangePassword && pathname.startsWith('/dashboard') && pathname !== '/dashboard/change-password') {
+            return NextResponse.redirect(new URL('/dashboard/change-password', req.url))
+        }
+
         // 3. Locale Validation
         const locale = req.cookies.get('NEXT_LOCALE')?.value
         if (locale && !['en', 'ar'].includes(locale)) {

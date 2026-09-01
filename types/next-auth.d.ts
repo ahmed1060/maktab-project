@@ -15,6 +15,7 @@ declare module "next-auth" {
             picture?: string | null
             username: string
             language: string
+            mustChangePassword?: boolean
         } & DefaultSession["user"]
     }
 
@@ -31,6 +32,7 @@ declare module "next-auth" {
         picture?: string | null
         username?: string
         language?: string
+        mustChangePassword?: boolean
     }
 }
 
@@ -47,5 +49,6 @@ declare module "next-auth/jwt" {
         picture?: string | null
         username?: string
         language?: string
+        mustChangePassword?: boolean
     }
 }

@@ -2,8 +2,9 @@ import { prisma } from "@/lib/prisma"
 import { VerificationService } from "./verification.service"
 import { supabase } from "@/lib/storage"
 import bcrypt from "bcryptjs"
-import { encrypt, decrypt } from "@/lib/crypto"
 import { generateUsername } from "@/lib/username"
+import { generateTempPassword } from "@/lib/generate-password"
+import { getEgyptNow } from "@/lib/time"
 import { CreateUserInput, UpdateUserInput } from "../validations/user.schema"
 
 export class UserService {
@@ -46,7 +47,9 @@ export class UserService {
                 salary: salary || 0,
                 dayOffCredit: baseDayOffCredit !== undefined ? baseDayOffCredit : (dayOffCredit !== undefined ? dayOffCredit : 0),
                 baseDayOffCredit: baseDayOffCredit !== undefined ? baseDayOffCredit : (dayOffCredit !== undefined ? dayOffCredit : 0),
-                plainPasswordEnc: encrypt(password)
+                // F-14: the year this credit balance was actually granted,
+                // not a hardcoded year that goes stale for accounts created later.
+                lastDayOffResetYear: getEgyptNow().getFullYear()
             },
             select: { id: true, firstName: true, lastName: true, email: true, role: true, status: true, gender: true, username: true }
         })
@@ -104,7 +107,9 @@ export class UserService {
             }
 
             updateData.password = await bcrypt.hash(password, 10)
-            updateData.plainPasswordEnc = encrypt(password)
+            // Any password change — self-service or admin-forced — satisfies
+            // a pending forced reset.
+            updateData.mustChangePassword = false
         }
         if (gender) updateData.gender = gender
 
@@ -165,7 +170,7 @@ export class UserService {
             // Audit Log (Enhanced Diffs)
             const diffs: any = {}
             for (const key in updateData) {
-                if (key === 'password' || key === 'plainPasswordEnc') continue
+                if (key === 'password' || key === 'mustChangePassword') continue
                 if (updateData[key] !== regularUser[key as keyof typeof regularUser]) {
                     diffs[key] = { old: regularUser[key as keyof typeof regularUser], new: updateData[key] }
                 }
@@ -377,12 +382,6 @@ export class UserService {
         const user = await prisma.user.findUnique({ where: { id: userId } })
         if (user) {
             const isValid = await bcrypt.compare(password, user.password)
-            if (isValid && !user.plainPasswordEnc) {
-                await prisma.user.update({
-                    where: { id: userId },
-                    data: { plainPasswordEnc: encrypt(password) }
-                })
-            }
             return { valid: isValid }
         }
 
@@ -390,47 +389,47 @@ export class UserService {
         const superAdmin = await prisma.superAdmin.findUnique({ where: { id: userId } })
         if (superAdmin) {
             const isValid = await bcrypt.compare(password, superAdmin.password)
-            if (isValid && !superAdmin.plainPasswordEnc) {
-                await prisma.superAdmin.update({
-                    where: { id: userId },
-                    data: { plainPasswordEnc: encrypt(password) }
-                })
-            }
             return { valid: isValid }
         }
 
         throw new Error("USER_NOT_FOUND")
     }
 
-    static async revealPassword(targetUserId: string, adminPassword: string, adminId: string) {
-        // 1. Verify Super Admin's own password
-        const admin = await prisma.superAdmin.findUnique({
-            where: { id: adminId }
-        })
+    /**
+     * Replaces the old "reveal password" feature (F-02): rather than
+     * decrypting a user's actual password, an admin generates a fresh
+     * one-time temporary password. The target must change it at next login
+     * (see `mustChangePassword`). Scoped to regular User accounts only —
+     * resetting a SuperAdmin's own credentials is out of scope here; see
+     * the MFA/reset-flow enhancement (F-27) for that.
+     */
+    static async resetPassword(targetUserId: string, actingUser: { id: string; role: string }, confirmPassword: string) {
+        // 1. Verify the acting admin's own password before letting them
+        // reset someone else's — the acting user may be a SuperAdmin or a
+        // company ADMIN, so check whichever table they actually live in.
+        const actingAccount = actingUser.role === 'SUPER_ADMIN'
+            ? await prisma.superAdmin.findUnique({ where: { id: actingUser.id } })
+            : await prisma.user.findUnique({ where: { id: actingUser.id } })
 
-        if (!admin) throw new Error("ADMIN_NOT_FOUND")
+        if (!actingAccount) throw new Error("ADMIN_NOT_FOUND")
 
-        const isPasswordValid = await bcrypt.compare(adminPassword, admin.password)
+        const isPasswordValid = await bcrypt.compare(confirmPassword, actingAccount.password)
         if (!isPasswordValid) throw new Error("INVALID_ADMIN_PASSWORD")
 
-        // 2. Fetch target user's encrypted password
-        let targetUser = await prisma.user.findUnique({
+        // 2. Locate the target
+        const target = await prisma.user.findUnique({ where: { id: targetUserId } })
+        if (!target) throw new Error("TARGET_USER_NOT_FOUND")
+
+        // 3. Generate, hash, and store — the plaintext is returned once and never persisted.
+        const tempPassword = generateTempPassword()
+        const hashedPassword = await bcrypt.hash(tempPassword, 10)
+
+        await prisma.user.update({
             where: { id: targetUserId },
-            select: { plainPasswordEnc: true, id: true }
+            data: { password: hashedPassword, mustChangePassword: true }
         })
 
-        if (!targetUser) {
-            targetUser = await prisma.superAdmin.findUnique({
-                where: { id: targetUserId },
-                select: { plainPasswordEnc: true, id: true }
-            }) as any
-        }
-
-        if (!targetUser) throw new Error("TARGET_USER_NOT_FOUND")
-        if (!targetUser.plainPasswordEnc) throw new Error("PASSWORD_NOT_AVAILABLE")
-
-        // 3. Decrypt and return
-        return decrypt(targetUser.plainPasswordEnc)
+        return { targetUserId, password: tempPassword }
     }
 
     static async delete(id: string, session: any, isPermanent = false, passcode?: string) {

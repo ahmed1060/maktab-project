@@ -4,7 +4,8 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { isValidCronRequest } from "@/lib/cron-auth"
 
-export async function POST(req: Request) {
+// GET, not POST: Vercel Cron always dispatches with GET.
+export async function GET(req: Request) {
     try {
         const session = await getServerSession(authOptions)
         const isCron = isValidCronRequest(req)

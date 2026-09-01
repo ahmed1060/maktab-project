@@ -4,10 +4,9 @@ import { ApiResponse } from "@/lib/api-response"
 import { createTaskSchema } from "@/lib/validations/task.schema"
 import { TaskService } from "@/lib/services/task.service"
 import { parsePaging } from "@/lib/pagination"
+import { buildTaskWhereClause } from "@/lib/services/task-query"
 
 export const GET = withStandardHandler(async (req, session) => {
-    const userRole = (session.user as any).role
-    const userId = (session.user as any).id
     const { searchParams } = new URL(req.url)
 
     let companyId = searchParams.get('companyId')
@@ -18,63 +17,11 @@ export const GET = withStandardHandler(async (req, session) => {
         if (comp) companyId = comp.id
     }
 
-    // 1. Tenancy/role scope. This is a non-negotiable base: it goes into its
-    // own AND branch below so a later query-param filter can only narrow it,
-    // never replace it (F-03: `employeeIdFilter` used to overwrite this
-    // exact field, letting any employee read any other employee's tasks).
-    const scope: any[] = []
-    if (userRole === 'SUPER_ADMIN') {
-        if (companyId) {
-            scope.push({ companyId })
-        }
-    } else if (['ADMIN', 'TEAM_LEADER'].includes(userRole)) {
-        const userCompanyId = (session.user as any).companyId
-        if (!userCompanyId) {
-            return ApiResponse.success({ data: [], total: 0, page: 1, totalPages: 0 })
-        }
-        scope.push({ companyId: userCompanyId })
-    } else {
-        scope.push({ assignees: { some: { id: userId } } })
+    const result = buildTaskWhereClause(session, searchParams, companyId)
+    if (result.empty) {
+        return ApiResponse.success({ data: [], total: 0, page: 1, totalPages: 0 })
     }
-
-    // 2. Filters — additive only. Each pushes onto `filters`, never assigns
-    // straight onto `whereClause`, so none of them can clobber the scope above.
-    const filters: any[] = []
-
-    const employeeIdFilter = searchParams.get('employeeId')
-    const statusFilter = searchParams.get('status')
-    const searchFilter = searchParams.get('search')
-    const dateFrom = searchParams.get('dateFrom')
-    const dateTo = searchParams.get('dateTo')
-
-    // Only a privileged role may narrow to an arbitrary employee — a plain
-    // employee is already scoped to their own tasks by `scope` above.
-    if (employeeIdFilter && userRole !== 'EMPLOYEE') {
-        filters.push({ assignees: { some: { id: employeeIdFilter } } })
-    }
-    if (statusFilter) filters.push({ status: statusFilter })
-
-    if (searchFilter) {
-        filters.push({
-            OR: [
-                { title: { contains: searchFilter, mode: 'insensitive' } },
-                { description: { contains: searchFilter, mode: 'insensitive' } }
-            ]
-        })
-    }
-
-    if (dateFrom || dateTo) {
-        const updatedAt: any = {}
-        if (dateFrom) updatedAt.gte = new Date(dateFrom)
-        if (dateTo) {
-            const end = new Date(dateTo)
-            end.setHours(23, 59, 59, 999)
-            updatedAt.lte = end
-        }
-        filters.push({ updatedAt })
-    }
-
-    const whereClause = { AND: [...scope, ...filters] }
+    const whereClause = result.whereClause
 
     const { page, limit, skip } = parsePaging(searchParams, 10)
 

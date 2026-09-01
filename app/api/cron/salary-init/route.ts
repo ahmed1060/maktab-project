@@ -2,7 +2,8 @@ import { ApiResponse } from "@/lib/api-response"
 import { CronService } from "@/lib/services/cron.service"
 import { isValidCronRequest } from "@/lib/cron-auth"
 
-export async function POST(req: Request) {
+// GET, not POST: Vercel Cron always dispatches with GET.
+export async function GET(req: Request) {
     try {
         if (!isValidCronRequest(req)) {
             return ApiResponse.unauthorized("Unauthorized")

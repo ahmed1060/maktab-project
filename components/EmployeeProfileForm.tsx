@@ -48,12 +48,14 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
 
     // Password & Verification States
     const [showNewPassword, setShowNewPassword] = useState(false)
-    const [revealPassword, setRevealPassword] = useState<string | null>(null)
+    // Set once a temporary password has been issued via the reset flow (F-02)
+    // — shown to the acting admin exactly once, never persisted or re-fetchable.
+    const [issuedTempPassword, setIssuedTempPassword] = useState<string | null>(null)
     const [verificationModalOpen, setVerificationModalOpen] = useState(false)
     const [verificationPassword, setVerificationPassword] = useState('')
     const [isVerifying, setIsVerifying] = useState(false)
     const [showVerificationPassword, setShowVerificationPassword] = useState(false)
-    const [verificationCallback, setVerificationCallback] = useState<{ type: 'UPDATE' | 'REVEAL', data?: any } | null>(null)
+    const [verificationCallback, setVerificationCallback] = useState<{ type: 'UPDATE' | 'RESET_PASSWORD', data?: any } | null>(null)
 
     useEffect(() => {
         // Prevent default drag and drop behavior globally for this page
@@ -145,28 +147,26 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
         }
     }, [userId, userRole, showToast, session, t])
 
-    const handleRevealPassword = async (adminPasswordInput: string) => {
+    const handleResetPassword = async (adminPasswordInput: string) => {
         setIsVerifying(true)
         try {
-            const res = await fetch('/api/users/reveal', {
+            const res = await fetch(`/api/users/${userId}/reset-password`, {
                 method: 'POST',
-                body: JSON.stringify({ targetUserId: userId, adminPassword: adminPasswordInput }),
+                body: JSON.stringify({ confirmPassword: adminPasswordInput }),
                 headers: { 'Content-Type': 'application/json' }
             })
 
-            if (!res.ok) {
-                const text = await res.text()
-                throw new Error(text || t('incorrect_password'))
+            const result = await res.json()
+            if (!res.ok || !result.success) {
+                throw new Error(result.error || t('incorrect_password'))
             }
 
-            const result = await res.json()
-            setRevealPassword(result.data.password)
-            showToast(t('password_revealed'), 'success')
+            setIssuedTempPassword(result.data.password)
+            showToast(t('password_reset_issued' as any), 'success')
             setVerificationModalOpen(false)
             setVerificationPassword('')
         } catch (err: any) {
-            const errorMsg = err.message === 'password_not_available' ? t('password_not_available' as any) : (err.message || t('error_generic'))
-            showToast(errorMsg, 'error')
+            showToast(err.message || t('error_generic'), 'error')
         } finally {
             setIsVerifying(false)
         }
@@ -303,8 +303,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                 }
             }
         } catch (err: any) { // eslint-disable-line @typescript-eslint/no-explicit-any
-            const errorMsg = err.message === 'password_not_available' ? t('password_not_available' as any) : (err.message || t('error_generic'))
-            showToast(errorMsg, 'error')
+            showToast(err.message || t('error_generic'), 'error')
             setSaving(false)
         }
     }
@@ -811,53 +810,38 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                     )
                 }
 
-                {/* Secure Revelation for Super Admin on SAVED password */}
+                {/* Password reset for Admin/Super Admin viewing another user (F-02:
+                    replaces the old password-reveal feature — admins can no longer
+                    see a user's actual password, only issue a new temporary one) */}
                 {
-                    userRole === 'SUPER_ADMIN' && isViewMode && (
+                    ['ADMIN', 'SUPER_ADMIN'].includes(userRole) && isViewMode && userId !== session?.user?.id && (
                         <div style={{ marginBottom: '1rem' }}>
                             <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('password')}</label>
-                            <div style={{ position: 'relative' }}>
-                                <input
-                                    type={revealPassword ? "text" : "password"}
-                                    className="input"
-                                    value={revealPassword || '********'}
-                                    readOnly
-                                    style={{
-                                        background: '#f1f5f9',
-                                        cursor: 'default',
-                                        textAlign: locale === 'ar' ? 'right' : 'left',
-                                        [locale === 'ar' ? 'paddingLeft' : 'paddingRight']: '2.5rem'
+                            {issuedTempPassword ? (
+                                <div>
+                                    <input
+                                        type="text"
+                                        className="input"
+                                        value={issuedTempPassword}
+                                        readOnly
+                                        style={{ background: '#f1f5f9', cursor: 'default', textAlign: locale === 'ar' ? 'right' : 'left' }}
+                                    />
+                                    <p style={{ margin: '0.5rem 0 0', fontSize: '0.78rem', color: '#b45309', textAlign: locale === 'ar' ? 'right' : 'left' }}>
+                                        {t('temp_password_warning' as any)}
+                                    </p>
+                                </div>
+                            ) : (
+                                <button
+                                    type="button"
+                                    className="btn"
+                                    onClick={() => {
+                                        setVerificationCallback({ type: 'RESET_PASSWORD' })
+                                        setVerificationModalOpen(true)
                                     }}
-                                />
-                                {!revealPassword && (
-                                    <button
-                                        type="button"
-                                        onClick={() => {
-                                            setVerificationCallback({ type: 'REVEAL' })
-                                            setVerificationModalOpen(true)
-                                        }}
-                                        style={{
-                                            position: 'absolute',
-                                            [locale === 'ar' ? 'left' : 'right']: '0.75rem',
-                                            top: '50%',
-                                            transform: 'translateY(-50%)',
-                                            background: 'none',
-                                            border: 'none',
-                                            cursor: 'pointer',
-                                            padding: '0.25rem',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            color: '#6366f1'
-                                        }}
-                                        title={t('reveal_button')}
-                                    >
-                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                                            <circle cx="12" cy="12" r="3"></circle>
-                                        </svg>
-                                    </button>
-                                )}
-                            </div>
+                                >
+                                    {t('reset_password_button' as any)}
+                                </button>
+                            )}
                         </div>
                     )
                 }
@@ -968,7 +952,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                                                 if (verificationCallback?.type === 'UPDATE') {
                                                     handleVerifyAndUpdate(verificationPassword)
                                                 } else {
-                                                    handleRevealPassword(verificationPassword)
+                                                    handleResetPassword(verificationPassword)
                                                 }
                                             }
                                         }}
@@ -1036,7 +1020,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                                             if (verificationCallback?.type === 'UPDATE') {
                                                 handleVerifyAndUpdate(verificationPassword)
                                             } else {
-                                                handleRevealPassword(verificationPassword)
+                                                handleResetPassword(verificationPassword)
                                             }
                                         }
                                     }}

@@ -76,10 +76,6 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
                     setUnreadNotificationsCount(data.counts.unreadNotifications || 0)
                 }
 
-                // Trigger Note Expiry Check for Admins
-                if (['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role)) {
-                    fetch('/api/notes/check-expiry', { method: 'POST' }).catch(() => { })
-                }
             }
         }
     )

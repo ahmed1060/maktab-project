@@ -33,9 +33,9 @@ model SuperAdmin {
   createdAt        DateTime   @default(now())
   updatedAt        DateTime   @updatedAt
   language         String     @default("en")
-  plainPasswordEnc String?
   username         String     @unique
   sessionVersion   Int        @default(0)
+  mustChangePassword Boolean  @default(false)
   auditLogs        AuditLog[]
 }
 
@@ -56,10 +56,14 @@ model User {
   language                   String                  @default("en")
   dayOffCredit               Float                   @default(0)
   baseDayOffCredit           Float                   @default(0)
-  lastDayOffResetYear        Int                     @default(2026)
-  plainPasswordEnc           String?
+  // No @default: a hardcoded year here meant every account created after
+  // that year started with its reset year already in the past, so the
+  // first credit reset would wipe a leave balance it had just been given.
+  // UserService.create sets this from the account's actual creation year.
+  lastDayOffResetYear        Int
   username                   String                  @unique
   sessionVersion             Int                     @default(0)
+  mustChangePassword         Boolean                 @default(false)
   auditLogs                  AuditLog[]
   createdClients             BusinessClient[]        @relation("ClientCreatedBy")
   editedClients              BusinessClient[]        @relation("ClientEditedBy")

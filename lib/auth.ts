@@ -83,6 +83,7 @@ export const authOptions: NextAuthOptions = {
                             username: superAdmin.username,
                             language: superAdmin.language || 'en',
                             sessionVersion: (superAdmin as any).sessionVersion || 0,
+                            mustChangePassword: (superAdmin as any).mustChangePassword || false,
                             remember
                         }
                     }
@@ -157,6 +158,7 @@ export const authOptions: NextAuthOptions = {
                         username: user.username,
                         language: user.language || 'en',
                         sessionVersion: (user as any).sessionVersion || 0,
+                        mustChangePassword: (user as any).mustChangePassword || false,
                         remember
                     }
 
@@ -185,6 +187,7 @@ export const authOptions: NextAuthOptions = {
                 session.user.companyName = token.companyName as string | null
                 session.user.username = token.username as string
                 session.user.language = token.language as string
+                session.user.mustChangePassword = !!token.mustChangePassword
             }
             return session
         },
@@ -205,6 +208,7 @@ export const authOptions: NextAuthOptions = {
                 token.companyName = user.companyName
                 token.username = user.username
                 token.language = user.language || 'en'
+                token.mustChangePassword = (user as any).mustChangePassword || false
                 token.jti = uuidv4()
 
                 // Store remember flag in token
@@ -280,6 +284,7 @@ export const authOptions: NextAuthOptions = {
                     token.picture = newAvatar
                 }
                 if (session.language !== undefined) token.language = session.language
+                if (session.mustChangePassword !== undefined) token.mustChangePassword = session.mustChangePassword
             }
             return token
         }
