@@ -8,7 +8,13 @@ import { useLanguage } from '@/context/LanguageContext'
 import { useCompany } from '@/context/CompanyContext'
 import { useToast } from '@/context/ToastContext'
 import LocationSearchInput from '@/components/LocationSearchInput'
-import * as XLSX from 'xlsx'
+// F-20: xlsx (SheetJS) is on a version with an unfixable-from-npm CVE
+// (prototype pollution + ReDoS in the parser) — SheetJS stopped publishing
+// patched releases to npm. exceljs is maintained and gets normal npm
+// updates, but is a noticeably heavier bundle — imported dynamically in
+// handleBulkUpload below so it only loads when a file is actually chosen,
+// not on every visit to this page.
+import { cellToPrimitive } from '@/lib/xlsx-cell'
 
 const UKFlag = () => (
     <svg width="24" height="18" viewBox="0 0 32 24" style={{ borderRadius: '2px', verticalAlign: 'middle', marginRight: '10px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
@@ -174,13 +180,23 @@ export default function NewTaskPage() {
     }
 
     const handleBulkUpload = async (file: File) => {
-        const reader = new FileReader()
-        reader.onload = (e) => {
-            const data = new Uint8Array(e.target?.result as ArrayBuffer)
-            const workbook = XLSX.read(data, { type: 'array' })
-            const sheetName = workbook.SheetNames[0]
-            const worksheet = workbook.Sheets[sheetName]
-            const jsonData: any[] = XLSX.utils.sheet_to_json(worksheet, { header: 1 })
+        const { Workbook } = await import('exceljs')
+        const arrayBuffer = await file.arrayBuffer()
+        const workbook = new Workbook()
+        await workbook.xlsx.load(arrayBuffer)
+        const worksheet = workbook.worksheets[0]
+
+        if (worksheet) {
+            // Mirror XLSX.utils.sheet_to_json(worksheet, { header: 1 }): one
+            // array per row, 0-indexed columns, raw cell values. exceljs's
+            // row.values is 1-indexed with index 0 always undefined, and rows
+            // are 1-indexed too (no row 0) — accounted for by both slice(1)
+            // below and by rows/jsonData already being built in sheet order.
+            const jsonData: any[] = []
+            worksheet.eachRow({ includeEmpty: true }, (row) => {
+                const values = Array.isArray(row.values) ? row.values.slice(1) : []
+                jsonData.push(values.map(cellToPrimitive))
+            })
 
             // Process data starting from Row 3 (index 2)
             const rows = jsonData.slice(2).filter(row => row[0]) // row[0] is Title
@@ -227,7 +243,12 @@ export default function NewTaskPage() {
                 let finalDeadline = ''
                 if (deadlineDateStr) {
                     let baseDate: Date | null = null
-                    if (typeof deadlineDateStr === 'number') {
+                    if (deadlineDateStr instanceof Date) {
+                        // exceljs (unlike xlsx without cellDates:true) returns a
+                        // native Date for a date-formatted cell rather than the
+                        // raw Excel serial number.
+                        baseDate = new Date(deadlineDateStr.getTime())
+                    } else if (typeof deadlineDateStr === 'number') {
                         const excelDate = new Date((deadlineDateStr - 25569) * 86400 * 1000)
                         baseDate = excelDate
                     } else {
@@ -245,7 +266,11 @@ export default function NewTaskPage() {
                         let hours = 0
                         let minutes = 0
                         if (deadlineTimeStr !== undefined && deadlineTimeStr !== null && deadlineTimeStr !== '') {
-                            if (typeof deadlineTimeStr === 'number') {
+                            if (deadlineTimeStr instanceof Date) {
+                                // Same exceljs-vs-xlsx difference as the date column above.
+                                hours = deadlineTimeStr.getUTCHours()
+                                minutes = deadlineTimeStr.getUTCMinutes()
+                            } else if (typeof deadlineTimeStr === 'number') {
                                 const totalSeconds = Math.round(deadlineTimeStr * 24 * 3600)
                                 hours = Math.floor(totalSeconds / 3600)
                                 minutes = Math.floor((totalSeconds % 3600) / 60)
@@ -304,8 +329,9 @@ export default function NewTaskPage() {
 
             setBulkTasks(tasks)
             setIsBulkModalOpen(true)
+        } else {
+            showToast(t('no_data_available'), 'error')
         }
-        reader.readAsArrayBuffer(file)
     }
 
     const revalidateRow = (task: any) => {

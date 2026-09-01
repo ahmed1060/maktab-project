@@ -4,7 +4,12 @@ import { useState, useEffect } from 'react'
 import { useLanguage } from '@/context/LanguageContext'
 import LoadingSpinner from '@/components/LoadingSpinner'
 import { useHeader } from '@/context/HeaderContext'
-import * as XLSX from 'xlsx'
+// F-20: xlsx (SheetJS) is on a version with an unfixable-from-npm CVE
+// (prototype pollution + ReDoS in the parser) — SheetJS stopped publishing
+// patched releases to npm. exceljs is maintained and gets normal npm
+// updates, but is a noticeably heavier bundle — imported dynamically below
+// so it only loads when the export button is actually clicked, not on
+// every visit to this page.
 
 type User = {
     id: string
@@ -52,40 +57,49 @@ export default function UsernamesPage() {
         }
     }, [setTitle, setSubtitle, t])
 
-    const downloadExcel = () => {
+    const downloadExcel = async () => {
+        const { Workbook } = await import('exceljs')
+
         const now = new Date()
         const timeStr = `${String(now.getHours()).padStart(2, '0')}-${String(now.getMinutes()).padStart(2, '0')}`
+        const isAr = locale === 'ar'
 
-        const data = users.map(u => ({
-            [locale === 'ar' ? 'الاسم' : 'Name']: `${u.firstName} ${u.lastName}`,
-            [locale === 'ar' ? 'الدور' : 'Role']: (u.role ? (t(`role_${u.role.toLowerCase()}` as any) || u.role) : '-'),
-            [locale === 'ar' ? 'اسم المستخدم' : 'Username']: u.username || '-'
-        }))
-
-        const worksheet = XLSX.utils.json_to_sheet(data)
-        const workbook = XLSX.utils.book_new()
-
-        const sheetBaseName = locale === 'ar' ? "المستخدمين" : "Users"
+        const workbook = new Workbook()
+        const sheetBaseName = isAr ? "المستخدمين" : "Users"
         const sheetName = `${sheetBaseName}_${timeStr}`
+        // RTL support for Arabic (equivalent of the old worksheet['!views'] / workbook.Workbook.Views RTL flags)
+        const worksheet = workbook.addWorksheet(sheetName, isAr ? { views: [{ rightToLeft: true }] } : undefined)
 
-        XLSX.utils.book_append_sheet(workbook, worksheet, sheetName)
+        worksheet.columns = [
+            { header: isAr ? 'الاسم' : 'Name', key: 'name', width: 30 },
+            { header: isAr ? 'الدور' : 'Role', key: 'role', width: 20 },
+            { header: isAr ? 'اسم المستخدم' : 'Username', key: 'username', width: 25 },
+        ]
 
-        // RTL Support for Arabic
-        if (locale === 'ar') {
-            worksheet['!views'] = [{ RTL: true }]
-            // Global workbook RTL setting for better compatibility
-            if (!workbook.Workbook) workbook.Workbook = {}
-            workbook.Workbook.Views = [{ RTL: true }]
-        }
+        users.forEach(u => {
+            worksheet.addRow({
+                name: `${u.firstName} ${u.lastName}`,
+                role: u.role ? (t(`role_${u.role.toLowerCase()}` as any) || u.role) : '-',
+                username: u.username || '-'
+            })
+        })
 
-        const wscols = [{ wch: 30 }, { wch: 20 }, { wch: 25 }]
-        worksheet['!cols'] = wscols
-
-        const filename = locale === 'ar'
+        const filename = isAr
             ? `أسماء المستخدمين_${new Date().toISOString().split('T')[0]}.xlsx`
             : `Employees Usernames_${new Date().toISOString().split('T')[0]}.xlsx`
 
-        XLSX.writeFile(workbook, filename)
+        // exceljs has no writeFile helper for the browser (that's Node-only,
+        // via fs) — build the file in memory and trigger the download manually.
+        const buffer = await workbook.xlsx.writeBuffer()
+        const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+        const url = URL.createObjectURL(blob)
+        const link = document.createElement('a')
+        link.href = url
+        link.download = filename
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+        URL.revokeObjectURL(url)
     }
 
     return (
