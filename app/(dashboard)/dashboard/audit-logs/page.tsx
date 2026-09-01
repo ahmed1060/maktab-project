@@ -1,12 +1,14 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
+import useSWR from 'swr'
 import Pagination from '@/components/Pagination'
 import { useLanguage } from '@/context/LanguageContext'
 import LoadingSpinner from '@/components/LoadingSpinner'
 import { useHeader } from '@/context/HeaderContext'
 import { useCompany } from '@/context/CompanyContext'
 import AuditLogFilter from '@/components/AuditLogFilter'
+import { fetcher } from '@/lib/swr-fetcher'
 
 type AuditLog = {
     id: string
@@ -34,10 +36,7 @@ export default function AuditLogsPage() {
     const { t, locale } = useLanguage()
     const { setTitle, setSubtitle } = useHeader()
     const { selectedCompanyId } = useCompany()
-    const [logs, setLogs] = useState<AuditLog[]>([])
-    const [loading, setLoading] = useState(true)
     const [page, setPage] = useState(1)
-    const [totalPages, setTotalPages] = useState(0)
     const [filters, setFilters] = useState({
         entityType: '',
         action: '',
@@ -46,8 +45,12 @@ export default function AuditLogsPage() {
         entityId: '',
         performedById: ''
     })
-    const [users, setUsers] = useState<{ id: string, firstName: string, lastName: string, role: string }[]>([])
     const limit = 20
+
+    // "Performed By" filter options — fetched once, doesn't depend on
+    // anything that changes on this page.
+    const { data: usersResult } = useSWR('/api/all-users?limit=1000', fetcher)
+    const users: { id: string, firstName: string, lastName: string, role: string }[] = usersResult?.data?.users || []
 
     const entityTypes = [
         'USER', 'TASK', 'SUPER_ADMIN', 'SECTION', 'SALARY',
@@ -72,57 +75,28 @@ export default function AuditLogsPage() {
     useEffect(() => {
         setTitle(t('audit_logs'))
         setSubtitle(t('audit_logs_subtitle'))
-
-        // Fetch all users for "Performed By" filter
-        const fetchUsers = async () => {
-            try {
-                const res = await fetch('/api/all-users?limit=1000')
-                if (res.ok) {
-                    const result = await res.json()
-                    setUsers(result.data?.users || [])
-                }
-            } catch (err) {
-                console.error('Failed to fetch users', err)
-            }
-        }
-        fetchUsers()
-
         return () => {
             setTitle(null)
             setSubtitle(null)
         }
     }, [setTitle, setSubtitle, t])
 
-    const fetchLogs = useCallback(async () => {
-        setLoading(true)
-        try {
-            const queryParams = new URLSearchParams()
-            queryParams.set('page', page.toString())
-            queryParams.set('limit', limit.toString())
-            if (filters.entityType) queryParams.set('entityType', filters.entityType)
-            if (filters.action) queryParams.set('action', filters.action)
-            if (filters.startDate) queryParams.set('startDate', filters.startDate)
-            if (filters.endDate) queryParams.set('endDate', filters.endDate)
-            if (filters.entityId) queryParams.set('entityId', filters.entityId)
-            if (filters.performedById) queryParams.set('performedById', filters.performedById)
-            if (selectedCompanyId) queryParams.set('companyId', selectedCompanyId)
-
-            const res = await fetch(`/api/admin/audit-logs?${queryParams.toString()}`)
-            if (res.ok) {
-                const result = await res.json()
-                setLogs(result.data?.data || [])
-                setTotalPages(result.data?.totalPages || 0)
-            }
-        } catch (error) {
-            console.error('Failed to fetch audit logs', error)
-        } finally {
-            setLoading(false)
-        }
-    }, [page, filters, limit, selectedCompanyId])
-
-    useEffect(() => {
-        fetchLogs()
-    }, [fetchLogs])
+    const logsQuery = (() => {
+        const queryParams = new URLSearchParams()
+        queryParams.set('page', page.toString())
+        queryParams.set('limit', limit.toString())
+        if (filters.entityType) queryParams.set('entityType', filters.entityType)
+        if (filters.action) queryParams.set('action', filters.action)
+        if (filters.startDate) queryParams.set('startDate', filters.startDate)
+        if (filters.endDate) queryParams.set('endDate', filters.endDate)
+        if (filters.entityId) queryParams.set('entityId', filters.entityId)
+        if (filters.performedById) queryParams.set('performedById', filters.performedById)
+        if (selectedCompanyId) queryParams.set('companyId', selectedCompanyId)
+        return `/api/admin/audit-logs?${queryParams.toString()}`
+    })()
+    const { data: logsResult, isLoading: loading } = useSWR(logsQuery, fetcher)
+    const logs: AuditLog[] = logsResult?.data?.data || []
+    const totalPages: number = logsResult?.data?.totalPages || 0
 
     const handleFilterChange = (newFilters: typeof filters) => {
         setFilters(newFilters)

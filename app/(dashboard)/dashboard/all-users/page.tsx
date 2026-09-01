@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
+import useSWR from 'swr'
 import Pagination from '@/components/Pagination'
 import EmployeeFilter from '@/components/EmployeeFilter'
 import EmployeeProfileForm from '@/components/EmployeeProfileForm'
@@ -9,6 +10,7 @@ import Modal from '@/components/Modal'
 import { useLanguage } from '@/context/LanguageContext'
 import LoadingSpinner from '@/components/LoadingSpinner'
 import { useHeader } from '@/context/HeaderContext'
+import { fetcher } from '@/lib/swr-fetcher'
 
 type User = {
     id: string
@@ -34,75 +36,47 @@ type Company = {
 export default function AllUsersPage() {
     const { t, locale } = useLanguage()
     const { setTitle, setSubtitle } = useHeader()
-    const [users, setUsers] = useState<User[]>([])
-    const [companies, setCompanies] = useState<Company[]>([])
-    const [superAdminsList, setSuperAdminsList] = useState<User[]>([])
-    const [loading, setLoading] = useState(true)
     const [filters, setFilters] = useState({ search: '', status: '', companyId: '' })
     const [showExUsersModal, setShowExUsersModal] = useState(false)
     const [viewingProfileId, setViewingProfileId] = useState<string | null>(null)
     const [permanentDeleteConfirm, setPermanentDeleteConfirm] = useState<{ isOpen: boolean, user: User | null }>({ isOpen: false, user: null })
     const [errorModal, setErrorModal] = useState<{ isOpen: boolean, title: string, message: string }>({ isOpen: false, title: '', message: '' })
-    const [realDeletedCount, setRealDeletedCount] = useState(0)
 
-    const [deletedUsersList, setDeletedUsersList] = useState<User[]>([])
     const [deletedPage, setDeletedPage] = useState(1)
-    const [deletedTotalPages, setDeletedTotalPages] = useState(0)
-    const [loadingDeleted, setLoadingDeleted] = useState(false)
-
     const [page, setPage] = useState(1)
-    const [total, setTotal] = useState(0)
-    const [totalPages, setTotalPages] = useState(0)
-    const [superAdminsTotal, setSuperAdminsTotal] = useState(0)
     const limit = 10
 
-    const fetchData = useCallback(async () => {
-        setLoading(true)
-        try {
-            const queryParams = new URLSearchParams()
-            queryParams.set('includeDeleted', 'false')
-            queryParams.set('page', page.toString())
-            queryParams.set('limit', limit.toString())
-            if (filters.companyId) queryParams.set('companyId', filters.companyId)
-            if (filters.search) queryParams.set('search', filters.search)
+    // F-25: was one fetchData() doing Promise.all([users, companies,
+    // super-admins]) behind a single loading flag, plus two more
+    // useEffect+fetch cycles for the ex-users modal and the deleted-user
+    // count badge. Split into independently-keyed SWR resources instead —
+    // each revalidates only on the inputs it actually depends on, and
+    // companies/super-admins (which don't depend on `page`) are no longer
+    // artificially tied to the users pagination request the way the old
+    // "only fetch super-admins on page === 1" special case needed.
+    const usersQuery = (() => {
+        const queryParams = new URLSearchParams()
+        queryParams.set('includeDeleted', 'false')
+        queryParams.set('page', page.toString())
+        queryParams.set('limit', limit.toString())
+        if (filters.companyId) queryParams.set('companyId', filters.companyId)
+        if (filters.search) queryParams.set('search', filters.search)
+        return `/api/users?${queryParams.toString()}`
+    })()
+    const { data: usersResult, isLoading: usersLoading, isValidating: usersValidating, mutate: mutateUsers } = useSWR(usersQuery, fetcher)
+    const users: User[] = usersResult?.data?.data || []
+    const total: number = usersResult?.data?.total || 0
+    const totalPages: number = usersResult?.data?.totalPages || 0
 
-            const [usersRes, companiesRes, superAdminsRes] = await Promise.all([
-                fetch(`/api/users?${queryParams.toString()}`),
-                fetch('/api/companies?limit=100'),
-                fetch(`/api/super-admins?search=${encodeURIComponent(filters.search)}`)
-            ])
+    const { data: companiesResult, isLoading: companiesLoading } = useSWR('/api/companies?limit=100', fetcher)
+    const companies: Company[] = companiesResult?.data?.data || companiesResult?.data || []
 
-            if (usersRes.ok) {
-                const result = await usersRes.json()
-                const data = result.data
-                setUsers(data.data || [])
-                setTotal(data.total || 0)
-                setTotalPages(data.totalPages || 0)
-            }
-            if (companiesRes.ok) {
-                const result = await companiesRes.json()
-                setCompanies(result.data?.data || result.data || [])
-            }
-            // Super Admins: Only fetch if we are on the first page
-            if (page === 1 && superAdminsRes.ok) {
-                const result = await superAdminsRes.json()
-                const data = result.data
-                setSuperAdminsList(data.data || [])
-                setSuperAdminsTotal(data.total || 0)
-            } else if (page > 1) {
-                setSuperAdminsList([])
-                // Keep superAdminsTotal to maintain the count badge
-            }
-        } catch (err) {
-            console.error('Failed to fetch data', err)
-        } finally {
-            setLoading(false)
-        }
-    }, [page, filters.companyId, filters.search, limit])
+    const superAdminsQuery = `/api/super-admins?search=${encodeURIComponent(filters.search)}`
+    const { data: superAdminsResult, isLoading: superAdminsLoading } = useSWR(superAdminsQuery, fetcher)
+    const superAdminsList: User[] = superAdminsResult?.data?.data || []
+    const superAdminsTotal: number = superAdminsResult?.data?.total || 0
 
-    useEffect(() => {
-        fetchData()
-    }, [fetchData])
+    const loading = usersLoading || usersValidating || companiesLoading || superAdminsLoading
 
     useEffect(() => {
         setTitle(t('all_users'))
@@ -117,53 +91,23 @@ export default function AllUsersPage() {
         setPage(1)
     }, [filters])
 
-    const fetchDeletedUsers = useCallback(async () => {
-        setLoadingDeleted(true)
-        try {
+    const deletedUsersQuery = showExUsersModal
+        ? (() => {
             const queryParams = new URLSearchParams()
             queryParams.set('status', 'DELETED')
             if (filters.companyId) queryParams.set('companyId', filters.companyId)
             queryParams.set('page', deletedPage.toString())
             queryParams.set('limit', '10')
+            return `/api/users?${queryParams.toString()}`
+        })()
+        : null
+    const { data: deletedUsersResult, isLoading: loadingDeleted, mutate: mutateDeletedUsers } = useSWR(deletedUsersQuery, fetcher)
+    const deletedUsersList: User[] = deletedUsersResult?.data?.data || []
+    const deletedTotalPages: number = deletedUsersResult?.data?.totalPages || 0
 
-            const res = await fetch(`/api/users?${queryParams.toString()}`)
-            if (res.ok) {
-                const result = await res.json()
-                const data = result.data
-                setDeletedUsersList(data.data || [])
-                setDeletedTotalPages(data.totalPages || 0)
-            }
-        } catch (err) {
-            console.error('Failed to fetch deleted users', err)
-        } finally {
-            setLoadingDeleted(false)
-        }
-    }, [deletedPage, filters.companyId])
-
-    useEffect(() => {
-        if (showExUsersModal) {
-            fetchDeletedUsers()
-        }
-    }, [showExUsersModal, fetchDeletedUsers])
-
-    useEffect(() => {
-        const fetchDeletedCount = async () => {
-            try {
-                const queryParams = new URLSearchParams()
-                queryParams.set('countOnly', 'deleted')
-                if (filters.companyId) queryParams.set('companyId', filters.companyId)
-
-                const res = await fetch(`/api/users?${queryParams.toString()}`)
-                if (res.ok) {
-                    const result = await res.json()
-                    setRealDeletedCount(result.data?.total || 0)
-                }
-            } catch (err) {
-                console.error('Failed to fetch deleted count', err)
-            }
-        }
-        fetchDeletedCount()
-    }, [users, filters.companyId]) // Re-fetch when users change or company filter changes
+    const deletedCountQuery = `/api/users?countOnly=deleted${filters.companyId ? `&companyId=${filters.companyId}` : ''}`
+    const { data: deletedCountResult, mutate: mutateDeletedCount } = useSWR(deletedCountQuery, fetcher)
+    const realDeletedCount: number = deletedCountResult?.data?.total || 0
 
     const superAdmins = superAdminsList
     const activeRegularUsers = users.filter((u: User) => u.status !== 'DELETED')
@@ -246,7 +190,15 @@ export default function AllUsersPage() {
                     title: locale === 'ar' ? 'نجاح' : 'Success',
                     message: locale === 'ar' ? 'تم حذف المستخدم نهائياً' : 'User deleted permanently'
                 })
-                fetchData()
+                mutateUsers()
+                mutateDeletedCount()
+                // F-25: the old fetchData() call only refreshed the main
+                // users/companies/super-admins dataset — the ex-users
+                // modal's own list wasn't revalidated, so a user
+                // permanently deleted from that modal stayed visible in
+                // it until the modal was closed and reopened. Fixed here
+                // for free since it's now just another mutate() call.
+                mutateDeletedUsers()
             } else {
                 const errorText = await res.text()
                 setErrorModal({

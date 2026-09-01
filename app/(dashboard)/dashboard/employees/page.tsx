@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
+import useSWR from 'swr'
 import Link from 'next/link'
 import { useSession } from 'next-auth/react'
 import EmployeeFilter from '@/components/EmployeeFilter'
@@ -11,6 +12,7 @@ import Pagination from '@/components/Pagination'
 import { useLanguage } from '@/context/LanguageContext'
 import { useHeader } from '@/context/HeaderContext'
 import LoadingSpinner from '@/components/LoadingSpinner'
+import { fetcher } from '@/lib/swr-fetcher'
 
 interface Employee {
     id: string
@@ -28,15 +30,11 @@ interface Employee {
 export default function EmployeesPage() {
     const { t, locale } = useLanguage()
     const { setTitle, setSubtitle } = useHeader()
-    const [employees, setEmployees] = useState<Employee[]>([])
-    const [loading, setLoading] = useState(true)
     const { data: session } = useSession()
     const userRole = session?.user?.role || ''
     const { selectedCompanyId } = useCompany()
 
     const [page, setPage] = useState(1)
-    const [totalPages, setTotalPages] = useState(0)
-    const [totalEmployees, setTotalEmployees] = useState(0)
     const limit = 10
 
     const [sortBy, setSortBy] = useState('name')
@@ -50,33 +48,28 @@ export default function EmployeesPage() {
     const [deletingUser, setDeletingUser] = useState<string | null>(null)
     const [, setTogglingStatus] = useState<string | null>(null)
 
-    const fetchEmployees = useCallback(async () => {
-        setLoading(true)
+    // F-25: was a useState + useCallback + useEffect fetch cycle. SWR keys
+    // on this query string, so any change to page/filters/company below
+    // automatically triggers a re-fetch — no manual dependency array to
+    // keep in sync.
+    const queryKey = (() => {
+        if (!session?.user) return null
         const queryParams = new URLSearchParams()
         if (selectedCompanyId) queryParams.set('companyId', selectedCompanyId)
         queryParams.set('page', page.toString())
         queryParams.set('limit', limit.toString())
-        queryParams.set('excludeRole', 'SUPER_ADMIN')
-        if (session?.user?.role === 'TEAM_LEADER') {
-            queryParams.set('excludeRole', 'ADMIN,SUPER_ADMIN')
-        }
-        if (session?.user?.id) queryParams.set('excludeUserId', (session.user as any).id)
+        queryParams.set('excludeRole', session.user.role === 'TEAM_LEADER' ? 'ADMIN,SUPER_ADMIN' : 'SUPER_ADMIN')
+        if ((session.user as any).id) queryParams.set('excludeUserId', (session.user as any).id)
         if (filters.search) queryParams.set('search', filters.search)
         if (filters.status) queryParams.set('status', filters.status)
+        return `/api/users?${queryParams.toString()}`
+    })()
 
-        try {
-            const res = await fetch(`/api/users?${queryParams.toString()}`, { cache: 'no-store' })
-            const result = await res.json()
-            const data = result.data
-            setEmployees(data.data)
-            setTotalPages(data.totalPages)
-            setTotalEmployees(data.total)
-        } catch (error) {
-            console.error('Fetch error:', error)
-        } finally {
-            setLoading(false)
-        }
-    }, [selectedCompanyId, page, limit, session?.user, filters.search, filters.status])
+    const { data: result, isLoading, isValidating, mutate } = useSWR(queryKey, fetcher)
+    const employees: Employee[] = result?.data?.data || []
+    const totalPages: number = result?.data?.totalPages || 0
+    const totalEmployees: number = result?.data?.total || 0
+    const loading = isLoading || isValidating
 
     const filteredEmployees = employees
 
@@ -102,12 +95,6 @@ export default function EmployeesPage() {
     })
 
     useEffect(() => {
-        if (session?.user) {
-            fetchEmployees()
-        }
-    }, [session, fetchEmployees, selectedCompanyId, page, filters.search, filters.status])
-
-    useEffect(() => {
         setTitle(t('employees'))
         setSubtitle(t('employees_subtitle' as any))
         return () => {
@@ -130,7 +117,7 @@ export default function EmployeesPage() {
             })
 
             if (res.ok) {
-                setEmployees(prev => prev.filter(emp => emp.id !== deleteConfirm.id))
+                mutate()
                 setDeleteConfirm(null)
             } else {
                 const data = await res.json()
@@ -153,11 +140,7 @@ export default function EmployeesPage() {
             })
 
             if (res.ok) {
-                setEmployees(prevEmployees =>
-                    prevEmployees.map(emp =>
-                        emp.id === id ? { ...emp, totalDifficultyPoints: 0 } : emp
-                    )
-                )
+                mutate()
                 setAlert({ type: 'success', message: t('points_reset_success') })
                 setTimeout(() => setAlert(null), 3000)
             } else {
@@ -184,9 +167,7 @@ export default function EmployeesPage() {
                 body: JSON.stringify({ id, status: newStatus })
             })
             if (res.ok) {
-                setEmployees(prev => prev.map(emp =>
-                    emp.id === id ? { ...emp, status: newStatus } : emp
-                ))
+                mutate()
             } else {
                 window.alert(t('error_generic'))
             }

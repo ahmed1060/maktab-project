@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
+import useSWR from 'swr'
 import { useSearchParams } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { useLanguage } from '@/context/LanguageContext'
@@ -12,6 +13,7 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recha
 import EmployeeFilter from '@/components/EmployeeFilter'
 import { useCompany } from '@/context/CompanyContext'
 import Pagination from '@/components/Pagination'
+import { fetcher } from '@/lib/swr-fetcher'
 
 interface DayOffRequest {
     id: string
@@ -39,8 +41,6 @@ export default function DayOffRequestsPage() {
     const isAdmin = ['ADMIN', 'SUPER_ADMIN'].includes(user?.role || '')
     const { selectedCompanyId: contextCompanyId } = useCompany()
 
-    const [requests, setRequests] = useState<DayOffRequest[]>([])
-    const [loading, setLoading] = useState(true)
     const [selectedRequest, setSelectedRequest] = useState<any | null>(null)
     const [isApprovalModalOpen, setIsApprovalModalOpen] = useState(false)
     const [isRejectModalOpen, setIsRejectModalOpen] = useState(false)
@@ -65,13 +65,7 @@ export default function DayOffRequestsPage() {
         search: ''
     })
 
-    // User Credit Info
-    const [userCredit, setUserCredit] = useState(0)
-    const [baseCredit, setBaseCredit] = useState(0)
-
     const [page, setPage] = useState(1)
-    const [total, setTotal] = useState(0)
-    const [totalPages, setTotalPages] = useState(0)
     const limit = 10
     const searchParams = useSearchParams()
     const highlightId = searchParams.get('highlight')
@@ -89,58 +83,37 @@ export default function DayOffRequestsPage() {
         }
     }, [highlightId])
 
-    const fetchRequests = useCallback(async () => {
-        setLoading(true)
-        try {
-            const endpoint = isAdmin ? '/api/admin/day-off-requests' : '/api/day-off-requests'
-            const queryParams = new URLSearchParams()
-            if (isAdmin && contextCompanyId) {
-                queryParams.set('companyId', contextCompanyId)
-            }
-            queryParams.set('page', page.toString())
-            queryParams.set('limit', limit.toString())
-
-            const res = await fetch(`${endpoint}?${queryParams.toString()}`)
-            if (res.ok) {
-                const result = await res.json()
-                const data = result.data
-                setRequests(data.data || data)
-                setTotal(data.total || (Array.isArray(data) ? data.length : 0))
-                setTotalPages(data.totalPages || 1)
-            }
-        } catch {
-            console.error('Failed to fetch requests')
-        } finally {
-            setLoading(false)
+    // F-25: was two useCallback+useEffect fetch cycles gated on
+    // status === 'authenticated'. SWR's key itself is the gate — null
+    // until authenticated, so no fetch happens before then, matching the
+    // original guard exactly.
+    const requestsQuery = (() => {
+        if (status !== 'authenticated') return null
+        const endpoint = isAdmin ? '/api/admin/day-off-requests' : '/api/day-off-requests'
+        const queryParams = new URLSearchParams()
+        if (isAdmin && contextCompanyId) {
+            queryParams.set('companyId', contextCompanyId)
         }
-    }, [isAdmin, contextCompanyId, page, limit])
+        queryParams.set('page', page.toString())
+        queryParams.set('limit', limit.toString())
+        return `${endpoint}?${queryParams.toString()}`
+    })()
+    const { data: requestsResult, isLoading: loading, mutate: fetchRequests } = useSWR(requestsQuery, fetcher)
+    const requests: DayOffRequest[] = requestsResult?.data?.data || requestsResult?.data || []
+    const total: number = requestsResult?.data?.total || (Array.isArray(requestsResult?.data) ? requestsResult.data.length : 0)
+    const totalPages: number = requestsResult?.data?.totalPages || 1
 
-    const fetchUserCredit = useCallback(async () => {
-        if (!user?.id) return
-        try {
-            const res = await fetch(`/api/users?id=${user.id}`)
-            if (res.ok) {
-                const result = await res.json()
-                const data = result.data
-                const foundUser = Array.isArray(data.data) ? data.data[0] : (data?.id ? data : null)
-                if (foundUser) {
-                    setUserCredit(foundUser.dayOffCredit)
-                    setBaseCredit(foundUser.baseDayOffCredit !== undefined && foundUser.baseDayOffCredit !== null ? foundUser.baseDayOffCredit : foundUser.dayOffCredit)
-                }
-            }
-        } catch {
-            console.error('Failed to fetch user credit')
-        }
-    }, [user?.id])
-
-    useEffect(() => {
-        if (status === 'authenticated') {
-            fetchRequests()
-            if (!isAdmin && user?.id) {
-                fetchUserCredit()
-            }
-        }
-    }, [status, fetchRequests, fetchUserCredit, isAdmin, user?.id])
+    // User Credit Info — only ever needed for non-admins viewing their own
+    // request history.
+    const userCreditQuery = status === 'authenticated' && !isAdmin && user?.id ? `/api/users?id=${user.id}` : null
+    const { data: userCreditResult } = useSWR(userCreditQuery, fetcher)
+    const foundUser = (() => {
+        const data = userCreditResult?.data
+        if (!data) return null
+        return Array.isArray(data.data) ? data.data[0] : (data?.id ? data : null)
+    })()
+    const userCredit: number = foundUser?.dayOffCredit || 0
+    const baseCredit: number = (foundUser?.baseDayOffCredit !== undefined && foundUser?.baseDayOffCredit !== null) ? foundUser.baseDayOffCredit : (foundUser?.dayOffCredit || 0)
 
     useEffect(() => {
         setTitle(t('day_off_requests' as any))
@@ -151,7 +124,11 @@ export default function DayOffRequestsPage() {
         }
     }, [setTitle, setSubtitle, t])
 
-    // Scroll to highlighted request
+    // Scroll to highlighted request. Depends on requests.length rather than
+    // `requests` itself — the derived array below gets a new reference on
+    // every render (a fresh `[]` fallback whenever there's no SWR data
+    // yet), which would otherwise re-fire this effect every render instead
+    // of only when the highlighted request set actually changes.
     useEffect(() => {
         if (highlightId && !loading && requests.length > 0) {
             const element = document.getElementById(`request-${highlightId}`);
@@ -159,7 +136,7 @@ export default function DayOffRequestsPage() {
                 element.scrollIntoView({ behavior: 'smooth', block: 'center' });
             }
         }
-    }, [highlightId, loading, requests]);
+    }, [highlightId, loading, requests.length]);
 
     // SECURE: Automatically switch deduction type if credit is insufficient
     useEffect(() => {

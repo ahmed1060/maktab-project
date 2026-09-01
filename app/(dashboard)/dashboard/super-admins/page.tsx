@@ -1,11 +1,13 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
+import useSWR from 'swr'
 import { useSession } from 'next-auth/react'
 import AccessDenied from '@/components/AccessDenied'
 import { useLanguage } from '@/context/LanguageContext'
 import { useHeader } from '@/context/HeaderContext'
 import Pagination from '@/components/Pagination'
+import { fetcher } from '@/lib/swr-fetcher'
 
 type Admin = {
     id: string
@@ -20,8 +22,6 @@ type Admin = {
 export default function SuperAdminsPage() {
     const { t, locale } = useLanguage()
     const { setTitle, setSubtitle } = useHeader()
-    const [admins, setAdmins] = useState<Admin[]>([])
-    const [loading, setLoading] = useState(true)
     const [showCreateModal, setShowCreateModal] = useState(false)
     const [viewingAdmin, setViewingAdmin] = useState<Admin | null>(null)
     const [editingAdmin, setEditingAdmin] = useState<Admin | null>(null)
@@ -49,31 +49,12 @@ export default function SuperAdminsPage() {
     const [error, setError] = useState('')
 
     const [page, setPage] = useState(1)
-    const [totalPages, setTotalPages] = useState(0)
     const limit = 10
 
-    const fetchAdmins = useCallback(async () => {
-        setLoading(true)
-        try {
-            const res = await fetch(`/api/super-admins?page=${page}&limit=${limit}`)
-            if (res.ok) {
-                const result = await res.json()
-                const data = result.data
-                setAdmins(data.data || data)
-                setTotalPages(data.totalPages || result.totalPages || 0)
-            }
-        } catch (err) {
-            console.error('Failed to fetch admins', err)
-        } finally {
-            setLoading(false)
-        }
-    }, [page, limit])
-
-    useEffect(() => {
-        if (userRole === 'SUPER_ADMIN') {
-            fetchAdmins()
-        }
-    }, [userRole, fetchAdmins])
+    const adminsQuery = userRole === 'SUPER_ADMIN' ? `/api/super-admins?page=${page}&limit=${limit}` : null
+    const { data: result, isLoading: loading, mutate: fetchAdmins } = useSWR(adminsQuery, fetcher)
+    const admins: Admin[] = result?.data?.data || result?.data || []
+    const totalPages: number = result?.data?.totalPages || result?.totalPages || 0
 
     useEffect(() => {
         setTitle(t('super_admins'))

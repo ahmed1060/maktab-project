@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
+import useSWR from 'swr'
 import { useSession } from 'next-auth/react'
 import Link from 'next/link'
 import { createPortal } from 'react-dom'
@@ -13,6 +14,7 @@ import { useToast } from '@/context/ToastContext'
 import { useCompany } from '@/context/CompanyContext'
 import Pagination from '@/components/Pagination'
 import SafeDate from '@/components/SafeDate'
+import { fetcher } from '@/lib/swr-fetcher'
 
 
 interface Client {
@@ -39,9 +41,7 @@ export default function ClientsPage() {
     const { data: session } = useSession()
     const { t, locale } = useLanguage()
     const { setTitle, setSubtitle } = useHeader()
-    const [filteredClients, setFilteredClients] = useState<Client[]>([])
     const [searchQuery, setSearchQuery] = useState('')
-    const [isLoading, setIsLoading] = useState(true)
     const [isModalOpen, setIsModalOpen] = useState(false)
     const [newClientName, setNewClientName] = useState('')
     const [isSubmitting, setIsSubmitting] = useState(false)
@@ -75,53 +75,30 @@ export default function ClientsPage() {
         }
     }, [setTitle, setSubtitle, t])
 
-    const [companies, setCompanies] = useState<{ id: string, name: string }[]>([])
     const [selectedCompanyId, setSelectedCompanyId] = useState('')
-    const [showCompanySelect, setShowCompanySelect] = useState(false)
 
-    const checkSuperAdmin = useCallback(async () => {
-        if (session?.user?.role !== 'SUPER_ADMIN') return
-        try {
-            const res = await fetch('/api/companies?limit=1000')
-            if (res.ok) {
-                const result = await res.json()
-                const companiesData = result.data?.data || result.data || result // Handle both paginated and flat responses
-                setCompanies(Array.isArray(companiesData) ? companiesData : [])
-                setShowCompanySelect(true)
-            }
-        } catch (err) {
-            console.error('Failed to check Super Admin status', err)
-        }
-    }, [session])
+    // F-25: only Super Admins ever needed this list (for the "assign to
+    // company" dropdown), so the key is null — no fetch at all — for
+    // everyone else, replacing the old role-gated no-op inside
+    // checkSuperAdmin().
+    const companiesQuery = session?.user?.role === 'SUPER_ADMIN' ? '/api/companies?limit=1000' : null
+    const { data: companiesResult } = useSWR(companiesQuery, fetcher)
+    const companies: { id: string, name: string }[] = (() => {
+        const companiesData = companiesResult?.data?.data || companiesResult?.data || companiesResult
+        return Array.isArray(companiesData) ? companiesData : []
+    })()
+    const showCompanySelect = !!companiesResult
 
     const [page, setPage] = useState(1)
-    const [totalPages, setTotalPages] = useState(0)
     const limit = 10
 
-    const fetchClients = useCallback(async () => {
-        setIsLoading(true)
-        try {
-            const baseUrl = contextCompanyId ? `/api/clients?companyId=${contextCompanyId}` : '/api/clients'
-            const url = `${baseUrl}${baseUrl.includes('?') ? '&' : '?'}page=${page}&limit=${limit}`
-
-            const res = await fetch(url)
-            if (res.ok) {
-                const result = await res.json()
-                const data = result.data
-                setFilteredClients(data.data || data)
-                setTotalPages(data.totalPages || result.totalPages || 0)
-            }
-        } catch (error) {
-            console.error('Failed to fetch clients', error)
-        } finally {
-            setIsLoading(false)
-        }
-    }, [contextCompanyId, page, limit])
-
-    useEffect(() => {
-        fetchClients()
-        checkSuperAdmin()
-    }, [fetchClients, checkSuperAdmin])
+    const clientsQuery = (() => {
+        const baseUrl = contextCompanyId ? `/api/clients?companyId=${contextCompanyId}` : '/api/clients'
+        return `${baseUrl}${baseUrl.includes('?') ? '&' : '?'}page=${page}&limit=${limit}`
+    })()
+    const { data: clientsResult, isLoading, mutate: mutateClients } = useSWR(clientsQuery, fetcher)
+    const filteredClients: Client[] = clientsResult?.data?.data || clientsResult?.data || []
+    const totalPages: number = clientsResult?.data?.totalPages || clientsResult?.totalPages || 0
 
     const handleCreateClient = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -143,7 +120,7 @@ export default function ClientsPage() {
             if (res.ok) {
                 setNewClientName('')
                 setIsModalOpen(false)
-                fetchClients()
+                mutateClients()
             } else {
                 const err = await res.json()
                 window.alert(`${t('failed_create_client')}: ${err.error}\n${err.details || ''}`)
@@ -172,7 +149,7 @@ export default function ClientsPage() {
                 setIsEditClientModalOpen(false)
                 setEditingClientId(null)
                 setEditClientName('')
-                fetchClients()
+                mutateClients()
                 showToast(t('client_updated_success' as any) || 'Client updated successfully', 'success')
             } else {
                 const err = await res.json()
@@ -501,7 +478,7 @@ export default function ClientsPage() {
                         try {
                             const res = await fetch(`/api/clients?id=${deleteConfirm.client.id}`, { method: 'DELETE' })
                             if (res.ok) {
-                                fetchClients()
+                                mutateClients()
                                 setDeleteConfirm({ isOpen: false, client: null })
                             } else {
                                 const err = await res.json()

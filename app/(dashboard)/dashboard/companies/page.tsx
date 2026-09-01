@@ -1,7 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
+import useSWR from 'swr'
 import { useRouter } from 'next/navigation'
 import { useCompany } from '@/context/CompanyContext'
 import { useSession } from 'next-auth/react'
@@ -13,6 +14,7 @@ import { useLanguage } from '@/context/LanguageContext'
 import Pagination from '@/components/Pagination'
 import LoadingSpinner from '@/components/LoadingSpinner'
 import { useHeader } from '@/context/HeaderContext'
+import { fetcher } from '@/lib/swr-fetcher'
 
 type Company = {
     id: string
@@ -23,8 +25,6 @@ export default function CompaniesPage() {
     const { t, locale } = useLanguage()
     const { setTitle, setSubtitle } = useHeader()
     const router = useRouter()
-    const [companies, setCompanies] = useState<Company[]>([])
-    const [loading, setLoading] = useState(true)
     const [showModal, setShowModal] = useState(false)
     const [editingCompany, setEditingCompany] = useState<Company | null>(null)
     const [formData, setFormData] = useState({ name: '' })
@@ -45,29 +45,11 @@ export default function CompaniesPage() {
     const [banConfirm, setBanConfirm] = useState<{ isOpen: boolean, company: Company | null, action: 'ban' | 'unban' | null }>({ isOpen: false, company: null, action: null })
 
     const [page, setPage] = useState(1)
-    const [totalPages, setTotalPages] = useState(0)
     const limit = 10
 
-    const fetchCompanies = useCallback(async () => {
-        setLoading(true)
-        try {
-            const res = await fetch(`/api/companies?page=${page}&limit=${limit}`)
-            if (res.ok) {
-                const result = await res.json()
-                const data = result.data
-                setCompanies(data.data || data)
-                setTotalPages(data.totalPages || result.totalPages || 0)
-            }
-        } catch (err) {
-            console.error('Failed to fetch companies', err)
-        } finally {
-            setLoading(false)
-        }
-    }, [page, limit])
-
-    useEffect(() => {
-        fetchCompanies()
-    }, [fetchCompanies])
+    const { data: result, isLoading: loading, mutate: fetchCompanies } = useSWR(`/api/companies?page=${page}&limit=${limit}`, fetcher)
+    const companies: Company[] = result?.data?.data || result?.data || []
+    const totalPages: number = result?.data?.totalPages || result?.totalPages || 0
 
     useEffect(() => {
         setTitle(t('companies'))
