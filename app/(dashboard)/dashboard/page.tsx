@@ -159,8 +159,8 @@ export default async function DashboardPage({ searchParams }: { searchParams: { 
                     <div style={{ display: 'grid', gap: '1.5rem' }}>
                         <StatMetric label={t('task_completion')} value={`${completedTasks}/${totalTasks}`} icon="✅" color="#10b981" percentage={completionRate} subLabel={t('completion_rate')} />
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                            <StatMetric label={t('team_bonuses')} value={formatDays(salaryStats._sum.bonusDays || 0)} icon="⭐" color="#f59e0b" subLabel={t('total_this_month')} />
-                            <StatMetric label={t('team_deductions')} value={formatDays(salaryStats._sum.deductions || 0)} icon="📉" color="#ef4444" subLabel={t('total_this_month')} />
+                            <StatMetric label={t('team_bonuses')} value={formatDays(Number(salaryStats._sum.bonusDays || 0))} icon="⭐" color="#f59e0b" subLabel={t('total_this_month')} />
+                            <StatMetric label={t('team_deductions')} value={formatDays(Number(salaryStats._sum.deductions || 0))} icon="📉" color="#ef4444" subLabel={t('total_this_month')} />
                         </div>
                     </div>
                 </div>
@@ -283,8 +283,8 @@ export default async function DashboardPage({ searchParams }: { searchParams: { 
                     <div style={{ display: 'grid', gap: '1.5rem' }}>
                         <StatMetric label={t('overall_progress')} value={`${completedTasks}/${totalTasks}`} icon="🎯" color="#6366f1" percentage={completionRate} subLabel={t('completion_rate')} />
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                            <StatMetric label={t('bonus')} value={formatDays(salaryRecord?.bonusDays || 0)} icon="🎁" color="#f59e0b" subLabel={t('extra_earnings')} />
-                            <StatMetric label={t('team_deductions')} value={formatDays(salaryRecord?.deductions || 0)} icon="📉" color="#ef4444" subLabel={t('total_lost_days')} />
+                            <StatMetric label={t('bonus')} value={formatDays(Number(salaryRecord?.bonusDays || 0))} icon="🎁" color="#f59e0b" subLabel={t('extra_earnings')} />
+                            <StatMetric label={t('team_deductions')} value={formatDays(Number(salaryRecord?.deductions || 0))} icon="📉" color="#ef4444" subLabel={t('total_lost_days')} />
                         </div>
                     </div>
                 </div>

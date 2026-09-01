@@ -157,6 +157,9 @@ export class UserService {
                 where: { id }, data: updateData,
                 select: { id: true, firstName: true, lastName: true, email: true, role: true, gender: true, salary: true, companyId: true, avatar: true, dayOffCredit: true, baseDayOffCredit: true, username: true }
             })
+            // salary is a Prisma.Decimal (F-07); Decimal.toJSON() returns a
+            // string, which would silently change this response field's type.
+            const serializedUpdated = { ...updated, salary: Number(updated.salary) }
 
             // Salary record sync
             if (updateData.salary !== undefined) {
@@ -168,11 +171,19 @@ export class UserService {
 
 
             // Audit Log (Enhanced Diffs)
+            // normalize() handles `salary`: it's a Prisma.Decimal on the fetched
+            // regularUser but a plain number on updateData, so comparing them
+            // with !== directly always differs even when the value is unchanged
+            // (different types), which would log a spurious "salary changed" on
+            // every edit that merely touches an unrelated field.
+            const normalize = (v: any) => (v && typeof v === 'object' && typeof v.toNumber === 'function') ? v.toNumber() : v
             const diffs: any = {}
             for (const key in updateData) {
                 if (key === 'password' || key === 'mustChangePassword') continue
-                if (updateData[key] !== regularUser[key as keyof typeof regularUser]) {
-                    diffs[key] = { old: regularUser[key as keyof typeof regularUser], new: updateData[key] }
+                const oldVal = normalize(regularUser[key as keyof typeof regularUser])
+                const newVal = normalize(updateData[key])
+                if (newVal !== oldVal) {
+                    diffs[key] = { old: oldVal, new: newVal }
                 }
             }
 
@@ -185,7 +196,7 @@ export class UserService {
                 })
             }
 
-            return updated
+            return serializedUpdated
         }
 
         if (superAdminUser) {

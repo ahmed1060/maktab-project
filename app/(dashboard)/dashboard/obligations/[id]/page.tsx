@@ -9,7 +9,15 @@ export default async function ObligationDetailPage({ params }: { params: { id: s
 
     const obligation = await prisma.obligation.findUnique({
         where: { id: params.id },
-        include: { assignees: true }
+        include: {
+            // Select, not `assignees: true` — the latter fetches every User
+            // column (password hash, salary) into the Server->Client RSC
+            // payload. Salary is now a Prisma.Decimal (F-07), which also
+            // can't be passed to a Client Component at all without this.
+            assignees: {
+                select: { id: true, firstName: true, lastName: true, status: true }
+            }
+        }
     })
 
     if (!obligation) return <div>Obligation not found</div>

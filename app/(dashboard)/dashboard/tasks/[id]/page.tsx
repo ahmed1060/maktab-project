@@ -7,7 +7,15 @@ export default async function TaskDetailPage({ params }: { params: { id: string 
     const session = await getServerSession(authOptions)
     const task = await prisma.task.findUnique({
         where: { id: params.id },
-        include: { assignees: true }
+        include: {
+            // Select, not `assignees: true` — the latter fetches every User
+            // column (password hash, salary, plainPasswordEnc historically)
+            // straight into the Server->Client RSC payload. Only pick what
+            // this page's client component actually renders.
+            assignees: {
+                select: { id: true, firstName: true, lastName: true, status: true, role: true }
+            }
+        }
     })
 
     if (!task) return <div>Task not found</div>
@@ -39,8 +47,12 @@ export default async function TaskDetailPage({ params }: { params: { id: string 
 
     const isRestricted = userRole === 'EMPLOYEE' && !isAssigned
 
+    // totalCost is a Prisma.Decimal (F-07) — Server Components can only pass
+    // plain serializable values to Client Components.
+    const serializedTask = { ...task, totalCost: Number(task.totalCost) }
+
     return <TaskDetailClient
-        task={task}
+        task={serializedTask}
         userRole={userRole}
         userId={userId}
         creatorName={creatorName}

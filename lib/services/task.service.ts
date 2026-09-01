@@ -358,7 +358,7 @@ export class TaskService {
             }
 
             let newStatus = ['APPROVED', 'REJECTED', 'COMPLETED'].includes(status) ? status : 'REJECTED'
-            if (newStatus === 'APPROVED' && oldTask.totalCost === 0) newStatus = 'COMPLETED'
+            if (newStatus === 'APPROVED' && oldTask.totalCost.isZero()) newStatus = 'COMPLETED'
 
             const newDifficulty = (typeof difficulty === 'number') ? difficulty : oldTask.difficulty
             const hasPoints = (s: string) => ['APPROVED', 'COMPLETED'].includes(s)

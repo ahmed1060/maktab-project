@@ -20,7 +20,10 @@ export const POST = withStandardHandler(async (req, session, json, { params }) =
     }
 
     try {
-        const adjustment = await SalaryService.addAdjustment(userId, 'BONUS', amount, reason)
+        // Was passing `reason` where `session` belongs — addAdjustment's real
+        // signature is (userId, type, amount, session, reason). session.user.role
+        // would throw on every call (a pre-existing bug, unrelated to F-07).
+        const adjustment = await SalaryService.addAdjustment(userId, 'BONUS', amount, session, reason)
         return ApiResponse.success({ id: userId, adjustmentId: adjustment.id })
     } catch (error: any) {
         console.error("Error adding bonus:", error)

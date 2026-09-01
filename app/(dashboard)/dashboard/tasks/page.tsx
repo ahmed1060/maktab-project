@@ -85,9 +85,16 @@ export default async function TasksPage({ searchParams }: { searchParams: { comp
         (prisma.task as any).count({ where: whereClause })
     ])
 
+    // totalCost is a Prisma.Decimal (F-07) — Server Components can only pass
+    // plain serializable values to Client Components.
+    const serializedTasks = tasks.map((task: any) => ({
+        ...task,
+        totalCost: Number(task.totalCost)
+    }))
+
     return (
         <TasksClient
-            tasks={tasks}
+            tasks={serializedTasks}
             total={total}
             page={page}
             totalPages={Math.ceil(total / limit)}

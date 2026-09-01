@@ -1,11 +1,25 @@
 import { prisma } from "@/lib/prisma"
+import { Prisma } from "@prisma/client"
+
+// Decimal.toJSON() returns a *string*, so a SalaryRecord/SalaryAdjustment
+// passed straight into ApiResponse.success(...) would silently change these
+// fields from numbers to strings on the wire — breaking any frontend code
+// doing arithmetic or .toFixed() on them. Every method that returns one of
+// these to a route converts through these first.
+function serializeSalaryRecord<T extends { deductions: Prisma.Decimal; bonusDays: Prisma.Decimal; baseSalary: Prisma.Decimal }>(record: T) {
+    return { ...record, deductions: Number(record.deductions), bonusDays: Number(record.bonusDays), baseSalary: Number(record.baseSalary) }
+}
+
+function serializeSalaryAdjustment<T extends { amount: Prisma.Decimal }>(adjustment: T) {
+    return { ...adjustment, amount: Number(adjustment.amount) }
+}
 
 export class SalaryService {
     /**
      * Internal helper to ensure a salary record exists for a specific month/year.
      * Uses upsert to be safe during concurrent access.
      */
-    static async ensureRecordExists(userId: string, month: number, year: number, baseSalary: number, tx?: any) {
+    static async ensureRecordExists(userId: string, month: number, year: number, baseSalary: number | Prisma.Decimal, tx?: any) {
         const prismaClient = tx || prisma
         const daysInMonth = new Date(year, month, 0).getDate()
 
@@ -49,7 +63,19 @@ export class SalaryService {
             let iterYear = latestRecord.year
             let iterMonth = latestRecord.month
 
-            const recordsToCreate: any[] = []
+            // Typed (not any[]) on purpose: a record here used to union with
+            // existingRecords into an untyped `any`, which silently hid a real
+            // Decimal-arithmetic bug below (see netDays) from the compiler.
+            type PendingSalaryRecord = {
+                userId: string
+                month: number
+                year: number
+                totalDays: number
+                deductions: number
+                bonusDays: number
+                baseSalary: number | Prisma.Decimal
+            }
+            const recordsToCreate: PendingSalaryRecord[] = []
 
             // Sequential gap filling logic
             while (true) {
@@ -75,7 +101,14 @@ export class SalaryService {
                     recordsToCreate.find(r => r.month === prevM && r.year === prevY)
 
                 if (prevRecord) {
-                    const netDays = prevRecord.totalDays - prevRecord.deductions + prevRecord.bonusDays
+                    // deductions/bonusDays are Prisma.Decimal now (F-07), so Number()
+                    // is required here: `-`/`+` on a Decimal object coerces it via
+                    // .valueOf() (which decimal.js defines to return a *string*,
+                    // deliberately, to stop exactly this kind of silent bug), which
+                    // would make this string concatenation instead of subtraction.
+                    // The old `recordsToCreate: any[]` typing would have hidden that
+                    // from the compiler entirely — typed as PendingSalaryRecord[] above.
+                    const netDays = prevRecord.totalDays - Number(prevRecord.deductions) + Number(prevRecord.bonusDays)
                     if (netDays < 0) carryOverDeduction = Math.abs(netDays)
                 }
 
@@ -94,10 +127,11 @@ export class SalaryService {
             }
         }
 
-        return await prisma.salaryRecord.findMany({
+        const records = await prisma.salaryRecord.findMany({
             where: { userId },
             orderBy: [{ year: 'desc' }, { month: 'desc' }]
         })
+        return records.map(serializeSalaryRecord)
     }
 
     static async addAdjustment(userId: string, type: 'BONUS' | 'DEDUCTION', amount: number, session: any, reason?: string) {
@@ -155,7 +189,7 @@ export class SalaryService {
                 tx
             )
 
-            return adjustment
+            return serializeSalaryAdjustment(adjustment)
         })
     }
 
@@ -201,20 +235,23 @@ export class SalaryService {
                 details: {
                     adjId,
                     type: adjustment.type,
-                    amount: adjustment.amount,
+                    // Number(), not the raw Decimal — Decimal.toJSON() returns a
+                    // string, which would silently change this audit field's type.
+                    amount: Number(adjustment.amount),
                     originalReason: adjustment.reason,
                     targetUserId: userId
                 }
             })
 
-            return updatedAdj
+            return serializeSalaryAdjustment(updatedAdj)
         })
     }
 
     static async getAdjustments(userId: string) {
-        return await prisma.salaryAdjustment.findMany({
+        const adjustments = await prisma.salaryAdjustment.findMany({
             where: { userId },
             orderBy: { createdAt: 'desc' }
         })
+        return adjustments.map(serializeSalaryAdjustment)
     }
 }

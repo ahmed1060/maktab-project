@@ -1,6 +1,13 @@
 import { prisma } from "@/lib/prisma"
+import { Prisma } from "@prisma/client"
 import { VerificationService } from "./verification.service"
 import { CreateCompanyInput, UpdateCompanyInput } from "../validations/company.schema"
+
+// cost is a Prisma.Decimal (F-07); Decimal.toJSON() returns a string, which
+// would silently change this response field's type on the wire.
+function serializeCompanyPayment<T extends { cost: Prisma.Decimal }>(payment: T) {
+    return { ...payment, cost: Number(payment.cost) }
+}
 
 export class CompanyService {
     static async create(input: CreateCompanyInput, session: any) {
@@ -92,11 +99,12 @@ export class CompanyService {
      * Fetch all payments for a company.
      */
     static async getPayments(companyId: string) {
-        return await prisma.companyPayment.findMany({
+        const payments = await prisma.companyPayment.findMany({
             where: { companyId },
             orderBy: { createdAt: 'desc' },
             include: { company: { select: { name: true } } }
         })
+        return payments.map(serializeCompanyPayment)
     }
 
     /**
@@ -119,7 +127,7 @@ export class CompanyService {
             details: { companyId, cost, subscriptionType }
         })
 
-        return payment
+        return serializeCompanyPayment(payment)
     }
 
     /**
@@ -154,10 +162,10 @@ export class CompanyService {
         const { AuditLogService } = await import("./audit-log.service")
         await AuditLogService.log('CONFIRM_COMPANY_PAYMENT', 'COMPANY_PAYMENT', paymentId, {
             superAdminId: session.user.id,
-            details: { companyId: payment.companyId, cost: payment.cost, endDate }
+            details: { companyId: payment.companyId, cost: Number(payment.cost), endDate }
         })
 
-        return updated
+        return serializeCompanyPayment(updated)
     }
 
     /**
@@ -174,10 +182,10 @@ export class CompanyService {
         const { AuditLogService } = await import("./audit-log.service")
         await AuditLogService.log('DELETE_COMPANY_PAYMENT', 'COMPANY_PAYMENT', paymentId, {
             superAdminId: session.user.id,
-            details: { companyId: payment.companyId, cost: payment.cost }
+            details: { companyId: payment.companyId, cost: Number(payment.cost) }
         })
 
-        return deleted
+        return serializeCompanyPayment(deleted)
     }
 
     /**

@@ -52,7 +52,12 @@ model User {
   status                     String                  @default("OFFLINE")
   lastActivity               DateTime                @default(now())
   totalDifficultyPoints      Int                     @default(0)
-  salary                     Float                   @default(0)
+  // F-07: Decimal, not Float. Float is IEEE-754 double precision; repeated
+  // arithmetic on it drifts (0.1 + 0.2 !== 0.3 in floating point), which is
+  // unacceptable for a value that gets paid out. Applies to every money/
+  // payroll-day field below and in Task, SalaryRecord, SalaryAdjustment,
+  // and CompanyPayment.
+  salary                     Decimal                 @default(0) @db.Decimal(12, 2)
   language                   String                  @default("en")
   dayOffCredit               Float                   @default(0)
   baseDayOffCredit           Float                   @default(0)
@@ -96,7 +101,7 @@ model Task {
   status              String
   deadline            DateTime
   difficulty          Int      @default(0)
-  totalCost           Float    @default(0)
+  totalCost           Decimal  @default(0) @db.Decimal(12, 2)
   createdBy           String?
   attachments         String?
   comments            String?
@@ -182,9 +187,9 @@ model SalaryRecord {
   month      Int
   year       Int
   totalDays  Int
-  deductions Float    @default(0)
-  bonusDays  Float    @default(0)
-  baseSalary Float    @default(0)
+  deductions Decimal  @default(0) @db.Decimal(12, 2)
+  bonusDays  Decimal  @default(0) @db.Decimal(12, 2)
+  baseSalary Decimal  @default(0) @db.Decimal(12, 2)
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
   user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -270,7 +275,7 @@ model ProfileUpdateRequest {
 model CompanyPayment {
   id                     String    @id @default(uuid())
   companyId              String
-  cost                   Float
+  cost                   Decimal   @db.Decimal(12, 2)
   subscriptionType       String
   status                 String    @default("UNPAID")
   paidAt                 DateTime?
@@ -309,7 +314,7 @@ model SalaryAdjustment {
   id        String   @id @default(uuid())
   userId    String
   type      String
-  amount    Float
+  amount    Decimal  @db.Decimal(12, 2)
   reason    String?
   status    String   @default("ACTIVE")
   createdAt DateTime @default(now())

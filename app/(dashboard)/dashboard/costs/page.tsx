@@ -128,9 +128,17 @@ export default async function CostsPage({
 
     const totalPages = Math.ceil(total / limit)
 
+    // totalCost is a Prisma.Decimal (F-07) — Server Components can only pass
+    // plain serializable values to Client Components, so this has to become
+    // a plain number here rather than downstream in CostsClient.
+    const serializedTasks = tasksWithCosts.map((task: any) => ({
+        ...task,
+        totalCost: Number(task.totalCost)
+    }))
+
     return (
         <CostsClient
-            tasksWithCosts={tasksWithCosts}
+            tasksWithCosts={serializedTasks}
             userRole={userRole}
             total={total}
             page={page}

@@ -30,7 +30,9 @@ export const GET = withStandardHandler(async (req, session) => {
             const canViewSalary = ['ADMIN', 'SUPER_ADMIN'].includes(userRole || '') || session.user.id === userId
             return ApiResponse.success({
                 ...user,
-                salary: canViewSalary ? user.salary : undefined
+                // Number(), not the raw Decimal — Decimal.toJSON() returns a
+                // string, which would silently change this response field's type.
+                salary: canViewSalary ? Number(user.salary) : undefined
             })
         }
 
