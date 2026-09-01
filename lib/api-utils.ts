@@ -17,74 +17,92 @@ type HandlerOptions = {
     }
 }
 
-// Simple in-memory rate limiter
-export class RateLimiter {
-    private static limits = new Map<string, { count: number; resetAt: number }>()
+/**
+ * F-10: extracts the real client IP rather than trusting the raw
+ * x-forwarded-for header, which is a comma-separated list a client can
+ * prepend fake entries to.
+ *
+ * x-vercel-forwarded-for is Vercel's own header carrying just the
+ * connecting client's address — preferred when present. Otherwise, take
+ * only the first hop of x-forwarded-for (the entry Vercel's edge itself
+ * adds for the true client, before any upstream proxy) rather than the
+ * whole header.
+ */
+export function getClientIp(headers: { get(name: string): string | null }): string {
+    const vercelIp = headers.get('x-vercel-forwarded-for')
+    if (vercelIp) return vercelIp.split(',')[0].trim()
 
+    const forwardedFor = headers.get('x-forwarded-for')
+    if (forwardedFor) return forwardedFor.split(',')[0].trim()
+
+    return 'unknown'
+}
+
+/**
+ * F-10: database-only rate limiter — no per-lambda memory cache.
+ *
+ * The old version checked an in-memory Map first and only touched the
+ * database when that cache missed or expired. On Vercel that cache is
+ * per-lambda-instance, not shared, so N warm lambdas each independently
+ * allowed up to `limit` requests before any of them ever consulted the
+ * database that's the only thing they actually share — a 5-attempt login
+ * limit became effectively unbounded under concurrency. Every call here
+ * hits the database now.
+ *
+ * The increment-then-check order also matters for the same reason: within
+ * an active window, this does one atomic UPDATE ... SET count = count + 1
+ * and only then checks whether the returned count exceeds the limit,
+ * rather than reading the count, deciding, and writing separately (which
+ * would let two simultaneous requests both read the same "count: 4" and
+ * both decide they're under a limit of 5, letting 6 through). Postgres
+ * serializes concurrent UPDATEs to the same row, so the increment itself
+ * can't lose a count the way a read-decide-write sequence can.
+ */
+export class RateLimiter {
     static async getLimitData(key: string, limit: number, windowMs: number): Promise<{ limited: boolean; resetAt: number }> {
         const now = Date.now()
 
-        // 1. Memory Check (Fastest)
-        const entry = this.limits.get(key)
-        if (entry && now <= entry.resetAt) {
-            if (entry.count >= limit) return { limited: true, resetAt: entry.resetAt }
-            entry.count++
-            return { limited: false, resetAt: entry.resetAt }
-        }
-
-        // 2. Database Sync (Fallback for Serverless/Distributed)
-        // If we are in Vercel/Production, we use the DB to synchronize across instances
         try {
-            const dbLimit = await (prisma as any).rateLimit.findUnique({ where: { key } })
+            const existing = await prisma.rateLimit.findUnique({ where: { key } })
 
-            if (!dbLimit || now > dbLimit.resetAt.getTime()) {
+            if (!existing || now > existing.resetAt.getTime()) {
+                // New window. This create-or-reset step isn't perfectly atomic
+                // against a simultaneous first request for a brand-new key —
+                // the worst case there is two windows starting back to back,
+                // not the count race the increment path below closes.
                 const resetAt = new Date(now + windowMs)
-                await (prisma as any).rateLimit.upsert({
+                const record = await prisma.rateLimit.upsert({
                     where: { key },
                     update: { count: 1, resetAt },
                     create: { key, count: 1, resetAt }
                 })
-                this.limits.set(key, { count: 1, resetAt: resetAt.getTime() })
-                return { limited: false, resetAt: resetAt.getTime() }
+                return { limited: record.count > limit, resetAt: resetAt.getTime() }
             }
 
-            if (dbLimit.count >= limit) {
-                return { limited: true, resetAt: dbLimit.resetAt.getTime() }
-            }
-
-            const updated = await (prisma as any).rateLimit.update({
+            const updated = await prisma.rateLimit.update({
                 where: { key },
                 data: { count: { increment: 1 } }
             })
 
-            this.limits.set(key, { count: updated.count, resetAt: updated.resetAt.getTime() })
-            return { limited: false, resetAt: updated.resetAt.getTime() }
+            return { limited: updated.count > limit, resetAt: updated.resetAt.getTime() }
         } catch (e) {
-            console.error("[RateLimiter] DB sync failed, falling back to local memory", e)
-            // Local fallback logic
-            const resetAt = now + windowMs
-            this.limits.set(key, { count: 1, resetAt })
-            return { limited: false, resetAt }
+            // F-10: fail CLOSED, not open. The old catch block reset the
+            // counter to 1 and returned limited:false — meaning making the
+            // database unhappy was itself a way to defeat the limiter.
+            console.error("[RateLimiter] Database error — failing closed", e)
+            return { limited: true, resetAt: now + windowMs }
         }
     }
 
     static async clear(key: string) {
-        this.limits.delete(key)
         try {
-            await (prisma as any).rateLimit.delete({ where: { key } }).catch(() => { })
+            await prisma.rateLimit.delete({ where: { key } })
         } catch { }
     }
 
     static async clearByPrefix(prefix: string) {
-        // Clear Memory
-        for (const key of this.limits.keys()) {
-            if (key.startsWith(prefix)) {
-                this.limits.delete(key)
-            }
-        }
-        // Clear DB
         try {
-            await (prisma as any).rateLimit.deleteMany({
+            await prisma.rateLimit.deleteMany({
                 where: { key: { startsWith: prefix } }
             })
         } catch { }
@@ -107,7 +125,7 @@ export function withStandardHandler(
 
             // Rate Limiting
             if (options.rateLimit) {
-                const ip = req.headers.get('x-forwarded-for') || 'unknown'
+                const ip = getClientIp(req.headers)
                 const key = `${userId || ip}:${options.audit?.action || 'generic'}`
                 const { limited, resetAt } = await RateLimiter.getLimitData(key, options.rateLimit.maxRequests, options.rateLimit.windowMs)
                 if (limited) {
@@ -122,12 +140,16 @@ export function withStandardHandler(
             }
 
             // --- PROACTIVE SUSPENSION CHECK ---
-            const userStatus = await prisma.user.findUnique({
-                where: { id: userId },
-                select: { status: true, company: { select: { isBanned: true } } }
-            })
-
-            const isRestricted = userStatus?.status === 'SUSPENDED' || userStatus?.company?.isBanned
+            // F-11: this used to run its own user.findUnique on every single
+            // request — a second DB round trip on top of the jwt() callback's
+            // session-revocation check, before the actual handler even
+            // started. That callback now fetches status/company.isBanned in
+            // the same throttled query it already runs for revocation and
+            // stamps them on the session (see lib/auth.ts), so this reads
+            // from the session instead of querying again. Undefined/false
+            // for a SuperAdmin session, same as the old query returned for
+            // an id with no matching User row.
+            const isRestricted = session.user.userStatus === 'SUSPENDED' || session.user.companyBanned
 
             if (isRestricted) {
                 const isEmergencySave = req.headers.get('x-emergency-save') === 'true'

@@ -16,6 +16,13 @@ declare module "next-auth" {
             username: string
             language: string
             mustChangePassword?: boolean
+            // F-11: stamped on the token by the merged revocation/suspension
+            // check in the jwt() callback, so withStandardHandler can read
+            // them from the session instead of re-querying the database on
+            // every request. Undefined for a SuperAdmin session (no status/
+            // company concept for that role).
+            userStatus?: string
+            companyBanned?: boolean
         } & DefaultSession["user"]
     }
 
@@ -33,6 +40,8 @@ declare module "next-auth" {
         username?: string
         language?: string
         mustChangePassword?: boolean
+        userStatus?: string
+        companyBanned?: boolean
     }
 }
 
@@ -50,5 +59,11 @@ declare module "next-auth/jwt" {
         username?: string
         language?: string
         mustChangePassword?: boolean
+        userStatus?: string
+        companyBanned?: boolean
+        // F-11: last time the merged revocation/suspension check actually
+        // ran against the database, so it can be throttled instead of
+        // running on every single request.
+        checkedAt?: number
     }
 }

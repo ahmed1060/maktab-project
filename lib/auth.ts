@@ -5,7 +5,7 @@ import bcrypt from "bcryptjs"
 import { v4 as uuidv4 } from 'uuid'
 
 import { headers } from "next/headers"
-import { RateLimiter } from "./api-utils"
+import { RateLimiter, getClientIp } from "./api-utils"
 
 // F-17: a bcrypt.compare against a real hash takes measurably longer than
 // returning immediately, so an unknown email used to return in ~0ms while a
@@ -32,7 +32,10 @@ export const authOptions: NextAuthOptions = {
                 try {
                     // Rate Limiting (5 attempts per 15 minutes per IP)
                     const headerList = headers()
-                    const ip = headerList.get('x-forwarded-for') || 'unknown'
+                    // F-10: was reading the raw x-forwarded-for header, which is a
+                    // client-controllable list an attacker can rotate to reset which
+                    // rate-limit bucket they land in.
+                    const ip = getClientIp(headerList)
                     const { limited, resetAt } = await RateLimiter.getLimitData(`login:${ip}`, 5, 15 * 60 * 1000)
                     if (limited) {
                         const timeStr = new Date(resetAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
@@ -114,6 +117,7 @@ export const authOptions: NextAuthOptions = {
                             sessionVersion: (superAdmin as any).sessionVersion || 0,
                             mustChangePassword: (superAdmin as any).mustChangePassword || false,
                             remember
+                            // No userStatus/companyBanned — SuperAdmin has neither concept.
                         }
                     }
 
@@ -167,6 +171,11 @@ export const authOptions: NextAuthOptions = {
                         language: validatedUser.language || 'en',
                         sessionVersion: (validatedUser as any).sessionVersion || 0,
                         mustChangePassword: (validatedUser as any).mustChangePassword || false,
+                        // F-11: seed the merged revocation/suspension check's fields at
+                        // sign-in so they're populated immediately, not just after the
+                        // jwt() callback's first throttled re-check up to 60s later.
+                        userStatus: 'ACTIVE', // just set above; not validatedUser.status, which is pre-login-update
+                        companyBanned: validatedUser.company?.isBanned || false,
                         remember
                     }
 
@@ -196,6 +205,8 @@ export const authOptions: NextAuthOptions = {
                 session.user.username = token.username as string
                 session.user.language = token.language as string
                 session.user.mustChangePassword = !!token.mustChangePassword
+                session.user.userStatus = token.userStatus as string | undefined
+                session.user.companyBanned = !!token.companyBanned
             }
             return session
         },
@@ -217,6 +228,9 @@ export const authOptions: NextAuthOptions = {
                 token.username = user.username
                 token.language = user.language || 'en'
                 token.mustChangePassword = (user as any).mustChangePassword || false
+                token.userStatus = (user as any).userStatus
+                token.companyBanned = (user as any).companyBanned || false
+                token.checkedAt = Date.now()
                 token.jti = uuidv4()
 
                 // Store remember flag in token
@@ -237,43 +251,68 @@ export const authOptions: NextAuthOptions = {
                 }
             }
 
-            // --- SESSION REVOCATION CHECK (Wave 8) ---
-            // On every JWT evaluation, we check if the session is still valid.
-            // Skip check on initial sign-in (!user check)
+            // --- SESSION REVOCATION + SUSPENSION CHECK (F-11, merged) ---
+            // This used to be two separate DB round trips on every request:
+            // this callback queried for sessionVersion on every JWT
+            // evaluation, and withStandardHandler ran its own separate
+            // user.findUnique for the suspension check. Merged into one
+            // query that also feeds session.user.userStatus/companyBanned
+            // (see the session() callback above and withStandardHandler
+            // below, which reads those instead of querying again), and
+            // throttled to once every 60s per token rather than every
+            // request — UserHeartbeat already propagates a real suspension
+            // within two minutes on its own, so a 60s staleness window here
+            // costs nothing extra.
+            // Skip on initial sign-in (!user check) — token.checkedAt was
+            // just seeded above in that branch.
             if (token.sub && !user) {
-                try {
-                    const userId = token.sub as string
-                    const userRole = token.role as string
+                const lastChecked = token.checkedAt || 0
+                const checkIntervalMs = 60_000
 
-                    let dbVersion = 0
-                    if (userRole === 'SUPER_ADMIN') {
-                        const sa = await prisma.superAdmin.findUnique({
-                            where: { id: userId },
-                            select: { sessionVersion: true } as any
-                        })
-                        dbVersion = (sa as any)?.sessionVersion || 0
-                    } else {
-                        const u = await prisma.user.findUnique({
-                            where: { id: userId },
-                            select: { sessionVersion: true } as any
-                        })
-                        dbVersion = (u as any)?.sessionVersion || 0
-                    }
+                if (Date.now() - lastChecked > checkIntervalMs) {
+                    try {
+                        const userId = token.sub as string
+                        const userRole = token.role as string
 
-                    if (token.sessionVersion === undefined) {
-                        token.sessionVersion = dbVersion
-                        console.log(`[AUTH] Initialized missing sessionVersion for user ${userId} to ${dbVersion}`)
-                    } else {
-                        const tokenVersion = token.sessionVersion as number
-
-                        // If DB version is higher than token version, revoke!
-                        if (dbVersion > tokenVersion) {
-                            console.log(`[AUTH] REVOKING session for user ${userId} (Token:${tokenVersion} vs DB:${dbVersion})`)
-                            return {} as any // Empty token = invalid session
+                        let dbVersion = 0
+                        if (userRole === 'SUPER_ADMIN') {
+                            const sa = await prisma.superAdmin.findUnique({
+                                where: { id: userId },
+                                select: { sessionVersion: true }
+                            })
+                            dbVersion = sa?.sessionVersion || 0
+                        } else {
+                            const u = await prisma.user.findUnique({
+                                where: { id: userId },
+                                select: { sessionVersion: true, status: true, company: { select: { isBanned: true } } }
+                            })
+                            dbVersion = u?.sessionVersion || 0
+                            token.userStatus = u?.status
+                            token.companyBanned = u?.company?.isBanned || false
                         }
+
+                        if (token.sessionVersion === undefined) {
+                            token.sessionVersion = dbVersion
+                            console.log(`[AUTH] Initialized missing sessionVersion for user ${userId} to ${dbVersion}`)
+                        } else {
+                            const tokenVersion = token.sessionVersion as number
+
+                            // If DB version is higher than token version, revoke!
+                            if (dbVersion > tokenVersion) {
+                                console.log(`[AUTH] REVOKING session for user ${userId} (Token:${tokenVersion} vs DB:${dbVersion})`)
+                                return {} as any // Empty token = invalid session
+                            }
+                        }
+
+                        token.checkedAt = Date.now()
+                    } catch (e) {
+                        // F-11: fail closed, not open. A DB blip used to just log and
+                        // allow the (possibly already-revoked or suspended) session
+                        // through unchanged, which meant making the database
+                        // unhappy was itself a way to defeat revocation.
+                        console.error("[AUTH] Revocation/suspension check failed — revoking session", e)
+                        return {} as any
                     }
-                } catch (e) {
-                    console.error("[AUTH] Revocation check failed, allowing session as fallback", e)
                 }
             }
 
