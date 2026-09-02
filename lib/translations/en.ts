@@ -809,5 +809,25 @@ export const en = {
         maintenance_success: "Maintenance task completed successfully",
         maintenance_failed: "Maintenance task failed",
         performing_maintenance: "Performing maintenance...",
-        health_metrics_updated: "Health metrics updated"
+        health_metrics_updated: "Health metrics updated",
+
+        // F-27: email verification / change (merged flow — see the
+        // remediation log for why a forced first-time verify and a later
+        // voluntary change share one screen).
+        email_settings_nav: "Email settings",
+        verify_email_required_title: "You must verify your email",
+        verify_email_required_message: "This confirms you actually control this address — it's needed before you can use the rest of the dashboard, and it's what a sign-in code gets sent to if you're ever locked out of your authenticator app.",
+        email_settings_title: "Email settings",
+        email_address_label: "Email address",
+        email_verified_badge: "Verified",
+        email_unverified_badge: "Not verified",
+        email_protected_note: "This account's email is protected and can't be changed.",
+        send_code_button: "Send code",
+        resend_code_button: "Resend code",
+        verification_code_label: "Verification code",
+        verify_code_button: "Verify",
+        check_spam_note: "Didn't get it? Check your spam folder.",
+        code_sent_message: "Code sent — check your inbox.",
+        email_verified_success: "Email verified.",
+        email_changed_success: "Email updated and verified."
 };

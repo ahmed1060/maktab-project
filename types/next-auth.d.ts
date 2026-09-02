@@ -28,6 +28,11 @@ declare module "next-auth" {
             // super admins — see app/api/super-admins/[id]/route.ts. Always
             // false/undefined for a User session.
             isProtected?: boolean
+            // F-27: true once emailVerifiedAt is set on the account row.
+            // middleware.ts blocks the rest of /dashboard until this is
+            // true, the same way it already does for mustChangePassword —
+            // see app/(dashboard)/dashboard/email-settings/page.tsx.
+            emailVerified?: boolean
         } & DefaultSession["user"]
     }
 
@@ -48,6 +53,7 @@ declare module "next-auth" {
         userStatus?: string
         companyBanned?: boolean
         isProtected?: boolean
+        emailVerified?: boolean
     }
 }
 
@@ -68,6 +74,7 @@ declare module "next-auth/jwt" {
         userStatus?: string
         companyBanned?: boolean
         isProtected?: boolean
+        emailVerified?: boolean
         // F-11: last time the merged revocation/suspension check actually
         // ran against the database, so it can be throttled instead of
         // running on every single request.

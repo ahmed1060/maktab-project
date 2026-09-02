@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Link from 'next/link'
 import useSWR from 'swr'
 import { useSession } from 'next-auth/react'
 import AccessDenied from '@/components/AccessDenied'
@@ -425,7 +426,14 @@ export default function SuperAdminsPage() {
                             </div>
                             <div style={{ marginBottom: '1rem' }}>
                                 <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('email')}</label>
-                                <input className="input" type="email" required value={editData.email} onChange={e => setEditData({ ...editData, email: e.target.value })} style={{ textAlign: locale === 'ar' ? 'right' : 'left' }} />
+                                {/* F-27: email changes go through the verified flow (Email
+                                    settings) instead of this form — the backend rejects an
+                                    email change here regardless, this just avoids a confusing
+                                    round-trip error. */}
+                                <input className="input" type="email" required disabled value={editData.email} style={{ textAlign: locale === 'ar' ? 'right' : 'left', background: '#f1f5f9', cursor: 'not-allowed' }} />
+                                <p style={{ margin: '0.35rem 0 0', fontSize: '0.78rem', color: '#64748b', textAlign: locale === 'ar' ? 'right' : 'left' }}>
+                                    <Link href="/dashboard/email-settings" style={{ color: 'inherit', textDecoration: 'underline' }}>{t('email_settings_nav')}</Link>
+                                </p>
                             </div>
                             <div style={{ marginBottom: '1.5rem' }}>
                                 <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('gender_label')}</label>

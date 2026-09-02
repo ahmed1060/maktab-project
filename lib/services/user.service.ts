@@ -96,7 +96,24 @@ export class UserService {
         // 2. Basic Data
         if (firstName) updateData.firstName = firstName
         if (lastName) updateData.lastName = lastName
-        if (email) updateData.email = email
+        if (email) {
+            const currentEmail = regularUser?.email ?? superAdminUser?.email
+            if (email !== currentEmail) {
+                // F-27: email changes go through the verified flow
+                // (VerificationCodeService + /api/account/email) instead —
+                // applying one here would mean nothing ever confirmed the
+                // new address is actually reachable. Only blocks *self*;
+                // an admin correcting a different user's email is
+                // unaffected. A protected SuperAdmin's email can't change
+                // at all, self-edit or not — the frontend already disables
+                // this field for self-edit (EmployeeProfileForm), this is
+                // the backend half of that, since a disabled input is not
+                // an authorization check.
+                if (isSelf) throw new Error("EMAIL_CHANGE_REQUIRES_VERIFICATION")
+                if (superAdminUser?.isProtected) throw new Error("TARGET_PROTECTED")
+                updateData.email = email
+            }
+        }
         if (password) {
             // WAVE 10: Security Gate for Admin Password Resets
             const targetRole = regularUser?.role || 'SUPER_ADMIN'

@@ -23,6 +23,8 @@ export const PUT = withStandardHandler(async (req, session, json, { params }) =>
         if (error.message === 'FORBIDDEN') return ApiResponse.forbidden("Only a protected super admin can edit another super admin's account")
         if (error.message === 'SUPER_ADMIN_NOT_FOUND') return ApiResponse.notFound("Super admin not found")
         if (error.message === 'EMAIL_ALREADY_EXISTS') return ApiResponse.badRequest("Email already exists")
+        if (error.message === 'EMAIL_CHANGE_REQUIRES_VERIFICATION') return ApiResponse.badRequest("Email changes require verification — use Email settings")
+        if (error.message === 'TARGET_PROTECTED') return ApiResponse.forbidden("This account's email is protected and cannot be changed")
         throw error
     }
 })

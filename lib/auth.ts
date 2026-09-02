@@ -117,6 +117,7 @@ export const authOptions: NextAuthOptions = {
                             sessionVersion: (superAdmin as any).sessionVersion || 0,
                             mustChangePassword: (superAdmin as any).mustChangePassword || false,
                             isProtected: (superAdmin as any).isProtected || false,
+                            emailVerified: !!(superAdmin as any).emailVerifiedAt,
                             remember
                             // No userStatus/companyBanned — SuperAdmin has neither concept.
                         }
@@ -177,6 +178,7 @@ export const authOptions: NextAuthOptions = {
                         // jwt() callback's first throttled re-check up to 60s later.
                         userStatus: 'ACTIVE', // just set above; not validatedUser.status, which is pre-login-update
                         companyBanned: validatedUser.company?.isBanned || false,
+                        emailVerified: !!(validatedUser as any).emailVerifiedAt,
                         remember
                     }
 
@@ -207,6 +209,7 @@ export const authOptions: NextAuthOptions = {
                 session.user.language = token.language as string
                 session.user.mustChangePassword = !!token.mustChangePassword
                 session.user.isProtected = !!token.isProtected
+                session.user.emailVerified = !!token.emailVerified
                 session.user.userStatus = token.userStatus as string | undefined
                 session.user.companyBanned = !!token.companyBanned
             }
@@ -231,6 +234,7 @@ export const authOptions: NextAuthOptions = {
                 token.language = user.language || 'en'
                 token.mustChangePassword = (user as any).mustChangePassword || false
                 token.isProtected = (user as any).isProtected || false
+                token.emailVerified = (user as any).emailVerified || false
                 token.userStatus = (user as any).userStatus
                 token.companyBanned = (user as any).companyBanned || false
                 token.checkedAt = Date.now()
@@ -281,18 +285,20 @@ export const authOptions: NextAuthOptions = {
                         if (userRole === 'SUPER_ADMIN') {
                             const sa = await prisma.superAdmin.findUnique({
                                 where: { id: userId },
-                                select: { sessionVersion: true, isProtected: true }
+                                select: { sessionVersion: true, isProtected: true, emailVerifiedAt: true }
                             })
                             dbVersion = sa?.sessionVersion || 0
                             token.isProtected = sa?.isProtected || false
+                            token.emailVerified = !!sa?.emailVerifiedAt
                         } else {
                             const u = await prisma.user.findUnique({
                                 where: { id: userId },
-                                select: { sessionVersion: true, status: true, company: { select: { isBanned: true } } }
+                                select: { sessionVersion: true, status: true, company: { select: { isBanned: true } }, emailVerifiedAt: true }
                             })
                             dbVersion = u?.sessionVersion || 0
                             token.userStatus = u?.status
                             token.companyBanned = u?.company?.isBanned || false
+                            token.emailVerified = !!u?.emailVerifiedAt
                         }
 
                         if (token.sessionVersion === undefined) {
@@ -336,6 +342,8 @@ export const authOptions: NextAuthOptions = {
                 }
                 if (session.language !== undefined) token.language = session.language
                 if (session.mustChangePassword !== undefined) token.mustChangePassword = session.mustChangePassword
+                if (session.emailVerified !== undefined) token.emailVerified = session.emailVerified
+                if (session.email !== undefined) token.email = session.email
             }
             return token
         }

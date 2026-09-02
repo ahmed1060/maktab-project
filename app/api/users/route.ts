@@ -225,6 +225,8 @@ export const PUT = withStandardHandler(async (req, session, json) => {
         if (error.message === 'NAME_CHANGE_REQUIRES_ADMIN') return ApiResponse.forbidden("Name changes require admin approval")
         if (error.message === 'FORBIDDEN_ROLE_ASSIGNMENT') return ApiResponse.forbidden("Forbidden role assignment")
         if (error.message === 'INVALID_PASSCODE') return ApiResponse.forbidden("Invalid verification passcode")
+        if (error.message === 'EMAIL_CHANGE_REQUIRES_VERIFICATION') return ApiResponse.badRequest("Email changes require verification — use Email settings")
+        if (error.message === 'TARGET_PROTECTED') return ApiResponse.forbidden("This account's email is protected and cannot be changed")
 
         throw error
     }

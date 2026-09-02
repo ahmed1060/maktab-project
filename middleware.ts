@@ -29,6 +29,21 @@ export default withAuth(
             return NextResponse.redirect(new URL('/dashboard/change-password', req.url))
         }
 
+        // 2c. F-27: an unverified email blocks the rest of the dashboard the
+        // same way. Checked after mustChangePassword (not instead of it) —
+        // a temp-password takeover is the more urgent thing to resolve
+        // first if somehow both are true at once. Excludes change-password
+        // too, not just email-settings, so the redirect above still wins
+        // when both conditions hold.
+        if (
+            token && !token.mustChangePassword && !token.emailVerified &&
+            pathname.startsWith('/dashboard') &&
+            pathname !== '/dashboard/email-settings' &&
+            pathname !== '/dashboard/change-password'
+        ) {
+            return NextResponse.redirect(new URL('/dashboard/email-settings', req.url))
+        }
+
         // 3. Locale Validation
         const locale = req.cookies.get('NEXT_LOCALE')?.value
         if (locale && !['en', 'ar'].includes(locale)) {

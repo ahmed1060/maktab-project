@@ -92,20 +92,33 @@ export class SuperAdminService {
      * editing a *different* super admin requires the actor be protected
      * (isProtected on their session) — see types/next-auth.d.ts and
      * lib/auth.ts for where that's stamped.
+     *
+     * F-27: email is a partial exception to "a super admin can always edit
+     * themselves" — self-service email changes go through the verified
+     * flow (VerificationCodeService + /api/account/email) instead, and a
+     * protected account's email can't change at all, self-edit or not.
      */
     static async update(id: string, input: { firstName?: string; lastName?: string; email?: string; gender?: string }, session: any) {
         const actorId = session.user.id
         const actorIsProtected = !!session.user.isProtected
+        const isSelf = id === actorId
 
-        if (id !== actorId && !actorIsProtected) {
+        if (!isSelf && !actorIsProtected) {
             throw new Error('FORBIDDEN')
         }
+
+        const target = await prisma.superAdmin.findUnique({ where: { id } })
+        if (!target) throw new Error('SUPER_ADMIN_NOT_FOUND')
 
         const data: any = {}
         if (input.firstName !== undefined) data.firstName = input.firstName
         if (input.lastName !== undefined) data.lastName = input.lastName
-        if (input.email !== undefined) data.email = input.email
         if (input.gender !== undefined) data.gender = input.gender
+        if (input.email !== undefined && input.email !== target.email) {
+            if (isSelf) throw new Error('EMAIL_CHANGE_REQUIRES_VERIFICATION')
+            if (target.isProtected) throw new Error('TARGET_PROTECTED')
+            data.email = input.email
+        }
 
         let updated
         try {

@@ -562,6 +562,24 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
                                     >
                                         {t('my_profile')}
                                     </Link>
+                                    <Link
+                                        href="/dashboard/email-settings"
+                                        onClick={() => setIsMenuOpen(false)}
+                                        style={{
+                                            display: 'block',
+                                            padding: '0.6rem 1rem',
+                                            textDecoration: 'none',
+                                            color: 'var(--text-main)',
+                                            fontSize: '0.9rem',
+                                            borderRadius: '0.5rem',
+                                            transition: 'background 0.2s',
+                                            fontWeight: '500'
+                                        }}
+                                        onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.4)'}
+                                        onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                                    >
+                                        {t('email_settings_nav')}
+                                    </Link>
                                     {!['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role) && (
                                         <Link
                                             href={`/dashboard/employees/${currentUser.id}/history`}

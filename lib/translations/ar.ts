@@ -808,5 +808,22 @@ export const ar = {
         maintenance_success: "تمت مهمة الصيانة بنجاح",
         maintenance_failed: "فشلت مهمة الصيانة",
         performing_maintenance: "جاري تنفيذ الصيانة...",
-        health_metrics_updated: "تم تحديث مؤشرات الصحة"
+        health_metrics_updated: "تم تحديث مؤشرات الصحة",
+
+        email_settings_nav: "إعدادات البريد الإلكتروني",
+        verify_email_required_title: "يجب عليك تأكيد بريدك الإلكتروني",
+        verify_email_required_message: "هذا يؤكد أنك تتحكم فعليًا في هذا العنوان — وهو مطلوب قبل استخدام باقي لوحة التحكم، وهو ما يُرسل إليه رمز تسجيل الدخول إذا فقدت الوصول إلى تطبيق المصادقة الخاص بك.",
+        email_settings_title: "إعدادات البريد الإلكتروني",
+        email_address_label: "عنوان البريد الإلكتروني",
+        email_verified_badge: "موثّق",
+        email_unverified_badge: "غير موثّق",
+        email_protected_note: "بريد هذا الحساب محمي ولا يمكن تغييره.",
+        send_code_button: "إرسال الرمز",
+        resend_code_button: "إعادة إرسال الرمز",
+        verification_code_label: "رمز التحقق",
+        verify_code_button: "تحقق",
+        check_spam_note: "لم يصلك؟ تحقق من مجلد الرسائل غير المرغوب فيها.",
+        code_sent_message: "تم إرسال الرمز — تحقق من بريدك الوارد.",
+        email_verified_success: "تم تأكيد البريد الإلكتروني.",
+        email_changed_success: "تم تحديث البريد الإلكتروني وتأكيده."
 };
