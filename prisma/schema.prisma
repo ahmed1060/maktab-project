@@ -52,6 +52,16 @@ enum DayOffType {
   UNPAID
 }
 
+// F-27: what a short-lived emailed code is being used to prove. One shared
+// VerificationCode mechanism, four purposes, rather than four separate
+// ad-hoc flows.
+enum VerificationPurpose {
+  EMAIL_VERIFY
+  EMAIL_CHANGE
+  MFA_RECOVERY
+  PASSWORD_RESET
+}
+
 datasource db {
   provider  = "postgresql"
   // Read from the vars Vercel's Supabase Storage integration keeps in sync
@@ -77,27 +87,38 @@ model Company {
 }
 
 model SuperAdmin {
-  id               String     @id @default(uuid())
-  email            String     @unique
-  password         String
-  firstName        String
-  lastName         String
-  avatar           String?
-  gender           String     @default("MALE")
-  createdAt        DateTime   @default(now())
-  updatedAt        DateTime   @updatedAt
-  language         String     @default("en")
-  username         String     @unique
-  sessionVersion   Int        @default(0)
-  mustChangePassword Boolean  @default(false)
+  id                 String             @id @default(uuid())
+  email              String             @unique
+  password           String
+  firstName          String
+  lastName           String
+  avatar             String?
+  gender             String             @default("MALE")
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+  language           String             @default("en")
+  username           String             @unique
+  sessionVersion     Int                @default(0)
+  mustChangePassword Boolean            @default(false)
   // Founder-account protection: enforced by a DB trigger (see the
   // add_superadmin_protection migration), not just app code, since a
   // direct SQL DELETE bypasses application logic entirely. Deliberately a
   // per-row flag rather than hardcoded emails/IDs in application logic —
   // the same "magic identifier baked into code" pattern F-04 already
   // fixed once for credentials.
-  isProtected      Boolean    @default(false)
-  auditLogs        AuditLog[]
+  isProtected        Boolean            @default(false)
+  // F-27 MFA. mfaEnabled is always true and locked on for a protected
+  // SuperAdmin (enforced in app logic — see SuperAdminService); mfaSecret
+  // is reversibly encrypted with MFA_ENCRYPTION_KEY, not hashed, since the
+  // server has to read it back to compute the expected TOTP code on every
+  // login. Distinct key from F-02's deleted ENCRYPTION_KEY — different
+  // purpose, never to be confused with it.
+  mfaEnabled         Boolean            @default(false)
+  mfaSecret          String?
+  emailVerifiedAt    DateTime?
+  auditLogs          AuditLog[]
+  trustedDevices     TrustedDevice[]
+  verificationCodes  VerificationCode[]
 }
 
 model User {
@@ -130,7 +151,14 @@ model User {
   username                   String                  @unique
   sessionVersion             Int                     @default(0)
   mustChangePassword         Boolean                 @default(false)
+  // F-27 MFA — see the matching fields on SuperAdmin for the reasoning on
+  // why mfaSecret is encrypted, not hashed.
+  mfaEnabled                 Boolean                 @default(false)
+  mfaSecret                  String?
+  emailVerifiedAt            DateTime?
   auditLogs                  AuditLog[]
+  trustedDevices             TrustedDevice[]
+  verificationCodes          VerificationCode[]
   createdClients             BusinessClient[]        @relation("ClientCreatedBy")
   editedClients              BusinessClient[]        @relation("ClientEditedBy")
   createdBusinessClientNotes BusinessClientNote[]    @relation("CreatedNotes")
@@ -156,13 +184,13 @@ model User {
 }
 
 model Task {
-  id                  String   @id @default(uuid())
+  id                  String            @id @default(uuid())
   title               String
   description         String
   status              TaskStatus
   deadline            DateTime
-  difficulty          Int      @default(0)
-  totalCost           Decimal  @default(0) @db.Decimal(12, 2)
+  difficulty          Int               @default(0)
+  totalCost           Decimal           @default(0) @db.Decimal(12, 2)
   createdBy           String?
   // F-12: Json, not String. These held JSON serialized into text — Postgres
   // couldn't validate, index, or query any of it, and the app already had to
@@ -170,10 +198,10 @@ model Task {
   // treats an unparseable attachments row as orphaned and deletes it).
   attachments         Json?
   comments            Json?
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
-  isEdited            Boolean  @default(false)
-  isTransfer          Boolean  @default(false)
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+  isEdited            Boolean           @default(false)
+  isTransfer          Boolean           @default(false)
   paymentStatus       TaskPaymentStatus @default(PENDING_PAYMENT)
   location            String?
   lastStatusUpdateBy  String?
@@ -181,9 +209,9 @@ model Task {
   memberCosts         Json?
   memberPaymentStatus Json?
   companyId           String?
-  company             Company? @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  creator             User?    @relation("CreatedTasks", fields: [createdBy], references: [id], onDelete: SetNull)
-  assignees           User[]   @relation("MultipleAssignees")
+  company             Company?          @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  creator             User?             @relation("CreatedTasks", fields: [createdBy], references: [id], onDelete: SetNull)
+  assignees           User[]            @relation("MultipleAssignees")
 
   @@index([createdBy])
   @@index([companyId])
@@ -236,21 +264,69 @@ model AuditLog {
   @@index([createdAt, action])
 }
 
+// F-27: short-lived one-time codes emailed to prove control of an inbox —
+// backs email verification, email change, MFA's email-fallback recovery,
+// and forgot-password. `email` is the address the code was actually sent
+// to (matters for EMAIL_CHANGE, where that's the *new* address, not
+// whatever's on the account row yet). The code itself is hashed, not
+// stored raw — a 6-digit code doesn't need bcrypt's cost factor, just
+// enough that a DB dump alone doesn't hand out working codes. `attempts`
+// backs rate-limiting wrong guesses against a single code.
+model VerificationCode {
+  id           String              @id @default(uuid())
+  userId       String?
+  superAdminId String?
+  email        String
+  codeHash     String
+  purpose      VerificationPurpose
+  attempts     Int                 @default(0)
+  consumedAt   DateTime?
+  expiresAt    DateTime
+  createdAt    DateTime            @default(now())
+  user         User?               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  superAdmin   SuperAdmin?         @relation(fields: [superAdminId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([superAdminId])
+  @@index([email, purpose])
+}
+
+// F-27: a device that has already completed an MFA challenge once, so it
+// isn't asked again until this expires or is revoked. `tokenHash`, like
+// VerificationCode.codeHash, never stores the raw token actually sitting
+// in the browser's cookie.
+model TrustedDevice {
+  id           String      @id @default(uuid())
+  userId       String?
+  superAdminId String?
+  tokenHash    String      @unique
+  label        String?
+  createdAt    DateTime    @default(now())
+  lastUsedAt   DateTime    @default(now())
+  expiresAt    DateTime
+  revokedAt    DateTime?
+  user         User?       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  superAdmin   SuperAdmin? @relation(fields: [superAdminId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([superAdminId])
+}
+
 model Obligation {
-  id                 String   @id @default(uuid())
+  id                 String               @id @default(uuid())
   title              String
   description        String
   recurrence         ObligationRecurrence @default(ONE_TIME)
   deadline           DateTime
-  difficulty         Int      @default(0)
+  difficulty         Int                  @default(0)
   status             String
   attachments        String?
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
   lastStatusUpdateBy String?
   companyId          String?
-  company            Company? @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  assignees          User[]   @relation("ObligationAssignees")
+  company            Company?             @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  assignees          User[]               @relation("ObligationAssignees")
 
   @@index([status])
   @@index([companyId])
@@ -369,18 +445,18 @@ model CompanyPayment {
 }
 
 model DayOffRequest {
-  id            String    @id @default(uuid())
+  id            String     @id @default(uuid())
   userId        String
   type          DayOffType
-  status        String    @default("PENDING")
+  status        String     @default("PENDING")
   reason        String?
   date          DateTime
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  daysDeducted  Float?    @default(0)
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+  daysDeducted  Float?     @default(0)
   endDate       DateTime?
-  deductionType String    @default("CREDIT")
-  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  deductionType String     @default("CREDIT")
+  user          User       @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([status])
   @@index([userId])
