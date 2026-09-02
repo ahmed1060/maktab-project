@@ -2,6 +2,9 @@
   "name": "app",
   "version": "0.1.0",
   "private": true,
+  "overrides": {
+    "nodemailer": "^9.1.1"
+  },
   "scripts": {
     "dev": "next dev -H 0.0.0.0 -p 3000",
     "build": "prisma generate && prisma migrate deploy && next build",
