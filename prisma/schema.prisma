@@ -54,8 +54,12 @@ enum DayOffType {
 
 datasource db {
   provider  = "postgresql"
-  url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
+  // Read from the vars Vercel's Supabase Storage integration keeps in sync
+  // automatically (POSTGRES_PRISMA_URL = pooled, POSTGRES_URL_NON_POOLING =
+  // direct) instead of the old static DATABASE_URL/DIRECT_URL, which had to
+  // be copied by hand every time the DB password rotated.
+  url       = env("POSTGRES_PRISMA_URL")
+  directUrl = env("POSTGRES_URL_NON_POOLING")
 }
 
 model Company {
