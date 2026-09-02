@@ -1,9 +1,19 @@
 'use client'
 
 import { useState } from 'react'
+import useSWR from 'swr'
 import { useSession } from 'next-auth/react'
 import { useLanguage } from '@/context/LanguageContext'
 import { useToast } from '@/context/ToastContext'
+import { fetcher } from '@/lib/swr-fetcher'
+
+type TrustedDevice = {
+    id: string
+    label: string | null
+    createdAt: string
+    lastUsedAt: string
+    expiresAt: string
+}
 
 // F-27, Phase 4: enrollment + toggle. Opt-in and toggleable for everyone
 // except a protected SuperAdmin, for whom enabling is still voluntary but
@@ -32,6 +42,43 @@ export default function MfaSettingsPage() {
     const [submittingDisable, setSubmittingDisable] = useState(false)
 
     const [error, setError] = useState('')
+
+    // F-27, Phase 6
+    const devicesQuery = mfaEnabled ? '/api/account/mfa/trusted-devices' : null
+    const { data: devicesResult, mutate: mutateDevices } = useSWR(devicesQuery, fetcher)
+    const devices: TrustedDevice[] = devicesResult?.data?.devices || []
+    const [revokingId, setRevokingId] = useState<string | null>(null)
+    const [revokingAll, setRevokingAll] = useState(false)
+
+    const formatDate = (iso: string) => new Date(iso).toLocaleDateString(isAr ? 'ar' : 'en-US', { year: 'numeric', month: 'short', day: 'numeric' })
+
+    const revokeDevice = async (id: string) => {
+        setRevokingId(id)
+        try {
+            const res = await fetch(`/api/account/mfa/trusted-devices/${id}`, { method: 'DELETE' })
+            const data = await res.json()
+            if (!res.ok || !data.success) throw new Error(data.error || (isAr ? 'حدث خطأ' : 'Something went wrong'))
+            mutateDevices()
+        } catch (err: any) {
+            setError(err.message)
+        } finally {
+            setRevokingId(null)
+        }
+    }
+
+    const revokeAllDevices = async () => {
+        setRevokingAll(true)
+        try {
+            const res = await fetch('/api/account/mfa/trusted-devices/revoke-all', { method: 'POST' })
+            const data = await res.json()
+            if (!res.ok || !data.success) throw new Error(data.error || (isAr ? 'حدث خطأ' : 'Something went wrong'))
+            mutateDevices()
+        } catch (err: any) {
+            setError(err.message)
+        } finally {
+            setRevokingAll(false)
+        }
+    }
 
     const startEnroll = async () => {
         setError('')
@@ -97,7 +144,7 @@ export default function MfaSettingsPage() {
     }
 
     return (
-        <div style={{ display: 'flex', justifyContent: 'center', padding: '3rem 1rem', direction: isAr ? 'rtl' : 'ltr' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '3rem 1rem', direction: isAr ? 'rtl' : 'ltr' }}>
             <div className="glass-card" style={{ maxWidth: '460px', width: '100%', padding: '2rem' }}>
                 <h2 style={{ margin: '0 0 0.5rem', color: 'var(--text-main)' }}>
                     {isAr ? 'المصادقة الثنائية' : 'Two-factor authentication'}
@@ -186,6 +233,56 @@ export default function MfaSettingsPage() {
                     </form>
                 )}
             </div>
+
+            {mfaEnabled && (
+                <div className="glass-card" style={{ maxWidth: '460px', width: '100%', padding: '2rem', marginTop: '1.5rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
+                        <h3 style={{ margin: 0, color: 'var(--text-main)', fontSize: '1.05rem' }}>
+                            {isAr ? 'الأجهزة الموثوقة' : 'Trusted devices'}
+                        </h3>
+                        {devices.length > 0 && (
+                            <button
+                                onClick={revokeAllDevices}
+                                disabled={revokingAll}
+                                style={{ background: 'none', border: 'none', color: '#ef4444', fontSize: '0.8rem', fontWeight: 600, cursor: revokingAll ? 'not-allowed' : 'pointer' }}
+                            >
+                                {revokingAll ? (isAr ? 'جارٍ الإلغاء...' : 'Revoking...') : (isAr ? 'إلغاء الكل' : 'Revoke all')}
+                            </button>
+                        )}
+                    </div>
+
+                    {devices.length === 0 ? (
+                        <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                            {isAr ? 'لا توجد أجهزة موثوقة' : 'No trusted devices'}
+                        </p>
+                    ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                            {devices.map(device => (
+                                <div key={device.id} style={{
+                                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                                    padding: '0.75rem 0.9rem', border: '1px solid #e2e8f0', borderRadius: '8px'
+                                }}>
+                                    <div>
+                                        <div style={{ fontSize: '0.88rem', fontWeight: 600, color: 'var(--text-main)' }}>
+                                            {device.label || (isAr ? 'جهاز غير معروف' : 'Unknown device')}
+                                        </div>
+                                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>
+                                            {(isAr ? 'آخر استخدام' : 'Last used')}: {formatDate(device.lastUsedAt)} · {(isAr ? 'تنتهي الصلاحية' : 'Expires')}: {formatDate(device.expiresAt)}
+                                        </div>
+                                    </div>
+                                    <button
+                                        onClick={() => revokeDevice(device.id)}
+                                        disabled={revokingId === device.id}
+                                        style={{ background: 'none', border: 'none', color: '#ef4444', fontSize: '0.8rem', fontWeight: 600, cursor: revokingId === device.id ? 'not-allowed' : 'pointer', flexShrink: 0 }}
+                                    >
+                                        {revokingId === device.id ? (isAr ? 'جارٍ...' : '...') : (isAr ? 'إلغاء' : 'Revoke')}
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            )}
         </div>
     )
 }

@@ -27,6 +27,26 @@ function readCookie(header: string | null | undefined, name: string): string | u
 
 type Owner = { userId?: string; superAdminId?: string }
 
+// A light heuristic, not a UA-parsing library — just enough to tell two
+// entries in the trusted-devices list apart at a glance ("Chrome on
+// Windows" vs "Safari on iPhone"). Wrong or missing on an unusual
+// User-Agent is fine; nothing security-relevant reads this field.
+function sniffDeviceLabel(userAgent: string | null): string | undefined {
+    if (!userAgent) return undefined
+    const browser = /Edg\//.test(userAgent) ? 'Edge'
+        : /Chrome\//.test(userAgent) ? 'Chrome'
+        : /Firefox\//.test(userAgent) ? 'Firefox'
+        : /Safari\//.test(userAgent) ? 'Safari'
+        : 'Browser'
+    const os = /iPhone|iPad/.test(userAgent) ? 'iOS'
+        : /Android/.test(userAgent) ? 'Android'
+        : /Mac OS X/.test(userAgent) ? 'macOS'
+        : /Windows/.test(userAgent) ? 'Windows'
+        : /Linux/.test(userAgent) ? 'Linux'
+        : undefined
+    return os ? `${browser} on ${os}` : browser
+}
+
 /**
  * F-27, Phase 5: lets an MFA-enabled account skip the code prompt on a
  * browser it's already completed the challenge on once. The cookie alone
@@ -61,7 +81,7 @@ export class TrustedDeviceService {
      * actually completed an MFA challenge, when the user checked "remember
      * this device". Returns the raw token — the caller is the one that can
      * actually set the response cookie. */
-    static async issue(owner: Owner, label?: string): Promise<string> {
+    static async issue(owner: Owner, userAgent?: string | null): Promise<string> {
         const token = randomBytes(32).toString('base64url')
         const expiresAt = new Date(Date.now() + TRUSTED_DEVICE_TTL_DAYS * 24 * 60 * 60 * 1000)
 
@@ -69,7 +89,7 @@ export class TrustedDeviceService {
             data: {
                 tokenHash: hashToken(token),
                 expiresAt,
-                label,
+                label: sniffDeviceLabel(userAgent ?? null),
                 userId: owner.userId,
                 superAdminId: owner.superAdminId,
             }

@@ -10,7 +10,8 @@ import { TrustedDeviceService, TRUSTED_DEVICE_COOKIE } from "@/lib/services/trus
 export const POST = withStandardHandler(async (req, session) => {
     const isSuperAdmin = session.user.role === 'SUPER_ADMIN'
     const token = await TrustedDeviceService.issue(
-        isSuperAdmin ? { superAdminId: session.user.id } : { userId: session.user.id }
+        isSuperAdmin ? { superAdminId: session.user.id } : { userId: session.user.id },
+        req.headers.get('user-agent')
     )
 
     const response = ApiResponse.success({ trusted: true })
