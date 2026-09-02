@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import useSWR from 'swr'
 import { useSession } from 'next-auth/react'
 import AccessDenied from '@/components/AccessDenied'
+import ConfirmModal from '@/components/ConfirmModal'
 import { useLanguage } from '@/context/LanguageContext'
 import { useHeader } from '@/context/HeaderContext'
 import Pagination from '@/components/Pagination'
@@ -26,9 +27,12 @@ export default function SuperAdminsPage() {
     const [showCreateModal, setShowCreateModal] = useState(false)
     const [viewingAdmin, setViewingAdmin] = useState<Admin | null>(null)
     const [editingAdmin, setEditingAdmin] = useState<Admin | null>(null)
+    const [deleteConfirm, setDeleteConfirm] = useState<Admin | null>(null)
+    const [deleting, setDeleting] = useState(false)
 
     const { data: session } = useSession()
     const userRole = session?.user?.role || ''
+    const isProtectedActor = !!session?.user?.isProtected
 
     const [formData, setFormData] = useState({
         firstName: '',
@@ -106,18 +110,16 @@ export default function SuperAdminsPage() {
         setError('')
 
         try {
-            const res = await fetch('/api/users', {
+            const res = await fetch(`/api/super-admins/${editingAdmin.id}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    id: editingAdmin.id,
-                    ...editData
-                })
+                body: JSON.stringify(editData)
             })
 
+            const data = await res.json()
+
             if (!res.ok) {
-                const text = await res.text()
-                throw new Error(text || 'Failed to update')
+                throw new Error(data.error || 'Failed to update')
             }
 
             setEditingAdmin(null)
@@ -126,6 +128,26 @@ export default function SuperAdminsPage() {
             setError(err.message)
         } finally {
             setSubmitLoading(false)
+        }
+    }
+
+    const handleDelete = async () => {
+        if (!deleteConfirm) return
+        setDeleting(true)
+        try {
+            const res = await fetch(`/api/super-admins/${deleteConfirm.id}`, { method: 'DELETE' })
+            const data = await res.json()
+            if (!res.ok) {
+                throw new Error(data.error || 'Failed to delete')
+            }
+            setDeleteConfirm(null)
+            fetchAdmins()
+        } catch (err: any) {
+            // The delete confirm modal has no inline error slot, so surface
+            // this the same way other destructive actions in the app do.
+            window.alert(err.message)
+        } finally {
+            setDeleting(false)
         }
     }
 
@@ -227,13 +249,24 @@ export default function SuperAdminsPage() {
                                     </td>
                                     <td style={{ padding: '1rem', textAlign: locale === 'ar' ? 'left' : 'right' }}>
                                         <div style={{ display: 'flex', gap: '0.5rem', justifyContent: locale === 'ar' ? 'flex-start' : 'flex-end' }}>
-                                            <button
-                                                onClick={() => openEdit(admin)}
-                                                className="btn"
-                                                style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem', background: '#f1f5f9', color: '#334155' }}
-                                            >
-                                                {t('edit')}
-                                            </button>
+                                            {(admin.id === session?.user?.id || isProtectedActor) && (
+                                                <button
+                                                    onClick={() => openEdit(admin)}
+                                                    className="btn"
+                                                    style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem', background: '#f1f5f9', color: '#334155' }}
+                                                >
+                                                    {t('edit')}
+                                                </button>
+                                            )}
+                                            {isProtectedActor && !admin.isProtected && (
+                                                <button
+                                                    onClick={() => setDeleteConfirm(admin)}
+                                                    className="btn"
+                                                    style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem', background: '#fee2e2', color: '#dc2626' }}
+                                                >
+                                                    {t('delete')}
+                                                </button>
+                                            )}
                                         </div>
                                     </td>
                                 </tr>
@@ -409,6 +442,20 @@ export default function SuperAdminsPage() {
                     </div>
                 </div>
             )}
+
+            <ConfirmModal
+                isOpen={!!deleteConfirm}
+                title={locale === 'ar' ? 'حذف مسؤول عام' : 'Delete Super Admin'}
+                message={
+                    locale === 'ar'
+                        ? `هل أنت متأكد أنك تريد حذف ${deleteConfirm?.firstName} ${deleteConfirm?.lastName}؟ لا يمكن التراجع عن هذا الإجراء.`
+                        : `Are you sure you want to delete ${deleteConfirm?.firstName} ${deleteConfirm?.lastName}? This cannot be undone.`
+                }
+                confirmText={deleting ? (locale === 'ar' ? 'جارٍ الحذف...' : 'Deleting...') : t('delete')}
+                onConfirm={handleDelete}
+                onCancel={() => setDeleteConfirm(null)}
+                variant="danger"
+            />
         </div>
     )
 }

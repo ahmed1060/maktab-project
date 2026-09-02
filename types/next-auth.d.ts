@@ -23,6 +23,11 @@ declare module "next-auth" {
             // company concept for that role).
             userStatus?: string
             companyBanned?: boolean
+            // Founder-account protection: true only for a SuperAdmin flagged
+            // isProtected in the database. Gates editing/deleting *other*
+            // super admins — see app/api/super-admins/[id]/route.ts. Always
+            // false/undefined for a User session.
+            isProtected?: boolean
         } & DefaultSession["user"]
     }
 
@@ -42,6 +47,7 @@ declare module "next-auth" {
         mustChangePassword?: boolean
         userStatus?: string
         companyBanned?: boolean
+        isProtected?: boolean
     }
 }
 
@@ -61,6 +67,7 @@ declare module "next-auth/jwt" {
         mustChangePassword?: boolean
         userStatus?: string
         companyBanned?: boolean
+        isProtected?: boolean
         // F-11: last time the merged revocation/suspension check actually
         // ran against the database, so it can be throttled instead of
         // running on every single request.

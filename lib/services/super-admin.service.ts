@@ -79,4 +79,89 @@ export class SuperAdminService {
             status: 'ACTIVE'
         }
     }
+
+    /**
+     * Edit is scoped to profile fields only (no password — SuperAdmin
+     * password changes are a separate, deliberately unbuilt flow; see the
+     * isProtected migration's notes). Authorization: a super admin can
+     * always edit themselves; editing a *different* super admin requires
+     * the actor be protected (isProtected on their session) — see
+     * types/next-auth.d.ts and lib/auth.ts for where that's stamped.
+     */
+    static async update(id: string, input: { firstName?: string; lastName?: string; email?: string; gender?: string }, session: any) {
+        const actorId = session.user.id
+        const actorIsProtected = !!session.user.isProtected
+
+        if (id !== actorId && !actorIsProtected) {
+            throw new Error('FORBIDDEN')
+        }
+
+        const data: any = {}
+        if (input.firstName !== undefined) data.firstName = input.firstName
+        if (input.lastName !== undefined) data.lastName = input.lastName
+        if (input.email !== undefined) data.email = input.email
+        if (input.gender !== undefined) data.gender = input.gender
+
+        let updated
+        try {
+            updated = await prisma.superAdmin.update({ where: { id }, data })
+        } catch (e: any) {
+            if (e.code === 'P2025') throw new Error('SUPER_ADMIN_NOT_FOUND')
+            if (e.code === 'P2002') throw new Error('EMAIL_ALREADY_EXISTS')
+            throw e
+        }
+
+        const { password: _password, ...adminWithoutPassword } = updated as any
+        /* eslint-disable @typescript-eslint/no-unused-vars */
+        const unused = _password
+        /* eslint-enable @typescript-eslint/no-unused-vars */
+
+        const { AuditLogService } = await import("./audit-log.service")
+        await AuditLogService.log('UPDATE_SUPER_ADMIN', 'SUPER_ADMIN', id, {
+            superAdminId: actorId,
+            details: data
+        })
+
+        return {
+            ...adminWithoutPassword,
+            role: 'SUPER_ADMIN',
+            status: 'ACTIVE'
+        }
+    }
+
+    /**
+     * The database trigger (see the isProtected migration) is the real
+     * backstop here — it blocks deleting a protected row or the last
+     * remaining one regardless of what this method does. This
+     * authorization check exists to fail fast with a clear error instead
+     * of a raw Postgres exception, and to stop a non-protected admin from
+     * even attempting to delete someone else's account.
+     */
+    static async delete(id: string, session: any) {
+        const actorId = session.user.id
+        const actorIsProtected = !!session.user.isProtected
+
+        if (!actorIsProtected) {
+            throw new Error('FORBIDDEN')
+        }
+
+        try {
+            await prisma.superAdmin.delete({ where: { id } })
+        } catch (e: any) {
+            if (e.code === 'P2025') throw new Error('SUPER_ADMIN_NOT_FOUND')
+            const message = String(e.message || '')
+            if (message.includes('Cannot delete a protected SuperAdmin account')) {
+                throw new Error('TARGET_PROTECTED')
+            }
+            if (message.includes('Cannot delete the last remaining SuperAdmin account')) {
+                throw new Error('LAST_SUPER_ADMIN')
+            }
+            throw e
+        }
+
+        const { AuditLogService } = await import("./audit-log.service")
+        await AuditLogService.log('DELETE_SUPER_ADMIN', 'SUPER_ADMIN', id, {
+            superAdminId: actorId
+        })
+    }
 }

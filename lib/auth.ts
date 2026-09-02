@@ -116,6 +116,7 @@ export const authOptions: NextAuthOptions = {
                             language: superAdmin.language || 'en',
                             sessionVersion: (superAdmin as any).sessionVersion || 0,
                             mustChangePassword: (superAdmin as any).mustChangePassword || false,
+                            isProtected: (superAdmin as any).isProtected || false,
                             remember
                             // No userStatus/companyBanned — SuperAdmin has neither concept.
                         }
@@ -205,6 +206,7 @@ export const authOptions: NextAuthOptions = {
                 session.user.username = token.username as string
                 session.user.language = token.language as string
                 session.user.mustChangePassword = !!token.mustChangePassword
+                session.user.isProtected = !!token.isProtected
                 session.user.userStatus = token.userStatus as string | undefined
                 session.user.companyBanned = !!token.companyBanned
             }
@@ -228,6 +230,7 @@ export const authOptions: NextAuthOptions = {
                 token.username = user.username
                 token.language = user.language || 'en'
                 token.mustChangePassword = (user as any).mustChangePassword || false
+                token.isProtected = (user as any).isProtected || false
                 token.userStatus = (user as any).userStatus
                 token.companyBanned = (user as any).companyBanned || false
                 token.checkedAt = Date.now()
@@ -278,9 +281,10 @@ export const authOptions: NextAuthOptions = {
                         if (userRole === 'SUPER_ADMIN') {
                             const sa = await prisma.superAdmin.findUnique({
                                 where: { id: userId },
-                                select: { sessionVersion: true }
+                                select: { sessionVersion: true, isProtected: true }
                             })
                             dbVersion = sa?.sessionVersion || 0
+                            token.isProtected = sa?.isProtected || false
                         } else {
                             const u = await prisma.user.findUnique({
                                 where: { id: userId },

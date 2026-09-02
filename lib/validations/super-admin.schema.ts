@@ -12,3 +12,14 @@ export const superAdminSchema = z.object({
 })
 
 export type SuperAdminInput = z.infer<typeof superAdminSchema>
+
+// Profile-only edit — no password (see SuperAdminService.update's comment)
+// and no username, matching what the edit form actually collects.
+export const superAdminUpdateSchema = z.object({
+    firstName: z.string().min(1, "First name is required").optional(),
+    lastName: z.string().min(1, "Last name is required").optional(),
+    email: z.string().email("Invalid email address").optional(),
+    gender: z.enum(['MALE', 'FEMALE']).optional(),
+})
+
+export type SuperAdminUpdateInput = z.infer<typeof superAdminUpdateSchema>
