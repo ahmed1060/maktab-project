@@ -90,6 +90,13 @@ model SuperAdmin {
   username         String     @unique
   sessionVersion   Int        @default(0)
   mustChangePassword Boolean  @default(false)
+  // Founder-account protection: enforced by a DB trigger (see the
+  // add_superadmin_protection migration), not just app code, since a
+  // direct SQL DELETE bypasses application logic entirely. Deliberately a
+  // per-row flag rather than hardcoded emails/IDs in application logic —
+  // the same "magic identifier baked into code" pattern F-04 already
+  // fixed once for credentials.
+  isProtected      Boolean    @default(false)
   auditLogs        AuditLog[]
 }
 

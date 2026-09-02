@@ -25,6 +25,7 @@ export class SuperAdminService {
                     username: true,
                     gender: true,
                     avatar: true,
+                    isProtected: true,
                 },
                 orderBy: { firstName: 'asc' },
                 skip,

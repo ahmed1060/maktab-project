@@ -17,6 +17,7 @@ type Admin = {
     role: string
     status: string
     gender?: string
+    isProtected?: boolean
 }
 
 export default function SuperAdminsPage() {
@@ -187,11 +188,29 @@ export default function SuperAdminsPage() {
                             {admins.map(admin => (
                                 <tr key={admin.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
                                     <td style={{ padding: '1rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
-                                        <div
-                                            style={{ fontWeight: '500', cursor: 'pointer', color: '#2563eb' }}
-                                            onClick={() => setViewingAdmin(admin)}
-                                        >
-                                            {admin.firstName} {admin.lastName}
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                            <div
+                                                style={{ fontWeight: '500', cursor: 'pointer', color: '#2563eb' }}
+                                                onClick={() => setViewingAdmin(admin)}
+                                            >
+                                                {admin.firstName} {admin.lastName}
+                                            </div>
+                                            {admin.isProtected && (
+                                                <span
+                                                    title={locale === 'ar' ? 'حساب محمي من الحذف' : 'Protected from deletion'}
+                                                    style={{
+                                                        fontSize: '0.65rem',
+                                                        fontWeight: '700',
+                                                        padding: '0.15rem 0.5rem',
+                                                        borderRadius: '999px',
+                                                        background: '#eef2ff',
+                                                        color: '#4338ca',
+                                                        whiteSpace: 'nowrap'
+                                                    }}
+                                                >
+                                                    🔒 {locale === 'ar' ? 'محمي' : 'Protected'}
+                                                </span>
+                                            )}
                                         </div>
                                     </td>
                                     <td style={{ padding: '1rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{admin.email}</td>
