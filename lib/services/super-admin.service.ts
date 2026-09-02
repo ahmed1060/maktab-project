@@ -81,12 +81,17 @@ export class SuperAdminService {
     }
 
     /**
-     * Edit is scoped to profile fields only (no password — SuperAdmin
-     * password changes are a separate, deliberately unbuilt flow; see the
-     * isProtected migration's notes). Authorization: a super admin can
-     * always edit themselves; editing a *different* super admin requires
-     * the actor be protected (isProtected on their session) — see
-     * types/next-auth.d.ts and lib/auth.ts for where that's stamped.
+     * Edit is scoped to profile fields only — no password here. That's not
+     * a gap: password changes for a SuperAdmin already go through the
+     * existing generic PUT /api/users → UserService.update, which falls
+     * back to the SuperAdmin table when no matching User row exists. That
+     * path already covers self-service changes and, for a *different*
+     * super admin, an admin-forced reset gated by a verification passcode.
+     * This endpoint deliberately doesn't duplicate that. Authorization here
+     * for the fields it does own: a super admin can always edit themselves;
+     * editing a *different* super admin requires the actor be protected
+     * (isProtected on their session) — see types/next-auth.d.ts and
+     * lib/auth.ts for where that's stamped.
      */
     static async update(id: string, input: { firstName?: string; lastName?: string; email?: string; gender?: string }, session: any) {
         const actorId = session.user.id
