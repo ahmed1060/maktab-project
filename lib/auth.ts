@@ -118,6 +118,7 @@ export const authOptions: NextAuthOptions = {
                             mustChangePassword: (superAdmin as any).mustChangePassword || false,
                             isProtected: (superAdmin as any).isProtected || false,
                             emailVerified: !!(superAdmin as any).emailVerifiedAt,
+                            mfaEnabled: (superAdmin as any).mfaEnabled || false,
                             remember
                             // No userStatus/companyBanned — SuperAdmin has neither concept.
                         }
@@ -179,6 +180,7 @@ export const authOptions: NextAuthOptions = {
                         userStatus: 'ACTIVE', // just set above; not validatedUser.status, which is pre-login-update
                         companyBanned: validatedUser.company?.isBanned || false,
                         emailVerified: !!(validatedUser as any).emailVerifiedAt,
+                        mfaEnabled: (validatedUser as any).mfaEnabled || false,
                         remember
                     }
 
@@ -210,6 +212,7 @@ export const authOptions: NextAuthOptions = {
                 session.user.mustChangePassword = !!token.mustChangePassword
                 session.user.isProtected = !!token.isProtected
                 session.user.emailVerified = !!token.emailVerified
+                session.user.mfaEnabled = !!token.mfaEnabled
                 session.user.userStatus = token.userStatus as string | undefined
                 session.user.companyBanned = !!token.companyBanned
             }
@@ -235,6 +238,7 @@ export const authOptions: NextAuthOptions = {
                 token.mustChangePassword = (user as any).mustChangePassword || false
                 token.isProtected = (user as any).isProtected || false
                 token.emailVerified = (user as any).emailVerified || false
+                token.mfaEnabled = (user as any).mfaEnabled || false
                 token.userStatus = (user as any).userStatus
                 token.companyBanned = (user as any).companyBanned || false
                 token.checkedAt = Date.now()
@@ -285,20 +289,22 @@ export const authOptions: NextAuthOptions = {
                         if (userRole === 'SUPER_ADMIN') {
                             const sa = await prisma.superAdmin.findUnique({
                                 where: { id: userId },
-                                select: { sessionVersion: true, isProtected: true, emailVerifiedAt: true }
+                                select: { sessionVersion: true, isProtected: true, emailVerifiedAt: true, mfaEnabled: true }
                             })
                             dbVersion = sa?.sessionVersion || 0
                             token.isProtected = sa?.isProtected || false
                             token.emailVerified = !!sa?.emailVerifiedAt
+                            token.mfaEnabled = sa?.mfaEnabled || false
                         } else {
                             const u = await prisma.user.findUnique({
                                 where: { id: userId },
-                                select: { sessionVersion: true, status: true, company: { select: { isBanned: true } }, emailVerifiedAt: true }
+                                select: { sessionVersion: true, status: true, company: { select: { isBanned: true } }, emailVerifiedAt: true, mfaEnabled: true }
                             })
                             dbVersion = u?.sessionVersion || 0
                             token.userStatus = u?.status
                             token.companyBanned = u?.company?.isBanned || false
                             token.emailVerified = !!u?.emailVerifiedAt
+                            token.mfaEnabled = u?.mfaEnabled || false
                         }
 
                         if (token.sessionVersion === undefined) {
@@ -344,6 +350,7 @@ export const authOptions: NextAuthOptions = {
                 if (session.mustChangePassword !== undefined) token.mustChangePassword = session.mustChangePassword
                 if (session.emailVerified !== undefined) token.emailVerified = session.emailVerified
                 if (session.email !== undefined) token.email = session.email
+                if (session.mfaEnabled !== undefined) token.mfaEnabled = session.mfaEnabled
             }
             return token
         }

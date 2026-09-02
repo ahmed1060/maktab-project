@@ -815,6 +815,7 @@ export const en = {
         // remediation log for why a forced first-time verify and a later
         // voluntary change share one screen).
         email_settings_nav: "Email settings",
+        mfa_settings_nav: "Two-factor authentication",
         verify_email_required_title: "You must verify your email",
         verify_email_required_message: "This confirms you actually control this address — it's needed before you can use the rest of the dashboard, and it's what a sign-in code gets sent to if you're ever locked out of your authenticator app.",
         email_settings_title: "Email settings",

@@ -811,6 +811,7 @@ export const ar = {
         health_metrics_updated: "تم تحديث مؤشرات الصحة",
 
         email_settings_nav: "إعدادات البريد الإلكتروني",
+        mfa_settings_nav: "المصادقة الثنائية",
         verify_email_required_title: "يجب عليك تأكيد بريدك الإلكتروني",
         verify_email_required_message: "هذا يؤكد أنك تتحكم فعليًا في هذا العنوان — وهو مطلوب قبل استخدام باقي لوحة التحكم، وهو ما يُرسل إليه رمز تسجيل الدخول إذا فقدت الوصول إلى تطبيق المصادقة الخاص بك.",
         email_settings_title: "إعدادات البريد الإلكتروني",

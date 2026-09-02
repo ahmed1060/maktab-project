@@ -33,6 +33,12 @@ declare module "next-auth" {
             // true, the same way it already does for mustChangePassword —
             // see app/(dashboard)/dashboard/email-settings/page.tsx.
             emailVerified?: boolean
+            // F-27, Phase 4: whether TOTP MFA is enrolled. Refreshed on the
+            // same 60s recheck as isProtected/emailVerified — the actual
+            // login-time challenge (Phase 5) doesn't read this from the
+            // session (that would defeat the point), it queries fresh in
+            // authorize() before a session even exists.
+            mfaEnabled?: boolean
         } & DefaultSession["user"]
     }
 
@@ -54,6 +60,7 @@ declare module "next-auth" {
         companyBanned?: boolean
         isProtected?: boolean
         emailVerified?: boolean
+        mfaEnabled?: boolean
     }
 }
 
@@ -75,6 +82,7 @@ declare module "next-auth/jwt" {
         companyBanned?: boolean
         isProtected?: boolean
         emailVerified?: boolean
+        mfaEnabled?: boolean
         // F-11: last time the merged revocation/suspension check actually
         // ran against the database, so it can be throttled instead of
         // running on every single request.
