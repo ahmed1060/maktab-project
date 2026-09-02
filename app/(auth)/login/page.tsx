@@ -28,6 +28,78 @@ export default function LoginPage() {
     const [recoverySending, setRecoverySending] = useState(false)
     const isAr = locale === 'ar'
 
+    // F-27, Phase 3.5: entirely separate from the MFA stage machine above
+    // — this is "I can't get in at all," not a second factor on top of a
+    // password that already checked out.
+    const [mode, setMode] = useState<'login' | 'forgot'>('login')
+    const [forgotStage, setForgotStage] = useState<'request' | 'confirm'>('request')
+    const [forgotEmail, setForgotEmail] = useState('')
+    const [forgotCode, setForgotCode] = useState('')
+    const [forgotNewPassword, setForgotNewPassword] = useState('')
+    const [forgotSubmitting, setForgotSubmitting] = useState(false)
+    const [forgotMessage, setForgotMessage] = useState('')
+
+    const resetForgotState = () => {
+        setMode('login')
+        setForgotStage('request')
+        setForgotCode('')
+        setForgotNewPassword('')
+        setError('')
+        setForgotMessage('')
+    }
+
+    const handleForgotRequest = async (e: React.FormEvent) => {
+        e.preventDefault()
+        setError('')
+        setForgotSubmitting(true)
+        try {
+            const res = await fetch('/api/auth/forgot-password/request', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email: forgotEmail }),
+            })
+            const data = await res.json()
+            if (!res.ok || !data.success) {
+                throw new Error(data.error || (isAr ? 'حدث خطأ' : 'Something went wrong'))
+            }
+            // F-27: shown regardless of whether the email actually matched
+            // an account — see the matching comment in the request route.
+            setForgotMessage(isAr
+                ? 'إذا كان هذا البريد الإلكتروني مرتبطًا بحساب، فقد أرسلنا إليه رمزًا.'
+                : "If that email is on an account, we've sent a code.")
+            setForgotStage('confirm')
+        } catch (err: any) {
+            setError(err.message)
+        } finally {
+            setForgotSubmitting(false)
+        }
+    }
+
+    const handleForgotConfirm = async (e: React.FormEvent) => {
+        e.preventDefault()
+        setError('')
+        setForgotSubmitting(true)
+        try {
+            const res = await fetch('/api/auth/forgot-password/confirm', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email: forgotEmail, code: forgotCode, newPassword: forgotNewPassword }),
+            })
+            const data = await res.json()
+            if (!res.ok || !data.success) {
+                throw new Error(data.error || (isAr ? 'رمز غير صالح أو منتهي الصلاحية' : 'Invalid or expired code'))
+            }
+            setEmail(forgotEmail)
+            setPassword('')
+            resetForgotState()
+            setError('')
+        } catch (err: any) {
+            setError(err.message)
+        } finally {
+            setForgotSubmitting(false)
+        }
+    }
+
     const finishLogin = async () => {
         if (rememberDevice) {
             // Best-effort — a failed trust-device call just means being
@@ -182,19 +254,39 @@ export default function LoginPage() {
                         WebkitBackgroundClip: 'text',
                         WebkitTextFillColor: 'transparent',
                         backgroundClip: 'text'
-                    }}>{stage === 'credentials' ? t('welcome_back') : (isAr ? 'التحقق المطلوب' : 'Verification required')}</h1>
+                    }}>
+                        {mode === 'forgot'
+                            ? (isAr ? 'إعادة تعيين كلمة المرور' : 'Reset your password')
+                            : stage === 'credentials' ? t('welcome_back') : (isAr ? 'التحقق المطلوب' : 'Verification required')}
+                    </h1>
                     <p style={{
                         textAlign: 'center',
                         color: '#64748b',
                         marginBottom: '2rem',
                         fontSize: '0.875rem'
                     }}>
-                        {stage === 'credentials'
-                            ? t('sign_in_subtitle')
-                            : stage === 'recovery'
-                                ? (isAr ? 'أدخل الرمز المرسل إلى بريدك الإلكتروني.' : 'Enter the code sent to your email.')
-                                : (isAr ? 'أدخل الرمز من تطبيق المصادقة الخاص بك.' : 'Enter the code from your authenticator app.')}
+                        {mode === 'forgot'
+                            ? forgotStage === 'request'
+                                ? (isAr ? 'أدخل بريدك الإلكتروني وسنرسل لك رمزًا لإعادة التعيين.' : "Enter your email and we'll send you a reset code.")
+                                : (isAr ? 'أدخل الرمز وكلمة المرور الجديدة.' : 'Enter the code and your new password.')
+                            : stage === 'credentials'
+                                ? t('sign_in_subtitle')
+                                : stage === 'recovery'
+                                    ? (isAr ? 'أدخل الرمز المرسل إلى بريدك الإلكتروني.' : 'Enter the code sent to your email.')
+                                    : (isAr ? 'أدخل الرمز من تطبيق المصادقة الخاص بك.' : 'Enter the code from your authenticator app.')}
                     </p>
+                    {forgotMessage && !error && (
+                        <div style={{
+                            padding: '0.85rem 1rem',
+                            marginBottom: '1.5rem',
+                            background: 'linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%)',
+                            color: '#166534',
+                            borderRadius: '12px',
+                            fontSize: '0.85rem',
+                            textAlign: 'center',
+                            border: '1px solid #86efac',
+                        }}>{forgotMessage}</div>
+                    )}
                     {error && (
                         <div style={{
                             padding: '1rem',
@@ -209,7 +301,98 @@ export default function LoginPage() {
                         }}>{error}</div>
                     )}
 
-                    {stage === 'credentials' ? (
+                    {mode === 'forgot' ? (
+                        <form onSubmit={forgotStage === 'request' ? handleForgotRequest : handleForgotConfirm}>
+                            {forgotStage === 'request' ? (
+                                <div style={{ marginBottom: '1.25rem' }}>
+                                    <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('email')}</label>
+                                    <input
+                                        type="email"
+                                        className="input"
+                                        value={forgotEmail}
+                                        onChange={(e) => setForgotEmail(e.target.value.slice(0, 254))}
+                                        required
+                                        maxLength={254}
+                                        autoFocus
+                                        style={{ padding: '0.625rem 1rem', height: '42px', textAlign: locale === 'ar' ? 'right' : 'left', direction: locale === 'ar' ? 'rtl' : 'ltr' }}
+                                    />
+                                </div>
+                            ) : (
+                                <>
+                                    <div style={{ marginBottom: '1rem' }}>
+                                        <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>
+                                            {isAr ? 'الرمز' : 'Code'}
+                                        </label>
+                                        <input
+                                            type="text"
+                                            inputMode="numeric"
+                                            className="input"
+                                            value={forgotCode}
+                                            onChange={(e) => setForgotCode(e.target.value)}
+                                            maxLength={6}
+                                            minLength={6}
+                                            required
+                                            autoFocus
+                                            style={{ padding: '0.625rem 1rem', height: '42px', textAlign: 'center', letterSpacing: '0.2em', fontSize: '1.1rem' }}
+                                        />
+                                    </div>
+                                    <div style={{ marginBottom: '1.25rem' }}>
+                                        <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>
+                                            {isAr ? 'كلمة المرور الجديدة' : 'New password'}
+                                        </label>
+                                        <input
+                                            type="password"
+                                            className="input"
+                                            value={forgotNewPassword}
+                                            onChange={(e) => setForgotNewPassword(e.target.value.slice(0, 72))}
+                                            required
+                                            minLength={12}
+                                            maxLength={72}
+                                            style={{ padding: '0.625rem 1rem', height: '42px' }}
+                                        />
+                                    </div>
+                                </>
+                            )}
+
+                            <button
+                                type="submit"
+                                disabled={forgotSubmitting}
+                                style={{
+                                    width: '100%',
+                                    padding: '0.875rem',
+                                    background: forgotSubmitting ? '#9ca3af' : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                                    color: 'white',
+                                    border: 'none',
+                                    borderRadius: '12px',
+                                    fontSize: '1rem',
+                                    fontWeight: '600',
+                                    cursor: forgotSubmitting ? 'not-allowed' : 'pointer',
+                                    marginBottom: '0.75rem'
+                                }}
+                            >
+                                {forgotSubmitting
+                                    ? (isAr ? 'جارٍ الإرسال...' : 'Sending...')
+                                    : forgotStage === 'request'
+                                        ? (isAr ? 'إرسال الرمز' : 'Send code')
+                                        : (isAr ? 'إعادة تعيين كلمة المرور' : 'Reset password')}
+                            </button>
+                            <button
+                                type="button"
+                                onClick={resetForgotState}
+                                style={{
+                                    width: '100%',
+                                    padding: '0.6rem',
+                                    background: 'transparent',
+                                    color: '#94a3b8',
+                                    border: 'none',
+                                    fontSize: '0.8rem',
+                                    cursor: 'pointer',
+                                }}
+                            >
+                                {isAr ? 'العودة إلى تسجيل الدخول' : 'Back to sign in'}
+                            </button>
+                        </form>
+                    ) : stage === 'credentials' ? (
                         <form onSubmit={handleCredentialsSubmit}>
                             <div style={{ marginBottom: '1.25rem' }}>
                                 <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('email')}</label>
@@ -275,6 +458,15 @@ export default function LoginPage() {
                                         </svg>
                                     )}
                                 </button>
+                                <div style={{ textAlign: locale === 'ar' ? 'left' : 'right', marginTop: '0.5rem' }}>
+                                    <button
+                                        type="button"
+                                        onClick={() => { setMode('forgot'); setForgotEmail(email); setError('') }}
+                                        style={{ background: 'none', border: 'none', color: '#667eea', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer', padding: 0 }}
+                                    >
+                                        {isAr ? 'هل نسيت كلمة المرور؟' : 'Forgot your password?'}
+                                    </button>
+                                </div>
                             </div>
 
                             {/* Stay Signed In Checkbox */}
