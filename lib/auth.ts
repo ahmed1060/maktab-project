@@ -6,6 +6,9 @@ import { v4 as uuidv4 } from 'uuid'
 
 import { headers } from "next/headers"
 import { RateLimiter, getClientIp } from "./api-utils"
+import { MfaService } from "./services/mfa.service"
+import { VerificationCodeService } from "./services/verification-code.service"
+import { TrustedDeviceService } from "./services/trusted-device.service"
 
 // F-17: a bcrypt.compare against a real hash takes measurably longer than
 // returning immediately, so an unknown email used to return in ~0ms while a
@@ -16,7 +19,50 @@ import { RateLimiter, getClientIp } from "./api-utils"
 // closes the "unknown email" gap specifically; SuperAdmin and User accounts
 // still hash at different bcrypt cost factors (12 vs 10) elsewhere in the
 // app, so it isn't a fully constant-time login path end to end.
-const DUMMY_PASSWORD_HASH = '$2b$10$8l1DIcjsHF.SoFHAsE28xOtbx8gG8u0PwT7GhO1wvcDXHycZLKgB.'
+// Exported so app/api/auth/mfa-recovery/request/route.ts — a second
+// password-checking surface outside authorize() itself — stays identical
+// rather than drifting from a copy-pasted literal.
+export const DUMMY_PASSWORD_HASH = '$2b$10$8l1DIcjsHF.SoFHAsE28xOtbx8gG8u0PwT7GhO1wvcDXHycZLKgB.'
+
+/**
+ * F-27, Phase 5: the actual login-time MFA gate, shared between the
+ * SuperAdmin and User branches of authorize() below.
+ *
+ * A trusted-device cookie skips this entirely. Otherwise: an
+ * mfaRecoveryCode (the "email me a code instead" fallback) is checked
+ * against VerificationCode; an mfaCode is checked against the account's
+ * TOTP secret; if neither was submitted, this is the *first* pass through
+ * authorize() for this login and the client needs to ask for one —
+ * MFA_REQUIRED is not a failure, it's the expected first response for
+ * every MFA-enabled account's login.
+ */
+async function checkMfaChallenge(params: {
+    email: string
+    mfaEnabled: boolean
+    mfaSecret: string | null
+    owner: { userId?: string; superAdminId?: string }
+    mfaCode?: string
+    mfaRecoveryCode?: string
+    cookieHeader: string | null
+}): Promise<void> {
+    if (!params.mfaEnabled) return
+
+    if (await TrustedDeviceService.isTrusted(params.cookieHeader, params.owner)) return
+
+    if (params.mfaRecoveryCode) {
+        const ok = await VerificationCodeService.verify(params.email, 'MFA_RECOVERY', params.mfaRecoveryCode)
+        if (!ok) throw new Error('INVALID_MFA_CODE')
+        return
+    }
+
+    if (params.mfaCode) {
+        const ok = params.mfaSecret ? await MfaService.verifyStoredCode(params.mfaSecret, params.mfaCode) : false
+        if (!ok) throw new Error('INVALID_MFA_CODE')
+        return
+    }
+
+    throw new Error('MFA_REQUIRED')
+}
 
 export const authOptions: NextAuthOptions = {
     providers: [
@@ -26,7 +72,11 @@ export const authOptions: NextAuthOptions = {
                 email: { label: "Email", type: "email" },
                 password: { label: "Password", type: "password" },
                 companyId: { label: "Company", type: "text" },
-                remember: { label: "Remember", type: "text" }
+                remember: { label: "Remember", type: "text" },
+                // F-27: present only on the second round-trip of an
+                // MFA-enabled login — see checkMfaChallenge above.
+                mfaCode: { label: "MFA Code", type: "text" },
+                mfaRecoveryCode: { label: "MFA Recovery Code", type: "text" }
             },
             async authorize(credentials) {
                 try {
@@ -36,6 +86,13 @@ export const authOptions: NextAuthOptions = {
                     // client-controllable list an attacker can rotate to reset which
                     // rate-limit bucket they land in.
                     const ip = getClientIp(headerList)
+                    // F-27: read here once, from the same next/headers() call this
+                    // route handler already makes for the IP above, rather than
+                    // trying to get a cookie out of authorize()'s own (req)
+                    // parameter — NextAuth v4 genuinely doesn't pass cookies
+                    // through there (checked its actual call site, not just the
+                    // .d.ts, which under-declares what's available either way).
+                    const cookieHeader = headerList.get('cookie')
                     const { limited, resetAt } = await RateLimiter.getLimitData(`login:${ip}`, 5, 15 * 60 * 1000)
                     if (limited) {
                         const timeStr = new Date(resetAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
@@ -94,6 +151,19 @@ export const authOptions: NextAuthOptions = {
                     // so their specific error messages only ever reach someone who
                     // already holds the real password.
                     if (superAdmin) {
+                        // F-27: before the login is considered complete, not after —
+                        // a login that only fails the MFA step must never reach the
+                        // LOGIN audit entry below.
+                        await checkMfaChallenge({
+                            email: superAdmin.email,
+                            mfaEnabled: (superAdmin as any).mfaEnabled || false,
+                            mfaSecret: (superAdmin as any).mfaSecret || null,
+                            owner: { superAdminId: superAdmin.id },
+                            mfaCode: credentials.mfaCode,
+                            mfaRecoveryCode: credentials.mfaRecoveryCode,
+                            cookieHeader,
+                        })
+
                         const { AuditLogService } = await import("./services/audit-log.service")
                         await AuditLogService.log('LOGIN', 'USER', superAdmin.id, {
                             superAdminId: superAdmin.id,
@@ -142,6 +212,18 @@ export const authOptions: NextAuthOptions = {
                     if (validatedUser.status === 'SUSPENDED' || validatedUser.status === 'DELETED') {
                         throw new Error('Your account has been suspended or deleted.')
                     }
+
+                    // F-27: before the login is considered complete, not after — see
+                    // the matching comment in the SuperAdmin branch above.
+                    await checkMfaChallenge({
+                        email: validatedUser.email,
+                        mfaEnabled: (validatedUser as any).mfaEnabled || false,
+                        mfaSecret: (validatedUser as any).mfaSecret || null,
+                        owner: { userId: validatedUser.id },
+                        mfaCode: credentials.mfaCode,
+                        mfaRecoveryCode: credentials.mfaRecoveryCode,
+                        cookieHeader,
+                    })
 
                     // Update generic user status
                     try {
