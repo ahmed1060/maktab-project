@@ -610,13 +610,16 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                 }),
                 headers: { 'Content-Type': 'application/json' }
             })
-            if (!res.ok) throw new Error('Update failed')
+            if (!res.ok) {
+                const data = await res.json().catch(() => ({}))
+                throw new Error(data.error || 'Update failed')
+            }
             showToast(t('task_details_updated_success'), 'success')
             setIsEditing(false)
             router.refresh()
-        } catch (e) {
+        } catch (e: any) {
             console.error(e)
-            showToast(t('failed_update_task'), 'error')
+            showToast(e.message || t('failed_update_task'), 'error')
         }
     }
 

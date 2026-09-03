@@ -25,6 +25,7 @@ export const PUT = withStandardHandler(async (req, session, json, { params }) =>
         return ApiResponse.success(result)
     } catch (error: any) {
         if (error.message === 'TASK_NOT_FOUND') return ApiResponse.notFound("Task not found")
+        if (error.message === 'DEADLINE_TOO_SOON') return ApiResponse.badRequest("Deadline must be at least 3 hours from now")
         throw error
     }
 })

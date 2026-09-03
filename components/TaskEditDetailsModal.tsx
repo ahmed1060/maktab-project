@@ -100,7 +100,13 @@ export default function TaskEditDetailsModal({ isOpen, onClose, onSubmit, editFo
                     </p>
                 </div>
                 <div style={{ marginBottom: '1.25rem' }}>
-                    <DateTimePicker label={t('deadline_label')} value={editForm.deadline} onChange={v => setEditForm({ ...editForm, deadline: v })} min={new Date().toISOString()} />
+                    {/* Backend requires the deadline be at least 3h out
+                        (task.service.ts's updateDetails) — this min matches
+                        that, same as the create-task form already does.
+                        Previously just blocked the past, which let you pick
+                        e.g. "10 minutes from now" here and get an unhandled
+                        500 back. */}
+                    <DateTimePicker label={t('deadline_label')} value={editForm.deadline} onChange={v => setEditForm({ ...editForm, deadline: v })} min={new Date(Date.now() + 3 * 60 * 60 * 1000).toISOString()} />
                 </div>
 
                 <div style={{ marginBottom: '1.5rem' }}>
