@@ -114,9 +114,14 @@ jobs:
 
       - name: Prune old backups
         run: |
-          rclone delete gdrive:daily   --min-age 7d
-          rclone delete gdrive:weekly  --min-age 28d
-          rclone delete gdrive:monthly --min-age 365d
+          # || true on each: a folder that has never received a backup yet
+          # (e.g. weekly/monthly, before this has run on a Sunday or the
+          # 1st of a month) makes rclone delete fail with "directory not
+          # found" rather than no-op — not a real error, just nothing to
+          # prune yet.
+          rclone delete gdrive:daily   --min-age 7d   || true
+          rclone delete gdrive:weekly  --min-age 28d  || true
+          rclone delete gdrive:monthly --min-age 365d || true
 
       - name: Report
         if: always()
