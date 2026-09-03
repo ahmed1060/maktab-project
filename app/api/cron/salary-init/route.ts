@@ -1,6 +1,7 @@
 import { ApiResponse } from "@/lib/api-response"
 import { CronService } from "@/lib/services/cron.service"
 import { isValidCronRequest } from "@/lib/cron-auth"
+import { AuditLogService } from "@/lib/services/audit-log.service"
 
 // GET, not POST: Vercel Cron always dispatches with GET.
 export async function GET(req: Request) {
@@ -13,6 +14,7 @@ export async function GET(req: Request) {
         return ApiResponse.success(result)
     } catch (error: any) {
         console.error('Salary initialization failed:', error)
-        return ApiResponse.error("Internal Server Error", 500)
+        const ref = await AuditLogService.logSystemError({ error, route: '/api/cron/salary-init', method: 'GET' })
+        return ApiResponse.error(AuditLogService.friendlyErrorMessage(ref), 500)
     }
 }

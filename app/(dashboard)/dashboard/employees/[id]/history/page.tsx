@@ -133,9 +133,15 @@ export default function EmployeeHistoryPage() {
             }
         } catch {
             console.error('Error fetching data')
+            setAlert({ type: 'error', message: t('failed_fetch_data') })
+            setTimeout(() => setAlert(null), 3000)
         } finally {
             setLoading(false)
         }
+        // t isn't memoized by LanguageContext — listing it here would
+        // recreate this callback (and the effect that depends on its
+        // identity) every render, refetching on every render with it.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [params.id])
 
     const fetchAdjustments = useCallback(async () => {

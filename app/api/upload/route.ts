@@ -1,6 +1,7 @@
 import { ApiResponse } from "@/lib/api-response"
 import { uploadToCloud } from "@/lib/storage"
 import { withStandardHandler } from "@/lib/api-utils"
+import { AuditLogService } from "@/lib/services/audit-log.service"
 
 export const POST = withStandardHandler(async (req, session) => {
     try {
@@ -65,7 +66,9 @@ export const POST = withStandardHandler(async (req, session) => {
         })
     } catch (error: any) {
         console.error('Upload route error:', error)
-        return ApiResponse.error(error.message || 'Failed to upload file to cloud storage')
+        const role = (session.user as any).role
+        const ref = await AuditLogService.logSystemError({ error, route: '/api/upload', method: 'POST', userId: role !== 'SUPER_ADMIN' ? (session.user as any).id : null, superAdminId: role === 'SUPER_ADMIN' ? (session.user as any).id : null })
+        return ApiResponse.error(AuditLogService.friendlyErrorMessage(ref))
     }
 }, {
     rateLimit: { maxRequests: 20, windowMs: 60_000 }

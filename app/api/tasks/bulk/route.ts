@@ -2,6 +2,7 @@ import { withStandardHandler } from "@/lib/api-utils"
 import { ApiResponse } from "@/lib/api-response"
 import { prisma } from "@/lib/prisma"
 import { TaskService } from "@/lib/services/task.service"
+import { AuditLogService } from "@/lib/services/audit-log.service"
 
 export const POST = withStandardHandler(async (req, session, json) => {
     const userRole = session.user.role
@@ -93,7 +94,8 @@ export const POST = withStandardHandler(async (req, session, json) => {
         if (error.code === 'P2003') {
             return ApiResponse.error("Database constraint violation. Please check if all assigned employees still exist.")
         }
-        return ApiResponse.error(error.message || "Bulk creation failed")
+        const ref = await AuditLogService.logSystemError({ error, route: '/api/tasks/bulk', method: 'POST', userId: userRole !== 'SUPER_ADMIN' ? session.user.id : null, superAdminId: userRole === 'SUPER_ADMIN' ? session.user.id : null })
+        return ApiResponse.error(AuditLogService.friendlyErrorMessage(ref))
     }
 }, {
     audit: { action: 'BULK_CREATE_TASK', entityType: 'TASK', getEntityId: () => "BULK" }

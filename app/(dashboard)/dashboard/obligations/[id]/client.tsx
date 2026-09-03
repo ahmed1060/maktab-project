@@ -4,6 +4,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import Modal from '@/components/Modal'
 import { useLanguage } from '@/context/LanguageContext'
 import SafeDate from '@/components/SafeDate'
+import { SESSION_EXPIRED_MESSAGE, redirectAfterSessionExpiry } from '@/lib/session-expired'
 
 
 export default function ObligationDetailClient({ obligation, userRole, userId, userName }: { obligation: any, userRole: string, userId: string, userName: string }) {
@@ -14,6 +15,16 @@ export default function ObligationDetailClient({ obligation, userRole, userId, u
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
     const [showFeedback, setShowFeedback] = useState(false)
     const [feedbackMessage, setFeedbackMessage] = useState('')
+    // This banner (rendered below) was previously always green-bordered,
+    // even for a failure — visually indistinguishable from a success
+    // confirmation. Tracked alongside the message now so it can match the
+    // shared Toast component's red/green convention.
+    const [feedbackType, setFeedbackType] = useState<'success' | 'error'>('success')
+    const notify = (message: string, type: 'success' | 'error' = 'success') => {
+        setFeedbackMessage(message)
+        setFeedbackType(type)
+        setShowFeedback(true)
+    }
     const [isReverting, setIsReverting] = useState(false)
     const [showRevertConfirm, setShowRevertConfirm] = useState(false)
     const [showDeadlineModal, setShowDeadlineModal] = useState(false)
@@ -132,19 +143,22 @@ export default function ObligationDetailClient({ obligation, userRole, userId, u
             })
 
             if (!res.ok) {
+                if (res.status === 401) {
+                    notify(SESSION_EXPIRED_MESSAGE, 'error')
+                    redirectAfterSessionExpiry(router)
+                    return
+                }
                 const data = await res.json().catch(() => ({}))
-                throw new Error(data.message || 'Update failed')
+                throw new Error(data.error || 'Update failed')
             }
 
             setPendingFiles([])
             router.refresh()
-            setFeedbackMessage(isDraft ? t('draft_saved_success') : t('obligation_submitted_success' as any))
-            setShowFeedback(true)
+            notify(isDraft ? t('draft_saved_success') : t('obligation_submitted_success' as any), 'success')
             setTimeout(() => setShowFeedback(false), 3000)
         } catch (error: any) {
             console.error("Update failed", error)
-            setFeedbackMessage(error.message || t('failed_save_generic'))
-            setShowFeedback(true)
+            notify(error.message || t('failed_save_generic'), 'error')
         } finally {
             setUploading(false)
             setLoadingType(null)
@@ -198,8 +212,7 @@ export default function ObligationDetailClient({ obligation, userRole, userId, u
 
             if (res.ok) {
                 router.refresh()
-                setFeedbackMessage(t('item_deleted_success' as any) || 'Attachment removed')
-                setShowFeedback(true)
+                notify(t('item_deleted_success' as any) || 'Attachment removed', 'success')
             }
         } catch (error) {
             console.error('Failed to remove attachment', error)
@@ -235,8 +248,7 @@ export default function ObligationDetailClient({ obligation, userRole, userId, u
         })
 
         if (hasError) {
-            setFeedbackMessage(errorMsg)
-            setShowFeedback(true)
+            notify(errorMsg, 'error')
         }
 
         setPendingFiles(prev => [...prev, ...validFiles])
@@ -257,8 +269,7 @@ export default function ObligationDetailClient({ obligation, userRole, userId, u
             })
             if (res.ok) {
                 router.refresh()
-                setFeedbackMessage(t('obligation_approved_success' as any))
-                setShowFeedback(true)
+                notify(t('obligation_approved_success' as any), 'success')
             }
         } catch (error) { console.error(error) }
     }
@@ -272,8 +283,7 @@ export default function ObligationDetailClient({ obligation, userRole, userId, u
             })
             if (res.ok) {
                 router.refresh()
-                setFeedbackMessage(t('obligation_rejected_success' as any))
-                setShowFeedback(true)
+                notify(t('obligation_rejected_success' as any), 'success')
             }
         } catch (error) { console.error(error) }
     }
@@ -286,15 +296,16 @@ export default function ObligationDetailClient({ obligation, userRole, userId, u
             if (res.ok) {
                 router.push('/dashboard/obligations')
                 router.refresh()
+            } else if (res.status === 401) {
+                notify(SESSION_EXPIRED_MESSAGE, 'error')
+                redirectAfterSessionExpiry(router)
             } else {
                 const data = await res.json().catch(() => ({}))
-                setFeedbackMessage(data.message || t('failed_save_generic'))
-                setShowFeedback(true)
+                notify(data.error || t('failed_save_generic'), 'error')
             }
         } catch (error: any) {
             console.error('Delete error:', error)
-            setFeedbackMessage(error.message || t('failed_save_generic'))
-            setShowFeedback(true)
+            notify(error.message || t('failed_save_generic'), 'error')
         }
         setShowDeleteConfirm(false)
     }
@@ -329,8 +340,7 @@ export default function ObligationDetailClient({ obligation, userRole, userId, u
             })
             setIsReassigning(false)
             router.refresh()
-            setFeedbackMessage(t('task_transfer_success'))
-            setShowFeedback(true)
+            notify(t('task_transfer_success'), 'success')
             setTimeout(() => setShowFeedback(false), 3000)
         } catch (error) {
             console.error('Reassign error', error)
@@ -347,16 +357,19 @@ export default function ObligationDetailClient({ obligation, userRole, userId, u
         try {
             const res = await fetch(`/api/obligations/${obligation.id}/revert`, { method: 'POST' })
             if (!res.ok) {
+                if (res.status === 401) {
+                    notify(SESSION_EXPIRED_MESSAGE, 'error')
+                    redirectAfterSessionExpiry(router)
+                    return
+                }
                 const data = await res.json().catch(() => ({}))
-                throw new Error(data.message || 'Revert failed')
+                throw new Error(data.error || 'Revert failed')
             }
-            setFeedbackMessage(t('obligation_reverted_success'))
-            setShowFeedback(true)
+            notify(t('obligation_reverted_success'), 'success')
             router.refresh()
         } catch (e: any) {
             console.error(e)
-            setFeedbackMessage(e.message || t('failed_revert_obligation'))
-            setShowFeedback(true)
+            notify(e.message || t('failed_revert_obligation'), 'error')
         } finally {
             setIsReverting(false)
         }
@@ -692,7 +705,7 @@ export default function ObligationDetailClient({ obligation, userRole, userId, u
                     borderRadius: '0.5rem',
                     boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
                     zIndex: 2000,
-                    [locale === 'ar' ? 'borderRight' : 'borderLeft']: '4px solid #22c55e',
+                    [locale === 'ar' ? 'borderRight' : 'borderLeft']: `4px solid ${feedbackType === 'error' ? '#ef4444' : '#22c55e'}`,
                     display: 'flex',
                     alignItems: 'center',
                     gap: '1rem',

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useLanguage } from '@/context/LanguageContext'
 import LoadingSpinner from '@/components/LoadingSpinner'
 import { useHeader } from '@/context/HeaderContext'
+import { useToast } from '@/context/ToastContext'
 // F-20: xlsx (SheetJS) is on a version with an unfixable-from-npm CVE
 // (prototype pollution + ReDoS in the parser) — SheetJS stopped publishing
 // patched releases to npm. exceljs is maintained and gets normal npm
@@ -26,6 +27,7 @@ type User = {
 export default function UsernamesPage() {
     const { t, locale } = useLanguage()
     const { setTitle, setSubtitle } = useHeader()
+    const { showToast } = useToast()
     const [users, setUsers] = useState<User[]>([])
     const [loading, setLoading] = useState(true)
 
@@ -38,14 +40,21 @@ export default function UsernamesPage() {
                     const result = await res.json()
                     const data = result.data.data || result.data || []
                     setUsers(data)
+                } else {
+                    showToast(t('failed_fetch_data'), 'error')
                 }
             } catch (err) {
                 console.error('Failed to fetch users', err)
+                showToast(t('failed_fetch_data'), 'error')
             } finally {
                 setLoading(false)
             }
         }
         fetchUsers()
+        // Deliberately run once on mount only — t/showToast are recreated
+        // every render, and this is a one-time initial load, not something
+        // that should refetch on every locale toggle or re-render.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [])
 
     useEffect(() => {

@@ -1,6 +1,7 @@
 'use client'
 
 import React, { Component, ErrorInfo, ReactNode } from 'react'
+import { reportClientError } from '@/lib/client-error-report'
 
 interface Props {
     children: ReactNode
@@ -8,14 +9,16 @@ interface Props {
 
 interface State {
     hasError: boolean
+    ref: string | null
 }
 
 export default class DashboardErrorBoundary extends Component<Props, State> {
     public state: State = {
-        hasError: false
+        hasError: false,
+        ref: null
     }
 
-    public static getDerivedStateFromError(error: Error): State {
+    public static getDerivedStateFromError(error: Error): Partial<State> {
         console.error('[ErrorBoundary] Error caught:', error.message)
         return { hasError: true }
     }
@@ -29,6 +32,10 @@ export default class DashboardErrorBoundary extends Component<Props, State> {
 
     public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
         console.error('[ErrorBoundary] Full error log:', error, errorInfo)
+        // Best-effort — this is a diagnostic report, not something the
+        // already-broken screen should wait on or fail harder over.
+        reportClientError(error, undefined, errorInfo.componentStack || undefined)
+            .then(ref => { if (ref) this.setState({ ref }) })
     }
 
     public render() {
@@ -50,6 +57,11 @@ export default class DashboardErrorBoundary extends Component<Props, State> {
                         A client-side exception has occurred in this section.<br />
                         This is often caused by a loading mismatch or a session error.
                     </p>
+                    {this.state.ref && (
+                        <p style={{ color: '#94a3b8', marginBottom: '1.5rem', fontSize: '0.85rem' }}>
+                            If this keeps happening, share this reference with your admin: <b>{this.state.ref}</b>
+                        </p>
+                    )}
                     <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
                         <button
                             onClick={() => window.location.reload()}

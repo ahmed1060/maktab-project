@@ -58,13 +58,20 @@ export default function ProfileRequestsPage() {
                 const data = result.data
                 setRequests(data.data || [])
                 setTotalPages(data.totalPages || 0)
+            } else {
+                showToast(t('failed_fetch_data'), 'error')
             }
         } catch (err) {
             console.error('Failed to fetch requests', err)
+            showToast(t('failed_fetch_data'), 'error')
         } finally {
             setLoading(false)
         }
-    }, [page, limit])
+        // t isn't memoized by LanguageContext — listing it here would
+        // recreate this callback (and the effect that depends on its
+        // identity) every render, refetching on every render with it.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [page, limit, showToast])
 
     useEffect(() => {
         const role = session?.user?.role

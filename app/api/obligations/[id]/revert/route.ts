@@ -2,6 +2,7 @@ import { withStandardHandler } from "@/lib/api-utils"
 import { ApiResponse } from "@/lib/api-response"
 import { ObligationService } from "@/lib/services/obligation.service"
 import { verifyResourceAccess } from "@/lib/security"
+import { AuditLogService } from "@/lib/services/audit-log.service"
 
 export const POST = withStandardHandler(async (req, session, json, { params }) => {
     const obligationId = params.id
@@ -21,7 +22,8 @@ export const POST = withStandardHandler(async (req, session, json, { params }) =
     } catch (error: any) {
         if (error.message === 'OBLIGATION_NOT_FOUND') return ApiResponse.notFound("Obligation not found")
         console.error("Obligation reversion error:", error)
-        return ApiResponse.error(error.message || "Failed to revert obligation")
+        const ref = await AuditLogService.logSystemError({ error, route: `/api/obligations/${obligationId}/revert`, method: 'POST', superAdminId: session.user.id })
+        return ApiResponse.error(AuditLogService.friendlyErrorMessage(ref))
     }
 }, {
     audit: {

@@ -50,11 +50,18 @@ export default function CompanyPaymentsPage() {
             if (res.ok) {
                 const result = await res.json()
                 setCompany(result.data || result)
+            } else {
+                showToast(t('failed_fetch_data'), 'error')
             }
         } catch {
             console.error('Failed to fetch company')
+            showToast(t('failed_fetch_data'), 'error')
         }
-    }, [companyId])
+        // t isn't memoized by LanguageContext — listing it here would
+        // recreate this callback (and the effect below that depends on its
+        // identity) on every render, refetching on every render with it.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [companyId, showToast])
 
     const fetchPayments = useCallback(async () => {
         try {
@@ -63,13 +70,17 @@ export default function CompanyPaymentsPage() {
                 const result = await res.json()
                 const data = result.data
                 setPayments(data.data || data)
+            } else {
+                showToast(t('failed_fetch_data'), 'error')
             }
         } catch {
             console.error('Failed to fetch payments')
+            showToast(t('failed_fetch_data'), 'error')
         } finally {
             setLoading(false)
         }
-    }, [companyId])
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [companyId, showToast])
 
     useEffect(() => {
         if (companyId) {

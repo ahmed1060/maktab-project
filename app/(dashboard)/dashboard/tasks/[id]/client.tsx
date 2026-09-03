@@ -13,6 +13,7 @@ import TaskSubmissionForm from '@/components/TaskSubmissionForm'
 import TaskEditDetailsModal from '@/components/TaskEditDetailsModal'
 import TaskTransferModal from '@/components/TaskTransferModal'
 import TaskConfirmModals from '@/components/TaskConfirmModals'
+import { SESSION_EXPIRED_MESSAGE, redirectAfterSessionExpiry } from '@/lib/session-expired'
 
 export default function TaskDetailClient({ task: initialTask, userRole, userId, creatorName, isRestricted }: { task: any, userRole: string, userId: string, creatorName: string, currentUserName: string, isRestricted: boolean }) {
     const { t, locale } = useLanguage()
@@ -311,8 +312,13 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
             })
 
             if (!res.ok) {
+                if (res.status === 401) {
+                    showToast(SESSION_EXPIRED_MESSAGE, 'error')
+                    redirectAfterSessionExpiry(router)
+                    return
+                }
                 const data = await res.json().catch(() => ({}))
-                throw new Error(data.message || 'Submission failed')
+                throw new Error(data.error || 'Submission failed')
             }
 
             // Clear form fields even for drafts to avoid duplication on next save
@@ -543,8 +549,13 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                 headers: { 'Content-Type': 'application/json' }
             })
             if (!res.ok) {
+                if (res.status === 401) {
+                    showToast(SESSION_EXPIRED_MESSAGE, 'error')
+                    redirectAfterSessionExpiry(router)
+                    return
+                }
                 const data = await res.json().catch(() => ({}))
-                throw new Error(data.message || 'Transfer failed')
+                throw new Error(data.error || 'Transfer failed')
             }
             showToast(t('task_transfer_success'), 'success')
             setIsTransferModalOpen(false)
@@ -611,6 +622,11 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                 headers: { 'Content-Type': 'application/json' }
             })
             if (!res.ok) {
+                if (res.status === 401) {
+                    showToast(SESSION_EXPIRED_MESSAGE, 'error')
+                    redirectAfterSessionExpiry(router)
+                    return
+                }
                 const data = await res.json().catch(() => ({}))
                 throw new Error(data.error || 'Update failed')
             }
@@ -646,8 +662,13 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
         try {
             const res = await fetch(`/api/tasks/${task.id}/revert`, { method: 'POST' })
             if (!res.ok) {
+                if (res.status === 401) {
+                    showToast(SESSION_EXPIRED_MESSAGE, 'error')
+                    redirectAfterSessionExpiry(router)
+                    return
+                }
                 const data = await res.json().catch(() => ({}))
-                throw new Error(data.message || 'Revert failed')
+                throw new Error(data.error || 'Revert failed')
             }
             showToast(t('task_reverted_success'), 'success')
             router.refresh()

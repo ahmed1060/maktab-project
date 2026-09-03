@@ -3,6 +3,8 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { MaintenanceService } from '@/lib/services/maintenance.service'
 import { ApiResponse } from '@/lib/api-response'
+import { AuditLogService } from '@/lib/services/audit-log.service'
+import { isNextInternalError } from '@/lib/next-internal-error'
 import { z } from 'zod'
 
 const MaintenanceSchema = z.object({
@@ -13,12 +15,14 @@ const MaintenanceSchema = z.object({
 })
 
 export async function POST(req: NextRequest) {
+    let superAdminId: string | null = null
     try {
         const session = await getServerSession(authOptions)
 
         if (!session || session.user.role !== 'SUPER_ADMIN') {
             return ApiResponse.error("Unauthorized", 401)
         }
+        superAdminId = session.user.id
 
         const body = await req.json()
         const validated = MaintenanceSchema.safeParse(body)
@@ -44,7 +48,9 @@ export async function POST(req: NextRequest) {
 
         return ApiResponse.success({ action, result })
     } catch (error) {
+        if (isNextInternalError(error)) throw error
         console.error("[Maintenance API] Error:", error)
-        return ApiResponse.error("Failed to perform maintenance action")
+        const ref = await AuditLogService.logSystemError({ error, route: '/api/admin/maintenance', method: 'POST', superAdminId })
+        return ApiResponse.error(AuditLogService.friendlyErrorMessage(ref))
     }
 }

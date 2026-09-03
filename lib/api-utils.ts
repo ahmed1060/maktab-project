@@ -3,6 +3,8 @@ import { authOptions } from "@/lib/auth"
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { ApiResponse } from "./api-response"
+import { AuditLogService } from "./services/audit-log.service"
+import { isNextInternalError } from "./next-internal-error"
 
 type HandlerOptions = {
     allowedRoles?: string[]
@@ -114,14 +116,19 @@ export function withStandardHandler(
     options: HandlerOptions = {}
 ) {
     return async (req: Request, context?: any) => {
+        // Hoisted out of the try block so the catch below can still
+        // attribute a system-error log entry to whoever was signed in,
+        // even if the failure happened after these were set.
+        let userId: string | null = null
+        let userRole: string | undefined
         try {
             const session = await getServerSession(authOptions)
             if (!session) {
                 return ApiResponse.unauthorized()
             }
 
-            const userRole = (session.user as any).role
-            const userId = (session.user as any).id
+            userRole = (session.user as any).role
+            userId = (session.user as any).id
 
             // Rate Limiting
             if (options.rateLimit) {
@@ -135,7 +142,7 @@ export function withStandardHandler(
             }
 
             // Role Check
-            if (options.allowedRoles && !options.allowedRoles.includes(userRole)) {
+            if (options.allowedRoles && !options.allowedRoles.includes(userRole as string)) {
                 return ApiResponse.forbidden()
             }
 
@@ -216,8 +223,21 @@ export function withStandardHandler(
 
             return response
         } catch (error: any) {
+            if (isNextInternalError(error)) throw error
             console.error("API Standard Handler Error:", error)
-            return ApiResponse.error(error.message || "Internal Server Error")
+            // Never echo the raw exception to the client — it can be a
+            // Prisma/Supabase/network error with internal detail in it.
+            // Log the real thing under a short reference code instead,
+            // visible only on the super-admin-only audit log page, and
+            // hand the client just that code.
+            const ref = await AuditLogService.logSystemError({
+                error,
+                route: new URL(req.url).pathname,
+                method: req.method,
+                userId: userRole !== 'SUPER_ADMIN' ? userId : null,
+                superAdminId: userRole === 'SUPER_ADMIN' ? userId : null,
+            })
+            return ApiResponse.error(AuditLogService.friendlyErrorMessage(ref))
         }
     }
 }

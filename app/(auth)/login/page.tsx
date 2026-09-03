@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useLanguage } from '@/context/LanguageContext'
 import LanguageToggleButton from '@/components/LanguageToggleButton'
+import { reportClientError, friendlyErrorMessage } from '@/lib/client-error-report'
 
 export default function LoginPage() {
     const { t, locale } = useLanguage()
@@ -150,7 +151,8 @@ export default function LoginPage() {
             }
         } catch (err: any) {
             console.error('Login error:', err)
-            setError(`Error: ${err?.message || JSON.stringify(err)}`)
+            const ref = await reportClientError(err, '/login')
+            setError(friendlyErrorMessage(ref))
             setLoading(false)
         }
     }
@@ -181,7 +183,8 @@ export default function LoginPage() {
             )
             setLoading(false)
         } catch (err: any) {
-            setError(`Error: ${err?.message || JSON.stringify(err)}`)
+            const ref = await reportClientError(err, '/login')
+            setError(friendlyErrorMessage(ref))
             setLoading(false)
         }
     }

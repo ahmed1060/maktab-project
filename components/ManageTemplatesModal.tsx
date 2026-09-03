@@ -106,7 +106,7 @@ export default function ManageTemplatesModal({ isOpen, onClose }: ManageTemplate
                                                     showToast('English Template Updated', 'success')
                                                     setEnTemplateFile(null)
                                                 } else {
-                                                    showToast(result.message || 'Upload Failed', 'error')
+                                                    showToast(result.error || 'Upload Failed', 'error')
                                                 }
                                             } catch {
                                                 showToast('Upload Error', 'error')
@@ -162,7 +162,7 @@ export default function ManageTemplatesModal({ isOpen, onClose }: ManageTemplate
                                                     showToast('Arabic Template Updated', 'success')
                                                     setArTemplateFile(null)
                                                 } else {
-                                                    showToast(result.message || 'Upload Failed', 'error')
+                                                    showToast(result.error || 'Upload Failed', 'error')
                                                 }
                                             } catch {
                                                 showToast('Upload Error', 'error')

@@ -6,6 +6,7 @@ import { ApiResponse } from "@/lib/api-response"
 import { RateLimiter, getClientIp } from "@/lib/api-utils"
 import { DUMMY_PASSWORD_HASH } from "@/lib/auth"
 import { VerificationCodeService } from "@/lib/services/verification-code.service"
+import { AuditLogService } from "@/lib/services/audit-log.service"
 
 // F-27, Phase 5: "email me a code instead", the MFA fallback for someone
 // who can't reach their authenticator app. Unauthenticated by necessity —
@@ -21,53 +22,60 @@ const schema = z.object({
 })
 
 export async function POST(req: NextRequest) {
-    const json = await req.json().catch(() => null)
-    const validation = schema.safeParse(json)
-    if (!validation.success) {
-        return ApiResponse.badRequest("Validation Error")
-    }
-
-    const { email, password } = validation.data
-
-    // Shares the same login:${ip} bucket as authorize() itself — this is
-    // a second password-checking surface, and without this it would be an
-    // unthrottled one alongside the real login rate limit.
-    const ip = getClientIp(req.headers)
-    const { limited, resetAt } = await RateLimiter.getLimitData(`login:${ip}`, 5, 15 * 60 * 1000)
-    if (limited) {
-        const timeStr = new Date(resetAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-        return ApiResponse.error(`Too many attempts. Please try again at ${timeStr}.`, 429)
-    }
-
-    const superAdmin = await prisma.superAdmin.findUnique({ where: { email } })
-    const user = superAdmin ? null : await prisma.user.findUnique({ where: { email } })
-    const account = superAdmin || user
-
-    const passwordHash = superAdmin?.password || user?.password || DUMMY_PASSWORD_HASH
-    const isValid = await bcrypt.compare(password, passwordHash)
-
-    if (!isValid || !account) {
-        return ApiResponse.forbidden("Invalid credentials")
-    }
-
-    if (!(account as any).mfaEnabled || !(account as any).emailVerifiedAt) {
-        // Reachable in practice only if MFA got enabled before email
-        // verification existed — Phase 2+3 forces verification before any
-        // dashboard access, including reaching MFA settings to enroll, so
-        // every real account hits this already verified.
-        return ApiResponse.forbidden("MFA recovery is not available for this account")
-    }
-
     try {
-        await VerificationCodeService.issue(
-            account.email,
-            'MFA_RECOVERY',
-            superAdmin ? { superAdminId: account.id } : { userId: account.id }
-        )
-    } catch (error: any) {
-        if (error.message === 'RATE_LIMITED') return ApiResponse.error("Too many code requests — try again later", 429)
-        throw error
-    }
+        const json = await req.json().catch(() => null)
+        const validation = schema.safeParse(json)
+        if (!validation.success) {
+            return ApiResponse.badRequest("Validation Error")
+        }
 
-    return ApiResponse.success({ sent: true })
+        const { email, password } = validation.data
+
+        // Shares the same login:${ip} bucket as authorize() itself — this is
+        // a second password-checking surface, and without this it would be an
+        // unthrottled one alongside the real login rate limit.
+        const ip = getClientIp(req.headers)
+        const { limited, resetAt } = await RateLimiter.getLimitData(`login:${ip}`, 5, 15 * 60 * 1000)
+        if (limited) {
+            const timeStr = new Date(resetAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            return ApiResponse.error(`Too many attempts. Please try again at ${timeStr}.`, 429)
+        }
+
+        const superAdmin = await prisma.superAdmin.findUnique({ where: { email } })
+        const user = superAdmin ? null : await prisma.user.findUnique({ where: { email } })
+        const account = superAdmin || user
+
+        const passwordHash = superAdmin?.password || user?.password || DUMMY_PASSWORD_HASH
+        const isValid = await bcrypt.compare(password, passwordHash)
+
+        if (!isValid || !account) {
+            return ApiResponse.forbidden("Invalid credentials")
+        }
+
+        if (!(account as any).mfaEnabled || !(account as any).emailVerifiedAt) {
+            // Reachable in practice only if MFA got enabled before email
+            // verification existed — Phase 2+3 forces verification before any
+            // dashboard access, including reaching MFA settings to enroll, so
+            // every real account hits this already verified.
+            return ApiResponse.forbidden("MFA recovery is not available for this account")
+        }
+
+        try {
+            await VerificationCodeService.issue(
+                account.email,
+                'MFA_RECOVERY',
+                superAdmin ? { superAdminId: account.id } : { userId: account.id }
+            )
+        } catch (error: any) {
+            if (error.message === 'RATE_LIMITED') return ApiResponse.error("Too many code requests — try again later", 429)
+            throw error
+        }
+
+        return ApiResponse.success({ sent: true })
+    } catch (error: any) {
+        // Unauthenticated route — same reasoning as forgot-password's.
+        console.error('MFA recovery request error:', error)
+        const ref = await AuditLogService.logSystemError({ error, route: '/api/auth/mfa-recovery/request', method: 'POST' })
+        return ApiResponse.error(AuditLogService.friendlyErrorMessage(ref))
+    }
 }

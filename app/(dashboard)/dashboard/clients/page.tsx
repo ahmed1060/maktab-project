@@ -123,7 +123,7 @@ export default function ClientsPage() {
                 mutateClients()
             } else {
                 const err = await res.json()
-                window.alert(`${t('failed_create_client')}: ${err.error}\n${err.details || ''}`)
+                window.alert(`${t('failed_create_client')}: ${err.error}`)
             }
         } catch (error) {
             console.error('Failed to create client', error)

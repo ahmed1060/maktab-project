@@ -108,8 +108,11 @@ export default function NewObligationPage() {
 
             if (!res.ok) {
                 const data = await res.json().catch(() => ({}))
-                const errorMessage = data.details || data.message || `${t('error_generic')} (${res.status})`
-                throw new Error(errorMessage)
+                // data.error is always a plain string; data.details (when
+                // present) is a raw Zod .format() object and must never be
+                // used as the message itself — stringifying it renders as
+                // literal "[object Object]".
+                throw new Error(data.error || `${t('error_generic')} (${res.status})`)
             }
 
             router.push('/dashboard/obligations')
