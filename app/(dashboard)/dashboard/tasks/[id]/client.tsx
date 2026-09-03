@@ -5,21 +5,14 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import Modal from '@/components/Modal'
 import DiffViewer from '@/components/DiffViewer'
 import { useToast } from '@/context/ToastContext'
-import DateTimePicker from '@/components/DateTimePicker'
 import { useLanguage } from '@/context/LanguageContext'
-import LocationSearchInput from '@/components/LocationSearchInput'
-import SafeDate from '@/components/SafeDate'
-
-
-const TrashIcon = ({ size = 18, color = "#ef4444" }: { size?: number, color?: string }) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M5 8H19L18.1 20.2C18.05 20.65 17.65 21 17.2 21H6.8C6.35 21 5.95 20.65 5.9 20.2L5 8Z" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-        <path d="M10 11V18" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" strokeDasharray="1 2" />
-        <path d="M14 11V18" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" strokeDasharray="1 2" />
-        <path d="M8 5V3H16V5" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-        <path d="M4 8H20" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-)
+import TrashIcon from '@/components/TrashIcon'
+import TaskCostsSection from '@/components/TaskCostsSection'
+import TaskLocationHistorySection from '@/components/TaskLocationHistorySection'
+import TaskSubmissionForm from '@/components/TaskSubmissionForm'
+import TaskEditDetailsModal from '@/components/TaskEditDetailsModal'
+import TaskTransferModal from '@/components/TaskTransferModal'
+import TaskConfirmModals from '@/components/TaskConfirmModals'
 
 export default function TaskDetailClient({ task: initialTask, userRole, userId, creatorName, isRestricted }: { task: any, userRole: string, userId: string, creatorName: string, currentUserName: string, isRestricted: boolean }) {
     const { t, locale } = useLanguage()
@@ -62,13 +55,11 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
     const [loadingType, setLoadingType] = useState<'DRAFT' | 'SUBMIT' | null>(null)
     const [capturingLocation, setCapturingLocation] = useState(false)
     const [pendingFiles, setPendingFiles] = useState<File[]>([])
-    const [isDragging, setIsDragging] = useState(false)
     const [costEntries, setCostEntries] = useState<any[]>([])
     const [transferAssigneeIds, setTransferAssigneeIds] = useState<string[]>([])
     const [isTransferModalOpen, setIsTransferModalOpen] = useState(false)
     const [allUsers, setAllUsers] = useState<any[]>([])
     const [userFetchError, setUserFetchError] = useState(false)
-    const [searchTermTransfer, setSearchTermTransfer] = useState('')
     const [transferring, setTransferring] = useState(false)
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
     const [showRevertConfirm, setShowRevertConfirm] = useState(false)
@@ -101,10 +92,6 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
     const [itemToDelete, setItemToDelete] = useState<{ type: 'ATTACHMENT' | 'COST_ADDITION' | 'SUBMISSION_NOTE', itemId: string } | null>(null)
     const [locationToDelete, setLocationToDelete] = useState<{ index?: number, date?: string } | null>(null)
     const [isReverting, setIsReverting] = useState(false)
-    const [verifyingLocation, setVerifyingLocation] = useState<string | null>(null)
-    const [showPenaltyUI, setShowPenaltyUI] = useState(false)
-    const [selectedPenalty, setSelectedPenalty] = useState<number | null>(null)
-    const [applyingPenalty, setApplyingPenalty] = useState(false)
     const [showDeadlineModal, setShowDeadlineModal] = useState(false)
 
     const router = useRouter()
@@ -979,546 +966,51 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
             </div>
 
             {/* Costs Section */}
-            {
-                (() => {
-                    if (!task.comments) return null
-                    try {
-                        const logs = Array.isArray(task.comments) ? task.comments : []
-                        if (!Array.isArray(logs)) return null
-                        const costs = logs.filter((l: any) => l.type === 'COST_ADDITION')
-                        if (costs.length > 0) {
-                            return (
-                                <div style={{ marginTop: '2rem', borderTop: '1px solid #e2e8f0', paddingTop: '1.5rem' }}>
-                                    <h3 style={{ marginBottom: '1rem' }}>{t('costs')}</h3>
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                                        {costs.map((c: any, i: number) => (
-                                            <div key={i} style={{ display: 'flex', flexDirection: 'column', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: '0.5rem', padding: '1rem' }}>
-                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexDirection: 'row' }}>
-                                                    <div style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>
-                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                                            <div style={{ fontSize: '0.75rem', color: '#92400e', textTransform: 'uppercase', fontWeight: '600', marginBottom: '0.25rem' }}>{t('cost_description_placeholder').split(' ')[0]}</div>
-                                                            {task.status === 'IN_PROGRESS' && (c.authorId === userId || ['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole)) && (
-                                                                <button onClick={() => handleDeleteItem('COST_ADDITION', c.date)} style={{ background: 'none', border: 'none', padding: '2px', cursor: 'pointer', display: 'flex' }} title={t('delete_cost_title')}>
-                                                                    <TrashIcon size={14} />
-                                                                </button>
-                                                            )}
-                                                        </div>
-                                                        <div style={{ fontSize: '1rem', fontWeight: '600', color: '#78350f' }}>{c.description || t('no_description')}</div>
-                                                    </div>
-                                                    <div style={{ textAlign: 'center', background: '#fef3c7', padding: '0.5rem 1rem', borderRadius: '0.375rem', border: '1px solid #fcd34d' }}>
-                                                        <div style={{ fontSize: '0.75rem', color: '#92400e', textTransform: 'uppercase', fontWeight: '600' }}>{t('amount_label')}</div>
-                                                        <div style={{ fontSize: '1.1rem', fontWeight: 'bold', color: '#92400e' }}>{(c.amount || 0).toFixed(2)} {t('egp')}</div>
-                                                    </div>
-                                                </div>
-                                                <div style={{ fontSize: '0.75rem', color: '#b45309', marginTop: '0.5rem', borderTop: '1px dashed #fcd34d', paddingTop: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                                    {(task.assignees?.length > 1) && (
-                                                        <span style={{ background: '#fef3c7', border: '1px solid #f59e0b', color: '#b45309', padding: '0.1rem 0.4rem', borderRadius: '1rem', fontSize: '0.65rem', fontWeight: 'bold' }}>
-                                                            {locale === 'ar' ? 'بواسطة:' : 'By:'} {c.author}
-                                                        </span>
-                                                    )}
-                                                    {!((task.assignees?.length > 1)) && <span>{c.author}</span>}
-                                                    <span>• {new Date(c.date).toLocaleString(locale)}</span>
-                                                </div>
-                                            </div>
-                                        ))}
-                                        {(() => {
-                                            const isAssignee = task.assignees?.some((a: any) => a.id === userId)
-                                            const isMulti = (task.assignees?.length || 0) > 1
-                                            const mPaymentStatus = getMemberPaymentStatus(task)
-
-                                            if (isMulti && isAssignee) {
-                                                const myStatus = mPaymentStatus[userId] || 'PENDING_PAYMENT'
-                                                return (
-                                                    <div style={{ display: 'flex', gap: '1rem', marginBottom: '0.5rem', flexDirection: 'row', flexWrap: 'wrap' }}>
-                                                        <div style={{ flex: 1, minWidth: '150px', background: '#3b82f6', color: 'white', padding: '1.25rem', borderRadius: '1rem', textAlign: 'center', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)', position: 'relative' }}>
-                                                            <div style={{ fontSize: '0.875rem', fontWeight: '600', opacity: 0.9 }}>{t('my_total_cost' as any)}</div>
-                                                            <div style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>{(getMemberCosts(task)[userId] || 0).toFixed(2)} {t('egp')}</div>
-                                                            <div style={{
-                                                                marginTop: '0.5rem',
-                                                                padding: '0.2rem 0.6rem',
-                                                                borderRadius: '1rem',
-                                                                background: 'rgba(255, 255, 255, 0.2)',
-                                                                fontSize: '0.65rem',
-                                                                fontWeight: '800',
-                                                                width: 'fit-content',
-                                                                margin: '0.5rem auto 0',
-                                                                textTransform: 'uppercase'
-                                                            }}>
-                                                                {myStatus === 'PAID' ? t('payment_status_paid' as any) || 'PAID' : t('payment_status_pending' as any) || 'PENDING'}
-                                                            </div>
-                                                        </div>
-                                                        <div style={{ flex: 1, minWidth: '150px', background: '#f59e0b', color: 'white', padding: '1.25rem', borderRadius: '1rem', textAlign: 'center', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }}>
-                                                            <div style={{ fontSize: '0.875rem', fontWeight: '600', opacity: 0.9 }}>{t('grand_total_cost' as any)}</div>
-                                                            <div style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>{(task.totalCost || 0).toFixed(2)} {t('egp')}</div>
-                                                            <div style={{
-                                                                marginTop: '0.5rem',
-                                                                padding: '0.2rem 0.6rem',
-                                                                borderRadius: '1rem',
-                                                                background: 'rgba(255, 255, 255, 0.2)',
-                                                                fontSize: '0.65rem',
-                                                                fontWeight: '800',
-                                                                width: 'fit-content',
-                                                                margin: '0.5rem auto 0',
-                                                                textTransform: 'uppercase'
-                                                            }}>
-                                                                {task.paymentStatus === 'PAID' ? t('payment_status_paid' as any) || 'PAID' : t('payment_status_pending' as any) || 'PENDING'}
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                )
-                                            }
-
-                                            return (
-                                                <div style={{ background: '#f59e0b', color: 'white', padding: '1.25rem', borderRadius: '1rem', textAlign: 'center', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }}>
-                                                    <div style={{ fontSize: '0.875rem', fontWeight: '600', opacity: 0.9 }}>{t('total_cost')}</div>
-                                                    <div style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>{(task.totalCost || 0).toFixed(2)} {t('egp')}</div>
-                                                    <div style={{
-                                                        marginTop: '0.5rem',
-                                                        padding: '0.2rem 0.6rem',
-                                                        borderRadius: '1rem',
-                                                        background: 'rgba(255, 255, 255, 0.2)',
-                                                        fontSize: '0.65rem',
-                                                        fontWeight: '800',
-                                                        width: 'fit-content',
-                                                        margin: '0.5rem auto 0',
-                                                        textTransform: 'uppercase'
-                                                    }}>
-                                                        {task.paymentStatus === 'PAID' ? t('payment_status_paid' as any) || 'PAID' : t('payment_status_pending' as any) || 'PENDING'}
-                                                    </div>
-                                                </div>
-                                            )
-                                        })()}
-
-                                        {/* Individual Settlements for Admins */}
-                                        {['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole) && !['PENDING', 'IN_PROGRESS'].includes(task.status) && (task.assignees?.length || 0) > 1 && Object.keys(getMemberCosts(task)).length > 0 && (
-                                            <div style={{ marginTop: '1rem', padding: '1.25rem', background: '#f8fafc', borderRadius: '1rem', border: '1px solid #e2e8f0' }}>
-                                                <h4 style={{ fontSize: '0.9rem', fontWeight: '700', marginBottom: '1rem', color: '#1e293b' }}>
-                                                    {t('individual_settlements' as any) || 'Individual Settlements'}
-                                                </h4>
-                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                                                    {Object.entries(getMemberCosts(task)).map(([uid, amount]: [string, any]) => {
-                                                        const assignee = task.assignees.find((a: any) => a.id === uid)
-                                                        if (!assignee) return null
-                                                        const isPaid = getMemberPaymentStatus(task)[uid] === 'PAID'
-
-                                                        return (
-                                                            <div key={uid} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem 1rem', background: 'white', border: '1px solid #e2e8f0', borderRadius: '0.75rem' }}>
-                                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                                                                    <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: '#f1f5f9', display: 'flex', alignItems: 'center', justifySelf: 'center', fontSize: '0.8rem', fontWeight: 'bold', color: '#64748b' }}>
-                                                                        {assignee.firstName[0]}{assignee.lastName[0]}
-                                                                    </div>
-                                                                    <div>
-                                                                        <div style={{ fontWeight: '700', color: '#334155', fontSize: '0.875rem' }}>{assignee.firstName} {assignee.lastName}</div>
-                                                                        <div style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: '600' }}>{amount.toFixed(2)} {t('egp')}</div>
-                                                                    </div>
-                                                                </div>
-                                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                                                                    <div style={{
-                                                                        padding: '0.2rem 0.5rem',
-                                                                        borderRadius: '1rem',
-                                                                        background: isPaid ? '#dcfce7' : '#fee2e2',
-                                                                        color: isPaid ? '#166534' : '#991b1b',
-                                                                        fontSize: '0.65rem',
-                                                                        fontWeight: '800',
-                                                                        textTransform: 'uppercase'
-                                                                    }}>
-                                                                        {isPaid ? t('payment_status_paid' as any) || 'PAID' : t('payment_status_pending' as any) || 'PENDING'}
-                                                                    </div>
-                                                                    <button
-                                                                        onClick={() => handlePaymentStatusChange(isPaid ? 'PENDING_PAYMENT' : 'PAID', uid)}
-                                                                        style={{
-                                                                            background: isPaid ? '#f1f5f9' : '#10b981',
-                                                                            color: isPaid ? '#64748b' : 'white',
-                                                                            padding: '0.4rem 0.8rem',
-                                                                            fontSize: '0.75rem',
-                                                                            fontWeight: '700',
-                                                                            border: 'none',
-                                                                            borderRadius: '0.5rem',
-                                                                            cursor: 'pointer',
-                                                                            transition: 'all 0.2s'
-                                                                        }}
-                                                                    >
-                                                                        {isPaid ? t('mark_as_unpaid' as any) || 'Unsettle' : t('mark_as_paid')}
-                                                                    </button>
-                                                                </div>
-                                                            </div>
-                                                        )
-                                                    })}
-                                                </div>
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-                            )
-                        }
-                    } catch { return null }
-                })()
-            }
+            <TaskCostsSection
+                task={task}
+                userId={userId}
+                userRole={userRole}
+                onDeleteItem={handleDeleteItem}
+                onPaymentStatusChange={handlePaymentStatusChange}
+                getMemberCosts={getMemberCosts}
+                getMemberPaymentStatus={getMemberPaymentStatus}
+            />
 
             {
                 !isRestricted && (
                     <>
                         {/* Location History Section */}
-                        {(() => {
-                            if (!task.comments) return null
-                            try {
-                                const logs = Array.isArray(task.comments) ? task.comments : []
-                                if (!Array.isArray(logs)) return null
-                                const locations = logs.filter((l: any) => l.type === 'LOCATION_ADDED')
-                                if (locations.length > 0) {
-                                    return (
-                                        <div style={{ marginTop: '2rem', borderTop: '1px solid #e2e8f0', paddingTop: '1.5rem' }}>
-                                            <style>{`
-                                            @keyframes spin-local {
-                                                to { transform: rotate(360deg); }
-                                            }
-                                            .animate-spin-local {
-                                                animation: spin-local 1s linear infinite;
-                                            }
-                                        `}</style>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexDirection: 'row', gap: '1rem', flexWrap: 'wrap' }}>
-                                                <h3 style={{ margin: 0 }}>{t('location_history_title')}</h3>
-                                                {['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole) && !['PENDING', 'IN_PROGRESS'].includes(task.status) && (
-                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
-                                                        {showPenaltyUI && (
-                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: '#f8fafc', padding: '0.25rem 0.5rem', borderRadius: '2rem', border: '1px solid #e2e8f0' }}>
-                                                                {[0.25, 0.5, 1].map(amount => (
-                                                                    <button
-                                                                        key={amount}
-                                                                        onClick={() => setSelectedPenalty(amount)}
-                                                                        style={{
-                                                                            width: '32px',
-                                                                            height: '32px',
-                                                                            borderRadius: '50%',
-                                                                            border: selectedPenalty === amount ? '2px solid #ef4444' : '1px solid #cbd5e1',
-                                                                            background: selectedPenalty === amount ? '#fee2e2' : 'white',
-                                                                            color: selectedPenalty === amount ? '#991b1b' : '#64748b',
-                                                                            fontSize: '0.7rem',
-                                                                            fontWeight: 'bold',
-                                                                            cursor: 'pointer',
-                                                                            display: 'flex',
-                                                                            alignItems: 'center',
-                                                                            justifyContent: 'center',
-                                                                            transition: 'all 0.2s'
-                                                                        }}
-                                                                    >
-                                                                        {amount}
-                                                                    </button>
-                                                                ))}
-                                                                <button
-                                                                    onClick={async () => {
-                                                                        if (!selectedPenalty || applyingPenalty) return
-                                                                        setApplyingPenalty(true)
-                                                                        try {
-                                                                            // The user didn't specify, but usually it's per task.
-                                                                            // For now we'll apply it to the PRIMARY assignee (assigneeId) or all?
-                                                                            // Usually these penalties are specific to who is late.
-                                                                            // I'll apply it once for the task's main assignee for simplicity, or we should ask.
-                                                                            // Actually, let's apply it for each current assignee if it's a team effort?
-                                                                            // Apply it to all assignees or specific ones?
-                                                                            // For now, applying to the first assignee found is not ideal, but we need a target.
-                                                                            // Let's use the first one for simplicity or just skip if unclear.
-                                                                            // Actually, we should probably let admin choose, but for now fallback to first assignee.
-                                                                            const targetUserId = task.assignees?.[0]?.id;
-                                                                            if (targetUserId) {
-                                                                                const res = await fetch(`/api/users/${targetUserId}/deduction`, {
-                                                                                    method: 'POST',
-                                                                                    headers: { 'Content-Type': 'application/json' },
-                                                                                    body: JSON.stringify({ amount: selectedPenalty, userId: targetUserId }),
-                                                                                })
-
-                                                                                if (res.ok) {
-                                                                                    showToast(t('update_success'), 'success')
-                                                                                    setShowPenaltyUI(false)
-                                                                                    setSelectedPenalty(null)
-                                                                                    router.refresh()
-                                                                                } else {
-                                                                                    throw new Error()
-                                                                                }
-                                                                            }
-                                                                        } catch {
-                                                                            showToast(t('error_generic'), 'error')
-                                                                        } finally {
-                                                                            setApplyingPenalty(false)
-                                                                        }
-                                                                    }}
-                                                                    disabled={!selectedPenalty || applyingPenalty}
-                                                                    style={{
-                                                                        padding: '0.25rem 0.75rem',
-                                                                        borderRadius: '1rem',
-                                                                        background: '#ef4444',
-                                                                        color: 'white',
-                                                                        fontSize: '0.75rem',
-                                                                        fontWeight: 'bold',
-                                                                        border: 'none',
-                                                                        cursor: (selectedPenalty && !applyingPenalty) ? 'pointer' : 'not-allowed',
-                                                                        opacity: (selectedPenalty && !applyingPenalty) ? 1 : 0.6
-                                                                    }}
-                                                                >
-                                                                    {applyingPenalty ? '...' : t('confirm')}
-                                                                </button>
-                                                            </div>
-                                                        )}
-                                                        <button
-                                                            onClick={() => setShowPenaltyUI(!showPenaltyUI)}
-                                                            style={{
-                                                                background: showPenaltyUI ? '#f1f5f9' : '#fee2e2',
-                                                                color: showPenaltyUI ? '#475569' : '#991b1b',
-                                                                border: '1px solid ' + (showPenaltyUI ? '#cbd5e1' : '#fca5a5'),
-                                                                padding: '0.4rem 0.8rem',
-                                                                borderRadius: '0.5rem',
-                                                                fontSize: '0.8rem',
-                                                                fontWeight: '700',
-                                                                cursor: 'pointer',
-                                                                display: 'flex',
-                                                                alignItems: 'center',
-                                                                gap: '0.4rem'
-                                                            }}
-                                                        >
-                                                            <span>⚠️</span> {locale === 'ar' ? 'خصم تأخير' : 'Lateness Penalty'}
-                                                        </button>
-                                                    </div>
-                                                )}
-                                            </div>
-                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                                                {locations.map((loc: any, i: number) => {
-                                                    let displayLoc = loc.locationName || loc.location
-                                                    let mapsLink = null
-                                                    try {
-                                                        if (loc.location.startsWith('{')) {
-                                                            const d = JSON.parse(loc.location)
-                                                            displayLoc = loc.locationName || d.address || d.name || `${d.latitude}, ${d.longitude}`
-                                                            if (d.latitude && d.longitude) mapsLink = `https://www.google.com/maps?q=${d.latitude},${d.longitude}`
-                                                        }
-                                                    } catch { }
-
-                                                    const canVerify = ['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole) && task.status === 'PENDING_CONFIRMATION'
-                                                    const canDelete = (userRole === 'EMPLOYEE' || task.assignees?.some((a: any) => a.id === userId)) && ['PENDING', 'IN_PROGRESS', 'REJECTED'].includes(task.status)
-
-                                                    const handleVerify = async (status: 'CORRECT' | 'WRONG') => {
-                                                        const timestamp = loc.date
-                                                        const actionId = `${timestamp}-${status}`
-                                                        if (verifyingLocation === actionId) return
-
-                                                        setVerifyingLocation(actionId)
-
-                                                        // UI Logic
-                                                        const originalComments = task.comments
-                                                        try {
-                                                            const currentComments = (Array.isArray(task.comments) ? task.comments : [])
-                                                            const updatedComments = currentComments.map((c: any) => {
-                                                                if (c.type === 'LOCATION_ADDED' && c.date === timestamp) {
-                                                                    return { ...c, verificationStatus: status, autoVerified: false }
-                                                                }
-                                                                return c
-                                                            })
-
-                                                            const res = await fetch(`/api/tasks/${task.id}/locations`, {
-                                                                method: 'PUT',
-                                                                body: JSON.stringify({ timestamp, action: 'VERIFY', verificationStatus: status }),
-                                                                headers: { 'Content-Type': 'application/json' }
-                                                            })
-
-                                                            if (!res.ok) throw new Error('Failed to verify')
-
-                                                            // Update UI only AFTER successful database save.
-                                                            // (F-12: task.comments is a real array now, not a
-                                                            // JSON string — stringifying it here would make
-                                                            // every other read on this page treat it as empty.)
-                                                            setTask({ ...task, comments: updatedComments })
-
-                                                            router.refresh()
-                                                        } catch (e) {
-                                                            console.error(e)
-                                                            // Rollback on error
-                                                            setTask({ ...task, comments: originalComments })
-                                                            showToast(t('failed_verify_location' as any) || 'Failed to update status', 'error')
-                                                        } finally {
-                                                            setVerifyingLocation(null)
-                                                        }
-                                                    }
-
-                                                    return (
-                                                        <div key={i} style={{ border: '1px solid #bae6fd', background: '#f0f9ff', borderRadius: '0.5rem', padding: '1rem' }}>
-                                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexDirection: 'row', gap: '1rem' }}>
-                                                                <div style={{ display: 'flex', gap: '0.75rem', flexDirection: 'row' }}>
-                                                                    <span style={{ fontSize: '1.25rem' }}>📍</span>
-                                                                    <div style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>
-                                                                        {mapsLink ? <a href={mapsLink} target="_blank" rel="noreferrer" style={{ fontWeight: '600', color: '#0369a1', textDecoration: 'underline' }}>{displayLoc}</a> : <span style={{ fontWeight: '600', color: '#0c4a6e' }}>{displayLoc}</span>}
-                                                                        <div style={{ fontSize: '0.75rem', color: '#0369a1', marginTop: '0.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                                                            {(task.assignees?.length > 1) && (
-                                                                                <span style={{ background: '#e0f2fe', border: '1px solid #38bdf8', color: '#0369a1', padding: '0.1rem 0.4rem', borderRadius: '1rem', fontSize: '0.65rem', fontWeight: 'bold' }}>
-                                                                                    {locale === 'ar' ? 'بواسطة:' : 'By:'} {loc.author}
-                                                                                </span>
-                                                                            )}
-                                                                            {!((task.assignees?.length > 1)) && <span>{loc.author}</span>}
-                                                                            <span>• <SafeDate date={loc.date} locale={locale} /></span>
-                                                                        </div>
-                                                                    </div>
-                                                                </div>
-                                                                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexDirection: 'row' }}>
-                                                                    {loc.verificationStatus && (
-                                                                        <span style={{ fontSize: '0.75rem', fontWeight: '700', color: loc.verificationStatus === 'CORRECT' ? '#16a34a' : '#dc2626', background: loc.verificationStatus === 'CORRECT' ? '#dcfce7' : '#fee2e2', padding: '0.25rem 0.5rem', borderRadius: '0.25rem' }}>
-                                                                            {loc.verificationStatus === 'CORRECT' ? t('verified_correct_title') : t('verified_wrong_title')}
-                                                                        </span>
-                                                                    )}
-                                                                    {canVerify && (
-                                                                        <div style={{ display: 'flex', gap: '0.25rem' }}>
-                                                                            <button
-                                                                                onClick={() => handleVerify('CORRECT')}
-                                                                                disabled={!!verifyingLocation}
-                                                                                style={{
-                                                                                    background: '#dcfce7',
-                                                                                    border: '1px solid #22c55e',
-                                                                                    color: '#166534',
-                                                                                    width: '32px',
-                                                                                    height: '32px',
-                                                                                    borderRadius: '50%',
-                                                                                    cursor: verifyingLocation ? 'not-allowed' : 'pointer',
-                                                                                    display: 'flex',
-                                                                                    alignItems: 'center',
-                                                                                    justifyContent: 'center'
-                                                                                }}
-                                                                                title={t('mark_correct_title')}
-                                                                            >
-                                                                                {verifyingLocation === `${loc.date}-CORRECT` ? <div className="animate-spin-local" style={{ width: '14px', height: '14px', border: '2px solid #166534', borderTopColor: 'transparent', borderRadius: '50%' }} /> : '✓'}
-                                                                            </button>
-                                                                            <button
-                                                                                onClick={() => handleVerify('WRONG')}
-                                                                                disabled={!!verifyingLocation}
-                                                                                style={{
-                                                                                    background: '#fee2e2',
-                                                                                    border: '1px solid #ef4444',
-                                                                                    color: '#991b1b',
-                                                                                    width: '32px',
-                                                                                    height: '32px',
-                                                                                    borderRadius: '50%',
-                                                                                    cursor: verifyingLocation ? 'not-allowed' : 'pointer',
-                                                                                    display: 'flex',
-                                                                                    alignItems: 'center',
-                                                                                    justifyContent: 'center'
-                                                                                }}
-                                                                                title={t('mark_wrong_title')}
-                                                                            >
-                                                                                {verifyingLocation === `${loc.date}-WRONG` ? <div className="animate-spin-local" style={{ width: '14px', height: '14px', border: '2px solid #991b1b', borderTopColor: 'transparent', borderRadius: '50%' }} /> : '✕'}
-                                                                            </button>
-                                                                        </div>
-                                                                    )}
-                                                                    {canDelete && task.status === 'IN_PROGRESS' && (loc.authorId === userId || ['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole)) && (
-                                                                        <button onClick={() => setLocationToDelete({ date: loc.date })} style={{ background: '#fee2e2', color: '#dc2626', border: 'none', borderRadius: '0.25rem', padding: '0.4rem', cursor: 'pointer', display: 'flex' }} title={t('delete_location_title')}>
-                                                                            <TrashIcon size={16} />
-                                                                        </button>
-                                                                    )}
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    )
-                                                })}
-                                            </div>
-                                        </div>
-                                    )
-                                }
-                            } catch { return null }
-                        })()}
+                        <TaskLocationHistorySection
+                            task={task}
+                            setTask={setTask}
+                            userRole={userRole}
+                            userId={userId}
+                            setLocationToDelete={setLocationToDelete}
+                        />
 
                         {/* Submission Section (Employee only) */}
                         {(userRole === 'EMPLOYEE' || task.assignees?.some((a: any) => a.id === userId)) && !['APPROVED', 'COMPLETED', 'PENDING_CONFIRMATION', 'REJECTED'].includes(task.status) && (
-                            <div style={{ marginTop: '3rem', borderTop: '2px solid #e2e8f0', paddingTop: '2rem' }}>
-                                <h3 style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', flexDirection: 'row' }}>
-                                    <span>📤</span> {t('submit_task_title')}
-                                </h3>
-
-                                <div style={{ marginBottom: '1.5rem' }}>
-                                    <label style={{ display: 'block', fontWeight: '600', marginBottom: '0.75rem' }}>{t('attachments_optional_label')}</label>
-                                    <div
-                                        onDragOver={e => { e.preventDefault(); setIsDragging(true); }}
-                                        onDragLeave={() => setIsDragging(false)}
-                                        onDrop={e => { e.preventDefault(); setIsDragging(false); if (e.dataTransfer.files.length) handleFiles(Array.from(e.dataTransfer.files)); }}
-                                        style={{ border: `2px dashed ${isDragging ? '#3b82f6' : '#cbd5e1'}`, borderRadius: '0.75rem', padding: '2.5rem', textAlign: 'center', background: isDragging ? '#eff6ff' : '#f8fafc', transition: 'all 0.2s', cursor: 'pointer', position: 'relative' }}
-                                    >
-                                        <input
-                                            type="file"
-                                            multiple
-                                            accept=".jpg,.jpeg,.png,.gif,.webp,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx"
-                                            onChange={e => {
-                                                if (e.target.files) {
-                                                    handleFiles(Array.from(e.target.files))
-                                                    // Reset input so the same file can be selected again if removed
-                                                    e.target.value = ''
-                                                }
-                                            }}
-                                            style={{ opacity: 0, position: 'absolute', inset: 0, cursor: 'pointer' }}
-                                            disabled={uploading}
-                                        />
-                                        <div style={{ pointerEvents: 'none' }}>
-                                            <div style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>☁️</div>
-                                            <div style={{ fontWeight: '600', color: '#475569' }}>{t('upload_drag_files_msg')}</div>
-                                            <div style={{ fontSize: '0.8rem', color: '#94a3b8', marginTop: '0.25rem' }}>{t('upload_allowed_types_msg')}</div>
-                                        </div>
-                                    </div>
-
-                                    {pendingFiles.length > 0 && (
-                                        <div style={{ marginTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                                            {pendingFiles.map((f, i) => (
-                                                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem 1rem', background: 'white', border: '1px solid #e2e8f0', borderRadius: '0.5rem', flexDirection: 'row' }}>
-                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexDirection: 'row' }}>
-                                                        <span style={{ fontSize: '1.25rem' }}>📄</span>
-                                                        <div style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>
-                                                            <div style={{ fontSize: '0.9rem', fontWeight: '500' }}>{f.name}</div>
-                                                            <div style={{ fontSize: '0.7rem', color: '#94a3b8' }}>{(f.size / 1024 / 1024).toFixed(2)} MB</div>
-                                                        </div>
-                                                    </div>
-                                                    <button onClick={() => removePendingFile(i)} style={{ color: '#ef4444', background: '#fef2f2', border: 'none', borderRadius: '0.375rem', padding: '0.4rem 0.75rem', cursor: 'pointer', fontSize: '0.8rem', fontWeight: '600' }}>{t('delete')}</button>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    )}
-                                </div>
-
-                                <div style={{ marginBottom: '1.5rem' }}>
-                                    <label style={{ display: 'block', fontWeight: '600', marginBottom: '0.75rem' }}>{t('add_costs_label')}</label>
-                                    <div style={{ display: 'flex', gap: '0.5rem', flexDirection: 'row' }}>
-                                        <input type="text" className="input" placeholder={t('cost_description_placeholder')} value={costDescription} onChange={e => setCostDescription(e.target.value)} style={{ flex: 1 }} />
-                                        <input type="number" className="input" placeholder={t('cost_amount_placeholder')} value={cost} onChange={e => setCost(e.target.value)} style={{ width: '120px' }} />
-                                        <button onClick={handleAddCost} disabled={!cost} className="btn" style={{ background: '#e2e8f0', color: '#0369a1', fontWeight: '700', minWidth: '80px', opacity: 1, cursor: 'pointer' }}>{t('add_label')}</button>
-                                    </div>
-                                    {costEntries.length > 0 && (
-                                        <div style={{ marginTop: '1rem', background: 'white', border: '1px solid #e2e8f0', borderRadius: '0.5rem', overflow: 'hidden' }}>
-                                            {costEntries.map((e, i) => (
-                                                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem 1rem', borderBottom: i < costEntries.length - 1 ? '1px solid #f1f5f9' : 'none', flexDirection: 'row' }}>
-                                                    <div style={{ display: 'flex', gap: '0.5rem', fontWeight: '500', flexDirection: 'row' }}>
-                                                        <span>{e.description || t('no_description')}</span>
-                                                        <span style={{ color: '#94a3b8' }}>•</span>
-                                                        <span style={{ color: '#b45309' }}>{e.amount.toFixed(2)} {t('egp')}</span>
-                                                    </div>
-                                                    <button onClick={() => removeCostEntry(i)} style={{ color: '#ef4444', padding: '0.25rem', cursor: 'pointer', border: 'none', background: 'none', fontWeight: 'bold', fontSize: '1.2rem' }}>×</button>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    )}
-                                </div>
-
-                                <div style={{ marginBottom: '1.5rem' }}>
-                                    <label style={{ display: 'block', fontWeight: '600', marginBottom: '0.75rem' }}>{t('note_optional_label')}</label>
-                                    <textarea className="input" rows={3} placeholder={t('note_placeholder')} value={note} onChange={e => setNote(e.target.value)} style={{ width: '100%', resize: 'none' }} maxLength={500} />
-                                    <div style={{ textAlign: locale === 'ar' ? 'left' : 'right', fontSize: '0.75rem', color: note.length >= 500 ? '#ef4444' : '#94a3b8', marginTop: '0.25rem' }}>{note.length}/500</div>
-                                </div>
-
-                                <div style={{ marginBottom: '2rem' }}>
-                                    <label style={{ display: 'block', fontWeight: '600', marginBottom: '0.75rem' }}>{t('current_location_label')}</label>
-                                    <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexDirection: 'row' }}>
-                                        <button onClick={handleCaptureLocation} disabled={capturingLocation || uploading} className="btn" style={{ background: capturingLocation ? '#e2e8f0' : '#3b82f6', color: capturingLocation ? '#64748b' : 'white', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
-                                            {capturingLocation ? t('capturing_location_button').replace('📍', '') : t('capture_location_button').replace('📍', '')}
-                                        </button>
-                                        <span style={{ fontSize: '0.875rem', fontWeight: '500', color: locationStatus.includes('✓') ? '#16a34a' : locationStatus.includes('Failed') ? '#dc2626' : '#64748b' }}>{locationStatus}</span>
-                                    </div>
-                                </div>
-
-                                <div style={{ display: 'flex', gap: '1rem', flexDirection: 'row' }}>
-                                    <button onClick={() => handleUpload(true)} disabled={uploading} className="btn" style={{ background: '#e2e8f0', color: '#1e293b', fontWeight: '600', flex: 1, opacity: 1, cursor: 'pointer' }}>{loadingType === 'DRAFT' ? t('saving') : t('save_draft_button')}</button>
-                                    <button onClick={handleUploadRequest} disabled={uploading} className="btn btn-primary" style={{ fontWeight: '700', flex: 2, opacity: 1, cursor: 'pointer' }}>{loadingType === 'SUBMIT' ? t('submitting') : t('submit_task_button')}</button>
-                                </div>
-                            </div>
+                            <TaskSubmissionForm
+                                pendingFiles={pendingFiles}
+                                onAddFiles={handleFiles}
+                                onRemoveFile={removePendingFile}
+                                uploading={uploading}
+                                costDescription={costDescription}
+                                setCostDescription={setCostDescription}
+                                cost={cost}
+                                setCost={setCost}
+                                onAddCost={handleAddCost}
+                                costEntries={costEntries}
+                                onRemoveCostEntry={removeCostEntry}
+                                note={note}
+                                setNote={setNote}
+                                capturingLocation={capturingLocation}
+                                locationStatus={locationStatus}
+                                onCaptureLocation={handleCaptureLocation}
+                                onSaveDraft={() => handleUpload(true)}
+                                onSubmitRequest={handleUploadRequest}
+                                loadingType={loadingType}
+                            />
                         )}
 
                         {/* Finalized/Pending Message for Employees */}
@@ -1576,257 +1068,63 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
 
             {/* Modals */}
 
-            {/* Delete Modal */}
-            <Modal isOpen={showDeleteConfirm} onClose={() => setShowDeleteConfirm(false)} title={t('delete_task_title')} hideFooter>
-                <div style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>
-                    <p>{t('delete_task_warning')}</p>
-                    <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem', justifyContent: 'flex-end', flexDirection: 'row' }}>
-                        <button onClick={() => setShowDeleteConfirm(false)} className="btn" style={{ background: '#e2e8f0' }}>{t('cancel')}</button>
-                        <button onClick={() => {
-                            setShowDeleteConfirm(false)
-                            handleDelete()
-                        }} className="btn" style={{ background: '#ef4444', color: 'white' }}>{t('delete')}</button>
-                    </div>
-                </div>
-            </Modal>
+            <TaskEditDetailsModal
+                isOpen={isEditing}
+                onClose={() => setIsEditing(false)}
+                onSubmit={handleSaveDetails}
+                editForm={editForm}
+                setEditForm={setEditForm}
+                editFieldErrors={editFieldErrors}
+                setEditFieldErrors={setEditFieldErrors}
+                task={task}
+            />
 
-            {/* Edit Modal */}
-            <Modal isOpen={isEditing} onClose={() => setIsEditing(false)} title={t('edit_task_details_title')} hideFooter>
-                <form onSubmit={handleSaveDetails} style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>
-                    <div style={{ marginBottom: '1.25rem' }}>
-                        <label className="label">{t('name_label')}</label>
-                        <input className="input" value={editForm.title} onChange={e => { setEditForm({ ...editForm, title: e.target.value }); setEditFieldErrors({ ...editFieldErrors, title: '' }); }} style={{ borderColor: editFieldErrors.title ? '#ef4444' : undefined }} maxLength={100} required />
-                        <div style={{ textAlign: locale === 'ar' ? 'left' : 'right', fontSize: '0.7rem', color: '#94a3b8', marginTop: '0.25rem' }}>{editForm.title.length}/100</div>
-                    </div>
-                    <div style={{ marginBottom: '1.25rem' }}>
-                        <label className="label">{t('description_changes_title').split(' ')[0]}</label>
-                        <textarea className="input" rows={4} value={editForm.description} onChange={e => { setEditForm({ ...editForm, description: e.target.value }); setEditFieldErrors({ ...editFieldErrors, description: '' }); }} style={{ borderColor: editFieldErrors.description ? '#ef4444' : undefined }} maxLength={1000} required />
-                        <div style={{ textAlign: locale === 'ar' ? 'left' : 'right', fontSize: '0.7rem', color: '#94a3b8', marginTop: '0.25rem' }}>{editForm.description.length}/1000</div>
-                    </div>
-                    <div style={{ marginBottom: '1.25rem' }}>
-                        <LocationSearchInput
-                            label="Location"
-                            value={{ name: editForm.location, link: (editForm as any).locationLink }}
-                            onChange={(val) => {
-                                setEditForm({ ...editForm, location: val.name, locationLink: val.link } as any)
-                            }}
-                            placeholder={t('location_name_placeholder')}
-                            locale={locale}
-                        />
-                    </div>
-                    <div style={{ marginBottom: '1.25rem' }}>
-                        <label className="label">{t('assignee_label')}</label>
-                        <div style={{
-                            maxHeight: '150px',
-                            overflowY: 'auto',
-                            border: '1px solid #e2e8f0',
-                            borderRadius: '0.5rem',
-                            padding: '1rem',
-                            background: '#f8fafc',
-                            display: 'flex',
-                            flexWrap: 'wrap',
-                            gap: '0.5rem'
-                        }}>
-                            {task.assignees && task.assignees.length > 0 ? (
-                                task.assignees.map((u: any) => (
-                                    <div key={u.id} style={{
-                                        background: 'white',
-                                        border: '1px solid #e2e8f0',
-                                        borderRadius: '2rem',
-                                        padding: '0.4rem 1rem',
-                                        fontSize: '0.9rem',
-                                        color: '#334155',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
-                                    }}>
-                                        {u.firstName} {u.lastName} <small style={{ color: '#64748b', marginLeft: locale === 'ar' ? 0 : '0.4rem', marginRight: locale === 'ar' ? '0.4rem' : 0 }}>({t(`role_${u.role?.toLowerCase()}` as any)})</small>
-                                    </div>
-                                ))
-                            ) : (
-                                <div style={{
-                                    background: 'white',
-                                    border: '1px solid #e2e8f0',
-                                    borderRadius: '2rem',
-                                    padding: '0.5rem 1rem',
-                                    fontSize: '0.9rem',
-                                    fontWeight: '600'
-                                }}>
-                                    {task.assignees?.map((a: any) => `${a.firstName} ${a.lastName}`).join(', ')}
-                                </div>
-                            )}
-                        </div>
-                        <p style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.5rem' }}>
-                            {t('transfer_notice' as any) || (locale === 'ar' ? 'يرجى استخدام زر "التحويل" لتغيير الموظفين.' : 'Please use the "Transfer" button to change employees.')}
-                        </p>
-                    </div>
-                    <div style={{ marginBottom: '1.25rem' }}>
-                        <DateTimePicker label={t('deadline_label')} value={editForm.deadline} onChange={v => setEditForm({ ...editForm, deadline: v })} min={new Date().toISOString()} />
-                    </div>
+            <TaskTransferModal
+                isOpen={isTransferModalOpen}
+                onClose={() => setIsTransferModalOpen(false)}
+                allUsers={allUsers}
+                userFetchError={userFetchError}
+                transferAssigneeIds={transferAssigneeIds}
+                setTransferAssigneeIds={setTransferAssigneeIds}
+                transferring={transferring}
+                onTransfer={handleTransfer}
+            />
 
-                    <div style={{ marginBottom: '1.5rem' }}>
-                        <label className="label">{t('difficulty')}</label>
-                        <input type="number" className="input" value={editForm.difficulty} onChange={e => setEditForm({ ...editForm, difficulty: parseInt(e.target.value) || 0 })} min={0} max={10} required />
-                    </div>
-                    <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', flexDirection: 'row' }}>
-                        <button type="button" onClick={() => setIsEditing(false)} className="btn" style={{ background: '#e2e8f0' }}>{t('cancel')}</button>
-                        <button type="submit" className="btn btn-primary">{t('save_changes_button')}</button>
-                    </div>
-                </form>
-            </Modal>
+            <TaskConfirmModals
+                showDeleteConfirm={showDeleteConfirm}
+                setShowDeleteConfirm={setShowDeleteConfirm}
+                onDelete={handleDelete}
 
-            {/* Transfer Modal */}
-            <Modal isOpen={isTransferModalOpen} onClose={() => setIsTransferModalOpen(false)} title={t('transfer_task_title')} hideFooter>
-                <div style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>
-                    <p style={{ marginBottom: '1.25rem', lineHeight: '1.5' }}>{t('transfer_task_msg')}</p>
+                isReviewModalOpen={isReviewModalOpen}
+                setIsReviewModalOpen={setIsReviewModalOpen}
+                reviewAction={reviewAction}
+                isTransferredTask={isTransferredTask}
+                reviewDifficulty={reviewDifficulty}
+                setReviewDifficulty={setReviewDifficulty}
+                submittingReview={submittingReview}
+                onSubmitReview={() => submitReview()}
 
-                    <input
-                        type="text"
-                        className="input"
-                        placeholder={t('search_placeholder')}
-                        value={searchTermTransfer}
-                        onChange={e => setSearchTermTransfer(e.target.value)}
-                        style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}
-                    />
+                showSubmitConfirm={showSubmitConfirm}
+                setShowSubmitConfirm={setShowSubmitConfirm}
+                onConfirmSubmit={() => handleUpload(false)}
 
-                    <div style={{
-                        maxHeight: '200px',
-                        overflowY: 'auto',
-                        border: '1px solid #e2e8f0',
-                        borderRadius: '0.5rem',
-                        padding: '0.75rem',
-                        background: '#f8fafc',
-                        marginBottom: '1.5rem'
-                    }}>
-                        {allUsers.length > 0 ? (
-                            allUsers.filter(u => `${u.firstName} ${u.lastName}`.toLowerCase().includes(searchTermTransfer.toLowerCase())).length > 0 ? (
-                                allUsers.filter(u => `${u.firstName} ${u.lastName}`.toLowerCase().includes(searchTermTransfer.toLowerCase())).map(u => (
-                                    <label key={u.id} style={{
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: '0.5rem',
-                                        marginBottom: '0.5rem',
-                                        cursor: 'pointer',
-                                        padding: '0.25rem'
-                                    }}>
-                                        <input
-                                            type="checkbox"
-                                            checked={transferAssigneeIds.includes(u.id)}
-                                            onChange={e => {
-                                                if (e.target.checked) {
-                                                    setTransferAssigneeIds([...transferAssigneeIds, u.id])
-                                                } else {
-                                                    setTransferAssigneeIds(transferAssigneeIds.filter(id => id !== u.id))
-                                                }
-                                            }}
-                                        />
-                                        <span style={{ fontSize: '0.9rem' }}>
-                                            {u.firstName} {u.lastName} <small style={{ color: '#64748b' }}>({t(`role_${u.role?.toLowerCase()}` as any)})</small>
-                                        </span>
-                                    </label>
-                                ))
-                            ) : (
-                                <div style={{ fontSize: '0.9rem', color: '#64748b', textAlign: 'center' }}>{t('no_data_available')}</div>
-                            )
-                        ) : userFetchError ? (
-                            <div style={{ fontSize: '0.9rem', color: '#ef4444' }}>{t('failed_fetch_data')}</div>
-                        ) : (
-                            <div style={{ fontSize: '0.9rem', color: '#64748b' }}>{locale === 'ar' ? 'جاري التحميل...' : 'Loading...'}</div>
-                        )}
-                    </div>
+                itemToDelete={itemToDelete}
+                setItemToDelete={setItemToDelete}
+                onConfirmDeleteItem={confirmDeleteItem}
 
-                    <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', flexDirection: 'row' }}>
-                        <button onClick={() => setIsTransferModalOpen(false)} className="btn" style={{ background: '#e2e8f0' }}>{t('cancel')}</button>
-                        <button onClick={handleTransfer} disabled={transferAssigneeIds.length === 0 || transferring} className="btn btn-primary">{transferring ? '...' : t('confirm_transfer_button')}</button>
-                    </div>
-                </div>
-            </Modal>
+                locationToDelete={locationToDelete}
+                setLocationToDelete={setLocationToDelete}
+                onConfirmDeleteLocation={confirmDeleteLocation}
 
-            {/* Review Modal (Approve/Reject) */}
-            <Modal isOpen={isReviewModalOpen} onClose={() => setIsReviewModalOpen(false)} title={reviewAction === 'APPROVED' ? t('confirm_approval_title') : t('confirm_rejection_title')} hideFooter>
-                <div style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>
-                    <p style={{ marginBottom: '1.25rem' }}>
-                        {t('confirm_task_action_msg').replace('{action}', reviewAction === 'APPROVED' ? (locale === 'ar' ? 'الموافقة على' : 'approve') : (locale === 'ar' ? 'رفض' : 'reject'))}
-                        {isTransferredTask() ? t('is_transferred_difficulty_hint') : t('are_you_sure_msg')}
-                    </p>
-                    {isTransferredTask() && (
-                        <div style={{ marginBottom: '1.5rem' }}>
-                            <label className="label">{t('points_label')}</label>
-                            <input type="number" className="input" value={reviewDifficulty} onChange={e => setReviewDifficulty(parseInt(e.target.value) || 0)} min={0} max={100} style={{ width: '100%' }} />
-                        </div>
-                    )}
-                    <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', flexDirection: 'row' }}>
-                        <button onClick={() => setIsReviewModalOpen(false)} className="btn" style={{ background: '#e2e8f0' }}>{t('cancel')}</button>
-                        <button onClick={() => submitReview()} disabled={submittingReview} className="btn" style={{ background: reviewAction === 'APPROVED' ? '#16a34a' : '#dc2626', color: 'white', minWidth: '100px' }}>
-                            {submittingReview ? '...' : t('confirm_action_button')}
-                        </button>
-                    </div>
-                </div>
-            </Modal>
+                showRevertConfirm={showRevertConfirm}
+                setShowRevertConfirm={setShowRevertConfirm}
+                onRevert={handleRevert}
+                isReverting={isReverting}
 
-            {/* Submit Confirmation Modal */}
-            <Modal isOpen={showSubmitConfirm} onClose={() => setShowSubmitConfirm(false)} title={t('confirm_submission_title')} hideFooter>
-                <div style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>
-                    <p>{t('confirm_submission_msg')}</p>
-                    <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem', justifyContent: 'flex-end', flexDirection: 'row' }}>
-                        <button onClick={() => setShowSubmitConfirm(false)} className="btn" style={{ background: '#e2e8f0' }}>{t('cancel')}</button>
-                        <button onClick={() => { setShowSubmitConfirm(false); handleUpload(false); }} className="btn btn-primary">{t('confirm_submit_button')}</button>
-                    </div>
-                </div>
-            </Modal>
+                showDeadlineModal={showDeadlineModal}
+                setShowDeadlineModal={setShowDeadlineModal}
+            />
 
-            {/* Delete Item Modal */}
-            <Modal isOpen={!!itemToDelete} onClose={() => setItemToDelete(null)} title={
-                itemToDelete?.type === 'COST_ADDITION' ? t('delete_cost_title') :
-                    itemToDelete?.type === 'ATTACHMENT' ? t('delete_attachment_title') :
-                        t('delete_note_title')
-            } hideFooter>
-                <div style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>
-                    <p>{t('confirm_item_delete')}</p>
-                    <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem', justifyContent: 'flex-end', flexDirection: 'row' }}>
-                        <button onClick={() => setItemToDelete(null)} className="btn" style={{ background: '#e2e8f0' }}>{t('cancel')}</button>
-                        <button onClick={confirmDeleteItem} className="btn" style={{ background: '#dc2626', color: 'white' }}>{t('delete')}</button>
-                    </div>
-                </div>
-            </Modal>
-
-            {/* Delete Location Modal */}
-            <Modal isOpen={!!locationToDelete} onClose={() => setLocationToDelete(null)} title={t('delete_location_title')} hideFooter>
-                <div style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>
-                    <p>{t('delete_location_warning')}</p>
-                    <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem', justifyContent: 'flex-end', flexDirection: 'row' }}>
-                        <button onClick={() => setLocationToDelete(null)} className="btn" style={{ background: '#e2e8f0' }}>{t('cancel')}</button>
-                        <button onClick={confirmDeleteLocation} className="btn" style={{ background: '#dc2626', color: 'white' }}>{t('delete')}</button>
-                    </div>
-                </div>
-            </Modal>
-
-            {/* Revert Confirmation Modal */}
-            <Modal isOpen={showRevertConfirm} onClose={() => setShowRevertConfirm(false)} title={t('return_to_in_progress')} hideFooter>
-                <div style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>
-                    <p>{t('confirm_action_button') + '?'}</p>
-                    <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem', justifyContent: 'flex-end', flexDirection: 'row' }}>
-                        <button onClick={() => setShowRevertConfirm(false)} className="btn" style={{ background: '#e2e8f0' }}>{t('cancel')}</button>
-                        <button onClick={handleRevert} className="btn" style={{ background: '#2563eb', color: 'white' }}>
-                            {isReverting ? '...' : t('confirm_action_button')}
-                        </button>
-                    </div>
-                </div>
-            </Modal>
-
-            {/* Deadline Passed Modal */}
-            <Modal isOpen={showDeadlineModal} onClose={() => setShowDeadlineModal(false)} title={t('deadline_passed_title' as any) || (locale === 'ar' ? 'انتهى الموعد النهائي' : 'Deadline Passed')} hideFooter hideCloseButton={true}>
-                <div id="deadline-modal-content" style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>
-                    <p style={{ fontSize: '1.1rem', lineHeight: '1.6', marginBottom: '1.5rem' }}>
-                        {t('overdue_task_alert_msg' as any)}
-                    </p>
-                    <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem', justifyContent: 'flex-end', flexDirection: 'row' }}>
-                        <button onClick={() => setShowDeadlineModal(false)} className="btn btn-primary" style={{ minWidth: '100px' }}>
-                            {t('confirm_action_button')}
-                        </button>
-                    </div>
-                </div>
-            </Modal>
 
         </div>
     )
