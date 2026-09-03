@@ -76,16 +76,23 @@ jobs:
       - name: Mirror the storage bucket
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SERVICE_KEY:  ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          # Supabase's S3-compatible endpoint needs its own dedicated
+          # access-key pair (Storage -> S3 Configuration -> Access keys in
+          # the dashboard) — the service_role key isn't valid here at all,
+          # even though it was previously (incorrectly) reused for both
+          # fields below and never actually exercised until this workflow
+          # ran for real.
+          S3_ACCESS_KEY_ID:     ${{ secrets.SUPABASE_S3_ACCESS_KEY_ID }}
+          S3_SECRET_ACCESS_KEY: ${{ secrets.SUPABASE_S3_SECRET_ACCESS_KEY }}
         run: |
           cat >> ~/.config/rclone/rclone.conf <<EOF
           [supa]
           type = s3
           provider = Other
-          access_key_id = ${SERVICE_KEY}
-          secret_access_key = ${SERVICE_KEY}
+          access_key_id = ${S3_ACCESS_KEY_ID}
+          secret_access_key = ${S3_SECRET_ACCESS_KEY}
           endpoint = ${SUPABASE_URL}/storage/v1/s3
-          region = auto
+          region = eu-west-1
           EOF
           rclone copy supa:app-assets ./assets --transfers 8 --fast-list || true
           tar -czf assets.tar.gz assets
