@@ -56,7 +56,11 @@ jobs:
           STAMP=$(TZ=Africa/Cairo date +%Y-%m-%d_%H%M)
           KIND="${{ github.event_name == 'schedule' && 'auto' || 'manual' }}"
           echo "NAME=maktab_${STAMP}_${KIND}" >> $GITHUB_ENV
-          pg_dump "$PGCONN" \
+          # Call the versioned binary directly rather than the unversioned
+          # `pg_dump` on PATH — installing postgresql-client-17 alongside
+          # the runner image's pre-existing postgresql-client-16 doesn't
+          # make 17 the one PATH resolves to.
+          /usr/lib/postgresql/17/bin/pg_dump "$PGCONN" \
             --no-owner --no-privileges --clean --if-exists \
             --exclude-schema='auth|storage|graphql|realtime|extensions|vault|_realtime|supabase_*' \
             | gzip -9 > db.sql.gz
