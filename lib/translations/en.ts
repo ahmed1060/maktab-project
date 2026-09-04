@@ -844,6 +844,14 @@ export const en = {
         triggering_backup: "Starting backup...",
         backup_triggered_success: "Backup started — check the GitHub Actions tab in a few minutes to confirm it finished",
         backup_trigger_failed: "Failed to start backup",
+        confirm_cleanup_assets_title: "Cleanup orphaned assets?",
+        confirm_cleanup_assets_msg: "This permanently deletes files in storage that are no longer referenced by any task, obligation, or record.",
+        confirm_prune_logs_title: "Prune old audit logs?",
+        confirm_prune_logs_msg: "This permanently deletes audit log entries older than the retention window. This cannot be undone.",
+        confirm_prune_notifications_title: "Prune old notifications?",
+        confirm_prune_notifications_msg: "This permanently deletes notifications older than the retention window. This cannot be undone.",
+        confirm_trigger_backup_title: "Trigger a backup now?",
+        confirm_trigger_backup_msg: "Starts an on-demand database and storage backup via GitHub Actions, in addition to the daily automatic one. Limited to 3 per hour.",
         health_metrics_updated: "Health metrics updated",
 
         // F-27: email verification / change (merged flow — see the

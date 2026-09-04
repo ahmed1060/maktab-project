@@ -191,37 +191,40 @@ export default function CompaniesPage() {
                                             )}
                                         </td>
                                         <td style={{ padding: '1rem', textAlign: 'center' }}>
-                                            <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center', flexWrap: 'wrap' }}>
-                                                <button
-                                                    onClick={() => router.push(`/dashboard/companies/${company.id}/payments`)}
-                                                    className="btn"
-                                                    style={{
-                                                        background: 'rgba(99, 102, 241, 0.1)',
-                                                        color: '#6366f1',
-                                                        padding: '0.4rem 0.8rem',
-                                                        fontSize: '0.8rem',
-                                                        border: '1px solid rgba(99, 102, 241, 0.2)'
-                                                    }}
-                                                >
-                                                    💳 {t('payments_history')}
-                                                </button>
-                                                <button
-                                                    onClick={() => router.push(`/dashboard/companies/${company.id}/payments#company-settings`)}
-                                                    className="btn"
-                                                    style={{
-                                                        background: 'rgba(45, 93, 82, 0.1)',
-                                                        color: '#2f5d52',
-                                                        padding: '0.4rem 0.8rem',
-                                                        fontSize: '0.8rem',
-                                                        border: '1px solid rgba(45, 93, 82, 0.2)'
-                                                    }}
-                                                >
-                                                    ⚙️ {t('company_settings_title') || 'Settings'}
-                                                </button>
-                                            </div>
+                                            <button
+                                                onClick={() => router.push(`/dashboard/companies/${company.id}/payments`)}
+                                                className="btn"
+                                                style={{
+                                                    background: 'rgba(99, 102, 241, 0.1)',
+                                                    color: '#6366f1',
+                                                    padding: '0.4rem 0.8rem',
+                                                    fontSize: '0.8rem',
+                                                    border: '1px solid rgba(99, 102, 241, 0.2)'
+                                                }}
+                                            >
+                                                💳 {t('payments_history')}
+                                            </button>
                                         </td>
                                         <td style={{ padding: '1rem', textAlign: locale === 'ar' ? 'left' : 'right' }}>
                                             <div style={{ display: 'flex', gap: '0.5rem', justifyContent: locale === 'ar' ? 'flex-start' : 'flex-end' }}>
+                                                {/* Icon-only, and in the row-actions group rather than next to
+                                                    Payments History — it's a different concern (company policy,
+                                                    not billing), so it reads as "manage this company" alongside
+                                                    Edit/Ban/Delete instead of looking bundled with Payments. */}
+                                                <button
+                                                    onClick={() => router.push(`/dashboard/companies/${company.id}/payments#company-settings`)}
+                                                    className="btn"
+                                                    title={t('company_settings_title') || 'Settings'}
+                                                    style={{
+                                                        background: 'rgba(45, 93, 82, 0.1)',
+                                                        color: '#2f5d52',
+                                                        padding: '0.4rem 0.6rem',
+                                                        fontSize: '0.9rem',
+                                                        border: '1px solid rgba(45, 93, 82, 0.2)'
+                                                    }}
+                                                >
+                                                    ⚙️
+                                                </button>
                                                 <button
                                                     onClick={() => handleOpenModal(company)}
                                                     className="btn"

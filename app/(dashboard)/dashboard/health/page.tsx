@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useLanguage } from '@/context/LanguageContext'
 import LoadingSpinner from '@/components/LoadingSpinner'
+import ConfirmModal from '@/components/ConfirmModal'
 import { useHeader } from '@/context/HeaderContext'
 
 type HealthMetrics = {
@@ -21,6 +22,8 @@ type HealthMetrics = {
     }
 }
 
+type PendingAction = 'CLEANUP_ASSETS' | 'PRUNE_LOGS' | 'PRUNE_NOTIFICATIONS' | 'BACKUP' | null
+
 export default function SystemHealthPage() {
     const { t, locale } = useLanguage()
     const { setTitle, setSubtitle } = useHeader()
@@ -28,6 +31,7 @@ export default function SystemHealthPage() {
     const [loading, setLoading] = useState(true)
     const [processing, setProcessing] = useState<string | null>(null)
     const [triggeringBackup, setTriggeringBackup] = useState(false)
+    const [pendingAction, setPendingAction] = useState<PendingAction>(null)
 
     useEffect(() => {
         setTitle(t('system_health'))
@@ -59,8 +63,6 @@ export default function SystemHealthPage() {
     }, [fetchMetrics])
 
     const runMaintenance = async (action: string) => {
-        if (!confirm(t('confirm' as any))) return
-
         setProcessing(action)
         try {
             const res = await fetch('/api/admin/maintenance', {
@@ -85,8 +87,6 @@ export default function SystemHealthPage() {
     }
 
     const triggerBackup = async () => {
-        if (!confirm(t('confirm' as any))) return
-
         setTriggeringBackup(true)
         try {
             const res = await fetch('/api/admin/maintenance/backup', { method: 'POST' })
@@ -101,6 +101,27 @@ export default function SystemHealthPage() {
             alert(t('backup_trigger_failed' as any))
         } finally {
             setTriggeringBackup(false)
+        }
+    }
+
+    // Confirmation for all four maintenance actions runs through one styled
+    // modal instead of the browser's native confirm() — the copy per
+    // action lives here, keyed off which button was clicked.
+    const confirmCopy: Record<Exclude<PendingAction, null>, { title: string; message: string }> = {
+        CLEANUP_ASSETS: { title: t('confirm_cleanup_assets_title' as any), message: t('confirm_cleanup_assets_msg' as any) },
+        PRUNE_LOGS: { title: t('confirm_prune_logs_title' as any), message: t('confirm_prune_logs_msg' as any) },
+        PRUNE_NOTIFICATIONS: { title: t('confirm_prune_notifications_title' as any), message: t('confirm_prune_notifications_msg' as any) },
+        BACKUP: { title: t('confirm_trigger_backup_title' as any), message: t('confirm_trigger_backup_msg' as any) },
+    }
+
+    const handleConfirm = () => {
+        const action = pendingAction
+        setPendingAction(null)
+        if (!action) return
+        if (action === 'BACKUP') {
+            triggerBackup()
+        } else {
+            runMaintenance(action)
         }
     }
 
@@ -129,7 +150,7 @@ export default function SystemHealthPage() {
                         {metrics?.storage.totalFiles}
                     </div>
                     <button
-                        onClick={() => runMaintenance('CLEANUP_ASSETS')}
+                        onClick={() => setPendingAction('CLEANUP_ASSETS')}
                         disabled={!!processing}
                         className="btn"
                         style={{ width: '100%', marginTop: 'auto' }}
@@ -158,7 +179,7 @@ export default function SystemHealthPage() {
                         </div>
                     </div>
                     <button
-                        onClick={() => runMaintenance('PRUNE_LOGS')}
+                        onClick={() => setPendingAction('PRUNE_LOGS')}
                         disabled={!!processing || metrics?.auditing.prunable === 0}
                         className="btn"
                         style={{ width: '100%', marginTop: 'auto', background: metrics?.auditing.prunable === 0 ? '#f1f5f9' : undefined, color: metrics?.auditing.prunable === 0 ? '#94a3b8' : undefined }}
@@ -187,7 +208,7 @@ export default function SystemHealthPage() {
                         </div>
                     </div>
                     <button
-                        onClick={() => runMaintenance('PRUNE_NOTIFICATIONS')}
+                        onClick={() => setPendingAction('PRUNE_NOTIFICATIONS')}
                         disabled={!!processing || metrics?.notifications.prunable === 0}
                         className="btn"
                         style={{ width: '100%', marginTop: 'auto', background: metrics?.notifications.prunable === 0 ? '#f1f5f9' : undefined, color: metrics?.notifications.prunable === 0 ? '#94a3b8' : undefined }}
@@ -209,7 +230,7 @@ export default function SystemHealthPage() {
                         {t('backups_description' as any)}
                     </p>
                     <button
-                        onClick={triggerBackup}
+                        onClick={() => setPendingAction('BACKUP')}
                         disabled={triggeringBackup}
                         className="btn"
                         style={{ width: '100%', marginTop: 'auto' }}
@@ -219,6 +240,15 @@ export default function SystemHealthPage() {
                 </div>
 
             </div>
+
+            <ConfirmModal
+                isOpen={!!pendingAction}
+                title={pendingAction ? confirmCopy[pendingAction].title : ''}
+                message={pendingAction ? confirmCopy[pendingAction].message : ''}
+                variant={pendingAction === 'BACKUP' ? 'info' : 'warning'}
+                onConfirm={handleConfirm}
+                onCancel={() => setPendingAction(null)}
+            />
         </div>
     )
 }
