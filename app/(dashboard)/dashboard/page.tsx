@@ -54,6 +54,20 @@ export default async function DashboardPage({ searchParams }: { searchParams: { 
                 _count: true
             })
 
+            // "Needs Attention" — the things a super admin would otherwise
+            // only find by opening each page individually.
+            const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000)
+            const fourteenDaysFromNow = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000)
+            const [systemErrors24h, expiringSubscriptions, bannedCompanies] = await Promise.all([
+                prisma.auditLog.count({
+                    where: { action: 'SYSTEM_API_ERROR', createdAt: { gte: oneDayAgo } }
+                }),
+                prisma.companyPayment.count({
+                    where: { status: 'PAID', endDate: { gt: new Date(), lte: fourteenDaysFromNow } }
+                }),
+                prisma.company.count({ where: { isBanned: true } })
+            ])
+
             const chartData = [
                 { label: t('status_completed'), value: taskStats.find(s => s.status === 'COMPLETED')?._count || 0, color: '#10b981' },
                 { label: t('status_pending'), value: (taskStats.find(s => s.status === 'PENDING')?._count || 0) + (taskStats.find(s => s.status === 'IN_PROGRESS')?._count || 0), color: '#3b82f6' },
@@ -89,6 +103,22 @@ export default async function DashboardPage({ searchParams }: { searchParams: { 
                             </Link>
                         </div>
                     </div>
+
+                    {/* Needs Attention */}
+                    <section>
+                        <h2 style={{ fontSize: '1.25rem', fontWeight: '700', color: '#334155', marginBottom: '1.25rem' }}>⚠️ {t('needs_attention')}</h2>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.5rem' }}>
+                            <Link href={`/dashboard/audit-logs?action=SYSTEM_API_ERROR&startDate=${encodeURIComponent(oneDayAgo.toISOString())}`} style={{ textDecoration: 'none', color: 'inherit' }}>
+                                <StatMetric label={t('system_errors_24h')} value={systemErrors24h} icon="🚨" color="#ef4444" />
+                            </Link>
+                            <Link href="/dashboard/companies" style={{ textDecoration: 'none', color: 'inherit' }}>
+                                <StatMetric label={t('expiring_subscriptions')} value={expiringSubscriptions} icon="⏳" color="#f59e0b" />
+                            </Link>
+                            <Link href="/dashboard/companies" style={{ textDecoration: 'none', color: 'inherit' }}>
+                                <StatMetric label={t('banned_companies')} value={bannedCompanies} icon="🚫" color="#94a3b8" />
+                            </Link>
+                        </div>
+                    </section>
 
                 </div>
             )
@@ -148,6 +178,25 @@ export default async function DashboardPage({ searchParams }: { searchParams: { 
             { label: t('status_rejected'), value: rejectedTasks, color: '#ef4444' }
         ]
 
+        // "Needs Your Review" — approval queues this role can act on.
+        // Day-off/profile approval is ADMIN-only (see app/api/admin/day-off-requests
+        // and app/api/profile-requests), so a TEAM_LEADER only sees task reviews.
+        const [pendingDayOffRequests, pendingProfileRequests] = userRole === 'ADMIN'
+            ? await Promise.all([
+                prisma.dayOffRequest.count({ where: { status: 'PENDING', user: { companyId: finalCompanyId } } }),
+                prisma.profileUpdateRequest.count({ where: { status: 'PENDING', user: { companyId: finalCompanyId } } })
+            ])
+            : [0, 0]
+
+        // Overdue: past deadline, not in a final state — same idea as the
+        // employee "due today" list, but for this admin's whole team.
+        const overdueTasks = await prisma.task.findMany({
+            where: { ...baseWhere, deadline: { lt: new Date() }, status: { notIn: ['COMPLETED', 'APPROVED'] } },
+            orderBy: { deadline: 'asc' },
+            take: 5,
+            select: { id: true, title: true, deadline: true, status: true }
+        })
+
         return (
             <div className="animate-fade-in" style={{ direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
                 <HeaderSetter
@@ -183,6 +232,47 @@ export default async function DashboardPage({ searchParams }: { searchParams: { 
                         </div>
                     </div>
                 </div>
+
+                {/* Needs Your Review */}
+                <section style={{ marginTop: '2.5rem' }}>
+                    <h2 style={{ fontSize: '1.25rem', fontWeight: '700', color: '#334155', marginBottom: '1.25rem' }}>📋 {t('needs_your_review')}</h2>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.5rem' }}>
+                        <Link href="/dashboard/tasks" style={{ textDecoration: 'none', color: 'inherit' }}>
+                            <StatMetric label={t('pending_task_reviews')} value={reviewTasks} icon="🔎" color="#f59e0b" />
+                        </Link>
+                        {userRole === 'ADMIN' && (
+                            <>
+                                <Link href="/dashboard/day-off-requests" style={{ textDecoration: 'none', color: 'inherit' }}>
+                                    <StatMetric label={t('pending_day_off_requests')} value={pendingDayOffRequests} icon="🌴" color="#0ea5e9" />
+                                </Link>
+                                <Link href="/dashboard/profile-requests" style={{ textDecoration: 'none', color: 'inherit' }}>
+                                    <StatMetric label={t('pending_profile_requests')} value={pendingProfileRequests} icon="🪪" color="#8b5cf6" />
+                                </Link>
+                            </>
+                        )}
+                    </div>
+                </section>
+
+                {/* Overdue Tasks */}
+                <section style={{ marginTop: '2.5rem' }}>
+                    <h2 style={{ fontSize: '1.25rem', fontWeight: '700', color: '#334155', marginBottom: '1.25rem' }}>⏰ {t('overdue_tasks')}</h2>
+                    {overdueTasks.length === 0 ? (
+                        <div className="glass-card" style={{ padding: '2rem', textAlign: 'center' }}>
+                            <p style={{ margin: 0, color: '#94a3b8' }}>{t('no_overdue_tasks')}</p>
+                        </div>
+                    ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                            {overdueTasks.map(task => (
+                                <Link key={task.id} href={`/dashboard/tasks/${task.id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
+                                    <div className="glass-card" style={{ padding: '1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', [locale === 'ar' ? 'borderRight' : 'borderLeft']: '4px solid #ef4444' }}>
+                                        <span style={{ fontWeight: '600' }}>{task.title}</span>
+                                        <span style={{ fontSize: '0.85rem', color: '#ef4444' }}>{new Date(task.deadline).toLocaleDateString(locale === 'ar' ? 'ar-EG' : 'en-US')}</span>
+                                    </div>
+                                </Link>
+                            ))}
+                        </div>
+                    )}
+                </section>
             </div>
         )
     } else {
@@ -238,20 +328,32 @@ export default async function DashboardPage({ searchParams }: { searchParams: { 
             take: 5
         })
 
+        // My latest day-off request — otherwise the only way to see where
+        // a request stands is opening the requests page.
+        const myLatestDayOffRequest = await prisma.dayOffRequest.findFirst({
+            where: { userId },
+            orderBy: { createdAt: 'desc' }
+        })
+
         const today = new Date()
         today.setHours(0, 0, 0, 0)
         const tomorrow = new Date(today)
         tomorrow.setDate(tomorrow.getDate() + 1)
+        const weekFromNow = new Date(today)
+        weekFromNow.setDate(weekFromNow.getDate() + 7)
 
-        const todayTasks = await prisma.task.findMany({
+        // Widened from "due today" to "due this week" — a same-day-only
+        // view means this section is empty most days.
+        const upcomingTasks = await prisma.task.findMany({
             where: {
                 assignees: { some: { id: userId } },
                 deadline: {
                     gte: today,
-                    lt: tomorrow
+                    lt: weekFromNow
                 },
                 status: { notIn: ['COMPLETED', 'APPROVED'] }
             },
+            orderBy: { deadline: 'asc' },
             include: {
                 assignees: { select: { id: true, firstName: true, lastName: true } }
             }
@@ -292,54 +394,86 @@ export default async function DashboardPage({ searchParams }: { searchParams: { 
                     </div>
                 </div>
 
-                {/* Today's Focus */}
+                {/* This Week's Focus */}
                 <section style={{ marginBottom: '3rem' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
-                        <h2 style={{ fontSize: '1.5rem', fontWeight: '700', margin: 0 }}>🔥 {t('due_today')}</h2>
+                        <h2 style={{ fontSize: '1.5rem', fontWeight: '700', margin: 0 }}>🔥 {t('due_this_week')}</h2>
                     </div>
 
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1.5rem' }}>
-                        {todayTasks.length === 0 ? (
+                        {upcomingTasks.length === 0 ? (
                             <div className="glass-card glass-success animate-delay-100" style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', padding: '2rem' }}>
                                 <div style={{ fontSize: '3rem', background: 'rgba(255,255,255,0.8)', borderRadius: '50%', width: '80px', height: '80px', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>🎉</div>
                                 <div>
                                     <h3 style={{ fontSize: '1.25rem', marginBottom: '0.5rem', fontWeight: '700', color: '#166534' }}>{t('all_caught_up')}</h3>
-                                    <p style={{ margin: 0, color: '#15803d' }}>{t('no_pending_tasks_today')}</p>
+                                    <p style={{ margin: 0, color: '#15803d' }}>{t('no_pending_tasks_week')}</p>
                                 </div>
                             </div>
                         ) : (
-                            todayTasks.map((task: any) => (
-                                <Link key={task.id} href={`/dashboard/tasks/${task.id}`} style={{ textDecoration: 'none', color: 'inherit', display: 'block' }}>
-                                    <div className="glass-card" style={{ height: '100%', boxSizing: 'border-box', [locale === 'ar' ? 'borderRight' : 'borderLeft']: '6px solid #ef4444', padding: '1.75rem' }}>
-                                        <div style={{ marginBottom: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                                                <h3 style={{ fontSize: '1.25rem', fontWeight: '700', lineHeight: '1.3', color: '#1e293b' }}>{task.title}</h3>
-                                                <span style={{
-                                                    padding: '0.15rem 0.5rem',
-                                                    borderRadius: '0.5rem',
-                                                    background: '#3b82f6',
-                                                    color: 'white',
-                                                    fontWeight: 'bold',
-                                                    fontSize: '0.7rem'
-                                                }}>
-                                                    {task.difficulty} {t('pts')}
+                            upcomingTasks.map((task: any) => {
+                                const isDueToday = new Date(task.deadline) < tomorrow
+                                return (
+                                    <Link key={task.id} href={`/dashboard/tasks/${task.id}`} style={{ textDecoration: 'none', color: 'inherit', display: 'block' }}>
+                                        <div className="glass-card" style={{ height: '100%', boxSizing: 'border-box', [locale === 'ar' ? 'borderRight' : 'borderLeft']: `6px solid ${isDueToday ? '#ef4444' : '#f59e0b'}`, padding: '1.75rem' }}>
+                                            <div style={{ marginBottom: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                                    <h3 style={{ fontSize: '1.25rem', fontWeight: '700', lineHeight: '1.3', color: '#1e293b' }}>{task.title}</h3>
+                                                    <span style={{
+                                                        padding: '0.15rem 0.5rem',
+                                                        borderRadius: '0.5rem',
+                                                        background: '#3b82f6',
+                                                        color: 'white',
+                                                        fontWeight: 'bold',
+                                                        fontSize: '0.7rem'
+                                                    }}>
+                                                        {task.difficulty} {t('pts')}
+                                                    </span>
+                                                </div>
+                                                <span className="badge" style={{ background: isDueToday ? '#fee2e2' : '#ffedd5', color: isDueToday ? '#b91c1c' : '#c2410c' }}>
+                                                    {isDueToday ? t('today') : new Date(task.deadline).toLocaleDateString(locale === 'ar' ? 'ar-EG' : 'en-US', { weekday: 'short', day: 'numeric', month: 'short' })}
                                                 </span>
                                             </div>
-                                            <span className="badge" style={{ background: '#fee2e2', color: '#b91c1c' }}>{t('today')}</span>
+                                            <p style={{ color: '#64748b', fontSize: '0.95rem', lineHeight: '1.6', marginBottom: '1.5rem', overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
+                                                {task.description}
+                                            </p>
+                                            <div style={{ marginTop: 'auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid rgba(255,255,255,0.2)', paddingTop: '1rem' }}>
+                                                <span className="badge" style={{ background: '#f8fafc', color: '#475569', border: '1px solid #e2e8f0' }}>{t(`status_${task.status.toLowerCase()}` as any)}</span>
+                                                <span style={{ fontSize: '0.9rem', fontWeight: '600', color: '#4f46e5' }}>{t('view_all')} →</span>
+                                            </div>
                                         </div>
-                                        <p style={{ color: '#64748b', fontSize: '0.95rem', lineHeight: '1.6', marginBottom: '1.5rem', overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
-                                            {task.description}
-                                        </p>
-                                        <div style={{ marginTop: 'auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid rgba(255,255,255,0.2)', paddingTop: '1rem' }}>
-                                            <span className="badge" style={{ background: '#f8fafc', color: '#475569', border: '1px solid #e2e8f0' }}>{t(`status_${task.status.toLowerCase()}` as any)}</span>
-                                            <span style={{ fontSize: '0.9rem', fontWeight: '600', color: '#4f46e5' }}>{t('view_all')} →</span>
-                                        </div>
-                                    </div>
-                                </Link>
-                            ))
+                                    </Link>
+                                )
+                            })
                         )}
                     </div>
                 </section>
+
+                {/* My Latest Day-Off Request */}
+                {myLatestDayOffRequest && (
+                    <section style={{ marginBottom: '3rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem' }}>
+                            <h2 style={{ fontSize: '1.25rem', fontWeight: '700', color: '#334155' }}>🌴 {t('my_day_off_request')}</h2>
+                            <Link href="/dashboard/day-off-requests" style={{ fontSize: '0.9rem', fontWeight: '500' }}>{t('view_all')}</Link>
+                        </div>
+                        <Link href="/dashboard/day-off-requests" style={{ textDecoration: 'none', color: 'inherit' }}>
+                            <div className="glass-card" style={{ padding: '1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', [locale === 'ar' ? 'borderRight' : 'borderLeft']: `4px solid ${myLatestDayOffRequest.status === 'APPROVED' ? '#10b981' : myLatestDayOffRequest.status === 'REJECTED' ? '#ef4444' : '#0ea5e9'}` }}>
+                                <div>
+                                    <div style={{ fontWeight: '600' }}>{t(`${myLatestDayOffRequest.type.toLowerCase()}_day_off` as any)}</div>
+                                    <div style={{ fontSize: '0.85rem', color: '#64748b', marginTop: '0.25rem' }}>
+                                        {new Date(myLatestDayOffRequest.date).toLocaleDateString(locale === 'ar' ? 'ar-EG' : 'en-US')}
+                                        {myLatestDayOffRequest.endDate ? ` – ${new Date(myLatestDayOffRequest.endDate).toLocaleDateString(locale === 'ar' ? 'ar-EG' : 'en-US')}` : ''}
+                                    </div>
+                                </div>
+                                <span className="badge" style={{
+                                    background: myLatestDayOffRequest.status === 'APPROVED' ? '#dcfce7' : myLatestDayOffRequest.status === 'REJECTED' ? '#fee2e2' : '#f0f9ff',
+                                    color: myLatestDayOffRequest.status === 'APPROVED' ? '#166534' : myLatestDayOffRequest.status === 'REJECTED' ? '#b91c1c' : '#0369a1'
+                                }}>
+                                    {t(`status_${myLatestDayOffRequest.status.toLowerCase()}` as any)}
+                                </span>
+                            </div>
+                        </Link>
+                    </section>
+                )}
 
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '2.5rem', alignItems: 'start' }}>
                     {/* Obligations */}

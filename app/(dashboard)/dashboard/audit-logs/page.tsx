@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useSearchParams } from 'next/navigation'
 import useSWR from 'swr'
 import Pagination from '@/components/Pagination'
 import { useLanguage } from '@/context/LanguageContext'
@@ -36,13 +37,16 @@ export default function AuditLogsPage() {
     const { t, locale } = useLanguage()
     const { setTitle, setSubtitle } = useHeader()
     const { selectedCompanyId } = useCompany()
+    // Seeds from the URL so a deep link (e.g. the dashboard's "System
+    // Errors" card) lands here pre-filtered, not just on the unfiltered list.
+    const searchParams = useSearchParams()
     const [page, setPage] = useState(1)
     const [filters, setFilters] = useState({
-        entityType: '',
-        action: '',
-        startDate: '',
-        endDate: '',
-        entityId: '',
+        entityType: searchParams.get('entityType') || '',
+        action: searchParams.get('action') || '',
+        startDate: searchParams.get('startDate') || '',
+        endDate: searchParams.get('endDate') || '',
+        entityId: searchParams.get('entityId') || '',
         performedById: ''
     })
     const limit = 20
