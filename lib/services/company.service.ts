@@ -26,7 +26,7 @@ export class CompanyService {
     }
 
     static async update(input: UpdateCompanyInput, session: any) {
-        const { id, name, isBanned } = input
+        const { id, name, isBanned, autoVerifyLocation } = input
 
         const existing = await prisma.company.findUnique({ where: { id } })
         if (!existing) throw new Error("COMPANY_NOT_FOUND")
@@ -40,7 +40,8 @@ export class CompanyService {
             where: { id },
             data: {
                 ...(name && { name }),
-                ...(isBanned !== undefined && { isBanned })
+                ...(isBanned !== undefined && { isBanned }),
+                ...(autoVerifyLocation !== undefined && { autoVerifyLocation })
             }
         })
 
@@ -48,6 +49,9 @@ export class CompanyService {
         const changes: any = {}
         if (name && name !== existing.name) changes.name = { old: existing.name, new: name }
         if (isBanned !== undefined && isBanned !== existing.isBanned) changes.isBanned = { old: existing.isBanned, new: isBanned }
+        if (autoVerifyLocation !== undefined && autoVerifyLocation !== existing.autoVerifyLocation) {
+            changes.autoVerifyLocation = { old: existing.autoVerifyLocation, new: autoVerifyLocation }
+        }
 
         if (Object.keys(changes).length > 0) {
             const { AuditLogService } = await import("./audit-log.service")

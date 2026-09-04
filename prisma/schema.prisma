@@ -77,6 +77,13 @@ model Company {
   id              String           @id @default(uuid())
   name            String           @unique
   isBanned        Boolean          @default(false)
+  // Company Settings: whether a submitted task location auto-verifies
+  // against the task's target location at all, for any task belonging to
+  // this company. The distance threshold itself is a system-wide setting
+  // (SystemSettings.locationVerifyRadiusMeters) — this is deliberately
+  // company policy only, not per-task, so one company can't quietly
+  // change what another company's tasks do.
+  autoVerifyLocation Boolean       @default(true)
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
   businessClients BusinessClient[]
@@ -85,6 +92,17 @@ model Company {
   requests        Request[]
   tasks           Task[]
   users           User[]
+}
+
+// System Settings: a single-row table (id is always "default") for
+// platform-wide configuration a super admin manages from its own page —
+// deliberately separate from Company, which holds per-company policy.
+// Add new global settings here as plain columns, same pattern as this
+// first one.
+model SystemSettings {
+  id                        String @id @default("default")
+  locationVerifyRadiusMeters Int   @default(70)
+  updatedAt                 DateTime @updatedAt
 }
 
 model SuperAdmin {

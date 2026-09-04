@@ -8,6 +8,9 @@ export const updateCompanySchema = z.object({
     id: z.string().min(1, "Company ID is required"),
     name: z.string().min(2).max(50).optional(),
     isBanned: z.boolean().optional(),
+    // Company Settings: whether task-location auto-verify runs at all for
+    // this company's tasks. See the matching comment on the Company model.
+    autoVerifyLocation: z.boolean().optional(),
 })
 
 export type CreateCompanyInput = z.infer<typeof createCompanySchema>

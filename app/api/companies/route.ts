@@ -13,7 +13,7 @@ export const GET = withStandardHandler(async (req, session) => {
     if (id) {
         const company = await prisma.company.findUnique({
             where: { id },
-            select: { id: true, name: true, isBanned: true }
+            select: { id: true, name: true, isBanned: true, autoVerifyLocation: true }
         })
         if (!company) return ApiResponse.notFound("Company not found")
         return ApiResponse.success(company)

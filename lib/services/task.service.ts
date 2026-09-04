@@ -3,6 +3,7 @@ import { CreateTaskInput, UpdateTaskInput } from "../validations/task.schema"
 import { extractCoords, calculateDistance } from "@/lib/location"
 import { supabase } from "@/lib/storage"
 import { normalizeJsonInput } from "@/lib/json-input"
+import { SystemSettingsService } from "./system-settings.service"
 
 /**
  * TaskService
@@ -108,7 +109,10 @@ export class TaskService {
 
         const existingTask = await prisma.task.findUnique({
             where: { id },
-            select: { title: true, description: true, location: true, attachments: true, comments: true, companyId: true }
+            select: {
+                title: true, description: true, location: true, attachments: true, comments: true, companyId: true,
+                company: { select: { autoVerifyLocation: true } }
+            }
         })
 
         if (!existingTask) throw new Error("TASK_NOT_FOUND")
@@ -135,16 +139,21 @@ export class TaskService {
             date: new Date().toISOString()
         }]
 
-        // Coordinate re-verification if location changed
-        if (location) {
+        // Coordinate re-verification if location changed — Company Settings'
+        // autoVerifyLocation gates whether this runs at all; a task with no
+        // company (only possible for a SUPER_ADMIN-created task) defaults to
+        // on, same as a fresh Company row would.
+        const autoVerifyLocation = existingTask.company?.autoVerifyLocation ?? true
+        if (location && autoVerifyLocation) {
             const targetCoords = extractCoords(location)
             if (targetCoords) {
+                const { locationVerifyRadiusMeters } = await SystemSettingsService.get()
                 finalComments = finalComments.map((c: any) => {
                     if (c.type === 'LOCATION_ADDED' && c.location && (!c.verificationStatus || c.autoVerified)) {
                         const submittedCoords = extractCoords(c.location)
                         if (submittedCoords) {
                             const distance = calculateDistance(targetCoords, submittedCoords)
-                            c.verificationStatus = distance <= 100 ? 'CORRECT' : 'WRONG'
+                            c.verificationStatus = distance <= locationVerifyRadiusMeters ? 'CORRECT' : 'WRONG'
                             c.autoVerified = true
                         }
                     }
@@ -214,7 +223,7 @@ export class TaskService {
         return await prisma.$transaction(async (tx) => {
             const currentTask = await tx.task.findUnique({
                 where: { id },
-                include: { assignees: true }
+                include: { assignees: true, company: { select: { autoVerifyLocation: true } } }
             })
             if (!currentTask) throw new Error("TASK_NOT_FOUND")
 
@@ -287,12 +296,17 @@ export class TaskService {
 
                 const locationComment: any = { text: locationName ? `Location: ${locationName}` : `Location: ${location}`, location, locationName, author: session.user.name, authorId: userId, date: new Date().toISOString(), type: 'LOCATION_ADDED' }
 
-                if (currentTask.location) {
+                // Company Settings' autoVerifyLocation gates this entirely — a
+                // task with no company (only possible when SUPER_ADMIN-created)
+                // defaults to on, same as a fresh Company row would.
+                const autoVerifyLocation = currentTask.company?.autoVerifyLocation ?? true
+                if (currentTask.location && autoVerifyLocation) {
                     const targetCoords = extractCoords(currentTask.location)
                     const submittedCoords = extractCoords(location)
                     if (targetCoords && submittedCoords) {
+                        const { locationVerifyRadiusMeters } = await SystemSettingsService.get()
                         const distance = calculateDistance(targetCoords, submittedCoords)
-                        locationComment.verificationStatus = distance <= 100 ? 'CORRECT' : 'WRONG'
+                        locationComment.verificationStatus = distance <= locationVerifyRadiusMeters ? 'CORRECT' : 'WRONG'
                         locationComment.autoVerified = true
                     }
                 }
