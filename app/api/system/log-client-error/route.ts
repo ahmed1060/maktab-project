@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth"
 import { ApiResponse } from "@/lib/api-response"
 import { RateLimiter, getClientIp } from "@/lib/api-utils"
 import { AuditLogService } from "@/lib/services/audit-log.service"
+import { isNextInternalError } from "@/lib/next-internal-error"
 
 // Client-side failures a server catch block never sees at all — a React
 // render crash caught by an error boundary, or signIn() throwing on the
@@ -32,7 +33,10 @@ export async function POST(req: NextRequest) {
         const componentStack = typeof json?.componentStack === 'string' ? json.componentStack.slice(0, 2000) : undefined
         const route = typeof json?.route === 'string' ? json.route.slice(0, 300) : undefined
 
-        const session = await getServerSession(authOptions).catch(() => null)
+        const session = await getServerSession(authOptions).catch((e) => {
+            if (isNextInternalError(e)) throw e
+            return null
+        })
         const role = session && (session.user as any).role
         const userId = role && role !== 'SUPER_ADMIN' ? (session!.user as any).id : null
         const superAdminId = role === 'SUPER_ADMIN' ? (session!.user as any).id : null
@@ -48,6 +52,7 @@ export async function POST(req: NextRequest) {
 
         return ApiResponse.success({ ref })
     } catch (error) {
+        if (isNextInternalError(error)) throw error
         // This endpoint IS the fallback error-reporting path — if it fails
         // too, there's nowhere left to send the detail. Console only, and
         // never break the page that called this for a diagnostic ping.

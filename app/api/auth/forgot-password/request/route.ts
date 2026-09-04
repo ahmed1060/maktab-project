@@ -5,6 +5,7 @@ import { RateLimiter, getClientIp } from "@/lib/api-utils"
 import { forgotPasswordRequestSchema } from "@/lib/validations/forgot-password.schema"
 import { VerificationCodeService } from "@/lib/services/verification-code.service"
 import { AuditLogService } from "@/lib/services/audit-log.service"
+import { isNextInternalError } from "@/lib/next-internal-error"
 
 // F-27, Phase 3.5: unauthenticated by necessity — this is how someone
 // gets back in when they don't have a password to prove. Unlike
@@ -59,6 +60,7 @@ export async function POST(req: NextRequest) {
         // raw Next.js 500 with no logging at all — the worst of both
         // worlds. Log it (userId: null — no session to attribute to) and
         // return the same safe, ref-coded message every other surface does.
+        if (isNextInternalError(error)) throw error
         console.error('Forgot-password request error:', error)
         const ref = await AuditLogService.logSystemError({ error, route: '/api/auth/forgot-password/request', method: 'POST' })
         return ApiResponse.error(AuditLogService.friendlyErrorMessage(ref))

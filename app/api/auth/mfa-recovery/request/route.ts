@@ -7,6 +7,7 @@ import { RateLimiter, getClientIp } from "@/lib/api-utils"
 import { DUMMY_PASSWORD_HASH } from "@/lib/auth"
 import { VerificationCodeService } from "@/lib/services/verification-code.service"
 import { AuditLogService } from "@/lib/services/audit-log.service"
+import { isNextInternalError } from "@/lib/next-internal-error"
 
 // F-27, Phase 5: "email me a code instead", the MFA fallback for someone
 // who can't reach their authenticator app. Unauthenticated by necessity —
@@ -74,6 +75,7 @@ export async function POST(req: NextRequest) {
         return ApiResponse.success({ sent: true })
     } catch (error: any) {
         // Unauthenticated route — same reasoning as forgot-password's.
+        if (isNextInternalError(error)) throw error
         console.error('MFA recovery request error:', error)
         const ref = await AuditLogService.logSystemError({ error, route: '/api/auth/mfa-recovery/request', method: 'POST' })
         return ApiResponse.error(AuditLogService.friendlyErrorMessage(ref))

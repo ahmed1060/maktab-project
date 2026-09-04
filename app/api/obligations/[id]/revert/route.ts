@@ -3,6 +3,7 @@ import { ApiResponse } from "@/lib/api-response"
 import { ObligationService } from "@/lib/services/obligation.service"
 import { verifyResourceAccess } from "@/lib/security"
 import { AuditLogService } from "@/lib/services/audit-log.service"
+import { isNextInternalError } from "@/lib/next-internal-error"
 
 export const POST = withStandardHandler(async (req, session, json, { params }) => {
     const obligationId = params.id
@@ -20,6 +21,7 @@ export const POST = withStandardHandler(async (req, session, json, { params }) =
         const result = await ObligationService.revert(obligationId, session)
         return ApiResponse.success(result)
     } catch (error: any) {
+        if (isNextInternalError(error)) throw error
         if (error.message === 'OBLIGATION_NOT_FOUND') return ApiResponse.notFound("Obligation not found")
         console.error("Obligation reversion error:", error)
         const ref = await AuditLogService.logSystemError({ error, route: `/api/obligations/${obligationId}/revert`, method: 'POST', superAdminId: session.user.id })

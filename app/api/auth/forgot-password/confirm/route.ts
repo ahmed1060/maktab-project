@@ -6,6 +6,7 @@ import { RateLimiter, getClientIp } from "@/lib/api-utils"
 import { forgotPasswordConfirmSchema } from "@/lib/validations/forgot-password.schema"
 import { VerificationCodeService } from "@/lib/services/verification-code.service"
 import { AuditLogService } from "@/lib/services/audit-log.service"
+import { isNextInternalError } from "@/lib/next-internal-error"
 
 // F-27, Phase 3.5. Applies to any account, including the protected
 // SuperAdmin — resetting a forgotten password doesn't touch the
@@ -71,6 +72,7 @@ export async function POST(req: NextRequest) {
         return ApiResponse.success({ reset: true })
     } catch (error: any) {
         // Unauthenticated route — same reasoning as request/route.ts.
+        if (isNextInternalError(error)) throw error
         console.error('Forgot-password confirm error:', error)
         const ref = await AuditLogService.logSystemError({ error, route: '/api/auth/forgot-password/confirm', method: 'POST' })
         return ApiResponse.error(AuditLogService.friendlyErrorMessage(ref))

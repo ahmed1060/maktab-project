@@ -3,6 +3,7 @@ import { ApiResponse } from "@/lib/api-response"
 import { prisma } from "@/lib/prisma"
 import { TaskService } from "@/lib/services/task.service"
 import { AuditLogService } from "@/lib/services/audit-log.service"
+import { isNextInternalError } from "@/lib/next-internal-error"
 
 export const POST = withStandardHandler(async (req, session, json) => {
     const userRole = session.user.role
@@ -90,6 +91,7 @@ export const POST = withStandardHandler(async (req, session, json) => {
             message: `Successfully created ${results.length} tasks`
         }, 201)
     } catch (error: any) {
+        if (isNextInternalError(error)) throw error
         console.error("[BULK_TASK_CREATE_ERROR]", error)
         if (error.code === 'P2003') {
             return ApiResponse.error("Database constraint violation. Please check if all assigned employees still exist.")
