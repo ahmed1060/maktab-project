@@ -48,9 +48,12 @@ export default function AuditLogsPage() {
     const limit = 20
 
     // "Performed By" filter options — fetched once, doesn't depend on
-    // anything that changes on this page.
-    const { data: usersResult } = useSWR('/api/all-users?limit=1000', fetcher)
-    const users: { id: string, firstName: string, lastName: string, role: string }[] = usersResult?.data?.users || []
+    // anything that changes on this page. Was calling a route that never
+    // existed (/api/all-users, always 404) — every other page in the app
+    // gets the user list from /api/users, whose list shape is
+    // { data: { data: User[], total, page, totalPages } }.
+    const { data: usersResult } = useSWR('/api/users?limit=1000', fetcher)
+    const users: { id: string, firstName: string, lastName: string, role: string }[] = usersResult?.data?.data || []
 
     const entityTypes = [
         'USER', 'TASK', 'SUPER_ADMIN', 'SECTION', 'SALARY',

@@ -7,7 +7,7 @@ export const createDayOffSchema = z.object({
     endDate: z.string().optional().refine((val) => !val || !isNaN(Date.parse(val)), {
         message: "Invalid end date",
     }),
-    type: z.enum(['REGULAR', 'SICK', 'EMERGENCY', 'UNPAID']),
+    type: z.enum(['REGULAR', 'SICK', 'EMERGENCY', 'UNPAID', 'CASUAL']),
     reason: z.string().max(100, "Reason must be 100 characters or less").optional(),
 })
 

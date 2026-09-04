@@ -50,6 +50,7 @@ enum DayOffType {
   SICK
   EMERGENCY
   UNPAID
+  CASUAL
 }
 
 // F-27: what a short-lived emailed code is being used to prove. One shared

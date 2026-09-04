@@ -15,10 +15,23 @@ import { useCompany } from '@/context/CompanyContext'
 import Pagination from '@/components/Pagination'
 import { fetcher } from '@/lib/swr-fetcher'
 
+// Badge color + translation key per type, keyed once here rather than as a
+// chained ternary — REGULAR/CASUAL/SICK are reachable from the request
+// form below; EMERGENCY/UNPAID are valid DayOffType values with no form
+// entry point yet, kept here so an existing/future row of either still
+// renders correctly instead of silently falling back to "Regular."
+const DAY_OFF_TYPE_STYLE: Record<string, { bg: string; color: string; labelKey: string }> = {
+    REGULAR: { bg: '#e0f2fe', color: '#0369a1', labelKey: 'regular_day_off' },
+    CASUAL: { bg: '#ede9fe', color: '#5b21b6', labelKey: 'casual_day_off' },
+    SICK: { bg: '#fee2e2', color: '#b91c1c', labelKey: 'sick_day_off' },
+    EMERGENCY: { bg: '#ffedd5', color: '#c2410c', labelKey: 'emergency_day_off' },
+    UNPAID: { bg: '#f1f5f9', color: '#475569', labelKey: 'unpaid_day_off' },
+}
+
 interface DayOffRequest {
     id: string
     userId: string
-    type: 'CASUAL' | 'REGULAR'
+    type: 'REGULAR' | 'SICK' | 'EMERGENCY' | 'UNPAID' | 'CASUAL'
     status: 'PENDING' | 'APPROVED' | 'REJECTED'
     reason: string | null
     date: string
@@ -51,7 +64,7 @@ export default function DayOffRequestsPage() {
     // New Request Form State
     const [reqDate, setReqDate] = useState('')
     const [reqEndDate, setReqEndDate] = useState('')
-    const [reqType, setReqType] = useState<'CASUAL' | 'REGULAR'>('REGULAR')
+    const [reqType, setReqType] = useState<'REGULAR' | 'SICK' | 'CASUAL'>('REGULAR')
     const [reqReason, setReqReason] = useState('')
     const [submitting, setSubmitting] = useState(false)
     const [alert, setAlert] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
@@ -453,10 +466,10 @@ export default function DayOffRequestsPage() {
                                                 borderRadius: '0.5rem',
                                                 fontSize: '0.75rem',
                                                 fontWeight: '700',
-                                                background: req.type === 'CASUAL' ? '#ede9fe' : '#e0f2fe',
-                                                color: req.type === 'CASUAL' ? '#5b21b6' : '#0369a1'
+                                                background: (DAY_OFF_TYPE_STYLE[req.type] || DAY_OFF_TYPE_STYLE.REGULAR).bg,
+                                                color: (DAY_OFF_TYPE_STYLE[req.type] || DAY_OFF_TYPE_STYLE.REGULAR).color
                                             }}>
-                                                {t(req.type === 'CASUAL' ? 'casual_day_off' : 'regular_day_off' as any)}
+                                                {t((DAY_OFF_TYPE_STYLE[req.type] || DAY_OFF_TYPE_STYLE.REGULAR).labelKey as any)}
                                             </span>
                                             {/* Applied Days Badge - Always Visible */}
                                             <span style={{
@@ -621,6 +634,7 @@ export default function DayOffRequestsPage() {
                                 }}>
                                     <option value="REGULAR">{t('regular_day_off' as any)}</option>
                                     <option value="CASUAL">{t('casual_day_off' as any)}</option>
+                                    <option value="SICK">{t('sick_day_off' as any)}</option>
                                 </select>
                             </div>
                             {reqType === 'REGULAR' ? (
