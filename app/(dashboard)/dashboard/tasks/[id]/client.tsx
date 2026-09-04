@@ -904,7 +904,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                         </span>
                     ))
                 ) : (
-                    <strong>{t('no_assignee' as any)}</strong>
+                    <strong>{t('no_assignee')}</strong>
                 )}
             </div>
 

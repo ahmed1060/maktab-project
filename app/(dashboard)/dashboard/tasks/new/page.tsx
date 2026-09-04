@@ -170,7 +170,7 @@ export default function NewTaskPage() {
             const rows = jsonData.slice(2).filter(row => row[0]) // row[0] is Title
 
             if (rows.length > 50) {
-                showToast(t('bulk_limit_exceeded' as any) || 'Maximum 50 tasks allowed per batch', 'error')
+                showToast(t('bulk_limit_exceeded'), 'error')
                 return
             }
 

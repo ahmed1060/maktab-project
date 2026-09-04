@@ -134,7 +134,13 @@ export function LanguageProvider({ children, initialLocale, initialDict }: { chi
 
     const t = (key: TranslationKey): string => {
         const currentDict = dicts[locale] || dicts[initialLocale];
-        return currentDict?.[key] || dicts.en?.[key] || key;
+        // Falling back to the raw key here used to make every `t(key) ||
+        // 'fallback'` call site in the app dead code — that `||` can never
+        // fire, since a missing key returned the (truthy) key string
+        // itself instead of something falsy. '' lets real fallbacks work,
+        // present and future, instead of leaking a raw snake_case key to
+        // the user.
+        return currentDict?.[key] || dicts.en?.[key] || '';
     };
 
     return (

@@ -873,5 +873,24 @@ export const en = {
         check_spam_note: "Didn't get it? Check your spam folder.",
         code_sent_message: "Code sent — check your inbox.",
         email_verified_success: "Email verified.",
-        email_changed_success: "Email updated and verified."
+        email_changed_success: "Email updated and verified.",
+
+        // F3 fix — 16 real keys backfilled, closing the class of "raw key
+        // leaked to the UI" bugs a broken t() fallback let through. See the
+        // Sept 2026 test-report fix pass.
+        no_company_label: "No Company",
+        creating_section: "Creating section...",
+        delete_section_warning: "Are you sure you want to delete this section",
+        edit_client_name: "Edit Client Name",
+        client_name_label: "Client Name",
+        day_dual: "2 days",
+        no_reason_provided: "No reason provided",
+        unauthorized: "Unauthorized",
+        no_company_assigned: "You are not assigned to a company. Please contact your administrator.",
+        bulk_limit_exceeded: "Maximum 50 tasks allowed per batch",
+        no_assignee: "No assignee",
+        failed_verify_location: "Failed to update status",
+        usernames: "Usernames",
+        usernames_subtitle: "View and export employee usernames for reference",
+        failed_load_employees: "Failed to load employees"
 };

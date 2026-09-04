@@ -206,7 +206,7 @@ export default function TaskLocationHistorySection({ task, setTask, userRole, us
                                 console.error(e)
                                 // Rollback on error
                                 setTask({ ...task, comments: originalComments })
-                                showToast(t('failed_verify_location' as any) || 'Failed to update status', 'error')
+                                showToast(t('failed_verify_location'), 'error')
                             } finally {
                                 setVerifyingLocation(null)
                             }

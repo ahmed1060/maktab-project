@@ -135,8 +135,8 @@ export default async function DashboardPage({ searchParams }: { searchParams: { 
             // Return early or show empty dashboard
             return (
                 <div className="flex flex-col items-center justify-center py-20">
-                    <h1 className="text-2xl font-bold text-slate-800">{t('unauthorized' as any)}</h1>
-                    <p className="text-slate-500">{t('no_company_assigned' as any)}</p>
+                    <h1 className="text-2xl font-bold text-slate-800">{t('unauthorized')}</h1>
+                    <p className="text-slate-500">{t('no_company_assigned')}</p>
                 </div>
             )
         }

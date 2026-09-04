@@ -370,7 +370,7 @@ export default function EmployeesPage() {
                                         color: '#991b1b',
                                         textTransform: 'uppercase'
                                     }}>
-                                        {t('suspended' as any)}
+                                        {t('status_suspended')}
                                     </span>
                                 )}
                             </div>

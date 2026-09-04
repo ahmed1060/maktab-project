@@ -257,7 +257,7 @@ export default function DayOffRequestsPage() {
     const formatDays = (days: number) => {
         if (locale === 'ar') {
             if (days === 1) return t('day_singular' as any)
-            if (days === 2) return t('day_dual' as any)
+            if (days === 2) return t('day_dual')
             return `${days} ${t('days_label')}`
         }
         return `${days} ${days === 1 ? t('day_singular' as any) : t('days_label')}`
@@ -519,7 +519,7 @@ export default function DayOffRequestsPage() {
                                             </div>
                                         ) : (
                                             <p style={{ margin: 0, fontSize: '0.9rem', color: '#94a3b8', fontStyle: 'italic' }}>
-                                                {t('no_reason_provided' as any) || 'No reason provided'}
+                                                {t('no_reason_provided')}
                                             </p>
                                         )}
                                         <div style={{

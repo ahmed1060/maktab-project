@@ -576,7 +576,7 @@ export default function ClientDetailsPage() {
                                     {isSubmitting ? (
                                         <>
                                             <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                                            {t('creating_task' as any)}
+                                            {t('creating_section')}
                                         </>
                                     ) : t('create_section_button' as any)}
                                 </button>
@@ -592,7 +592,7 @@ export default function ClientDetailsPage() {
                 <ConfirmModal
                     isOpen={deleteConfirm.isOpen}
                     title={t('confirm_delete')}
-                    message={(t('delete_section_warning' as any) || 'Are you sure you want to delete this section?') + (locale === 'ar' ? '؟' : '?')}
+                    message={t('delete_section_warning') + (locale === 'ar' ? '؟' : '?')}
                     confirmText={t('delete')}
                     cancelText={t('cancel')}
                     onConfirm={async () => {
@@ -624,12 +624,12 @@ export default function ClientDetailsPage() {
                 <Modal
                     isOpen={isEditClientModalOpen}
                     onClose={() => setIsEditClientModalOpen(false)}
-                    title={t('edit_client_name' as any)}
+                    title={t('edit_client_name')}
                 >
                     <form onSubmit={handleEditClient} style={{ direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
                         <div style={{ marginBottom: '1.25rem' }}>
                             <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '600', color: '#64748b', marginBottom: '0.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
-                                {t('client_name_label' as any)}
+                                {t('client_name_label')}
                             </label>
                             <input
                                 type="text"

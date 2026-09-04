@@ -58,8 +58,8 @@ export default function UsernamesPage() {
     }, [])
 
     useEffect(() => {
-        setTitle(t('usernames' as any))
-        setSubtitle(t('usernames_subtitle' as any))
+        setTitle(t('usernames'))
+        setSubtitle(t('usernames_subtitle'))
         return () => {
             setTitle(null)
             setSubtitle(null)

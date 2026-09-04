@@ -869,5 +869,23 @@ export const ar = {
         check_spam_note: "لم يصلك؟ تحقق من مجلد الرسائل غير المرغوب فيها.",
         code_sent_message: "تم إرسال الرمز — تحقق من بريدك الوارد.",
         email_verified_success: "تم تأكيد البريد الإلكتروني.",
-        email_changed_success: "تم تحديث البريد الإلكتروني وتأكيده."
+        email_changed_success: "تم تحديث البريد الإلكتروني وتأكيده.",
+
+        // F3 fix — 16 real keys backfilled, closing the class of "raw key
+        // leaked to the UI" bugs a broken t() fallback let through. See the
+        // Sept 2026 test-report fix pass. (day_dual already existed here.)
+        no_company_label: "بدون شركة",
+        creating_section: "جاري إنشاء القسم...",
+        delete_section_warning: "هل أنت متأكد من حذف هذا القسم",
+        edit_client_name: "تعديل اسم العميل",
+        client_name_label: "اسم العميل",
+        no_reason_provided: "لم يتم تقديم سبب",
+        unauthorized: "غير مصرح",
+        no_company_assigned: "أنت غير مُعيَّن لأي شركة. يرجى التواصل مع المسؤول.",
+        bulk_limit_exceeded: "الحد الأقصى 50 مهمة لكل دفعة",
+        no_assignee: "لا يوجد مُكلَّف",
+        failed_verify_location: "فشل تحديث الحالة",
+        usernames: "أسماء المستخدمين",
+        usernames_subtitle: "عرض وتصدير أسماء مستخدمي الموظفين للرجوع إليها",
+        failed_load_employees: "فشل تحميل الموظفين"
 };

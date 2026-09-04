@@ -173,8 +173,13 @@ export default function EmployeeFilter({
             fetch(url)
                 .then(res => res.json())
                 .then(responseData => {
-                    // Support both direct array and { data: [] } structure
-                    const data = Array.isArray(responseData) ? responseData : (responseData.data || [])
+                    // /api/users actually returns the double-nested envelope
+                    // { success, data: { data: [...], total, page } } — this
+                    // used to only unwrap one level, so `data` was that
+                    // pagination object (not an array), and .filter() below
+                    // threw on every call. Unwrap however deep it goes.
+                    const payload = responseData?.data ?? responseData
+                    const data = Array.isArray(payload) ? payload : (payload?.data || [])
 
                     const filteredData = data.filter((emp: EmployeeType) => emp.role !== 'ADMIN' && emp.role !== 'SUPER_ADMIN')
                     const sortedData = filteredData.sort((a: EmployeeType, b: EmployeeType) => {
@@ -193,7 +198,7 @@ export default function EmployeeFilter({
                 })
                 .catch(err => {
                     console.error('Failed to load employees:', err)
-                    setError(t('failed_load_employees' as any) || 'Failed to load employees')
+                    setError(t('failed_load_employees'))
                     setLoading(false)
                 })
         } else {

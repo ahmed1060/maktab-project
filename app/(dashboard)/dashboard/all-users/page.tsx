@@ -132,7 +132,7 @@ export default function AllUsersPage() {
 
     filteredUsers.forEach((user: User) => {
         const companyId = user.company?.id || 'unknown'
-        const companyName = user.company?.name || t('no_company_label' as any) || 'No Company'
+        const companyName = user.company?.name || t('no_company_label')
 
         if (!usersByCompany[companyId]) {
             usersByCompany[companyId] = { name: companyName, users: [] }

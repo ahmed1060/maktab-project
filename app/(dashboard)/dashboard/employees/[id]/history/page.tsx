@@ -247,7 +247,7 @@ export default function EmployeeHistoryPage() {
     const formatDays = (days: number) => {
         if (locale === 'ar') {
             if (days === 1) return t('day_singular' as any)
-            if (days === 2) return t('day_dual' as any)
+            if (days === 2) return t('day_dual')
             return `${days} ${t('days_label')}`
         }
         return `${days} ${days === 1 ? t('day_singular' as any) : t('days_label')}`
