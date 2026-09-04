@@ -23,7 +23,6 @@ type Payment = {
 type Company = {
     id: string
     name: string
-    autoVerifyLocation: boolean
 }
 
 export default function CompanyPaymentsPage() {
@@ -44,7 +43,6 @@ export default function CompanyPaymentsPage() {
     })
     const [submitting, setSubmitting] = useState(false)
     const [paymentToDelete, setPaymentToDelete] = useState<string | null>(null)
-    const [savingSettings, setSavingSettings] = useState(false)
 
     const fetchCompanyData = useCallback(async () => {
         try {
@@ -161,30 +159,6 @@ export default function CompanyPaymentsPage() {
         }
     }
 
-    const handleToggleAutoVerify = async () => {
-        if (!company) return
-        const next = !company.autoVerifyLocation
-        setSavingSettings(true)
-        try {
-            const res = await fetch('/api/companies', {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ id: companyId, autoVerifyLocation: next })
-            })
-            if (res.ok) {
-                setCompany({ ...company, autoVerifyLocation: next })
-                showToast(t('settings_saved_success') || 'Settings saved', 'success')
-            } else {
-                const data = await res.json().catch(() => ({}))
-                showToast(data.error || t('error_generic'), 'error')
-            }
-        } catch {
-            showToast(t('error_generic'), 'error')
-        } finally {
-            setSavingSettings(false)
-        }
-    }
-
     if (!session?.user || session.user.role !== 'SUPER_ADMIN') {
         return <AccessDenied />
     }
@@ -236,29 +210,6 @@ export default function CompanyPaymentsPage() {
                 >
                     + {t('add_payment')}
                 </button>
-            </div>
-
-            {/* Company Settings — policy this company runs by, distinct from
-                the platform-wide defaults in System Settings. Anchor id so
-                the companies list's "Settings" button can link straight
-                here instead of leaving it undiscoverable inside Payments. */}
-            <div id="company-settings" className="glass" style={{ padding: '1.5rem', borderRadius: '1rem', marginBottom: '2rem', textAlign: locale === 'ar' ? 'right' : 'left', scrollMarginTop: '2rem' }}>
-                <h3 style={{ margin: '0 0 1rem' }}>{t('company_settings_title') || 'Company Settings'}</h3>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: savingSettings ? 'not-allowed' : 'pointer', flexDirection: locale === 'ar' ? 'row-reverse' : 'row', justifyContent: 'flex-start' }}>
-                    <input
-                        type="checkbox"
-                        checked={!!company?.autoVerifyLocation}
-                        disabled={savingSettings || !company}
-                        onChange={handleToggleAutoVerify}
-                        style={{ width: '1.1rem', height: '1.1rem', cursor: 'inherit' }}
-                    />
-                    <span>
-                        {t('auto_verify_location_label') || 'Auto-verify submitted task locations'}
-                        <span style={{ display: 'block', fontSize: '0.8rem', color: '#64748b', marginTop: '0.15rem' }}>
-                            {t('auto_verify_location_hint') || 'When on, a location submitted within the system’s distance setting is marked correct automatically. When off, every submitted location needs manual review.'}
-                        </span>
-                    </span>
-                </label>
             </div>
 
             {loading ? (

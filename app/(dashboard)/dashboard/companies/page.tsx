@@ -212,7 +212,7 @@ export default function CompaniesPage() {
                                                     not billing), so it reads as "manage this company" alongside
                                                     Edit/Ban/Delete instead of looking bundled with Payments. */}
                                                 <button
-                                                    onClick={() => router.push(`/dashboard/companies/${company.id}/payments#company-settings`)}
+                                                    onClick={() => router.push(`/dashboard/companies/${company.id}/settings`)}
                                                     className="btn"
                                                     title={t('company_settings_title') || 'Settings'}
                                                     style={{
