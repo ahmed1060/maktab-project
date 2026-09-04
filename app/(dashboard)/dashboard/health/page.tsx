@@ -27,6 +27,7 @@ export default function SystemHealthPage() {
     const [metrics, setMetrics] = useState<HealthMetrics | null>(null)
     const [loading, setLoading] = useState(true)
     const [processing, setProcessing] = useState<string | null>(null)
+    const [triggeringBackup, setTriggeringBackup] = useState(false)
 
     useEffect(() => {
         setTitle(t('system_health'))
@@ -80,6 +81,26 @@ export default function SystemHealthPage() {
             alert(t('maintenance_failed' as any))
         } finally {
             setProcessing(null)
+        }
+    }
+
+    const triggerBackup = async () => {
+        if (!confirm(t('confirm' as any))) return
+
+        setTriggeringBackup(true)
+        try {
+            const res = await fetch('/api/admin/maintenance/backup', { method: 'POST' })
+            const result = await res.json()
+            if (result.success) {
+                alert(t('backup_triggered_success' as any))
+            } else {
+                alert(t('backup_trigger_failed' as any) + ': ' + result.error)
+            }
+        } catch (error) {
+            console.error('Backup trigger error:', error)
+            alert(t('backup_trigger_failed' as any))
+        } finally {
+            setTriggeringBackup(false)
         }
     }
 
@@ -172,6 +193,28 @@ export default function SystemHealthPage() {
                         style={{ width: '100%', marginTop: 'auto', background: metrics?.notifications.prunable === 0 ? '#f1f5f9' : undefined, color: metrics?.notifications.prunable === 0 ? '#94a3b8' : undefined }}
                     >
                         {processing === 'PRUNE_NOTIFICATIONS' ? (locale === 'ar' ? 'جاري الحذف...' : 'Pruning...') : t('prune_notifications_btn' as any)}
+                    </button>
+                </div>
+
+                {/* Backups Card */}
+                <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                        <span style={{ fontSize: '2rem' }}>💾</span>
+                        <div>
+                            <h3 style={{ margin: 0, fontSize: '1.1rem', color: 'var(--text-main)' }}>{t('backups_header' as any)}</h3>
+                            <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>{t('backups_subtitle' as any)}</p>
+                        </div>
+                    </div>
+                    <p style={{ margin: '0.5rem 0', fontSize: '0.85rem', color: 'var(--text-muted)', flexGrow: 1 }}>
+                        {t('backups_description' as any)}
+                    </p>
+                    <button
+                        onClick={triggerBackup}
+                        disabled={triggeringBackup}
+                        className="btn"
+                        style={{ width: '100%', marginTop: 'auto' }}
+                    >
+                        {triggeringBackup ? t('triggering_backup' as any) : t('trigger_backup_now' as any)}
                     </button>
                 </div>
 

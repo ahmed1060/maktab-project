@@ -239,8 +239,10 @@ export default function CompanyPaymentsPage() {
             </div>
 
             {/* Company Settings — policy this company runs by, distinct from
-                the platform-wide defaults in System Settings. */}
-            <div className="glass" style={{ padding: '1.5rem', borderRadius: '1rem', marginBottom: '2rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
+                the platform-wide defaults in System Settings. Anchor id so
+                the companies list's "Settings" button can link straight
+                here instead of leaving it undiscoverable inside Payments. */}
+            <div id="company-settings" className="glass" style={{ padding: '1.5rem', borderRadius: '1rem', marginBottom: '2rem', textAlign: locale === 'ar' ? 'right' : 'left', scrollMarginTop: '2rem' }}>
                 <h3 style={{ margin: '0 0 1rem' }}>{t('company_settings_title') || 'Company Settings'}</h3>
                 <label style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: savingSettings ? 'not-allowed' : 'pointer', flexDirection: locale === 'ar' ? 'row-reverse' : 'row', justifyContent: 'flex-start' }}>
                     <input

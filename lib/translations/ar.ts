@@ -836,6 +836,13 @@ export const ar = {
         maintenance_success: "تمت مهمة الصيانة بنجاح",
         maintenance_failed: "فشلت مهمة الصيانة",
         performing_maintenance: "جاري تنفيذ الصيانة...",
+        backups_header: "النسخ الاحتياطي",
+        backups_subtitle: "قاعدة البيانات والتخزين، يومياً",
+        backups_description: "يعمل تلقائيًا كل يوم ويرفع النسخة إلى Google Drive. يمكنك تشغيله يدويًا إذا احتجت نسخة احتياطية فورية — بحد أقصى 3 مرات في الساعة.",
+        trigger_backup_now: "تشغيل نسخة احتياطية الآن",
+        triggering_backup: "جاري بدء النسخ الاحتياطي...",
+        backup_triggered_success: "بدأ النسخ الاحتياطي — تحقق من تبويب GitHub Actions بعد بضع دقائق للتأكد من اكتماله",
+        backup_trigger_failed: "فشل بدء النسخ الاحتياطي",
         health_metrics_updated: "تم تحديث مؤشرات الصحة",
 
         email_settings_nav: "إعدادات البريد الإلكتروني",

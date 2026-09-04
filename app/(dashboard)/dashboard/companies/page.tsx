@@ -191,19 +191,34 @@ export default function CompaniesPage() {
                                             )}
                                         </td>
                                         <td style={{ padding: '1rem', textAlign: 'center' }}>
-                                            <button
-                                                onClick={() => router.push(`/dashboard/companies/${company.id}/payments`)}
-                                                className="btn"
-                                                style={{
-                                                    background: 'rgba(99, 102, 241, 0.1)',
-                                                    color: '#6366f1',
-                                                    padding: '0.4rem 0.8rem',
-                                                    fontSize: '0.8rem',
-                                                    border: '1px solid rgba(99, 102, 241, 0.2)'
-                                                }}
-                                            >
-                                                💳 {t('payments_history')}
-                                            </button>
+                                            <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center', flexWrap: 'wrap' }}>
+                                                <button
+                                                    onClick={() => router.push(`/dashboard/companies/${company.id}/payments`)}
+                                                    className="btn"
+                                                    style={{
+                                                        background: 'rgba(99, 102, 241, 0.1)',
+                                                        color: '#6366f1',
+                                                        padding: '0.4rem 0.8rem',
+                                                        fontSize: '0.8rem',
+                                                        border: '1px solid rgba(99, 102, 241, 0.2)'
+                                                    }}
+                                                >
+                                                    💳 {t('payments_history')}
+                                                </button>
+                                                <button
+                                                    onClick={() => router.push(`/dashboard/companies/${company.id}/payments#company-settings`)}
+                                                    className="btn"
+                                                    style={{
+                                                        background: 'rgba(45, 93, 82, 0.1)',
+                                                        color: '#2f5d52',
+                                                        padding: '0.4rem 0.8rem',
+                                                        fontSize: '0.8rem',
+                                                        border: '1px solid rgba(45, 93, 82, 0.2)'
+                                                    }}
+                                                >
+                                                    ⚙️ {t('company_settings_title') || 'Settings'}
+                                                </button>
+                                            </div>
                                         </td>
                                         <td style={{ padding: '1rem', textAlign: locale === 'ar' ? 'left' : 'right' }}>
                                             <div style={{ display: 'flex', gap: '0.5rem', justifyContent: locale === 'ar' ? 'flex-start' : 'flex-end' }}>

@@ -837,6 +837,13 @@ export const en = {
         maintenance_success: "Maintenance task completed successfully",
         maintenance_failed: "Maintenance task failed",
         performing_maintenance: "Performing maintenance...",
+        backups_header: "Backups",
+        backups_subtitle: "Database + storage, daily",
+        backups_description: "Runs automatically every day and uploads to Google Drive. Trigger one manually if you need a fresh backup right now — limited to 3 per hour.",
+        trigger_backup_now: "Trigger Backup Now",
+        triggering_backup: "Starting backup...",
+        backup_triggered_success: "Backup started — check the GitHub Actions tab in a few minutes to confirm it finished",
+        backup_trigger_failed: "Failed to start backup",
         health_metrics_updated: "Health metrics updated",
 
         // F-27: email verification / change (merged flow — see the
