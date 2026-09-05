@@ -3,7 +3,7 @@ import { ApiResponse } from "@/lib/api-response"
 import { CompanyService } from "@/lib/services/company.service"
 
 export const GET = withStandardHandler(async (req, session, json, { params }) => {
-    if (session.user.role !== 'SUPER_ADMIN') return ApiResponse.unauthorized()
+    if (session.user.role !== 'SUPER_ADMIN') return ApiResponse.forbidden()
 
     try {
         const payments = await CompanyService.getPayments(params.id)
@@ -15,7 +15,7 @@ export const GET = withStandardHandler(async (req, session, json, { params }) =>
 })
 
 export const POST = withStandardHandler(async (req, session, json, { params }) => {
-    if (session.user.role !== 'SUPER_ADMIN') return ApiResponse.unauthorized()
+    if (session.user.role !== 'SUPER_ADMIN') return ApiResponse.forbidden()
 
     const { cost, subscriptionType } = json
     if (!cost || !subscriptionType) {

@@ -1,6 +1,8 @@
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { verifyResourceAccess } from "@/lib/security"
+import AccessDenied from "@/components/AccessDenied"
 import ObligationDetailClient from "./client"
 
 export default async function ObligationDetailPage({ params }: { params: { id: string } }) {
@@ -21,6 +23,11 @@ export default async function ObligationDetailPage({ params }: { params: { id: s
     })
 
     if (!obligation) return <div>Obligation not found</div>
+
+    // Company isolation — this page previously had no access check at all,
+    // not even the employee-assignment restriction Task's page has.
+    const hasAccess = await verifyResourceAccess(session, obligation.id, 'OBLIGATION')
+    if (!hasAccess) return <AccessDenied />
 
     // Auto-update status to IN_PROGRESS if viewed by any assignee
     const isAssignee = obligation.assignees.some(u => u.id === userId)

@@ -7,7 +7,7 @@ import { verifyResourceAccess } from "@/lib/security"
 export const PUT = withStandardHandler(async (req, session, json, { params }) => {
     const userRole = session.user.role
     if (!['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole)) {
-        return ApiResponse.unauthorized()
+        return ApiResponse.forbidden()
     }
 
     const hasAccess = await verifyResourceAccess(session, params.id, 'TASK')

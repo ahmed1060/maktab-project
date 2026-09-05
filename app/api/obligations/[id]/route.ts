@@ -32,7 +32,7 @@ export const DELETE = withStandardHandler(async (req, session, _body, { params }
         return ApiResponse.success({ success: true, id: params.id })
     } catch (error: any) {
         if (error.message === 'OBLIGATION_NOT_FOUND') return ApiResponse.notFound("Obligation not found")
-        if (error.message === 'ACCESS_DENIED') return ApiResponse.unauthorized()
+        if (error.message === 'ACCESS_DENIED') return ApiResponse.forbidden()
         if (error.message === 'ADMIN_CANNOT_DELETE_SELF_OBLIGATION') return ApiResponse.forbidden("Admins cannot delete their own obligations")
         throw error
     }

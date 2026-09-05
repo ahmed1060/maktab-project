@@ -1,6 +1,8 @@
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { verifyResourceAccess } from "@/lib/security"
+import AccessDenied from "@/components/AccessDenied"
 import TaskDetailClient from "./client"
 
 export default async function TaskDetailPage({ params }: { params: { id: string } }) {
@@ -19,6 +21,12 @@ export default async function TaskDetailPage({ params }: { params: { id: string 
     })
 
     if (!task) return <div>Task not found</div>
+
+    // Company isolation — without this, any logged-in user who knows (or
+    // guesses/enumerates) a task ID from another company can view it, since
+    // the fetch above has no company scoping of its own.
+    const hasAccess = await verifyResourceAccess(session, task.id, 'TASK')
+    if (!hasAccess) return <AccessDenied />
 
     const userId = (session?.user as any)?.id
     const userRole = (session?.user as any)?.role

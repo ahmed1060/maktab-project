@@ -48,8 +48,11 @@ export default function NewEmployeePage() {
         setFieldErrors({})
         setLoading(true)
 
-        // Regex: ^ (start) [^@]{1,20} (1-20 chars user) @ [^@]{1,10} (1-10 chars domain) \.com$
-        const emailRegex = /^[^@]{1,20}@[^@]{1,10}\.com$/
+        // Was /^[^@]{1,20}@[^@]{1,10}\.com$/, which rejected most real
+        // addresses (subdomains, non-.com TLDs, longer local parts). The
+        // backend already validates properly (user.schema.ts), this is just
+        // a quick client-side check before that round trip.
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
         const errors: { [key: string]: string } = {}
         if (!emailRegex.test(email)) {

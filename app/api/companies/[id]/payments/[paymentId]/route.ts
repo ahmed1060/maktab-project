@@ -3,7 +3,7 @@ import { ApiResponse } from "@/lib/api-response"
 import { CompanyService } from "@/lib/services/company.service"
 
 export const PATCH = withStandardHandler(async (req, session, json, { params }) => {
-    if (session.user.role !== 'SUPER_ADMIN') return ApiResponse.unauthorized()
+    if (session.user.role !== 'SUPER_ADMIN') return ApiResponse.forbidden()
 
     const { status } = json
     if (status !== 'PAID') {
@@ -21,7 +21,7 @@ export const PATCH = withStandardHandler(async (req, session, json, { params }) 
 })
 
 export const DELETE = withStandardHandler(async (req, session, json, { params }) => {
-    if (session.user.role !== 'SUPER_ADMIN') return ApiResponse.unauthorized()
+    if (session.user.role !== 'SUPER_ADMIN') return ApiResponse.forbidden()
 
     try {
         await CompanyService.deletePayment(params.paymentId, session)

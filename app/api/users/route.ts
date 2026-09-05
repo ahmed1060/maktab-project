@@ -22,7 +22,7 @@ export const GET = withStandardHandler(async (req, session) => {
     // 1. Authorization & Single User Fetch
     if (userId) {
         if (userId !== session.user.id && !['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole || '')) {
-            return ApiResponse.unauthorized()
+            return ApiResponse.forbidden()
         }
 
         const user = await prisma.user.findUnique({
@@ -67,7 +67,7 @@ export const GET = withStandardHandler(async (req, session) => {
 
     // 2. Multi-User Fetch (Filtered)
     if (!['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole || '')) {
-        return ApiResponse.unauthorized()
+        return ApiResponse.forbidden()
     }
 
     const companyIdParam = searchParams.get('companyId')
@@ -212,7 +212,7 @@ export const PUT = withStandardHandler(async (req, session, json) => {
 
     // 2. Authorization check
     if (id !== session.user.id && !['ADMIN', 'SUPER_ADMIN'].includes(userRole || '')) {
-        return ApiResponse.unauthorized()
+        return ApiResponse.forbidden()
     }
 
     try {
@@ -234,7 +234,7 @@ export const PUT = withStandardHandler(async (req, session, json) => {
 
 export const DELETE = withStandardHandler(async (req, session) => {
     const userRole = session.user.role
-    if (!['ADMIN', 'SUPER_ADMIN'].includes(userRole || '')) return ApiResponse.unauthorized()
+    if (!['ADMIN', 'SUPER_ADMIN'].includes(userRole || '')) return ApiResponse.forbidden()
 
     const { searchParams } = new URL(req.url)
     const id = searchParams.get('id')

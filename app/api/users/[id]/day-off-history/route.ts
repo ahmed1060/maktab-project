@@ -12,7 +12,7 @@ export const GET = withStandardHandler(async (req, session, json, { params }) =>
     const isAdmin = ['ADMIN', 'SUPER_ADMIN'].includes(userRole)
 
     if (!isSelf && !isAdmin) {
-        return ApiResponse.unauthorized()
+        return ApiResponse.forbidden()
     }
 
     // Company Isolation

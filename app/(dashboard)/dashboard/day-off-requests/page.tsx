@@ -176,7 +176,11 @@ export default function DayOffRequestsPage() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     date: reqDate,
-                    endDate: reqType === 'REGULAR' ? reqEndDate : null,
+                    // undefined, not null — JSON.stringify() drops an undefined
+                    // key entirely, satisfying the schema's z.string().optional()
+                    // (which accepts undefined but rejects null). CASUAL/SICK/
+                    // EMERGENCY/UNPAID requests have no end date at all.
+                    endDate: reqType === 'REGULAR' ? reqEndDate : undefined,
                     type: reqType,
                     reason: reqReason
                 })

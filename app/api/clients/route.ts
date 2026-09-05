@@ -94,7 +94,7 @@ export const PUT = withStandardHandler(async (req, session, json) => {
 
     const userRole = session.user.role
     if (!['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole || '')) {
-        return ApiResponse.unauthorized()
+        return ApiResponse.forbidden()
     }
 
     try {

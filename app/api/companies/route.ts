@@ -42,7 +42,7 @@ export const GET = withStandardHandler(async (req, session) => {
 })
 
 export const POST = withStandardHandler(async (req, session, json) => {
-    if (session.user.role !== 'SUPER_ADMIN') return ApiResponse.unauthorized()
+    if (session.user.role !== 'SUPER_ADMIN') return ApiResponse.forbidden()
 
     // 1. Validation
     const validation = createCompanySchema.safeParse(json)
@@ -61,7 +61,7 @@ export const POST = withStandardHandler(async (req, session, json) => {
 })
 
 export const PUT = withStandardHandler(async (req, session, json) => {
-    if (session.user.role !== 'SUPER_ADMIN') return ApiResponse.unauthorized()
+    if (session.user.role !== 'SUPER_ADMIN') return ApiResponse.forbidden()
 
     // 1. Validation
     const validation = updateCompanySchema.safeParse(json)
@@ -82,7 +82,7 @@ export const PUT = withStandardHandler(async (req, session, json) => {
 })
 
 export const DELETE = withStandardHandler(async (req, session) => {
-    if (session.user.role !== 'SUPER_ADMIN') return ApiResponse.unauthorized()
+    if (session.user.role !== 'SUPER_ADMIN') return ApiResponse.forbidden()
 
     const { searchParams } = new URL(req.url)
     const id = searchParams.get('id')

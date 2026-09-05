@@ -12,7 +12,7 @@ export const POST = withStandardHandler(async (req, session, json, { params }) =
 
     const userRole = session.user.role
     if (!['ADMIN', 'SUPER_ADMIN'].includes(userRole)) {
-        return ApiResponse.unauthorized()
+        return ApiResponse.forbidden()
     }
 
     try {

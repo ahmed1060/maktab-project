@@ -10,7 +10,7 @@ export const POST = withStandardHandler(async (req, session, json) => {
     const creatorCompanyId = session.user.companyId
 
     if (!['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole)) {
-        return ApiResponse.unauthorized()
+        return ApiResponse.forbidden()
     }
 
     const { tasks } = json

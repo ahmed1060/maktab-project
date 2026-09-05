@@ -207,8 +207,11 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
     const executeSubmit = async () => {
         setSaving(true)
 
-        // Validation
-        const emailRegex = /^[^@]{1,20}@[^@]{1,10}\.com$/
+        // Validation — was /^[^@]{1,20}@[^@]{1,10}\.com$/, which rejected most
+        // real addresses (subdomains, non-.com TLDs, longer local parts). The
+        // backend already validates properly (user.schema.ts), this is just a
+        // quick client-side check before that round trip.
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
         if (!emailRegex.test(email)) {
             showToast(t('email_format_error'), 'error')
             setSaving(false)
