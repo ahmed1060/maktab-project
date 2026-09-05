@@ -275,6 +275,7 @@ export default function ClientsPage() {
                                         }}>
                                             <Link
                                                 href={`/dashboard/clients/${client.id}?name=${encodeURIComponent(client.name)}`}
+                                                prefetch={false}
                                                 className="btn btn-primary"
                                                 style={{
                                                     textDecoration: 'none',

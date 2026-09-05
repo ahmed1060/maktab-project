@@ -311,7 +311,7 @@ export default function EmployeesPage() {
                                         }}
                                     />
                                     <div style={{ display: 'flex', flexDirection: 'column' }}>
-                                        <Link href={`/dashboard/employees/${emp.id}?mode=view`} style={{ textDecoration: 'none', color: 'inherit' }}>
+                                        <Link href={`/dashboard/employees/${emp.id}?mode=view`} prefetch={false} style={{ textDecoration: 'none', color: 'inherit' }}>
                                             <h3 className="text-lg font-bold text-slate-800 leading-tight hover:text-blue-600 transition-colors">
                                                 {emp.firstName} {emp.lastName}
                                             </h3>
@@ -380,6 +380,7 @@ export default function EmployeesPage() {
                                     {(emp.role !== 'ADMIN' || userRole === 'SUPER_ADMIN') && (
                                         <Link
                                             href={`/dashboard/employees/${emp.id}`}
+                                            prefetch={false}
                                             className="btn"
                                             style={{
                                                 background: '#f8fafc',
@@ -400,6 +401,7 @@ export default function EmployeesPage() {
                                     {emp.role !== 'ADMIN' && (
                                         <Link
                                             href={`/dashboard/employees/${emp.id}/history`}
+                                            prefetch={false}
                                             className="btn"
                                             style={{
                                                 background: '#f8fafc',
@@ -422,6 +424,7 @@ export default function EmployeesPage() {
                                             <div style={{ display: 'flex', gap: '0.5rem', width: '100%' }}>
                                                 <Link
                                                     href={`/dashboard/employees/${emp.id}/bonus`}
+                                                    prefetch={false}
                                                     className="btn"
                                                     style={{
                                                         background: '#f0fdf4',
@@ -439,6 +442,7 @@ export default function EmployeesPage() {
                                                 </Link>
                                                 <Link
                                                     href={`/dashboard/employees/${emp.id}/deduction`}
+                                                    prefetch={false}
                                                     className="btn"
                                                     style={{
                                                         background: '#fef2f2',

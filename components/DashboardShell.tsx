@@ -247,6 +247,10 @@ export default function DashboardShell({ children, user }: DashboardShellProps) 
                         <Link
                             key={link.href}
                             href={link.href}
+                            // Every link here is always on screen — Next.js would
+                            // otherwise prefetch (a real server hit) every one of
+                            // them on every page load, for every role.
+                            prefetch={false}
                             onClick={() => isMobile && setIsSidebarOpen(false)}
                             title={isCollapsed ? link.label : ''}
                             className="nav-link"
@@ -295,6 +299,7 @@ export default function DashboardShell({ children, user }: DashboardShellProps) 
                                 <Link
                                     key={link.href}
                                     href={link.href}
+                                    prefetch={false}
                                     onClick={() => isMobile && setIsSidebarOpen(false)}
                                     title={isCollapsed ? link.label : ''}
                                     className="nav-link"
@@ -346,7 +351,7 @@ export default function DashboardShell({ children, user }: DashboardShellProps) 
                                 { href: '/dashboard/health', label: t('system_health') || 'System Health', icon: '❤️' },
                                 { href: '/dashboard/system-settings', label: t('system_settings') || 'System Settings', icon: '⚙️' }
                             ].map(link => (
-                                <Link key={link.href} href={link.href} onClick={() => isMobile && setIsSidebarOpen(false)} title={isCollapsed ? link.label : ''} className="nav-link" style={{
+                                <Link key={link.href} href={link.href} prefetch={false} onClick={() => isMobile && setIsSidebarOpen(false)} title={isCollapsed ? link.label : ''} className="nav-link" style={{
                                     color: 'rgba(255,255,255,0.8)',
                                     textDecoration: 'none',
                                     padding: '0.85rem 1rem',
