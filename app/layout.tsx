@@ -1,6 +1,7 @@
 import './globals.css'
 import { Providers } from './providers'
 import { cookies } from 'next/headers'
+import { Analytics } from '@vercel/analytics/next'
 import type { Locale } from '@/lib/translations'
 import { en } from '@/lib/translations/en'
 import { ar } from '@/lib/translations/ar'
@@ -30,6 +31,7 @@ export default function RootLayout({
     <html lang={initialLocale} dir={dir}>
       <body>
         <Providers initialLocale={initialLocale} initialDict={initialDict}>{children}</Providers>
+        <Analytics />
       </body>
     </html>
   )
