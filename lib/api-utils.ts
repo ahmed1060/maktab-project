@@ -156,14 +156,21 @@ export function withStandardHandler(
             // from the session instead of querying again. Undefined/false
             // for a SuperAdmin session, same as the old query returned for
             // an id with no matching User row.
-            const isSuspendedOrBanned = session.user.userStatus === 'SUSPENDED' || session.user.companyBanned
-
-            // System-wide maintenance mode blocks the same way, for every
-            // non-super-admin — except /api/user/activity itself, which the
-            // heartbeat has to keep reaching so it can detect maintenance
-            // ending and bring the user back automatically. Suspension/ban
-            // still block that route as before; only maintenance carves it out.
+            //
+            // /api/user/activity itself is exempt from BOTH checks below —
+            // not just maintenance. It's the one endpoint whose entire job is
+            // telling a suspended/banned/maintenance-blocked browser what its
+            // own status is (UserService.updateActivity does its own live
+            // read and returns {status: 'SUSPENDED'|'COMPANY_BANNED'|...}).
+            // Blocking it here with a 403 instead was a real bug: the
+            // heartbeat's fetch got an error body it couldn't parse as
+            // {data: {status}}, threw inside its own try/catch, and silently
+            // gave up — so a suspended/banned user's browser could never
+            // learn it was suspended, never triggered the emergency-save
+            // event, and never signed itself out. It just sat on whatever
+            // page was already loaded, indefinitely.
             const isHeartbeat = new URL(req.url).pathname === '/api/user/activity'
+            const isSuspendedOrBanned = (session.user.userStatus === 'SUSPENDED' || session.user.companyBanned) && !isHeartbeat
             const isMaintenanceBlocked = !!session.user.maintenanceMode && session.user.role !== 'SUPER_ADMIN' && !isHeartbeat
 
             const isRestricted = isSuspendedOrBanned || isMaintenanceBlocked
