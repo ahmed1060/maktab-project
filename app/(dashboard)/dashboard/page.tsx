@@ -8,6 +8,7 @@ import { cookies } from "next/headers"
 import type { Locale, TranslationKey } from "@/lib/translations"
 import { en } from "@/lib/translations/en"
 import { ar } from "@/lib/translations/ar"
+import { getSuperAdminOverviewStats } from "@/lib/services/dashboard-stats.service"
 
 export const dynamic = 'force-dynamic'
 
@@ -44,29 +45,18 @@ export default async function DashboardPage({ searchParams }: { searchParams: { 
         // Super Admin System Overview (when no specific company is selected)
         if (userRole === 'SUPER_ADMIN' && !companyId) {
             // "Needs Attention" — the things a super admin would otherwise
-            // only find by opening each page individually.
+            // only find by opening each page individually. Recomputed here
+            // (not read from the cached stats below) only for the audit-log
+            // link's date boundary — a few seconds' difference from the
+            // cached query's own internal snapshot doesn't matter for that.
             const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000)
-            const fourteenDaysFromNow = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000)
 
-            // All 8 of these are independent reads — previously fired as
-            // sequential awaits (7 separate round trips to Postgres before
-            // this page could even start rendering). Running them together
-            // costs one round trip's worth of latency instead of seven.
-            const [totalCompanies, totalUsers, totalTasks, totalClients, taskStats, systemErrors24h, expiringSubscriptions, bannedCompanies] = await Promise.all([
-                prisma.company.count(),
-                prisma.user.count(),
-                prisma.task.count(),
-                prisma.businessClient.count(),
-                // Status distribution for Super Admin
-                prisma.task.groupBy({ by: ['status'], _count: true }),
-                prisma.auditLog.count({
-                    where: { action: 'SYSTEM_API_ERROR', createdAt: { gte: oneDayAgo } }
-                }),
-                prisma.companyPayment.count({
-                    where: { status: 'PAID', endDate: { gt: new Date(), lte: fourteenDaysFromNow } }
-                }),
-                prisma.company.count({ where: { isBanned: true } })
-            ])
+            // Cached 30s — this is the same read for every super admin
+            // regardless of who's looking, unlike the company/employee views
+            // below which stay uncached since people expect those to reflect
+            // their own just-taken action immediately. See
+            // lib/services/dashboard-stats.service.ts for why.
+            const { totalCompanies, totalUsers, totalTasks, totalClients, taskStats, systemErrors24h, expiringSubscriptions, bannedCompanies } = await getSuperAdminOverviewStats()
 
             const chartData = [
                 { label: t('status_completed'), value: taskStats.find(s => s.status === 'COMPLETED')?._count || 0, color: '#10b981' },
