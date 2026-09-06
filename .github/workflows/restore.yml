@@ -1,0 +1,148 @@
+name: Restore from Backup
+
+on:
+  workflow_dispatch:              # manual "Run workflow" button, with inputs
+    inputs:
+      mode:
+        description: 'latest (newest backup found) or specific'
+        required: false
+        default: 'latest'
+      folder:
+        description: 'daily | weekly | monthly (only used when mode=specific)'
+        required: false
+      baseName:
+        description: 'Backup base name, e.g. maktab_2026-09-05_0807_auto (only used when mode=specific)'
+        required: false
+  repository_dispatch:            # fired from the dashboard's Disaster Recovery card
+    types: [manual-restore]
+
+# Shares backup.yml's concurrency group on purpose — a backup and a restore
+# must never run against the same database at the same time.
+concurrency:
+  group: maktab-backup
+  cancel-in-progress: false
+
+jobs:
+  restore:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Install tools
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y curl ca-certificates gnupg age jq
+          # Same pg_dump/psql version story as backup.yml: ubuntu-latest's
+          # default apt repos only carry postgresql-client-16, but Supabase
+          # runs Postgres 17.
+          curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo gpg --dearmor -o /usr/share/keyrings/postgresql.gpg
+          echo "deb [signed-by=/usr/share/keyrings/postgresql.gpg] http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list
+          sudo apt-get update -qq
+          sudo apt-get install -y postgresql-client-17
+          curl -fsSL https://rclone.org/install.sh | sudo bash
+
+      - name: Configure rclone remotes
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          S3_ACCESS_KEY_ID:     ${{ secrets.SUPABASE_S3_ACCESS_KEY_ID }}
+          S3_SECRET_ACCESS_KEY: ${{ secrets.SUPABASE_S3_SECRET_ACCESS_KEY }}
+        run: |
+          mkdir -p ~/.config/rclone
+          cat > ~/.config/rclone/rclone.conf <<EOF
+          [gdrive]
+          type = drive
+          scope = drive.file
+          client_id = ${{ secrets.GDRIVE_CLIENT_ID }}
+          client_secret = ${{ secrets.GDRIVE_CLIENT_SECRET }}
+          token = ${{ secrets.RCLONE_CONFIG_GDRIVE_TOKEN }}
+          root_folder_id = ${{ secrets.GDRIVE_FOLDER_ID }}
+
+          [supa]
+          type = s3
+          provider = Other
+          access_key_id = ${S3_ACCESS_KEY_ID}
+          secret_access_key = ${S3_SECRET_ACCESS_KEY}
+          endpoint = ${SUPABASE_URL}/storage/v1/s3
+          region = eu-west-1
+          EOF
+
+      # Unconditional, every single run: whatever is about to be overwritten
+      # gets one more snapshot first, in its own folder so it's obviously
+      # "the state right before a restore" rather than mixed into the
+      # normal daily/weekly/monthly rotation.
+      - name: Pre-restore safety backup
+        env:
+          PGCONN: ${{ secrets.SUPABASE_DIRECT_URL }}
+        run: |
+          STAMP=$(TZ=Africa/Cairo date +%Y-%m-%d_%H%M)
+          echo "PRENAME=maktab_${STAMP}_prerestore" >> $GITHUB_ENV
+          /usr/lib/postgresql/17/bin/pg_dump "$PGCONN" \
+            --no-owner --no-privileges --clean --if-exists \
+            --exclude-schema='auth|storage|graphql|realtime|extensions|vault|_realtime|supabase_*' \
+            | gzip -9 > pre_db.sql.gz
+          test "$(stat -c%s pre_db.sql.gz)" -gt 10240 || { echo "Pre-restore dump suspiciously small"; exit 1; }
+          rclone copy supa:app-assets ./pre_assets --transfers 8 --fast-list || true
+          tar -czf pre_assets.tar.gz pre_assets
+          echo "${{ secrets.AGE_PUBLIC_KEY }}" > key.pub
+          age -R key.pub -o "${PRENAME}_db.sql.gz.age"     pre_db.sql.gz
+          age -R key.pub -o "${PRENAME}_assets.tar.gz.age" pre_assets.tar.gz
+          rm -f pre_db.sql.gz pre_assets.tar.gz key.pub
+          rclone copy "${PRENAME}_db.sql.gz.age"     gdrive:prerestore/ -P
+          rclone copy "${PRENAME}_assets.tar.gz.age" gdrive:prerestore/ -P
+
+      - name: Determine which backup to restore
+        run: |
+          MODE="${{ github.event.client_payload.mode || github.event.inputs.mode || 'latest' }}"
+          FOLDER="${{ github.event.client_payload.folder || github.event.inputs.folder || '' }}"
+          BASENAME="${{ github.event.client_payload.baseName || github.event.inputs.baseName || '' }}"
+
+          if [ "$MODE" = "specific" ] && [ -n "$FOLDER" ] && [ -n "$BASENAME" ]; then
+            echo "TARGET_FOLDER=$FOLDER" >> $GITHUB_ENV
+            echo "TARGET_BASE=$BASENAME" >> $GITHUB_ENV
+          else
+            : > /tmp/all.jsonl
+            for f in daily weekly monthly; do
+              rclone lsjson "gdrive:$f" --files-only 2>/dev/null \
+                | jq -c --arg f "$f" '.[] | select(.Name | endswith("_db.sql.gz.age")) | {folder:$f, name:.Name, modTime:.ModTime}' \
+                >> /tmp/all.jsonl || true
+            done
+            if [ ! -s /tmp/all.jsonl ]; then
+              echo "No backups found in daily/weekly/monthly — nothing to restore."
+              exit 1
+            fi
+            BEST=$(jq -s 'sort_by(.modTime) | last' /tmp/all.jsonl)
+            echo "TARGET_FOLDER=$(echo "$BEST" | jq -r '.folder')" >> $GITHUB_ENV
+            echo "TARGET_BASE=$(echo "$BEST" | jq -r '.name' | sed 's/_db\.sql\.gz\.age$//')" >> $GITHUB_ENV
+          fi
+
+      - name: Download and decrypt the target backup
+        run: |
+          rclone copy "gdrive:${TARGET_FOLDER}/${TARGET_BASE}_db.sql.gz.age"     . -P
+          rclone copy "gdrive:${TARGET_FOLDER}/${TARGET_BASE}_assets.tar.gz.age" . -P
+          echo "${{ secrets.AGE_PRIVATE_KEY }}" > key.age
+          age -d -i key.age -o db.sql.gz     "${TARGET_BASE}_db.sql.gz.age"
+          age -d -i key.age -o assets.tar.gz "${TARGET_BASE}_assets.tar.gz.age"
+          rm -f key.age
+
+      - name: Restore database
+        env:
+          PGCONN: ${{ secrets.SUPABASE_DIRECT_URL }}
+        run: |
+          gunzip -c db.sql.gz | /usr/lib/postgresql/17/bin/psql "$PGCONN"
+
+      - name: Restore storage
+        run: |
+          tar -xzf assets.tar.gz
+          # sync, not copy — a real restore should make the bucket match the
+          # snapshot exactly, including removing files added after it was taken.
+          rclone sync ./assets supa:app-assets -P
+
+      - name: Prune old pre-restore snapshots
+        run: |
+          rclone delete gdrive:prerestore --min-age 30d || true
+
+      - name: Report
+        if: always()
+        run: |
+          echo "### Restore ${{ job.status }}" >> $GITHUB_STEP_SUMMARY
+          echo "Restored: ${TARGET_FOLDER}/${TARGET_BASE}" >> $GITHUB_STEP_SUMMARY
+          echo "Pre-restore safety snapshot: prerestore/${PRENAME}" >> $GITHUB_STEP_SUMMARY

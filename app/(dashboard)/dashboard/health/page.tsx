@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useLanguage } from '@/context/LanguageContext'
 import LoadingSpinner from '@/components/LoadingSpinner'
 import ConfirmModal from '@/components/ConfirmModal'
+import BackupPickerModal, { BackupEntry } from '@/components/BackupPickerModal'
 import { useHeader } from '@/context/HeaderContext'
 
 type HealthMetrics = {
@@ -22,7 +23,9 @@ type HealthMetrics = {
     }
 }
 
-type PendingAction = 'CLEANUP_ASSETS' | 'PRUNE_LOGS' | 'PRUNE_NOTIFICATIONS' | 'BACKUP' | null
+type PendingAction = 'CLEANUP_ASSETS' | 'PRUNE_LOGS' | 'PRUNE_NOTIFICATIONS' | 'BACKUP' | 'RESTORE_LATEST' | 'RESTORE_SPECIFIC' | null
+
+const RESTORE_CONFIRM_WORD = 'RESTORE'
 
 export default function SystemHealthPage() {
     const { t, locale } = useLanguage()
@@ -32,6 +35,12 @@ export default function SystemHealthPage() {
     const [processing, setProcessing] = useState<string | null>(null)
     const [triggeringBackup, setTriggeringBackup] = useState(false)
     const [pendingAction, setPendingAction] = useState<PendingAction>(null)
+    const [restoring, setRestoring] = useState(false)
+    const [pickerOpen, setPickerOpen] = useState(false)
+    const [backups, setBackups] = useState<BackupEntry[]>([])
+    const [backupsLoading, setBackupsLoading] = useState(false)
+    const [backupsError, setBackupsError] = useState<string | null>(null)
+    const [selectedBackup, setSelectedBackup] = useState<BackupEntry | null>(null)
 
     useEffect(() => {
         setTitle(t('system_health'))
@@ -104,14 +113,71 @@ export default function SystemHealthPage() {
         }
     }
 
-    // Confirmation for all four maintenance actions runs through one styled
-    // modal instead of the browser's native confirm() — the copy per
-    // action lives here, keyed off which button was clicked.
+    const openBackupPicker = async () => {
+        setPickerOpen(true)
+        setBackupsLoading(true)
+        setBackupsError(null)
+        try {
+            const res = await fetch('/api/admin/maintenance/backups')
+            const result = await res.json()
+            if (result.success) {
+                setBackups(result.data.backups)
+            } else {
+                setBackupsError(result.error || t('backup_picker_error' as any))
+            }
+        } catch (error) {
+            console.error('Failed to list backups', error)
+            setBackupsError(t('backup_picker_error' as any))
+        } finally {
+            setBackupsLoading(false)
+        }
+    }
+
+    const handleSelectBackup = (backup: BackupEntry) => {
+        setSelectedBackup(backup)
+        setPickerOpen(false)
+        setPendingAction('RESTORE_SPECIFIC')
+    }
+
+    const runRestore = async (mode: 'latest' | 'specific') => {
+        setRestoring(true)
+        try {
+            const payload = mode === 'specific' && selectedBackup
+                ? { mode, folder: selectedBackup.folder, baseName: selectedBackup.baseName }
+                : { mode: 'latest' }
+            const res = await fetch('/api/admin/maintenance/restore', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            })
+            const result = await res.json()
+            if (result.success) {
+                alert(t('restore_started_success' as any))
+            } else {
+                alert(t('restore_trigger_failed' as any) + ': ' + result.error)
+            }
+        } catch (error) {
+            console.error('Restore trigger error:', error)
+            alert(t('restore_trigger_failed' as any))
+        } finally {
+            setRestoring(false)
+            setSelectedBackup(null)
+        }
+    }
+
+    // Confirmation for all six actions runs through one styled modal instead
+    // of the browser's native confirm() — the copy per action lives here,
+    // keyed off which button was clicked.
     const confirmCopy: Record<Exclude<PendingAction, null>, { title: string; message: string }> = {
         CLEANUP_ASSETS: { title: t('confirm_cleanup_assets_title' as any), message: t('confirm_cleanup_assets_msg' as any) },
         PRUNE_LOGS: { title: t('confirm_prune_logs_title' as any), message: t('confirm_prune_logs_msg' as any) },
         PRUNE_NOTIFICATIONS: { title: t('confirm_prune_notifications_title' as any), message: t('confirm_prune_notifications_msg' as any) },
         BACKUP: { title: t('confirm_trigger_backup_title' as any), message: t('confirm_trigger_backup_msg' as any) },
+        RESTORE_LATEST: { title: t('confirm_restore_latest_title' as any), message: t('confirm_restore_latest_msg' as any) },
+        RESTORE_SPECIFIC: {
+            title: t('confirm_restore_specific_title' as any),
+            message: `${t('confirm_restore_specific_msg' as any)} ${selectedBackup?.baseName || ''}`
+        },
     }
 
     const handleConfirm = () => {
@@ -120,6 +186,10 @@ export default function SystemHealthPage() {
         if (!action) return
         if (action === 'BACKUP') {
             triggerBackup()
+        } else if (action === 'RESTORE_LATEST') {
+            runRestore('latest')
+        } else if (action === 'RESTORE_SPECIFIC') {
+            runRestore('specific')
         } else {
             runMaintenance(action)
         }
@@ -239,15 +309,55 @@ export default function SystemHealthPage() {
                     </button>
                 </div>
 
+                {/* Disaster Recovery Card */}
+                <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                        <span style={{ fontSize: '2rem' }}>🧯</span>
+                        <div>
+                            <h3 style={{ margin: 0, fontSize: '1.1rem', color: 'var(--text-main)' }}>{t('disaster_recovery_header' as any)}</h3>
+                            <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>{t('disaster_recovery_subtitle' as any)}</p>
+                        </div>
+                    </div>
+                    <p style={{ margin: '0.5rem 0', fontSize: '0.85rem', color: 'var(--text-muted)', flexGrow: 1 }}>
+                        {t('disaster_recovery_description' as any)}
+                    </p>
+                    <button
+                        onClick={() => setPendingAction('RESTORE_LATEST')}
+                        disabled={restoring}
+                        className="btn"
+                        style={{ width: '100%', background: '#fee2e2', color: '#991b1b', border: '1px solid #fecaca' }}
+                    >
+                        {restoring ? t('restoring' as any) : t('recover_latest_backup' as any)}
+                    </button>
+                    <button
+                        onClick={openBackupPicker}
+                        disabled={restoring}
+                        className="btn"
+                        style={{ width: '100%' }}
+                    >
+                        {t('choose_backup_to_restore' as any)}
+                    </button>
+                </div>
+
             </div>
 
             <ConfirmModal
                 isOpen={!!pendingAction}
                 title={pendingAction ? confirmCopy[pendingAction].title : ''}
                 message={pendingAction ? confirmCopy[pendingAction].message : ''}
-                variant={pendingAction === 'BACKUP' ? 'info' : 'warning'}
+                variant={pendingAction === 'BACKUP' ? 'info' : (pendingAction === 'RESTORE_LATEST' || pendingAction === 'RESTORE_SPECIFIC') ? 'danger' : 'warning'}
+                requireTypedText={(pendingAction === 'RESTORE_LATEST' || pendingAction === 'RESTORE_SPECIFIC') ? RESTORE_CONFIRM_WORD : undefined}
                 onConfirm={handleConfirm}
-                onCancel={() => setPendingAction(null)}
+                onCancel={() => { setPendingAction(null); setSelectedBackup(null) }}
+            />
+
+            <BackupPickerModal
+                isOpen={pickerOpen}
+                backups={backups}
+                loading={backupsLoading}
+                error={backupsError}
+                onSelect={handleSelectBackup}
+                onClose={() => setPickerOpen(false)}
             />
         </div>
     )

@@ -854,6 +854,29 @@ export const en = {
         confirm_trigger_backup_msg: "Starts an on-demand database and storage backup via GitHub Actions, in addition to the daily automatic one. Limited to 3 per hour.",
         health_metrics_updated: "Health metrics updated",
 
+        disaster_recovery_header: "Disaster Recovery",
+        disaster_recovery_subtitle: "Restore from a backup",
+        disaster_recovery_description: "Replaces current data with a backup. A fresh safety snapshot of what's live right now is always taken first, automatically, before anything is overwritten.",
+        recover_latest_backup: "Recover Latest Backup",
+        choose_backup_to_restore: "Choose a Backup to Restore",
+        restoring: "Starting restore...",
+        restore_started_success: "Restore started — a safety backup of current data is taken first, then the selected backup is restored. Check the GitHub Actions tab to follow progress.",
+        restore_trigger_failed: "Failed to start restore",
+        confirm_restore_latest_title: "Restore the latest backup?",
+        confirm_restore_latest_msg: "This replaces current data with the most recent backup found across daily/weekly/monthly. A safety snapshot of current data is taken first automatically. This cannot be undone from the dashboard.",
+        confirm_restore_specific_title: "Restore this backup?",
+        confirm_restore_specific_msg: "This replaces current data with the selected backup. A safety snapshot of current data is taken first automatically. This cannot be undone from the dashboard. Backup:",
+        type_to_confirm_prefix: "Type",
+        type_to_confirm_suffix: "to confirm",
+        backup_picker_title: "Select a Backup to Restore",
+        backup_picker_loading: "Loading backups from Google Drive...",
+        backup_picker_empty: "No backups found",
+        backup_picker_error: "Couldn't load backups — Google Drive credentials may not be configured on Vercel yet",
+        backup_picker_select: "Restore This",
+        backup_folder_daily: "Daily",
+        backup_folder_weekly: "Weekly",
+        backup_folder_monthly: "Monthly",
+
         // F-27: email verification / change (merged flow — see the
         // remediation log for why a forced first-time verify and a later
         // voluntary change share one screen).

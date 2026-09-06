@@ -13,6 +13,11 @@ interface ConfirmModalProps {
     onConfirm: () => void
     onCancel: () => void
     variant?: 'danger' | 'warning' | 'info'
+    // When set, the confirm button stays disabled until the typed input
+    // matches this exact word — for actions destructive enough that a
+    // stray click on "Confirm" shouldn't be sufficient (e.g. restoring a
+    // backup over current data).
+    requireTypedText?: string
 }
 
 export default function ConfirmModal({
@@ -23,16 +28,26 @@ export default function ConfirmModal({
     cancelText,
     onConfirm,
     onCancel,
-    variant = 'danger'
+    variant = 'danger',
+    requireTypedText
 }: ConfirmModalProps) {
     const { t, locale } = useLanguage()
     const [mounted, setMounted] = useState(false)
+    const [typedValue, setTypedValue] = useState('')
 
     useEffect(() => {
         setMounted(true)
     }, [])
 
+    // Reset the typed value every time the modal opens/closes, so a
+    // previous confirmation doesn't carry over to the next action.
+    useEffect(() => {
+        setTypedValue('')
+    }, [isOpen])
+
     if (!isOpen || !mounted) return null
+
+    const confirmDisabled = !!requireTypedText && typedValue !== requireTypedText
 
     const finalConfirmText = confirmText || t('confirm') || 'Confirm'
     const finalCancelText = cancelText || t('cancel') || 'Cancel'
@@ -114,6 +129,29 @@ export default function ConfirmModal({
                         <p style={{ fontSize: '0.875rem', color: '#64748b', margin: 0, lineHeight: '1.5' }}>
                             {message}
                         </p>
+                        {requireTypedText && (
+                            <div style={{ marginTop: '1rem' }}>
+                                <label style={{ display: 'block', fontSize: '0.8rem', color: '#475569', marginBottom: '0.4rem' }}>
+                                    {t('type_to_confirm_prefix') || 'Type'} <code style={{ background: '#f1f5f9', padding: '0.1rem 0.4rem', borderRadius: '0.25rem', fontWeight: 700 }}>{requireTypedText}</code> {t('type_to_confirm_suffix') || 'to confirm'}
+                                </label>
+                                <input
+                                    type="text"
+                                    value={typedValue}
+                                    onChange={(e) => setTypedValue(e.target.value)}
+                                    autoComplete="off"
+                                    autoCorrect="off"
+                                    spellCheck={false}
+                                    style={{
+                                        width: '100%',
+                                        padding: '0.5rem 0.75rem',
+                                        border: '1px solid #e2e8f0',
+                                        borderRadius: '0.5rem',
+                                        fontSize: '0.9rem',
+                                        fontFamily: 'monospace'
+                                    }}
+                                />
+                            </div>
+                        )}
                     </div>
                 </div>
 
@@ -138,19 +176,20 @@ export default function ConfirmModal({
                     </button>
                     <button
                         onClick={onConfirm}
+                        disabled={confirmDisabled}
                         style={{
                             padding: '0.625rem 1.25rem',
                             border: 'none',
                             borderRadius: '0.5rem',
-                            background: styles.confirmBg,
-                            cursor: 'pointer',
+                            background: confirmDisabled ? '#cbd5e1' : styles.confirmBg,
+                            cursor: confirmDisabled ? 'not-allowed' : 'pointer',
                             fontSize: '0.875rem',
                             fontWeight: '500',
                             color: 'white',
                             transition: 'all 0.2s'
                         }}
-                        onMouseEnter={(e) => e.currentTarget.style.background = styles.confirmHover}
-                        onMouseLeave={(e) => e.currentTarget.style.background = styles.confirmBg}
+                        onMouseEnter={(e) => { if (!confirmDisabled) e.currentTarget.style.background = styles.confirmHover }}
+                        onMouseLeave={(e) => { if (!confirmDisabled) e.currentTarget.style.background = styles.confirmBg }}
                     >
                         {finalConfirmText}
                     </button>
