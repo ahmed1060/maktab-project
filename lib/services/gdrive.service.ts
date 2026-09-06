@@ -46,9 +46,15 @@ export class GDriveService {
                 grant_type: 'refresh_token',
             }),
         })
-        if (!res.ok) throw new Error('GDRIVE_AUTH_FAILED')
+        if (!res.ok) {
+            console.error('[GDriveService] Token refresh failed', res.status, await res.text().catch(() => ''))
+            throw new Error('GDRIVE_AUTH_FAILED')
+        }
         const data = await res.json()
-        if (!data.access_token) throw new Error('GDRIVE_AUTH_FAILED')
+        if (!data.access_token) {
+            console.error('[GDriveService] Token refresh returned no access_token', JSON.stringify(data))
+            throw new Error('GDRIVE_AUTH_FAILED')
+        }
         return data.access_token as string
     }
 
@@ -56,7 +62,10 @@ export class GDriveService {
         const q = `'${parentId}' in parents and name = '${name}' and mimeType = 'application/vnd.google-apps.folder' and trashed = false`
         const url = `${DRIVE_API}?q=${encodeURIComponent(q)}&fields=files(id,name)&spaces=drive`
         const res = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } })
-        if (!res.ok) throw new Error('GDRIVE_LIST_FAILED')
+        if (!res.ok) {
+            console.error('[GDriveService] Subfolder lookup failed', name, res.status, await res.text().catch(() => ''))
+            throw new Error('GDRIVE_LIST_FAILED')
+        }
         const data = await res.json()
         return data.files?.[0]?.id ?? null
     }
@@ -65,7 +74,10 @@ export class GDriveService {
         const q = `'${folderId}' in parents and trashed = false`
         const url = `${DRIVE_API}?q=${encodeURIComponent(q)}&fields=files(id,name,size,createdTime,modifiedTime)&spaces=drive&pageSize=1000`
         const res = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } })
-        if (!res.ok) throw new Error('GDRIVE_LIST_FAILED')
+        if (!res.ok) {
+            console.error('[GDriveService] File listing failed', folderId, res.status, await res.text().catch(() => ''))
+            throw new Error('GDRIVE_LIST_FAILED')
+        }
         const data = await res.json()
         return (data.files ?? []) as Array<{ id: string; name: string; size?: string; createdTime?: string; modifiedTime?: string }>
     }
