@@ -104,33 +104,48 @@ export default function EmployeeHistoryPage() {
     const fetchData = useCallback(async () => {
         try {
             setLoading(true)
-            // Fetch Employee Details (Use query param for ID)
-            const userRes = await fetch(`/api/users?id=${params.id}`)
-            if (userRes.ok) {
-                const result = await userRes.json()
-                setEmployee(result.data || result)
-            }
 
-            // Fetch Salary History
-            const historyRes = await fetch(`/api/users/${params.id}/salary-history`)
-            if (historyRes.ok) {
-                const result = await historyRes.json()
-                setRecords(result.data || result)
-            }
-
-            // Fetch Day Off History
-            const dayOffRes = await fetch(`/api/users/${params.id}/day-off-history`)
-            if (dayOffRes.ok) {
-                const result = await dayOffRes.json()
-                setDayOffHistory(result.data || result)
-            }
-
-            // Fetch User Costs
-            const costsRes = await fetch(`/api/users/${params.id}/costs-history`)
-            if (costsRes.ok) {
-                const result = await costsRes.json()
-                setUserCosts(result.data || result)
-            }
+            // All 4 are independent — previously fired as sequential awaits,
+            // paying for 4 separate browser-to-server round trips one after
+            // another (visible in a live request trace as ~1-2s gaps between
+            // each). Running them together costs one round trip's worth of
+            // latency instead of four. Each stays wrapped in its own
+            // if (res.ok) check exactly as before, so one endpoint failing
+            // doesn't prevent the others' state from being set.
+            await Promise.all([
+                // Employee Details (Use query param for ID)
+                (async () => {
+                    const userRes = await fetch(`/api/users?id=${params.id}`)
+                    if (userRes.ok) {
+                        const result = await userRes.json()
+                        setEmployee(result.data || result)
+                    }
+                })(),
+                // Salary History
+                (async () => {
+                    const historyRes = await fetch(`/api/users/${params.id}/salary-history`)
+                    if (historyRes.ok) {
+                        const result = await historyRes.json()
+                        setRecords(result.data || result)
+                    }
+                })(),
+                // Day Off History
+                (async () => {
+                    const dayOffRes = await fetch(`/api/users/${params.id}/day-off-history`)
+                    if (dayOffRes.ok) {
+                        const result = await dayOffRes.json()
+                        setDayOffHistory(result.data || result)
+                    }
+                })(),
+                // User Costs
+                (async () => {
+                    const costsRes = await fetch(`/api/users/${params.id}/costs-history`)
+                    if (costsRes.ok) {
+                        const result = await costsRes.json()
+                        setUserCosts(result.data || result)
+                    }
+                })()
+            ])
         } catch {
             console.error('Error fetching data')
             setAlert({ type: 'error', message: t('failed_fetch_data') })
