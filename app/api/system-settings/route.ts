@@ -2,6 +2,7 @@ import { z } from "zod"
 import { withStandardHandler } from "@/lib/api-utils"
 import { ApiResponse } from "@/lib/api-response"
 import { SystemSettingsService } from "@/lib/services/system-settings.service"
+import { RealtimeBroadcastService } from "@/lib/services/realtime-broadcast.service"
 
 const updateSystemSettingsSchema = z.object({
     locationVerifyRadiusMeters: z.number().int().min(1).max(10000).optional(),
@@ -44,6 +45,15 @@ export const PUT = withStandardHandler(async (req, session, json) => {
             superAdminId: session.user.id,
             details: changes
         })
+    }
+
+    // Instant notice to every connected browser, instead of everyone
+    // polling to eventually find out — see UserHeartbeat.tsx for the
+    // listener. Fire on any change that touches maintenanceMode/Message,
+    // not just a flip of the boolean, so editing the message while already
+    // on updates what's shown without needing to toggle off and back on.
+    if ('maintenanceMode' in changes || 'maintenanceMessage' in changes) {
+        await RealtimeBroadcastService.broadcastMaintenanceStatus(updated.maintenanceMode, updated.maintenanceMessage)
     }
 
     return ApiResponse.success(updated)

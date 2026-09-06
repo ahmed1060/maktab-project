@@ -357,10 +357,12 @@ export const authOptions: NextAuthOptions = {
             // below, which reads those instead of querying again), and
             // throttled to once every 60s per token rather than every
             // request — UserHeartbeat already propagates a real suspension
-            // (or maintenance-mode activation) within ~15-20s on its own via
-            // a live DB check + client-side redirect, so a 60s staleness
-            // window here (which only matters for middleware's next
-            // page-navigation redirect, a secondary path) costs nothing extra.
+            // within ~90s on its own via a live DB check + client-side
+            // redirect (maintenance-mode activation is near-instant instead,
+            // via a Realtime broadcast — see UserHeartbeat.tsx), so a 60s
+            // staleness window here (which only matters for middleware's
+            // next page-navigation redirect, a secondary path) costs
+            // nothing extra.
             // Skip on initial sign-in (!user check) — token.checkedAt was
             // just seeded above in that branch.
             if (token.sub && !user) {

@@ -2,8 +2,9 @@
 
 import { useSession, signOut } from "next-auth/react"
 import { useRouter, usePathname } from "next/navigation"
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useRef, useState, useCallback } from "react"
 import { useLanguage } from "@/context/LanguageContext"
+import { getSupabaseBrowserClient } from "@/lib/supabase-browser"
 
 export default function UserHeartbeat() {
     const { data: session } = useSession()
@@ -16,11 +17,84 @@ export default function UserHeartbeat() {
     const [showMaintenanceOverlay, setShowMaintenanceOverlay] = useState(false)
     const [maintenanceMessage, setMaintenanceMessage] = useState<string | null | undefined>(null)
     // Mirrors whether maintenance was already known active, without the
-    // stale-closure problem a state read inside checkStatus below would
-    // have — checkStatus is only recreated when `session` changes, not on
-    // every state update, so it needs a ref to see its own latest writes.
+    // stale-closure problem a state read inside a callback recreated only
+    // when `session` changes would have.
     const wasMaintenanceActive = useRef(false)
+    // Tracks the redirect timer so a real-time "maintenance ended" message
+    // can cancel it if it arrives during the save grace period.
+    const redirectTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
+    // Shared by both detection paths below (the fast Realtime broadcast and
+    // the slow polling fallback) so activating maintenance behaves
+    // identically regardless of which one noticed it first.
+    const handleMaintenanceDetected = useCallback((message: string | null | undefined) => {
+        if (wasMaintenanceActive.current) return
+        wasMaintenanceActive.current = true
+        setMaintenanceMessage(message)
+        if (pathname !== '/dashboard/maintenance') setShowMaintenanceOverlay(true)
+
+        // Same auto-save signal as suspension/ban — the listeners in
+        // tasks/[id]/client.tsx and obligations/[id]/client.tsx don't care
+        // why they were told to save, just that they were.
+        window.dispatchEvent(new CustomEvent('app:suspend-detected'))
+
+        // Unlike suspension/ban this isn't a dead end — the account is
+        // fine, so redirect to the holding page instead of signing out.
+        redirectTimer.current = setTimeout(() => {
+            setShowMaintenanceOverlay(false)
+            if (pathname !== '/dashboard/maintenance') {
+                router.push('/dashboard/maintenance')
+            }
+        }, 4000)
+    }, [pathname, router])
+
+    const handleMaintenanceEnded = useCallback(() => {
+        if (!wasMaintenanceActive.current) return
+        wasMaintenanceActive.current = false
+        if (redirectTimer.current) {
+            clearTimeout(redirectTimer.current)
+            redirectTimer.current = null
+        }
+        setShowMaintenanceOverlay(false)
+        setMaintenanceMessage(null)
+        if (pathname === '/dashboard/maintenance') router.push('/dashboard')
+    }, [pathname, router])
+
+    // Real-time path: an open WebSocket to a PUBLIC broadcast channel —
+    // maintenance on/off isn't sensitive, so this needs no private-channel
+    // authorization at all (a private channel would need a Supabase Auth
+    // JWT, which this NextAuth-based app doesn't have — not worth the
+    // complexity for a non-sensitive global flag). This is what makes
+    // maintenance mode feel instant regardless of how many users are
+    // connected, instead of everyone polling constantly to find out.
+    // Super Admins are exempt from maintenance mode entirely, so they never
+    // subscribe.
+    useEffect(() => {
+        if (!session?.user || session.user.role === 'SUPER_ADMIN') return
+        const supabase = getSupabaseBrowserClient()
+        if (!supabase) return // env vars not configured yet — polling below still covers it
+
+        const channel = supabase.channel('maintenance-status')
+        channel
+            .on('broadcast', { event: 'update' }, ({ payload }) => {
+                if (payload?.active) {
+                    handleMaintenanceDetected(payload.message ?? null)
+                } else {
+                    handleMaintenanceEnded()
+                }
+            })
+            .subscribe()
+
+        return () => { supabase.removeChannel(channel) }
+    }, [session, handleMaintenanceDetected, handleMaintenanceEnded])
+
+    // Polling path: suspension/ban detection, plus a slow safety net for
+    // maintenance mode in case the WebSocket above ever drops silently.
+    // Suspension/ban were never expected to feel instant — an admin doesn't
+    // ban people continuously the way "is maintenance on" gets checked by
+    // every idle tab — so this stays at the original, low-cost cadence
+    // rather than the 15s this briefly used only to compensate for
+    // maintenance mode before Realtime existed.
     useEffect(() => {
         if (!session?.user) return
 
@@ -31,85 +105,39 @@ export default function UserHeartbeat() {
                 const data = result.data
 
                 if (data.status === 'SUSPENDED') {
-                    // 1. Trigger Auto-Save in listeners
                     window.dispatchEvent(new CustomEvent('app:suspend-detected'))
-
-                    // 2. Show Modal
                     setIsSuspended(true)
-
-                    // 3. Logout after delay
-                    setTimeout(() => {
-                        signOut({ callbackUrl: '/login' })
-                    }, 4000)
+                    setTimeout(() => signOut({ callbackUrl: '/login' }), 4000)
                 } else if (data.status === 'COMPANY_BANNED') {
-                    // 1. Trigger Auto-Save in listeners
                     window.dispatchEvent(new CustomEvent('app:suspend-detected'))
-
-                    // 2. Show Modal
                     setIsCompanyBanned(true)
-
-                    // 3. Logout after delay
-                    setTimeout(() => {
-                        signOut({ callbackUrl: '/login' })
-                    }, 4000)
+                    setTimeout(() => signOut({ callbackUrl: '/login' }), 4000)
                 } else if (data.status === 'MAINTENANCE') {
-                    if (!wasMaintenanceActive.current) {
-                        wasMaintenanceActive.current = true
-                        setMaintenanceMessage(data.maintenanceMessage)
-                        if (pathname !== '/dashboard/maintenance') setShowMaintenanceOverlay(true)
-
-                        // Same auto-save signal as suspension/ban — the listeners
-                        // in tasks/[id]/client.tsx and obligations/[id]/client.tsx
-                        // don't care why they were told to save, just that they were.
-                        window.dispatchEvent(new CustomEvent('app:suspend-detected'))
-
-                        // Unlike suspension/ban this isn't a dead end — the
-                        // account is fine, so redirect to the holding page
-                        // instead of signing out. That page polls the same
-                        // way and brings the user back on its own once
-                        // maintenance ends. Only fires once per activation,
-                        // not on every 2-minute poll while it stays on.
-                        setTimeout(() => {
-                            setShowMaintenanceOverlay(false)
-                            if (pathname !== '/dashboard/maintenance') {
-                                router.push('/dashboard/maintenance')
-                            }
-                        }, 4000)
-                    }
-                } else if (wasMaintenanceActive.current) {
-                    // Maintenance ended since the last check.
-                    wasMaintenanceActive.current = false
-                    setShowMaintenanceOverlay(false)
-                    setMaintenanceMessage(null)
+                    handleMaintenanceDetected(data.maintenanceMessage)
+                } else {
+                    handleMaintenanceEnded()
                 }
             } catch (error) {
                 console.error('Heartbeat failed', error)
             }
         }
 
-        // Initial ping
         checkStatus()
 
-        // Every 15 seconds — was 2 minutes, but that made maintenance mode
-        // feel broken: this live DB check (plus the 4s auto-save grace
-        // period after it) is the only thing that actually moves a user off
-        // a page on its own, since a stale session-token cookie won't get
-        // middleware to redirect until something else happens to refresh
-        // it. Same logic now also propagates a suspension/ban faster too.
         const interval = setInterval(() => {
             if (document.visibilityState === 'hidden') return
             checkStatus()
-        }, 15000)
+        }, 90000)
 
         return () => clearInterval(interval)
-        // Deliberately keyed only on session — router/pathname change on
-        // every navigation, and this interval must survive route changes
-        // rather than being torn down and restarted on every click.
-        // checkStatus's pathname check is a best-effort UX nicety (skip a
-        // redundant push if already on the maintenance page); it can go
-        // stale across navigations between session refreshes, but that's
-        // harmless — middleware.ts is the actual enforcement and checks the
-        // JWT fresh on every request regardless of this component's state.
+        // Deliberately keyed only on session — this interval must survive
+        // route changes rather than being torn down and restarted on every
+        // click. handleMaintenanceDetected/Ended are stable enough in
+        // practice (only change with pathname) that omitting them here
+        // just means this interval keeps using whichever pathname closure
+        // it started with between session refreshes — harmless, since
+        // middleware.ts is the actual enforcement and checks the JWT fresh
+        // on every request regardless of this component's state.
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [session])
 
