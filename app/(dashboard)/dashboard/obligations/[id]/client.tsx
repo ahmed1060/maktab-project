@@ -112,7 +112,17 @@ export default function ObligationDetailClient({ obligation, userRole, userId, u
                 formData.append('file', file)
 
                 try {
-                    const res = await fetch('/api/upload', { method: 'POST', body: formData })
+                    // Emergency saves need this on the upload step too, not
+                    // just the final PUT below — the server now exempts
+                    // POST /api/upload the same way when this header is
+                    // present (see lib/api-utils.ts), otherwise a suspended/
+                    // banned user's attachment never makes it in even though
+                    // their note/status does.
+                    const res = await fetch('/api/upload', {
+                        method: 'POST',
+                        headers: isEmergency ? { 'X-Emergency-Save': 'true' } : undefined,
+                        body: formData
+                    })
                     const result = await res.json()
                     const data = result.data
                     if (result.success && data.url) {

@@ -272,6 +272,13 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                     try {
                         const uploadRes = await fetch('/api/upload', {
                             method: 'POST',
+                            // Emergency saves need this on the upload step too,
+                            // not just the final submit PUT below — the server
+                            // now exempts POST /api/upload the same way when
+                            // this header is present (see lib/api-utils.ts),
+                            // otherwise a suspended/banned user's attachment
+                            // never makes it in even though their note does.
+                            headers: isEmergency ? { 'X-Emergency-Save': 'true' } : undefined,
                             body: formData
                         })
 

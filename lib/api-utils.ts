@@ -177,7 +177,22 @@ export function withStandardHandler(
 
             if (isRestricted) {
                 const isEmergencySave = req.headers.get('x-emergency-save') === 'true'
-                const isDraftUpload = req.method === 'PUT' && req.url.includes('/submit')
+                const pathname = new URL(req.url).pathname
+
+                // Recognizes every request the emergency-save flow actually
+                // makes: tasks/[id]/client.tsx and obligations/[id]/client.tsx
+                // both upload any pending file first (POST /api/upload), then
+                // PUT the save itself — tasks to .../submit, obligations to
+                // their own /api/obligations/[id] (no /submit suffix, unlike
+                // tasks — the original 'PUT + includes(/submit)' check only
+                // ever matched the task shape, so an obligation's emergency
+                // save 403'd here every time, silently dropping the user's
+                // in-progress work. Confirmed live: a suspended employee's
+                // obligation note was lost because this exact PUT got blocked.
+                const isDraftUpload =
+                    (req.method === 'POST' && pathname === '/api/upload') ||
+                    (req.method === 'PUT' && /^\/api\/tasks\/[^/]+\/submit$/.test(pathname)) ||
+                    (req.method === 'PUT' && /^\/api\/obligations\/[^/]+$/.test(pathname))
 
                 // Allow ONLY a one-time draft save during suspension/maintenance
                 if (!(isEmergencySave && isDraftUpload)) {
