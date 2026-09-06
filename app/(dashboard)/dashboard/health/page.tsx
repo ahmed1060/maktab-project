@@ -23,7 +23,7 @@ type HealthMetrics = {
     }
 }
 
-type PendingAction = 'CLEANUP_ASSETS' | 'PRUNE_LOGS' | 'PRUNE_NOTIFICATIONS' | 'BACKUP' | 'RESTORE_LATEST' | 'RESTORE_SPECIFIC' | null
+type PendingAction = 'CLEANUP_ASSETS' | 'PRUNE_LOGS' | 'PRUNE_NOTIFICATIONS' | 'BACKUP' | 'RESTORE_LATEST' | 'RESTORE_SPECIFIC' | 'MAINTENANCE_ON' | 'MAINTENANCE_OFF' | null
 
 const RESTORE_CONFIRM_WORD = 'RESTORE'
 
@@ -41,6 +41,9 @@ export default function SystemHealthPage() {
     const [backupsLoading, setBackupsLoading] = useState(false)
     const [backupsError, setBackupsError] = useState<string | null>(null)
     const [selectedBackup, setSelectedBackup] = useState<BackupEntry | null>(null)
+    const [maintenanceMode, setMaintenanceMode] = useState(false)
+    const [maintenanceMessage, setMaintenanceMessage] = useState('')
+    const [savingMaintenance, setSavingMaintenance] = useState(false)
 
     useEffect(() => {
         setTitle(t('system_health'))
@@ -67,9 +70,23 @@ export default function SystemHealthPage() {
         }
     }, [])
 
+    const fetchSystemSettings = useCallback(async () => {
+        try {
+            const res = await fetch('/api/system-settings')
+            const result = await res.json()
+            if (result.success) {
+                setMaintenanceMode(!!result.data.maintenanceMode)
+                setMaintenanceMessage(result.data.maintenanceMessage || '')
+            }
+        } catch (error) {
+            console.error('Failed to fetch system settings', error)
+        }
+    }, [])
+
     useEffect(() => {
         fetchMetrics()
-    }, [fetchMetrics])
+        fetchSystemSettings()
+    }, [fetchMetrics, fetchSystemSettings])
 
     const runMaintenance = async (action: string) => {
         setProcessing(action)
@@ -165,6 +182,29 @@ export default function SystemHealthPage() {
         }
     }
 
+    const toggleMaintenance = async (next: boolean) => {
+        setSavingMaintenance(true)
+        try {
+            const res = await fetch('/api/system-settings', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ maintenanceMode: next, maintenanceMessage: maintenanceMessage.trim() || null })
+            })
+            const result = await res.json()
+            if (result.success) {
+                setMaintenanceMode(!!result.data.maintenanceMode)
+                setMaintenanceMessage(result.data.maintenanceMessage || '')
+            } else {
+                alert(t('maintenance_toggle_failed' as any) + ': ' + result.error)
+            }
+        } catch (error) {
+            console.error('Maintenance toggle error:', error)
+            alert(t('maintenance_toggle_failed' as any))
+        } finally {
+            setSavingMaintenance(false)
+        }
+    }
+
     // Confirmation for all six actions runs through one styled modal instead
     // of the browser's native confirm() — the copy per action lives here,
     // keyed off which button was clicked.
@@ -178,6 +218,8 @@ export default function SystemHealthPage() {
             title: t('confirm_restore_specific_title' as any),
             message: `${t('confirm_restore_specific_msg' as any)} ${selectedBackup?.baseName || ''}`
         },
+        MAINTENANCE_ON: { title: t('confirm_maintenance_on_title' as any), message: t('confirm_maintenance_on_msg' as any) },
+        MAINTENANCE_OFF: { title: t('confirm_maintenance_off_title' as any), message: t('confirm_maintenance_off_msg' as any) },
     }
 
     const handleConfirm = () => {
@@ -190,6 +232,10 @@ export default function SystemHealthPage() {
             runRestore('latest')
         } else if (action === 'RESTORE_SPECIFIC') {
             runRestore('specific')
+        } else if (action === 'MAINTENANCE_ON') {
+            toggleMaintenance(true)
+        } else if (action === 'MAINTENANCE_OFF') {
+            toggleMaintenance(false)
         } else {
             runMaintenance(action)
         }
@@ -205,6 +251,19 @@ export default function SystemHealthPage() {
 
     return (
         <div className="animate-fade-in" style={{ direction: locale === 'ar' ? 'rtl' : 'ltr', padding: '0.5rem' }}>
+
+            {maintenanceMode && (
+                <div style={{
+                    display: 'flex', alignItems: 'center', gap: '0.75rem',
+                    background: '#fffbeb', border: '1px solid #fde68a', color: '#92400e',
+                    borderRadius: '0.75rem', padding: '0.85rem 1.25rem', marginBottom: '1.5rem',
+                    fontWeight: 700, fontSize: '0.9rem'
+                }}>
+                    <span style={{ fontSize: '1.3rem' }}>🔧</span>
+                    {t('maintenance_active_banner' as any)}
+                </div>
+            )}
+
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
 
                 {/* Storage Card */}
@@ -336,6 +395,49 @@ export default function SystemHealthPage() {
                         style={{ width: '100%' }}
                     >
                         {t('choose_backup_to_restore' as any)}
+                    </button>
+                </div>
+
+                {/* Maintenance Mode Card */}
+                <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                        <span style={{ fontSize: '2rem' }}>🔧</span>
+                        <div>
+                            <h3 style={{ margin: 0, fontSize: '1.1rem', color: 'var(--text-main)' }}>{t('maintenance_mode_header' as any)}</h3>
+                            <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                                {maintenanceMode ? t('maintenance_status_on' as any) : t('maintenance_status_off' as any)}
+                            </p>
+                        </div>
+                    </div>
+                    <p style={{ margin: '0.5rem 0', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                        {t('maintenance_mode_description' as any)}
+                    </p>
+                    <textarea
+                        value={maintenanceMessage}
+                        onChange={(e) => setMaintenanceMessage(e.target.value)}
+                        placeholder={t('maintenance_message_placeholder' as any)}
+                        maxLength={500}
+                        rows={2}
+                        style={{
+                            width: '100%', resize: 'vertical', padding: '0.6rem 0.75rem',
+                            border: '1px solid #e2e8f0', borderRadius: '0.5rem', fontSize: '0.85rem',
+                            fontFamily: 'inherit'
+                        }}
+                    />
+                    <button
+                        onClick={() => setPendingAction(maintenanceMode ? 'MAINTENANCE_OFF' : 'MAINTENANCE_ON')}
+                        disabled={savingMaintenance}
+                        className="btn"
+                        style={{
+                            width: '100%', marginTop: 'auto',
+                            background: maintenanceMode ? '#dcfce7' : '#fee2e2',
+                            color: maintenanceMode ? '#166534' : '#991b1b',
+                            border: `1px solid ${maintenanceMode ? '#bbf7d0' : '#fecaca'}`
+                        }}
+                    >
+                        {savingMaintenance
+                            ? t('maintenance_saving' as any)
+                            : maintenanceMode ? t('disable_maintenance_mode' as any) : t('enable_maintenance_mode' as any)}
                     </button>
                 </div>
 

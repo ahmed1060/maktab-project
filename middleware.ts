@@ -44,6 +44,19 @@ export default withAuth(
             return NextResponse.redirect(new URL('/dashboard/email-settings', req.url))
         }
 
+        // 2d. System-wide maintenance mode: non-super-admins get held on a
+        // dedicated page. Super Admins are exempt so whoever turned it on
+        // can still finish what they're doing (e.g. a backup restore) and
+        // turn it back off. Excludes the maintenance page itself, or this
+        // would redirect-loop.
+        if (
+            token?.maintenanceMode && token.role !== 'SUPER_ADMIN' &&
+            pathname.startsWith('/dashboard') &&
+            pathname !== '/dashboard/maintenance'
+        ) {
+            return NextResponse.redirect(new URL('/dashboard/maintenance', req.url))
+        }
+
         // 3. Locale Validation
         const locale = req.cookies.get('NEXT_LOCALE')?.value
         if (locale && !['en', 'ar'].includes(locale)) {

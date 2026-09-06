@@ -877,6 +877,27 @@ export const en = {
         backup_folder_weekly: "Weekly",
         backup_folder_monthly: "Monthly",
 
+        maintenance_mode_header: "Maintenance Mode",
+        maintenance_status_on: "Currently ON",
+        maintenance_status_off: "Currently off",
+        maintenance_mode_description: "Holds every non-Super-Admin on a waiting page and blocks their write requests — except one automatic draft save first, the same protection already in place for suspended accounts. Use this while doing something disruptive, like restoring a backup.",
+        maintenance_message_placeholder: "Optional message shown to users (e.g. \"Back in 10 minutes\")",
+        enable_maintenance_mode: "Enable Maintenance Mode",
+        disable_maintenance_mode: "Disable Maintenance Mode",
+        maintenance_saving: "Saving...",
+        maintenance_toggle_failed: "Failed to update maintenance mode",
+        maintenance_active_banner: "Maintenance mode is ON — every other user is held on a waiting page right now.",
+        confirm_maintenance_on_title: "Turn maintenance mode on?",
+        confirm_maintenance_on_msg: "Every user except Super Admins will be redirected to a waiting page — after a brief window to auto-save whatever they had open. Turn it off from here when you're done.",
+        confirm_maintenance_off_title: "Turn maintenance mode off?",
+        confirm_maintenance_off_msg: "Everyone currently on the waiting page will be sent back to the dashboard automatically within about 15 seconds.",
+        maintenance_detected_title: "System Under Maintenance",
+        maintenance_detected_msg: "The system is temporarily under maintenance.",
+        maintenance_saving_msg: "Saving your work before you're moved to a waiting page...",
+        maintenance_page_title: "System Under Maintenance",
+        maintenance_page_subtitle: "The system is temporarily under maintenance. You'll be taken back to the dashboard automatically the moment it's done — no need to keep refreshing.",
+        maintenance_page_checking: "Checking...",
+
         // F-27: email verification / change (merged flow — see the
         // remediation log for why a forced first-time verify and a later
         // voluntary change share one screen).

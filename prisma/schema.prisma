@@ -102,6 +102,8 @@ model Company {
 model SystemSettings {
   id                        String @id @default("default")
   locationVerifyRadiusMeters Int   @default(70)
+  maintenanceMode           Boolean @default(false)
+  maintenanceMessage        String?
   updatedAt                 DateTime @updatedAt
 }
 

@@ -297,6 +297,8 @@ export const authOptions: NextAuthOptions = {
                 session.user.mfaEnabled = !!token.mfaEnabled
                 session.user.userStatus = token.userStatus as string | undefined
                 session.user.companyBanned = !!token.companyBanned
+                session.user.maintenanceMode = !!token.maintenanceMode
+                session.user.maintenanceMessage = token.maintenanceMessage as string | null | undefined
             }
             return session
         },
@@ -323,6 +325,7 @@ export const authOptions: NextAuthOptions = {
                 token.mfaEnabled = (user as any).mfaEnabled || false
                 token.userStatus = (user as any).userStatus
                 token.companyBanned = (user as any).companyBanned || false
+                token.maintenanceMode = false
                 token.checkedAt = Date.now()
                 token.jti = uuidv4()
 
@@ -378,15 +381,22 @@ export const authOptions: NextAuthOptions = {
                             token.emailVerified = !!sa?.emailVerifiedAt
                             token.mfaEnabled = sa?.mfaEnabled || false
                         } else {
-                            const u = await prisma.user.findUnique({
-                                where: { id: userId },
-                                select: { sessionVersion: true, status: true, company: { select: { isBanned: true } }, emailVerifiedAt: true, mfaEnabled: true }
-                            })
+                            // Maintenance mode fetched alongside, in parallel — same
+                            // 60s throttle as everything else here, no extra round trip.
+                            const [u, settings] = await Promise.all([
+                                prisma.user.findUnique({
+                                    where: { id: userId },
+                                    select: { sessionVersion: true, status: true, company: { select: { isBanned: true } }, emailVerifiedAt: true, mfaEnabled: true }
+                                }),
+                                prisma.systemSettings.findUnique({ where: { id: 'default' }, select: { maintenanceMode: true, maintenanceMessage: true } })
+                            ])
                             dbVersion = u?.sessionVersion || 0
                             token.userStatus = u?.status
                             token.companyBanned = u?.company?.isBanned || false
                             token.emailVerified = !!u?.emailVerifiedAt
                             token.mfaEnabled = u?.mfaEnabled || false
+                            token.maintenanceMode = settings?.maintenanceMode || false
+                            token.maintenanceMessage = settings?.maintenanceMessage || null
                         }
 
                         if (token.sessionVersion === undefined) {

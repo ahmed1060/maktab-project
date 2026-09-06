@@ -23,6 +23,11 @@ declare module "next-auth" {
             // company concept for that role).
             userStatus?: string
             companyBanned?: boolean
+            // System-wide maintenance mode (SystemSettings.maintenanceMode).
+            // Refreshed on the same 60s recheck as userStatus/companyBanned;
+            // always false for a SuperAdmin session — they're exempt.
+            maintenanceMode?: boolean
+            maintenanceMessage?: string | null
             // Founder-account protection: true only for a SuperAdmin flagged
             // isProtected in the database. Gates editing/deleting *other*
             // super admins — see app/api/super-admins/[id]/route.ts. Always
@@ -80,6 +85,8 @@ declare module "next-auth/jwt" {
         mustChangePassword?: boolean
         userStatus?: string
         companyBanned?: boolean
+        maintenanceMode?: boolean
+        maintenanceMessage?: string | null
         isProtected?: boolean
         emailVerified?: boolean
         mfaEnabled?: boolean

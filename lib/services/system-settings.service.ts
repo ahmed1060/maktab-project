@@ -13,10 +13,10 @@ export class SystemSettingsService {
      */
     static async get() {
         const settings = await prisma.systemSettings.findUnique({ where: { id: SETTINGS_ID } })
-        return settings || { id: SETTINGS_ID, locationVerifyRadiusMeters: 70, updatedAt: new Date() }
+        return settings || { id: SETTINGS_ID, locationVerifyRadiusMeters: 70, maintenanceMode: false, maintenanceMessage: null, updatedAt: new Date() }
     }
 
-    static async update(data: { locationVerifyRadiusMeters?: number }) {
+    static async update(data: { locationVerifyRadiusMeters?: number, maintenanceMode?: boolean, maintenanceMessage?: string | null }) {
         return prisma.systemSettings.upsert({
             where: { id: SETTINGS_ID },
             update: data,

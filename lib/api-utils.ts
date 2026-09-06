@@ -156,15 +156,25 @@ export function withStandardHandler(
             // from the session instead of querying again. Undefined/false
             // for a SuperAdmin session, same as the old query returned for
             // an id with no matching User row.
-            const isRestricted = session.user.userStatus === 'SUSPENDED' || session.user.companyBanned
+            const isSuspendedOrBanned = session.user.userStatus === 'SUSPENDED' || session.user.companyBanned
+
+            // System-wide maintenance mode blocks the same way, for every
+            // non-super-admin — except /api/user/activity itself, which the
+            // heartbeat has to keep reaching so it can detect maintenance
+            // ending and bring the user back automatically. Suspension/ban
+            // still block that route as before; only maintenance carves it out.
+            const isHeartbeat = new URL(req.url).pathname === '/api/user/activity'
+            const isMaintenanceBlocked = !!session.user.maintenanceMode && session.user.role !== 'SUPER_ADMIN' && !isHeartbeat
+
+            const isRestricted = isSuspendedOrBanned || isMaintenanceBlocked
 
             if (isRestricted) {
                 const isEmergencySave = req.headers.get('x-emergency-save') === 'true'
                 const isDraftUpload = req.method === 'PUT' && req.url.includes('/submit')
 
-                // Allow ONLY a one-time draft save during suspension
+                // Allow ONLY a one-time draft save during suspension/maintenance
                 if (!(isEmergencySave && isDraftUpload)) {
-                    return ApiResponse.forbidden("Account suspended or company banned")
+                    return ApiResponse.forbidden(isMaintenanceBlocked && !isSuspendedOrBanned ? "System is under maintenance" : "Account suspended or company banned")
                 }
             }
             // -----------------------------------

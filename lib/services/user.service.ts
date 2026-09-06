@@ -240,17 +240,25 @@ export class UserService {
             return { success: true, status: 'ACTIVE' }
         }
 
-        const user = await prisma.user.update({
-            where: { id: userId },
-            data: { lastActivity: new Date() },
-            select: {
-                status: true,
-                company: { select: { isBanned: true } }
-            }
-        })
+        const [user, settings] = await Promise.all([
+            prisma.user.update({
+                where: { id: userId },
+                data: { lastActivity: new Date() },
+                select: {
+                    status: true,
+                    company: { select: { isBanned: true } }
+                }
+            }),
+            // Live read, not the throttled session copy — this is the
+            // heartbeat's whole job: catching a state change within its own
+            // 2-minute poll interval rather than waiting on the JWT's 60s
+            // staleness window on top of that.
+            prisma.systemSettings.findUnique({ where: { id: 'default' }, select: { maintenanceMode: true, maintenanceMessage: true } })
+        ])
 
         if (user.status === 'SUSPENDED') return { success: true, status: 'SUSPENDED' }
         if (user.company?.isBanned) return { success: true, status: 'COMPANY_BANNED' }
+        if (settings?.maintenanceMode) return { success: true, status: 'MAINTENANCE', maintenanceMessage: settings.maintenanceMessage }
 
         return { success: true, status: 'ACTIVE' }
     }
