@@ -43,22 +43,22 @@ export default async function DashboardPage({ searchParams }: { searchParams: { 
     if (['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole)) {
         // Super Admin System Overview (when no specific company is selected)
         if (userRole === 'SUPER_ADMIN' && !companyId) {
-            const totalCompanies = await prisma.company.count()
-            const totalUsers = await prisma.user.count()
-            const totalTasks = await prisma.task.count()
-            const totalClients = await prisma.businessClient.count()
-
-            // Status distribution for Super Admin
-            const taskStats = await prisma.task.groupBy({
-                by: ['status'],
-                _count: true
-            })
-
             // "Needs Attention" — the things a super admin would otherwise
             // only find by opening each page individually.
             const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000)
             const fourteenDaysFromNow = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000)
-            const [systemErrors24h, expiringSubscriptions, bannedCompanies] = await Promise.all([
+
+            // All 8 of these are independent reads — previously fired as
+            // sequential awaits (7 separate round trips to Postgres before
+            // this page could even start rendering). Running them together
+            // costs one round trip's worth of latency instead of seven.
+            const [totalCompanies, totalUsers, totalTasks, totalClients, taskStats, systemErrors24h, expiringSubscriptions, bannedCompanies] = await Promise.all([
+                prisma.company.count(),
+                prisma.user.count(),
+                prisma.task.count(),
+                prisma.businessClient.count(),
+                // Status distribution for Super Admin
+                prisma.task.groupBy({ by: ['status'], _count: true }),
                 prisma.auditLog.count({
                     where: { action: 'SYSTEM_API_ERROR', createdAt: { gte: oneDayAgo } }
                 }),
@@ -143,12 +143,48 @@ export default async function DashboardPage({ searchParams }: { searchParams: { 
 
         const baseWhere = finalCompanyId ? { companyId: finalCompanyId } : {}
 
-        // Optimized status counts using groupBy
-        const taskStats = await prisma.task.groupBy({
-            where: baseWhere,
-            by: ['status'],
-            _count: true
-        })
+        // "Needs Your Review" — approval queues this role can act on.
+        // Day-off/profile approval is ADMIN-only (see app/api/admin/day-off-requests
+        // and app/api/profile-requests), so a TEAM_LEADER only sees task reviews.
+        // Below runs everything together instead of as 4-5 sequential
+        // round trips: taskStats/salaryStats/overdueTasks never depended on
+        // each other, and the two ADMIN-only counts just resolve to 0
+        // instead of skipping the query entirely when the role doesn't
+        // apply, so the whole page can still await one Promise.all.
+        const [taskStats, salaryStats, overdueTasks, pendingDayOffRequests, pendingProfileRequests] = await Promise.all([
+            // Optimized status counts using groupBy
+            prisma.task.groupBy({
+                where: baseWhere,
+                by: ['status'],
+                _count: true
+            }),
+            // Salary aggregates for the company
+            prisma.salaryRecord.aggregate({
+                where: {
+                    month: currentMonth,
+                    year: currentYear,
+                    user: finalCompanyId ? { companyId: finalCompanyId } : {}
+                },
+                _sum: {
+                    bonusDays: true,
+                    deductions: true
+                }
+            }),
+            // Overdue: past deadline, not in a final state — same idea as the
+            // employee "due today" list, but for this admin's whole team.
+            prisma.task.findMany({
+                where: { ...baseWhere, deadline: { lt: new Date() }, status: { notIn: ['COMPLETED', 'APPROVED'] } },
+                orderBy: { deadline: 'asc' },
+                take: 5,
+                select: { id: true, title: true, deadline: true, status: true }
+            }),
+            userRole === 'ADMIN'
+                ? prisma.dayOffRequest.count({ where: { status: 'PENDING', user: { companyId: finalCompanyId } } })
+                : Promise.resolve(0),
+            userRole === 'ADMIN'
+                ? prisma.profileUpdateRequest.count({ where: { status: 'PENDING', user: { companyId: finalCompanyId } } })
+                : Promise.resolve(0)
+        ])
 
         const totalTasks = taskStats.reduce((acc, s) => acc + s._count, 0)
         const completedTasks = taskStats.find(s => s.status === 'COMPLETED')?._count || 0
@@ -158,44 +194,12 @@ export default async function DashboardPage({ searchParams }: { searchParams: { 
 
         const completionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0
 
-        // Fetch salary aggregates for the company
-        const salaryStats = await prisma.salaryRecord.aggregate({
-            where: {
-                month: currentMonth,
-                year: currentYear,
-                user: finalCompanyId ? { companyId: finalCompanyId } : {}
-            },
-            _sum: {
-                bonusDays: true,
-                deductions: true
-            }
-        })
-
         const chartData = [
             { label: t('status_completed'), value: completedTasks, color: '#10b981' },
             { label: t('status_pending'), value: pendingTasks, color: '#3b82f6' },
             { label: t('status_review'), value: reviewTasks, color: '#f59e0b' },
             { label: t('status_rejected'), value: rejectedTasks, color: '#ef4444' }
         ]
-
-        // "Needs Your Review" — approval queues this role can act on.
-        // Day-off/profile approval is ADMIN-only (see app/api/admin/day-off-requests
-        // and app/api/profile-requests), so a TEAM_LEADER only sees task reviews.
-        const [pendingDayOffRequests, pendingProfileRequests] = userRole === 'ADMIN'
-            ? await Promise.all([
-                prisma.dayOffRequest.count({ where: { status: 'PENDING', user: { companyId: finalCompanyId } } }),
-                prisma.profileUpdateRequest.count({ where: { status: 'PENDING', user: { companyId: finalCompanyId } } })
-            ])
-            : [0, 0]
-
-        // Overdue: past deadline, not in a final state — same idea as the
-        // employee "due today" list, but for this admin's whole team.
-        const overdueTasks = await prisma.task.findMany({
-            where: { ...baseWhere, deadline: { lt: new Date() }, status: { notIn: ['COMPLETED', 'APPROVED'] } },
-            orderBy: { deadline: 'asc' },
-            take: 5,
-            select: { id: true, title: true, deadline: true, status: true }
-        })
 
         return (
             <div className="animate-fade-in" style={{ direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
@@ -276,14 +280,79 @@ export default async function DashboardPage({ searchParams }: { searchParams: { 
             </div>
         )
     } else {
-        // Optimized Employee View: Use groupBy for stats and targeted fetch for today's focus
-        const taskStats = await prisma.task.groupBy({
-            where: {
-                assignees: { some: { id: userId } }
-            },
-            by: ['status'],
-            _count: true
-        })
+        const today = new Date()
+        today.setHours(0, 0, 0, 0)
+        const tomorrow = new Date(today)
+        tomorrow.setDate(tomorrow.getDate() + 1)
+        const weekFromNow = new Date(today)
+        weekFromNow.setDate(weekFromNow.getDate() + 7)
+
+        // Optimized Employee View: Use groupBy for stats and targeted fetch
+        // for today's focus. All 7 of these are independent of each other —
+        // previously fired as 7 sequential awaits, so this page paid for 7
+        // separate round trips to Postgres before it could render anything.
+        // Running them together costs one round trip's worth of latency.
+        const [taskStats, currentUser, approvedRequests, salaryRecord, myObligations, myLatestDayOffRequest, upcomingTasks] = await Promise.all([
+            prisma.task.groupBy({
+                where: {
+                    assignees: { some: { id: userId } }
+                },
+                by: ['status'],
+                _count: true
+            }),
+            // Current user details for dayOffCredit
+            prisma.user.findUnique({
+                where: { id: userId },
+                select: { dayOffCredit: true }
+            }),
+            // Approved day off requests for "used" credit
+            prisma.dayOffRequest.findMany({
+                where: {
+                    userId: userId,
+                    status: 'APPROVED'
+                },
+                select: { daysDeducted: true }
+            }),
+            // Salary record for current month
+            prisma.salaryRecord.findUnique({
+                where: {
+                    userId_month_year: {
+                        userId: userId,
+                        month: currentMonth,
+                        year: currentYear
+                    }
+                }
+            }),
+            prisma.obligation.findMany({
+                where: {
+                    assignees: { some: { id: userId } }
+                },
+                orderBy: { deadline: 'asc' },
+                take: 5
+            }),
+            // My latest day-off request — otherwise the only way to see where
+            // a request stands is opening the requests page.
+            prisma.dayOffRequest.findFirst({
+                where: { userId },
+                orderBy: { createdAt: 'desc' }
+            }),
+            // Widened from "due today" to "due this week" — a same-day-only
+            // view means this section is empty most days.
+            prisma.task.findMany({
+                where: {
+                    assignees: { some: { id: userId } },
+                    deadline: {
+                        gte: today,
+                        lt: weekFromNow
+                    },
+                    status: { notIn: ['COMPLETED', 'APPROVED'] }
+                },
+                orderBy: { deadline: 'asc' },
+                include: {
+                    assignees: { select: { id: true, firstName: true, lastName: true } }
+                }
+            })
+        ])
 
         const totalTasks = taskStats.reduce((acc, s) => acc + s._count, 0)
         const completedTasks = taskStats.find(s => s.status === 'COMPLETED')?._count || 0
@@ -292,72 +361,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: { 
         const rejectedTasks = taskStats.find(s => s.status === 'REJECTED')?._count || 0
 
         const completionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0
-
-        // Fetch current user details for dayOffCredit
-        const currentUser = await prisma.user.findUnique({
-            where: { id: userId },
-            select: { dayOffCredit: true }
-        })
-
-        // Fetch approved day off requests for "used" credit
-        const approvedRequests = await prisma.dayOffRequest.findMany({
-            where: {
-                userId: userId,
-                status: 'APPROVED'
-            },
-            select: { daysDeducted: true }
-        })
         const usedCredits = approvedRequests.reduce((acc, req) => acc + (req.daysDeducted || 0), 0)
-
-        // Fetch salary record for current month
-        const salaryRecord = await prisma.salaryRecord.findUnique({
-            where: {
-                userId_month_year: {
-                    userId: userId,
-                    month: currentMonth,
-                    year: currentYear
-                }
-            }
-        })
-
-        const myObligations = await prisma.obligation.findMany({
-            where: {
-                assignees: { some: { id: userId } }
-            },
-            orderBy: { deadline: 'asc' },
-            take: 5
-        })
-
-        // My latest day-off request — otherwise the only way to see where
-        // a request stands is opening the requests page.
-        const myLatestDayOffRequest = await prisma.dayOffRequest.findFirst({
-            where: { userId },
-            orderBy: { createdAt: 'desc' }
-        })
-
-        const today = new Date()
-        today.setHours(0, 0, 0, 0)
-        const tomorrow = new Date(today)
-        tomorrow.setDate(tomorrow.getDate() + 1)
-        const weekFromNow = new Date(today)
-        weekFromNow.setDate(weekFromNow.getDate() + 7)
-
-        // Widened from "due today" to "due this week" — a same-day-only
-        // view means this section is empty most days.
-        const upcomingTasks = await prisma.task.findMany({
-            where: {
-                assignees: { some: { id: userId } },
-                deadline: {
-                    gte: today,
-                    lt: weekFromNow
-                },
-                status: { notIn: ['COMPLETED', 'APPROVED'] }
-            },
-            orderBy: { deadline: 'asc' },
-            include: {
-                assignees: { select: { id: true, firstName: true, lastName: true } }
-            }
-        })
 
         const chartData = [
             { label: t('status_completed'), value: completedTasks, color: '#10b981' },
