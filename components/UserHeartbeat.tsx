@@ -6,6 +6,41 @@ import { useEffect, useRef, useState, useCallback } from "react"
 import { useLanguage } from "@/context/LanguageContext"
 import { getSupabaseBrowserClient } from "@/lib/supabase-browser"
 
+// How long to give tasks/[id]/client.tsx or obligations/[id]/client.tsx to
+// finish an in-flight emergency save (upload + PUT) before giving up and
+// acting anyway. Real-world testing found the naive fixed 4s delay this used
+// to be raced the save itself: a pending-file upload alone took ~2s, then
+// the PUT that actually persists the note/status hadn't even been sent yet
+// when the timer fired sign-out/redirect and invalidated the session out
+// from under it — the request that did eventually go out came back 401,
+// and the work was silently lost. 8s comfortably covers that observed
+// ~6s round trip with margin, while resolving() below still lets the common
+// case (nothing to save on the current page) finish near-instantly instead
+// of always waiting the full 8s.
+const EMERGENCY_SAVE_GRACE_MS = 8000
+
+// Resolves as soon as whichever task/obligation page is mounted reports it's
+// done saving (see the 'app:emergency-save-complete' dispatch in
+// tasks/[id]/client.tsx / obligations/[id]/client.tsx), or after the grace
+// period elapses — covering both "nothing on this page needed saving" (that
+// listener acks immediately) and "no such page is even mounted right now"
+// (nobody ever acks, so this is the only signal).
+function waitForEmergencySave(): Promise<void> {
+    return new Promise((resolve) => {
+        let done = false
+        const finish = () => {
+            if (done) return
+            done = true
+            window.removeEventListener('app:emergency-save-complete', onComplete)
+            clearTimeout(timer)
+            resolve()
+        }
+        const onComplete = () => finish()
+        window.addEventListener('app:emergency-save-complete', onComplete)
+        const timer = setTimeout(finish, EMERGENCY_SAVE_GRACE_MS)
+    })
+}
+
 export default function UserHeartbeat() {
     const { data: session } = useSession()
     const { t } = useLanguage()
@@ -20,9 +55,6 @@ export default function UserHeartbeat() {
     // stale-closure problem a state read inside a callback recreated only
     // when `session` changes would have.
     const wasMaintenanceActive = useRef(false)
-    // Tracks the redirect timer so a real-time "maintenance ended" message
-    // can cancel it if it arrives during the save grace period.
-    const redirectTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
     // Shared by both detection paths below (the fast Realtime broadcast and
     // the slow polling fallback) so activating maintenance behaves
@@ -40,21 +72,24 @@ export default function UserHeartbeat() {
 
         // Unlike suspension/ban this isn't a dead end — the account is
         // fine, so redirect to the holding page instead of signing out.
-        redirectTimer.current = setTimeout(() => {
+        // Waits for the save (or the grace period) rather than a flat
+        // timer — see waitForEmergencySave's comment for why a fixed delay
+        // here used to race the save itself and lose the user's work.
+        waitForEmergencySave().then(() => {
+            // Maintenance may have already ended again while we were
+            // waiting (handleMaintenanceEnded already reset everything in
+            // that case) — skip the now-stale redirect.
+            if (!wasMaintenanceActive.current) return
             setShowMaintenanceOverlay(false)
             if (pathname !== '/dashboard/maintenance') {
                 router.push('/dashboard/maintenance')
             }
-        }, 4000)
+        })
     }, [pathname, router])
 
     const handleMaintenanceEnded = useCallback(() => {
         if (!wasMaintenanceActive.current) return
         wasMaintenanceActive.current = false
-        if (redirectTimer.current) {
-            clearTimeout(redirectTimer.current)
-            redirectTimer.current = null
-        }
         setShowMaintenanceOverlay(false)
         setMaintenanceMessage(null)
         if (pathname === '/dashboard/maintenance') router.push('/dashboard')
@@ -107,11 +142,16 @@ export default function UserHeartbeat() {
                 if (data.status === 'SUSPENDED') {
                     window.dispatchEvent(new CustomEvent('app:suspend-detected'))
                     setIsSuspended(true)
-                    setTimeout(() => signOut({ callbackUrl: '/login' }), 4000)
+                    // Waits for the save (or the grace period) instead of a
+                    // flat delay — a fixed 4s here is what raced a real
+                    // save (upload + PUT) and lost it: signOut() cleared the
+                    // session before the request that persists the work had
+                    // even gone out. See waitForEmergencySave's comment.
+                    waitForEmergencySave().then(() => signOut({ callbackUrl: '/login' }))
                 } else if (data.status === 'COMPANY_BANNED') {
                     window.dispatchEvent(new CustomEvent('app:suspend-detected'))
                     setIsCompanyBanned(true)
-                    setTimeout(() => signOut({ callbackUrl: '/login' }), 4000)
+                    waitForEmergencySave().then(() => signOut({ callbackUrl: '/login' }))
                 } else if (data.status === 'MAINTENANCE') {
                     handleMaintenanceDetected(data.maintenanceMessage)
                 } else {

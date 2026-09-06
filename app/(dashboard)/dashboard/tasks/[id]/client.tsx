@@ -400,12 +400,20 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
 
     // Listen for suspension auto-save event
     useEffect(() => {
-        const handleSuspendSave = () => {
+        const handleSuspendSave = async () => {
             console.log('Suspension detected, auto-saving task progress...')
-            // Only auto-save if employee interaction is active and not already submitted or finalized
-            const isUserAssignee = task.assignees?.some((a: any) => a.id === userId)
-            if ((userRole === 'EMPLOYEE' || isUserAssignee) && !['PENDING_CONFIRMATION', 'APPROVED', 'COMPLETED', 'REJECTED'].includes(task.status)) {
-                handleUpload(true, true)
+            try {
+                // Only auto-save if employee interaction is active and not already submitted or finalized
+                const isUserAssignee = task.assignees?.some((a: any) => a.id === userId)
+                if ((userRole === 'EMPLOYEE' || isUserAssignee) && !['PENDING_CONFIRMATION', 'APPROVED', 'COMPLETED', 'REJECTED'].includes(task.status)) {
+                    await handleUpload(true, true)
+                }
+            } finally {
+                // Tells UserHeartbeat it can stop waiting and sign out/redirect
+                // now — whether or not there was anything to save. Without
+                // this it has no way to know a save on this page even
+                // happened, so it just waits out its own flat timeout.
+                window.dispatchEvent(new CustomEvent('app:emergency-save-complete'))
             }
         }
         window.addEventListener('app:suspend-detected', handleSuspendSave)
