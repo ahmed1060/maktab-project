@@ -90,11 +90,16 @@ export default function UserHeartbeat() {
         // Initial ping
         checkStatus()
 
-        // Ping every 120 seconds (2 minutes)
+        // Every 15 seconds — was 2 minutes, but that made maintenance mode
+        // feel broken: this live DB check (plus the 4s auto-save grace
+        // period after it) is the only thing that actually moves a user off
+        // a page on its own, since a stale session-token cookie won't get
+        // middleware to redirect until something else happens to refresh
+        // it. Same logic now also propagates a suspension/ban faster too.
         const interval = setInterval(() => {
             if (document.visibilityState === 'hidden') return
             checkStatus()
-        }, 120000)
+        }, 15000)
 
         return () => clearInterval(interval)
         // Deliberately keyed only on session — router/pathname change on
