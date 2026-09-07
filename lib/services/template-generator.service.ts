@@ -23,12 +23,16 @@ const LAST_DATA_ROW = 52
 
 /**
  * Turns the Super-Admin-uploaded base file into the actual downloadable
- * template: adds a "Users" sheet (for the Employee Name dropdown +
- * auto-filled Username formula) and a "Vendors" sheet (for the optional
- * Vendor Name dropdown), then wires the main sheet's columns to them.
+ * template: adds a "Users" sheet (backing the Employee Name column's
+ * dropdown) and a "Vendors" sheet (backing the Vendor Name column's
+ * dropdown), then wires the main sheet's Vendor Name (C) and Employee Name
+ * (D) columns to them.
  *
  * The base file is the layout/branding — this never touches its existing
  * rows/columns, only adds the two reference sheets and the validations.
+ * Its own column order needs to match what the parser reads (tasks/new/
+ * page.tsx's handleBulkUpload): Title, Description, Vendor Name, Employee
+ * Name, Deadline Date, Deadline Time, Difficulty.
  */
 export async function generateBulkTaskTemplate(baseBuffer: Buffer, locale: Locale, users: TemplateUser[], vendors: TemplateVendor[]): Promise<Buffer> {
     const dict = locale === 'ar' ? ar : en
@@ -79,29 +83,28 @@ export async function generateBulkTaskTemplate(baseBuffer: Buffer, locale: Local
     const vendorsLastRow = Math.max(vendors.length + 1, 2)
 
     for (let row = FIRST_DATA_ROW; row <= LAST_DATA_ROW; row++) {
-        // Column C: Employee Name dropdown, sourced from Users!A. Deliberately
-        // NOT wired to auto-fill column D via a formula — a formula cell can't
-        // be "typed into afterward" the way a first cut of this assumed:
-        // editing it in Excel either replaces the formula outright or (in
-        // place, via double-click/F2) shows the raw formula text rather than
-        // the resolved username, so appending a second, comma-separated
-        // assignee never actually worked. This dropdown is a lookup aid only
-        // — pick a name here to find it in the Users sheet, then type the
-        // matching username(s) into column D yourself.
+        // Column C: Vendor Name dropdown, sourced from Vendors!A. Optional —
+        // an empty cell just means no vendor for that row.
         mainSheet.getCell(`C${row}`).dataValidation = {
             type: 'list',
             allowBlank: true,
-            formulae: [`Users!$A$2:$A$${usersLastRow}`]
+            formulae: [`Vendors!$A$2:$A$${vendorsLastRow}`]
         }
-        // Column D: Username — always a plain, manually-typed cell (comma-
-        // separated for a multi-assignee task), same as before the Employee
-        // Name dropdown existed.
-        // Column H: Vendor Name dropdown, sourced from Vendors!A. Optional —
-        // an empty cell just means no vendor for that row.
-        mainSheet.getCell(`H${row}`).dataValidation = {
+        // Column D: Employee Name — one merged column for both cases, not
+        // two. A dropdown (sourced from Users!A, "FirstName LastName
+        // (username)") for the common single-assignee case; for a
+        // multi-assignee task, type the usernames directly, comma-separated,
+        // which the dropdown's list validation doesn't block (it warns on a
+        // value outside the list but never rejects the keystroke — Excel
+        // only hard-blocks free typing when a validation explicitly sets a
+        // "Stop" error style, which this doesn't). The parser (tasks/new/
+        // page.tsx) accepts both forms in the same cell: a trailing
+        // "(username)" is extracted from a dropdown pick, anything else is
+        // taken as a literal username.
+        mainSheet.getCell(`D${row}`).dataValidation = {
             type: 'list',
             allowBlank: true,
-            formulae: [`Vendors!$A$2:$A$${vendorsLastRow}`]
+            formulae: [`Users!$A$2:$A$${usersLastRow}`]
         }
     }
 

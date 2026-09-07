@@ -202,15 +202,22 @@ export default function NewTaskPage() {
             const tasks = rows.map(row => {
                 const title = row[0] || ''
                 const description = row[1] || ''
-                // Column C (row[2], "Employee Name") is a lookup-only dropdown
-                // for finding a username in the Users sheet — it doesn't feed
-                // this parser at all. The actual value is column D, always
-                // manually typed (comma-separated for multiple assignees).
-                const usernamesRaw = row[3] ? String(row[3]) : ''
+                const vendorNameRaw = row[2] ? String(row[2]).trim() : '' // Column C, optional
+                // Column D, "Employee Name" — one merged column for both
+                // cases: a single assignee is normally picked from the
+                // dropdown, which writes "FirstName LastName (username)"
+                // (the same display text as the Users sheet, so the
+                // parenthesized username is always unambiguous even when two
+                // employees share a full name); multiple assignees are typed
+                // directly as comma-separated usernames, bypassing the
+                // dropdown. Handled as one rule below rather than two
+                // separate columns: split on comma, then per piece, a
+                // trailing "(username)" is extracted if present, otherwise
+                // the piece itself is taken as a literal username.
+                const employeeFieldRaw = row[3] ? String(row[3]) : ''
                 const deadlineDateStr = row[4] // Column E
                 const deadlineTimeStr = row[5] // Column F
                 const diffPoints = parseInt(row[6]) || 0 // Column G
-                const vendorNameRaw = row[7] ? String(row[7]).trim() : '' // Column H, optional
 
                 const validationErrors: Record<string, string[]> = {}
                 const addError = (field: string, msg: string) => {
@@ -219,7 +226,15 @@ export default function NewTaskPage() {
                 }
 
                 // 1. Resolve usernames to IDs
-                const usernames = usernamesRaw.split(',').map(u => u.trim()).filter(u => u)
+                const usernamesRaw = employeeFieldRaw
+                const usernames = employeeFieldRaw
+                    .split(',')
+                    .map(piece => {
+                        const trimmed = piece.trim()
+                        const dropdownMatch = trimmed.match(/\(([^)]+)\)\s*$/)
+                        return dropdownMatch ? dropdownMatch[1].trim() : trimmed
+                    })
+                    .filter(u => u)
                 const resolvedIds: string[] = []
                 const resolvedNames: string[] = []
                 const unresolvedUsernames: string[] = []
