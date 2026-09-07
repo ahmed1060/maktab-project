@@ -23,6 +23,10 @@ export const createTaskSchema = z.object({
         .optional()
         .default(0),
     location: z.any().optional(),
+    // Vendors feature: when set, TaskService derives location from this
+    // vendor authoritatively — any location also present in the request is
+    // ignored. See TaskService.create/update.
+    vendorId: z.string().optional().nullable(),
     attachments: z.any().optional(), // Can be stringified JSON or array
 })
 

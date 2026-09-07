@@ -84,6 +84,12 @@ model Company {
   // company policy only, not per-task, so one company can't quietly
   // change what another company's tasks do.
   autoVerifyLocation Boolean       @default(true)
+  // Vendors feature: null shows the default translated "Vendors" label.
+  // Only a Super Admin can set this (Company Settings page) — the vendor
+  // list itself (add/edit/delete) is managed by that company's own Admin,
+  // same split as everywhere else this app separates "who owns naming
+  // policy" from "who owns the day-to-day data".
+  vendorsLabel    String?
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
   businessClients BusinessClient[]
@@ -92,6 +98,7 @@ model Company {
   requests        Request[]
   tasks           Task[]
   users           User[]
+  vendors         Vendor[]
 }
 
 // System Settings: a single-row table (id is always "default") for
@@ -186,6 +193,7 @@ model User {
   editedBusinessClientNotes  BusinessClientNote[]    @relation("EditedNotes")
   createdSections            BusinessClientSection[] @relation("SectionCreatedBy")
   editedSections             BusinessClientSection[] @relation("SectionEditedBy")
+  createdVendors             Vendor[]                @relation("VendorCreatedBy")
   dayOffCreditSnapshots      DayOffCreditSnapshot[]
   dayOffRequests             DayOffRequest[]
   notifications              Notification[]
@@ -230,12 +238,21 @@ model Task {
   memberCosts         Json?
   memberPaymentStatus Json?
   companyId           String?
+  // Vendors feature: set when this task's location was chosen by picking a
+  // vendor rather than typing one — location/locationLink above are still
+  // the source of truth for display (copied from the vendor at creation
+  // time), this is only the formal link back for future reporting. Deleting
+  // a vendor never touches historical tasks — SetNull just detaches the
+  // reference, the copied location text stays exactly as it was.
+  vendorId            String?
   company             Company?          @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  vendor              Vendor?           @relation(fields: [vendorId], references: [id], onDelete: SetNull)
   creator             User?             @relation("CreatedTasks", fields: [createdBy], references: [id], onDelete: SetNull)
   assignees           User[]            @relation("MultipleAssignees")
 
   @@index([createdBy])
   @@index([companyId])
+  @@index([vendorId])
   @@index([status])
   @@index([createdAt])
   @@index([paymentStatus])
@@ -540,4 +557,26 @@ model DayOffCreditSnapshot {
 
   @@unique([userId, year])
   @@index([userId])
+}
+
+model Vendor {
+  id            String   @id @default(uuid())
+  companyId     String
+  name          String
+  ownerName     String
+  mobileNumber  String
+  // Mirrors Task.location's {name, link} shape (stored there as JSON text)
+  // so copying a vendor's location into a task at creation time is a direct
+  // field-to-field copy, no reshaping needed on either side.
+  locationName  String
+  locationLink  String?
+  createdById   String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  company       Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  createdBy     User?    @relation("VendorCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  tasks         Task[]
+
+  @@unique([name, companyId])
+  @@index([companyId])
 }

@@ -117,3 +117,17 @@ export function getTemplateUrl(locale: string) {
         .getPublicUrl(fileName)
     return publicUrl
 }
+
+// Vendors feature: the download endpoint now generates the file per
+// request (adds the Users/Vendors sheets + dropdowns on top of this base)
+// instead of just redirecting to it — needs the actual bytes server-side,
+// not a public URL. Returns null the same way getTemplateUrl does if
+// nothing's been uploaded for this locale yet, rather than throwing.
+export async function downloadTemplateBuffer(locale: string): Promise<Buffer | null> {
+    if (!supabase) return null
+    const fileName = `templates/template_${locale}.xlsx`
+    const { data, error } = await supabase.storage.from('app-assets').download(fileName)
+    if (error || !data) return null
+    const arrayBuffer = await data.arrayBuffer()
+    return Buffer.from(arrayBuffer)
+}

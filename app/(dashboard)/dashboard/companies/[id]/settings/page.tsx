@@ -11,6 +11,7 @@ type Company = {
     id: string
     name: string
     autoVerifyLocation: boolean
+    vendorsLabel: string | null
 }
 
 export default function CompanySettingsPage() {
@@ -24,6 +25,8 @@ export default function CompanySettingsPage() {
     const [company, setCompany] = useState<Company | null>(null)
     const [loading, setLoading] = useState(true)
     const [savingSettings, setSavingSettings] = useState(false)
+    const [vendorsLabelInput, setVendorsLabelInput] = useState('')
+    const [savingVendorsLabel, setSavingVendorsLabel] = useState(false)
 
     const fetchCompanyData = useCallback(async () => {
         try {
@@ -49,6 +52,37 @@ export default function CompanySettingsPage() {
     useEffect(() => {
         if (companyId) fetchCompanyData()
     }, [companyId, fetchCompanyData])
+
+    // Syncs the input once the fetch resolves — runs only when the loaded
+    // value actually changes, not on every render, so it doesn't stomp on
+    // what the admin is actively typing.
+    useEffect(() => {
+        if (company) setVendorsLabelInput(company.vendorsLabel || '')
+    }, [company?.vendorsLabel]) // eslint-disable-line react-hooks/exhaustive-deps
+
+    const handleSaveVendorsLabel = async () => {
+        if (!company) return
+        setSavingVendorsLabel(true)
+        try {
+            const res = await fetch('/api/companies', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id: companyId, vendorsLabel: vendorsLabelInput.trim() })
+            })
+            if (res.ok) {
+                const normalized = vendorsLabelInput.trim() || null
+                setCompany({ ...company, vendorsLabel: normalized })
+                showToast(t('settings_saved_success') || 'Settings saved', 'success')
+            } else {
+                const data = await res.json().catch(() => ({}))
+                showToast(data.error || t('error_generic'), 'error')
+            }
+        } catch {
+            showToast(t('error_generic'), 'error')
+        } finally {
+            setSavingVendorsLabel(false)
+        }
+    }
 
     const handleToggleAutoVerify = async () => {
         if (!company) return
@@ -142,6 +176,34 @@ export default function CompanySettingsPage() {
                             <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '0.15rem' }}>
                                 {t('auto_verify_location_hint') || 'When on, a location submitted within the system’s distance setting is marked correct automatically. When off, every submitted location needs manual review.'}
                             </div>
+                        </div>
+                    </div>
+
+                    <div style={{ borderTop: '1px solid var(--glass-border, rgba(0,0,0,0.08))', margin: '1.5rem 0' }} />
+
+                    <div>
+                        <div style={{ fontWeight: 500, marginBottom: '0.15rem' }}>{t('vendors_label_setting') || 'Vendors tab label'}</div>
+                        <div style={{ fontSize: '0.8rem', color: '#64748b', marginBottom: '0.75rem' }}>
+                            {t('vendors_label_setting_hint') || 'Renames the "Vendors" tab for this company everywhere it appears. Leave blank to use the default.'}
+                        </div>
+                        <div style={{ display: 'flex', gap: '0.5rem', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
+                            <input
+                                type="text"
+                                className="input"
+                                value={vendorsLabelInput}
+                                onChange={(e) => setVendorsLabelInput(e.target.value)}
+                                placeholder={t('vendors') || 'Vendors'}
+                                maxLength={50}
+                                disabled={savingVendorsLabel || !company}
+                                style={{ flex: 1 }}
+                            />
+                            <button
+                                className="btn btn-primary"
+                                onClick={handleSaveVendorsLabel}
+                                disabled={savingVendorsLabel || !company || vendorsLabelInput.trim() === (company?.vendorsLabel || '')}
+                            >
+                                {savingVendorsLabel ? t('saving') : t('save')}
+                            </button>
                         </div>
                     </div>
                 </div>

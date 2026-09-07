@@ -252,6 +252,7 @@ export const authOptions: NextAuthOptions = {
                         image: validatedUser.avatar || null, // Map to standard NextAuth field
                         companyId: validatedUser.companyId,
                         companyName: validatedUser.company?.name || null,
+                        vendorsLabel: validatedUser.company?.vendorsLabel || null,
                         username: validatedUser.username,
                         language: validatedUser.language || 'en',
                         sessionVersion: (validatedUser as any).sessionVersion || 0,
@@ -299,6 +300,7 @@ export const authOptions: NextAuthOptions = {
                 session.user.companyBanned = !!token.companyBanned
                 session.user.maintenanceMode = !!token.maintenanceMode
                 session.user.maintenanceMessage = token.maintenanceMessage as string | null | undefined
+                session.user.vendorsLabel = token.vendorsLabel as string | null | undefined
             }
             return session
         },
@@ -326,6 +328,12 @@ export const authOptions: NextAuthOptions = {
                 token.userStatus = (user as any).userStatus
                 token.companyBanned = (user as any).companyBanned || false
                 token.maintenanceMode = false
+                // Seeded here so it's populated immediately rather than only
+                // after the first 60s-throttled refresh below; undefined for
+                // a SuperAdmin sign-in (SuperAdmin has no fixed "own company"
+                // this represents — the Vendors page itself resolves the
+                // label for whichever company they've switched to).
+                token.vendorsLabel = (user as any).vendorsLabel || null
                 token.checkedAt = Date.now()
                 token.jti = uuidv4()
 
@@ -390,7 +398,7 @@ export const authOptions: NextAuthOptions = {
                             const [u, settings] = await Promise.all([
                                 prisma.user.findUnique({
                                     where: { id: userId },
-                                    select: { sessionVersion: true, status: true, company: { select: { isBanned: true } }, emailVerifiedAt: true, mfaEnabled: true }
+                                    select: { sessionVersion: true, status: true, company: { select: { isBanned: true, vendorsLabel: true } }, emailVerifiedAt: true, mfaEnabled: true }
                                 }),
                                 prisma.systemSettings.findUnique({ where: { id: 'default' }, select: { maintenanceMode: true, maintenanceMessage: true } })
                             ])
@@ -401,6 +409,11 @@ export const authOptions: NextAuthOptions = {
                             token.mfaEnabled = u?.mfaEnabled || false
                             token.maintenanceMode = settings?.maintenanceMode || false
                             token.maintenanceMessage = settings?.maintenanceMessage || null
+                            // Vendors feature: deliberately refreshed here rather than
+                            // only seeded at sign-in like companyName is — the whole
+                            // point of letting a Super Admin rename this tab is that it
+                            // takes effect promptly, not just after the next login.
+                            token.vendorsLabel = u?.company?.vendorsLabel || null
                         }
 
                         if (token.sessionVersion === undefined) {

@@ -297,6 +297,12 @@ export default function DashboardShell({ children, user }: DashboardShellProps) 
                             {[
                                 { href: '/dashboard/costs', label: t('costs'), icon: '💰' },
                                 { href: '/dashboard/employees', label: t('employees'), icon: '👥' },
+                                // Vendors: label is this company's custom name if the
+                                // Super Admin set one (see Company Settings), otherwise
+                                // the default translation. Not customized per-company
+                                // for a Super Admin browsing multiple companies — see
+                                // lib/auth.ts's vendorsLabel comment.
+                                { href: '/dashboard/vendors', label: user?.vendorsLabel || t('vendors'), icon: '🚚' },
                             ].map(link => (
                                 <Link
                                     key={link.href}

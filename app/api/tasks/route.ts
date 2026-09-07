@@ -64,6 +64,8 @@ export const POST = withStandardHandler(async (req, session, json) => {
         if (error.message === 'CROSS_COMPANY_ASSIGNMENT_FORBIDDEN') return ApiResponse.forbidden("Cannot assign task to user in a different company")
         if (error.message === 'TL_CANNOT_ASSIGN_TO_ADMIN') return ApiResponse.forbidden("Team Leaders cannot assign tasks to Admins or Super Admins")
         if (error.message === 'ASSIGNEE_NOT_FOUND') return ApiResponse.notFound("One or more assignees not found")
+        if (error.message === 'VENDOR_NOT_FOUND') return ApiResponse.notFound("Selected vendor not found")
+        if (error.message === 'CROSS_COMPANY_VENDOR_FORBIDDEN') return ApiResponse.forbidden("Cannot use a vendor from a different company")
 
         throw error // bubble up to withStandardHandler for 500
     }

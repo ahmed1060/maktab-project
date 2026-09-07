@@ -26,6 +26,12 @@ export default function NewTaskPage() {
     const [difficulty, setDifficulty] = useState('')
     const [location, setLocation] = useState('')
     const [locationLink, setLocationLink] = useState('')
+    // Vendors feature: mutually exclusive with typing a location — picking a
+    // vendor clears the typed fields and vice versa, both here and (as the
+    // real guarantee) server-side in TaskService.create.
+    const [useVendor, setUseVendor] = useState(false)
+    const [vendorId, setVendorId] = useState('')
+    const [vendors, setVendors] = useState<any[]>([])
     const [isBulkModalOpen, setIsBulkModalOpen] = useState(false)
     const [isManageTemplatesOpen, setIsManageTemplatesOpen] = useState(false)
     const [bulkTasks, setBulkTasks] = useState<any[]>([])
@@ -77,6 +83,24 @@ export default function NewTaskPage() {
             })
     }, [session, selectedCompanyId, userRole])
 
+    useEffect(() => {
+        if (!['ADMIN', 'TEAM_LEADER', 'SUPER_ADMIN'].includes(userRole)) return
+        // Super Admin needs a company selected — same as the vendors page
+        // itself, no fetch at all until then rather than a 400.
+        if (userRole === 'SUPER_ADMIN' && !selectedCompanyId) { setVendors([]); return }
+
+        const queryParams = new URLSearchParams()
+        if (userRole === 'SUPER_ADMIN') queryParams.set('companyId', selectedCompanyId!)
+
+        fetch(`/api/vendors?${queryParams.toString()}`)
+            .then(res => res.json())
+            .then(data => {
+                const vendorsList = Array.isArray(data.data) ? data.data : []
+                setVendors(vendorsList)
+            })
+            .catch(() => setVendors([]))
+    }, [selectedCompanyId, userRole])
+
     const [error, setError] = useState('')
     const [fieldErrors, setFieldErrors] = useState<{ [key: string]: string }>({})
     const [isSubmitting, setIsSubmitting] = useState(false)
@@ -127,6 +151,7 @@ export default function NewTaskPage() {
                     deadline,
                     difficulty: parseInt(difficulty) || 0,
                     location: location || locationLink ? JSON.stringify({ name: location, link: locationLink }) : '',
+                    vendorId: useVendor && vendorId ? vendorId : undefined,
                     attachments: []
                 }),
                 headers: { 'Content-Type': 'application/json' }
@@ -177,10 +202,17 @@ export default function NewTaskPage() {
             const tasks = rows.map(row => {
                 const title = row[0] || ''
                 const description = row[1] || ''
-                const usernamesRaw = row[2] ? String(row[2]) : ''
-                const deadlineDateStr = row[3] // Column D
-                const deadlineTimeStr = row[4] // Column E
-                const diffPoints = parseInt(row[5]) || 0 // Column F
+                // Column C (row[2], "Employee Name") is a dropdown+display
+                // aid for the person filling the sheet — the actual value
+                // this parser trusts is column D, which either holds the
+                // VLOOKUP-computed username (cellToPrimitive already
+                // resolves a formula cell to its computed result) or
+                // whatever the person typed/appended by hand.
+                const usernamesRaw = row[3] ? String(row[3]) : ''
+                const deadlineDateStr = row[4] // Column E
+                const deadlineTimeStr = row[5] // Column F
+                const diffPoints = parseInt(row[6]) || 0 // Column G
+                const vendorNameRaw = row[7] ? String(row[7]).trim() : '' // Column H, optional
 
                 const validationErrors: Record<string, string[]> = {}
                 const addError = (field: string, msg: string) => {
@@ -206,6 +238,25 @@ export default function NewTaskPage() {
                     }
                 }
                 if (unresolvedUsernames.length > 0) addError('assignees', `${t('invalid_username' as any) || 'Invalid user'}: ${unresolvedUsernames.join(', ')}`)
+
+                // 1.5 Resolve vendor name (optional — empty cell means no
+                // vendor, task falls back to whatever location gets set
+                // manually in the review step). Vendor names are unique per
+                // company (schema constraint), so a plain name match here
+                // has no ambiguity risk the way employee full names would.
+                let vendorId: string | null = null
+                let vendorLocation = ''
+                let vendorLocationLink = ''
+                if (vendorNameRaw) {
+                    const vendor = vendors.find((v: any) => v.name.toLowerCase() === vendorNameRaw.toLowerCase())
+                    if (vendor) {
+                        vendorId = vendor.id
+                        vendorLocation = vendor.locationName
+                        vendorLocationLink = vendor.locationLink || ''
+                    } else {
+                        addError('vendor', `${t('invalid_vendor_name' as any) || 'Unknown vendor'}: ${vendorNameRaw}`)
+                    }
+                }
 
                 // 2. Process Deadline
                 let finalDeadline = ''
@@ -284,7 +335,10 @@ export default function NewTaskPage() {
                     unresolvedUsernames,
                     deadline: finalDeadline,
                     difficulty: diffPoints,
-                    location: '',
+                    location: vendorLocation,
+                    locationLink: vendorLocationLink,
+                    vendorId,
+                    vendorNameRaw,
                     validationErrors,
                     isInvalid: Object.keys(validationErrors).length > 0
                 }
@@ -491,16 +545,56 @@ export default function NewTaskPage() {
                     </div>
                 </div>
                 <div style={{ marginBottom: '1.25rem' }}>
-                    <LocationSearchInput
-                        label={t('location_name_label')}
-                        value={{ name: location, link: locationLink }}
-                        onChange={(val) => {
-                            setLocation(val.name)
-                            setLocationLink(val.link)
-                        }}
-                        placeholder={t('location_name_placeholder')}
-                        locale={locale}
-                    />
+                    {vendors.length > 0 && (
+                        <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                            <button
+                                type="button"
+                                onClick={() => { setUseVendor(false); setVendorId('') }}
+                                className={useVendor ? 'btn' : 'btn btn-primary'}
+                                style={{ padding: '0.35rem 0.9rem', fontSize: '0.8rem' }}
+                            >
+                                {t('type_location' as any) || 'Type a location'}
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => { setUseVendor(true); setLocation(''); setLocationLink('') }}
+                                className={useVendor ? 'btn btn-primary' : 'btn'}
+                                style={{ padding: '0.35rem 0.9rem', fontSize: '0.8rem' }}
+                            >
+                                {t('select_vendor' as any) || `Select a ${(session?.user as any)?.vendorsLabel || t('vendors')}`}
+                            </button>
+                        </div>
+                    )}
+
+                    {useVendor ? (
+                        <div>
+                            <label style={{ display: 'block', marginBottom: '0.5rem' }}>
+                                {(session?.user as any)?.vendorsLabel || t('vendors')}
+                            </label>
+                            <select
+                                value={vendorId}
+                                onChange={(e) => setVendorId(e.target.value)}
+                                className="input"
+                                style={{ width: '100%' }}
+                            >
+                                <option value="">{t('select_vendor_placeholder' as any) || 'Select...'}</option>
+                                {vendors.map(v => (
+                                    <option key={v.id} value={v.id}>{v.name} — {v.locationName}</option>
+                                ))}
+                            </select>
+                        </div>
+                    ) : (
+                        <LocationSearchInput
+                            label={t('location_name_label')}
+                            value={{ name: location, link: locationLink }}
+                            onChange={(val) => {
+                                setLocation(val.name)
+                                setLocationLink(val.link)
+                            }}
+                            placeholder={t('location_name_placeholder')}
+                            locale={locale}
+                        />
+                    )}
                 </div>
                 <div id="field-assigneeIds" style={{ marginBottom: '1.25rem' }}>
                     <label style={{ display: 'block', marginBottom: '0.5rem' }}>{t('assignee_label')}</label>
@@ -616,6 +710,8 @@ export default function NewTaskPage() {
                 bulkTasks={bulkTasks}
                 setBulkTasks={setBulkTasks}
                 users={users}
+                vendors={vendors}
+                vendorsLabel={(session?.user as any)?.vendorsLabel || t('vendors')}
                 revalidateRow={revalidateRow}
                 isSubmitting={isSubmitting}
                 setIsSubmitting={setIsSubmitting}

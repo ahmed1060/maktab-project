@@ -26,7 +26,10 @@ export class CompanyService {
     }
 
     static async update(input: UpdateCompanyInput, session: any) {
-        const { id, name, isBanned, autoVerifyLocation } = input
+        const { id, name, isBanned, autoVerifyLocation, vendorsLabel } = input
+        // Empty string means "reset to the default label", stored as null
+        // same as never having set one — not as a literal empty string.
+        const normalizedVendorsLabel = vendorsLabel === '' ? null : vendorsLabel
 
         const existing = await prisma.company.findUnique({ where: { id } })
         if (!existing) throw new Error("COMPANY_NOT_FOUND")
@@ -41,7 +44,8 @@ export class CompanyService {
             data: {
                 ...(name && { name }),
                 ...(isBanned !== undefined && { isBanned }),
-                ...(autoVerifyLocation !== undefined && { autoVerifyLocation })
+                ...(autoVerifyLocation !== undefined && { autoVerifyLocation }),
+                ...(vendorsLabel !== undefined && { vendorsLabel: normalizedVendorsLabel })
             }
         })
 
@@ -51,6 +55,9 @@ export class CompanyService {
         if (isBanned !== undefined && isBanned !== existing.isBanned) changes.isBanned = { old: existing.isBanned, new: isBanned }
         if (autoVerifyLocation !== undefined && autoVerifyLocation !== existing.autoVerifyLocation) {
             changes.autoVerifyLocation = { old: existing.autoVerifyLocation, new: autoVerifyLocation }
+        }
+        if (vendorsLabel !== undefined && normalizedVendorsLabel !== existing.vendorsLabel) {
+            changes.vendorsLabel = { old: existing.vendorsLabel, new: normalizedVendorsLabel }
         }
 
         if (Object.keys(changes).length > 0) {

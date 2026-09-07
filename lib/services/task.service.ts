@@ -19,7 +19,7 @@ export class TaskService {
         const userId = session.user.id
         const userCompanyId = session.user.companyId
 
-        const { assigneeIds, deadline, ...rest } = input
+        const { assigneeIds, deadline, vendorId, location: requestedLocation, ...rest } = input
         const deadlineDate = new Date(deadline)
 
         // 1. Cross-Company Assignment Validation
@@ -46,6 +46,23 @@ export class TaskService {
             }
         }
 
+        // 1.5 Vendor resolution — authoritative when present: the location
+        // actually stored comes from the vendor, not from whatever location
+        // text the request also carried (see createTaskSchema's vendorId
+        // comment for why: a UI toggle alone isn't a real guarantee against
+        // a tampered request sending both).
+        let resolvedVendorId: string | null = null
+        let resolvedLocation = requestedLocation
+        if (vendorId) {
+            const vendor = await prisma.vendor.findUnique({ where: { id: vendorId } })
+            if (!vendor) throw new Error("VENDOR_NOT_FOUND")
+            if (userRole !== 'SUPER_ADMIN' && vendor.companyId !== userCompanyId) {
+                throw new Error("CROSS_COMPANY_VENDOR_FORBIDDEN")
+            }
+            resolvedVendorId = vendor.id
+            resolvedLocation = JSON.stringify({ name: vendor.locationName, link: vendor.locationLink || '' })
+        }
+
         // 2. Deadline Safety Check (Strengthened to 3-hour minimum)
         const minDeadline = new Date(Date.now() + 3 * 60 * 60 * 1000)
         if (deadlineDate < minDeadline) throw new Error("DEADLINE_TOO_SOON")
@@ -70,6 +87,8 @@ export class TaskService {
             const task = await tx.task.create({
                 data: {
                     ...rest,
+                    location: resolvedLocation,
+                    vendorId: resolvedVendorId,
                     companyId: targetCompanyId,
                     assignees: { connect: assigneeIds.map(id => ({ id })) },
                     deadline: deadlineDate,
@@ -956,8 +975,22 @@ export class TaskService {
                 users.forEach(u => u.companyId && assigneeToCompanyMap.set(u.id, u.companyId))
             }
 
+            // Same batch pre-fetch for vendors — the review modal already
+            // resolved/validated these client-side, this is a server-side
+            // safety net (same role as the deadline/attachment checks below),
+            // not the primary check.
+            const vendorIds = Array.from(new Set(tasks.map(t => t.vendorId).filter(Boolean)))
+            const vendorMap = new Map<string, { id: string, companyId: string, locationName: string, locationLink: string | null }>()
+            if (vendorIds.length > 0) {
+                const vendors = await tx.vendor.findMany({
+                    where: { id: { in: vendorIds } },
+                    select: { id: true, companyId: true, locationName: true, locationLink: true }
+                })
+                vendors.forEach(v => vendorMap.set(v.id, v))
+            }
+
             for (const task of tasks) {
-                const { assigneeIds, deadline, ...rest } = task
+                const { assigneeIds, deadline, vendorId, location: requestedLocation, ...rest } = task
                 const deadlineDate = new Date(deadline)
                 const minDeadline = new Date(Date.now() + 3 * 60 * 60 * 1000)
                 if (deadlineDate < minDeadline) throw new Error(`DEADLINE_TOO_SOON: ${task.title}`)
@@ -974,9 +1007,28 @@ export class TaskService {
                     ? (assigneeIds[0] ? assigneeToCompanyMap.get(assigneeIds[0]) : null)
                     : userCompanyId
 
+                // Vendor resolution — same authoritative-location rule as
+                // TaskService.create.
+                let resolvedVendorId: string | null = null
+                let resolvedLocation = requestedLocation
+                if (vendorId) {
+                    const vendor = vendorMap.get(vendorId)
+                    if (!vendor) throw new Error(`VENDOR_NOT_FOUND: ${task.title}`)
+                    if (userRole !== 'SUPER_ADMIN' && vendor.companyId !== userCompanyId) {
+                        throw new Error(`CROSS_COMPANY_VENDOR: ${task.title}`)
+                    }
+                    if (userRole === 'SUPER_ADMIN' && taskCompanyId && vendor.companyId !== taskCompanyId) {
+                        throw new Error(`CROSS_COMPANY_VENDOR: ${task.title}`)
+                    }
+                    resolvedVendorId = vendor.id
+                    resolvedLocation = JSON.stringify({ name: vendor.locationName, link: vendor.locationLink || '' })
+                }
+
                 const createdTask = await (tx.task as any).create({
                     data: {
                         ...rest,
+                        location: resolvedLocation,
+                        vendorId: resolvedVendorId,
                         // rest.attachments/comments may still arrive as a JSON
                         // string from the bulk-import payload (same shape as
                         // the single-task create path) — normalize the same way.

@@ -16,7 +16,10 @@ export default async function TaskDetailPage({ params }: { params: { id: string 
             // this page's client component actually renders.
             assignees: {
                 select: { id: true, firstName: true, lastName: true, status: true, role: true }
-            }
+            },
+            // Cosmetic only — location itself was already copied into
+            // task.location at creation time regardless of vendor.
+            vendor: { select: { name: true } }
         }
     })
 

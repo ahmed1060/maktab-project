@@ -903,6 +903,11 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                         ) : (
                             <span>{name}</span>
                         )}
+                        {(task as any).vendor?.name && (
+                            <span style={{ color: '#94a3b8', fontWeight: '400' }}>
+                                — {t('vendor_via_label' as any) || 'via'} {(task as any).vendor.name}
+                            </span>
+                        )}
                     </div>
                 )
             })()}

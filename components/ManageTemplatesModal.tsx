@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useLanguage } from '@/context/LanguageContext'
 import { useToast } from '@/context/ToastContext'
+import { useCompany } from '@/context/CompanyContext'
 
 // F-23: extracted verbatim out of tasks/new/page.tsx, which had grown to
 // 1386 lines. This modal's state (the two selected files and their upload
@@ -36,6 +37,7 @@ interface ManageTemplatesModalProps {
 export default function ManageTemplatesModal({ isOpen, onClose }: ManageTemplatesModalProps) {
     const { t, locale } = useLanguage()
     const { showToast } = useToast()
+    const { selectedCompanyId } = useCompany()
 
     const [mounted, setMounted] = useState(false)
     useEffect(() => {
@@ -182,12 +184,16 @@ export default function ManageTemplatesModal({ isOpen, onClose }: ManageTemplate
                 <div className="modal-footer" style={{ background: 'rgba(0, 0, 0, 0.03)' }}>
                     <button
                         className="btn"
+                        disabled={!selectedCompanyId}
+                        title={!selectedCompanyId ? (t('select_company_prompt' as any) || 'Select a company first') : ''}
                         style={{
                             background: 'rgba(255, 255, 255, 0.6)',
                             border: '1px solid var(--glass-border)',
-                            flex: 1
+                            flex: 1,
+                            opacity: !selectedCompanyId ? 0.5 : 1,
+                            cursor: !selectedCompanyId ? 'not-allowed' : 'pointer'
                         }}
-                        onClick={() => window.open(`/api/templates/download?locale=${locale}`, '_blank')}
+                        onClick={() => selectedCompanyId && window.open(`/api/templates/download?locale=${locale}&companyId=${selectedCompanyId}`, '_blank')}
                     >
                         📥 {t('download_current_template')}
                     </button>

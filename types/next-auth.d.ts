@@ -44,6 +44,11 @@ declare module "next-auth" {
             // session (that would defeat the point), it queries fresh in
             // authorize() before a session even exists.
             mfaEnabled?: boolean
+            // Vendors feature: this company's custom label for the Vendors
+            // tab (null = default translated "Vendors"). Refreshed on the
+            // same 60s recheck as maintenanceMode, not just seeded at sign-in
+            // — see lib/auth.ts. Undefined/null for a SuperAdmin session.
+            vendorsLabel?: string | null
         } & DefaultSession["user"]
     }
 
@@ -66,6 +71,7 @@ declare module "next-auth" {
         isProtected?: boolean
         emailVerified?: boolean
         mfaEnabled?: boolean
+        vendorsLabel?: string | null
     }
 }
 
@@ -90,6 +96,7 @@ declare module "next-auth/jwt" {
         isProtected?: boolean
         emailVerified?: boolean
         mfaEnabled?: boolean
+        vendorsLabel?: string | null
         // F-11: last time the merged revocation/suspension check actually
         // ran against the database, so it can be throttled instead of
         // running on every single request.
