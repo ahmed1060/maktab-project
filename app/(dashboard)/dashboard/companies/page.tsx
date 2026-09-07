@@ -30,7 +30,7 @@ export default function CompaniesPage() {
     const [formData, setFormData] = useState({ name: '' })
     const [submitLoading, setSubmitLoading] = useState(false)
     const [error, setError] = useState('')
-    const { triggerRefresh } = useCompany()
+    const { triggerRefresh, setSelectedCompanyId: setGlobalSelectedCompanyId } = useCompany()
 
     const { data: session } = useSession()
     const userRole = session?.user?.role || ''
@@ -212,7 +212,14 @@ export default function CompaniesPage() {
                                                     not billing), so it reads as "manage this company" alongside
                                                     Edit/Ban/Delete instead of looking bundled with Payments. */}
                                                 <button
-                                                    onClick={() => router.push(`/dashboard/companies/${company.id}/settings`)}
+                                                    onClick={() => {
+                                                        // Settings is reached by company id, not through the
+                                                        // global switcher — sync it here too, or Vendors/Tasks
+                                                        // (which only read the switcher) look like they have
+                                                        // nothing in them for the company you just opened.
+                                                        setGlobalSelectedCompanyId(company.id)
+                                                        router.push(`/dashboard/companies/${company.id}/settings`)
+                                                    }}
                                                     className="btn"
                                                     title={t('company_settings_title') || 'Settings'}
                                                     style={{

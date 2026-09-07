@@ -202,12 +202,10 @@ export default function NewTaskPage() {
             const tasks = rows.map(row => {
                 const title = row[0] || ''
                 const description = row[1] || ''
-                // Column C (row[2], "Employee Name") is a dropdown+display
-                // aid for the person filling the sheet — the actual value
-                // this parser trusts is column D, which either holds the
-                // VLOOKUP-computed username (cellToPrimitive already
-                // resolves a formula cell to its computed result) or
-                // whatever the person typed/appended by hand.
+                // Column C (row[2], "Employee Name") is a lookup-only dropdown
+                // for finding a username in the Users sheet — it doesn't feed
+                // this parser at all. The actual value is column D, always
+                // manually typed (comma-separated for multiple assignees).
                 const usernamesRaw = row[3] ? String(row[3]) : ''
                 const deadlineDateStr = row[4] // Column E
                 const deadlineTimeStr = row[5] // Column F
@@ -561,7 +559,11 @@ export default function NewTaskPage() {
                                 className={useVendor ? 'btn btn-primary' : 'btn'}
                                 style={{ padding: '0.35rem 0.9rem', fontSize: '0.8rem' }}
                             >
-                                {t('select_vendor' as any) || `Select a ${(session?.user as any)?.vendorsLabel || t('vendors')}`}
+                                {/* Composed directly from the custom label, not a
+                                    translation key — see vendors/page.tsx for why. */}
+                                {locale === 'ar'
+                                    ? `اختر ${(session?.user as any)?.vendorsLabel || t('vendors')}`
+                                    : `Select a ${(session?.user as any)?.vendorsLabel || t('vendors')}`}
                             </button>
                         </div>
                     )}

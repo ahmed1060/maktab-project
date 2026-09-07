@@ -21,6 +21,7 @@ interface Vendor {
     mobileNumber: string
     locationName: string
     locationLink: string | null
+    company?: { name: string }
 }
 
 type VendorFormState = {
@@ -55,6 +56,7 @@ export default function VendorsPage() {
     const [isEditing, setIsEditing] = useState(false)
 
     const [deleteConfirm, setDeleteConfirm] = useState<{ isOpen: boolean, vendor: Vendor | null }>({ isOpen: false, vendor: null })
+    const [addFormCompanyId, setAddFormCompanyId] = useState('')
 
     const vendorsLabel = (session?.user as any)?.vendorsLabel || t('vendors')
 
@@ -80,12 +82,13 @@ export default function VendorsPage() {
     }, [setTitle, setSubtitle, vendorsLabel])
 
     // Super Admin manages vendors for whichever company they've picked via
-    // the switcher — same pattern as Employees/Clients. No selection yet
-    // means no fetch at all rather than a 400 from the API.
-    const needsCompanySelection = userRole === 'SUPER_ADMIN' && !contextCompanyId
-    const vendorsQuery = needsCompanySelection
-        ? null
-        : (userRole === 'SUPER_ADMIN' ? `/api/vendors?companyId=${contextCompanyId}` : '/api/vendors')
+    // the switcher — same pattern as Employees/Clients. No selection means
+    // "all companies": an aggregate view (see the /api/vendors GET handler),
+    // not an error — matches how Clients handles the same case.
+    const isAllCompaniesView = userRole === 'SUPER_ADMIN' && !contextCompanyId
+    const vendorsQuery = userRole === 'SUPER_ADMIN'
+        ? (contextCompanyId ? `/api/vendors?companyId=${contextCompanyId}` : '/api/vendors')
+        : '/api/vendors'
     const { data: vendorsResult, isLoading, mutate: mutateVendors } = useSWR(vendorsQuery, fetcher)
     const allVendors: Vendor[] = vendorsResult?.data || []
     const vendors = allVendors.filter(v =>
@@ -93,16 +96,26 @@ export default function VendorsPage() {
         v.ownerName.toLowerCase().includes(searchQuery.toLowerCase())
     )
 
+    // Only Super Admin ever sees the aggregate view, so only Super Admin
+    // needs the full company list — for the Add form's company picker.
+    const companiesQuery = isAllCompaniesView ? '/api/companies?limit=1000' : null
+    const { data: companiesResult } = useSWR(companiesQuery, fetcher)
+    const companiesForPicker: { id: string, name: string }[] = (() => {
+        const raw = companiesResult?.data?.data || companiesResult?.data || companiesResult
+        return Array.isArray(raw) ? raw : []
+    })()
+
     const canManage = ['ADMIN', 'SUPER_ADMIN'].includes(userRole)
 
     const handleCreate = async (e: React.FormEvent) => {
         e.preventDefault()
         if (!addForm.name.trim() || !addForm.ownerName.trim() || !addForm.mobileNumber.trim() || !addForm.locationName.trim()) return
+        if (isAllCompaniesView && !addFormCompanyId) return
 
         setIsSubmitting(true)
         try {
             const payload: any = { ...addForm }
-            if (userRole === 'SUPER_ADMIN') payload.companyId = contextCompanyId
+            if (userRole === 'SUPER_ADMIN') payload.companyId = contextCompanyId || addFormCompanyId
 
             const res = await fetch('/api/vendors', {
                 method: 'POST',
@@ -112,9 +125,10 @@ export default function VendorsPage() {
 
             if (res.ok) {
                 setAddForm(emptyForm)
+                setAddFormCompanyId('')
                 setIsAddOpen(false)
                 mutateVendors()
-                showToast(t('vendor_created_success' as any) || 'Vendor added', 'success')
+                showToast(locale === 'ar' ? `تمت إضافة ${vendorsLabel}` : `${vendorsLabel} added`, 'success')
             } else {
                 const err = await res.json().catch(() => ({}))
                 showToast(err.error || t('error_generic'), 'error')
@@ -142,7 +156,7 @@ export default function VendorsPage() {
                 setIsEditOpen(false)
                 setEditingId(null)
                 mutateVendors()
-                showToast(t('vendor_updated_success' as any) || 'Vendor updated', 'success')
+                showToast(locale === 'ar' ? `تم تحديث ${vendorsLabel}` : `${vendorsLabel} updated`, 'success')
             } else {
                 const err = await res.json().catch(() => ({}))
                 showToast(err.error || t('error_generic'), 'error')
@@ -152,15 +166,6 @@ export default function VendorsPage() {
         } finally {
             setIsEditing(false)
         }
-    }
-
-    if (needsCompanySelection) {
-        return (
-            <div className="glass-card flex flex-col items-center justify-center py-16 text-center text-slate-500">
-                <span className="text-5xl mb-4">🏢</span>
-                <h3 className="text-xl font-bold text-slate-800">{t('select_company_prompt' as any) || 'Select a company to view its vendors'}</h3>
-            </div>
-        )
     }
 
     return (
@@ -185,7 +190,10 @@ export default function VendorsPage() {
                             className="btn btn-primary"
                             style={{ height: '48px', display: 'flex', alignItems: 'center', borderRadius: '1.25rem' }}
                         >
-                            {t('add_vendor' as any) || `Add ${vendorsLabel}`}
+                            {/* Composed directly from vendorsLabel, not a translation
+                                key — "add_vendor" always says "Vendor" in the dictionary,
+                                which would silently ignore a company's custom tab name. */}
+                            {locale === 'ar' ? `إضافة ${vendorsLabel}` : `Add ${vendorsLabel}`}
                         </button>
                     ) : undefined}
                 />
@@ -195,7 +203,9 @@ export default function VendorsPage() {
                 ) : vendors.length === 0 ? (
                     <div className="glass-card flex flex-col items-center justify-center py-16 text-center text-slate-500">
                         <span className="text-5xl mb-4">🚚</span>
-                        <h3 className="text-xl font-bold text-slate-800">{t('no_vendors_found' as any) || 'No vendors found'}</h3>
+                        <h3 className="text-xl font-bold text-slate-800">
+                            {locale === 'ar' ? `لا يوجد ${vendorsLabel}` : `No ${vendorsLabel} found`}
+                        </h3>
                     </div>
                 ) : (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
@@ -228,6 +238,16 @@ export default function VendorsPage() {
                                             {vendor.name}
                                         </h3>
                                         <div style={{ fontSize: '0.85rem', color: '#64748b', display: 'flex', flexWrap: 'wrap', gap: '0.25rem 0.75rem' }}>
+                                            {/* Only shown in the "all companies" view — vendor
+                                                names are only unique per company, so two
+                                                different companies can each have a vendor with
+                                                the same name and there's nothing else on the
+                                                card to tell them apart. */}
+                                            {isAllCompaniesView && vendor.company?.name && (
+                                                <span style={{ background: '#f1f5f9', color: '#475569', padding: '0.1rem 0.5rem', borderRadius: '9999px', fontWeight: 500 }}>
+                                                    🏢 {vendor.company.name}
+                                                </span>
+                                            )}
                                             <span>👤 {vendor.ownerName}</span>
                                             <span>📞 {vendor.mobileNumber}</span>
                                             {vendor.locationLink ? (
@@ -297,9 +317,31 @@ export default function VendorsPage() {
                     <div className="absolute inset-0" onClick={() => !isSubmitting && setIsAddOpen(false)} />
                     <div style={{ background: 'white', padding: '2rem', borderRadius: '12px', width: '100%', maxWidth: '500px', maxHeight: '90vh', overflowY: 'auto', position: 'relative', zIndex: 10, direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
                         <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1.5rem', color: '#1e293b' }}>
-                            {t('add_vendor' as any) || `Add ${vendorsLabel}`}
+                            {locale === 'ar' ? `إضافة ${vendorsLabel}` : `Add ${vendorsLabel}`}
                         </h2>
                         <form onSubmit={handleCreate}>
+                            {/* Only in the "all companies" view — with one company
+                                already selected via the switcher, that's the only
+                                sensible target and this would be redundant. */}
+                            {isAllCompaniesView && (
+                                <div style={{ marginBottom: '1rem' }}>
+                                    <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', color: '#64748b', textAlign: locale === 'ar' ? 'right' : 'left' }}>
+                                        {t('select_company' as any) || 'Select Company'}
+                                    </label>
+                                    <select
+                                        value={addFormCompanyId}
+                                        onChange={(e) => setAddFormCompanyId(e.target.value)}
+                                        className="input"
+                                        style={{ width: '100%', textAlign: locale === 'ar' ? 'right' : 'left' }}
+                                        autoFocus
+                                    >
+                                        <option value="">{t('select_company' as any) || 'Select Company'}</option>
+                                        {companiesForPicker.map(c => (
+                                            <option key={c.id} value={c.id}>{c.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                            )}
                             <VendorFormFields form={addForm} setForm={setAddForm} locale={locale} t={t} />
                             <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', marginTop: '1rem' }}>
                                 <button type="button" onClick={() => setIsAddOpen(false)} style={{ padding: '0.75rem 1.5rem', border: '1px solid #e2e8f0', borderRadius: '0.5rem', background: 'transparent', cursor: 'pointer' }}>
@@ -307,7 +349,7 @@ export default function VendorsPage() {
                                 </button>
                                 <button
                                     type="submit"
-                                    disabled={isSubmitting || !addForm.name.trim() || !addForm.ownerName.trim() || !addForm.mobileNumber.trim() || !addForm.locationName.trim()}
+                                    disabled={isSubmitting || !addForm.name.trim() || !addForm.ownerName.trim() || !addForm.mobileNumber.trim() || !addForm.locationName.trim() || (isAllCompaniesView && !addFormCompanyId)}
                                     className="btn btn-primary"
                                 >
                                     {isSubmitting ? t('creating') : t('create' as any) || 'Create'}
@@ -328,7 +370,7 @@ export default function VendorsPage() {
                     <div className="absolute inset-0" onClick={() => !isEditing && setIsEditOpen(false)} />
                     <div style={{ background: 'white', padding: '2rem', borderRadius: '12px', width: '100%', maxWidth: '500px', maxHeight: '90vh', overflowY: 'auto', position: 'relative', zIndex: 10, direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
                         <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1.5rem', color: '#1e293b' }}>
-                            {t('edit_vendor' as any) || `Edit ${vendorsLabel}`}
+                            {locale === 'ar' ? `تعديل ${vendorsLabel}` : `Edit ${vendorsLabel}`}
                         </h2>
                         <form onSubmit={handleEdit}>
                             <VendorFormFields form={editForm} setForm={setEditForm} locale={locale} t={t} />
@@ -352,7 +394,7 @@ export default function VendorsPage() {
 
             <ConfirmModal
                 isOpen={deleteConfirm.isOpen}
-                title={t('delete_vendor_title' as any) || `Delete ${vendorsLabel}`}
+                title={locale === 'ar' ? `حذف ${vendorsLabel}` : `Delete ${vendorsLabel}`}
                 message={`${t('delete_vendor_warning' as any) || 'Are you sure you want to delete'} ${deleteConfirm.vendor?.name}?`}
                 confirmText={t('delete')}
                 onConfirm={async () => {

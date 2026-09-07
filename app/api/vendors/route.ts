@@ -27,16 +27,21 @@ export const GET = withStandardHandler(async (req, session) => {
 
     let companyId: string | undefined
     if (userRole === 'SUPER_ADMIN') {
+        // No companyId means "all companies" — an aggregate view, not an
+        // error. The frontend uses this when the Super Admin hasn't picked
+        // one company via the switcher.
         companyId = searchParams.get('companyId') || undefined
-        if (!companyId) return ApiResponse.badRequest("companyId is required")
     } else {
         if (!userCompanyId) return ApiResponse.success([])
         companyId = userCompanyId
     }
 
     const vendors = await prisma.vendor.findMany({
-        where: { companyId },
-        orderBy: { name: 'asc' }
+        where: companyId ? { companyId } : {},
+        orderBy: { name: 'asc' },
+        // Only needed to label rows in the aggregate view — a non-Super-Admin
+        // request is always scoped to their own single company already.
+        ...(userRole === 'SUPER_ADMIN' ? { include: { company: { select: { name: true } } } } : {})
     })
 
     return ApiResponse.success(vendors)

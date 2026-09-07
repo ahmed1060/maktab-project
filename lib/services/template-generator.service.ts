@@ -79,17 +79,23 @@ export async function generateBulkTaskTemplate(baseBuffer: Buffer, locale: Local
     const vendorsLastRow = Math.max(vendors.length + 1, 2)
 
     for (let row = FIRST_DATA_ROW; row <= LAST_DATA_ROW; row++) {
-        // Column C: Employee Name dropdown, sourced from Users!A.
+        // Column C: Employee Name dropdown, sourced from Users!A. Deliberately
+        // NOT wired to auto-fill column D via a formula — a formula cell can't
+        // be "typed into afterward" the way a first cut of this assumed:
+        // editing it in Excel either replaces the formula outright or (in
+        // place, via double-click/F2) shows the raw formula text rather than
+        // the resolved username, so appending a second, comma-separated
+        // assignee never actually worked. This dropdown is a lookup aid only
+        // — pick a name here to find it in the Users sheet, then type the
+        // matching username(s) into column D yourself.
         mainSheet.getCell(`C${row}`).dataValidation = {
             type: 'list',
             allowBlank: true,
             formulae: [`Users!$A$2:$A$${usersLastRow}`]
         }
-        // Column D: Username, auto-filled from whichever name was picked in
-        // C — still a normal cell a person can type/append into afterward
-        // (e.g. ",anotherusername" for a multi-assignee task), this just
-        // seeds it.
-        mainSheet.getCell(`D${row}`).value = { formula: `IFERROR(VLOOKUP(C${row},Users!A:C,3,FALSE),"")` } as any
+        // Column D: Username — always a plain, manually-typed cell (comma-
+        // separated for a multi-assignee task), same as before the Employee
+        // Name dropdown existed.
         // Column H: Vendor Name dropdown, sourced from Vendors!A. Optional —
         // an empty cell just means no vendor for that row.
         mainSheet.getCell(`H${row}`).dataValidation = {

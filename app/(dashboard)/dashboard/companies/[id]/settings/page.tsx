@@ -158,30 +158,30 @@ export default function CompanySettingsPage() {
                     <p style={{ color: '#64748b' }}>{t('loading_data')}</p>
                 </div>
             ) : (
-                <div className="glass" style={{ padding: '1.5rem', borderRadius: '1rem', maxWidth: '32rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
-                    {/* Not a <label> wrapping the whole row on purpose — a label
-                        wrapping the description text means clicking anywhere in
-                        the row toggles a live setting, which is too easy to hit
-                        by accident. Only the checkbox itself is interactive. */}
-                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
-                        <input
-                            type="checkbox"
-                            checked={!!company?.autoVerifyLocation}
-                            disabled={savingSettings || !company}
-                            onChange={handleToggleAutoVerify}
-                            style={{ width: '1.1rem', height: '1.1rem', marginTop: '0.15rem', cursor: savingSettings ? 'not-allowed' : 'pointer', flexShrink: 0 }}
-                        />
-                        <div>
-                            <div style={{ fontWeight: 500 }}>{t('auto_verify_location_label') || 'Auto-verify submitted task locations'}</div>
-                            <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '0.15rem' }}>
-                                {t('auto_verify_location_hint') || 'When on, a location submitted within the system’s distance setting is marked correct automatically. When off, every submitted location needs manual review.'}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', maxWidth: '32rem' }}>
+                    <div className="glass" style={{ padding: '1.5rem', borderRadius: '1rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
+                        {/* Not a <label> wrapping the whole row on purpose — a label
+                            wrapping the description text means clicking anywhere in
+                            the row toggles a live setting, which is too easy to hit
+                            by accident. Only the checkbox itself is interactive. */}
+                        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
+                            <input
+                                type="checkbox"
+                                checked={!!company?.autoVerifyLocation}
+                                disabled={savingSettings || !company}
+                                onChange={handleToggleAutoVerify}
+                                style={{ width: '1.1rem', height: '1.1rem', marginTop: '0.15rem', cursor: savingSettings ? 'not-allowed' : 'pointer', flexShrink: 0 }}
+                            />
+                            <div>
+                                <div style={{ fontWeight: 500 }}>{t('auto_verify_location_label') || 'Auto-verify submitted task locations'}</div>
+                                <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '0.15rem' }}>
+                                    {t('auto_verify_location_hint') || 'When on, a location submitted within the system’s distance setting is marked correct automatically. When off, every submitted location needs manual review.'}
+                                </div>
                             </div>
                         </div>
                     </div>
 
-                    <div style={{ borderTop: '1px solid var(--glass-border, rgba(0,0,0,0.08))', margin: '1.5rem 0' }} />
-
-                    <div>
+                    <div className="glass" style={{ padding: '1.5rem', borderRadius: '1rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
                         <div style={{ fontWeight: 500, marginBottom: '0.15rem' }}>{t('vendors_label_setting') || 'Vendors tab label'}</div>
                         <div style={{ fontSize: '0.8rem', color: '#64748b', marginBottom: '0.75rem' }}>
                             {t('vendors_label_setting_hint') || 'Renames the "Vendors" tab for this company everywhere it appears. Leave blank to use the default.'}
