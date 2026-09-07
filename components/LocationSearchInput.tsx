@@ -114,6 +114,25 @@ export default function LocationSearchInput({ value, onChange, placeholder, labe
                         }
                     }}
                     onFocus={() => query.length >= 3 && setShowSuggestions(true)}
+                    onBlur={() => {
+                        // Typing a location HERE's autosuggest doesn't recognize
+                        // (an uncommon format, a placeholder name, a slow/failed
+                        // request) used to leave the parent's value untouched no
+                        // matter what was typed — onChange only ever fired from
+                        // handleSelect below or from clearing the field to empty.
+                        // That silently blocked submission everywhere this
+                        // component is used (Vendors, task creation, the bulk
+                        // review modal, task editing) with no error shown. Commit
+                        // whatever's typed on blur as a plain name (no map link,
+                        // since it was never verified against a real place) if it
+                        // differs from the last committed value. A suggestion
+                        // click never reaches this: the list below stops the
+                        // input from blurring at all when picking one.
+                        const trimmed = query.trim()
+                        if (trimmed && trimmed !== value.name) {
+                            onChange({ name: trimmed, link: '' })
+                        }
+                    }}
                     placeholder={placeholder}
                     style={{ width: '100%', paddingRight: loading ? '2rem' : '0.75rem' }}
                 />
@@ -142,6 +161,10 @@ export default function LocationSearchInput({ value, onChange, placeholder, labe
                     {suggestions.map((s, i) => (
                         <div
                             key={i}
+                            // Stops the input from blurring (and thus running the
+                            // onBlur commit above with the stale typed text)
+                            // before this click has a chance to run at all.
+                            onMouseDown={(e) => e.preventDefault()}
                             onClick={() => handleSelect(s)}
                             style={{
                                 padding: '0.75rem 1rem',

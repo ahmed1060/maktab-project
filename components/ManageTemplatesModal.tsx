@@ -74,16 +74,21 @@ export default function ManageTemplatesModal({ isOpen, onClose }: ManageTemplate
 
     return createPortal(
         <div className="modal-overlay" style={{ zIndex: 10000 }}>
-            <div className="modal-content glass" style={{ width: '90%', maxWidth: '550px' }}>
-                <div className="modal-header">
-                    <h2 className="modal-title">{t('manage_templates')}</h2>
+            {/* Overrides on header/body/footer padding below: the shared
+                .modal-* classes are sized for bigger dialogs elsewhere in
+                the app — at this modal's actual content (two short upload
+                rows), that padding plus the default 2rem section gap made
+                it look oversized and mostly empty space. */}
+            <div className="modal-content glass" style={{ width: '90%', maxWidth: '460px' }}>
+                <div className="modal-header" style={{ padding: '1.1rem 1.5rem' }}>
+                    <h2 className="modal-title" style={{ fontSize: '1.1rem' }}>{t('manage_templates')}</h2>
                     <button className="modal-close" onClick={handleClose}>×</button>
                 </div>
 
-                <div className="modal-body">
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-                        <div className="glass" style={{ padding: '1.25rem', background: 'rgba(255, 255, 255, 0.3)' }}>
-                            <label style={{ display: 'flex', alignItems: 'center', marginBottom: '1rem', fontWeight: '600', color: 'var(--text-main)' }}>
+                <div className="modal-body" style={{ padding: '1.25rem 1.5rem' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                        <div className="glass" style={{ padding: '1rem', background: 'rgba(255, 255, 255, 0.3)' }}>
+                            <label style={{ display: 'flex', alignItems: 'center', marginBottom: '0.75rem', fontWeight: '600', fontSize: '0.9rem', color: 'var(--text-main)' }}>
                                 <UKFlag /> {t('upload_en_template')}
                             </label>
                             <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
@@ -146,8 +151,8 @@ export default function ManageTemplatesModal({ isOpen, onClose }: ManageTemplate
                             )}
                         </div>
 
-                        <div className="glass" style={{ padding: '1.25rem', background: 'rgba(255, 255, 255, 0.3)' }}>
-                            <label style={{ display: 'flex', alignItems: 'center', marginBottom: '1rem', fontWeight: '600', color: 'var(--text-main)' }}>
+                        <div className="glass" style={{ padding: '1rem', background: 'rgba(255, 255, 255, 0.3)' }}>
+                            <label style={{ display: 'flex', alignItems: 'center', marginBottom: '0.75rem', fontWeight: '600', fontSize: '0.9rem', color: 'var(--text-main)' }}>
                                 <SAFlag /> {t('upload_ar_template')}
                             </label>
                             <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
@@ -211,14 +216,14 @@ export default function ManageTemplatesModal({ isOpen, onClose }: ManageTemplate
                         </div>
 
                         {!isAllCompaniesView && (
-                            <div style={{ fontSize: '0.8rem', color: '#64748b', textAlign: 'center' }}>
+                            <div style={{ fontSize: '0.75rem', color: '#64748b', textAlign: 'center' }}>
                                 {t('template_view_all_companies_only' as any) || 'Select "All Companies" to view the currently uploaded base templates.'}
                             </div>
                         )}
                     </div>
                 </div>
 
-                <div className="modal-footer" style={{ background: 'rgba(0, 0, 0, 0.03)' }}>
+                <div className="modal-footer" style={{ background: 'rgba(0, 0, 0, 0.03)', padding: '0.9rem 1.5rem' }}>
                     <button
                         className="btn"
                         disabled={!selectedCompanyId}
@@ -227,6 +232,8 @@ export default function ManageTemplatesModal({ isOpen, onClose }: ManageTemplate
                             background: 'rgba(255, 255, 255, 0.6)',
                             border: '1px solid var(--glass-border)',
                             flex: 1,
+                            fontSize: '0.85rem',
+                            padding: '0.5rem 0.75rem',
                             opacity: !selectedCompanyId ? 0.5 : 1,
                             cursor: !selectedCompanyId ? 'not-allowed' : 'pointer'
                         }}
@@ -234,7 +241,7 @@ export default function ManageTemplatesModal({ isOpen, onClose }: ManageTemplate
                     >
                         📥 {t('download_current_template')}
                     </button>
-                    <button className="btn btn-primary" onClick={handleClose} style={{ flex: 1 }}>
+                    <button className="btn btn-primary" onClick={handleClose} style={{ flex: 1, fontSize: '0.85rem', padding: '0.5rem 0.75rem' }}>
                         {t('cancel')}
                     </button>
                 </div>
@@ -255,8 +262,8 @@ function TemplateStatusRow({ status, locale, t }: {
 }) {
     return (
         <div style={{
-            marginTop: '0.75rem',
-            paddingTop: '0.75rem',
+            marginTop: '0.6rem',
+            paddingTop: '0.6rem',
             borderTop: '1px solid rgba(0,0,0,0.06)',
             display: 'flex',
             alignItems: 'center',

@@ -43,6 +43,12 @@ export default function NewTaskPage() {
     const { data: session } = useSession()
     const { selectedCompanyId } = useCompany()
     const userRole = (session?.user as any)?.role
+    const vendorsLabelText = (session?.user as any)?.vendorsLabel || t('vendors')
+    // Same role check as the vendors-fetch effect below — a role that was
+    // never going to see vendors either way (e.g. Employee, if this page
+    // is ever reached with that role) gets the plain location field only,
+    // same as always.
+    const canUseVendors = ['ADMIN', 'TEAM_LEADER', 'SUPER_ADMIN'].includes(userRole)
 
     useEffect(() => {
         const queryParams = new URLSearchParams()
@@ -558,8 +564,8 @@ export default function NewTaskPage() {
                     </div>
                 </div>
                 <div style={{ marginBottom: '1.25rem' }}>
-                    {vendors.length > 0 && (
-                        <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                    {canUseVendors && (
+                        <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
                             <button
                                 type="button"
                                 onClick={() => { setUseVendor(false); setVendorId('') }}
@@ -570,23 +576,45 @@ export default function NewTaskPage() {
                             </button>
                             <button
                                 type="button"
-                                onClick={() => { setUseVendor(true); setLocation(''); setLocationLink('') }}
+                                disabled={vendors.length === 0}
+                                onClick={() => {
+                                    if (vendors.length === 0) return
+                                    setUseVendor(true); setLocation(''); setLocationLink('')
+                                }}
                                 className={useVendor ? 'btn btn-primary' : 'btn'}
-                                style={{ padding: '0.35rem 0.9rem', fontSize: '0.8rem' }}
+                                style={{
+                                    padding: '0.35rem 0.9rem',
+                                    fontSize: '0.8rem',
+                                    opacity: vendors.length === 0 ? 0.5 : 1,
+                                    cursor: vendors.length === 0 ? 'not-allowed' : 'pointer'
+                                }}
+                                title={vendors.length === 0 ? (locale === 'ar' ? `لا يوجد ${vendorsLabelText} بعد` : `No ${vendorsLabelText} yet`) : ''}
                             >
                                 {/* Composed directly from the custom label, not a
                                     translation key — see vendors/page.tsx for why. */}
-                                {locale === 'ar'
-                                    ? `اختر ${(session?.user as any)?.vendorsLabel || t('vendors')}`
-                                    : `Select a ${(session?.user as any)?.vendorsLabel || t('vendors')}`}
+                                {locale === 'ar' ? `اختر ${vendorsLabelText}` : `Select a ${vendorsLabelText}`}
                             </button>
+                            {/* Always shown, not hidden, when there are zero vendors
+                                — the toggle used to disappear entirely in that case
+                                with no explanation and no way to discover the
+                                Vendors page from here. */}
+                            {vendors.length === 0 && (
+                                <a
+                                    href="/dashboard/vendors"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    style={{ fontSize: '0.75rem', color: '#3b82f6', textDecoration: 'none' }}
+                                >
+                                    {locale === 'ar' ? `+ إضافة ${vendorsLabelText}` : `+ Add a ${vendorsLabelText}`}
+                                </a>
+                            )}
                         </div>
                     )}
 
                     {useVendor ? (
                         <div>
                             <label style={{ display: 'block', marginBottom: '0.5rem' }}>
-                                {(session?.user as any)?.vendorsLabel || t('vendors')}
+                                {vendorsLabelText}
                             </label>
                             <select
                                 value={vendorId}
