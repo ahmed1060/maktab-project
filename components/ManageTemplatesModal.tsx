@@ -1,9 +1,12 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
+import useSWR from 'swr'
 import { useLanguage } from '@/context/LanguageContext'
 import { useToast } from '@/context/ToastContext'
 import { useCompany } from '@/context/CompanyContext'
+import { fetcher } from '@/lib/swr-fetcher'
+import SafeDate from '@/components/SafeDate'
 
 // F-23: extracted verbatim out of tasks/new/page.tsx, which had grown to
 // 1386 lines. This modal's state (the two selected files and their upload
@@ -48,6 +51,18 @@ export default function ManageTemplatesModal({ isOpen, onClose }: ManageTemplate
     const [arTemplateFile, setArTemplateFile] = useState<File | null>(null)
     const [isEnUploading, setIsEnUploading] = useState(false)
     const [isArUploading, setIsArUploading] = useState(false)
+
+    // Viewing the raw base file is exclusive to "All Companies" — it's the
+    // same file regardless of which company you'd pick, so showing it only
+    // there (rather than duplicating it under every single-company view)
+    // keeps it from being confused with the per-company generated template
+    // the footer button below already downloads.
+    const isAllCompaniesView = isOpen && !selectedCompanyId
+    const { data: statusResult, mutate: mutateStatus } = useSWR(
+        isAllCompaniesView ? '/api/templates/status' : null,
+        fetcher
+    )
+    const templateStatus: { en?: { exists: boolean, updatedAt: string | null }, ar?: { exists: boolean, updatedAt: string | null } } = statusResult?.data || {}
 
     const handleClose = () => {
         onClose()
@@ -107,6 +122,7 @@ export default function ManageTemplatesModal({ isOpen, onClose }: ManageTemplate
                                                 if (res.ok) {
                                                     showToast('English Template Updated', 'success')
                                                     setEnTemplateFile(null)
+                                                    mutateStatus()
                                                 } else {
                                                     showToast(result.error || 'Upload Failed', 'error')
                                                 }
@@ -121,6 +137,13 @@ export default function ManageTemplatesModal({ isOpen, onClose }: ManageTemplate
                                     </button>
                                 )}
                             </div>
+                            {isAllCompaniesView && (
+                                <TemplateStatusRow
+                                    status={templateStatus.en}
+                                    locale="en"
+                                    t={t}
+                                />
+                            )}
                         </div>
 
                         <div className="glass" style={{ padding: '1.25rem', background: 'rgba(255, 255, 255, 0.3)' }}>
@@ -163,6 +186,7 @@ export default function ManageTemplatesModal({ isOpen, onClose }: ManageTemplate
                                                 if (res.ok) {
                                                     showToast('Arabic Template Updated', 'success')
                                                     setArTemplateFile(null)
+                                                    mutateStatus()
                                                 } else {
                                                     showToast(result.error || 'Upload Failed', 'error')
                                                 }
@@ -177,7 +201,20 @@ export default function ManageTemplatesModal({ isOpen, onClose }: ManageTemplate
                                     </button>
                                 )}
                             </div>
+                            {isAllCompaniesView && (
+                                <TemplateStatusRow
+                                    status={templateStatus.ar}
+                                    locale="ar"
+                                    t={t}
+                                />
+                            )}
                         </div>
+
+                        {!isAllCompaniesView && (
+                            <div style={{ fontSize: '0.8rem', color: '#64748b', textAlign: 'center' }}>
+                                {t('template_view_all_companies_only' as any) || 'Select "All Companies" to view the currently uploaded base templates.'}
+                            </div>
+                        )}
                     </div>
                 </div>
 
@@ -204,5 +241,52 @@ export default function ManageTemplatesModal({ isOpen, onClose }: ManageTemplate
             </div>
         </div>,
         document.body
+    )
+}
+
+// "Currently uploaded" status for one locale — last-updated date plus a
+// button to actually view the raw file, so a Super Admin can confirm
+// what's live without re-uploading blindly. Only rendered in the "all
+// companies" view (see isAllCompaniesView above).
+function TemplateStatusRow({ status, locale, t }: {
+    status: { exists: boolean, updatedAt: string | null } | undefined
+    locale: 'en' | 'ar'
+    t: (key: any) => string
+}) {
+    return (
+        <div style={{
+            marginTop: '0.75rem',
+            paddingTop: '0.75rem',
+            borderTop: '1px solid rgba(0,0,0,0.06)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '0.5rem',
+            flexWrap: 'wrap'
+        }}>
+            <span style={{ fontSize: '0.78rem', color: '#64748b' }}>
+                {status?.exists ? (
+                    <>{t('template_last_updated' as any) || 'Last updated'}: <SafeDate date={status.updatedAt} format="short" locale={locale} /></>
+                ) : (
+                    t('template_not_uploaded_yet' as any) || 'Not uploaded yet'
+                )}
+            </span>
+            <button
+                type="button"
+                disabled={!status?.exists}
+                onClick={() => window.open(`/api/templates/raw?locale=${locale}`, '_blank')}
+                className="btn"
+                style={{
+                    background: 'rgba(255, 255, 255, 0.6)',
+                    padding: '0.3rem 0.7rem',
+                    fontSize: '0.78rem',
+                    border: '1px solid var(--glass-border)',
+                    opacity: status?.exists ? 1 : 0.5,
+                    cursor: status?.exists ? 'pointer' : 'not-allowed'
+                }}
+            >
+                👁 {t('view_current_template' as any) || 'View current template'}
+            </button>
+        </div>
     )
 }

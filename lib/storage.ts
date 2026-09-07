@@ -131,3 +131,18 @@ export async function downloadTemplateBuffer(locale: string): Promise<Buffer | n
     const arrayBuffer = await data.arrayBuffer()
     return Buffer.from(arrayBuffer)
 }
+
+// "Does a base template exist for this locale, and when was it last
+// uploaded" — for the Manage Templates modal's status display. Uses
+// list() rather than download(): it's metadata against the bucket index,
+// not a fetch of the file's actual bytes, so it stays cheap even though
+// this can be called every time that modal opens.
+export async function getTemplateMeta(locale: string): Promise<{ exists: boolean, updatedAt: string | null }> {
+    if (!supabase) return { exists: false, updatedAt: null }
+    const fileName = `template_${locale}.xlsx`
+    const { data, error } = await supabase.storage.from('app-assets').list('templates', { search: fileName })
+    if (error || !data) return { exists: false, updatedAt: null }
+    const entry = data.find((f: { name: string }) => f.name === fileName)
+    if (!entry) return { exists: false, updatedAt: null }
+    return { exists: true, updatedAt: entry.updated_at || entry.created_at || null }
+}
