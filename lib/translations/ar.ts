@@ -575,7 +575,7 @@ export const ar = {
         confirm_approval_title: "تأكيد الموافقة",
         confirm_rejection_title: "تأكيد الرفض",
         rejection_reason_label: "سبب الرفض",
-        rejection_reason_placeholder: "اذكر سبب رفض هذا الطلب (اختياري)",
+        rejection_reason_placeholder: "لماذا يتم رفض هذا الطلب؟ (اختياري)",
         rejected_reason_prefix: "سبب الرفض",
         confirm_task_action_msg: "أنت على وشك {action} هذه المهمة.",
         is_transferred_difficulty_hint: " يرجى تأكيد نقاط الصعوبة.",

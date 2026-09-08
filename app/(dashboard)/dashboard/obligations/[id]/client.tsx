@@ -5,6 +5,7 @@ import Modal from '@/components/Modal'
 import { useLanguage } from '@/context/LanguageContext'
 import SafeDate from '@/components/SafeDate'
 import { SESSION_EXPIRED_MESSAGE, redirectAfterSessionExpiry } from '@/lib/session-expired'
+import { RECURRENCE_STYLE } from '@/lib/recurrence'
 
 
 export default function ObligationDetailClient({ obligation, userRole, userId, userName, creatorName, creatorUnknown }: { obligation: any, userRole: string, userId: string, userName: string, creatorName: string | null, creatorUnknown: boolean }) {
@@ -32,6 +33,8 @@ export default function ObligationDetailClient({ obligation, userRole, userId, u
     const searchParams = useSearchParams()
     const highlightId = searchParams.get('highlight')
     const shouldHighlight = highlightId === obligation.id
+    const recurrenceStyle = obligation.recurrence ? RECURRENCE_STYLE[obligation.recurrence] : undefined
+
     const isOverdue = new Date(obligation.deadline) < new Date() && ['PENDING', 'IN_PROGRESS'].includes(obligation.status)
 
 
@@ -428,7 +431,7 @@ export default function ObligationDetailClient({ obligation, userRole, userId, u
             )}
 
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexDirection: 'row' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexDirection: 'row' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexDirection: 'row', flexWrap: 'wrap' }}>
                     <h1 style={{ margin: 0 }}>{obligation.title}</h1>
                     <span style={{
                         fontSize: '0.75rem',
@@ -460,6 +463,24 @@ export default function ObligationDetailClient({ obligation, userRole, userId, u
                     }}>
                         {obligation.difficulty} {t('points_label_plural')}
                     </span>
+                    {recurrenceStyle && (
+                        <span
+                            title={t('recurrence_label')}
+                            style={{
+                                padding: '0.25rem 0.75rem',
+                                borderRadius: '9999px',
+                                background: recurrenceStyle.bg,
+                                color: recurrenceStyle.color,
+                                fontWeight: 'bold',
+                                fontSize: '0.75rem',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                whiteSpace: 'nowrap'
+                            }}
+                        >
+                            {t(recurrenceStyle.labelKey as any)}
+                        </span>
+                    )}
                 </div>
                 <div style={{ display: 'flex', gap: '0.5rem', flexDirection: 'row' }}>
                     <button

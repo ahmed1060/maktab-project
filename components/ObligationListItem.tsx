@@ -4,18 +4,8 @@ import Link from 'next/link'
 import { useLanguage } from '@/context/LanguageContext'
 import Modal from './Modal'
 import SafeDate from './SafeDate'
+import { RECURRENCE_STYLE } from '@/lib/recurrence'
 
-
-// The ObligationRecurrence enum is ONE_TIME | DAILY | WEEKLY | MONTHLY |
-// YEARLY. An unrecognised value (or a row from before the column existed)
-// renders no badge rather than a broken translation key.
-const RECURRENCE_STYLE: Record<string, { bg: string; color: string; labelKey: string }> = {
-    ONE_TIME: { bg: '#f1f5f9', color: '#475569', labelKey: 'recurrence_one_time' },
-    DAILY: { bg: '#ffedd5', color: '#c2410c', labelKey: 'recurrence_daily' },
-    WEEKLY: { bg: '#e0f2fe', color: '#0369a1', labelKey: 'recurrence_weekly' },
-    MONTHLY: { bg: '#ede9fe', color: '#5b21b6', labelKey: 'recurrence_monthly' },
-    YEARLY: { bg: '#dcfce7', color: '#166534', labelKey: 'recurrence_yearly' },
-}
 
 interface ObligationListItemProps {
     obligation: {

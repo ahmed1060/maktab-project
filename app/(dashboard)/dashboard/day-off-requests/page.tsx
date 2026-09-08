@@ -830,10 +830,13 @@ export default function DayOffRequestsPage() {
                                 value={rejectionReason}
                                 onChange={(e) => setRejectionReason(e.target.value)}
                                 maxLength={300}
-                                rows={3}
                                 placeholder={t('rejection_reason_placeholder' as any)}
                                 className="input"
-                                style={{ width: '100%', resize: 'vertical', fontFamily: 'inherit' }}
+                                // .input pins height to 42px, which clips a
+                                // multi-line textarea and makes `rows` a no-op
+                                // — the request form's textarea overrides it
+                                // the same way.
+                                style={{ height: '90px', resize: 'none', lineHeight: '1.4' }}
                             />
                             <div style={{ fontSize: '0.75rem', color: '#94a3b8', textAlign: locale === 'ar' ? 'left' : 'right', marginTop: '0.25rem' }}>
                                 {rejectionReason.length}/300
