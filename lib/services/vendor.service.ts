@@ -25,7 +25,10 @@ export class VendorService {
                 locationName,
                 locationLink: locationLink || null,
                 companyId: targetCompanyId!,
-                createdById: userId
+                // Vendor.createdById's FK targets User only — a Super Admin's
+                // id lives in a separate table and would violate it. Same
+                // guard Task.create() already uses for the identical reason.
+                createdById: userRole === 'SUPER_ADMIN' ? null : userId
             }
         })
 

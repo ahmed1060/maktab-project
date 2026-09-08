@@ -39,9 +39,16 @@ export const GET = withStandardHandler(async (req, session) => {
     const vendors = await prisma.vendor.findMany({
         where: companyId ? { companyId } : {},
         orderBy: { name: 'asc' },
-        // Only needed to label rows in the aggregate view — a non-Super-Admin
-        // request is always scoped to their own single company already.
-        ...(userRole === 'SUPER_ADMIN' ? { include: { company: { select: { name: true } } } } : {})
+        include: {
+            // createdBy is null for a Super-Admin-created vendor (the FK
+            // only targets User) — the frontend shows a generic "Super
+            // Admin" label in that case rather than nothing.
+            createdBy: { select: { firstName: true, lastName: true } },
+            // Company name is only needed to label rows in the Super
+            // Admin's aggregate ("all companies") view — a non-Super-Admin
+            // request is always scoped to their own single company already.
+            ...(userRole === 'SUPER_ADMIN' ? { company: { select: { name: true } } } : {})
+        }
     })
 
     return ApiResponse.success(vendors)

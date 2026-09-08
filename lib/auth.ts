@@ -327,7 +327,16 @@ export const authOptions: NextAuthOptions = {
                 token.mfaEnabled = (user as any).mfaEnabled || false
                 token.userStatus = (user as any).userStatus
                 token.companyBanned = (user as any).companyBanned || false
-                token.maintenanceMode = false
+                // Read live, not hardcoded false — a session created while
+                // maintenance is already on must reflect that immediately.
+                // Previously this was seeded false unconditionally and only
+                // corrected on the first 60s-throttled refresh below, so a
+                // fresh login during active maintenance got a session that
+                // claimed maintenance was off and could write data through
+                // it — the one thing maintenance mode exists to prevent.
+                const signInSettings = await prisma.systemSettings.findUnique({ where: { id: 'default' }, select: { maintenanceMode: true, maintenanceMessage: true } })
+                token.maintenanceMode = signInSettings?.maintenanceMode || false
+                token.maintenanceMessage = signInSettings?.maintenanceMessage || null
                 // Seeded here so it's populated immediately rather than only
                 // after the first 60s-throttled refresh below; undefined for
                 // a SuperAdmin sign-in (SuperAdmin has no fixed "own company"

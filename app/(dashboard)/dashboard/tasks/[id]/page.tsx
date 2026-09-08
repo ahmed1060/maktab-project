@@ -44,8 +44,13 @@ export default async function TaskDetailPage({ params }: { params: { id: string 
         task.status = 'IN_PROGRESS' // Update local object for rendering
     }
 
-    // Fetch creator details
-    let creatorName = "Unknown"
+    // Fetch creator details. Task.createdBy has been null-for-Super-Admin
+    // since this feature shipped (the FK only targets User) — that's the
+    // only reason it's ever null, so `null` here unambiguously means
+    // "created by a Super Admin," not "we don't know." The client component
+    // renders that case as a localized "Super Admin" label instead of the
+    // literal name lookup below, which only runs for a real User id.
+    let creatorName: string | null = null
     if (task.createdBy) {
         const creator = await prisma.user.findUnique({
             where: { id: task.createdBy },

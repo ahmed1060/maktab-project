@@ -205,6 +205,7 @@ model User {
   company                    Company?                @relation(fields: [companyId], references: [id], onDelete: Cascade)
   tasks                      Task[]                  @relation("MultipleAssignees")
   obligations                Obligation[]            @relation("ObligationAssignees")
+  createdObligations         Obligation[]            @relation("ObligationCreatedBy")
 
   @@index([email])
   @@index([companyId])
@@ -365,6 +366,13 @@ model Obligation {
   companyId          String?
   company            Company?             @relation(fields: [companyId], references: [id], onDelete: Cascade)
   assignees          User[]               @relation("ObligationAssignees")
+  // Never captured before now — every row that existed before this column
+  // was added has this as NULL for that reason, not because a Super Admin
+  // made it. The app's own display logic accounts for that (see the
+  // ObligationDetailPage rollout-cutoff comment) rather than assuming NULL
+  // always means Super Admin, the way it safely can for Task/Vendor.
+  createdById        String?
+  createdBy          User?                @relation("ObligationCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
 
   @@index([status])
   @@index([companyId])

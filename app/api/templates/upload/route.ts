@@ -4,7 +4,10 @@ import { uploadTemplateToCloud } from "@/lib/storage"
 
 export const POST = withStandardHandler(async (req, session) => {
     if (session.user.role !== 'SUPER_ADMIN') {
-        return ApiResponse.unauthorized("Only Super Admins can upload templates")
+        // 403, not 401 — see the matching comment in /api/templates/status.
+        // Pre-existing bug, not introduced by the two routes above; fixed
+        // here too since it's the same class of issue.
+        return ApiResponse.forbidden("Only Super Admins can upload templates")
     }
 
     try {

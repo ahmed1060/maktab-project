@@ -12,7 +12,8 @@ import { NextResponse } from "next/server"
 // which is why it's Super-Admin-only, same as the upload endpoint itself.
 export const GET = withStandardHandler(async (req, session) => {
     if (session.user.role !== 'SUPER_ADMIN') {
-        return ApiResponse.unauthorized("Only Super Admins can view the base template")
+        // 403, not 401 — see the matching comment in /api/templates/status.
+        return ApiResponse.forbidden("Only Super Admins can view the base template")
     }
 
     const { searchParams } = new URL(req.url)

@@ -63,7 +63,11 @@ export class ObligationService {
                 recurrence: recurrence || 'ONE_TIME',
                 difficulty: difficulty || 0,
                 attachments: attachments ? JSON.stringify(attachments) : null,
-                status: 'PENDING'
+                status: 'PENDING',
+                // Obligation.createdById's FK targets User only — a Super
+                // Admin's id lives in a separate table. Same guard
+                // Task.create()/Vendor.create() use for the identical reason.
+                createdById: userRole === 'SUPER_ADMIN' ? null : session.user.id
             }
         })
     }
@@ -141,7 +145,12 @@ export class ObligationService {
             const updated = await tx.obligation.update({
                 where: { id },
                 data: updateData,
-                include: { assignees: true }
+                // select, not `assignees: true` — the latter pulls every User
+                // column, password hash and mfaSecret included, straight into
+                // this function's return value, which the API route sends to
+                // the client as-is. Only `.id` is ever read from this (the
+                // point-delta loop and the notification list below).
+                include: { assignees: { select: { id: true } } }
             })
 
             // 5. Point Delta Logic

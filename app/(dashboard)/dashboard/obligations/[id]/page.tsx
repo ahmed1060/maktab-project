@@ -29,6 +29,27 @@ export default async function ObligationDetailPage({ params }: { params: { id: s
     const hasAccess = await verifyResourceAccess(session, obligation.id, 'OBLIGATION')
     if (!hasAccess) return <AccessDenied />
 
+    // Fetch creator details. Unlike Task/Vendor, Obligation never captured
+    // a creator before its createdById column existed — every row from
+    // before that migration has createdById = NULL because the data was
+    // never recorded, not because a Super Admin made it. A fixed rollout
+    // cutoff (this migration's applied date) distinguishes that case
+    // ("genuinely unknown") from a real post-rollout Super Admin creation
+    // (also NULL, but for the same reason Task.createdBy/Vendor.createdById
+    // are — the FK only targets User).
+    const OBLIGATION_CREATED_BY_ROLLOUT = new Date('2026-09-08T00:00:00Z')
+    let creatorName: string | null = null
+    let creatorUnknown = false
+    if (obligation.createdById) {
+        const creator = await prisma.user.findUnique({
+            where: { id: obligation.createdById },
+            select: { firstName: true, lastName: true }
+        })
+        if (creator) creatorName = `${creator.firstName} ${creator.lastName}`
+    } else if (obligation.createdAt < OBLIGATION_CREATED_BY_ROLLOUT) {
+        creatorUnknown = true
+    }
+
     // Auto-update status to IN_PROGRESS if viewed by any assignee
     const isAssignee = obligation.assignees.some(u => u.id === userId)
     if (obligation.status === 'PENDING' && isAssignee) {
@@ -44,5 +65,7 @@ export default async function ObligationDetailPage({ params }: { params: { id: s
         userRole={(session?.user as any)?.role}
         userId={userId || ''}
         userName={(session?.user as any)?.name || ''}
+        creatorName={creatorName}
+        creatorUnknown={creatorUnknown}
     />
 }

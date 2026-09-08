@@ -15,7 +15,7 @@ import TaskTransferModal from '@/components/TaskTransferModal'
 import TaskConfirmModals from '@/components/TaskConfirmModals'
 import { SESSION_EXPIRED_MESSAGE, redirectAfterSessionExpiry } from '@/lib/session-expired'
 
-export default function TaskDetailClient({ task: initialTask, userRole, userId, creatorName, isRestricted }: { task: any, userRole: string, userId: string, creatorName: string, currentUserName: string, isRestricted: boolean }) {
+export default function TaskDetailClient({ task: initialTask, userRole, userId, creatorName, isRestricted }: { task: any, userRole: string, userId: string, creatorName: string | null, currentUserName: string, isRestricted: boolean }) {
     const { t, locale } = useLanguage()
 
     // Parse member costs and payment status
@@ -913,7 +913,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
             })()}
 
             <div style={{ marginTop: '1rem', color: '#64748b', fontSize: '0.9rem' }}>
-                {t('assigned_by')}: <strong>{creatorName}</strong> | {t('deadline_label')}: <strong>{new Date(task.deadline).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' }) + ' ' + new Date(task.deadline).toLocaleDateString(locale === 'ar' ? 'ar-EG' : 'en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</strong>
+                {t('assigned_by')}: <strong>{creatorName || t('role_super_admin')}</strong> | {t('deadline_label')}: <strong>{new Date(task.deadline).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' }) + ' ' + new Date(task.deadline).toLocaleDateString(locale === 'ar' ? 'ar-EG' : 'en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</strong>
             </div>
             <div style={{ marginTop: '0.5rem', color: '#64748b', fontSize: '0.9rem' }}>
                 {t('assignee_label')}: {task.assignees?.length > 0 ? (

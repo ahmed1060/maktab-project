@@ -7,7 +7,7 @@ import SafeDate from '@/components/SafeDate'
 import { SESSION_EXPIRED_MESSAGE, redirectAfterSessionExpiry } from '@/lib/session-expired'
 
 
-export default function ObligationDetailClient({ obligation, userRole, userId, userName }: { obligation: any, userRole: string, userId: string, userName: string }) {
+export default function ObligationDetailClient({ obligation, userRole, userId, userName, creatorName, creatorUnknown }: { obligation: any, userRole: string, userId: string, userName: string, creatorName: string | null, creatorUnknown: boolean }) {
     const { t, locale } = useLanguage()
     const [uploading, setUploading] = useState(false)
     const [loadingType, setLoadingType] = useState<'DRAFT' | 'SUBMIT' | null>(null)
@@ -497,7 +497,7 @@ export default function ObligationDetailClient({ obligation, userRole, userId, u
             <p style={{ fontSize: '1.1rem', margin: '1rem 0' }}>{obligation.description}</p>
 
             <div style={{ marginTop: '1rem', color: '#64748b' }}>
-                {t('deadline_label')}: <SafeDate date={obligation.deadline} locale={locale} showTime />
+                {t('assigned_by')}: <strong>{creatorName || (creatorUnknown ? t('assigned_by_unknown') : t('role_super_admin'))}</strong> | {t('deadline_label')}: <SafeDate date={obligation.deadline} locale={locale} showTime />
             </div>
 
             {/* Existing Attachments */}

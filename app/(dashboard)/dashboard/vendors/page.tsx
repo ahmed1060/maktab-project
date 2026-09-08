@@ -22,6 +22,7 @@ interface Vendor {
     locationName: string
     locationLink: string | null
     company?: { name: string }
+    createdBy: { firstName: string, lastName: string } | null
 }
 
 type VendorFormState = {
@@ -257,6 +258,16 @@ export default function VendorsPage() {
                                             ) : (
                                                 <span>📍 {vendor.locationName}</span>
                                             )}
+                                        </div>
+                                        {/* createdBy is null for a Super-Admin-created
+                                            vendor (the FK only targets User, not
+                                            SuperAdmin) — shown generically rather than
+                                            omitted, matching how the Audit Logs page
+                                            already labels the same action there (with
+                                            the actual Super Admin's name, since that
+                                            page resolves it from the audit trail). */}
+                                        <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '0.1rem' }}>
+                                            {t('vendor_created_by' as any) || 'Created by'}: {vendor.createdBy ? `${vendor.createdBy.firstName} ${vendor.createdBy.lastName}` : t('role_super_admin')}
                                         </div>
                                     </div>
 

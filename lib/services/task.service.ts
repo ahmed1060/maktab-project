@@ -405,7 +405,12 @@ export class TaskService {
             const task = await tx.task.update({
                 where: { id },
                 data: { status: newStatus, difficulty: newDifficulty, lastStatusUpdateBy: `${userRole} ${session.user.name}` },
-                include: { assignees: true }
+                // select, not `assignees: true` — the latter pulls every User
+                // column, password hash and mfaSecret included, straight into
+                // this function's return value, which the API route sends to
+                // the client as-is. Only `.length` (line below) and `.id`
+                // (the point-delta update above) are ever read from this.
+                include: { assignees: { select: { id: true } } }
             })
 
             if (pointDelta !== 0) {
