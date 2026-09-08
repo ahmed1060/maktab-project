@@ -7,8 +7,8 @@ import { en } from '@/lib/translations/en'
 import { ar } from '@/lib/translations/ar'
 
 export const metadata = {
-  title: 'Task Manager',
-  description: 'Employee Task Management System',
+  title: 'Nizmo',
+  description: 'Operations platform for companies — tasks, workforce, leave, payroll and clients in one system.',
 }
 
 export default function RootLayout({

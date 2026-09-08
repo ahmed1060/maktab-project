@@ -5,7 +5,7 @@
 // lib/translations/index.ts.
 export const en = {
         welcome_back: "Welcome Back",
-        task_manager: "Task Manager",
+        app_name: "Nizmo",
         sign_in_subtitle: "Sign in to continue to your dashboard",
         email: "Email",
         password: "Password",

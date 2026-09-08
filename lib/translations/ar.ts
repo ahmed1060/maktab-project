@@ -1,7 +1,7 @@
 // F-24: split out of the former lib/translations.ts — see en.ts.
 export const ar = {
         welcome_back: "مرحباً بك مجدداً",
-        task_manager: "مدير المهام",
+        app_name: "Nizmo",
         sign_in_subtitle: "قم بتسجيل الدخول للمتابعة إلى لوحة التحكم الخاصة بك",
         email: "البريد الإلكتروني",
         password: "كلمة المرور",
