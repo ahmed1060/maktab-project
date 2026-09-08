@@ -195,7 +195,7 @@ export class DayOffService {
         })
     }
 
-    static async reject(id: string, session: any) {
+    static async reject(id: string, session: any, rejectionReason?: string) {
         const userRole = session.user.role
         const requestToUpdate = await prisma.dayOffRequest.findUnique({
             where: { id },
@@ -209,9 +209,13 @@ export class DayOffService {
             throw new Error("ACCESS_DENIED")
         }
 
+        // An empty textarea arrives as "" — store null so the UI's
+        // "was a reason given?" check is a simple truthiness test.
+        const trimmedReason = rejectionReason?.trim() || null
+
         const result = await prisma.dayOffRequest.update({
             where: { id },
-            data: { status: 'REJECTED' }
+            data: { status: 'REJECTED', rejectionReason: trimmedReason }
         })
 
         const { AuditLogService } = await import("./audit-log.service")
@@ -220,7 +224,8 @@ export class DayOffService {
             superAdminId: userRole === 'SUPER_ADMIN' ? (session.user as any).id : null,
             details: {
                 date: requestToUpdate.date,
-                userName: requestToUpdate.user.firstName + (requestToUpdate.user.lastName ? ' ' + requestToUpdate.user.lastName : '')
+                userName: requestToUpdate.user.firstName + (requestToUpdate.user.lastName ? ' ' + requestToUpdate.user.lastName : ''),
+                rejectionReason: trimmedReason
             }
         })
 
@@ -228,7 +233,7 @@ export class DayOffService {
             data: {
                 userId: requestToUpdate.userId,
                 type: 'DAY_OFF_RESULT',
-                message: `Your day off request for ${new Date(requestToUpdate.date).toLocaleDateString()} has been rejected.`,
+                message: `Your day off request for ${new Date(requestToUpdate.date).toLocaleDateString()} has been rejected.${trimmedReason ? ` Reason: ${trimmedReason}` : ''}`,
                 relatedId: id
             }
         })

@@ -502,6 +502,11 @@ model DayOffRequest {
   daysDeducted  Float?     @default(0)
   endDate       DateTime?
   deductionType String     @default("CREDIT")
+  // Set by the admin/super admin when they reject the request. Distinct from
+  // `reason`, which is the employee's own justification for asking. Null on
+  // every row rejected before this column existed, and on any request that
+  // was rejected without one being typed.
+  rejectionReason String?
   user          User       @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([status])

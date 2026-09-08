@@ -34,6 +34,7 @@ interface DayOffRequest {
     type: 'REGULAR' | 'SICK' | 'EMERGENCY' | 'UNPAID' | 'CASUAL'
     status: 'PENDING' | 'APPROVED' | 'REJECTED'
     reason: string | null
+    rejectionReason?: string | null
     date: string
     endDate?: string | null
     daysDeducted: number
@@ -60,6 +61,7 @@ export default function DayOffRequestsPage() {
     const [isRequestModalOpen, setIsRequestModalOpen] = useState(false)
     const [daysToDeduct, setDaysToDeduct] = useState('')
     const [deductionType, setDeductionType] = useState<'CREDIT' | 'SALARY'>('CREDIT')
+    const [rejectionReason, setRejectionReason] = useState('')
 
     // New Request Form State
     const [reqDate, setReqDate] = useState('')
@@ -231,6 +233,7 @@ export default function DayOffRequestsPage() {
             setDaysToDeduct(days.toString())
             setIsApprovalModalOpen(true)
         } else if (status === 'REJECTED') {
+            setRejectionReason('')
             setIsRejectModalOpen(true)
         }
     }
@@ -240,7 +243,14 @@ export default function DayOffRequestsPage() {
             const res = await fetch(`/api/admin/day-off-requests/${requestId}`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ status, daysToDeduct: deduction, deductionType: type })
+                body: JSON.stringify({
+                    status,
+                    daysToDeduct: deduction,
+                    deductionType: type,
+                    // Only sent on a rejection; the schema caps it at 300 chars
+                    // and treats an empty string as "no reason given".
+                    ...(status === 'REJECTED' ? { rejectionReason: rejectionReason.trim() } : {})
+                })
             })
             if (res.ok) {
                 showAlert('success', t('request_action_success' as any))
@@ -526,6 +536,23 @@ export default function DayOffRequestsPage() {
                                                 {t('no_reason_provided')}
                                             </p>
                                         )}
+                                        {req.status === 'REJECTED' && req.rejectionReason && (
+                                            <div style={{
+                                                fontSize: '0.85rem',
+                                                color: '#991b1b',
+                                                lineHeight: '1.5',
+                                                background: '#fef2f2',
+                                                border: '1px solid #fecaca',
+                                                padding: '0.75rem',
+                                                borderRadius: '0.75rem',
+                                                maxHeight: '80px',
+                                                overflowY: 'auto',
+                                                overflowWrap: 'anywhere',
+                                                scrollbarWidth: 'thin'
+                                            }}>
+                                                <strong>{t('rejected_reason_prefix' as any)}:</strong> {req.rejectionReason}
+                                            </div>
+                                        )}
                                         <div style={{
                                             fontSize: '0.75rem',
                                             color: '#94a3b8',
@@ -794,6 +821,24 @@ export default function DayOffRequestsPage() {
                         <p style={{ marginBottom: '1.5rem', color: '#64748b' }}>
                             {t('are_you_sure_msg' as any)} {t('reject_button')} {selectedRequest.user?.firstName} {selectedRequest.user?.lastName}?
                         </p>
+                        <div style={{ marginBottom: '1.5rem' }}>
+                            <label htmlFor="rejectionReason" style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: 600 }}>
+                                {t('rejection_reason_label' as any)}
+                            </label>
+                            <textarea
+                                id="rejectionReason"
+                                value={rejectionReason}
+                                onChange={(e) => setRejectionReason(e.target.value)}
+                                maxLength={300}
+                                rows={3}
+                                placeholder={t('rejection_reason_placeholder' as any)}
+                                className="input"
+                                style={{ width: '100%', resize: 'vertical', fontFamily: 'inherit' }}
+                            />
+                            <div style={{ fontSize: '0.75rem', color: '#94a3b8', textAlign: locale === 'ar' ? 'left' : 'right', marginTop: '0.25rem' }}>
+                                {rejectionReason.length}/300
+                            </div>
+                        </div>
                         <div style={{ display: 'flex', gap: '1rem' }}>
                             <button
                                 onClick={() => processAction(selectedRequest.id, 'REJECTED')}

@@ -6,6 +6,17 @@ import Modal from './Modal'
 import SafeDate from './SafeDate'
 
 
+// The ObligationRecurrence enum is ONE_TIME | DAILY | WEEKLY | MONTHLY |
+// YEARLY. An unrecognised value (or a row from before the column existed)
+// renders no badge rather than a broken translation key.
+const RECURRENCE_STYLE: Record<string, { bg: string; color: string; labelKey: string }> = {
+    ONE_TIME: { bg: '#f1f5f9', color: '#475569', labelKey: 'recurrence_one_time' },
+    DAILY: { bg: '#ffedd5', color: '#c2410c', labelKey: 'recurrence_daily' },
+    WEEKLY: { bg: '#e0f2fe', color: '#0369a1', labelKey: 'recurrence_weekly' },
+    MONTHLY: { bg: '#ede9fe', color: '#5b21b6', labelKey: 'recurrence_monthly' },
+    YEARLY: { bg: '#dcfce7', color: '#166534', labelKey: 'recurrence_yearly' },
+}
+
 interface ObligationListItemProps {
     obligation: {
         id: string
@@ -20,6 +31,7 @@ interface ObligationListItemProps {
         createdAt: Date | string
         lastStatusUpdateBy?: string
         difficulty: number
+        recurrence?: string | null
     }
     isHighlighted?: boolean
 }
@@ -39,6 +51,8 @@ export default function ObligationListItem({ obligation, isHighlighted }: Obliga
         return t('open_obligation')
     }
 
+    const recurrenceStyle = obligation.recurrence ? RECURRENCE_STYLE[obligation.recurrence] : undefined
+
     const isOverdue = new Date(obligation.deadline) < new Date() && !['COMPLETED', 'APPROVED', 'REJECTED'].includes(obligation.status)
 
     return (
@@ -47,7 +61,7 @@ export default function ObligationListItem({ obligation, isHighlighted }: Obliga
             borderColor: isOverdue ? '#fecaca' : undefined
         }}>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
                     <h3
                         style={{ margin: 0, cursor: 'pointer', transition: 'color 0.2s', color: 'inherit' }}
                         title={obligation.title}
@@ -67,6 +81,22 @@ export default function ObligationListItem({ obligation, isHighlighted }: Obliga
                     }}>
                         {obligation.difficulty} {t('pts')}
                     </span>
+                    {recurrenceStyle && (
+                        <span
+                            title={t('recurrence_label')}
+                            style={{
+                                padding: '0.15rem 0.5rem',
+                                borderRadius: '0.5rem',
+                                background: recurrenceStyle.bg,
+                                color: recurrenceStyle.color,
+                                fontWeight: 'bold',
+                                fontSize: '0.7rem',
+                                whiteSpace: 'nowrap'
+                            }}
+                        >
+                            {t(recurrenceStyle.labelKey as any)}
+                        </span>
+                    )}
                 </div>
                 <span style={{
                     fontSize: '0.75rem',

@@ -23,7 +23,7 @@ export const PATCH = withStandardHandler(async (req, session, json, { params }) 
         if (status === 'APPROVED') {
             result = await DayOffService.approve(params.id, validation.data, session)
         } else {
-            result = await DayOffService.reject(params.id, session)
+            result = await DayOffService.reject(params.id, session, validation.data.rejectionReason)
         }
 
         return ApiResponse.success(result)

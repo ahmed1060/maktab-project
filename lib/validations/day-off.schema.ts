@@ -16,6 +16,10 @@ export const adminUpdateDayOffSchema = z.object({
     status: z.enum(['APPROVED', 'REJECTED']),
     daysToDeduct: z.union([z.number(), z.string()]).optional(),
     deductionType: z.enum(['CREDIT', 'SALARY']).optional(),
+    // Only meaningful when status is REJECTED. Optional so an admin can still
+    // reject without typing anything; longer than the employee's own `reason`
+    // because it is an explanation rather than a one-line request.
+    rejectionReason: z.string().max(300, "Rejection reason must be 300 characters or less").optional(),
 })
 
 export type CreateDayOffInput = z.infer<typeof createDayOffSchema>
