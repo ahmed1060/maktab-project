@@ -1,8 +1,25 @@
 import { describe, it, expect } from "vitest"
-import { MODULE_KEYS, MODULES, isModuleKey, parseModuleOverrides } from "./modules"
+import {
+    MANAGEMENT_MODULES,
+    MENU_MODULES,
+    MODULE_KEYS,
+    MODULES,
+    emptyToNull,
+    isModuleKey,
+    isValidModuleIcon,
+    moduleForTitleKey,
+    modulesFrom,
+    parseModuleIcons,
+    parseModuleOverrides,
+    planOverrideWrite,
+    resolveModuleIcon,
+    resolveModuleLabel,
+    sameOverrides,
+} from "./modules"
 import { en } from "@/lib/translations/en"
 import { ar } from "@/lib/translations/ar"
 import { readFileSync } from "node:fs"
+import { resolveTitleKey } from "./page-title"
 
 describe("the module registry", () => {
     it("covers the nine company-facing modules and no more", () => {
@@ -46,17 +63,33 @@ describe("the module registry", () => {
         expect(new Set(icons).size).toBe(icons.length)
     })
 
-    it("matches what the sidebar actually renders today", () => {
-        // The registry is only useful if it describes the real nav. This reads
-        // the component rather than trusting the constant.
+    it("is the only place the sidebar's module entries are written", () => {
+        // E1 asserted the registry matched a sidebar that still spelled its own
+        // entries out. E2 made the sidebar read the registry, so the thing worth
+        // guarding flipped: no module may reappear as a literal in the nav, or
+        // renaming it would silently stop working for that one entry.
         const shell = readFileSync("components/DashboardShell.tsx", "utf8")
         for (const key of MODULE_KEYS) {
-            const { href, icon, labelKey } = MODULES[key]
-            const line = shell.split("\n").find(l => l.includes(`href: '${href}'`))
-            expect(line, `no sidebar entry for ${href}`).toBeDefined()
-            expect(line, `${key}: icon drifted from the sidebar`).toContain(icon)
-            expect(line, `${key}: label key drifted from the sidebar`).toContain(`t('${labelKey}')`)
+            const { href, labelKey } = MODULES[key]
+            expect(shell, `${key}: sidebar hardcodes href ${href}`).not.toContain(`href: '${href}'`)
+            expect(shell, `${key}: sidebar hardcodes label ${labelKey}`).not.toContain(`t('${labelKey}')`)
         }
+    })
+
+    it("splits every module into exactly one sidebar group", () => {
+        // The Company Settings preview renders these same two arrays. A module
+        // missing from both would be invisible there and in the real sidebar;
+        // one in both would appear twice in each.
+        const grouped = [...MENU_MODULES, ...MANAGEMENT_MODULES]
+        expect(new Set(grouped).size, "a module is in both groups").toBe(grouped.length)
+        expect([...grouped].sort()).toEqual([...MODULE_KEYS].sort())
+    })
+
+    it("gives every module a distinct label key", () => {
+        // moduleForTitleKey answers with whichever module claimed a key last, so
+        // two modules sharing one would make a tab title silently wrong.
+        const keys = MODULE_KEYS.map(k => MODULES[k].labelKey)
+        expect(new Set(keys).size).toBe(keys.length)
     })
 })
 
@@ -96,5 +129,251 @@ describe("parsing overrides out of an untyped Json column", () => {
     it("survives the backfill's exact shape", () => {
         // What the migration wrote for all four live companies.
         expect(parseModuleOverrides({ vendors: "Clinics" })).toEqual({ vendors: "Clinics" })
+    })
+})
+
+// A stand-in for the app's `t`, which returns the English string for a key.
+const t = ((key: string) => (en as Record<string, string>)[key]) as (key: any) => string
+
+describe("resolving a module's name and icon", () => {
+    it("falls back to the translated default when nothing is overridden", () => {
+        expect(resolveModuleLabel("vendors", {}, t)).toBe(en.vendors)
+        expect(resolveModuleLabel("vendors", null, t)).toBe(en.vendors)
+        expect(resolveModuleIcon("vendors", null)).toBe("🚚")
+    })
+
+    it("prefers the company's own name and icon", () => {
+        expect(resolveModuleLabel("vendors", { vendors: "Suppliers" }, t)).toBe("Suppliers")
+        expect(resolveModuleIcon("vendors", { vendors: "🏥" })).toBe("🏥")
+    })
+
+    it("treats an empty override as no override, not as a blank name", () => {
+        // parseModuleOverrides already drops these, but the resolvers are also
+        // called with maps straight off a form, which has not.
+        expect(resolveModuleLabel("clients", { clients: "" }, t)).toBe(en.clients)
+        expect(resolveModuleIcon("clients", { clients: "" })).toBe("🤝")
+    })
+
+    it("renames a module in every locale, because a name is not a translation", () => {
+        // A company that calls Clients "Patients" calls them that in Arabic too:
+        // there is no Arabic translation of a name this company invented.
+        const arT = ((key: string) => (ar as Record<string, string>)[key]) as (key: any) => string
+        expect(resolveModuleLabel("clients", { clients: "Patients" }, arT)).toBe("Patients")
+        expect(resolveModuleLabel("clients", {}, arT)).toBe(ar.clients)
+    })
+})
+
+describe("modulesFrom", () => {
+    it("reads both maps off a session user and answers for any module", () => {
+        const modules = modulesFrom(
+            { moduleLabels: { vendors: "Suppliers" }, moduleIcons: { vendors: "🏥" } },
+            t
+        )
+        expect(modules.entry("vendors")).toEqual({
+            key: "vendors",
+            href: "/dashboard/vendors",
+            label: "Suppliers",
+            icon: "🏥",
+        })
+        expect(modules.entry("tasks")).toEqual({
+            key: "tasks",
+            href: "/dashboard/tasks",
+            label: en.tasks,
+            icon: "✅",
+        })
+    })
+
+    it("answers with defaults for a Super Admin, who belongs to no company", () => {
+        const modules = modulesFrom(undefined, t)
+        for (const key of MODULE_KEYS) {
+            expect(modules.label(key)).toBe((en as Record<string, string>)[MODULES[key].labelKey])
+            expect(modules.icon(key)).toBe(MODULES[key].icon)
+        }
+    })
+
+    it("ignores an icon override that is not an emoji", () => {
+        // The write path rejects these, but a row predating that validation —
+        // or written by anything other than this app — must not put the word
+        // "Vendors" where a 1.4rem glyph belongs.
+        const modules = modulesFrom({ moduleIcons: { vendors: "VEND" } }, t)
+        expect(modules.icon("vendors")).toBe("🚚")
+    })
+})
+
+describe("validating an icon", () => {
+    it("accepts a plain emoji", () => {
+        for (const emoji of ["🚚", "🤝", "📊", "🌴"]) {
+            expect(isValidModuleIcon(emoji), emoji).toBe(true)
+        }
+    })
+
+    it("accepts emoji built out of several code points", () => {
+        // A variation selector, a flag, a ZWJ sequence and a skin tone are all
+        // longer than one UTF-16 unit; rejecting them would rule out most of
+        // what an admin would actually paste.
+        for (const emoji of ["🛡️", "🇪🇬", "🧑‍💼", "👍🏽", "👨‍👩‍👧‍👦"]) {
+            expect(isValidModuleIcon(emoji), emoji).toBe(true)
+        }
+    })
+
+    it("rejects text, punctuation and whitespace", () => {
+        for (const bad of ["", "V", "Vendors", "...", "→", "🚚 trucks", " ", "🚚 "]) {
+            expect(isValidModuleIcon(bad), JSON.stringify(bad)).toBe(false)
+        }
+    })
+
+    it("rejects a pasted essay even if it starts with an emoji", () => {
+        expect(isValidModuleIcon("🚚".repeat(9))).toBe(false)
+    })
+})
+
+describe("parsing icon overrides", () => {
+    it("keeps valid emoji and drops everything else", () => {
+        expect(parseModuleIcons({ vendors: "🏥", clients: "Patients", tasks: "" }))
+            .toEqual({ vendors: "🏥" })
+    })
+
+    it("drops unknown modules the same way labels do", () => {
+        expect(parseModuleIcons({ superAdmins: "🛡️", costs: "🏦" })).toEqual({ costs: "🏦" })
+    })
+})
+
+describe("storing overrides", () => {
+    it("stores an empty map as no overrides at all", () => {
+        // So a company that cleared every rename reads back identical to one
+        // that never renamed anything.
+        expect(emptyToNull({})).toBeNull()
+        expect(emptyToNull({ vendors: "Suppliers" })).toEqual({ vendors: "Suppliers" })
+    })
+
+    it("compares two maps by what they say, not by key order", () => {
+        expect(sameOverrides({ vendors: "S", tasks: "J" }, { tasks: "J", vendors: "S" })).toBe(true)
+        expect(sameOverrides(null, {})).toBe(true)
+        expect(sameOverrides(null, { vendors: "S" })).toBe(false)
+        expect(sameOverrides({ vendors: "S" }, { vendors: "T" })).toBe(false)
+        expect(sameOverrides({ vendors: "S" }, {})).toBe(false)
+    })
+})
+
+describe("mapping a tab title back to a module", () => {
+    it("answers for every module's own label key", () => {
+        for (const key of MODULE_KEYS) {
+            expect(moduleForTitleKey(MODULES[key].labelKey), key).toBe(key)
+        }
+    })
+
+    it("answers null for routes that are not modules", () => {
+        // These keep their translated names: a company renaming Requests has
+        // not renamed the Audit Log, and "History" names a view, not a module.
+        for (const key of ["history", "audit_logs", "system_health", "packages", null, undefined, ""]) {
+            expect(moduleForTitleKey(key), String(key)).toBeNull()
+        }
+    })
+
+    it("covers every module key the route table actually produces", () => {
+        // page-title.ts and this registry are two tables that have to agree; a
+        // module whose route resolves to a key nothing here claims would show
+        // the default name in the browser tab while the sidebar showed the
+        // custom one.
+        for (const key of MODULE_KEYS) {
+            const { href, labelKey } = MODULES[key]
+            expect(resolveTitleKey(href), `${key}: ${href}`).toBe(labelKey)
+        }
+    })
+})
+
+describe("deciding what a company update writes", () => {
+    it("writes nothing when the update is about something else", () => {
+        expect(planOverrideWrite({ existingLabels: { vendors: "Suppliers" } }))
+            .toEqual({ labels: undefined, vendorsLabel: undefined })
+    })
+
+    it("replaces the whole map when the settings form saves", () => {
+        // The form holds all nine and posts all nine, so a key it left out was
+        // cleared, not left alone.
+        expect(planOverrideWrite({
+            existingLabels: { vendors: "Suppliers", clients: "Patients" },
+            moduleLabels: { clients: "Patients" },
+        })).toEqual({ labels: { clients: "Patients" }, vendorsLabel: null })
+    })
+
+    it("keeps the legacy column in step with the map, in both directions", () => {
+        // The whole point of the migrate step: whatever moduleLabels.vendors
+        // says, the old column says the same, so nothing reading either one
+        // sees a rename that the other missed.
+        expect(planOverrideWrite({ existingLabels: null, moduleLabels: { vendors: "Suppliers" } }))
+            .toEqual({ labels: { vendors: "Suppliers" }, vendorsLabel: "Suppliers" })
+
+        expect(planOverrideWrite({ existingLabels: null, vendorsLabel: "Suppliers" }))
+            .toEqual({ labels: { vendors: "Suppliers" }, vendorsLabel: "Suppliers" })
+    })
+
+    it("folds a legacy vendorsLabel in without disturbing the other eight", () => {
+        // The only merge in here. A caller that predates this feature cannot
+        // know about the other modules, so replacing the map wholesale from its
+        // one field would wipe renames it never heard of.
+        expect(planOverrideWrite({
+            existingLabels: { clients: "Patients", costs: "Spend" },
+            vendorsLabel: "Suppliers",
+        })).toEqual({
+            labels: { clients: "Patients", costs: "Spend", vendors: "Suppliers" },
+            vendorsLabel: "Suppliers",
+        })
+    })
+
+    it("treats a blank legacy vendorsLabel as clearing that one override", () => {
+        expect(planOverrideWrite({
+            existingLabels: { clients: "Patients", vendors: "Suppliers" },
+            vendorsLabel: "",
+        })).toEqual({ labels: { clients: "Patients" }, vendorsLabel: null })
+    })
+
+    it("stores nothing rather than an empty map when the last override goes", () => {
+        expect(planOverrideWrite({ existingLabels: { vendors: "Suppliers" }, vendorsLabel: "" }))
+            .toEqual({ labels: null, vendorsLabel: null })
+        expect(planOverrideWrite({ existingLabels: { vendors: "Suppliers" }, moduleLabels: {} }))
+            .toEqual({ labels: null, vendorsLabel: null })
+    })
+
+    it("lets moduleLabels win when a caller sends both", () => {
+        expect(planOverrideWrite({
+            existingLabels: null,
+            moduleLabels: { vendors: "Suppliers" },
+            vendorsLabel: "Contractors",
+        })).toEqual({ labels: { vendors: "Suppliers" }, vendorsLabel: "Suppliers" })
+    })
+})
+
+describe("the migrate step's reach", () => {
+    const SOURCES = [
+        "components/DashboardShell.tsx",
+        "components/PageTitle.tsx",
+        "components/DashboardHeader.tsx",
+        "app/(dashboard)/dashboard/vendors/page.tsx",
+        "app/(dashboard)/dashboard/tasks/new/page.tsx",
+        "app/(dashboard)/dashboard/companies/[id]/settings/page.tsx",
+    ]
+
+    it("leaves no screen reading the legacy session field", () => {
+        // vendorsLabel still exists on the row and on the token until the
+        // contract step, so nothing fails if a screen keeps reading it — it
+        // just stops being renameable alongside the other eight. That is the
+        // kind of miss this catches.
+        for (const path of SOURCES) {
+            const source = readFileSync(path, "utf8")
+            expect(source, `${path} still reads vendorsLabel off the session`)
+                .not.toMatch(/user\s*(as any)?\)?\??\.vendorsLabel/)
+        }
+    })
+})
+
+describe("clearing every override at once", () => {
+    it("distinguishes an explicit null from an absent field", () => {
+        // null is "clear them all"; undefined is "this update is not about
+        // labels". Conflating the two would make a rename survive a reset.
+        expect(planOverrideWrite({ existingLabels: { vendors: "Suppliers" }, moduleLabels: null }))
+            .toEqual({ labels: null, vendorsLabel: null })
+        expect(planOverrideWrite({ existingLabels: { vendors: "Suppliers" } }))
+            .toEqual({ labels: undefined, vendorsLabel: undefined })
     })
 })

@@ -15,6 +15,8 @@
  * an audience of one who is looking at everybody.
  */
 
+import type { TranslationKey } from '@/lib/translations'
+
 export const MODULE_KEYS = [
     'dashboard',
     'tasks',
@@ -34,8 +36,13 @@ export function isModuleKey(value: unknown): value is ModuleKey {
 }
 
 type ModuleDefinition = {
-    /** Translation key for the built-in name, in both locales. */
-    labelKey: string
+    /**
+     * Translation key for the built-in name, in both locales. Typed as
+     * TranslationKey rather than string so a key that does not exist in the
+     * dictionary fails typecheck here, instead of rendering the raw key as a
+     * sidebar entry.
+     */
+    labelKey: TranslationKey
     /** The emoji shown when a company has not chosen its own. */
     icon: string
     /** Where the sidebar entry points, and the prefix its pages live under. */
@@ -89,4 +96,218 @@ export function parseModuleOverrides(value: unknown): ModuleOverrides {
         if (trimmed) out[key] = trimmed
     }
     return out
+}
+
+/**
+ * The longest a custom label may be. The same cap the old `vendorsLabel`
+ * column carried: a sidebar entry that wraps to three lines is a worse
+ * outcome than a rejected rename.
+ */
+export const MAX_MODULE_LABEL_LENGTH = 50
+
+/**
+ * Whether a string is usable as a module's icon.
+ *
+ * The icon is rendered at 1.4rem in a sidebar row and at 5xl on an empty
+ * state, so it has to be one glyph-ish thing rather than a word. Three
+ * conditions, each guarding a different way the picker can be bypassed (the
+ * API accepts JSON, not only what the UI sends):
+ *
+ *   - an upper bound in code units, because a ZWJ sequence like 👨‍👩‍👧‍👦 is
+ *     eleven of them and a pasted paragraph is thousands;
+ *   - no whitespace, which is what stops "🚚 trucks" and "a b";
+ *   - at least one pictographic character, which is what stops "AB" and "…".
+ *
+ * Regional indicators are allowed alongside pictographs because a flag is two
+ * of them and neither is Extended_Pictographic — 🇪🇬 would otherwise be
+ * rejected, which for this app's customers is the wrong emoji to refuse.
+ *
+ * Deliberately not "exactly one grapheme": Intl.Segmenter is the only correct
+ * way to count those, it is not available in every runtime this code runs in,
+ * and the failure it would additionally catch (two emoji in one slot) is
+ * cosmetic and self-evident to whoever typed it.
+ */
+export function isValidModuleIcon(value: string): boolean {
+    if (value.length === 0 || value.length > 16) return false
+    if (/\s/u.test(value)) return false
+    return /[\p{Extended_Pictographic}\p{Regional_Indicator}]/u.test(value)
+}
+
+/** Narrows a Json icon map, dropping anything that is not a usable icon. */
+export function parseModuleIcons(value: unknown): ModuleOverrides {
+    const out = parseModuleOverrides(value)
+    for (const key of Object.keys(out) as ModuleKey[]) {
+        if (!isValidModuleIcon(out[key] as string)) delete out[key]
+    }
+    return out
+}
+
+/**
+ * This company's name for a module: its override, or the built-in translation.
+ *
+ * `t` is passed in rather than imported because the translation function is a
+ * React context value on the client and a locale-bound closure on the server,
+ * and this file is neither.
+ */
+export function resolveModuleLabel(
+    key: ModuleKey,
+    overrides: ModuleOverrides | null | undefined,
+    t: (key: TranslationKey) => string
+): string {
+    const custom = overrides?.[key]
+    // `|| t(...)` rather than `??`: parseModuleOverrides already drops empty
+    // strings, but this is also called with maps that have not been through it.
+    return custom || t(MODULES[key].labelKey)
+}
+
+/** This company's icon for a module, or the built-in one. */
+export function resolveModuleIcon(key: ModuleKey, overrides: ModuleOverrides | null | undefined): string {
+    return overrides?.[key] || MODULES[key].icon
+}
+
+// labelKey → module, built once. Every labelKey is distinct, which the test
+// asserts rather than assumes: two modules sharing one would make this map
+// silently answer with whichever was declared last.
+const BY_LABEL_KEY: ReadonlyMap<string, ModuleKey> = new Map(
+    MODULE_KEYS.map((key) => [MODULES[key].labelKey, key] as const)
+)
+
+/**
+ * The module a translation key names, if any.
+ *
+ * The bridge between the route→title-key table in lib/page-title.ts (which is
+ * about tab titles and covers System pages too) and this registry (which is
+ * about renameable modules). Anything unmatched — "history", "audit_logs" — is
+ * not a module and keeps its translated name.
+ */
+export function moduleForTitleKey(titleKey: string | null | undefined): ModuleKey | null {
+    if (!titleKey) return null
+    return BY_LABEL_KEY.get(titleKey) ?? null
+}
+
+/**
+ * How the sidebar groups these. Here rather than in DashboardShell because the
+ * Company Settings screen renders a preview of that sidebar, and two files
+ * deciding the order independently is how a preview stops matching the thing it
+ * previews.
+ *
+ * The split is by audience, not by subject: everything under MENU is visible to
+ * every role, everything under MANAGEMENT only to an Admin, Team Leader or
+ * Super Admin. DashboardShell applies that role check; this is only the order.
+ */
+export const MENU_MODULES: readonly ModuleKey[] = [
+    'dashboard',
+    'tasks',
+    'obligations',
+    'requests',
+    'dayOff',
+    'clients',
+]
+
+export const MANAGEMENT_MODULES: readonly ModuleKey[] = ['costs', 'employees', 'vendors']
+
+/**
+ * The resolvers, bound to one company's overrides.
+ *
+ * Takes the session user rather than a Company row, because that is where the
+ * overrides already are on both sides of the app: lib/auth.ts stamps them onto
+ * the token, so a Server Component reads them off getServerSession and a Client
+ * Component off useSession, with no query either way. The two halves of the
+ * dashboard therefore cannot disagree about what a module is called.
+ *
+ * `lib/useModules.ts` is the client-side wrapper that memoizes this against the
+ * session; Server Components call it directly with their own `t`.
+ */
+export function modulesFrom(
+    user: { moduleLabels?: unknown; moduleIcons?: unknown } | null | undefined,
+    t: (key: TranslationKey) => string
+) {
+    const labels = parseModuleOverrides(user?.moduleLabels)
+    const icons = parseModuleIcons(user?.moduleIcons)
+    return {
+        /** The display name for a module, translated or overridden. */
+        label: (key: ModuleKey) => resolveModuleLabel(key, labels, t),
+        /** The emoji for a module, default or overridden. */
+        icon: (key: ModuleKey) => resolveModuleIcon(key, icons),
+        /** Both at once plus the href, for a nav row. */
+        entry: (key: ModuleKey) => ({
+            key,
+            href: MODULES[key].href,
+            label: resolveModuleLabel(key, labels, t),
+            icon: resolveModuleIcon(key, icons),
+        }),
+        labels,
+        icons,
+    }
+}
+
+export type ResolvedModules = ReturnType<typeof modulesFrom>
+
+/**
+ * An override map with nothing in it is not an empty map, it is no overrides —
+ * so it is stored as NULL. A company that cleared every rename then reads back
+ * identical to one that never renamed anything, which is what keeps "is this
+ * company customised?" a question about the data rather than about its history.
+ */
+export function emptyToNull(overrides: ModuleOverrides): ModuleOverrides | null {
+    return Object.keys(overrides).length > 0 ? overrides : null
+}
+
+/** Whether two override maps say the same thing. Order-insensitive. */
+export function sameOverrides(
+    a: ModuleOverrides | null | undefined,
+    b: ModuleOverrides | null | undefined
+): boolean {
+    const left = a ?? {}
+    const right = b ?? {}
+    const keys = new Set([...Object.keys(left), ...Object.keys(right)])
+    for (const key of keys) {
+        if (left[key as ModuleKey] !== right[key as ModuleKey]) return false
+    }
+    return true
+}
+
+/**
+ * What a company update should write for the label map and for the old
+ * `vendorsLabel` column, given what the caller sent.
+ *
+ * Extracted from CompanyService.update because this is the one piece of the
+ * migrate step whose failure is silent: if the two ever disagree, a rename
+ * shows up in one place and not another, and nothing errors. `undefined` for
+ * either field means "this update does not touch it".
+ *
+ * The rules, in order:
+ *   - `moduleLabels` wins if sent, being the newer and more complete of the two,
+ *     with an explicit `null` meaning "clear every override" rather than
+ *     "leave them alone" — that is what `undefined` means;
+ *   - a caller that sends only `vendorsLabel` has its one value folded into the
+ *     stored map — the only merge here, and it exists because such a caller
+ *     cannot know about the other eight modules;
+ *   - either way the old column is set to whatever the map ends up saying about
+ *     vendors, so the two cannot drift. It stops being written at the contract
+ *     step, when it is dropped.
+ */
+export function planOverrideWrite(input: {
+    existingLabels: unknown
+    moduleLabels?: Record<string, string> | null
+    vendorsLabel?: string | null
+}): { labels: ModuleOverrides | null | undefined; vendorsLabel: string | null | undefined } {
+    let labels: ModuleOverrides | null | undefined
+
+    if (input.moduleLabels !== undefined) {
+        labels = input.moduleLabels === null ? null : emptyToNull(parseModuleOverrides(input.moduleLabels))
+    } else if (input.vendorsLabel !== undefined) {
+        const merged = parseModuleOverrides(input.existingLabels)
+        // An empty string is "reset to the default", stored as the absence of
+        // an override rather than as a literal empty name.
+        const vendors = input.vendorsLabel?.trim()
+        if (vendors) merged.vendors = vendors
+        else delete merged.vendors
+        labels = emptyToNull(merged)
+    }
+
+    return {
+        labels,
+        vendorsLabel: labels !== undefined ? (labels?.vendors ?? null) : undefined,
+    }
 }

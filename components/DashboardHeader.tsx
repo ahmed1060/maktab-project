@@ -9,6 +9,7 @@ import NotificationBell from './NotificationBell'
 import { useCompany } from '@/context/CompanyContext'
 import { useHeader } from '@/context/HeaderContext'
 import { useLanguage } from '@/context/LanguageContext'
+import { useModules } from '@/lib/useModules'
 import LanguageToggleButton from './LanguageToggleButton'
 import ThemeToggleButton from './ThemeToggleButton'
 import useSWR from 'swr'
@@ -37,6 +38,7 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
     const [isMenuOpen, setIsMenuOpen] = useState(false)
     const { selectedCompanyId, setSelectedCompanyId, refreshTrigger } = useCompany()
     const { title: contextTitle, subtitle: contextSubtitle } = useHeader()
+    const modules = useModules()
     const [companies, setCompanies] = useState<any[]>([])
     const [pendingRequestsCount, setPendingRequestsCount] = useState(0)
     const [unreadNotificationsCount, setUnreadNotificationsCount] = useState(0)
@@ -165,25 +167,29 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
         router.push(`${pathname}?${params.toString()}`)
     }
 
-    // Map path to title
+    // Map path to title. A module's own landing page takes this company's name
+    // for it; the detail pages underneath keep their own translated headings
+    // ("Task Details" stays "Task Details" whatever Tasks was renamed to,
+    // because it names the record, not the module).
     const getPageTitle = (path: string) => {
-        if (path === '/dashboard') return t('dashboard')
-        if (path === '/dashboard/tasks') return t('tasks')
+        if (path === '/dashboard') return modules.label('dashboard')
+        if (path === '/dashboard/tasks') return modules.label('tasks')
         if (path.startsWith('/dashboard/tasks/')) return t('task_details')
-        if (path === '/dashboard/obligations') return t('obligations')
+        if (path === '/dashboard/obligations') return modules.label('obligations')
         if (path.startsWith('/dashboard/obligations/')) return t('obligation_details')
-        if (path === '/dashboard/employees') return t('employees')
+        if (path === '/dashboard/employees') return modules.label('employees')
         if (path.startsWith('/dashboard/employees/')) return t('employee_profile')
-        if (path === '/dashboard/costs') return t('costs')
+        if (path === '/dashboard/costs') return modules.label('costs')
+        if (path === '/dashboard/vendors') return modules.label('vendors')
         if (path === '/dashboard/all-users') return t('all_users')
-        if (path === '/dashboard/clients') return t('clients')
+        if (path === '/dashboard/clients') return modules.label('clients')
         if (path.includes('/sections/')) return t('section_details')
         if (path.startsWith('/dashboard/clients/')) return t('client_details')
         if (path === '/dashboard/companies') return t('companies')
         if (path === '/dashboard/super-admins') return t('super_admins')
-        if (path === '/dashboard/requests') return t('requests')
+        if (path === '/dashboard/requests') return modules.label('requests')
         if (path === '/dashboard/requests/history') return t('requests_history')
-        if (path === '/dashboard/day-off-requests') return t('day_off_requests')
+        if (path === '/dashboard/day-off-requests') return modules.label('dayOff')
         if (path === '/dashboard/usernames') return t('usernames_list')
         return t('system')
     }

@@ -1038,5 +1038,13 @@ export const ar = {
         failed_verify_location: "فشل تحديث الحالة",
         usernames: "أسماء المستخدمين",
         usernames_subtitle: "عرض وتصدير أسماء مستخدمي الموظفين للرجوع إليها",
-        failed_load_employees: "فشل تحميل الموظفين"
+        failed_load_employees: "فشل تحميل الموظفين",
+        module_names_setting: "أسماء وأيقونات الأقسام",
+        module_names_setting_hint: "يعيد تسمية تبويبات هذه الشركة أينما ظهرت — في القائمة الجانبية وعناوين الصفحات وتبويب المتصفح. اترك الاسم فارغًا للإبقاء على الاسم الافتراضي.",
+        module_names_preview: "معاينة القائمة الجانبية",
+        module_icon_choose: "اختر أيقونة",
+        module_icon_custom: "أو الصق أي إيموجي",
+        module_icon_reset: "استخدام الأيقونة الافتراضية",
+        module_icon_invalid: "هذا ليس إيموجي",
+        module_reset_all: "إعادة الكل إلى الافتراضي"
 };

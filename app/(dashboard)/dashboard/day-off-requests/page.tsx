@@ -5,6 +5,7 @@ import useSWR from 'swr'
 import { useSearchParams } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { useLanguage } from '@/context/LanguageContext'
+import { useModules } from '@/lib/useModules'
 import { useHeader } from '@/context/HeaderContext'
 import LoadingSpinner from '@/components/LoadingSpinner'
 import DateRangePicker from '@/components/DateRangePicker'
@@ -50,6 +51,7 @@ interface DayOffRequest {
 export default function DayOffRequestsPage() {
     const { t, locale } = useLanguage()
     const { setTitle, setSubtitle } = useHeader()
+    const modules = useModules()
     const { data: session, status } = useSession()
     const user = session?.user
     const isAdmin = ['ADMIN', 'SUPER_ADMIN'].includes(user?.role || '')
@@ -131,13 +133,13 @@ export default function DayOffRequestsPage() {
     const baseCredit: number = (foundUser?.baseDayOffCredit !== undefined && foundUser?.baseDayOffCredit !== null) ? foundUser.baseDayOffCredit : (foundUser?.dayOffCredit || 0)
 
     useEffect(() => {
-        setTitle(t('day_off_requests' as any))
+        setTitle(modules.label('dayOff'))
         setSubtitle(t('day_off_requests_subtitle' as any))
         return () => {
             setTitle(null)
             setSubtitle(null)
         }
-    }, [setTitle, setSubtitle, t])
+    }, [setTitle, setSubtitle, t, modules])
 
     // Scroll to highlighted request. Depends on requests.length rather than
     // `requests` itself — the derived array below gets a new reference on
@@ -416,7 +418,7 @@ export default function DayOffRequestsPage() {
                         <LoadingSpinner message={t('loading_requests')} />
                     ) : filteredRequests.length === 0 ? (
                         <div className="glass-card flex flex-col items-center justify-center py-16 text-center text-slate-500">
-                            <span className="text-5xl mb-4">🌴</span>
+                            <span className="text-5xl mb-4">{modules.icon('dayOff')}</span>
                             <h3 className="text-xl font-bold text-slate-800">{t('no_records_found')}</h3>
                             <p className="max-w-xs mx-auto mt-2 text-slate-500">
                                 {(filters.search || filters.status || filters.employeeId) ? (t('no_search_results' as any) || 'No results match your filters') : ''}

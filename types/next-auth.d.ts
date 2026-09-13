@@ -17,7 +17,6 @@ declare module "next-auth" {
             language: string
             mustChangePassword?: boolean
             theme?: string
-        theme?: string
             // F-11: stamped on the token by the merged revocation/suspension
             // check in the jwt() callback, so withStandardHandler can read
             // them from the session instead of re-querying the database on
@@ -46,6 +45,14 @@ declare module "next-auth" {
             // session (that would defeat the point), it queries fresh in
             // authorize() before a session even exists.
             mfaEnabled?: boolean
+            // E2: this company's names and emoji for the nine company-facing
+            // modules, keyed by lib/modules.ts's module keys. Typed loosely
+            // because they arrive as Json from the database and travel through
+            // the token's JSON round trip; parseModuleOverrides/parseModuleIcons
+            // narrow them at every read. Refreshed on the same 60s recheck as
+            // vendorsLabel is, so a rename takes effect without a re-login.
+            moduleLabels?: Record<string, string> | null
+            moduleIcons?: Record<string, string> | null
             // Vendors feature: this company's custom label for the Vendors
             // tab (null = default translated "Vendors"). Refreshed on the
             // same 60s recheck as maintenanceMode, not just seeded at sign-in
@@ -57,7 +64,6 @@ declare module "next-auth" {
             // minted before packages shipped, which deserializes to
             // unrestricted — see deserializeAccess.
             featureAccess?: { unrestricted: boolean; bundles: ('COMPANY_MANAGEMENT' | 'HR')[] } | null
-        subscription?: { state: 'TRIAL' | 'ACTIVE' | 'GRACE' | 'LOCKED' | 'LIFETIME'; date: string | null; daysRemaining: number | null } | null
             // Subscription state, computed server-side and refreshed on the
             // same 60s recheck. The date is an ISO string because a Date does
             // not survive the token's JSON round trip, and the state travels
@@ -88,6 +94,8 @@ declare module "next-auth" {
         emailVerified?: boolean
         mfaEnabled?: boolean
         vendorsLabel?: string | null
+        moduleLabels?: Record<string, string> | null
+        moduleIcons?: Record<string, string> | null
         featureAccess?: { unrestricted: boolean; bundles: ('COMPANY_MANAGEMENT' | 'HR')[] } | null
         subscription?: { state: 'TRIAL' | 'ACTIVE' | 'GRACE' | 'LOCKED' | 'LIFETIME'; date: string | null; daysRemaining: number | null } | null
     }
@@ -116,6 +124,8 @@ declare module "next-auth/jwt" {
         emailVerified?: boolean
         mfaEnabled?: boolean
         vendorsLabel?: string | null
+        moduleLabels?: Record<string, string> | null
+        moduleIcons?: Record<string, string> | null
         featureAccess?: { unrestricted: boolean; bundles: ('COMPANY_MANAGEMENT' | 'HR')[] } | null
         subscription?: { state: 'TRIAL' | 'ACTIVE' | 'GRACE' | 'LOCKED' | 'LIFETIME'; date: string | null; daysRemaining: number | null } | null
         // F-11: last time the merged revocation/suspension check actually

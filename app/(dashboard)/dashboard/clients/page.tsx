@@ -8,6 +8,7 @@ import { createPortal } from 'react-dom'
 import ConfirmModal from '@/components/ConfirmModal'
 import EmployeeFilter from '@/components/EmployeeFilter'
 import { useLanguage } from '@/context/LanguageContext'
+import { useModules } from '@/lib/useModules'
 import { useHeader } from '@/context/HeaderContext'
 import LoadingSpinner from '@/components/LoadingSpinner'
 import { useToast } from '@/context/ToastContext'
@@ -41,6 +42,7 @@ export default function ClientsPage() {
     const { data: session } = useSession()
     const { t, locale } = useLanguage()
     const { setTitle, setSubtitle } = useHeader()
+    const modules = useModules()
     const [searchQuery, setSearchQuery] = useState('')
     const [isModalOpen, setIsModalOpen] = useState(false)
     const [newClientName, setNewClientName] = useState('')
@@ -67,13 +69,13 @@ export default function ClientsPage() {
     }, [])
 
     useEffect(() => {
-        setTitle(t('clients'))
+        setTitle(modules.label('clients'))
         setSubtitle(t('clients_subtitle' as any))
         return () => {
             setTitle(null)
             setSubtitle(null)
         }
-    }, [setTitle, setSubtitle, t])
+    }, [setTitle, setSubtitle, t, modules])
 
     const [selectedCompanyId, setSelectedCompanyId] = useState('')
 
@@ -194,7 +196,7 @@ export default function ClientsPage() {
                     <LoadingSpinner message={t('loading_clients')} />
                 ) : filteredClients.length === 0 ? (
                     <div className="glass-card flex flex-col items-center justify-center py-16 text-center text-slate-500">
-                        <span className="text-5xl mb-4">🏢</span>
+                        <span className="text-5xl mb-4">{modules.icon('clients')}</span>
                         <h3 className="text-xl font-bold text-slate-800">{t('no_clients_found')}</h3>
                     </div>
                 ) : (

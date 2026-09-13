@@ -2,6 +2,7 @@ import { NextAuthOptions } from "next-auth"
 import { resolveBundles, serializeAccess } from "@/lib/features"
 import { summarizeSubscription } from "@/lib/billing/summary"
 import { isBlockedBySubscription } from "@/lib/billing/state"
+import { parseModuleIcons, parseModuleOverrides } from "@/lib/modules"
 import CredentialsProvider from "next-auth/providers/credentials"
 import { prisma } from "@/lib/prisma"
 import bcrypt from "bcryptjs"
@@ -290,6 +291,8 @@ export const authOptions: NextAuthOptions = {
                         companyId: validatedUser.companyId,
                         companyName: validatedUser.company?.name || null,
                         vendorsLabel: validatedUser.company?.vendorsLabel || null,
+                        moduleLabels: parseModuleOverrides(validatedUser.company?.moduleLabels),
+                        moduleIcons: parseModuleIcons(validatedUser.company?.moduleIcons),
                         featureAccess: serializeAccess(resolveBundles(validatedUser.company?.package)),
                         subscription: summarizeSubscription(validatedUser.company),
                         username: validatedUser.username,
@@ -342,6 +345,8 @@ export const authOptions: NextAuthOptions = {
                 session.user.maintenanceMode = !!token.maintenanceMode
                 session.user.maintenanceMessage = token.maintenanceMessage as string | null | undefined
                 session.user.vendorsLabel = token.vendorsLabel as string | null | undefined
+                session.user.moduleLabels = token.moduleLabels as Record<string, string> | null | undefined
+                session.user.moduleIcons = token.moduleIcons as Record<string, string> | null | undefined
                 session.user.featureAccess = token.featureAccess as any
                 session.user.subscription = token.subscription as any
             }
@@ -390,6 +395,8 @@ export const authOptions: NextAuthOptions = {
                 // this represents — the Vendors page itself resolves the
                 // label for whichever company they've switched to).
                 token.vendorsLabel = (user as any).vendorsLabel || null
+                token.moduleLabels = (user as any).moduleLabels || null
+                token.moduleIcons = (user as any).moduleIcons || null
                 token.featureAccess = (user as any).featureAccess || null
                 token.subscription = (user as any).subscription || null
                 token.checkedAt = Date.now()
@@ -461,6 +468,10 @@ export const authOptions: NextAuthOptions = {
                                         company: {
                                             select: {
                                                 isBanned: true, vendorsLabel: true,
+                                                // Same reasoning again: the point of letting a
+                                                // Super Admin rename a module is that the rename
+                                                // shows up, not that it waits for a re-login.
+                                                moduleLabels: true, moduleIcons: true,
                                                 // Same reasoning as vendorsLabel: assigning or
                                                 // changing a package has to take effect promptly,
                                                 // not only after the customer next signs in.
@@ -497,6 +508,8 @@ export const authOptions: NextAuthOptions = {
                             // point of letting a Super Admin rename this tab is that it
                             // takes effect promptly, not just after the next login.
                             token.vendorsLabel = u?.company?.vendorsLabel || null
+                            token.moduleLabels = parseModuleOverrides(u?.company?.moduleLabels)
+                            token.moduleIcons = parseModuleIcons(u?.company?.moduleIcons)
                             // Null package resolves to unrestricted — grandfathered.
                             token.featureAccess = serializeAccess(resolveBundles(u?.company?.package))
                             // Refreshed on the same throttle: a lockout that only

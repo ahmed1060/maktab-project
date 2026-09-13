@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import DateTimePicker from '@/components/DateTimePicker'
 import { useLanguage } from '@/context/LanguageContext'
+import { useModules } from '@/lib/useModules'
 import { useCompany } from '@/context/CompanyContext'
 import { useToast } from '@/context/ToastContext'
 import LocationSearchInput from '@/components/LocationSearchInput'
@@ -43,7 +44,8 @@ export default function NewTaskPage() {
     const { data: session } = useSession()
     const { selectedCompanyId } = useCompany()
     const userRole = (session?.user as any)?.role
-    const vendorsLabelText = (session?.user as any)?.vendorsLabel || t('vendors')
+    const modules = useModules()
+    const vendorsLabelText = modules.label('vendors')
     // Same role check as the vendors-fetch effect below — a role that was
     // never going to see vendors either way (e.g. Employee, if this page
     // is ever reached with that role) gets the plain location field only,
@@ -756,7 +758,7 @@ export default function NewTaskPage() {
                 setBulkTasks={setBulkTasks}
                 users={users}
                 vendors={vendors}
-                vendorsLabel={(session?.user as any)?.vendorsLabel || t('vendors')}
+                vendorsLabel={vendorsLabelText}
                 revalidateRow={revalidateRow}
                 isSubmitting={isSubmitting}
                 setIsSubmitting={setIsSubmitting}

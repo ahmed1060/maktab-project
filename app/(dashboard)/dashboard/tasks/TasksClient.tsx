@@ -6,6 +6,7 @@ import TaskListItem from '@/components/TaskListItem'
 import EmployeeFilter from '@/components/EmployeeFilter'
 import Pagination from '@/components/Pagination'
 import { useLanguage } from '@/context/LanguageContext'
+import { useModules } from '@/lib/useModules'
 import { useHeader } from '@/context/HeaderContext'
 
 interface TasksClientProps {
@@ -21,6 +22,7 @@ interface TasksClientProps {
 export default function TasksClient({ tasks, total, page, totalPages, role, currentUserId, view }: TasksClientProps) {
     const { t, locale } = useLanguage()
     const { setTitle, setSubtitle } = useHeader()
+    const modules = useModules()
     const router = useRouter()
     const searchParams = useSearchParams()
     const highlightId = searchParams?.get('highlight')
@@ -113,13 +115,13 @@ export default function TasksClient({ tasks, total, page, totalPages, role, curr
     }, [highlightId, tasks]);
 
     useEffect(() => {
-        setTitle(t('tasks'))
+        setTitle(modules.label('tasks'))
         setSubtitle(t('tasks_subtitle' as any))
         return () => {
             setTitle(null)
             setSubtitle(null)
         }
-    }, [setTitle, setSubtitle, t])
+    }, [setTitle, setSubtitle, t, modules])
 
     return (
         <div>

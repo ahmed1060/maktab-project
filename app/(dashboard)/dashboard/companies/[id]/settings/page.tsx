@@ -6,12 +6,18 @@ import { useSession } from 'next-auth/react'
 import AccessDenied from '@/components/AccessDenied'
 import { useToast } from '@/context/ToastContext'
 import { useLanguage } from '@/context/LanguageContext'
+import CompanyModulesCard from '@/components/CompanyModulesCard'
+import type { ModuleOverrides } from '@/lib/modules'
 
 type Company = {
     id: string
     name: string
     autoVerifyLocation: boolean
+    // Still selected by the API during the migrate step, but no longer read
+    // here — moduleLabels.vendors is what this screen edits now.
     vendorsLabel: string | null
+    moduleLabels: unknown
+    moduleIcons: unknown
 }
 
 export default function CompanySettingsPage() {
@@ -25,8 +31,6 @@ export default function CompanySettingsPage() {
     const [company, setCompany] = useState<Company | null>(null)
     const [loading, setLoading] = useState(true)
     const [savingSettings, setSavingSettings] = useState(false)
-    const [vendorsLabelInput, setVendorsLabelInput] = useState('')
-    const [savingVendorsLabel, setSavingVendorsLabel] = useState(false)
 
     const fetchCompanyData = useCallback(async () => {
         try {
@@ -52,37 +56,6 @@ export default function CompanySettingsPage() {
     useEffect(() => {
         if (companyId) fetchCompanyData()
     }, [companyId, fetchCompanyData])
-
-    // Syncs the input once the fetch resolves — runs only when the loaded
-    // value actually changes, not on every render, so it doesn't stomp on
-    // what the admin is actively typing.
-    useEffect(() => {
-        if (company) setVendorsLabelInput(company.vendorsLabel || '')
-    }, [company?.vendorsLabel]) // eslint-disable-line react-hooks/exhaustive-deps
-
-    const handleSaveVendorsLabel = async () => {
-        if (!company) return
-        setSavingVendorsLabel(true)
-        try {
-            const res = await fetch('/api/companies', {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ id: companyId, vendorsLabel: vendorsLabelInput.trim() })
-            })
-            if (res.ok) {
-                const normalized = vendorsLabelInput.trim() || null
-                setCompany({ ...company, vendorsLabel: normalized })
-                showToast(t('settings_saved_success') || 'Settings saved', 'success')
-            } else {
-                const data = await res.json().catch(() => ({}))
-                showToast(data.error || t('error_generic'), 'error')
-            }
-        } catch {
-            showToast(t('error_generic'), 'error')
-        } finally {
-            setSavingVendorsLabel(false)
-        }
-    }
 
     const handleToggleAutoVerify = async () => {
         if (!company) return
@@ -158,7 +131,7 @@ export default function CompanySettingsPage() {
                     <p style={{ color: 'var(--text-soft)' }}>{t('loading_data')}</p>
                 </div>
             ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', maxWidth: '32rem' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', maxWidth: '40rem' }}>
                     <div className="glass" style={{ padding: '1.5rem', borderRadius: '1rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
                         {/* Not a <label> wrapping the whole row on purpose — a label
                             wrapping the description text means clicking anywhere in
@@ -181,31 +154,19 @@ export default function CompanySettingsPage() {
                         </div>
                     </div>
 
-                    <div className="glass" style={{ padding: '1.5rem', borderRadius: '1rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
-                        <div style={{ fontWeight: 500, marginBottom: '0.15rem' }}>{t('vendors_label_setting') || 'Vendors tab label'}</div>
-                        <div style={{ fontSize: '0.8rem', color: 'var(--text-soft)', marginBottom: '0.75rem' }}>
-                            {t('vendors_label_setting_hint') || 'Renames the "Vendors" tab for this company everywhere it appears. Leave blank to use the default.'}
-                        </div>
-                        <div style={{ display: 'flex', gap: '0.5rem', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
-                            <input
-                                type="text"
-                                className="input"
-                                value={vendorsLabelInput}
-                                onChange={(e) => setVendorsLabelInput(e.target.value)}
-                                placeholder={t('vendors') || 'Vendors'}
-                                maxLength={50}
-                                disabled={savingVendorsLabel || !company}
-                                style={{ flex: 1 }}
-                            />
-                            <button
-                                className="btn btn-primary"
-                                onClick={handleSaveVendorsLabel}
-                                disabled={savingVendorsLabel || !company || vendorsLabelInput.trim() === (company?.vendorsLabel || '')}
-                            >
-                                {savingVendorsLabel ? t('saving') : t('save')}
-                            </button>
-                        </div>
-                    </div>
+                    {/* Replaces the Vendors-only rename this screen used to
+                        carry: every module can be renamed now, and Vendors is
+                        just one of the nine. */}
+                    {company && (
+                        <CompanyModulesCard
+                            companyId={companyId}
+                            moduleLabels={company.moduleLabels}
+                            moduleIcons={company.moduleIcons}
+                            onSaved={(labels: ModuleOverrides | null, icons: ModuleOverrides | null) =>
+                                setCompany({ ...company, moduleLabels: labels, moduleIcons: icons, vendorsLabel: labels?.vendors ?? null })
+                            }
+                        />
+                    )}
                 </div>
             )}
         </div>

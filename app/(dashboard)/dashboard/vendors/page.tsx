@@ -8,6 +8,7 @@ import ConfirmModal from '@/components/ConfirmModal'
 import EmployeeFilter from '@/components/EmployeeFilter'
 import LocationSearchInput from '@/components/LocationSearchInput'
 import { useLanguage } from '@/context/LanguageContext'
+import { useModules } from '@/lib/useModules'
 import { useHeader } from '@/context/HeaderContext'
 import LoadingSpinner from '@/components/LoadingSpinner'
 import { useToast } from '@/context/ToastContext'
@@ -59,7 +60,8 @@ export default function VendorsPage() {
     const [deleteConfirm, setDeleteConfirm] = useState<{ isOpen: boolean, vendor: Vendor | null }>({ isOpen: false, vendor: null })
     const [addFormCompanyId, setAddFormCompanyId] = useState('')
 
-    const vendorsLabel = (session?.user as any)?.vendorsLabel || t('vendors')
+    const modules = useModules()
+    const vendorsLabel = modules.label('vendors')
 
     useEffect(() => {
         const checkMobile = () => setIsMobile(window.innerWidth < 1024)
@@ -203,7 +205,7 @@ export default function VendorsPage() {
                     <LoadingSpinner message={t('loading_data')} />
                 ) : vendors.length === 0 ? (
                     <div className="glass-card flex flex-col items-center justify-center py-16 text-center text-slate-500">
-                        <span className="text-5xl mb-4">🚚</span>
+                        <span className="text-5xl mb-4">{modules.icon('vendors')}</span>
                         <h3 className="text-xl font-bold text-slate-800">
                             {locale === 'ar' ? `لا يوجد ${vendorsLabel}` : `No ${vendorsLabel} found`}
                         </h3>

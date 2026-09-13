@@ -6,6 +6,7 @@ import ObligationListItem from '@/components/ObligationListItem'
 import EmployeeFilter from '@/components/EmployeeFilter'
 import Pagination from '@/components/Pagination'
 import { useLanguage } from '@/context/LanguageContext'
+import { useModules } from '@/lib/useModules'
 import { useHeader } from '@/context/HeaderContext'
 
 interface ObligationsClientProps {
@@ -19,6 +20,7 @@ interface ObligationsClientProps {
 export default function ObligationsClient({ obligations, total, page, totalPages, role }: ObligationsClientProps) {
     const { t, locale } = useLanguage()
     const { setTitle, setSubtitle } = useHeader()
+    const modules = useModules()
     const router = useRouter()
     const searchParams = useSearchParams()
     const highlightId = searchParams?.get('highlight')
@@ -95,13 +97,13 @@ export default function ObligationsClient({ obligations, total, page, totalPages
     }, [highlightId, obligations]);
 
     useEffect(() => {
-        setTitle(t('obligations'))
+        setTitle(modules.label('obligations'))
         setSubtitle(t('obligations_subtitle' as any))
         return () => {
             setTitle(null)
             setSubtitle(null)
         }
-    }, [setTitle, setSubtitle, t])
+    }, [setTitle, setSubtitle, t, modules])
 
     return (
         <div>

@@ -10,6 +10,7 @@ import AccessDenied from '@/components/AccessDenied'
 import Modal from '@/components/Modal'
 import Pagination from '@/components/Pagination'
 import { useLanguage } from '@/context/LanguageContext'
+import { useModules } from '@/lib/useModules'
 import { useHeader } from '@/context/HeaderContext'
 import LoadingSpinner from '@/components/LoadingSpinner'
 import { fetcher } from '@/lib/swr-fetcher'
@@ -30,6 +31,7 @@ interface Employee {
 export default function EmployeesPage() {
     const { t, locale } = useLanguage()
     const { setTitle, setSubtitle } = useHeader()
+    const modules = useModules()
     const { data: session } = useSession()
     const userRole = session?.user?.role || ''
     const { selectedCompanyId } = useCompany()
@@ -95,13 +97,13 @@ export default function EmployeesPage() {
     })
 
     useEffect(() => {
-        setTitle(t('employees'))
+        setTitle(modules.label('employees'))
         setSubtitle(t('employees_subtitle' as any))
         return () => {
             setTitle(null)
             setSubtitle(null)
         }
-    }, [setTitle, setSubtitle, t])
+    }, [setTitle, setSubtitle, t, modules])
 
     const handleDelete = async (id: string, name: string) => {
         setDeleteConfirm({ id, name })
@@ -282,7 +284,7 @@ export default function EmployeesPage() {
             }}>
                 {sortedEmployees.length === 0 ? (
                     <div className="glass-card flex flex-col items-center justify-center py-16 text-center text-slate-500 col-span-full">
-                        <span className="text-5xl mb-4">👥</span>
+                        <span className="text-5xl mb-4">{modules.icon('employees')}</span>
                         <h3 className="text-xl font-bold text-slate-800">{t('no_employees_found')}</h3>
                     </div>
                 ) : (

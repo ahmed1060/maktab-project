@@ -4,6 +4,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import CostCard from '@/components/CostCard'
 import EmployeeFilter from '@/components/EmployeeFilter'
 import { useLanguage } from '@/context/LanguageContext'
+import { useModules } from '@/lib/useModules'
 import { useHeader } from '@/context/HeaderContext'
 import { useEffect } from 'react'
 import Pagination from '@/components/Pagination'
@@ -19,6 +20,7 @@ interface CostsClientProps {
 export default function CostsClient({ tasksWithCosts, userRole, total, page, totalPages }: CostsClientProps) {
     const { t, locale } = useLanguage()
     const { setTitle, setSubtitle } = useHeader()
+    const modules = useModules()
     const router = useRouter()
     const searchParams = useSearchParams()
 
@@ -142,13 +144,13 @@ export default function CostsClient({ tasksWithCosts, userRole, total, page, tot
     }
 
     useEffect(() => {
-        setTitle(t('costs'))
+        setTitle(modules.label('costs'))
         setSubtitle(t('costs_subtitle' as any))
         return () => {
             setTitle(null)
             setSubtitle(null)
         }
-    }, [setTitle, setSubtitle, t])
+    }, [setTitle, setSubtitle, t, modules])
 
     return (
         <div style={{ direction: locale === 'ar' ? 'rtl' : 'ltr' }}>

@@ -1043,5 +1043,13 @@ export const en = {
         failed_verify_location: "Failed to update status",
         usernames: "Usernames",
         usernames_subtitle: "View and export employee usernames for reference",
-        failed_load_employees: "Failed to load employees"
+        failed_load_employees: "Failed to load employees",
+        module_names_setting: "Module names and icons",
+        module_names_setting_hint: "Renames this company's tabs everywhere they appear — the sidebar, page headings and browser tab. Leave a name blank to keep the default.",
+        module_names_preview: "Sidebar preview",
+        module_icon_choose: "Choose an icon",
+        module_icon_custom: "Or paste any emoji",
+        module_icon_reset: "Use the default icon",
+        module_icon_invalid: "That is not an emoji",
+        module_reset_all: "Reset all to defaults"
 };

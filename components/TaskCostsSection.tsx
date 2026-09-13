@@ -1,5 +1,6 @@
 'use client'
 import { useLanguage } from '@/context/LanguageContext'
+import { useModules } from '@/lib/useModules'
 import TrashIcon from '@/components/TrashIcon'
 
 // F-23: extracted verbatim out of tasks/[id]/client.tsx (1834 lines before
@@ -20,6 +21,7 @@ export default function TaskCostsSection({
     task, userId, userRole, onDeleteItem, onPaymentStatusChange, getMemberCosts, getMemberPaymentStatus
 }: TaskCostsSectionProps) {
     const { t, locale } = useLanguage()
+    const modules = useModules()
 
     if (!task.comments) return null
     try {
@@ -30,7 +32,7 @@ export default function TaskCostsSection({
 
         return (
             <div style={{ marginTop: '2rem', borderTop: '1px solid var(--border)', paddingTop: '1.5rem' }}>
-                <h3 style={{ marginBottom: '1rem' }}>{t('costs')}</h3>
+                <h3 style={{ marginBottom: '1rem' }}>{modules.label('costs')}</h3>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                     {costs.map((c: any, i: number) => (
                         <div key={i} style={{ display: 'flex', flexDirection: 'column', background: 'var(--warn-bg-yellow-subtle)', border: '1px solid var(--warn-border-yellow)', borderRadius: '0.5rem', padding: '1rem' }}>

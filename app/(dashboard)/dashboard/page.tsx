@@ -9,6 +9,7 @@ import type { Locale, TranslationKey } from "@/lib/translations"
 import { en } from "@/lib/translations/en"
 import { ar } from "@/lib/translations/ar"
 import { getSuperAdminOverviewStats } from "@/lib/services/dashboard-stats.service"
+import { modulesFrom } from "@/lib/modules"
 
 export const dynamic = 'force-dynamic'
 
@@ -22,6 +23,10 @@ export default async function DashboardPage({ searchParams }: { searchParams: { 
     const locale = (cookieStore.get('NEXT_LOCALE')?.value || 'en') as Locale
     const dict = locale === 'ar' ? ar : en
     const t = (key: TranslationKey) => dict[key] || en[key]
+
+    // This company's names and icons for its modules, off the same session the
+    // sidebar reads — so a heading here and its sidebar entry always agree.
+    const modules = modulesFrom(session?.user, t)
 
     const formatDays = (days: number) => {
         if (locale === 'ar') {
@@ -203,7 +208,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: { 
                         <DonutChart title={t('team_workload')} data={chartData} />
                     </div>
                     <div style={{ display: 'grid', gap: '1.5rem' }}>
-                        <StatMetric label={t('task_completion')} value={`${completedTasks}/${totalTasks}`} icon="✅" color="var(--ok-solid)" percentage={completionRate} subLabel={t('completion_rate')} />
+                        <StatMetric label={t('task_completion')} value={`${completedTasks}/${totalTasks}`} icon={modules.icon('tasks')} color="var(--ok-solid)" percentage={completionRate} subLabel={t('completion_rate')} />
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                             <StatMetric label={t('team_bonuses')} value={formatDays(Number(salaryStats._sum.bonusDays || 0))} icon="⭐" color="var(--warn-solid)" subLabel={t('total_this_month')} />
                             <StatMetric label={t('team_deductions')} value={formatDays(Number(salaryStats._sum.deductions || 0))} icon="📉" color="var(--danger-solid)" subLabel={t('total_this_month')} />
@@ -237,7 +242,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: { 
                         {userRole === 'ADMIN' && (
                             <>
                                 <Link href="/dashboard/day-off-requests" style={{ textDecoration: 'none', color: 'inherit' }}>
-                                    <StatMetric label={t('pending_day_off_requests')} value={pendingDayOffRequests} icon="🌴" color="var(--info-solid-sky)" />
+                                    <StatMetric label={t('pending_day_off_requests')} value={pendingDayOffRequests} icon={modules.icon('dayOff')} color="var(--info-solid-sky)" />
                                 </Link>
                                 <Link href="/dashboard/profile-requests" style={{ textDecoration: 'none', color: 'inherit' }}>
                                     <StatMetric label={t('pending_profile_requests')} value={pendingProfileRequests} icon="🪪" color="var(--brand-accent)" />
@@ -446,7 +451,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: { 
                 {myLatestDayOffRequest && (
                     <section style={{ marginBottom: '3rem' }}>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem' }}>
-                            <h2 style={{ fontSize: '1.25rem', fontWeight: '700', color: 'var(--text-body)' }}>🌴 {t('my_day_off_request')}</h2>
+                            <h2 style={{ fontSize: '1.25rem', fontWeight: '700', color: 'var(--text-body)' }}>{modules.icon('dayOff')} {t('my_day_off_request')}</h2>
                             <Link href="/dashboard/day-off-requests" style={{ fontSize: '0.9rem', fontWeight: '500' }}>{t('view_all')}</Link>
                         </div>
                         <Link href="/dashboard/day-off-requests" style={{ textDecoration: 'none', color: 'inherit' }}>
@@ -473,7 +478,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: { 
                     {/* Obligations */}
                     <section>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem' }}>
-                            <h2 style={{ fontSize: '1.25rem', fontWeight: '700', color: 'var(--text-body)' }}>📌 {t('obligations')}</h2>
+                            <h2 style={{ fontSize: '1.25rem', fontWeight: '700', color: 'var(--text-body)' }}>{modules.icon('obligations')} {modules.label('obligations')}</h2>
                             <Link href="/dashboard/obligations" style={{ fontSize: '0.9rem', fontWeight: '500' }}>{t('view_all')}</Link>
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>

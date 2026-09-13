@@ -1,4 +1,5 @@
 import { z } from "zod"
+import { MAX_MODULE_LABEL_LENGTH, isModuleKey, isValidModuleIcon } from "@/lib/modules"
 
 // Mirrors the TrialPreset database enum. Declared here rather than imported
 // from @prisma/client so this module stays usable anywhere, including the
@@ -27,6 +28,33 @@ export const updateCompanySchema = z.object({
     // treated the same as omitting it (reset to the default) rather than
     // stored literally — see the PUT handler.
     vendorsLabel: z.string().max(50).optional().nullable(),
+    // E2: this company's names and emoji for its modules, sent as whole maps
+    // rather than one key at a time — the settings form holds all nine and
+    // saves them together, so a partial PATCH shape would only invite the two
+    // to drift. An empty-string value means "clear this override"; the service
+    // drops those rather than storing a module with no name.
+    //
+    // Unknown keys are rejected here rather than silently dropped the way the
+    // read path drops them: a write naming a module that does not exist is a
+    // caller bug worth surfacing, while a stored value for a module that has
+    // since been removed is just history.
+    moduleLabels: z
+        .record(z.string(), z.string().max(MAX_MODULE_LABEL_LENGTH))
+        .refine((map) => Object.keys(map).every(isModuleKey), {
+            message: "Unknown module key",
+        })
+        .optional()
+        .nullable(),
+    moduleIcons: z
+        .record(z.string(), z.string())
+        .refine((map) => Object.keys(map).every(isModuleKey), {
+            message: "Unknown module key",
+        })
+        .refine((map) => Object.values(map).every((icon) => icon === "" || isValidModuleIcon(icon)), {
+            message: "Module icons must be a single emoji",
+        })
+        .optional()
+        .nullable(),
     // Trial extension, in days, added on top of whichever preset was chosen.
     // A delta rather than a new total: "give them another week" is how the
     // request always arrives, and the column only ever grows.

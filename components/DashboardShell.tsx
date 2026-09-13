@@ -5,6 +5,8 @@ import PageTitle from './PageTitle'
 import SubscriptionBanner from './SubscriptionBanner'
 import { moduleForPagePath } from '@/lib/features'
 import { useFeatures } from '@/lib/features/useFeatures'
+import { MANAGEMENT_MODULES, MENU_MODULES } from '@/lib/modules'
+import { useModules } from '@/lib/useModules'
 import { DEFAULT_POWERED_BY_NAME } from '@/lib/services/system-settings.service'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
@@ -29,6 +31,7 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
     const [isCollapsed, setIsCollapsed] = useState(false) // New State for Desktop Collapse
     const { t, locale } = useLanguage()
     const features = useFeatures()
+    const modules = useModules()
     const isRtl = locale === 'ar'
 
     // Handle responsive state matches
@@ -87,7 +90,7 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
             {/* Renders nothing; sets the browser tab title for the current route.
                 Mounted once here rather than per page, because 27 of the 35
                 dashboard pages are Client Components and cannot export metadata. */}
-            <PageTitle vendorsLabel={user?.vendorsLabel} />
+            <PageTitle />
 
             {/* Sidebar Overlay for Mobile */}
             {isMobile && isSidebarOpen && (
@@ -266,14 +269,11 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
                 }}>
                     {!isCollapsed && <p style={{ fontSize: '0.75rem', fontWeight: 'bold', textTransform: 'uppercase', color: 'var(--text-faint)', [isRtl ? 'paddingRight' : 'paddingLeft']: '1rem', marginBottom: '0.25rem', letterSpacing: '0.1em' }}>{t('menu')}</p>}
 
-                    {[
-                        { href: '/dashboard', label: t('dashboard'), icon: '📊' },
-                        { href: '/dashboard/tasks', label: t('tasks'), icon: '✅' },
-                        { href: '/dashboard/obligations', label: t('obligations'), icon: '📌' },
-                        { href: '/dashboard/requests', label: t('requests'), icon: '📩' },
-                        { href: '/dashboard/day-off-requests', label: t('day_off_requests'), icon: '📅' },
-                        { href: '/dashboard/clients', label: t('clients'), icon: '🤝' },
-                    ].map(link => (
+                    {/* Names, icons and hrefs all come from lib/modules.ts, which
+                        is also what the Company Settings screen writes overrides
+                        against — so a renamed module is renamed here and nowhere
+                        else has to be told. */}
+                    {MENU_MODULES.map(key => modules.entry(key)).map(link => (
                         <Link
                             key={link.href}
                             href={link.href}
@@ -329,16 +329,13 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
                                 <p style={{ fontSize: '0.75rem', fontWeight: 'bold', textTransform: 'uppercase', color: 'var(--text-faint)', [isRtl ? 'paddingRight' : 'paddingLeft']: '1rem', marginTop: '1.5rem', marginBottom: '0.25rem', letterSpacing: '0.1em' }}>{t('management')}</p>
                             )}
 
-                            {[
-                                { href: '/dashboard/costs', label: t('costs'), icon: '💰' },
-                                { href: '/dashboard/employees', label: t('employees'), icon: '👥' },
-                                // Vendors: label is this company's custom name if the
-                                // Super Admin set one (see Company Settings), otherwise
-                                // the default translation. Not customized per-company
-                                // for a Super Admin browsing multiple companies — see
-                                // lib/auth.ts's vendorsLabel comment.
-                                { href: '/dashboard/vendors', label: user?.vendorsLabel || t('vendors'), icon: '🚚' },
-                            ].map(link => (
+                            {/* Vendors is in here: its custom name used to be the
+                                only one of these that existed, through its own
+                                column. It is now just another module with an
+                                override, and the other eight can be renamed too.
+                                A Super Admin, who belongs to no one company, sees
+                                the defaults — see lib/auth.ts. */}
+                            {MANAGEMENT_MODULES.map(key => modules.entry(key)).map(link => (
                                 <Link
                                     key={link.href}
                                     href={link.href}

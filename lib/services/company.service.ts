@@ -8,6 +8,7 @@ import { sendPlainEmail } from "@/lib/email"
 import { resolveSubscriptionState, needsAttention, computeTrialEnd, DEFAULT_TRIAL_PRESET } from "@/lib/billing/state"
 import { VerificationService } from "./verification.service"
 import { CreateCompanyInput, UpdateCompanyInput } from "../validations/company.schema"
+import { emptyToNull, parseModuleIcons, parseModuleOverrides, planOverrideWrite, sameOverrides } from "@/lib/modules"
 
 // cost is a Prisma.Decimal (F-07); Decimal.toJSON() returns a string, which
 // would silently change this response field's type on the wire.
@@ -210,13 +211,35 @@ export class CompanyService {
     }
 
     static async update(input: UpdateCompanyInput, session: any) {
-        const { id, name, isBanned, autoVerifyLocation, vendorsLabel } = input
-        // Empty string means "reset to the default label", stored as null
-        // same as never having set one — not as a literal empty string.
-        const normalizedVendorsLabel = vendorsLabel === '' ? null : vendorsLabel
-
+        const { id, name, isBanned, autoVerifyLocation, vendorsLabel, moduleLabels, moduleIcons } = input
         const existing = await prisma.company.findUnique({ where: { id } })
         if (!existing) throw new Error("COMPANY_NOT_FOUND")
+
+        // E2, the migrate step. The label map and the old vendorsLabel column
+        // are decided together by planOverrideWrite, so they cannot drift —
+        // see the rules there. The old column keeps being written until the
+        // contract step drops it: it is seeded onto live JWTs, so a deploy that
+        // stopped writing it would leave anyone mid-session, and any browser
+        // still running the previous bundle, reading a value that had quietly
+        // gone stale.
+        const { labels: nextLabels, vendorsLabel: nextVendorsLabel } = planOverrideWrite({
+            existingLabels: existing.moduleLabels,
+            moduleLabels,
+            vendorsLabel,
+        })
+
+        // Icons have no legacy column and no merge: the settings form holds all
+        // nine and posts all nine, so a key absent from the payload means the
+        // admin cleared it, not that they left it alone. An all-empty map stores
+        // as null, leaving a company that reset everything indistinguishable
+        // from one that never customised anything.
+        // An explicit null means "clear every icon"; undefined means this update
+        // is not about icons at all.
+        const nextIcons = moduleIcons === undefined
+            ? undefined
+            : moduleIcons === null
+                ? null
+                : emptyToNull(parseModuleIcons(moduleIcons))
 
         // Protection for SHSD
         if (existing.name === 'SHSD' && name && name !== 'SHSD') {
@@ -229,7 +252,9 @@ export class CompanyService {
                 ...(name && { name }),
                 ...(isBanned !== undefined && { isBanned }),
                 ...(autoVerifyLocation !== undefined && { autoVerifyLocation }),
-                ...(vendorsLabel !== undefined && { vendorsLabel: normalizedVendorsLabel })
+                ...(nextVendorsLabel !== undefined && { vendorsLabel: nextVendorsLabel }),
+                ...(nextLabels !== undefined && { moduleLabels: nextLabels ?? Prisma.DbNull }),
+                ...(nextIcons !== undefined && { moduleIcons: nextIcons ?? Prisma.DbNull })
             }
         })
 
@@ -240,8 +265,17 @@ export class CompanyService {
         if (autoVerifyLocation !== undefined && autoVerifyLocation !== existing.autoVerifyLocation) {
             changes.autoVerifyLocation = { old: existing.autoVerifyLocation, new: autoVerifyLocation }
         }
-        if (vendorsLabel !== undefined && normalizedVendorsLabel !== existing.vendorsLabel) {
-            changes.vendorsLabel = { old: existing.vendorsLabel, new: normalizedVendorsLabel }
+        if (nextVendorsLabel !== undefined && nextVendorsLabel !== existing.vendorsLabel) {
+            changes.vendorsLabel = { old: existing.vendorsLabel, new: nextVendorsLabel }
+        }
+        // Logged as whole maps, because that is how they are written. A diff
+        // per module would read better but would be inventing a granularity the
+        // write does not have.
+        if (nextLabels !== undefined && !sameOverrides(parseModuleOverrides(existing.moduleLabels), nextLabels)) {
+            changes.moduleLabels = { old: parseModuleOverrides(existing.moduleLabels), new: nextLabels }
+        }
+        if (nextIcons !== undefined && !sameOverrides(parseModuleIcons(existing.moduleIcons), nextIcons)) {
+            changes.moduleIcons = { old: parseModuleIcons(existing.moduleIcons), new: nextIcons }
         }
 
         if (Object.keys(changes).length > 0) {
