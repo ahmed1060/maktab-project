@@ -27,6 +27,7 @@ const ROUTES = [
     "/dashboard/super-admins",
     "/dashboard/companies",
     "/dashboard/companies/abc/payments",
+    "/dashboard/packages",
     "/dashboard/all-users",
     "/dashboard/audit-logs",
     "/dashboard/health",

@@ -15,10 +15,20 @@ import Pagination from '@/components/Pagination'
 import LoadingSpinner from '@/components/LoadingSpinner'
 import { useHeader } from '@/context/HeaderContext'
 import { fetcher } from '@/lib/swr-fetcher'
+import SubscriptionBadge from '@/components/SubscriptionBadge'
+import { bundleLabelKeys } from '@/lib/subscription-display'
+import type { SubscriptionState, TrialPreset } from '@/lib/billing/state'
+import { DEFAULT_TRIAL_PRESET, computeTrialEnd, TRIAL_PRESETS } from '@/lib/billing/state'
+import { TRIAL_PRESET_LABEL_KEY } from '@/lib/subscription-display'
 
 type Company = {
     id: string
     name: string
+    isBanned?: boolean
+    package?: { id: string; name: string; hasCompanyManagement: boolean; hasHR: boolean } | null
+    hasUnpaidPayment?: boolean
+    subscription?: { state: SubscriptionState; date: string | null; daysRemaining: number | null }
+    needsAttention?: boolean
 }
 
 export default function CompaniesPage() {
@@ -27,13 +37,23 @@ export default function CompaniesPage() {
     const router = useRouter()
     const [showModal, setShowModal] = useState(false)
     const [editingCompany, setEditingCompany] = useState<Company | null>(null)
-    const [formData, setFormData] = useState({ name: '' })
+    const [formData, setFormData] = useState<{ name: string; trialPreset: TrialPreset; packageId: string }>({
+        name: '',
+        // 14 days preselected: whichever option sits at the top of the list is
+        // what gets chosen when nobody is thinking about it, and two days is a
+        // demo, not a trial.
+        trialPreset: DEFAULT_TRIAL_PRESET,
+        packageId: '',
+    })
     const [submitLoading, setSubmitLoading] = useState(false)
     const [error, setError] = useState('')
     const { triggerRefresh, setSelectedCompanyId: setGlobalSelectedCompanyId } = useCompany()
 
     const { data: session } = useSession()
     const userRole = session?.user?.role || ''
+
+    const { data: packagesResult } = useSWR(userRole === 'SUPER_ADMIN' ? '/api/packages' : null, fetcher)
+    const assignablePackages: { id: string; name: string }[] = packagesResult?.data || []
 
     // Delete State
     const [showDeleteModal, setShowDeleteModal] = useState(false)
@@ -47,9 +67,25 @@ export default function CompaniesPage() {
     const [page, setPage] = useState(1)
     const limit = 10
 
-    const { data: result, isLoading: loading, mutate: fetchCompanies } = useSWR(`/api/companies?page=${page}&limit=${limit}`, fetcher)
+    // On by default: this screen should open already answering the only
+    // question worth asking on a Monday morning, rather than showing everybody
+    // and leaving you to scan. One click clears it.
+    const [filter, setFilter] = useState<'needs-attention' | 'all'>('needs-attention')
+    const [sort, setSort] = useState<'name' | 'date'>('date')
+
+    const { data: result, isLoading: loading, mutate: fetchCompanies } = useSWR(
+        `/api/companies?page=${page}&limit=${limit}&filter=${filter}&sort=${sort}`,
+        fetcher
+    )
     const companies: Company[] = result?.data?.data || result?.data || []
     const totalPages: number = result?.data?.totalPages || result?.totalPages || 0
+    const needsAttentionCount: number = result?.data?.needsAttentionCount ?? 0
+    const totalCompanies: number = result?.data?.totalCompanies ?? 0
+
+    // Changing either control re-pages from the top; staying on page 3 of a
+    // list that just became four rows long shows an empty table.
+    const changeFilter = (next: 'needs-attention' | 'all') => { setFilter(next); setPage(1) }
+    const changeSort = (next: 'name' | 'date') => { setSort(next); setPage(1) }
 
     useEffect(() => {
         setTitle(t('companies'))
@@ -64,10 +100,12 @@ export default function CompaniesPage() {
         setError('')
         if (company) {
             setEditingCompany(company)
-            setFormData({ name: company.name })
+            // Trial length is fixed at creation; editing only reassigns the
+            // package. Extending a trial is its own action, not a field here.
+            setFormData({ name: company.name, trialPreset: DEFAULT_TRIAL_PRESET, packageId: company.package?.id || '' })
         } else {
             setEditingCompany(null)
-            setFormData({ name: '' })
+            setFormData({ name: '', trialPreset: DEFAULT_TRIAL_PRESET, packageId: '' })
         }
         setShowModal(true)
     }
@@ -82,7 +120,7 @@ export default function CompaniesPage() {
             const method = editingCompany ? 'PUT' : 'POST'
             const body = editingCompany
                 ? { id: editingCompany.id, name: formData.name }
-                : { name: formData.name }
+                : { name: formData.name, trialPreset: formData.trialPreset, packageId: formData.packageId || null }
 
             const res = await fetch(endpoint, {
                 method,
@@ -94,6 +132,14 @@ export default function CompaniesPage() {
 
             if (!res.ok) {
                 throw new Error(data.error || t('error_generic'))
+            }
+
+            if (editingCompany && (formData.packageId || '') !== (editingCompany.package?.id || '')) {
+                await fetch(`/api/companies/${editingCompany.id}/package`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ packageId: formData.packageId || null }),
+                })
             }
 
             // Success
@@ -156,7 +202,38 @@ export default function CompaniesPage() {
     return (
         <>
             <div>
-                <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginBottom: '2rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem' }}>
+                    <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                        <button
+                            className="btn"
+                            onClick={() => changeFilter(filter === 'needs-attention' ? 'all' : 'needs-attention')}
+                            style={{
+                                background: filter === 'needs-attention' ? '#fef3c7' : '#f1f5f9',
+                                color: filter === 'needs-attention' ? '#92400e' : '#475569',
+                                border: `1px solid ${filter === 'needs-attention' ? '#fcd34d' : '#e2e8f0'}`,
+                                padding: '0.5rem 0.9rem', fontSize: '0.85rem', fontWeight: 600,
+                            }}
+                        >
+                            {filter === 'needs-attention'
+                                ? `${t('needs_attention_filter' as any)} · ${needsAttentionCount}`
+                                : t('show_all_companies' as any)}
+                        </button>
+
+                        <button
+                            className="btn"
+                            onClick={() => changeSort(sort === 'date' ? 'name' : 'date')}
+                            style={{ background: '#f1f5f9', color: '#475569', border: '1px solid #e2e8f0', padding: '0.5rem 0.9rem', fontSize: '0.85rem' }}
+                        >
+                            {sort === 'date' ? t('sort_by_date' as any) : t('sort_by_name' as any)}
+                        </button>
+
+                        {filter === 'needs-attention' && totalCompanies > 0 && (
+                            <span style={{ fontSize: '0.82rem', color: '#64748b' }}>
+                                {needsAttentionCount} / {totalCompanies}
+                            </span>
+                        )}
+                    </div>
+
                     <button
                         className="btn btn-primary"
                         onClick={() => handleOpenModal()}
@@ -166,13 +243,25 @@ export default function CompaniesPage() {
                     </button>
                 </div>
 
-                {loading ? <LoadingSpinner message={t('loading_companies')} /> : (
+                {loading ? <LoadingSpinner message={t('loading_companies')} /> : companies.length === 0 && filter === 'needs-attention' ? (
+                    /* Said plainly, not as an empty table — an empty table reads
+                       as a loading failure, and "nothing needs attention" is the
+                       most valuable answer this screen can ever give. */
+                    <div style={{ background: 'white', borderRadius: '12px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', padding: '3rem 1.5rem', textAlign: 'center' }}>
+                        <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>✅</div>
+                        <div style={{ fontWeight: 600, color: '#166534', marginBottom: '0.75rem' }}>{t('nothing_needs_attention' as any)}</div>
+                        <button className="btn btn-secondary" onClick={() => changeFilter('all')} style={{ fontSize: '0.85rem' }}>
+                            {t('show_all_companies' as any)}
+                        </button>
+                    </div>
+                ) : (
                     <div style={{ background: 'white', borderRadius: '12px', overflowX: 'auto', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
                         <table style={{ width: '100%', borderCollapse: 'collapse', direction: locale === 'ar' ? 'rtl' : 'ltr', minWidth: '800px' }}>
                             <thead style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
                                 <tr>
                                     <th style={{ textAlign: locale === 'ar' ? 'right' : 'left', padding: '1rem', fontSize: '0.875rem', color: '#64748b' }}>{t('name_label')}</th>
-                                    <th style={{ textAlign: locale === 'ar' ? 'right' : 'left', padding: '1rem', fontSize: '0.875rem', color: '#64748b' }}>{t('col_id')}</th>
+                                    <th style={{ textAlign: locale === 'ar' ? 'right' : 'left', padding: '1rem', fontSize: '0.875rem', color: '#64748b' }}>{t('subscription_state' as any)}</th>
+                                    <th style={{ textAlign: locale === 'ar' ? 'right' : 'left', padding: '1rem', fontSize: '0.875rem', color: '#64748b' }}>{t('bundles' as any)}</th>
                                     <th style={{ textAlign: locale === 'ar' ? 'right' : 'left', padding: '1rem', fontSize: '0.875rem', color: '#64748b' }}>{t('status_label')}</th>
                                     <th style={{ textAlign: 'center', padding: '1rem', fontSize: '0.875rem', color: '#64748b' }}>{t('costs')}</th>
                                     <th style={{ textAlign: locale === 'ar' ? 'left' : 'right', padding: '1rem', fontSize: '0.875rem', color: '#64748b' }}>{t('quick_actions')}</th>
@@ -182,7 +271,48 @@ export default function CompaniesPage() {
                                 {companies.map(company => (
                                     <tr key={company.id} style={{ borderBottom: '1px solid #f1f5f9', background: (company as any).isBanned ? '#fff1f2' : 'white' }}>
                                         <td style={{ padding: '1rem', fontWeight: '500', textAlign: locale === 'ar' ? 'right' : 'left' }}>{company.name}</td>
-                                        <td style={{ padding: '1rem', fontFamily: 'monospace', color: '#64748b', fontSize: '0.8rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{company.id}</td>
+                                        <td style={{ padding: '1rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
+                                            {company.subscription ? (
+                                                <SubscriptionBadge
+                                                    state={company.subscription.state}
+                                                    date={company.subscription.date}
+                                                    daysRemaining={company.subscription.daysRemaining}
+                                                />
+                                            ) : '—'}
+                                            {company.hasUnpaidPayment && (
+                                                <div style={{ marginTop: '0.3rem' }}>
+                                                    <span style={{ padding: '0.15rem 0.45rem', borderRadius: '999px', fontSize: '0.68rem', fontWeight: 600, background: '#fef3c7', color: '#92400e' }}>
+                                                        {t('unpaid_record' as any)}
+                                                    </span>
+                                                </div>
+                                            )}
+                                        </td>
+                                        <td style={{ padding: '1rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
+                                            {/* How you read your own book of business: who is on
+                                                Company Management alone and could be sold HR. */}
+                                            {!company.package ? (
+                                                <span style={{ fontSize: '0.78rem', color: '#94a3b8' }}>{t('no_package' as any)}</span>
+                                            ) : (
+                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', alignItems: 'flex-start' }}>
+                                                    <span style={{ fontSize: '0.82rem', fontWeight: 600, color: '#334155' }}>{company.package.name}</span>
+                                                    <div style={{ display: 'flex', gap: '0.25rem', flexWrap: 'wrap' }}>
+                                                        {bundleLabelKeys(company.package).length === 0 ? (
+                                                            <span style={{ padding: '0.15rem 0.45rem', borderRadius: '999px', fontSize: '0.68rem', fontWeight: 600, background: '#f1f5f9', color: '#475569' }}>
+                                                                {t('core_only' as any)}
+                                                            </span>
+                                                        ) : bundleLabelKeys(company.package).map(key => (
+                                                            <span key={key} style={{
+                                                                padding: '0.15rem 0.45rem', borderRadius: '999px', fontSize: '0.68rem', fontWeight: 600,
+                                                                background: key === 'bundle_hr' ? '#dcfce7' : '#e0f2fe',
+                                                                color: key === 'bundle_hr' ? '#166534' : '#0369a1',
+                                                            }}>
+                                                                {t(key as any)}
+                                                            </span>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </td>
                                         <td style={{ padding: '1rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
                                             {(company as any).isBanned ? (
                                                 <span style={{ background: '#fee2e2', color: '#dc2626', padding: '0.25rem 0.5rem', borderRadius: '9999px', fontSize: '0.75rem', fontWeight: 'bold' }}>{t('status_banned')}</span>
@@ -300,9 +430,62 @@ export default function CompaniesPage() {
                                     className="input"
                                     required
                                     value={formData.name}
-                                    onChange={e => setFormData({ name: e.target.value })}
+                                    onChange={e => setFormData({ ...formData, name: e.target.value })}
                                     style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}
                                 />
+                            </div>
+
+                            {/* Trial length is chosen once, at creation. Changing
+                                it afterwards would move an end date somebody has
+                                already been told — extending is a separate action. */}
+                            {!editingCompany && (
+                                <div style={{ marginBottom: '1.5rem' }}>
+                                    <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem' }}>{t('trial_length' as any)}</label>
+                                    <select
+                                        className="input"
+                                        value={formData.trialPreset}
+                                        onChange={e => setFormData({ ...formData, trialPreset: e.target.value as TrialPreset })}
+                                        style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}
+                                    >
+                                        {TRIAL_PRESETS.map(preset => (
+                                            <option key={preset} value={preset}>{t(TRIAL_PRESET_LABEL_KEY[preset] as any)}</option>
+                                        ))}
+                                    </select>
+
+                                    {/* "1 month" is abstract; a date is checkable.
+                                        Computed with the same helper the server
+                                        uses — a preview computed a second way is a
+                                        preview that can lie, and this is the only
+                                        way a clamping surprise (31 January + 1
+                                        month) gets noticed by you rather than by a
+                                        customer. */}
+                                    <div style={{ marginTop: '0.5rem', fontSize: '0.82rem', color: '#64748b' }}>
+                                        {t('trial_ends_on' as any)}:{' '}
+                                        <b style={{ color: '#334155' }}>
+                                            {computeTrialEnd(new Date(), formData.trialPreset, 0)
+                                                ?.toLocaleDateString(locale === 'ar' ? 'ar-EG' : 'en-US', { day: 'numeric', month: 'long', year: 'numeric' })}
+                                        </b>
+                                    </div>
+                                </div>
+                            )}
+
+                            <div style={{ marginBottom: '1.5rem' }}>
+                                <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem' }}>{t('package_label' as any)}</label>
+                                <select
+                                    className="input"
+                                    value={formData.packageId}
+                                    onChange={e => setFormData({ ...formData, packageId: e.target.value })}
+                                    style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}
+                                >
+                                    {/* Empty means grandfathered — everything on,
+                                        nothing gated. Spelled out rather than left
+                                        as a blank line, because it is a choice with
+                                        consequences, not the absence of one. */}
+                                    <option value="">{t('no_package' as any)}</option>
+                                    {assignablePackages.map(pkg => (
+                                        <option key={pkg.id} value={pkg.id}>{pkg.name}</option>
+                                    ))}
+                                </select>
                             </div>
 
                             <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', flexDirection: 'row' }}>

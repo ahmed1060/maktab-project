@@ -3,6 +3,7 @@ import { Prisma } from "@prisma/client"
 import { NotificationService } from "./notification.service"
 import { computePeriodStart, computePeriodEnd, isSubscriptionType, daysUntil } from "@/lib/billing/period"
 import { decideReminder, REMINDER_RUNGS } from "@/lib/billing/reminders"
+import { resolveSubscriptionState, needsAttention, computeTrialEnd, DEFAULT_TRIAL_PRESET } from "@/lib/billing/state"
 import { VerificationService } from "./verification.service"
 import { CreateCompanyInput, UpdateCompanyInput } from "../validations/company.schema"
 
@@ -14,18 +15,71 @@ function serializeCompanyPayment<T extends { cost: Prisma.Decimal }>(payment: T)
 
 export class CompanyService {
     static async create(input: CreateCompanyInput, session: any) {
+        // Defaulted here rather than in the database, so the choice is visible
+        // in application code beside the form that offers it. A company created
+        // without a preset gets the 14-day trial, not no trial: whichever option
+        // applies when nobody is thinking about it should be the sensible one.
+        const trialPreset = input.trialPreset ?? DEFAULT_TRIAL_PRESET
+
         const company = await prisma.company.create({
-            data: { name: input.name }
+            data: {
+                name: input.name,
+                trialPreset,
+                packageId: input.packageId ?? null,
+            },
         })
 
-        // Audit Log (Centralized)
         const { AuditLogService } = await import("./audit-log.service")
         await AuditLogService.log('CREATE_COMPANY', 'COMPANY', company.id, {
             superAdminId: session.user.id,
-            details: { name: input.name }
+            details: {
+                name: input.name,
+                trialPreset,
+                // The computed date, not just the preset — this is the figure
+                // anyone reading the log later actually wants, and recomputing
+                // it from createdAt months afterwards is guesswork.
+                trialEnd: computeTrialEnd(company.createdAt, trialPreset, 0)?.toISOString() ?? null,
+                packageId: input.packageId ?? null,
+            },
         })
 
         return company
+    }
+
+    /**
+     * Extend a company's trial by a number of days, on top of whatever it
+     * already has. Additive, never a new total — the column only grows, which
+     * is what makes "how often do we extend, and by how much" answerable.
+     */
+    static async extendTrial(companyId: string, days: number, session: any) {
+        const company = await prisma.company.findUnique({
+            where: { id: companyId },
+            select: { id: true, name: true, createdAt: true, trialPreset: true, trialExtensionDays: true },
+        })
+        if (!company) throw new Error("COMPANY_NOT_FOUND")
+        if (!company.trialPreset) throw new Error("COMPANY_HAS_NO_TRIAL")
+
+        const before = computeTrialEnd(company.createdAt, company.trialPreset, company.trialExtensionDays)
+        const updated = await prisma.company.update({
+            where: { id: companyId },
+            data: { trialExtensionDays: { increment: days } },
+            select: { trialExtensionDays: true },
+        })
+        const after = computeTrialEnd(company.createdAt, company.trialPreset, updated.trialExtensionDays)
+
+        const { AuditLogService } = await import("./audit-log.service")
+        await AuditLogService.log('EXTEND_COMPANY_TRIAL', 'COMPANY', companyId, {
+            superAdminId: session.user.id,
+            details: {
+                companyName: company.name,
+                days,
+                totalExtensionDays: updated.trialExtensionDays,
+                from: before?.toISOString() ?? null,
+                to: after?.toISOString() ?? null,
+            },
+        })
+
+        return { companyId, trialExtensionDays: updated.trialExtensionDays, trialEnd: after }
     }
 
     static async update(input: UpdateCompanyInput, session: any) {
@@ -119,6 +173,111 @@ export class CompanyService {
             include: { company: { select: { name: true } } }
         })
         return payments.map(serializeCompanyPayment)
+    }
+
+    /**
+     * The companies list with each company's computed subscription state.
+     *
+     * State, filtering and sorting are all resolved in memory rather than in
+     * SQL, because the state is a conclusion drawn from several facts (trial
+     * preset, extensions, the furthest paid period, its grace extension) and
+     * expressing that as a query would mean a second implementation of
+     * resolveSubscriptionState that could disagree with the first. One rule,
+     * one implementation — the point of §4.
+     *
+     * That means every company is loaded before paging. Deliberate at this
+     * scale: a handful of companies today, and the row is small. If this ever
+     * reaches thousands, the fix is a materialised state column refreshed by
+     * the daily job — not a hand-written query duplicating the rule.
+     */
+    static async listWithSubscription(options: {
+        page?: number
+        limit?: number
+        filter?: 'all' | 'needs-attention'
+        sort?: 'name' | 'date'
+        now?: Date
+    } = {}) {
+        const { page = 1, limit = 10, filter = 'all', sort = 'name', now = new Date() } = options
+
+        const companies = await prisma.company.findMany({
+            orderBy: { name: 'asc' },
+            select: {
+                id: true,
+                name: true,
+                isBanned: true,
+                createdAt: true,
+                trialPreset: true,
+                trialExtensionDays: true,
+                package: {
+                    select: { id: true, name: true, hasCompanyManagement: true, hasHR: true },
+                },
+                // The furthest-reaching confirmed period. Postgres sorts NULLs
+                // first on DESC, so a lifetime row (endDate null) wins — which
+                // is correct: nothing outlasts a subscription that never ends.
+                payments: {
+                    where: { status: 'PAID' },
+                    orderBy: { endDate: 'desc' },
+                    take: 1,
+                    select: { endDate: true, graceExtensionHours: true },
+                },
+                _count: { select: { payments: { where: { status: 'UNPAID' } } } },
+            },
+        })
+
+        const rows = companies.map(company => {
+            const facts = {
+                createdAt: company.createdAt,
+                trialPreset: company.trialPreset,
+                trialExtensionDays: company.trialExtensionDays,
+                latestPaidPeriod: company.payments[0] ?? null,
+                hasUnpaidPayment: company._count.payments > 0,
+            }
+            const status = resolveSubscriptionState(facts, now)
+
+            return {
+                id: company.id,
+                name: company.name,
+                isBanned: company.isBanned,
+                package: company.package,
+                hasUnpaidPayment: facts.hasUnpaidPayment,
+                subscription: {
+                    state: status.state,
+                    date: status.date,
+                    daysRemaining: status.daysRemaining,
+                },
+                needsAttention: needsAttention(facts, now),
+            }
+        })
+
+        const filtered = filter === 'needs-attention' ? rows.filter(r => r.needsAttention) : rows
+
+        const sorted = sort === 'date'
+            ? [...filtered].sort((a, b) => {
+                // Soonest first. A company with no date — lifetime, or
+                // grandfathered — has nothing to be soon, so it sorts last
+                // rather than to the top as a zero would.
+                const aDate = a.subscription.date?.getTime()
+                const bDate = b.subscription.date?.getTime()
+                if (aDate === undefined && bDate === undefined) return a.name.localeCompare(b.name)
+                if (aDate === undefined) return 1
+                if (bDate === undefined) return -1
+                return aDate - bDate
+            })
+            : filtered
+
+        const total = sorted.length
+        const skip = (page - 1) * limit
+
+        return {
+            data: sorted.slice(skip, skip + limit),
+            total,
+            page,
+            totalPages: Math.ceil(total / limit),
+            // So the UI can say "12 of 40 need attention" without a second call,
+            // and can tell "nothing needs attention" apart from "no companies".
+            totalCompanies: rows.length,
+            needsAttentionCount: rows.filter(r => r.needsAttention).length,
+        }
     }
 
     /**
