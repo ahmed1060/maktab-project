@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import PageTitle from './PageTitle'
+import SubscriptionBanner from './SubscriptionBanner'
 import { moduleForPagePath } from '@/lib/features'
 import { useFeatures } from '@/lib/features/useFeatures'
 import { DEFAULT_POWERED_BY_NAME } from '@/lib/services/system-settings.service'
@@ -471,6 +472,12 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
                 </div>
 
                 <div style={{ padding: '2rem', maxWidth: '1600px', width: '100%', margin: '0 auto', boxSizing: 'border-box' }}>
+                    {/* Above the page rather than inside it, so it appears on
+                        every screen without thirty pages having to remember. It
+                        renders nothing at all when the subscription is simply
+                        working — there is no dismiss control because grace is
+                        not something a customer should be able to dismiss. */}
+                    <SubscriptionBanner />
                     {children}
                 </div>
                 {/* Floating Attribution - Minimalist CYSHIELD style.

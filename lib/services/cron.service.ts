@@ -94,6 +94,15 @@ export class CronService {
         await MaintenanceService.pruneOldNotifications(30)
         await ObligationService.processRecurrentObligations()
 
+        // Subscription lifecycle: grace beginning, grace ending, lockout, and a
+        // trial about to run out. Runs here rather than in its own cron so it
+        // shares the daily pass, and after the others so a company entering
+        // lockout has already had its data written for the day — the plan is
+        // explicit that background jobs keep running for locked companies,
+        // since stopping them creates permanent gaps nobody can backfill.
+        const { CompanyService } = await import("./company.service")
+        await CompanyService.checkSubscriptionLifecycle()
+
         // --- NEW: Automated Note Expiry Checks ---
         const { NoteService } = await import("./note.service")
         await NoteService.checkExpiries()

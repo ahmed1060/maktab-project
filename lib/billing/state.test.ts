@@ -85,15 +85,19 @@ describe("state resolution", () => {
     })
 
     it("GRACE once the period has passed but the window has not", () => {
+        // Boundaries resolve at end of day in Egypt, so the 12th runs until
+        // 20:59:59.999Z — September is summer there, UTC+3 — and the 48 hours
+        // start from that, not from whatever time of day the payment happened
+        // to be confirmed.
         const s = resolveSubscriptionState(facts({ latestPaidPeriod: { endDate: d("2026-09-12") } }), NOW)
         expect(s.state).toBe("GRACE")
-        expect(s.date!.toISOString()).toBe("2026-09-14T12:00:00.000Z")
+        expect(s.date!.toISOString()).toBe("2026-09-14T20:59:59.999Z")
     })
 
     it("LOCKED once grace has run out, showing when it locked", () => {
         const s = resolveSubscriptionState(facts({ latestPaidPeriod: { endDate: d("2026-09-01") } }), NOW)
         expect(s.state).toBe("LOCKED")
-        expect(s.date!.toISOString()).toBe("2026-09-03T12:00:00.000Z")
+        expect(s.date!.toISOString()).toBe("2026-09-03T20:59:59.999Z")
         expect(s.daysRemaining).toBeLessThan(0)
     })
 
@@ -103,9 +107,26 @@ describe("state resolution", () => {
         expect(resolveSubscriptionState(facts({ latestPaidPeriod: { endDate: d("2026-09-10") } }), NOW).state).toBe("LOCKED")
     })
 
-    it("the exact instant of expiry is not yet grace-free — it is GRACE", () => {
+    it("a subscription ending today is still ACTIVE for the rest of that day", () => {
+        // Changed deliberately in C2: the customer gets their whole last day.
+        // Under a raw timestamp comparison this expired at noon, which is to
+        // say partway through the day they had paid for.
         const s = resolveSubscriptionState(facts({ latestPaidPeriod: { endDate: NOW } }), NOW)
+        expect(s.state).toBe("ACTIVE")
+    })
+
+    it("...and enters GRACE once that day is actually over", () => {
+        const justAfterMidnightCairo = new Date("2026-09-13T22:00:00.000Z")
+        const s = resolveSubscriptionState(facts({ latestPaidPeriod: { endDate: NOW } }), justAfterMidnightCairo)
         expect(s.state).toBe("GRACE")
+    })
+
+    it("a trial also gets its whole last day", () => {
+        const trial = { createdAt: d("2026-09-06"), trialPreset: "SEVEN_DAYS" as const }
+        // Trial end is 13 September; still TRIAL at noon that day...
+        expect(resolveSubscriptionState(facts(trial), NOW).state).toBe("TRIAL")
+        // ...and LOCKED once the Cairo day has ended, with no grace.
+        expect(resolveSubscriptionState(facts(trial), new Date("2026-09-13T22:00:00.000Z")).state).toBe("LOCKED")
     })
 
     it("TRIAL while the trial runs", () => {

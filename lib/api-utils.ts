@@ -4,6 +4,7 @@ import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { ApiResponse } from "./api-response"
 import { moduleForApiPath, requireFeature } from "@/lib/features"
+import { isBlockedBySubscription } from "@/lib/billing/state"
 import { AuditLogService } from "./services/audit-log.service"
 import { isNextInternalError } from "./next-internal-error"
 
@@ -171,7 +172,20 @@ export function withStandardHandler(
             // event, and never signed itself out. It just sat on whatever
             // page was already loaded, indefinitely.
             const isHeartbeat = new URL(req.url).pathname === '/api/user/activity'
-            const isSuspendedOrBanned = (session.user.userStatus === 'SUSPENDED' || session.user.companyBanned) && !isHeartbeat
+            // Subscription lockout rides the same path as a company ban rather
+            // than getting a second, untested blocking mechanism: it inherits
+            // the heartbeat exemption and the emergency-save carve-out below,
+            // both of which were written after real incidents where a blocked
+            // request silently discarded somebody's in-progress work.
+            //
+            // The company's own Admin is never blocked — they are the person
+            // who has to see what is wrong and renew it. Super Admin likewise.
+            const subscriptionLocked = isBlockedBySubscription(
+                (session.user.subscription?.state ?? 'ACTIVE') as any,
+                session.user.role
+            ) && !isHeartbeat
+
+            const isSuspendedOrBanned = (session.user.userStatus === 'SUSPENDED' || session.user.companyBanned || subscriptionLocked) && !isHeartbeat
             const isMaintenanceBlocked = !!session.user.maintenanceMode && session.user.role !== 'SUPER_ADMIN' && !isHeartbeat
 
             const isRestricted = isSuspendedOrBanned || isMaintenanceBlocked
@@ -197,7 +211,11 @@ export function withStandardHandler(
 
                 // Allow ONLY a one-time draft save during suspension/maintenance
                 if (!(isEmergencySave && isDraftUpload)) {
-                    return ApiResponse.forbidden(isMaintenanceBlocked && !isSuspendedOrBanned ? "System is under maintenance" : "Account suspended or company banned")
+                    return ApiResponse.forbidden(
+                        isMaintenanceBlocked && !isSuspendedOrBanned ? "System is under maintenance"
+                            : subscriptionLocked ? "This company's subscription has expired. Please contact your administrator."
+                                : "Account suspended or company banned"
+                    )
                 }
             }
             // -----------------------------------

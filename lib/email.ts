@@ -67,3 +67,38 @@ export async function sendVerificationCodeEmail(to: string, code: string, purpos
         html,
     })
 }
+
+/**
+ * A plain transactional email, for content that is not a verification code.
+ *
+ * Kept separate from sendVerificationCodeEmail rather than generalising it: that
+ * one's whole shape — a big monospaced code, an expiry line — exists for one
+ * job, and bending it into a general sender would make both worse.
+ *
+ * Throws on failure, deliberately. The caller decides what a failed send means;
+ * for subscription notices it means "do not mark this as sent", so it is
+ * retried tomorrow rather than silently lost.
+ */
+export async function sendPlainEmail(to: string, subject: string, text: string): Promise<void> {
+    if (!transporter) {
+        throw new Error('EMAIL_NOT_CONFIGURED')
+    }
+
+    const html = `
+        <div style="font-family: -apple-system, BlinkMacSystemFont, sans-serif; max-width: 520px; margin: 0 auto; padding: 24px;">
+            ${text.split('\n').map(line =>
+                line.trim() === ''
+                    ? '<div style="height: 12px;"></div>'
+                    : `<p style="color: #1c2420; font-size: 15px; line-height: 1.6; margin: 0;">${line}</p>`
+            ).join('')}
+        </div>
+    `
+
+    await transporter.sendMail({
+        from: `Nizmo <${process.env.GMAIL_USER}>`,
+        to,
+        subject,
+        text,
+        html,
+    })
+}

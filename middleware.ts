@@ -57,6 +57,23 @@ export default withAuth(
             return NextResponse.redirect(new URL('/dashboard/maintenance', req.url))
         }
 
+        // 2e. Subscription lockout: the company's Admin is the only person who
+        // reaches the dashboard at all in this state — everyone else is stopped
+        // at login — and they are held on a page that explains it and says
+        // plainly that nothing was deleted. Super Admin is exempt: they are the
+        // one who can renew it on the customer's behalf.
+        //
+        // Excludes the expired page itself, or this redirect-loops. Placed after
+        // maintenance so a system-wide maintenance hold still wins: that one
+        // affects everybody and is usually shorter.
+        if (
+            (token?.subscription as any)?.state === 'LOCKED' && token?.role !== 'SUPER_ADMIN' &&
+            pathname.startsWith('/dashboard') &&
+            pathname !== '/dashboard/subscription-expired'
+        ) {
+            return NextResponse.redirect(new URL('/dashboard/subscription-expired', req.url))
+        }
+
         // 3. Locale Validation
         const locale = req.cookies.get('NEXT_LOCALE')?.value
         if (locale && !['en', 'ar'].includes(locale)) {

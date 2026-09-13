@@ -11,6 +11,7 @@
  */
 
 import { addDays, addHours, addMonths } from "@/lib/date-math"
+import { endOfDayInEgypt } from "@/lib/time"
 
 export type SubscriptionState = 'TRIAL' | 'ACTIVE' | 'GRACE' | 'LOCKED' | 'LIFETIME'
 
@@ -117,11 +118,18 @@ export function resolveSubscriptionState(facts: SubscriptionFacts, now: Date = n
             return { state: 'LIFETIME', date: null, daysRemaining: null }
         }
 
-        if (period.endDate.getTime() > now.getTime()) {
+        // The customer gets the whole of their last day. A raw comparison would
+        // expire a subscription at whatever time of day the payment happened to
+        // be confirmed — mid-morning, for the live one ending 8 October.
+        const effectiveEnd = endOfDayInEgypt(period.endDate)
+
+        if (effectiveEnd.getTime() > now.getTime()) {
+            // The stored date is what is shown; the extension to end-of-day is
+            // an enforcement detail, not something to display back.
             return withDays('ACTIVE', period.endDate, now)
         }
 
-        const graceEnd = computeGraceEnd(period.endDate, period.graceExtensionHours ?? 0)!
+        const graceEnd = computeGraceEnd(effectiveEnd, period.graceExtensionHours ?? 0)!
         return graceEnd.getTime() > now.getTime()
             ? withDays('GRACE', graceEnd, now)
             // LOCKED shows when it locked, which is when grace ran out.
@@ -137,11 +145,38 @@ export function resolveSubscriptionState(facts: SubscriptionFacts, now: Date = n
         return { state: 'ACTIVE', date: null, daysRemaining: null }
     }
 
-    return trialEnd.getTime() > now.getTime()
+    return endOfDayInEgypt(trialEnd).getTime() > now.getTime()
         ? withDays('TRIAL', trialEnd, now)
         // A trial that ran out with no payment locks immediately. There is no
         // grace on a trial: grace is a courtesy to a paying customer.
         : withDays('LOCKED', trialEnd, now)
+}
+
+/**
+ * Whether this state stops people working, and who it stops.
+ *
+ * LOCKED is the only state that blocks anybody. TRIAL and GRACE both keep
+ * everything working — grace exists precisely so that an expiry is not a cliff,
+ * and a trial that restricted things would not be showing the product.
+ *
+ * The company's own Admin is never blocked, in any state. They are the person
+ * who has to be able to see what is wrong and act on it; locking them out would
+ * leave the account with nobody able to renew it.
+ */
+export function isBlockedBySubscription(state: SubscriptionState, role: string | null | undefined): boolean {
+    if (state !== 'LOCKED') return false
+    if (role === 'SUPER_ADMIN' || role === 'ADMIN') return false
+    return true
+}
+
+/** Whether a state warrants telling the company about it, and how loudly. */
+export function subscriptionNotice(state: SubscriptionState): 'none' | 'info' | 'warning' | 'blocked' {
+    switch (state) {
+        case 'TRIAL': return 'info'      // neutral countdown
+        case 'GRACE': return 'warning'   // red, non-dismissible
+        case 'LOCKED': return 'blocked'
+        default: return 'none'
+    }
 }
 
 function withDays(state: SubscriptionState, date: Date, now: Date): SubscriptionStatus {

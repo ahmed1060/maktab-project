@@ -1,5 +1,7 @@
 import { NextAuthOptions } from "next-auth"
 import { resolveBundles, serializeAccess } from "@/lib/features"
+import { summarizeSubscription } from "@/lib/billing/summary"
+import { isBlockedBySubscription } from "@/lib/billing/state"
 import CredentialsProvider from "next-auth/providers/credentials"
 import { prisma } from "@/lib/prisma"
 import bcrypt from "bcryptjs"
@@ -129,7 +131,23 @@ export const authOptions: NextAuthOptions = {
                         // at sign-in rather than only at the first throttled
                         // re-check — otherwise a fresh login would see every gated
                         // module locked for up to a minute.
-                        include: { company: { include: { package: true } } }
+                        include: {
+                            company: {
+                                include: {
+                                    package: true,
+                                    // The furthest-reaching confirmed period, for the
+                                    // subscription state. Seeded at sign-in as well as
+                                    // refreshed on the throttle, so a login is not
+                                    // stateless for its first minute.
+                                    payments: {
+                                        where: { status: 'PAID' },
+                                        orderBy: { endDate: 'desc' },
+                                        take: 1,
+                                        select: { endDate: true, graceExtensionHours: true },
+                                    },
+                                },
+                            },
+                        }
                     })
 
                     const passwordHash = superAdmin?.password || user?.password || DUMMY_PASSWORD_HASH
@@ -214,6 +232,19 @@ export const authOptions: NextAuthOptions = {
                         throw new Error('Company access restricted. Please contact support.')
                     }
 
+                    // Subscription lockout, beside the ban check for the same
+                    // reason: both are "this company cannot be worked in right
+                    // now", and one path is easier to reason about than two.
+                    //
+                    // The company's own Admin is deliberately still allowed in.
+                    // They land on the subscription-expired page, which is the
+                    // only way the account can be renewed — locking them out
+                    // would leave it with nobody able to fix it.
+                    const loginSubscription = summarizeSubscription(validatedUser.company)
+                    if (loginSubscription && isBlockedBySubscription(loginSubscription.state, validatedUser.role)) {
+                        throw new Error('This company\'s subscription has expired. Please contact your administrator.')
+                    }
+
                     if (validatedUser.status === 'SUSPENDED' || validatedUser.status === 'DELETED') {
                         throw new Error('Your account has been suspended or deleted.')
                     }
@@ -259,6 +290,7 @@ export const authOptions: NextAuthOptions = {
                         companyName: validatedUser.company?.name || null,
                         vendorsLabel: validatedUser.company?.vendorsLabel || null,
                         featureAccess: serializeAccess(resolveBundles(validatedUser.company?.package)),
+                        subscription: summarizeSubscription(validatedUser.company),
                         username: validatedUser.username,
                         language: validatedUser.language || 'en',
                         sessionVersion: (validatedUser as any).sessionVersion || 0,
@@ -308,6 +340,7 @@ export const authOptions: NextAuthOptions = {
                 session.user.maintenanceMessage = token.maintenanceMessage as string | null | undefined
                 session.user.vendorsLabel = token.vendorsLabel as string | null | undefined
                 session.user.featureAccess = token.featureAccess as any
+                session.user.subscription = token.subscription as any
             }
             return session
         },
@@ -351,6 +384,7 @@ export const authOptions: NextAuthOptions = {
                 // label for whichever company they've switched to).
                 token.vendorsLabel = (user as any).vendorsLabel || null
                 token.featureAccess = (user as any).featureAccess || null
+                token.subscription = (user as any).subscription || null
                 token.checkedAt = Date.now()
                 token.jti = uuidv4()
 
@@ -424,6 +458,20 @@ export const authOptions: NextAuthOptions = {
                                                 // changing a package has to take effect promptly,
                                                 // not only after the customer next signs in.
                                                 package: { select: { hasCompanyManagement: true, hasHR: true } },
+                                                // The furthest-reaching confirmed period,
+                                                // for the subscription state. NULLs sort
+                                                // first on DESC in Postgres, so a lifetime
+                                                // row wins — correctly: nothing outlasts a
+                                                // subscription that never ends.
+                                                createdAt: true,
+                                                trialPreset: true,
+                                                trialExtensionDays: true,
+                                                payments: {
+                                                    where: { status: 'PAID' },
+                                                    orderBy: { endDate: 'desc' },
+                                                    take: 1,
+                                                    select: { endDate: true, graceExtensionHours: true },
+                                                },
                                             },
                                         },
                                     }
@@ -444,6 +492,10 @@ export const authOptions: NextAuthOptions = {
                             token.vendorsLabel = u?.company?.vendorsLabel || null
                             // Null package resolves to unrestricted — grandfathered.
                             token.featureAccess = serializeAccess(resolveBundles(u?.company?.package))
+                            // Refreshed on the same throttle: a lockout that only
+                            // took effect at the next sign-in would let somebody
+                            // work all day past their grace period.
+                            token.subscription = summarizeSubscription(u?.company)
                         }
 
                         if (token.sessionVersion === undefined) {

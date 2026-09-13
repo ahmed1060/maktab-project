@@ -119,47 +119,62 @@ model Package {
 }
 
 model Company {
-  id                 String                @id @default(uuid())
-  name               String                @unique
-  isBanned           Boolean               @default(false)
+  id                   String                @id @default(uuid())
+  name                 String                @unique
+  isBanned             Boolean               @default(false)
   // Company Settings: whether a submitted task location auto-verifies
   // against the task's target location at all, for any task belonging to
   // this company. The distance threshold itself is a system-wide setting
   // (SystemSettings.locationVerifyRadiusMeters) — this is deliberately
   // company policy only, not per-task, so one company can't quietly
   // change what another company's tasks do.
-  autoVerifyLocation Boolean               @default(true)
+  autoVerifyLocation   Boolean               @default(true)
   // Vendors feature: null shows the default translated "Vendors" label.
   // Only a Super Admin can set this (Company Settings page) — the vendor
   // list itself (add/edit/delete) is managed by that company's own Admin,
   // same split as everywhere else this app separates "who owns naming
   // policy" from "who owns the day-to-day data".
-  vendorsLabel       String?
+  vendorsLabel         String?
   // Null means grandfathered: every feature on, no gating. Every company that
   // existed before packages shipped is untouched, and stays that way until
   // somebody deliberately assigns one.
-  packageId          String?
+  packageId            String?
   // Trial length, chosen at creation. Null means this company predates the
   // trial feature — resolveSubscriptionState treats that as grandfathered, not
   // as an expired trial. Locking a live customer because a column is null is
   // the worst failure this feature could have.
-  trialPreset        TrialPreset?
+  trialPreset          TrialPreset?
   // Only ever grows. Extensions are counted in days whatever the preset, since
   // "give them another week" is how the request always arrives. Kept apart from
   // the preset so "how often do we extend, and by how much" is answerable
   // without reading an audit log.
-  trialExtensionDays Int                   @default(0)
-  createdAt          DateTime              @default(now())
-  updatedAt          DateTime              @updatedAt
-  businessClients    BusinessClient[]
-  package            Package?              @relation(fields: [packageId], references: [id], onDelete: Restrict)
-  lockedAttempts     LockedModuleAttempt[]
-  payments           CompanyPayment[]
-  obligations        Obligation[]
-  requests           Request[]
-  tasks              Task[]
-  users              User[]
-  vendors            Vendor[]
+  trialExtensionDays   Int                   @default(0)
+  // Which lifecycle notices have already gone out for the current period:
+  // TRIAL_ENDING_24H, GRACE_STARTED, GRACE_ENDING_24H, LOCKED.
+  //
+  // Same shape and reasoning as CompanyPayment.remindersSent. It matters more
+  // here: two of these are emails, and lib/email.ts sends through one Gmail
+  // account with no queue and no retry — the same account that carries password
+  // resets and MFA codes. A job that re-sent every morning would get it
+  // rate-limited, which does not merely annoy a customer, it locks people out
+  // of the product.
+  //
+  // Cleared whenever a date moves (payment confirmed, trial or grace extended),
+  // because that starts a new period which deserves its notices again. Cleared
+  // wholesale rather than selectively: sending one notice twice after an
+  // extension is a much smaller failure than never sending it at all.
+  lifecycleNoticesSent String[]              @default([])
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
+  businessClients      BusinessClient[]
+  package              Package?              @relation(fields: [packageId], references: [id], onDelete: Restrict)
+  lockedAttempts       LockedModuleAttempt[]
+  payments             CompanyPayment[]
+  obligations          Obligation[]
+  requests             Request[]
+  tasks                Task[]
+  users                User[]
+  vendors              Vendor[]
 }
 
 // System Settings: a single-row table (id is always "default") for

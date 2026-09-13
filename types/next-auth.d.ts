@@ -55,6 +55,13 @@ declare module "next-auth" {
             // minted before packages shipped, which deserializes to
             // unrestricted — see deserializeAccess.
             featureAccess?: { unrestricted: boolean; bundles: ('COMPANY_MANAGEMENT' | 'HR')[] } | null
+        subscription?: { state: 'TRIAL' | 'ACTIVE' | 'GRACE' | 'LOCKED' | 'LIFETIME'; date: string | null; daysRemaining: number | null } | null
+            // Subscription state, computed server-side and refreshed on the
+            // same 60s recheck. The date is an ISO string because a Date does
+            // not survive the token's JSON round trip, and the state travels
+            // already decided: no part of the lockout is computed in the
+            // browser. Null for a Super Admin, who has no company.
+            subscription?: { state: 'TRIAL' | 'ACTIVE' | 'GRACE' | 'LOCKED' | 'LIFETIME'; date: string | null; daysRemaining: number | null } | null
         } & DefaultSession["user"]
     }
 
@@ -79,6 +86,7 @@ declare module "next-auth" {
         mfaEnabled?: boolean
         vendorsLabel?: string | null
         featureAccess?: { unrestricted: boolean; bundles: ('COMPANY_MANAGEMENT' | 'HR')[] } | null
+        subscription?: { state: 'TRIAL' | 'ACTIVE' | 'GRACE' | 'LOCKED' | 'LIFETIME'; date: string | null; daysRemaining: number | null } | null
     }
 }
 
@@ -105,6 +113,7 @@ declare module "next-auth/jwt" {
         mfaEnabled?: boolean
         vendorsLabel?: string | null
         featureAccess?: { unrestricted: boolean; bundles: ('COMPANY_MANAGEMENT' | 'HR')[] } | null
+        subscription?: { state: 'TRIAL' | 'ACTIVE' | 'GRACE' | 'LOCKED' | 'LIFETIME'; date: string | null; daysRemaining: number | null } | null
         // F-11: last time the merged revocation/suspension check actually
         // ran against the database, so it can be throttled instead of
         // running on every single request.

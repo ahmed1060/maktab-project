@@ -3,6 +3,8 @@ import { Prisma } from "@prisma/client"
 import { NotificationService } from "./notification.service"
 import { computePeriodStart, computePeriodEnd, isSubscriptionType, daysUntil } from "@/lib/billing/period"
 import { decideReminder, REMINDER_RUNGS } from "@/lib/billing/reminders"
+import { decideLifecycleNotices, NOTICE_AUDIENCE, lifecycleEmailCopy, lifecycleOperatorMessage } from "@/lib/billing/lifecycle"
+import { sendPlainEmail } from "@/lib/email"
 import { resolveSubscriptionState, needsAttention, computeTrialEnd, DEFAULT_TRIAL_PRESET } from "@/lib/billing/state"
 import { VerificationService } from "./verification.service"
 import { CreateCompanyInput, UpdateCompanyInput } from "../validations/company.schema"
@@ -47,6 +49,124 @@ export class CompanyService {
     }
 
     /**
+     * Subscription lifecycle notices: grace beginning, grace ending, lockout,
+     * and a trial about to run out.
+     *
+     * Runs beside the expiry ladder in the same daily job. Which notices are due
+     * is decided by `decideLifecycleNotices`, a pure function; this gathers
+     * recipients and writes.
+     *
+     * Email goes to the customer's own Admins, in-app notifications to the
+     * platform's Super Admins — the split settled in the plan. A customer is not
+     * watching the app, which is exactly when email earns its place; you are in
+     * it daily, so the bell reaches you just as reliably and costs nothing.
+     */
+    static async checkSubscriptionLifecycle(now: Date = new Date()) {
+        const companies = await prisma.company.findMany({
+            select: {
+                id: true, name: true, createdAt: true,
+                trialPreset: true, trialExtensionDays: true, lifecycleNoticesSent: true,
+                payments: {
+                    where: { status: 'PAID' },
+                    orderBy: { endDate: 'desc' },
+                    take: 1,
+                    select: { endDate: true, graceExtensionHours: true },
+                },
+            },
+        })
+
+        const superAdminIds = (await prisma.superAdmin.findMany({ select: { id: true } })).map(a => a.id)
+
+        let emailsSent = 0
+        let notificationsSent = 0
+        const noticesByCompany: Record<string, string[]> = {}
+
+        for (const company of companies) {
+            const facts = {
+                createdAt: company.createdAt,
+                trialPreset: company.trialPreset,
+                trialExtensionDays: company.trialExtensionDays,
+                latestPaidPeriod: company.payments[0] ?? null,
+            }
+
+            const due = decideLifecycleNotices(facts, company.lifecycleNoticesSent, now)
+            if (due.length === 0) continue
+
+            const customerNotices = due.filter(n => NOTICE_AUDIENCE[n] === 'customer')
+            const operatorNotices = due.filter(n => NOTICE_AUDIENCE[n] === 'operator')
+
+            // Resolved per company, never globally: a billing message naming a
+            // company must not reach another company's Admin, and this codebase
+            // has shipped cross-tenant leaks before.
+            const admins = customerNotices.length > 0
+                ? await prisma.user.findMany({
+                    where: { companyId: company.id, role: 'ADMIN', status: 'ACTIVE' },
+                    select: { id: true, email: true },
+                })
+                : []
+
+            const delivered: string[] = []
+
+            for (const notice of customerNotices) {
+                const { subject, body } = lifecycleEmailCopy(notice, company.name)
+                let anySent = false
+
+                for (const admin of admins) {
+                    if (!admin.email) continue
+                    try {
+                        await sendPlainEmail(admin.email, subject, body)
+                        emailsSent++
+                        anySent = true
+                    } catch (error) {
+                        // Recorded only on success, so a transient mail failure
+                        // retries tomorrow instead of being marked done and
+                        // never reaching the customer at all.
+                        console.error('[lifecycle] email failed', { company: company.name, notice, error })
+                    }
+                }
+
+                // No Admin to email is not a failure to retry forever — there is
+                // nobody to reach. Marked so the job does not re-scan it daily.
+                if (anySent || admins.length === 0) delivered.push(notice)
+            }
+
+            for (const notice of operatorNotices) {
+                if (superAdminIds.length === 0) continue
+                await NotificationService.notifySuperAdmins(
+                    superAdminIds,
+                    'SUBSCRIPTION_LIFECYCLE',
+                    lifecycleOperatorMessage(notice, company.name),
+                    `/dashboard/companies/${company.id}/payments`
+                )
+                notificationsSent += superAdminIds.length
+                delivered.push(notice)
+            }
+
+            // LOCKED also tells the operator, per the plan's table — the same
+            // event, both audiences, one marker.
+            if (delivered.includes('LOCKED') && superAdminIds.length > 0) {
+                await NotificationService.notifySuperAdmins(
+                    superAdminIds,
+                    'SUBSCRIPTION_LIFECYCLE',
+                    lifecycleOperatorMessage('LOCKED', company.name),
+                    `/dashboard/companies/${company.id}/payments`
+                )
+                notificationsSent += superAdminIds.length
+            }
+
+            if (delivered.length > 0) {
+                await prisma.company.update({
+                    where: { id: company.id },
+                    data: { lifecycleNoticesSent: { push: delivered } },
+                })
+                noticesByCompany[company.name] = delivered
+            }
+        }
+
+        return { companiesChecked: companies.length, emailsSent, notificationsSent, noticesByCompany }
+    }
+
+    /**
      * Extend a company's trial by a number of days, on top of whatever it
      * already has. Additive, never a new total — the column only grows, which
      * is what makes "how often do we extend, and by how much" answerable.
@@ -62,7 +182,14 @@ export class CompanyService {
         const before = computeTrialEnd(company.createdAt, company.trialPreset, company.trialExtensionDays)
         const updated = await prisma.company.update({
             where: { id: companyId },
-            data: { trialExtensionDays: { increment: days } },
+            data: {
+                trialExtensionDays: { increment: days },
+                // The trial now ends later, so a "trial ending" notice already
+                // sent no longer describes the truth and must be allowed to
+                // fire again at the new date. Cleared wholesale: sending one
+                // twice is a far smaller failure than never sending it.
+                lifecycleNoticesSent: [],
+            },
             select: { trialExtensionDays: true },
         })
         const after = computeTrialEnd(company.createdAt, company.trialPreset, updated.trialExtensionDays)
@@ -339,19 +466,28 @@ export class CompanyService {
         const startDate = computePeriodStart(now, currentPeriod?.endDate)
         const endDate = computePeriodEnd(startDate, payment.subscriptionType)
 
-        const updated = await prisma.companyPayment.update({
-            where: { id: paymentId },
-            data: {
-                status: 'PAID',
-                paidAt: now,
-                startDate,
-                endDate,
-                // A new period gets its reminders back. Any endDate write must
-                // do this, or the ladder stays spent and the period expires in
-                // silence — the exact failure the old boolean had.
-                remindersSent: []
-            }
-        })
+        // Both writes are one event — a new period begins — so they commit
+        // together. A confirmed payment whose company kept a stale "locked"
+        // notice marker would never warn that customer again.
+        const [updated] = await prisma.$transaction([
+            prisma.companyPayment.update({
+                where: { id: paymentId },
+                data: {
+                    status: 'PAID',
+                    paidAt: now,
+                    startDate,
+                    endDate,
+                    // A new period gets its reminders back. Any endDate write
+                    // must do this, or the ladder stays spent and the period
+                    // expires in silence — the exact failure the old boolean had.
+                    remindersSent: [],
+                },
+            }),
+            prisma.company.update({
+                where: { id: payment.companyId },
+                data: { lifecycleNoticesSent: [] },
+            }),
+        ])
 
         // Audit Log (Centralized)
         const { AuditLogService } = await import("./audit-log.service")
