@@ -814,6 +814,7 @@ export const en = {
         show_all_companies: "Show all",
         nothing_needs_attention: "Nothing needs attention.",
         sort_by_date: "Sort by date",
+        sort_label: "Sort",
         sort_by_name: "Sort by name",
         days_left: "days left",
         ended_days_ago: "ended {days} days ago",

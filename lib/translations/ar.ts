@@ -777,6 +777,7 @@ export const ar = {
         show_all_companies: "عرض الكل",
         nothing_needs_attention: "لا شيء يحتاج انتباهاً.",
         sort_by_date: "ترتيب بالتاريخ",
+        sort_label: "ترتيب",
         sort_by_name: "ترتيب بالاسم",
         days_left: "يوم متبقٍ",
         ended_days_ago: "انتهى منذ {days} يوماً",

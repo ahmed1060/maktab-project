@@ -16,6 +16,7 @@ import LoadingSpinner from '@/components/LoadingSpinner'
 import { useHeader } from '@/context/HeaderContext'
 import { fetcher } from '@/lib/swr-fetcher'
 import SubscriptionBadge from '@/components/SubscriptionBadge'
+import SegmentedToggle from '@/components/SegmentedToggle'
 import { bundleLabelKeys } from '@/lib/subscription-display'
 import type { SubscriptionState, TrialPreset } from '@/lib/billing/state'
 import { DEFAULT_TRIAL_PRESET, computeTrialEnd, TRIAL_PRESETS } from '@/lib/billing/state'
@@ -203,35 +204,39 @@ export default function CompaniesPage() {
         <>
             <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem' }}>
-                    <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
-                        <button
-                            className="btn"
-                            onClick={() => changeFilter(filter === 'needs-attention' ? 'all' : 'needs-attention')}
-                            style={{
-                                background: filter === 'needs-attention' ? '#fef3c7' : '#f1f5f9',
-                                color: filter === 'needs-attention' ? '#92400e' : '#475569',
-                                border: `1px solid ${filter === 'needs-attention' ? '#fcd34d' : '#e2e8f0'}`,
-                                padding: '0.5rem 0.9rem', fontSize: '0.85rem', fontWeight: 600,
-                            }}
-                        >
-                            {filter === 'needs-attention'
-                                ? `${t('needs_attention_filter' as any)} · ${needsAttentionCount}`
-                                : t('show_all_companies' as any)}
-                        </button>
+                    <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                        {/* Both options visible with the selected one marked,
+                            rather than one button that renames itself. A
+                            self-renaming button cannot say what is selected and
+                            what clicking would do at once, so it has to be
+                            clicked to find out which reading was true. */}
+                        <SegmentedToggle
+                            ariaLabel={t('subscription_state' as any)}
+                            value={filter}
+                            onChange={changeFilter}
+                            options={[
+                                { value: 'needs-attention', label: t('needs_attention_filter' as any), count: needsAttentionCount },
+                                { value: 'all', label: t('show_all_companies' as any), count: totalCompanies },
+                            ]}
+                        />
 
-                        <button
-                            className="btn"
-                            onClick={() => changeSort(sort === 'date' ? 'name' : 'date')}
-                            style={{ background: '#f1f5f9', color: '#475569', border: '1px solid #e2e8f0', padding: '0.5rem 0.9rem', fontSize: '0.85rem' }}
-                        >
-                            {sort === 'date' ? t('sort_by_date' as any) : t('sort_by_name' as any)}
-                        </button>
-
-                        {filter === 'needs-attention' && totalCompanies > 0 && (
-                            <span style={{ fontSize: '0.82rem', color: '#64748b' }}>
-                                {needsAttentionCount} / {totalCompanies}
+                        {/* "Sort by date | Sort by name" repeats the word in
+                            both halves; the group's own label carries it once,
+                            and the segments name only what differs. */}
+                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <span style={{ fontSize: '0.82rem', color: '#64748b', fontWeight: 500 }}>
+                                {t('sort_label' as any)}
                             </span>
-                        )}
+                            <SegmentedToggle
+                                ariaLabel={t('sort_label' as any)}
+                                value={sort}
+                                onChange={changeSort}
+                                options={[
+                                    { value: 'date', label: t('date' as any) },
+                                    { value: 'name', label: t('name_label' as any) },
+                                ]}
+                            />
+                        </div>
                     </div>
 
                     <button
