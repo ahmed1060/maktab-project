@@ -21,11 +21,11 @@ import { fetcher } from '@/lib/swr-fetcher'
 // entry point yet, kept here so an existing/future row of either still
 // renders correctly instead of silently falling back to "Regular."
 const DAY_OFF_TYPE_STYLE: Record<string, { bg: string; color: string; labelKey: string }> = {
-    REGULAR: { bg: '#e0f2fe', color: '#0369a1', labelKey: 'regular_day_off' },
-    CASUAL: { bg: '#ede9fe', color: '#5b21b6', labelKey: 'casual_day_off' },
-    SICK: { bg: '#fee2e2', color: '#b91c1c', labelKey: 'sick_day_off' },
-    EMERGENCY: { bg: '#ffedd5', color: '#c2410c', labelKey: 'emergency_day_off' },
-    UNPAID: { bg: '#f1f5f9', color: '#475569', labelKey: 'unpaid_day_off' },
+    REGULAR: { bg: 'var(--info-bg)', color: 'var(--info-fg)', labelKey: 'regular_day_off' },
+    CASUAL: { bg: 'var(--lifetime-bg)', color: 'var(--accent-fg)', labelKey: 'casual_day_off' },
+    SICK: { bg: 'var(--danger-bg)', color: 'var(--danger-fg-strong)', labelKey: 'sick_day_off' },
+    EMERGENCY: { bg: 'var(--warn-bg-warm)', color: 'var(--warn-fg-warm-strong)', labelKey: 'emergency_day_off' },
+    UNPAID: { bg: 'var(--surface-sunk)', color: 'var(--text-muted)', labelKey: 'unpaid_day_off' },
 }
 
 interface DayOffRequest {
@@ -309,7 +309,7 @@ export default function DayOffRequestsPage() {
         { name: t('remaining_credit' as any), value: userCredit },
         { name: t('used_credit' as any), value: usedByCredit }
     ]
-    const COLORS = ['#10b981', '#ef4444']
+    const COLORS = ['var(--ok-solid)', 'var(--danger-solid)']
 
     return (
         <div style={{ direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
@@ -321,9 +321,9 @@ export default function DayOffRequestsPage() {
                     left: locale === 'ar' ? '2rem' : 'auto',
                     padding: '0.75rem 1.25rem',
                     borderRadius: '0.5rem',
-                    background: alert.type === 'success' ? '#dcfce7' : '#fee2e2',
-                    color: alert.type === 'success' ? '#166534' : '#991b1b',
-                    border: `1px solid ${alert.type === 'success' ? '#86efac' : '#fca5a5'}`,
+                    background: alert.type === 'success' ? 'var(--ok-bg)' : 'var(--danger-bg)',
+                    color: alert.type === 'success' ? 'var(--ok-fg)' : 'var(--danger-fg)',
+                    border: `1px solid ${alert.type === 'success' ? 'var(--ok-border)' : 'var(--danger-border-firm)'}`,
                     display: 'flex',
                     alignItems: 'center',
                     gap: '0.5rem',
@@ -373,11 +373,11 @@ export default function DayOffRequestsPage() {
                                     const totalCredit = baseCredit;
                                     const percentage = totalCredit > 0 ? userCredit / totalCredit : 1;
 
-                                    let colors = { bg: '#dcfce7', text: '#166534', border: '#bbf7d0' }; // Green
+                                    let colors = { bg: 'var(--ok-bg)', text: 'var(--ok-fg)', border: 'var(--ok-bg-strong)' }; // Green
                                     if (percentage < 0.3) {
-                                        colors = { bg: '#fef2f2', text: '#991b1b', border: '#fecaca' }; // Red
+                                        colors = { bg: 'var(--danger-bg-subtle)', text: 'var(--danger-fg)', border: 'var(--danger-border)' }; // Red
                                     } else if (percentage < 0.6) {
-                                        colors = { bg: '#fff7ed', text: '#9a3412', border: '#fed7aa' }; // Orange
+                                        colors = { bg: 'var(--warn-bg-warm-subtle)', text: 'var(--warn-fg-warm)', border: 'var(--warn-border-warm)' }; // Orange
                                     }
 
                                     return (
@@ -432,7 +432,7 @@ export default function DayOffRequestsPage() {
                                     style={{
                                         animation: visualHighlightId === req.id ? 'none' : 'fadeIn 0.4s ease-out forwards',
                                         animationDelay: `${index * 50}ms`,
-                                        borderInlineStart: visualHighlightId === req.id ? '4px solid #a855f7' : '',
+                                        borderInlineStart: visualHighlightId === req.id ? '4px solid var(--accent-solid)' : '',
                                         background: visualHighlightId === req.id ? 'rgba(168, 85, 247, 0.05)' : ''
                                     }}
                                 >
@@ -444,7 +444,7 @@ export default function DayOffRequestsPage() {
                                                     {req.user?.firstName} {req.user?.lastName}
                                                 </h3>
                                             )}
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#64748b', fontSize: '0.85rem', fontWeight: '600' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-soft)', fontSize: '0.85rem', fontWeight: '600' }}>
                                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                                                     <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
                                                     <line x1="16" y1="2" x2="16" y2="6"></line>
@@ -464,8 +464,8 @@ export default function DayOffRequestsPage() {
                                             fontWeight: '800',
                                             textTransform: 'uppercase',
                                             letterSpacing: '0.025em',
-                                            background: req.status === 'APPROVED' ? '#dcfce7' : req.status === 'REJECTED' ? '#fee2e2' : '#fef9c3',
-                                            color: req.status === 'APPROVED' ? '#166534' : req.status === 'REJECTED' ? '#991b1b' : '#854d0e',
+                                            background: req.status === 'APPROVED' ? 'var(--ok-bg)' : req.status === 'REJECTED' ? 'var(--danger-bg)' : 'var(--warn-bg-yellow)',
+                                            color: req.status === 'APPROVED' ? 'var(--ok-fg)' : req.status === 'REJECTED' ? 'var(--danger-fg)' : 'var(--warn-fg-yellow)',
                                             boxShadow: '0 2px 4px rgba(0,0,0,0.02)'
                                         }}>
                                             {t(`status_${req.status.toLowerCase()}` as any)}
@@ -491,9 +491,9 @@ export default function DayOffRequestsPage() {
                                                 borderRadius: '0.5rem',
                                                 fontSize: '0.75rem',
                                                 fontWeight: '700',
-                                                background: '#f8fafc',
-                                                color: '#64748b',
-                                                border: '1px solid #e2e8f0'
+                                                background: 'var(--surface-subtle)',
+                                                color: 'var(--text-soft)',
+                                                border: '1px solid var(--border)'
                                             }}>
                                                 {formatDays(calculateWorkDays(req.date, req.endDate))}
                                             </span>
@@ -503,10 +503,10 @@ export default function DayOffRequestsPage() {
                                                         fontSize: '0.75rem',
                                                         padding: '0.25rem 0.625rem',
                                                         borderRadius: '0.5rem',
-                                                        background: req.deductionType === 'SALARY' ? '#fee2e2' : '#dcfce7',
-                                                        color: req.deductionType === 'SALARY' ? '#991b1b' : '#166534',
+                                                        background: req.deductionType === 'SALARY' ? 'var(--danger-bg)' : 'var(--ok-bg)',
+                                                        color: req.deductionType === 'SALARY' ? 'var(--danger-fg)' : 'var(--ok-fg)',
                                                         fontWeight: '700',
-                                                        border: `1px solid ${req.deductionType === 'SALARY' ? '#fca5a5' : '#86efac'}`
+                                                        border: `1px solid ${req.deductionType === 'SALARY' ? 'var(--danger-border-firm)' : 'var(--ok-border)'}`
                                                     }}>
                                                         {formatDays(req.daysDeducted || 0)} {t('deduct_from_label' as any)} {req.deductionType === 'SALARY' ? t('deduct_from_salary' as any) : t('deduct_from_credit' as any)}
                                                     </span>
@@ -517,7 +517,7 @@ export default function DayOffRequestsPage() {
                                             <div style={{
                                                 margin: 0,
                                                 fontSize: '0.9rem',
-                                                color: '#475569',
+                                                color: 'var(--text-muted)',
                                                 lineHeight: '1.5',
                                                 background: 'rgba(0,0,0,0.03)',
                                                 padding: '0.75rem',
@@ -532,17 +532,17 @@ export default function DayOffRequestsPage() {
                                                 &quot;{req.reason}&quot;
                                             </div>
                                         ) : (
-                                            <p style={{ margin: 0, fontSize: '0.9rem', color: '#94a3b8', fontStyle: 'italic' }}>
+                                            <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-faint)', fontStyle: 'italic' }}>
                                                 {t('no_reason_provided')}
                                             </p>
                                         )}
                                         {req.status === 'REJECTED' && req.rejectionReason && (
                                             <div style={{
                                                 fontSize: '0.85rem',
-                                                color: '#991b1b',
+                                                color: 'var(--danger-fg)',
                                                 lineHeight: '1.5',
-                                                background: '#fef2f2',
-                                                border: '1px solid #fecaca',
+                                                background: 'var(--danger-bg-subtle)',
+                                                border: '1px solid var(--danger-border)',
                                                 padding: '0.75rem',
                                                 borderRadius: '0.75rem',
                                                 maxHeight: '80px',
@@ -555,7 +555,7 @@ export default function DayOffRequestsPage() {
                                         )}
                                         <div style={{
                                             fontSize: '0.75rem',
-                                            color: '#94a3b8',
+                                            color: 'var(--text-faint)',
                                             fontStyle: 'italic',
                                             display: 'flex',
                                             gap: '0.35rem',
@@ -571,13 +571,13 @@ export default function DayOffRequestsPage() {
 
                                     {/* Card Actions (Admin only) */}
                                     {isAdmin && req.status === 'PENDING' && (
-                                        <div style={{ display: 'flex', gap: '0.75rem', marginTop: 'auto', paddingTop: '1rem', borderTop: '1px dashed #e2e8f0' }}>
+                                        <div style={{ display: 'flex', gap: '0.75rem', marginTop: 'auto', paddingTop: '1rem', borderTop: '1px dashed var(--border)' }}>
                                             <button
                                                 onClick={() => handleAction(req.id, 'APPROVED')}
                                                 className="btn"
                                                 style={{
                                                     flex: 1,
-                                                    background: '#10b981',
+                                                    background: 'var(--ok-solid)',
                                                     color: 'white',
                                                     fontSize: '0.875rem',
                                                     fontWeight: '700',
@@ -592,7 +592,7 @@ export default function DayOffRequestsPage() {
                                                 className="btn"
                                                 style={{
                                                     flex: 1,
-                                                    background: '#ef4444',
+                                                    background: 'var(--danger-solid)',
                                                     color: 'white',
                                                     fontSize: '0.875rem',
                                                     fontWeight: '700',
@@ -642,8 +642,8 @@ export default function DayOffRequestsPage() {
                                 </ResponsiveContainer>
                             </div>
                             <div style={{ textAlign: 'center', marginTop: '1rem' }}>
-                                <p style={{ fontSize: '1.25rem', fontWeight: 'bold', color: '#10b981' }}>{formatDays(userCredit)}</p>
-                                <p style={{ fontSize: '0.85rem', color: '#64748b' }}>{t('remaining_credit' as any)}</p>
+                                <p style={{ fontSize: '1.25rem', fontWeight: 'bold', color: 'var(--ok-solid)' }}>{formatDays(userCredit)}</p>
+                                <p style={{ fontSize: '0.85rem', color: 'var(--text-soft)' }}>{t('remaining_credit' as any)}</p>
                             </div>
                         </div>
                     </div>
@@ -704,7 +704,7 @@ export default function DayOffRequestsPage() {
                                 />
                                 <div style={{
                                     fontSize: '0.75rem',
-                                    color: reqReason.length >= 100 ? '#ef4444' : '#94a3b8',
+                                    color: reqReason.length >= 100 ? 'var(--danger-solid)' : 'var(--text-faint)',
                                     textAlign: locale === 'ar' ? 'left' : 'right',
                                     marginTop: '0.25rem'
                                 }}>
@@ -729,7 +729,7 @@ export default function DayOffRequestsPage() {
                 <div className="modal-overlay" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
                     <div className="card" style={{ width: 'min(calc(100vw - 3rem), 400px)' }}>
                         <h2 className="text-xl font-bold mb-4">{t('approve_deduction_title' as any)}</h2>
-                        <p style={{ marginBottom: '1rem', fontSize: '0.9rem', color: '#64748b' }}>
+                        <p style={{ marginBottom: '1rem', fontSize: '0.9rem', color: 'var(--text-soft)' }}>
                             {selectedRequest.user?.firstName} {selectedRequest.user?.lastName} - {t('day_off_credit')}: {selectedRequest.user?.dayOffCredit}
                         </p>
                         <div style={{ marginBottom: '1.5rem' }}>
@@ -745,9 +745,9 @@ export default function DayOffRequestsPage() {
                         </div>
                         <div style={{ marginBottom: '1.5rem' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                                <label style={{ fontSize: '0.875rem', fontWeight: '500', color: '#64748b' }}>{t('deduct_from_label' as any)}</label>
+                                <label style={{ fontSize: '0.875rem', fontWeight: '500', color: 'var(--text-soft)' }}>{t('deduct_from_label' as any)}</label>
                                 {(parseFloat(daysToDeduct) || 0) > (selectedRequest.user?.dayOffCredit || 0) && (
-                                    <span style={{ fontSize: '0.7rem', color: '#ef4444', fontWeight: 'bold', background: '#fee2e2', padding: '0.1rem 0.4rem', borderRadius: '0.25rem' }}>
+                                    <span style={{ fontSize: '0.7rem', color: 'var(--danger-solid)', fontWeight: 'bold', background: 'var(--danger-bg)', padding: '0.1rem 0.4rem', borderRadius: '0.25rem' }}>
                                         ⚠️ {t('insufficient_credit' as any) || 'Insufficient Credit'}
                                     </span>
                                 )}
@@ -760,9 +760,9 @@ export default function DayOffRequestsPage() {
                                         flex: 1,
                                         padding: '0.625rem',
                                         borderRadius: '0.75rem',
-                                        border: '1px solid #e2e8f0',
-                                        background: deductionType === 'CREDIT' ? '#3b82f6' : 'white',
-                                        color: deductionType === 'CREDIT' ? 'white' : '#64748b',
+                                        border: '1px solid var(--border)',
+                                        background: deductionType === 'CREDIT' ? 'var(--info-solid)' : 'white',
+                                        color: deductionType === 'CREDIT' ? 'white' : 'var(--text-soft)',
                                         cursor: (parseFloat(daysToDeduct) || 0) > (selectedRequest.user?.dayOffCredit || 0) ? 'not-allowed' : 'pointer',
                                         fontWeight: '700',
                                         fontSize: '0.875rem',
@@ -782,9 +782,9 @@ export default function DayOffRequestsPage() {
                                         flex: 1,
                                         padding: '0.625rem',
                                         borderRadius: '0.75rem',
-                                        border: '1px solid #e2e8f0',
-                                        background: deductionType === 'SALARY' ? '#3b82f6' : 'white',
-                                        color: deductionType === 'SALARY' ? 'white' : '#64748b',
+                                        border: '1px solid var(--border)',
+                                        background: deductionType === 'SALARY' ? 'var(--info-solid)' : 'white',
+                                        color: deductionType === 'SALARY' ? 'white' : 'var(--text-soft)',
                                         cursor: 'pointer',
                                         fontWeight: '700',
                                         fontSize: '0.875rem',
@@ -818,7 +818,7 @@ export default function DayOffRequestsPage() {
                 <div className="modal-overlay" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
                     <div className="card" style={{ width: 'min(calc(100vw - 3rem), 400px)' }}>
                         <h2 className="text-xl font-bold mb-4">{t('confirm_rejection_title' as any)}</h2>
-                        <p style={{ marginBottom: '1.5rem', color: '#64748b' }}>
+                        <p style={{ marginBottom: '1.5rem', color: 'var(--text-soft)' }}>
                             {t('are_you_sure_msg' as any)} {t('reject_button')} {selectedRequest.user?.firstName} {selectedRequest.user?.lastName}?
                         </p>
                         <div style={{ marginBottom: '1.5rem' }}>
@@ -838,7 +838,7 @@ export default function DayOffRequestsPage() {
                                 // the same way.
                                 style={{ height: '90px', resize: 'none', lineHeight: '1.4' }}
                             />
-                            <div style={{ fontSize: '0.75rem', color: '#94a3b8', textAlign: locale === 'ar' ? 'left' : 'right', marginTop: '0.25rem' }}>
+                            <div style={{ fontSize: '0.75rem', color: 'var(--text-faint)', textAlign: locale === 'ar' ? 'left' : 'right', marginTop: '0.25rem' }}>
                                 {rejectionReason.length}/300
                             </div>
                         </div>
@@ -846,7 +846,7 @@ export default function DayOffRequestsPage() {
                             <button
                                 onClick={() => processAction(selectedRequest.id, 'REJECTED')}
                                 className="btn"
-                                style={{ background: '#ef4444', color: 'white' }}
+                                style={{ background: 'var(--danger-solid)', color: 'white' }}
                             >
                                 {t('reject_button')}
                             </button>

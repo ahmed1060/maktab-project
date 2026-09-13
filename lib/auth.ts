@@ -207,6 +207,7 @@ export const authOptions: NextAuthOptions = {
                             companyName: 'SHSD',
                             username: superAdmin.username,
                             language: superAdmin.language || 'en',
+                            theme: superAdmin.theme || 'system',
                             sessionVersion: (superAdmin as any).sessionVersion || 0,
                             mustChangePassword: (superAdmin as any).mustChangePassword || false,
                             isProtected: (superAdmin as any).isProtected || false,
@@ -293,6 +294,7 @@ export const authOptions: NextAuthOptions = {
                         subscription: summarizeSubscription(validatedUser.company),
                         username: validatedUser.username,
                         language: validatedUser.language || 'en',
+                        theme: validatedUser.theme || 'system',
                         sessionVersion: (validatedUser as any).sessionVersion || 0,
                         mustChangePassword: (validatedUser as any).mustChangePassword || false,
                         // F-11: seed the merged revocation/suspension check's fields at
@@ -330,6 +332,7 @@ export const authOptions: NextAuthOptions = {
                 session.user.companyName = token.companyName as string | null
                 session.user.username = token.username as string
                 session.user.language = token.language as string
+                session.user.theme = token.theme as string | undefined
                 session.user.mustChangePassword = !!token.mustChangePassword
                 session.user.isProtected = !!token.isProtected
                 session.user.emailVerified = !!token.emailVerified
@@ -361,6 +364,10 @@ export const authOptions: NextAuthOptions = {
                 token.companyName = user.companyName
                 token.username = user.username
                 token.language = user.language || 'en'
+                // Seeded at sign-in only. The cookie is what the server reads
+                // per request; this exists so a first sign-in on a new browser
+                // can adopt the preference the account already carries.
+                token.theme = (user as any).theme || 'system'
                 token.mustChangePassword = (user as any).mustChangePassword || false
                 token.isProtected = (user as any).isProtected || false
                 token.emailVerified = (user as any).emailVerified || false

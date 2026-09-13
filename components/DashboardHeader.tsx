@@ -10,6 +10,7 @@ import { useCompany } from '@/context/CompanyContext'
 import { useHeader } from '@/context/HeaderContext'
 import { useLanguage } from '@/context/LanguageContext'
 import LanguageToggleButton from './LanguageToggleButton'
+import ThemeToggleButton from './ThemeToggleButton'
 import useSWR from 'swr'
 
 // Fetcher for SWR
@@ -619,6 +620,7 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
                                         </Link>
                                     )}
                                     <LanguageToggleButton variant="menu-item" onAction={() => setIsMenuOpen(false)} />
+                                    <ThemeToggleButton variant="menu-item" onAction={() => setIsMenuOpen(false)} />
                                     <button
                                         onClick={handleLogout}
                                         style={{

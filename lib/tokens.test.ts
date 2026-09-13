@@ -75,9 +75,9 @@ describe("every defined token is used", () => {
 
 describe("D1 left no raw colour behind", () => {
     it("has no hex literals outside the two files that keep fixed identity", () => {
-        // ManageTemplatesModal draws national flags; the day-off chart's slice
-        // colours are their own decision, called out in the plan.
-        const EXEMPT = ["ManageTemplatesModal", "day-off-requests/page"]
+        // ManageTemplatesModal draws national flags. A flag does not follow a
+        // theme, and it is the only thing left that does not.
+        const EXEMPT = ["ManageTemplatesModal"]
 
         const offenders: string[] = []
         for (const file of SOURCES) {

@@ -16,6 +16,8 @@ declare module "next-auth" {
             username: string
             language: string
             mustChangePassword?: boolean
+            theme?: string
+        theme?: string
             // F-11: stamped on the token by the merged revocation/suspension
             // check in the jwt() callback, so withStandardHandler can read
             // them from the session instead of re-querying the database on
@@ -79,6 +81,7 @@ declare module "next-auth" {
         username?: string
         language?: string
         mustChangePassword?: boolean
+        theme?: string
         userStatus?: string
         companyBanned?: boolean
         isProtected?: boolean
@@ -104,6 +107,7 @@ declare module "next-auth/jwt" {
         username?: string
         language?: string
         mustChangePassword?: boolean
+        theme?: string
         userStatus?: string
         companyBanned?: boolean
         maintenanceMode?: boolean

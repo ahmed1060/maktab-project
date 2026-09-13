@@ -237,6 +237,10 @@ model SuperAdmin {
   createdAt          DateTime           @default(now())
   updatedAt          DateTime           @updatedAt
   language           String             @default("en")
+  // Three states, not a boolean: "system" is the default and means follow the
+  // operating system, which is what most people want and what every app they
+  // already use does. A boolean cannot express it.
+  theme              String             @default("system")
   username           String             @unique
   sessionVersion     Int                @default(0)
   mustChangePassword Boolean            @default(false)
@@ -282,6 +286,10 @@ model User {
   // and CompanyPayment.
   salary                     Decimal                 @default(0) @db.Decimal(12, 2)
   language                   String                  @default("en")
+  // Three states, not a boolean: "system" is the default and means follow the
+  // operating system, which is what most people want and what every app they
+  // already use does. A boolean cannot express it.
+  theme                      String                  @default("system")
   dayOffCredit               Float                   @default(0)
   baseDayOffCredit           Float                   @default(0)
   // No @default: a hardcoded year here meant every account created after

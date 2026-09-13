@@ -160,6 +160,28 @@
      once here rather than eleven times in that file. */
   --hero-from: #667eea;
   --hero-to: #764ba2;
+
+  /* Glass, as tokens rather than literals in the utilities below. The current
+     design's identity is white-tinted glass; on a dark ground white tint reads
+     as fog, so dark needs its own tint and a lower alpha. That is a design
+     decision, which is exactly why it belongs in a token. */
+  --glass-solid: rgba(255, 255, 255, 0.7);
+  --glass-card-bg: rgba(255, 255, 255, 0.55);
+  --glass-card-border: rgba(255, 255, 255, 0.5);
+  --glass-card-hover: rgba(255, 255, 255, 0.75);
+  --glass-card-border-hover: rgba(255, 255, 255, 0.8);
+  --glass-shadow-hover: 0 12px 40px 0 rgba(31, 38, 135, 0.15);
+  --sidebar-bg: rgba(15, 23, 42, 0.65);
+
+  /* The page ground itself. */
+  --page-bg: #eef2ff;
+  --page-veil-a: rgba(99, 102, 241, 0.15);
+  --page-veil-b: rgba(236, 72, 153, 0.15);
+
+  /* Tells the browser to render its own chrome — form controls, scrollbars,
+     spellcheck underlines — to match. Without it a dark page keeps white
+     scrollbars and light-mode date pickers. */
+  color-scheme: light;
 }
 
 body {
@@ -167,7 +189,7 @@ body {
   margin: 0;
   padding: 0;
   color: var(--text-main);
-  background-color: #eef2ff;
+  background-color: var(--page-bg);
   /* Fallback */
 
   /* Animated Mesh Gradient */
@@ -191,8 +213,8 @@ body::before {
   right: 0;
   bottom: 0;
   background:
-    radial-gradient(circle at 15% 50%, rgba(99, 102, 241, 0.15), transparent 25%),
-    radial-gradient(circle at 85% 30%, rgba(236, 72, 153, 0.15), transparent 25%);
+    radial-gradient(circle at 15% 50%, var(--page-veil-a), transparent 25%),
+    radial-gradient(circle at 85% 30%, var(--page-veil-b), transparent 25%);
   z-index: -1;
   pointer-events: none;
   animation: blobFloat 20s infinite alternate;
@@ -388,7 +410,7 @@ body::before {
 
 /* Glassmorphism Utilities */
 .glass {
-  background: rgba(255, 255, 255, 0.7);
+  background: var(--glass-solid);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   border: 1px solid var(--glass-border);
@@ -397,7 +419,7 @@ body::before {
 }
 
 .glass-dark {
-  background: rgba(15, 23, 42, 0.65);
+  background: var(--sidebar-bg);
   /* Slate 900 at 65% */
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
@@ -406,9 +428,9 @@ body::before {
 }
 
 .glass-card {
-  background: rgba(255, 255, 255, 0.55);
+  background: var(--glass-card-bg);
   backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.5);
+  border: 1px solid var(--glass-card-border);
   border-radius: var(--radius);
   padding: 1.5rem;
   transition: transform 0.3s ease, box-shadow 0.3s ease;
@@ -416,16 +438,16 @@ body::before {
 
 .glass-card:hover {
   transform: translateY(-5px);
-  background: rgba(255, 255, 255, 0.75);
-  box-shadow: 0 12px 40px 0 rgba(31, 38, 135, 0.15);
-  border-color: rgba(255, 255, 255, 0.8);
+  background: var(--glass-card-hover);
+  box-shadow: var(--glass-shadow-hover);
+  border-color: var(--glass-card-border-hover);
 }
 
 /* Backward compatibility / default card style */
 .card {
-  background: rgba(255, 255, 255, 0.55);
+  background: var(--glass-card-bg);
   backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.5);
+  border: 1px solid var(--glass-card-border);
   border-radius: var(--radius);
   padding: 1.5rem;
   transition: transform 0.3s ease, box-shadow 0.3s ease;
@@ -682,4 +704,237 @@ input::-webkit-credentials-auto-fill-button {
 @keyframes spin {
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
+}
+
+/* ── Dark mode (D2) ────────────────────────────────────────────────────────
+   Three blocks because there are three states, not two. "Follow the system" is
+   the default and stamps no attribute, so it is served by the media query
+   alone; each explicit choice then has to win against the system in its own
+   direction — dark when the OS is light, and light when the OS is dark.
+
+   Status colours are re-derived, never inverted. A #dcfce7 background under
+   #166534 text is a light-mode pair; flipping those two produces a colour
+   nobody chose. The dark equivalent is a dark tint under a light foreground,
+   picked for contrast on dark — see lib/contrast.test.ts, which holds every
+   pair in both themes to 4.5:1.
+
+   Light mode above is untouched. Anyone who never uses the toggle sees no
+   change at all. */
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+
+    --surface: #161b22;
+    --surface-subtle: #1c2128;
+    --surface-sunk: #21262d;
+
+    --border: #30363d;
+    --border-firm: #474e57;
+
+    --text-strong: #f0f6fc;
+    --text-main: #e6edf3;
+    --text-body: #c9d1d9;
+    --text-muted: #b9c2cc;
+    --text-soft: #9aa4af;
+    --text-faint: #7d8590;
+
+    --ok-bg: #0b2b1a;
+    --ok-fg: #6fdc9b;
+    --ok-solid: #2ebd77;
+    --ok-bg-strong: #12402a;
+    --ok-bg-subtle: #0a2416;
+    --ok-bg-faint: #0d3320;
+    --ok-fg-strong: #7ee3a6;
+    --ok-fg-deep: #9beec0;
+    --ok-solid-alt: #35c97f;
+    --ok-solid-hover: #2aa869;
+    --ok-border: #1c5c3a;
+
+    --danger-bg: #3a161a;
+    --danger-bg-subtle: #2a1013;
+    --danger-bg-tint: #2a1013;
+    --danger-border: #6b2328;
+    --danger-border-firm: #8a2d33;
+    --danger-fg: #ff9d9d;
+    --danger-fg-strong: #ffb3b3;
+    --danger-solid: #f2565a;
+    --danger-solid-hover: #d9484c;
+
+    --warn-bg: #3a2c0d;
+    --warn-border: #6b5117;
+    --warn-fg: #f0c96b;
+    --warn-solid: #e0a52e;
+    --warn-bg-warm: #3a2110;
+    --warn-bg-warm-subtle: #2a1809;
+    --warn-border-warm: #6b3d1c;
+    --warn-border-warm-firm: #8a4f24;
+    --warn-fg-warm: #f5b183;
+    --warn-fg-warm-strong: #ffc59e;
+    --warn-solid-warm: #e08a4e;
+    --warn-bg-yellow: #35300d;
+    --warn-bg-yellow-subtle: #262208;
+    --warn-border-yellow: #63591a;
+    --warn-fg-yellow: #e8d47a;
+    --warn-fg-deep: #f2e3a0;
+    --warn-fg-mid: #f0c96b;
+    --warn-solid-hover: #c79127;
+
+    --info-bg: #0d2b3d;
+    --info-bg-subtle: #0a1f2e;
+    --info-fg: #7cc9f0;
+    --info-solid: #4aa3e0;
+    --info-solid-hover: #3d8cc4;
+    --info-bg-sky: #0a2130;
+    --info-bg-sky-firm: #16455e;
+    --info-bg-indigo: #16243f;
+    --info-bg-indigo-subtle: #131b30;
+    --info-bg-indigo-faint: #1a2547;
+    --info-border-indigo: #3d4b7a;
+    --info-fg-deep: #96d4f5;
+    --info-fg-deepest: #b3e2fa;
+    --info-fg-indigo: #9db4f0;
+    --info-solid-sky: #38a8dd;
+    --info-solid-sky-light: #5ec0ed;
+
+    --lifetime-bg: #251b3d;
+    --lifetime-fg: #c4a8f5;
+    --accent-fg: #c4a8f5;
+    --accent-solid: #a86ef0;
+    --accent-solid-deep: #9457e0;
+    --accent-deep: #7c6ae0;
+    --accent-deepest: #6a5ad0;
+
+    --grey-100: #21262d;
+    --grey-200: #30363d;
+    --grey-400: #7d8590;
+    --grey-600: #9aa4af;
+
+    /* Dark glass: its own tint, at a lower alpha. White tint on a dark ground
+       reads as fog rather than as glass. */
+    --glass-border: rgba(255, 255, 255, 0.09);
+    --glass-bg: rgba(255, 255, 255, 0.04);
+    --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
+    --glass-solid: rgba(22, 27, 34, 0.82);
+    --glass-card-bg: rgba(22, 27, 34, 0.7);
+    --glass-card-border: rgba(255, 255, 255, 0.09);
+    --glass-card-hover: rgba(28, 33, 41, 0.85);
+    --glass-card-border-hover: rgba(255, 255, 255, 0.16);
+    --glass-shadow-hover: 0 12px 40px 0 rgba(0, 0, 0, 0.5);
+    --sidebar-bg: rgba(9, 12, 17, 0.78);
+
+    --page-bg: #0b0f14;
+    --page-veil-a: rgba(99, 102, 241, 0.1);
+    --page-veil-b: rgba(236, 72, 153, 0.08);
+  }
+}
+
+/* The explicit "dark" choice, winning even where the operating system is light.
+   Same values as the media query above — duplicated rather than shared via a
+   third selector because a custom property cannot be conditionally applied any
+   other way without a preprocessor. */
+:root[data-theme="dark"] {
+    color-scheme: dark;
+
+    --surface: #161b22;
+    --surface-subtle: #1c2128;
+    --surface-sunk: #21262d;
+
+    --border: #30363d;
+    --border-firm: #474e57;
+
+    --text-strong: #f0f6fc;
+    --text-main: #e6edf3;
+    --text-body: #c9d1d9;
+    --text-muted: #b9c2cc;
+    --text-soft: #9aa4af;
+    --text-faint: #7d8590;
+
+    --ok-bg: #0b2b1a;
+    --ok-fg: #6fdc9b;
+    --ok-solid: #2ebd77;
+    --ok-bg-strong: #12402a;
+    --ok-bg-subtle: #0a2416;
+    --ok-bg-faint: #0d3320;
+    --ok-fg-strong: #7ee3a6;
+    --ok-fg-deep: #9beec0;
+    --ok-solid-alt: #35c97f;
+    --ok-solid-hover: #2aa869;
+    --ok-border: #1c5c3a;
+
+    --danger-bg: #3a161a;
+    --danger-bg-subtle: #2a1013;
+    --danger-bg-tint: #2a1013;
+    --danger-border: #6b2328;
+    --danger-border-firm: #8a2d33;
+    --danger-fg: #ff9d9d;
+    --danger-fg-strong: #ffb3b3;
+    --danger-solid: #f2565a;
+    --danger-solid-hover: #d9484c;
+
+    --warn-bg: #3a2c0d;
+    --warn-border: #6b5117;
+    --warn-fg: #f0c96b;
+    --warn-solid: #e0a52e;
+    --warn-bg-warm: #3a2110;
+    --warn-bg-warm-subtle: #2a1809;
+    --warn-border-warm: #6b3d1c;
+    --warn-border-warm-firm: #8a4f24;
+    --warn-fg-warm: #f5b183;
+    --warn-fg-warm-strong: #ffc59e;
+    --warn-solid-warm: #e08a4e;
+    --warn-bg-yellow: #35300d;
+    --warn-bg-yellow-subtle: #262208;
+    --warn-border-yellow: #63591a;
+    --warn-fg-yellow: #e8d47a;
+    --warn-fg-deep: #f2e3a0;
+    --warn-fg-mid: #f0c96b;
+    --warn-solid-hover: #c79127;
+
+    --info-bg: #0d2b3d;
+    --info-bg-subtle: #0a1f2e;
+    --info-fg: #7cc9f0;
+    --info-solid: #4aa3e0;
+    --info-solid-hover: #3d8cc4;
+    --info-bg-sky: #0a2130;
+    --info-bg-sky-firm: #16455e;
+    --info-bg-indigo: #16243f;
+    --info-bg-indigo-subtle: #131b30;
+    --info-bg-indigo-faint: #1a2547;
+    --info-border-indigo: #3d4b7a;
+    --info-fg-deep: #96d4f5;
+    --info-fg-deepest: #b3e2fa;
+    --info-fg-indigo: #9db4f0;
+    --info-solid-sky: #38a8dd;
+    --info-solid-sky-light: #5ec0ed;
+
+    --lifetime-bg: #251b3d;
+    --lifetime-fg: #c4a8f5;
+    --accent-fg: #c4a8f5;
+    --accent-solid: #a86ef0;
+    --accent-solid-deep: #9457e0;
+    --accent-deep: #7c6ae0;
+    --accent-deepest: #6a5ad0;
+
+    --grey-100: #21262d;
+    --grey-200: #30363d;
+    --grey-400: #7d8590;
+    --grey-600: #9aa4af;
+
+    /* Dark glass: its own tint, at a lower alpha. White tint on a dark ground
+       reads as fog rather than as glass. */
+    --glass-border: rgba(255, 255, 255, 0.09);
+    --glass-bg: rgba(255, 255, 255, 0.04);
+    --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
+    --glass-solid: rgba(22, 27, 34, 0.82);
+    --glass-card-bg: rgba(22, 27, 34, 0.7);
+    --glass-card-border: rgba(255, 255, 255, 0.09);
+    --glass-card-hover: rgba(28, 33, 41, 0.85);
+    --glass-card-border-hover: rgba(255, 255, 255, 0.16);
+    --glass-shadow-hover: 0 12px 40px 0 rgba(0, 0, 0, 0.5);
+    --sidebar-bg: rgba(9, 12, 17, 0.78);
+
+    --page-bg: #0b0f14;
+    --page-veil-a: rgba(99, 102, 241, 0.1);
+    --page-veil-b: rgba(236, 72, 153, 0.08);
 }

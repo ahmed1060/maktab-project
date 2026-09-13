@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useLanguage } from '@/context/LanguageContext'
 import LanguageToggleButton from '@/components/LanguageToggleButton'
+import ThemeToggleButton from '@/components/ThemeToggleButton'
 import { reportClientError, friendlyErrorMessage } from '@/lib/client-error-report'
 
 export default function LoginPage() {
@@ -677,6 +678,7 @@ export default function LoginPage() {
                 </div>
             </div>
             <LanguageToggleButton variant="fixed" />
+            <ThemeToggleButton variant="fixed" />
         </div>
     )
 }
