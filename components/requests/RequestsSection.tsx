@@ -237,7 +237,7 @@ export default function RequestsSection({ userRole }: { userRole: string }) {
                             borderRadius: '1.25rem',
                             background: 'linear-gradient(135deg, var(--brand-primary) 0%, var(--accent-solid) 100%)',
                             border: 'none',
-                            color: 'white',
+                            color: 'var(--text-on-accent)',
                             boxShadow: '0 4px 15px rgba(99, 102, 241, 0.3)',
                             whiteSpace: 'nowrap',
                             display: 'flex',

@@ -84,7 +84,7 @@ export default function ObligationCard({ obligation, userRole, isHighlighted }: 
             padding: '1rem',
             border: isOverdue ? '1px solid var(--danger-border-firm)' : '1px solid var(--grey-100)',
             borderRadius: '8px',
-            background: isOverdue ? 'var(--danger-bg)' : (showVisualHighlight ? 'rgba(168, 85, 247, 0.05)' : 'white'),
+            background: isOverdue ? 'var(--danger-bg)' : (showVisualHighlight ? 'var(--highlight-tint)' : 'var(--surface)'),
             borderInlineStart: showVisualHighlight ? '4px solid var(--accent-solid)' : (isOverdue ? '1px solid var(--danger-border-firm)' : '1px solid var(--grey-100)'),
             transition: 'all 0.3s ease'
         }}>

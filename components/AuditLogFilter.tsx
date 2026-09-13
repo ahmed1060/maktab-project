@@ -116,7 +116,7 @@ export default function AuditLogFilter({
                 }} />
 
                 {/* Entity ID Standalone Search */}
-                <div style={{ flex: 1, minWidth: '300px', position: 'relative' }}>
+                <div style={{ flex: '1 1 14rem', minWidth: 0, position: 'relative' }}>
                     <div style={{ position: 'absolute', [locale === 'ar' ? 'right' : 'left']: '1.25rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-faint)', pointerEvents: 'none' }}>
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                             <circle cx="11" cy="11" r="8"></circle>
@@ -136,7 +136,7 @@ export default function AuditLogFilter({
                             fontSize: '0.95rem',
                             border: '1px solid var(--border)',
                             textAlign: locale === 'ar' ? 'right' : 'left',
-                            background: 'white',
+                            background: 'var(--surface)',
                             height: '48px'
                         }}
                     />
@@ -152,7 +152,7 @@ export default function AuditLogFilter({
                             gap: '0.75rem',
                             padding: '0 1.5rem',
                             borderRadius: '1.25rem',
-                            background: activeFilterCount > 0 ? 'var(--info-bg-subtle)' : 'white',
+                            background: activeFilterCount > 0 ? 'var(--info-bg-subtle)' : 'var(--surface)',
                             border: `2px solid ${activeFilterCount > 0 ? 'var(--info-solid)' : 'var(--border)'}`,
                             color: activeFilterCount > 0 ? 'var(--info-solid-hover)' : 'var(--text-muted)',
                             fontWeight: '700',
@@ -172,7 +172,7 @@ export default function AuditLogFilter({
                                 top: '-4px',
                                 [locale === 'ar' ? 'left' : 'right']: '-4px',
                                 background: 'var(--info-solid)',
-                                color: 'white',
+                                color: 'var(--text-on-accent)',
                                 width: '20px',
                                 height: '20px',
                                 borderRadius: '50%',
@@ -249,7 +249,7 @@ export default function AuditLogFilter({
                                                 height: '48px',
                                                 appearance: 'none',
                                                 textAlign: locale === 'ar' ? 'right' : 'left',
-                                                background: 'white'
+                                                background: 'var(--surface)'
                                             }}
                                         >
                                             <option value="">{t('all_entities')}</option>
@@ -275,7 +275,7 @@ export default function AuditLogFilter({
                                                 height: '48px',
                                                 appearance: 'none',
                                                 textAlign: locale === 'ar' ? 'right' : 'left',
-                                                background: 'white'
+                                                background: 'var(--surface)'
                                             }}
                                         >
                                             <option value="">{t('all_actions')}</option>
@@ -305,7 +305,7 @@ export default function AuditLogFilter({
                                         onClick={resetFilters}
                                         style={{
                                             flex: 1, height: '48px', borderRadius: '1.25rem', border: '1px solid var(--border)',
-                                            background: 'white', fontWeight: '700', cursor: 'pointer', fontSize: '0.875rem', color: 'var(--text-soft)'
+                                            background: 'var(--surface)', fontWeight: '700', cursor: 'pointer', fontSize: '0.875rem', color: 'var(--text-soft)'
                                         }}
                                     >
                                         {t('reset')}
@@ -315,7 +315,7 @@ export default function AuditLogFilter({
                                         style={{
                                             flex: 1, height: '48px', borderRadius: '1.25rem', border: 'none',
                                             background: 'linear-gradient(135deg, var(--brand-primary) 0%, var(--accent-solid) 100%)',
-                                            color: 'white', fontWeight: '700', cursor: 'pointer', fontSize: '0.875rem'
+                                            color: 'var(--text-on-accent)', fontWeight: '700', cursor: 'pointer', fontSize: '0.875rem'
                                         }}
                                     >
                                         {t('show_results')}
@@ -335,7 +335,7 @@ export default function AuditLogFilter({
                     display: 'flex',
                     alignItems: 'center',
                     gap: '0.75rem',
-                    color: 'white'
+                    color: 'var(--text-on-accent)'
                 }}>
                     <span style={{ fontSize: '0.7rem', fontWeight: '800', opacity: 0.5, textTransform: 'uppercase' }}>{t('total_label')}</span>
                     <span style={{ fontSize: '1.25rem', fontWeight: '900' }}>{totalCount}</span>

@@ -132,7 +132,7 @@ export default function DateRangePicker({ dateFrom, dateTo, onChange, label, min
                 [locale === 'ar' ? 'right' : 'left']: 'auto',
                 transform: 'none',
                 marginTop: 0,
-                background: 'white',
+                background: 'var(--surface)',
                 border: '1px solid var(--border)',
                 borderRadius: '0.75rem',
                 boxShadow: '0 10px 25px rgba(0, 0, 0, 0.1)',
@@ -261,7 +261,7 @@ export default function DateRangePicker({ dateFrom, dateTo, onChange, label, min
                         onClick={(e) => { e.stopPropagation(); setIsOpen(false); }}
                         style={{
                             background: 'var(--info-solid)',
-                            color: 'white',
+                            color: 'var(--text-on-accent)',
                             border: 'none',
                             padding: '0.25rem 0.75rem',
                             borderRadius: '0.375rem',
@@ -291,7 +291,7 @@ export default function DateRangePicker({ dateFrom, dateTo, onChange, label, min
                     border: '1px solid var(--border)',
                     fontSize: '0.875rem',
                     cursor: 'pointer',
-                    background: 'white',
+                    background: 'var(--surface)',
                     minWidth: '220px',
                     height: '48px',
                     minHeight: '48px',

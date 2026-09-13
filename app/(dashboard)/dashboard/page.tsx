@@ -416,7 +416,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: { 
                                                         padding: '0.15rem 0.5rem',
                                                         borderRadius: '0.5rem',
                                                         background: 'var(--info-solid)',
-                                                        color: 'white',
+                                                        color: 'var(--text-on-accent)',
                                                         fontWeight: 'bold',
                                                         fontSize: '0.7rem'
                                                     }}>
@@ -492,7 +492,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: { 
                                                         padding: '0.1rem 0.4rem',
                                                         borderRadius: '0.4rem',
                                                         background: 'var(--info-solid)',
-                                                        color: 'white',
+                                                        color: 'var(--text-on-accent)',
                                                         fontWeight: 'bold',
                                                         fontSize: '0.65rem'
                                                     }}>

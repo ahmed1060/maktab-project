@@ -139,7 +139,7 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
                             display: 'flex',
                             alignItems: 'center',
                             gap: '0.75rem',
-                            color: 'white',
+                            color: 'var(--text-on-accent)',
                             whiteSpace: 'nowrap',
                             overflow: 'visible',
                             cursor: !isMobile ? 'pointer' : 'default',
@@ -248,7 +248,7 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
                     {isMobile && (
                         <button
                             onClick={() => setIsSidebarOpen(false)}
-                            style={{ background: 'none', border: 'none', color: 'white', fontSize: '1.5rem', cursor: 'pointer', opacity: 0.7 }}
+                            style={{ background: 'none', border: 'none', color: 'var(--text-on-accent)', fontSize: '1.5rem', cursor: 'pointer', opacity: 0.7 }}
                         >
                             ×
                         </button>

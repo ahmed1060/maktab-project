@@ -220,7 +220,7 @@ export default function DateTimePicker({ value, onChange, label, min, customTrig
                     <div
                         onClick={(e) => e.stopPropagation()}
                         style={{
-                            background: 'white',
+                            background: 'var(--surface)',
                             border: '1px solid var(--border)',
                             borderRadius: '1.5rem',
                             boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
@@ -378,7 +378,7 @@ export default function DateTimePicker({ value, onChange, label, min, customTrig
                                 background: (min && selectedDate && selectedDate < new Date(min))
                                     ? 'var(--border-firm)'
                                     : 'linear-gradient(135deg, var(--brand-primary) 0%, var(--brand-accent) 100%)',
-                                color: 'white',
+                                color: 'var(--text-on-accent)',
                                 border: 'none',
                                 fontWeight: '700',
                                 cursor: (min && selectedDate && selectedDate < new Date(min)) ? 'not-allowed' : 'pointer',

@@ -103,7 +103,7 @@ export default function DatePickerSingle({ value, onChange, label, minDate, maxD
             onClick={(e) => e.stopPropagation()}
             style={{
                 position: 'relative',
-                background: 'white',
+                background: 'var(--surface)',
                 border: '1px solid var(--border)',
                 borderRadius: '0.75rem',
                 boxShadow: '0 10px 25px rgba(0, 0, 0, 0.1)',
@@ -190,7 +190,7 @@ export default function DatePickerSingle({ value, onChange, label, minDate, maxD
                     border: '1px solid var(--border)',
                     fontSize: '0.875rem',
                     cursor: 'pointer',
-                    background: 'white',
+                    background: 'var(--surface)',
                     height: '48px',
                     display: 'flex',
                     alignItems: 'center',

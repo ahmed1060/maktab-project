@@ -79,7 +79,7 @@ export default function Pagination({ currentPage, totalPages, onPageChange }: Pa
                 display: 'flex',
                 alignItems: 'center',
                 gap: '0.75rem',
-                background: 'white',
+                background: 'var(--surface)',
                 padding: '0.5rem 1rem',
                 borderRadius: '9999px',
                 boxShadow: '0 4px 15px rgba(0,0,0,0.05)',

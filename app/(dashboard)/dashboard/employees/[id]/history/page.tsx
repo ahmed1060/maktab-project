@@ -619,7 +619,7 @@ export default function EmployeeHistoryPage() {
                                             position: 'relative',
                                             padding: '1.25rem',
                                             borderRadius: '1rem',
-                                            background: visualHighlightId === adj.id ? 'rgba(168, 85, 247, 0.05)' : 'white',
+                                            background: visualHighlightId === adj.id ? 'var(--highlight-tint)' : 'var(--surface)',
                                             border: '1px solid var(--border)',
                                             borderInlineStart: visualHighlightId === adj.id ? '4px solid var(--accent-solid)' : '1px solid var(--border)',
                                             display: 'flex',
@@ -773,7 +773,7 @@ export default function EmployeeHistoryPage() {
                                 dayOffHistory?.history.flatMap(y => y.requests).filter(r => r.deductionType === 'CREDIT')
                                     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
                                     .map(req => (
-                                        <div key={req.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1.25rem', background: 'white', borderRadius: '1.25rem', border: '1px solid var(--border)' }}>
+                                        <div key={req.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1.25rem', background: 'var(--surface)', borderRadius: '1.25rem', border: '1px solid var(--border)' }}>
                                             <div>
                                                 <div style={{ fontWeight: 'bold', fontSize: '1.05rem' }}>{t(req.type as any) || req.type}</div>
                                                 <div style={{ fontSize: '0.85rem', color: 'var(--text-soft)' }}><SafeDate date={req.date} locale={locale} format="dateOnly" /></div>

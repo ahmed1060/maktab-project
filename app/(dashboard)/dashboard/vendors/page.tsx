@@ -326,7 +326,7 @@ export default function VendorsPage() {
                     alignItems: 'center', zIndex: 9999
                 }}>
                     <div className="absolute inset-0" onClick={() => !isSubmitting && setIsAddOpen(false)} />
-                    <div style={{ background: 'white', padding: '2rem', borderRadius: '12px', width: '100%', maxWidth: '500px', maxHeight: '90vh', overflowY: 'auto', position: 'relative', zIndex: 10, direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
+                    <div style={{ background: 'var(--surface)', padding: '2rem', borderRadius: '12px', width: '100%', maxWidth: '500px', maxHeight: '90vh', overflowY: 'auto', position: 'relative', zIndex: 10, direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
                         <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1.5rem', color: 'var(--text-main)' }}>
                             {locale === 'ar' ? `إضافة ${vendorsLabel}` : `Add ${vendorsLabel}`}
                         </h2>
@@ -379,7 +379,7 @@ export default function VendorsPage() {
                     alignItems: 'center', zIndex: 9999
                 }}>
                     <div className="absolute inset-0" onClick={() => !isEditing && setIsEditOpen(false)} />
-                    <div style={{ background: 'white', padding: '2rem', borderRadius: '12px', width: '100%', maxWidth: '500px', maxHeight: '90vh', overflowY: 'auto', position: 'relative', zIndex: 10, direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
+                    <div style={{ background: 'var(--surface)', padding: '2rem', borderRadius: '12px', width: '100%', maxWidth: '500px', maxHeight: '90vh', overflowY: 'auto', position: 'relative', zIndex: 10, direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
                         <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1.5rem', color: 'var(--text-main)' }}>
                             {locale === 'ar' ? `تعديل ${vendorsLabel}` : `Edit ${vendorsLabel}`}
                         </h2>

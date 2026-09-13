@@ -171,7 +171,7 @@ export default function ViewRequestModal({ isOpen, onClose, request, userRole, o
                     color: 'var(--text-muted)',
                     lineHeight: '1.7',
                     padding: '1.5rem',
-                    background: 'white',
+                    background: 'var(--surface)',
                     border: '1px solid var(--surface-sunk)',
                     borderRadius: '0.75rem',
                     minHeight: '150px'

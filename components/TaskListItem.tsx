@@ -70,7 +70,7 @@ export default function TaskListItem({ task, currentUserId, isHighlighted }: Tas
             marginBottom: '1rem',
             borderInlineStart: showVisualHighlight ? '4px solid var(--accent-solid)' : '',
             transition: 'all 0.3s ease',
-            background: isOverdue ? 'var(--danger-bg)' : (showVisualHighlight ? 'rgba(168, 85, 247, 0.05)' : ''),
+            background: isOverdue ? 'var(--danger-bg)' : (showVisualHighlight ? 'var(--highlight-tint)' : ''),
             borderColor: isOverdue ? 'var(--danger-border-firm)' : undefined
         }}>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
@@ -88,7 +88,7 @@ export default function TaskListItem({ task, currentUserId, isHighlighted }: Tas
                         padding: '0.15rem 0.5rem',
                         borderRadius: '0.5rem',
                         background: 'var(--info-solid)',
-                        color: 'white',
+                        color: 'var(--text-on-accent)',
                         fontWeight: 'bold',
                         fontSize: '0.7rem',
                         display: 'inline-flex',
@@ -102,6 +102,10 @@ export default function TaskListItem({ task, currentUserId, isHighlighted }: Tas
                     fontWeight: '600',
                     padding: '0.25rem 0.75rem',
                     borderRadius: '9999px',
+                    // A status never wraps. Without this, "In Progress" breaks
+                    // onto two lines on a narrow screen and the 9999px radius
+                    // rounds the now-tall box into a full ellipse.
+                    whiteSpace: 'nowrap',
                     background: task.status === 'APPROVED' || task.status === 'COMPLETED' ? 'var(--ok-bg)' : task.status === 'PENDING_CONFIRMATION' ? 'var(--warn-bg-yellow)' : task.status === 'REJECTED' ? 'var(--danger-bg)' : 'var(--surface-sunk)',
                     color: task.status === 'APPROVED' || task.status === 'COMPLETED' ? 'var(--ok-fg)' : task.status === 'PENDING_CONFIRMATION' ? 'var(--warn-fg-yellow)' : task.status === 'REJECTED' ? 'var(--danger-fg)' : 'var(--text-muted)',
                     display: 'inline-flex',
@@ -142,7 +146,7 @@ export default function TaskListItem({ task, currentUserId, isHighlighted }: Tas
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', alignItems: 'flex-end' }}>
                     {isMultiAssignee && userCost > 0 && (
-                        <div style={{ background: 'var(--info-solid)', color: 'white', padding: '0.2rem 0.6rem', borderRadius: '0.5rem', fontSize: '0.75rem', fontWeight: 'bold' }}>
+                        <div style={{ background: 'var(--info-solid)', color: 'var(--text-on-accent)', padding: '0.2rem 0.6rem', borderRadius: '0.5rem', fontSize: '0.75rem', fontWeight: 'bold' }}>
                             {locale === 'ar' ? 'تكلفني' : 'My Cost'}: {userCost.toFixed(2)}
                         </div>
                     )}

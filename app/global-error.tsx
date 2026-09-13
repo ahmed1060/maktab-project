@@ -47,7 +47,7 @@ export default function GlobalError({
                     <div style={{
                         maxWidth: '420px',
                         textAlign: 'center',
-                        background: 'white',
+                        background: 'var(--surface)',
                         borderRadius: '1.5rem',
                         padding: '2.5rem 2rem',
                         boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)',
@@ -70,7 +70,7 @@ export default function GlobalError({
                                 borderRadius: '0.5rem',
                                 border: 'none',
                                 background: 'var(--info-solid)',
-                                color: 'white',
+                                color: 'var(--text-on-accent)',
                                 cursor: 'pointer',
                             }}
                         >

@@ -94,7 +94,7 @@ export default function ConfirmModal({
                 onClick={onCancel}
             />
             <div style={{
-                background: 'white',
+                background: 'var(--surface)',
                 padding: '2rem',
                 borderRadius: '12px',
                 width: 'min(calc(100vw - 3rem), 450px)',
@@ -162,7 +162,7 @@ export default function ConfirmModal({
                             padding: '0.625rem 1.25rem',
                             border: '1px solid var(--border)',
                             borderRadius: '0.5rem',
-                            background: 'white',
+                            background: 'var(--surface)',
                             cursor: 'pointer',
                             fontSize: '0.875rem',
                             fontWeight: '500',
@@ -185,7 +185,7 @@ export default function ConfirmModal({
                             cursor: confirmDisabled ? 'not-allowed' : 'pointer',
                             fontSize: '0.875rem',
                             fontWeight: '500',
-                            color: 'white',
+                            color: 'var(--text-on-accent)',
                             transition: 'all 0.2s'
                         }}
                         onMouseEnter={(e) => { if (!confirmDisabled) e.currentTarget.style.background = styles.confirmHover }}

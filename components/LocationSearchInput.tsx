@@ -150,7 +150,7 @@ export default function LocationSearchInput({ value, onChange, placeholder, labe
                     left: 0,
                     right: 0,
                     zIndex: 1000,
-                    background: 'white',
+                    background: 'var(--surface)',
                     border: '1px solid var(--border)',
                     borderRadius: '0.5rem',
                     boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)',

@@ -290,7 +290,7 @@ export default function CompanyPaymentsPage() {
                                                 disabled={payment.status === 'PAID'}
                                                 style={{
                                                     background: payment.status === 'PAID' ? 'var(--surface-sunk)' : 'var(--brand-primary)',
-                                                    color: payment.status === 'PAID' ? 'var(--text-faint)' : 'white',
+                                                    color: payment.status === 'PAID' ? 'var(--text-faint)' : 'var(--text-on-accent)',
                                                     padding: '0.4rem 0.8rem',
                                                     fontSize: '0.8rem',
                                                     cursor: payment.status === 'PAID' ? 'not-allowed' : 'pointer',

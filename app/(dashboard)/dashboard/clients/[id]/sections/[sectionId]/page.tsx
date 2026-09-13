@@ -464,7 +464,7 @@ export default function SectionNotesPage() {
                                     flexDirection: 'column',
                                     marginBottom: '0.25rem',
                                     borderRadius: '1.5rem',
-                                    background: visualHighlightId === note.id ? 'rgba(168, 85, 247, 0.05)' : '',
+                                    background: visualHighlightId === note.id ? 'var(--highlight-tint)' : '',
                                     borderInlineStart: visualHighlightId === note.id ? '4px solid var(--accent-solid)' : ''
                                 }}
                             >
@@ -476,7 +476,7 @@ export default function SectionNotesPage() {
                                             height: '36px',
                                             borderRadius: '50%',
                                             background: 'var(--primary)',
-                                            color: 'white',
+                                            color: 'var(--text-on-accent)',
                                             display: 'flex',
                                             alignItems: 'center',
                                             justifyContent: 'center',
@@ -664,7 +664,7 @@ export default function SectionNotesPage() {
                                 onClick={() => !isSubmitting && setIsModalOpen(false)}
                             />
                             <div style={{
-                                background: 'white',
+                                background: 'var(--surface)',
                                 padding: '2rem',
                                 borderRadius: '1.5rem',
                                 width: '95%',
@@ -740,7 +740,7 @@ export default function SectionNotesPage() {
                                         {pendingFiles.length > 0 && (
                                             <div style={{ marginTop: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
                                                 {pendingFiles.map((f, i) => (
-                                                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 0.75rem', background: 'white', border: '1px solid var(--border)', borderRadius: '0.5rem' }}>
+                                                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 0.75rem', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '0.5rem' }}>
                                                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', overflow: 'hidden' }}>
                                                             <span style={{ fontSize: '1rem' }}>📄</span>
                                                             <div style={{ fontSize: '0.75rem', fontWeight: '500', color: 'var(--text-main)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{f.name}</div>
@@ -884,7 +884,7 @@ export default function SectionNotesPage() {
                                 onClick={() => !isSubmitting && setIsEditModalOpen(false)}
                             />
                             <div style={{
-                                background: 'white',
+                                background: 'var(--surface)',
                                 padding: '2rem',
                                 borderRadius: '1.5rem',
                                 width: '95%',
@@ -981,7 +981,7 @@ export default function SectionNotesPage() {
                                         {pendingFiles.length > 0 && (
                                             <div style={{ marginTop: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
                                                 {pendingFiles.map((f, i) => (
-                                                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 0.75rem', background: 'white', border: '1px solid var(--border)', borderRadius: '0.5rem' }}>
+                                                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 0.75rem', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '0.5rem' }}>
                                                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', overflow: 'hidden' }}>
                                                             <span style={{ fontSize: '1rem' }}>📄</span>
                                                             <div style={{ fontSize: '0.75rem', fontWeight: '500', color: 'var(--text-main)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{f.name}</div>

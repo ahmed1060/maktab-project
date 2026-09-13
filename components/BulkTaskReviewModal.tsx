@@ -129,7 +129,7 @@ export default function BulkTaskReviewModal({
                                                         top: editAnchorRect.top + editAnchorRect.height / 2,
                                                         left: locale === 'ar' ? editAnchorRect.left - 200 : editAnchorRect.right + 20,
                                                         transform: 'translateY(-50%)',
-                                                        zIndex: 10501, minWidth: '280px', background: 'white', padding: '1rem',
+                                                        zIndex: 10501, minWidth: '280px', background: 'var(--surface)', padding: '1rem',
                                                         borderRadius: '0.75rem', boxShadow: '0 10px 25px rgba(0,0,0,0.2)', border: '1px solid var(--border)',
                                                         direction: locale === 'ar' ? 'rtl' : 'ltr'
                                                     }}>
@@ -198,7 +198,7 @@ export default function BulkTaskReviewModal({
                                                         top: editAnchorRect.top + editAnchorRect.height / 2,
                                                         left: locale === 'ar' ? editAnchorRect.left - 340 : editAnchorRect.right + 20,
                                                         transform: 'translateY(-50%)',
-                                                        zIndex: 10501, minWidth: '320px', background: 'white', padding: '1rem',
+                                                        zIndex: 10501, minWidth: '320px', background: 'var(--surface)', padding: '1rem',
                                                         borderRadius: '0.75rem', boxShadow: '0 10px 25px rgba(0,0,0,0.2)', border: '1px solid var(--border)',
                                                         direction: locale === 'ar' ? 'rtl' : 'ltr'
                                                     }}>

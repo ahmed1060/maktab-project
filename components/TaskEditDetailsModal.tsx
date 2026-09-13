@@ -69,7 +69,7 @@ export default function TaskEditDetailsModal({ isOpen, onClose, onSubmit, editFo
                         {task.assignees && task.assignees.length > 0 ? (
                             task.assignees.map((u: any) => (
                                 <div key={u.id} style={{
-                                    background: 'white',
+                                    background: 'var(--surface)',
                                     border: '1px solid var(--border)',
                                     borderRadius: '2rem',
                                     padding: '0.4rem 1rem',
@@ -84,7 +84,7 @@ export default function TaskEditDetailsModal({ isOpen, onClose, onSubmit, editFo
                             ))
                         ) : (
                             <div style={{
-                                background: 'white',
+                                background: 'var(--surface)',
                                 border: '1px solid var(--border)',
                                 borderRadius: '2rem',
                                 padding: '0.5rem 1rem',

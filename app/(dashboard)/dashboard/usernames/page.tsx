@@ -120,7 +120,7 @@ export default function UsernamesPage() {
                     title={t('download_excel')}
                     style={{
                         background: 'var(--ok-solid)',
-                        color: 'white',
+                        color: 'var(--text-on-accent)',
                         fontWeight: '600',
                         display: 'flex',
                         alignItems: 'center',
@@ -151,7 +151,7 @@ export default function UsernamesPage() {
                         <div
                             key={user.id}
                             style={{
-                                background: 'white',
+                                background: 'var(--surface)',
                                 padding: '1rem',
                                 borderRadius: '1rem',
                                 border: '1px solid var(--border)',

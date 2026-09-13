@@ -198,7 +198,7 @@ export default function CostsClient({ tasksWithCosts, userRole, total, page, tot
                             disabled={isUpdating}
                             style={{
                                 background: 'var(--ok-solid)',
-                                color: 'white',
+                                color: 'var(--text-on-accent)',
                                 border: 'none',
                                 borderRadius: '1.25rem',
                                 padding: '0 1.5rem',

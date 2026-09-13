@@ -771,7 +771,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
     return (
         <div className={`card ${shouldHighlight ? 'highlight-shading' : ''}`} style={{
             ...containerStyle,
-            background: isOverdue ? 'var(--danger-bg-tint)' : (shouldHighlight ? undefined : 'white'),
+            background: isOverdue ? 'var(--danger-bg-tint)' : (shouldHighlight ? undefined : 'var(--surface)'),
             borderColor: isOverdue ? 'var(--danger-border)' : undefined
         }}>
             {/* Deleted Assignee Alert - Check            {/* Deleted Assignee Alert */}
@@ -831,7 +831,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                             <button onClick={() => { setDiffField('title'); setViewedTitleChange(true); }} style={{ background: 'var(--warn-bg-warm)', color: 'var(--warn-fg-warm)', border: '1px solid var(--warn-border-warm-firm)', borderRadius: '0.25rem', padding: '0.25rem 0.5rem', fontSize: '0.75rem', cursor: 'pointer', fontWeight: 'bold' }}>{t('edit')}</button>
                         )}
                     </div>
-                    <span style={{ padding: '0.25rem 0.75rem', borderRadius: '9999px', background: 'var(--info-solid)', color: 'white', fontWeight: 'bold', fontSize: '0.9rem' }}>{task.difficulty} {t('points_label_plural')}</span>
+                    <span style={{ padding: '0.25rem 0.75rem', borderRadius: '9999px', background: 'var(--info-solid)', color: 'var(--text-on-accent)', fontWeight: 'bold', fontSize: '0.9rem' }}>{task.difficulty} {t('points_label_plural')}</span>
                     <span style={{
                         padding: '0.5rem',
                         borderRadius: '0.5rem',
@@ -977,7 +977,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '1rem' }}>
                         {existingAttachments.map((att: any, idx: number) => (
                             <div key={idx} style={{ position: 'relative' }}>
-                                <a href={att.url} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.75rem', background: 'white', border: '1px solid var(--border)', borderRadius: '0.5rem', textDecoration: 'none', color: 'var(--text-body)', transition: 'all 0.2s', flexDirection: 'row' }}>
+                                <a href={att.url} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.75rem', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '0.5rem', textDecoration: 'none', color: 'var(--text-body)', transition: 'all 0.2s', flexDirection: 'row' }}>
                                     <span style={{ fontSize: '1.5rem' }}>📄</span>
                                     <div style={{ overflow: 'hidden', textAlign: locale === 'ar' ? 'right' : 'left' }}>
                                         <div style={{ fontSize: '0.9rem', fontWeight: '500', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>{att.name || t('attachment')}</div>
@@ -995,7 +995,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                                 {task.status === 'IN_PROGRESS' && (att.uploadedById === userId || ['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole)) && (
                                     <button
                                         onClick={(e) => { e.preventDefault(); handleDeleteItem('ATTACHMENT', att.url); }}
-                                        style={{ position: 'absolute', top: '5px', right: locale === 'ar' ? 'auto' : '5px', left: locale === 'ar' ? '5px' : 'auto', background: 'white', border: '1px solid var(--danger-bg)', borderRadius: '50%', padding: '4px', cursor: 'pointer', display: 'flex' }}
+                                        style={{ position: 'absolute', top: '5px', right: locale === 'ar' ? 'auto' : '5px', left: locale === 'ar' ? '5px' : 'auto', background: 'var(--surface)', border: '1px solid var(--danger-bg)', borderRadius: '50%', padding: '4px', cursor: 'pointer', display: 'flex' }}
                                         title={t('delete_attachment_title')}
                                     >
                                         <TrashIcon size={14} />
@@ -1103,7 +1103,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                         {['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole) && task.status === 'PENDING_CONFIRMATION' && (userRole === 'TEAM_LEADER' || !task.assignees?.some((a: any) => a.id === userId)) && (
                             <div style={{ marginTop: '2.5rem', display: 'flex', gap: '1.25rem', borderTop: '2px solid var(--border)', paddingTop: '2rem', flexDirection: 'row' }}>
                                 <button onClick={handleApprove} className="btn btn-primary" style={{ flex: 1, padding: '1rem', fontSize: '1.1rem', fontWeight: '700' }}>{t('approve_button')}</button>
-                                <button onClick={handleReject} className="btn" style={{ flex: 1, padding: '1rem', fontSize: '1.1rem', fontWeight: '700', background: 'var(--danger-solid)', color: 'white' }}>{t('reject_button')}</button>
+                                <button onClick={handleReject} className="btn" style={{ flex: 1, padding: '1rem', fontSize: '1.1rem', fontWeight: '700', background: 'var(--danger-solid)', color: 'var(--text-on-accent)' }}>{t('reject_button')}</button>
                             </div>
                         )}
                     </>

@@ -534,7 +534,7 @@ export default function EmployeesPage() {
                         <button
                             onClick={confirmDelete}
                             className="btn"
-                            style={{ background: 'var(--danger-solid-hover)', color: 'white' }}
+                            style={{ background: 'var(--danger-solid-hover)', color: 'var(--text-on-accent)' }}
                         >
                             {t('delete_employee')}
                         </button>

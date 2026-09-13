@@ -61,7 +61,7 @@ export default function CostCard({ task, isHighlighted }: CostCardProps) {
                     transform: (isHovered || showVisualHighlight) ? 'translateY(-2px)' : 'translateY(0)',
                     boxShadow: (isHovered || showVisualHighlight) ? '0 4px 12px rgba(0,0,0,0.1)' : 'none',
                     borderColor: showVisualHighlight ? 'var(--accent-solid)' : (isHovered ? 'var(--info-solid)' : 'var(--border)'),
-                    background: showVisualHighlight ? 'rgba(168, 85, 247, 0.05)' : 'white',
+                    background: showVisualHighlight ? 'var(--highlight-tint)' : 'var(--surface)',
                     textAlign: locale === 'ar' ? 'right' : 'left',
                     direction: locale === 'ar' ? 'rtl' : 'ltr'
                 }}

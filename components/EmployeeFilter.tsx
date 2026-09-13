@@ -270,8 +270,9 @@ export default function EmployeeFilter({
                 <div style={{
                     position: 'absolute',
                     inset: 0,
-                    background: 'rgba(255, 255, 255, 0.4)',
-                    backdropFilter: 'blur(8px)',
+                    background: 'var(--glass-bg)',
+                    backdropFilter: 'blur(8px) saturate(150%)',
+                    WebkitBackdropFilter: 'blur(8px) saturate(150%)',
                     borderRadius: '1.5rem',
                     border: '1px solid rgba(255, 255, 255, 0.5)',
                     zIndex: -1,
@@ -289,7 +290,7 @@ export default function EmployeeFilter({
 
                 {/* Search - Flexible width */}
                 {!hideSearch && (
-                    <div style={{ flex: 1, minWidth: '300px', position: 'relative' }}>
+                    <div style={{ flex: '1 1 14rem', minWidth: 0, position: 'relative' }}>
                         <div style={{ position: 'absolute', [locale === 'ar' ? 'right' : 'left']: '1.25rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-faint)', pointerEvents: 'none' }}>
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                                 <circle cx="11" cy="11" r="8"></circle>
@@ -314,7 +315,7 @@ export default function EmployeeFilter({
                                 fontSize: '0.95rem',
                                 border: '1px solid var(--border)',
                                 textAlign: locale === 'ar' ? 'right' : 'left',
-                                background: 'white',
+                                background: 'var(--surface)',
                                 height: '48px',
                                 minHeight: '48px'
                             }}
@@ -341,7 +342,7 @@ export default function EmployeeFilter({
                                 gap: '0.75rem',
                                 padding: '0 1.5rem',
                                 borderRadius: '1.25rem',
-                                background: loading ? 'var(--surface-sunk)' : (activeFilterCount > 0 ? 'var(--info-bg-subtle)' : 'white'),
+                                background: loading ? 'var(--surface-sunk)' : (activeFilterCount > 0 ? 'var(--info-bg-subtle)' : 'var(--surface)'),
                                 border: `2px solid ${loading ? 'var(--border)' : (activeFilterCount > 0 ? 'var(--info-solid)' : 'var(--border)')}`,
                                 color: loading ? 'var(--text-faint)' : (activeFilterCount > 0 ? 'var(--info-solid-hover)' : 'var(--text-muted)'),
                                 fontWeight: '700',
@@ -373,7 +374,7 @@ export default function EmployeeFilter({
                                     top: '-4px',
                                     [locale === 'ar' ? 'left' : 'right']: '-4px',
                                     background: 'var(--info-solid)',
-                                    color: 'white',
+                                    color: 'var(--text-on-accent)',
                                     width: '20px',
                                     height: '20px',
                                     borderRadius: '50%',
@@ -450,7 +451,7 @@ export default function EmployeeFilter({
                                                             padding: locale === 'ar' ? '0 0.75rem 0 2.25rem' : '0 2.25rem 0 0.75rem',
                                                             borderRadius: '1.25rem',
                                                             fontSize: '0.9rem',
-                                                            backgroundColor: 'white',
+                                                            backgroundColor: 'var(--surface)',
                                                             border: '1px solid var(--border)',
                                                             cursor: 'pointer',
                                                             height: '48px',
@@ -477,7 +478,7 @@ export default function EmployeeFilter({
                                                         width: '48px',
                                                         borderRadius: '1.25rem',
                                                         border: '1px solid var(--border)',
-                                                        background: 'white',
+                                                        background: 'var(--surface)',
                                                         cursor: 'pointer',
                                                         display: 'flex',
                                                         alignItems: 'center',
@@ -519,7 +520,7 @@ export default function EmployeeFilter({
                                                         width: '100%',
                                                         padding: locale === 'ar' ? '0 0.75rem 0 2.25rem' : '0 2.25rem 0 0.75rem',
                                                         borderRadius: '1.25rem',
-                                                        background: 'white',
+                                                        background: 'var(--surface)',
                                                         border: '1px solid var(--border)',
                                                         height: '48px',
                                                         appearance: 'none',
@@ -556,7 +557,7 @@ export default function EmployeeFilter({
                                                         width: '100%',
                                                         padding: locale === 'ar' ? '0 0.75rem 0 2.25rem' : '0 2.25rem 0 0.75rem',
                                                         borderRadius: '1.25rem',
-                                                        background: 'white',
+                                                        background: 'var(--surface)',
                                                         border: '1px solid var(--border)',
                                                         height: '48px',
                                                         appearance: 'none',
@@ -593,7 +594,7 @@ export default function EmployeeFilter({
                                                         width: '100%',
                                                         padding: locale === 'ar' ? '0 0.75rem 0 2.25rem' : '0 2.25rem 0 0.75rem',
                                                         borderRadius: '1.25rem',
-                                                        background: 'white',
+                                                        background: 'var(--surface)',
                                                         border: '1px solid var(--border)',
                                                         height: '48px',
                                                         appearance: 'none',
@@ -649,7 +650,7 @@ export default function EmployeeFilter({
                                                 height: '48px',
                                                 borderRadius: '1.25rem',
                                                 border: '1px solid var(--border)',
-                                                background: 'white',
+                                                background: 'var(--surface)',
                                                 fontWeight: '700',
                                                 cursor: 'pointer',
                                                 fontSize: '0.875rem',
@@ -669,7 +670,7 @@ export default function EmployeeFilter({
                                                 borderRadius: '1.25rem',
                                                 border: 'none',
                                                 background: 'linear-gradient(135deg, var(--brand-primary) 0%, var(--accent-solid) 100%)',
-                                                color: 'white',
+                                                color: 'var(--text-on-accent)',
                                                 fontWeight: '700',
                                                 cursor: 'pointer',
                                                 fontSize: '0.875rem',
@@ -690,20 +691,28 @@ export default function EmployeeFilter({
                 <div style={{
                     height: '48px',
                     padding: '0 1.25rem',
-                    background: 'var(--text-strong)',
+                    // Was var(--text-strong): the darkest ink, which reads as a
+                    // dark pill in light mode and as a near-white one in dark,
+                    // where the label written on it disappeared. A filled chip
+                    // needs its own pair, not the text scale's end.
+                    background: 'var(--chip-solid-bg)',
                     borderRadius: '1.25rem',
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '0.75rem',
-                    color: 'white'
+                    gap: '0.5rem',
+                    whiteSpace: 'nowrap',
+                    color: 'var(--chip-solid-fg)'
                 }}>
-                    <span style={{ fontSize: '0.7rem', fontWeight: '800', opacity: 0.5, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('total_label')}</span>
+                    {/* 0.5 opacity put this close to invisible on the filled
+                        chip. The label is small and uppercase already; it does
+                        not also need to be faint to read as secondary. */}
+                    <span style={{ fontSize: '0.7rem', fontWeight: '800', opacity: 0.75, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('total_label')}</span>
                     <span style={{ fontSize: '1.25rem', fontWeight: '900' }}>{totalCount}</span>
                 </div>
 
                 {/* Primary Action Integration */}
                 {primaryAction && (
-                    <div style={{ marginLeft: locale === 'ar' ? '0' : 'auto', marginRight: locale === 'ar' ? 'auto' : '0' }}>
+                    <div className="toolbar-action" style={{ marginLeft: locale === 'ar' ? '0' : 'auto', marginRight: locale === 'ar' ? 'auto' : '0' }}>
                         {primaryAction}
                     </div>
                 )}
@@ -723,7 +732,7 @@ export default function EmployeeFilter({
                         gap: '0.5rem',
                         boxShadow: '0 2px 4px rgba(251, 146, 60, 0.05)'
                     }}>
-                        <div style={{ background: 'var(--warn-solid-warm)', color: 'white', padding: '0.25rem', borderRadius: '0.5rem', display: 'flex' }}>
+                        <div style={{ background: 'var(--warn-solid-warm)', color: 'var(--text-on-accent)', padding: '0.25rem', borderRadius: '0.5rem', display: 'flex' }}>
                             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
                                 <line x1="12" y1="1" x2="12" y2="23"></line>
                                 <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>

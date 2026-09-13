@@ -42,7 +42,7 @@ export default function BackupPickerModal({ isOpen, backups, loading, error, onS
         }}>
             <div className="absolute inset-0" onClick={onClose} />
             <div style={{
-                background: 'white', padding: '1.5rem', borderRadius: '12px',
+                background: 'var(--surface)', padding: '1.5rem', borderRadius: '12px',
                 width: 'min(calc(100vw - 3rem), 560px)', maxHeight: '80vh',
                 display: 'flex', flexDirection: 'column',
                 position: 'relative', zIndex: 10,
@@ -95,7 +95,7 @@ export default function BackupPickerModal({ isOpen, backups, loading, error, onS
                     onClick={onClose}
                     style={{
                         marginTop: '1rem', padding: '0.6rem', border: '1px solid var(--border)',
-                        borderRadius: '0.5rem', background: 'white', cursor: 'pointer',
+                        borderRadius: '0.5rem', background: 'var(--surface)', cursor: 'pointer',
                         fontSize: '0.85rem', fontWeight: 500, color: 'var(--text-muted)'
                     }}
                 >

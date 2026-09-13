@@ -53,7 +53,7 @@ export default function RequestCard({ request, userRole, onView, onStatusUpdate,
                 alignItems: 'center',
                 transition: 'all 0.3s ease',
                 borderInlineStart: showVisualHighlight ? '4px solid var(--accent-solid)' : '4px solid var(--brand-primary)',
-                background: showVisualHighlight ? 'rgba(168, 85, 247, 0.05)' : 'white'
+                background: showVisualHighlight ? 'var(--highlight-tint)' : 'var(--surface)'
             }}
         >
             <div style={{ flex: 1 }}>

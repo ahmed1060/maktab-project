@@ -404,7 +404,7 @@ export default function ObligationDetailClient({ obligation, userRole, userId, u
     return (
         <div className={`card ${shouldHighlight ? 'highlight-shading' : ''}`} style={{
             ...containerStyle,
-            background: isOverdue ? 'var(--danger-bg-tint)' : (shouldHighlight ? undefined : 'white'),
+            background: isOverdue ? 'var(--danger-bg-tint)' : (shouldHighlight ? undefined : 'var(--surface)'),
             borderColor: isOverdue ? 'var(--danger-border)' : undefined
         }}>
 
@@ -422,10 +422,10 @@ export default function ObligationDetailClient({ obligation, userRole, userId, u
                     </div>
 
                     <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', flexDirection: 'row' }}>
-                        <button onClick={handleForceComplete} className="btn" style={{ background: 'var(--ok-fg)', color: 'white' }}>{t('mark_as_completed')}</button>
-                        <button onClick={() => { setIsReassigning(true); loadUsers() }} className="btn" style={{ background: 'var(--info-solid-hover)', color: 'white' }}>{t('reassign_button')}</button>
-                        <button onClick={() => setShowDeleteConfirm(true)} className="btn" style={{ background: 'var(--danger-fg-strong)', color: 'white' }}>{t('delete')}</button>
-                        <button onClick={() => router.push('/dashboard/obligations')} className="btn" style={{ background: 'white', border: '1px solid var(--danger-fg-strong)', color: 'var(--danger-fg-strong)' }}>{t('dismiss_decide_later')}</button>
+                        <button onClick={handleForceComplete} className="btn" style={{ background: 'var(--ok-fg)', color: 'var(--text-on-accent)' }}>{t('mark_as_completed')}</button>
+                        <button onClick={() => { setIsReassigning(true); loadUsers() }} className="btn" style={{ background: 'var(--info-solid-hover)', color: 'var(--text-on-accent)' }}>{t('reassign_button')}</button>
+                        <button onClick={() => setShowDeleteConfirm(true)} className="btn" style={{ background: 'var(--danger-fg-strong)', color: 'var(--text-on-accent)' }}>{t('delete')}</button>
+                        <button onClick={() => router.push('/dashboard/obligations')} className="btn" style={{ background: 'var(--surface)', border: '1px solid var(--danger-fg-strong)', color: 'var(--danger-fg-strong)' }}>{t('dismiss_decide_later')}</button>
                     </div>
                 </div>
             )}
@@ -455,7 +455,7 @@ export default function ObligationDetailClient({ obligation, userRole, userId, u
                         padding: '0.25rem 0.75rem',
                         borderRadius: '9999px',
                         background: 'var(--info-solid)',
-                        color: 'white',
+                        color: 'var(--text-on-accent)',
                         fontWeight: 'bold',
                         fontSize: '0.9rem',
                         display: 'inline-flex',
@@ -534,7 +534,7 @@ export default function ObligationDetailClient({ obligation, userRole, userId, u
                                     display: 'flex',
                                     alignItems: 'center',
                                     gap: '0.5rem',
-                                    background: 'white',
+                                    background: 'var(--surface)',
                                     border: '1px solid var(--border)',
                                     padding: '0.5rem 0.75rem',
                                     borderRadius: '0.5rem',
@@ -659,7 +659,7 @@ export default function ObligationDetailClient({ obligation, userRole, userId, u
                                     justifyContent: 'space-between',
                                     alignItems: 'center',
                                     padding: '0.75rem',
-                                    background: 'white',
+                                    background: 'var(--surface)',
                                     border: '1px solid var(--border)',
                                     borderRadius: '0.5rem',
                                     boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
@@ -729,7 +729,7 @@ export default function ObligationDetailClient({ obligation, userRole, userId, u
             {['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole) && obligation.status === 'PENDING_CONFIRMATION' && (userRole === 'TEAM_LEADER' || !obligation.assignees?.some((a: any) => a.id === userId)) && (
                 <div style={{ marginTop: '2.5rem', display: 'flex', gap: '1.25rem', borderTop: '2px solid var(--border)', paddingTop: '2rem', flexDirection: 'row' }}>
                     <button onClick={handleApprove} className="btn btn-primary" style={{ flex: 1, padding: '1rem', fontSize: '1.1rem', fontWeight: '700' }}>{t('approve_button')}</button>
-                    <button onClick={handleReject} className="btn" style={{ flex: 1, padding: '1rem', fontSize: '1.1rem', fontWeight: '700', background: 'var(--danger-solid)', color: 'white' }}>{t('reject_button')}</button>
+                    <button onClick={handleReject} className="btn" style={{ flex: 1, padding: '1rem', fontSize: '1.1rem', fontWeight: '700', background: 'var(--danger-solid)', color: 'var(--text-on-accent)' }}>{t('reject_button')}</button>
                 </div>
             )}
 
@@ -739,7 +739,7 @@ export default function ObligationDetailClient({ obligation, userRole, userId, u
                     position: 'fixed',
                     top: '20px',
                     [locale === 'ar' ? 'left' : 'right']: '20px',
-                    background: 'white',
+                    background: 'var(--surface)',
                     padding: '1rem',
                     borderRadius: '0.5rem',
                     boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
@@ -761,7 +761,7 @@ export default function ObligationDetailClient({ obligation, userRole, userId, u
                     <p>{t('delete_obligation_warning' as any)}</p>
                     <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem', justifyContent: 'flex-end', flexDirection: 'row' }}>
                         <button onClick={() => setShowDeleteConfirm(false)} className="btn" style={{ background: 'var(--border)' }}>{t('cancel')}</button>
-                        <button onClick={handleDelete} className="btn" style={{ background: 'var(--danger-solid-hover)', color: 'white' }}>{t('delete')}</button>
+                        <button onClick={handleDelete} className="btn" style={{ background: 'var(--danger-solid-hover)', color: 'var(--text-on-accent)' }}>{t('delete')}</button>
                     </div>
                 </div>
             </Modal>
@@ -824,7 +824,7 @@ export default function ObligationDetailClient({ obligation, userRole, userId, u
                     <p>{t('confirm_action_button') + '?'}</p>
                     <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem', justifyContent: 'flex-end', flexDirection: 'row' }}>
                         <button onClick={() => setShowRevertConfirm(false)} className="btn" style={{ background: 'var(--border)' }}>{t('cancel')}</button>
-                        <button onClick={handleRevert} className="btn" style={{ background: 'var(--info-solid-hover)', color: 'white' }}>
+                        <button onClick={handleRevert} className="btn" style={{ background: 'var(--info-solid-hover)', color: 'var(--text-on-accent)' }}>
                             {isReverting ? '...' : t('confirm_action_button')}
                         </button>
                     </div>

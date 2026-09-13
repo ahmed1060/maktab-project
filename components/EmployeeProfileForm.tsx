@@ -469,7 +469,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                         onClick={() => setShowAvatarModal(false)}
                     />
                     <div style={{
-                        background: 'white',
+                        background: 'var(--surface)',
                         padding: '2rem',
                         borderRadius: '12px',
                         width: 'min(calc(100vw - 3rem), 450px)',
@@ -567,7 +567,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                                     padding: '0.625rem 1.25rem',
                                     border: '1px solid var(--border)',
                                     borderRadius: '0.5rem',
-                                    background: 'white',
+                                    background: 'var(--surface)',
                                     cursor: uploadingAvatar ? 'not-allowed' : 'pointer',
                                     fontSize: '0.875rem',
                                     fontWeight: '500',
@@ -1003,7 +1003,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                                     </button>
                                 </div>
                             </div>
-                            <div className="modal-footer" style={{ background: 'white', borderTop: 'none', paddingBottom: '2.5rem', justifyContent: 'center' }}>
+                            <div className="modal-footer" style={{ background: 'var(--surface)', borderTop: 'none', paddingBottom: '2.5rem', justifyContent: 'center' }}>
                                 <button
                                     className="btn"
                                     style={{ background: 'var(--surface-sunk)', color: 'var(--text-soft)', minWidth: '100px' }}

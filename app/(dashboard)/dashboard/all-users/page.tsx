@@ -248,10 +248,10 @@ export default function AllUsersPage() {
                         {showSuperAdmins && superAdmins.length > 0 && (
                             <div>
                                 <h2 style={{ fontSize: '1.4rem', fontWeight: 'bold', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
-                                    <span style={{ background: 'var(--warn-solid)', color: 'white', padding: '0.2rem 0.5rem', borderRadius: '4px', fontSize: '0.8rem' }}>SHSD</span>
+                                    <span style={{ background: 'var(--warn-solid)', color: 'var(--text-on-accent)', padding: '0.2rem 0.5rem', borderRadius: '4px', fontSize: '0.8rem' }}>SHSD</span>
                                     {t('super_administrators_label')}
                                 </h2>
-                                <div style={{ background: 'white', borderRadius: '12px', overflowX: 'auto', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+                                <div style={{ background: 'var(--surface)', borderRadius: '12px', overflowX: 'auto', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
                                     <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '600px' }}>
                                         <thead style={{ background: 'var(--warn-bg-yellow-subtle)', borderBottom: '1px solid var(--warn-border)' }}>
                                             <tr>
@@ -308,7 +308,7 @@ export default function AllUsersPage() {
                                 <h2 style={{ fontSize: '1.4rem', fontWeight: 'bold', marginBottom: '1rem', paddingBottom: '0.5rem', borderBottom: '2px solid var(--border)', textAlign: locale === 'ar' ? 'right' : 'left' }}>
                                     {section.name}
                                 </h2>
-                                <div style={{ background: 'white', borderRadius: '12px', overflowX: 'auto', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+                                <div style={{ background: 'var(--surface)', borderRadius: '12px', overflowX: 'auto', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
                                     <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '800px' }}>
                                         <thead style={{ background: 'var(--surface-subtle)', borderBottom: '1px solid var(--border)' }}>
                                             <tr>
@@ -399,7 +399,7 @@ export default function AllUsersPage() {
                             <button
                                 onClick={() => setShowExUsersModal(true)}
                                 className="btn"
-                                style={{ background: 'white', border: '1px solid var(--border-firm)', color: 'var(--text-muted)' }}
+                                style={{ background: 'var(--surface)', border: '1px solid var(--border-firm)', color: 'var(--text-muted)' }}
                             >
                                 {t('view_archive_button')}
                             </button>
@@ -420,7 +420,7 @@ export default function AllUsersPage() {
                             onClick={() => setShowExUsersModal(false)}
                         />
                         {viewingProfileId ? (
-                            <div style={{ background: 'white', borderRadius: '12px', width: '90%', maxWidth: '800px', maxHeight: '90vh', overflowY: 'auto', position: 'relative', zIndex: 101 }}>
+                            <div style={{ background: 'var(--surface)', borderRadius: '12px', width: '90%', maxWidth: '800px', maxHeight: '90vh', overflowY: 'auto', position: 'relative', zIndex: 101 }}>
                                 <EmployeeProfileForm
                                     userId={viewingProfileId}
                                     isViewMode={true}
@@ -428,7 +428,7 @@ export default function AllUsersPage() {
                                 />
                             </div>
                         ) : (
-                            <div style={{ background: 'white', padding: '2rem', borderRadius: '12px', width: '90%', maxWidth: '800px', maxHeight: '80vh', display: 'flex', flexDirection: 'column', position: 'relative', zIndex: 101, direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
+                            <div style={{ background: 'var(--surface)', padding: '2rem', borderRadius: '12px', width: '90%', maxWidth: '800px', maxHeight: '80vh', display: 'flex', flexDirection: 'column', position: 'relative', zIndex: 101, direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexDirection: 'row' }}>
                                     <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '0.5rem', flexDirection: 'row' }}>
                                         <span style={{ fontSize: '1.5rem' }}>🗑️</span> {t('ex_users_archive_title')}
@@ -436,7 +436,7 @@ export default function AllUsersPage() {
                                     <button onClick={() => setShowExUsersModal(false)} style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: 'var(--text-soft)' }}>&times;</button>
                                 </div>
 
-                                <div style={{ overflowY: 'auto', flex: 1 }}>
+                                <div style={{ overflowY: 'auto', overflowX: 'auto', flex: 1 }}>
                                     <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '600px', textAlign: locale === 'ar' ? 'right' : 'left' }}>
                                         <thead style={{ background: 'var(--surface-sunk)', position: 'sticky', top: 0 }}>
                                             <tr>

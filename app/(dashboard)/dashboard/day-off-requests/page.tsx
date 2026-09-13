@@ -433,7 +433,7 @@ export default function DayOffRequestsPage() {
                                         animation: visualHighlightId === req.id ? 'none' : 'fadeIn 0.4s ease-out forwards',
                                         animationDelay: `${index * 50}ms`,
                                         borderInlineStart: visualHighlightId === req.id ? '4px solid var(--accent-solid)' : '',
-                                        background: visualHighlightId === req.id ? 'rgba(168, 85, 247, 0.05)' : ''
+                                        background: visualHighlightId === req.id ? 'var(--highlight-tint)' : ''
                                     }}
                                 >
                                     {/* Card Header */}
@@ -578,7 +578,7 @@ export default function DayOffRequestsPage() {
                                                 style={{
                                                     flex: 1,
                                                     background: 'var(--ok-solid)',
-                                                    color: 'white',
+                                                    color: 'var(--text-on-accent)',
                                                     fontSize: '0.875rem',
                                                     fontWeight: '700',
                                                     height: '40px',
@@ -593,7 +593,7 @@ export default function DayOffRequestsPage() {
                                                 style={{
                                                     flex: 1,
                                                     background: 'var(--danger-solid)',
-                                                    color: 'white',
+                                                    color: 'var(--text-on-accent)',
                                                     fontSize: '0.875rem',
                                                     fontWeight: '700',
                                                     height: '40px',
@@ -761,8 +761,8 @@ export default function DayOffRequestsPage() {
                                         padding: '0.625rem',
                                         borderRadius: '0.75rem',
                                         border: '1px solid var(--border)',
-                                        background: deductionType === 'CREDIT' ? 'var(--info-solid)' : 'white',
-                                        color: deductionType === 'CREDIT' ? 'white' : 'var(--text-soft)',
+                                        background: deductionType === 'CREDIT' ? 'var(--info-solid)' : 'var(--surface)',
+                                        color: deductionType === 'CREDIT' ? 'var(--text-on-accent)' : 'var(--text-soft)',
                                         cursor: (parseFloat(daysToDeduct) || 0) > (selectedRequest.user?.dayOffCredit || 0) ? 'not-allowed' : 'pointer',
                                         fontWeight: '700',
                                         fontSize: '0.875rem',
@@ -783,8 +783,8 @@ export default function DayOffRequestsPage() {
                                         padding: '0.625rem',
                                         borderRadius: '0.75rem',
                                         border: '1px solid var(--border)',
-                                        background: deductionType === 'SALARY' ? 'var(--info-solid)' : 'white',
-                                        color: deductionType === 'SALARY' ? 'white' : 'var(--text-soft)',
+                                        background: deductionType === 'SALARY' ? 'var(--info-solid)' : 'var(--surface)',
+                                        color: deductionType === 'SALARY' ? 'var(--text-on-accent)' : 'var(--text-soft)',
                                         cursor: 'pointer',
                                         fontWeight: '700',
                                         fontSize: '0.875rem',
@@ -846,7 +846,7 @@ export default function DayOffRequestsPage() {
                             <button
                                 onClick={() => processAction(selectedRequest.id, 'REJECTED')}
                                 className="btn"
-                                style={{ background: 'var(--danger-solid)', color: 'white' }}
+                                style={{ background: 'var(--danger-solid)', color: 'var(--text-on-accent)' }}
                             >
                                 {t('reject_button')}
                             </button>

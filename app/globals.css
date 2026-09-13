@@ -188,6 +188,16 @@
   --header-glass-border: rgba(255, 255, 255, 0.45);
   --header-shadow: 0 4px 30px rgba(0, 0, 0, 0.05);
 
+  /* The row tint that marks something just changed or just navigated to. */
+  --highlight-tint: rgba(168, 85, 247, 0.05);
+
+  /* A solid chip: a filled pill that reads as inverted against the page. In
+     light mode that is the darkest ink; in dark it cannot be, because the
+     darkest ink is nearly white there and the label written on it disappears.
+     This is the bug the Tasks toolbar counter showed. */
+  --chip-solid-bg: #0f172a;
+  --chip-solid-fg: #ffffff;
+
   /* The page ground itself. */
   --page-bg: #eef2ff;
   --page-veil-a: rgba(99, 102, 241, 0.15);
@@ -385,6 +395,32 @@ body::before {
 @media (max-width: 1024px) {
   .responsive-sidebar-grid {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 600px) {
+  /* The "Powered by" mark is fixed to the bottom corner, which is empty margin
+     on a desktop and is card content on a phone — it was sitting on top of a
+     task row. Kept, but out of the way: smaller, fainter, and below the
+     scrolling content rather than over it. */
+  .floating-attribution {
+    position: static !important;
+    opacity: 0.5 !important;
+    padding: 1.5rem 0 0.5rem;
+  }
+
+  /* On a phone the toolbar's rows each get the full width. The action button
+     was pushed right by an auto margin, which is correct beside other controls
+     and leaves a wide empty gap once it wraps onto a line of its own. */
+  .toolbar-action {
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    width: 100%;
+  }
+
+  .toolbar-action > * {
+    width: 100%;
+    justify-content: center;
   }
 }
 
@@ -840,6 +876,9 @@ input::-webkit-credentials-auto-fill-button {
     --header-glass-bg: rgba(13, 17, 23, 0.88);
     --header-glass-border: rgba(255, 255, 255, 0.1);
     --header-shadow: 0 4px 30px rgba(0, 0, 0, 0.45);
+    --highlight-tint: rgba(168, 85, 247, 0.14);
+    --chip-solid-bg: #2b3340;
+    --chip-solid-fg: #f0f6fc;
 
     --page-bg: #0b0f14;
     --page-veil-a: rgba(99, 102, 241, 0.1);
@@ -954,6 +993,9 @@ input::-webkit-credentials-auto-fill-button {
     --header-glass-bg: rgba(13, 17, 23, 0.88);
     --header-glass-border: rgba(255, 255, 255, 0.1);
     --header-shadow: 0 4px 30px rgba(0, 0, 0, 0.45);
+    --highlight-tint: rgba(168, 85, 247, 0.14);
+    --chip-solid-bg: #2b3340;
+    --chip-solid-fg: #f0f6fc;
 
     --page-bg: #0b0f14;
     --page-veil-a: rgba(99, 102, 241, 0.1);
