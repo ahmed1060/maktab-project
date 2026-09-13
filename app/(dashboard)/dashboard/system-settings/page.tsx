@@ -27,7 +27,9 @@ export default function SystemSettingsPage() {
     const [showPoweredBy, setShowPoweredBy] = useState(true)
     const [poweredByName, setPoweredByName] = useState('')
     const [loading, setLoading] = useState(true)
-    const [saving, setSaving] = useState(false)
+    // One per card. A single flag would disable both Save buttons whenever
+    // either was in flight, which reads as the page having frozen.
+    const [savingSection, setSavingSection] = useState<null | 'location' | 'branding'>(null)
 
     useEffect(() => {
         setTitle(t('system_settings') || 'System Settings')
@@ -66,33 +68,24 @@ export default function SystemSettingsPage() {
         fetchSettings()
     }, [fetchSettings])
 
-    const handleSave = async (e: React.FormEvent) => {
-        e.preventDefault()
-        if (!settings) return
-
-        const radius = parseInt(radiusInput, 10)
-        if (!Number.isFinite(radius) || radius < 1 || radius > 10000) {
-            showToast(t('invalid_radius_value') || 'Enter a radius between 1 and 10000 meters', 'error')
-            return
-        }
-
-        setSaving(true)
+    /**
+     * Each card sends only its own fields. Sending the whole settings object
+     * from either would let a stale value in the card you did not touch
+     * overwrite a change somebody else just made from the other.
+     */
+    const persist = async (section: 'location' | 'branding', patch: Record<string, unknown>) => {
+        setSavingSection(section)
         try {
             const res = await fetch('/api/system-settings', {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    locationVerifyRadiusMeters: radius,
-                    showPoweredBy,
-                    // Trimmed here and defaulted on the way out, so a field
-                    // cleared by accident restores the default name rather than
-                    // rendering "Powered by" followed by nothing.
-                    poweredByName: poweredByName.trim() || DEFAULT_POWERED_BY_NAME,
-                })
+                body: JSON.stringify(patch),
             })
             if (res.ok) {
                 const result = await res.json()
                 const data = result.data || result
+                // The server's copy wins on every field, not just the ones this
+                // card sent, so the other card reflects reality after a save.
                 setSettings(data)
                 setRadiusInput(String(data.locationVerifyRadiusMeters))
                 setShowPoweredBy(data.showPoweredBy ?? true)
@@ -105,8 +98,34 @@ export default function SystemSettingsPage() {
         } catch {
             showToast(t('error_generic'), 'error')
         } finally {
-            setSaving(false)
+            setSavingSection(null)
         }
+    }
+
+    const handleSaveLocation = async (e: React.FormEvent) => {
+        e.preventDefault()
+        if (!settings) return
+
+        const radius = parseInt(radiusInput, 10)
+        if (!Number.isFinite(radius) || radius < 1 || radius > 10000) {
+            showToast(t('invalid_radius_value') || 'Enter a radius between 1 and 10000 meters', 'error')
+            return
+        }
+
+        await persist('location', { locationVerifyRadiusMeters: radius })
+    }
+
+    const handleSaveBranding = async (e: React.FormEvent) => {
+        e.preventDefault()
+        if (!settings) return
+
+        await persist('branding', {
+            showPoweredBy,
+            // Trimmed here and defaulted on the way out, so a field cleared by
+            // accident restores the default name rather than rendering
+            // "Powered by" followed by nothing.
+            poweredByName: poweredByName.trim() || DEFAULT_POWERED_BY_NAME,
+        })
     }
 
     if (!session?.user || session.user.role !== 'SUPER_ADMIN') {
@@ -120,37 +139,70 @@ export default function SystemSettingsPage() {
                     <p style={{ color: '#64748b' }}>{t('loading_data')}</p>
                 </div>
             ) : (
-                <div className="glass" style={{ padding: '1.5rem', borderRadius: '1rem', maxWidth: '32rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
-                    <h3 style={{ margin: '0 0 1rem' }}>{t('location_verification_settings') || 'Location Verification'}</h3>
-                    <form onSubmit={handleSave}>
-                        <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>
-                            {t('location_verify_radius_label') || 'Auto-verify distance (meters)'}
-                        </label>
-                        <p style={{ fontSize: '0.8rem', color: '#64748b', marginTop: 0, marginBottom: '0.75rem' }}>
+                /* Two independent cards rather than one panel with a divider.
+                   Each owns its own Save, because a card is a unit: sharing one
+                   button leaves it belonging to neither, and makes changing a
+                   name resubmit a distance nobody touched.
+
+                   Side by side once there is room for both at a comfortable
+                   reading width, stacked below that. The old single column left
+                   most of a wide screen empty. */
+                <div style={{
+                    display: 'grid',
+                    gap: '1.25rem',
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 24rem), 1fr))',
+                    alignItems: 'start',
+                    maxWidth: '64rem',
+                    textAlign: locale === 'ar' ? 'right' : 'left',
+                }}>
+                    <form
+                        onSubmit={handleSaveLocation}
+                        className="glass"
+                        style={{ padding: '1.5rem', borderRadius: '1rem', display: 'flex', flexDirection: 'column' }}
+                    >
+                        <h3 style={{ margin: '0 0 0.35rem' }}>{t('location_verification_settings') || 'Location Verification'}</h3>
+                        <p style={{ fontSize: '0.8rem', color: '#64748b', margin: '0 0 1.25rem' }}>
                             {t('location_verify_radius_hint') || 'A submitted task location within this distance of the task location is auto-approved, for companies that have auto-verify turned on.'}
                         </p>
+
+                        <label style={{ display: 'block', marginBottom: '0.4rem', fontWeight: 500 }}>
+                            {t('location_verify_radius_label') || 'Auto-verify distance (meters)'}
+                        </label>
                         <input
                             type="number"
                             min={1}
                             max={10000}
                             value={radiusInput}
-                            disabled={saving}
+                            disabled={savingSection === 'location'}
                             onChange={(e) => setRadiusInput(e.target.value)}
                             className="input-field"
                             style={{ width: '100%', maxWidth: '12rem', padding: '0.6rem 0.85rem', borderRadius: '0.6rem', border: '1px solid rgba(0,0,0,0.1)' }}
                         />
-                        <hr style={{ border: 'none', borderTop: '1px solid rgba(0,0,0,0.08)', margin: '1.5rem 0' }} />
 
-                        <h3 style={{ margin: '0 0 0.5rem' }}>{t('branding_settings' as any)}</h3>
-                        <p style={{ fontSize: '0.8rem', color: '#64748b', marginTop: 0, marginBottom: '0.75rem' }}>
+                        {/* Pushed to the bottom so both cards' buttons line up
+                            when they sit side by side at unequal heights. */}
+                        <div style={{ marginTop: 'auto', paddingTop: '1.5rem' }}>
+                            <button type="submit" className="btn btn-primary" disabled={savingSection !== null}>
+                                {savingSection === 'location' ? t('saving') : t('save_changes_button')}
+                            </button>
+                        </div>
+                    </form>
+
+                    <form
+                        onSubmit={handleSaveBranding}
+                        className="glass"
+                        style={{ padding: '1.5rem', borderRadius: '1rem', display: 'flex', flexDirection: 'column' }}
+                    >
+                        <h3 style={{ margin: '0 0 0.35rem' }}>{t('branding_settings' as any)}</h3>
+                        <p style={{ fontSize: '0.8rem', color: '#64748b', margin: '0 0 1.25rem' }}>
                             {t('powered_by_hint' as any)}
                         </p>
 
-                        <label style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.9rem', cursor: 'pointer' }}>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '1rem', cursor: 'pointer' }}>
                             <input
                                 type="checkbox"
                                 checked={showPoweredBy}
-                                disabled={saving}
+                                disabled={savingSection === 'branding'}
                                 onChange={(e) => setShowPoweredBy(e.target.checked)}
                                 style={{ width: '1.05rem', height: '1.05rem', cursor: 'pointer' }}
                             />
@@ -167,7 +219,7 @@ export default function SystemSettingsPage() {
                             /* Disabled rather than hidden when the mark is off:
                                the field vanishing would suggest the name was
                                lost, when it is only not being shown. */
-                            disabled={saving || !showPoweredBy}
+                            disabled={savingSection === 'branding' || !showPoweredBy}
                             placeholder={DEFAULT_POWERED_BY_NAME}
                             onChange={(e) => setPoweredByName(e.target.value)}
                             className="input-field"
@@ -176,7 +228,7 @@ export default function SystemSettingsPage() {
 
                         {/* What it will actually look like, so the result is
                             checkable before saving rather than after. */}
-                        <div style={{ marginTop: '0.85rem', padding: '0.85rem 1rem', borderRadius: '0.6rem', background: 'rgba(0,0,0,0.03)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.1rem', opacity: showPoweredBy ? 1 : 0.35 }}>
+                        <div style={{ marginTop: '1rem', padding: '0.85rem 1rem', borderRadius: '0.6rem', background: 'rgba(0,0,0,0.03)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.1rem', opacity: showPoweredBy ? 1 : 0.35 }}>
                             {showPoweredBy ? (
                                 <>
                                     <span style={{ fontSize: '0.45rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
@@ -191,9 +243,9 @@ export default function SystemSettingsPage() {
                             )}
                         </div>
 
-                        <div style={{ marginTop: '1.25rem' }}>
-                            <button type="submit" className="btn btn-primary" disabled={saving}>
-                                {saving ? t('saving') : t('save_changes_button')}
+                        <div style={{ marginTop: 'auto', paddingTop: '1.5rem' }}>
+                            <button type="submit" className="btn btn-primary" disabled={savingSection !== null}>
+                                {savingSection === 'branding' ? t('saving') : t('save_changes_button')}
                             </button>
                         </div>
                     </form>
