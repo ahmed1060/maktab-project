@@ -42,3 +42,18 @@ export function addMonths(date: Date, months: number): Date {
 export function addYears(date: Date, years: number): Date {
     return addMonths(date, years * 12)
 }
+
+/**
+ * Adds whole days. Unlike months, a day is a fixed length, so `setDate` rolls
+ * across month and year boundaries correctly and there is nothing to clamp.
+ */
+export function addDays(date: Date, days: number): Date {
+    const result = new Date(date.getTime())
+    result.setDate(result.getDate() + days)
+    return result
+}
+
+/** Adds whole hours. Same reasoning as `addDays`. */
+export function addHours(date: Date, hours: number): Date {
+    return new Date(date.getTime() + hours * 60 * 60 * 1000)
+}

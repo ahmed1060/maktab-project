@@ -45,6 +45,17 @@ enum ObligationRecurrence {
   YEARLY
 }
 
+// The five trial lengths offered at company creation. A real enum rather than
+// a day count, because the options mix two units — "1 month" is not 30 days —
+// and a closed set belongs in the database rather than in a dropdown's markup.
+enum TrialPreset {
+  TWO_DAYS
+  SEVEN_DAYS
+  FOURTEEN_DAYS
+  ONE_MONTH
+  THREE_MONTHS
+}
+
 enum DayOffType {
   REGULAR
   SICK
@@ -73,6 +84,40 @@ datasource db {
   directUrl = env("POSTGRES_URL_NON_POOLING")
 }
 
+// A sellable package. Rows are created and edited by a Super Admin in the UI so
+// pricing and packaging change without a deploy.
+//
+// Feature switches are explicit typed columns, not a JSON blob: this codebase
+// has already made that call twice (JSON-in-text to real columns, loose strings
+// to enums) because it lets the compiler catch misuse. There are two of them,
+// not eight — see the bundles section of the plan.
+model Package {
+  id                   String    @id @default(uuid())
+  name                 String    @unique
+  description          String?
+  // Deactivated, never deleted. Setting isActive false removes a package from
+  // the assignment dropdown while every company already on it keeps working.
+  // A hard delete is unsafe: those companies' packageId would fall to null,
+  // which in this design means grandfathered — silently handing paying
+  // customers a free upgrade to everything. The FK below refuses it outright.
+  isActive             Boolean   @default(true)
+  // A bespoke per-contract package is assignable without appearing in the
+  // standard catalogue.
+  isPublic             Boolean   @default(true)
+  priceMonthly         Decimal   @default(0) @db.Decimal(12, 2)
+  priceAnnual          Decimal   @default(0) @db.Decimal(12, 2)
+  // Null means this package is not sold as a lifetime purchase at all, which is
+  // different from being sold for nothing.
+  priceLifetime        Decimal?  @db.Decimal(12, 2)
+  hasCompanyManagement Boolean   @default(false)
+  hasHR                Boolean   @default(false)
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+  companies            Company[]
+
+  @@index([isActive])
+}
+
 model Company {
   id                 String           @id @default(uuid())
   name               String           @unique
@@ -90,9 +135,24 @@ model Company {
   // same split as everywhere else this app separates "who owns naming
   // policy" from "who owns the day-to-day data".
   vendorsLabel       String?
+  // Null means grandfathered: every feature on, no gating. Every company that
+  // existed before packages shipped is untouched, and stays that way until
+  // somebody deliberately assigns one.
+  packageId          String?
+  // Trial length, chosen at creation. Null means this company predates the
+  // trial feature — resolveSubscriptionState treats that as grandfathered, not
+  // as an expired trial. Locking a live customer because a column is null is
+  // the worst failure this feature could have.
+  trialPreset        TrialPreset?
+  // Only ever grows. Extensions are counted in days whatever the preset, since
+  // "give them another week" is how the request always arrives. Kept apart from
+  // the preset so "how often do we extend, and by how much" is answerable
+  // without reading an audit log.
+  trialExtensionDays Int              @default(0)
   createdAt          DateTime         @default(now())
   updatedAt          DateTime         @updatedAt
   businessClients    BusinessClient[]
+  package            Package?         @relation(fields: [packageId], references: [id], onDelete: Restrict)
   payments           CompanyPayment[]
   obligations        Obligation[]
   requests           Request[]
@@ -517,6 +577,10 @@ model CompanyPayment {
   // extension. Reset to empty whenever endDate moves — an extended period is a
   // new period and deserves its reminders again.
   remindersSent          Int[]     @default([])
+  // Extra grace beyond the standard 48 hours, granted by a Super Admin. Stored
+  // as the gift rather than as a computed graceUntil, so the deadline stays a
+  // conclusion drawn from dates rather than a column that can drift.
+  graceExtensionHours    Int       @default(0)
   company                Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
   @@index([companyId])
