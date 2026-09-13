@@ -9,7 +9,11 @@ interface Notification {
     type: string
     message: string
     read: boolean
-    userId: string
+    // Null when the notification is addressed to a SuperAdmin instead of a
+    // User. Only the employee-scoped routes below dereference it, and those
+    // types are never sent to a SuperAdmin — but guard rather than assume.
+    userId: string | null
+    superAdminId: string | null
     relatedId: string | null
     createdAt: string
 }
@@ -94,12 +98,14 @@ export default function NotificationBell({ initialUnreadCount = 0 }: { initialUn
                 router.push(`/dashboard/day-off-requests?highlight=${notification.relatedId}`)
             } else if (type.includes('BONUS') || type.includes('DEDUCTION')) {
                 // Redirection to the user's own salary history
+                if (!notification.userId) return
                 router.push(`/dashboard/employees/${notification.userId}/history?highlight=${notification.relatedId}`)
             } else if (type.includes('PROFILE')) {
                 // If it's a request, go to requests page. If it's a personal profile update, go to own profile.
                 if (notification.message.toLowerCase().includes('request')) {
                     router.push(`/dashboard/profile-requests?highlight=${notification.relatedId}`)
                 } else {
+                    if (!notification.userId) return
                     router.push(`/dashboard/employees/${notification.userId}?highlight=${notification.relatedId}`)
                 }
             } else if (type.includes('NOTE')) {

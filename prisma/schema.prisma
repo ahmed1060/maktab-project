@@ -74,31 +74,31 @@ datasource db {
 }
 
 model Company {
-  id              String           @id @default(uuid())
-  name            String           @unique
-  isBanned        Boolean          @default(false)
+  id                 String           @id @default(uuid())
+  name               String           @unique
+  isBanned           Boolean          @default(false)
   // Company Settings: whether a submitted task location auto-verifies
   // against the task's target location at all, for any task belonging to
   // this company. The distance threshold itself is a system-wide setting
   // (SystemSettings.locationVerifyRadiusMeters) — this is deliberately
   // company policy only, not per-task, so one company can't quietly
   // change what another company's tasks do.
-  autoVerifyLocation Boolean       @default(true)
+  autoVerifyLocation Boolean          @default(true)
   // Vendors feature: null shows the default translated "Vendors" label.
   // Only a Super Admin can set this (Company Settings page) — the vendor
   // list itself (add/edit/delete) is managed by that company's own Admin,
   // same split as everywhere else this app separates "who owns naming
   // policy" from "who owns the day-to-day data".
-  vendorsLabel    String?
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
-  businessClients BusinessClient[]
-  payments        CompanyPayment[]
-  obligations     Obligation[]
-  requests        Request[]
-  tasks           Task[]
-  users           User[]
-  vendors         Vendor[]
+  vendorsLabel       String?
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+  businessClients    BusinessClient[]
+  payments           CompanyPayment[]
+  obligations        Obligation[]
+  requests           Request[]
+  tasks              Task[]
+  users              User[]
+  vendors            Vendor[]
 }
 
 // System Settings: a single-row table (id is always "default") for
@@ -107,11 +107,11 @@ model Company {
 // Add new global settings here as plain columns, same pattern as this
 // first one.
 model SystemSettings {
-  id                        String @id @default("default")
-  locationVerifyRadiusMeters Int   @default(70)
-  maintenanceMode           Boolean @default(false)
-  maintenanceMessage        String?
-  updatedAt                 DateTime @updatedAt
+  id                         String   @id @default("default")
+  locationVerifyRadiusMeters Int      @default(70)
+  maintenanceMode            Boolean  @default(false)
+  maintenanceMessage         String?
+  updatedAt                  DateTime @updatedAt
 }
 
 model SuperAdmin {
@@ -145,6 +145,7 @@ model SuperAdmin {
   mfaSecret          String?
   emailVerifiedAt    DateTime?
   auditLogs          AuditLog[]
+  notifications      Notification[]
   trustedDevices     TrustedDevice[]
   verificationCodes  VerificationCode[]
 }
@@ -264,21 +265,47 @@ model Task {
   @@index([companyId, deadline])
 }
 
+// A notification is addressed to exactly one recipient, and a recipient is
+// either a company User or a platform SuperAdmin. Those live in two separate
+// tables with independent UUID spaces, so the recipient is polymorphic: one of
+// the two FK columns is set and the other is null.
+//
+// Why this exists: this model used to hang off User alone with a NOT NULL
+// userId. CompanyService.checkSubscriptions() has always collected its
+// recipients from the SuperAdmin table, so every insert it attempted violated
+// Notification_userId_fkey — no SUBSCRIPTION_EXPIRY notification had ever been
+// written, and the Super Admin bell could not have shown one even in principle.
+//
+// "Exactly one of the two is set" is enforced by a CHECK constraint
+// (Notification_recipient_exactly_one, num_nonnulls(...) = 1) rather than
+// anything expressible here — Prisma has no syntax for it, so it lives in the
+// polymorphic_notification_recipient migration. Don't assume the schema file
+// tells the whole story for this table.
+//
+// Readers should match a recipient with `OR: [{ userId: id }, { superAdminId: id }]`
+// rather than branching on role. An id can only ever satisfy one of the two, and
+// the role on a session is not a reliable discriminator: the codebase also
+// supports a User row carrying role 'SUPER_ADMIN', whose notifications belong
+// under userId.
 model Notification {
-  id        String   @id @default(uuid())
-  userId    String
-  type      String
-  message   String
-  read      Boolean  @default(false)
-  relatedId String?
-  createdAt DateTime @default(now())
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id           String      @id @default(uuid())
+  userId       String?
+  superAdminId String?
+  type         String
+  message      String
+  read         Boolean     @default(false)
+  relatedId    String?
+  createdAt    DateTime    @default(now())
+  user         User?       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  superAdmin   SuperAdmin? @relation(fields: [superAdminId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([read])
   @@index([createdAt])
-  // F-26: the notification bell always filters "this user's unread items".
+  // F-26: the notification bell always filters "this recipient's unread items".
   @@index([userId, read])
+  @@index([superAdminId])
+  @@index([superAdminId, read])
 }
 
 model AuditLog {
@@ -491,23 +518,23 @@ model CompanyPayment {
 }
 
 model DayOffRequest {
-  id            String     @id @default(uuid())
-  userId        String
-  type          DayOffType
-  status        String     @default("PENDING")
-  reason        String?
-  date          DateTime
-  createdAt     DateTime   @default(now())
-  updatedAt     DateTime   @updatedAt
-  daysDeducted  Float?     @default(0)
-  endDate       DateTime?
-  deductionType String     @default("CREDIT")
+  id              String     @id @default(uuid())
+  userId          String
+  type            DayOffType
+  status          String     @default("PENDING")
+  reason          String?
+  date            DateTime
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+  daysDeducted    Float?     @default(0)
+  endDate         DateTime?
+  deductionType   String     @default("CREDIT")
   // Set by the admin/super admin when they reject the request. Distinct from
   // `reason`, which is the employee's own justification for asking. Null on
   // every row rejected before this column existed, and on any request that
   // was rejected without one being typed.
   rejectionReason String?
-  user          User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user            User       @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([status])
   @@index([userId])
@@ -573,22 +600,22 @@ model DayOffCreditSnapshot {
 }
 
 model Vendor {
-  id            String   @id @default(uuid())
-  companyId     String
-  name          String
-  ownerName     String
-  mobileNumber  String
+  id           String   @id @default(uuid())
+  companyId    String
+  name         String
+  ownerName    String
+  mobileNumber String
   // Mirrors Task.location's {name, link} shape (stored there as JSON text)
   // so copying a vendor's location into a task at creation time is a direct
   // field-to-field copy, no reshaping needed on either side.
-  locationName  String
-  locationLink  String?
-  createdById   String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  company       Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  createdBy     User?    @relation("VendorCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
-  tasks         Task[]
+  locationName String
+  locationLink String?
+  createdById  String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  company      Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  createdBy    User?    @relation("VendorCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  tasks        Task[]
 
   @@unique([name, companyId])
   @@index([companyId])

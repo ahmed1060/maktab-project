@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma"
 import { Prisma } from "@prisma/client"
+import { NotificationService } from "./notification.service"
 import { VerificationService } from "./verification.service"
 import { CreateCompanyInput, UpdateCompanyInput } from "../validations/company.schema"
 
@@ -220,41 +221,50 @@ export class CompanyService {
             return { message: "No expiring subscriptions found", count: 0 }
         }
 
-        // 2. Fetch all Super Admins
-        const adminsFromTable = await prisma.superAdmin.findMany({ select: { id: true } })
-        const adminsFromUserRole = await prisma.user.findMany({
-            where: { role: 'SUPER_ADMIN', status: 'ACTIVE' },
-            select: { id: true }
-        })
+        // 2. Fetch all Super Admins. The two sources are kept apart, not merged
+        //    into one id list: they come from different tables with independent
+        //    UUID spaces, and Notification addresses each through its own FK
+        //    column. Flattening them is precisely what used to break this job —
+        //    every SuperAdmin-table id was written to Notification.userId, which
+        //    is FK-constrained to User, so the insert threw and no expiry
+        //    notification was ever delivered.
+        const [adminsFromTable, adminsFromUserRole] = await Promise.all([
+            prisma.superAdmin.findMany({ select: { id: true } }),
+            prisma.user.findMany({
+                where: { role: 'SUPER_ADMIN', status: 'ACTIVE' },
+                select: { id: true }
+            })
+        ])
 
-        const allAdminIds = Array.from(new Set([
-            ...adminsFromTable.map(a => a.id),
-            ...adminsFromUserRole.map(a => a.id)
-        ]))
+        const superAdminIds = adminsFromTable.map(a => a.id)
+        const userAdminIds = adminsFromUserRole.map(a => a.id)
+        const recipientCount = superAdminIds.length + userAdminIds.length
+
+        if (recipientCount === 0) {
+            return { expiringFound: expiringPayments.length, notificationsSent: 0, message: "No Super Admin recipients" }
+        }
 
         let notificationsCreated = 0
 
-        // 3. Create notifications
+        // 3. Create notifications. One transaction per payment, covering both the
+        //    inserts and the notified flag: previously the flag was written
+        //    outside any transaction and after the inserts, so a failure partway
+        //    through left recipients notified with the flag still false and the
+        //    next run notified them a second time.
         for (const payment of expiringPayments) {
             const timeLeft = Math.ceil((payment.endDate!.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+            const message = `Subscription for ${payment.company.name} will expire in ${timeLeft} days (${payment.endDate?.toLocaleDateString()}).`
 
-            for (const adminId of allAdminIds) {
-                await prisma.notification.create({
-                    data: {
-                        userId: adminId,
-                        type: 'SUBSCRIPTION_EXPIRY',
-                        message: `Subscription for ${payment.company.name} will expire in ${timeLeft} days (${payment.endDate?.toLocaleDateString()}).`,
-                        relatedId: payment.id
-                    }
+            await prisma.$transaction(async (tx) => {
+                await NotificationService.notifySuperAdmins(superAdminIds, 'SUBSCRIPTION_EXPIRY', message, payment.id, tx)
+                await NotificationService.notifyMany(userAdminIds, 'SUBSCRIPTION_EXPIRY', message, payment.id, tx)
+                await tx.companyPayment.update({
+                    where: { id: payment.id },
+                    data: { notifiedExpiryReminder: true }
                 })
-                notificationsCreated++
-            }
-
-            // Mark this payment as notified
-            await prisma.companyPayment.update({
-                where: { id: payment.id },
-                data: { notifiedExpiryReminder: true }
             })
+
+            notificationsCreated += recipientCount
         }
 
         return { expiringFound: expiringPayments.length, notificationsSent: notificationsCreated }

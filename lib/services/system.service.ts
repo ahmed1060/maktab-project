@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma"
+import { NotificationService } from "./notification.service"
 
 export class SystemService {
     static async getBootstrapData(userId: string, role: string) {
@@ -17,8 +18,11 @@ export class SystemService {
                     companyId: true
                 }
             }),
+            // Matches either recipient column: a Super Admin's id lives in the
+            // SuperAdmin table, so a userId-only count was structurally always 0
+            // for them — the bell showed no badge no matter what was waiting.
             prisma.notification.count({
-                where: { userId: userId, read: false }
+                where: { ...NotificationService.recipientFilter(userId), read: false }
             })
         ])
 
