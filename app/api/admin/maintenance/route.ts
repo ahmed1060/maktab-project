@@ -10,7 +10,18 @@ import { z } from 'zod'
 const MaintenanceSchema = z.object({
     action: z.enum(['CLEANUP_ASSETS', 'PRUNE_LOGS', 'PRUNE_NOTIFICATIONS']),
     params: z.object({
-        retentionDays: z.number().optional()
+        retentionDays: z.number().optional(),
+        // The orphan sweep reports by default and deletes only when asked. Both
+        // flags default to the safe answer if a caller omits them, so an old
+        // client that knows nothing about either gets a report rather than a
+        // delete — which is the opposite of how this behaved before, and is the
+        // point: the reference set is hand-kept, so a sweep nobody has read is
+        // a sweep nobody should run.
+        dryRun: z.boolean().optional(),
+        // Authorises deleting past the plausibility threshold. Only meaningful
+        // together with dryRun: false, and only after somebody has read the
+        // list a dry run produced.
+        confirm: z.boolean().optional()
     }).optional()
 })
 
@@ -36,7 +47,10 @@ export async function POST(req: NextRequest) {
 
         switch (action) {
             case 'CLEANUP_ASSETS':
-                result = await MaintenanceService.cleanupOrphanedAssets()
+                result = await MaintenanceService.cleanupOrphanedAssets({
+                    dryRun: params?.dryRun ?? true,
+                    confirm: params?.confirm ?? false,
+                })
                 break
             case 'PRUNE_LOGS':
                 result = await MaintenanceService.pruneOldLogs(params?.retentionDays || 90)

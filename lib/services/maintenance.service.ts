@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma"
 import { Prisma } from "@prisma/client"
 import { supabase } from "@/lib/storage"
 import { decideCleanup } from "@/lib/orphan-guard"
+import { RESERVED_PATHS, extractBucketPaths, isSweepable } from "@/lib/bucket-refs"
 
 export class MaintenanceService {
     /**
@@ -88,129 +89,160 @@ export class MaintenanceService {
 
 
     /**
-     * Cleanup orphaned assets from Supabase storage.
-     * This compares files in the 'app-assets' bucket against database records.
+     * Every bucket path any live row refers to.
+     *
+     * All six columns that can hold one, and the sweep deletes whatever is not
+     * in here — so a column added later and forgotten here is a delayed data
+     * loss. lib/bucket-refs.ts explains why each value is scanned rather than
+     * parsed.
+     *
+     * AuditLog.details is deliberately absent, and it is the one exclusion
+     * worth stating. It does contain bucket URLs — an avatar reset records the
+     * old one — but as a record of what a value used to be, not as a thing
+     * still in use. Counting history as a reference would mean no file this app
+     * has ever replaced is ever collectable.
      */
-    static async cleanupOrphanedAssets() {
-        console.log("[Maintenance] Starting orphaned asset cleanup...")
+    static async collectReferencedPaths(): Promise<Set<string>> {
+        const referenced = new Set<string>()
+        const BATCH = 500
+        const add = (value: unknown) => {
+            for (const path of extractBucketPaths(value)) referenced.add(path)
+        }
 
-        try {
-            // 1. List all files in the bucket
-            const allFiles = await this.listAllAssets()
-            if (allFiles.length === 0) return { deleted: 0, total: 0 }
-            const fileNames = allFiles.map(f => f.name)
-
-            const activeFiles = new Set<string>()
-            const BATCH_SIZE = 500
-
-            // 2. Fetch all references from the DB using batches
-            // Process Users
-            let userSkip = 0
-            while (true) {
-                const users = await prisma.user.findMany({
-                    where: { avatar: { not: null } },
-                    select: { avatar: true },
-                    skip: userSkip,
-                    take: BATCH_SIZE
-                })
-                if (users.length === 0) break
-
-                users.forEach(u => {
-                    const parts = u.avatar?.split('/app-assets/')
-                    if (parts && parts.length > 1) activeFiles.add(parts[1])
-                })
-                if (users.length < BATCH_SIZE) break
-                userSkip += BATCH_SIZE
-            }
-
-            // Process Company logos. Every table whose rows point at this
-            // bucket has to be represented here: a file this loop does not see
-            // a reference to is deleted as an orphan, so adding a column that
-            // stores a URL without adding it here is a delayed data loss.
-            const companies = await prisma.company.findMany({
-                where: { logoUrl: { not: null } },
-                select: { logoUrl: true }
+        // Paged, because these are the two that scale with usage.
+        for (let skip = 0; ; skip += BATCH) {
+            const rows = await prisma.user.findMany({
+                where: { avatar: { not: null } },
+                select: { avatar: true },
+                skip, take: BATCH,
             })
-            companies.forEach(c => {
-                const parts = c.logoUrl?.split('/app-assets/')
-                if (parts && parts.length > 1) activeFiles.add(parts[1])
+            rows.forEach(r => add(r.avatar))
+            if (rows.length < BATCH) break
+        }
+
+        for (let skip = 0; ; skip += BATCH) {
+            const rows = await prisma.task.findMany({
+                where: { attachments: { not: Prisma.DbNull } },
+                select: { attachments: true },
+                skip, take: BATCH,
             })
+            rows.forEach(r => add(r.attachments))
+            if (rows.length < BATCH) break
+        }
 
-            // Process Tasks
-            let taskSkip = 0
-            while (true) {
-                const tasks = await prisma.task.findMany({
-                    where: { attachments: { not: Prisma.DbNull } },
-                    select: { attachments: true },
-                    skip: taskSkip,
-                    take: BATCH_SIZE
-                })
-                if (tasks.length === 0) break
+        for (let skip = 0; ; skip += BATCH) {
+            const rows = await prisma.obligation.findMany({
+                where: { attachments: { not: null } },
+                select: { attachments: true },
+                skip, take: BATCH,
+            })
+            rows.forEach(r => add(r.attachments))
+            if (rows.length < BATCH) break
+        }
 
-                tasks.forEach(t => {
-                    // No JSON.parse needed (F-12: attachments is Json now) — a
-                    // malformed row already became NULL at migration time, so
-                    // anything reaching here is either an array or something
-                    // the migration's quarantine didn't anticipate; the
-                    // Array.isArray guard covers the latter case too.
-                    if (Array.isArray(t.attachments)) {
-                        t.attachments.forEach((a: any) => {
-                            const parts = a.url?.split('/app-assets/')
-                            if (parts && parts.length > 1) activeFiles.add(parts[1])
-                        })
-                    }
-                })
-                if (tasks.length < BATCH_SIZE) break
-                taskSkip += BATCH_SIZE
-            }
+        for (let skip = 0; ; skip += BATCH) {
+            const rows = await prisma.businessClientNote.findMany({
+                where: { attachment: { not: null } },
+                select: { attachment: true },
+                skip, take: BATCH,
+            })
+            rows.forEach(r => add(r.attachment))
+            if (rows.length < BATCH) break
+        }
 
-            // 3. Identify orphaned files
-            const orphaned = fileNames.filter((name: string) => !activeFiles.has(name) && name !== '.emptyFolderPlaceholder')
+        // Bounded by the number of companies and of Super Admins, so unpaged.
+        const companies = await prisma.company.findMany({
+            where: { logoUrl: { not: null } },
+            select: { logoUrl: true },
+        })
+        companies.forEach(c => add(c.logoUrl))
 
-            if (orphaned.length === 0) {
-                console.log("[Maintenance] No orphaned assets found.")
-                return { deleted: 0, total: fileNames.length }
-            }
+        // Was missing until the reference set was audited against the live
+        // bucket, which found a Super Admin's avatar sitting in it unreferenced
+        // — it would have been deleted on the first sweep that ran.
+        const superAdmins = await prisma.superAdmin.findMany({
+            where: { avatar: { not: null } },
+            select: { avatar: true },
+        })
+        superAdmins.forEach(a => add(a.avatar))
 
-            // Refuse rather than delete when the result is implausible. A
-            // genuine orphan is a leftover from a failed write or a deleted
-            // row — a handful. A large fraction of the whole bucket means the
-            // reference set above is missing a table, not that most of the
-            // bucket is garbage.
-            //
-            // This is not hypothetical. As of writing, the queries above cover
-            // User.avatar and Task.attachments and Company.logoUrl, and the
-            // bucket also holds note attachments, obligation attachments and
-            // the Excel templates — none of which are gathered. Against the
-            // live bucket that is 101 of 106 objects. This refusal is the only
-            // reason fixing listAllAssets above is not a data-loss bug.
-            const decision = decideCleanup(orphaned.length, fileNames.length)
-            if (!decision.proceed && decision.reason === 'implausible') {
-                console.error(`[Maintenance] Refusing to delete ${orphaned.length} of ${fileNames.length} objects (${Math.round(decision.share * 100)}%) — the reference set is probably incomplete.`)
-                const { AuditLogService } = await import("./audit-log.service")
-                await AuditLogService.log('SYSTEM_CLEANUP', 'SYSTEM', 'MAINTENANCE', {
-                    details: { refused: true, wouldHaveDeleted: orphaned.length, total: fileNames.length, reason: 'orphan share above threshold' }
-                })
-                return { deleted: 0, total: fileNames.length, refused: true, wouldHaveDeleted: orphaned.length }
-            }
+        return referenced
+    }
 
-            // 4. Delete orphaned files
-            console.log(`[Maintenance] Found ${orphaned.length} orphaned files. Deleting...`)
-            const { error: deleteError } = await supabase.storage.from('app-assets').remove(orphaned)
-            if (deleteError) throw deleteError
+    /**
+     * Orphaned storage objects: what is in the bucket that no row refers to.
+     *
+     * Reports by default and deletes only when told to. That is not timidity
+     * about the code, it is the shape of the risk: the reference set is a
+     * hand-kept list of six queries that has to grow whenever a feature starts
+     * storing a file, and nothing in a typecheck or a build notices when it
+     * does not. So the first sweep of any backlog should be a list somebody
+     * reads, and the threshold in lib/orphan-guard.ts stands between an
+     * unreviewed run and a mass delete.
+     *
+     * `confirm` is how a person who has read that list authorises it anyway —
+     * needed for a genuine backlog, where a large share is the honest answer
+     * rather than a sign of a missing table.
+     */
+    static async cleanupOrphanedAssets(options: { dryRun?: boolean; confirm?: boolean } = {}) {
+        const { dryRun = true, confirm = false } = options
+        console.log(`[Maintenance] Orphan sweep (${dryRun ? 'report only' : 'deleting'})...`)
 
-            // 5. Audit Log (Centralized)
+        const allFiles = await this.listAllAssets()
+        const sweepable = allFiles.map(f => f.name).filter(isSweepable)
+        if (sweepable.length === 0) {
+            return { deleted: 0, total: 0, orphaned: 0, orphans: [], dryRun, reserved: RESERVED_PATHS.length }
+        }
+
+        const referenced = await this.collectReferencedPaths()
+        const orphans = sweepable.filter(name => !referenced.has(name))
+
+        const decision = decideCleanup(orphans.length, sweepable.length)
+        const summary = {
+            total: sweepable.length,
+            referenced: referenced.size,
+            orphaned: orphans.length,
+            orphans,
+            dryRun,
+        }
+
+        if (decision.proceed === false && decision.reason === 'nothing_to_do') {
+            console.log("[Maintenance] No orphaned assets found.")
+            return { ...summary, deleted: 0 }
+        }
+
+        if (dryRun) {
+            return { ...summary, deleted: 0, wouldRefuse: !decision.proceed }
+        }
+
+        if (!decision.proceed && !confirm) {
+            const share = decision.reason === 'implausible' ? decision.share : 0
+            console.error(`[Maintenance] Refusing to delete ${orphans.length} of ${sweepable.length} objects (${Math.round(share * 100)}%) without confirmation — the reference set may be incomplete.`)
             const { AuditLogService } = await import("./audit-log.service")
             await AuditLogService.log('SYSTEM_CLEANUP', 'SYSTEM', 'MAINTENANCE', {
-                details: { deletedFiles: orphaned.length, filenames: orphaned }
+                details: { refused: true, wouldHaveDeleted: orphans.length, total: sweepable.length, reason: 'orphan share above threshold, unconfirmed' }
             })
-
-            console.log(`[Maintenance] Cleanup finished. Deleted ${orphaned.length} files.`)
-            return { deleted: orphaned.length, total: fileNames.length }
-        } catch (error) {
-            console.error("[Maintenance] Cleanup failed:", error)
-            throw error
+            return { ...summary, deleted: 0, refused: true }
         }
+
+        // Supabase caps how many keys one remove() accepts, and a single call
+        // for thousands is also a single failure for all of them.
+        const CHUNK = 100
+        let deleted = 0
+        for (let i = 0; i < orphans.length; i += CHUNK) {
+            const chunk = orphans.slice(i, i + CHUNK)
+            const { error } = await supabase.storage.from('app-assets').remove(chunk)
+            if (error) throw error
+            deleted += chunk.length
+        }
+
+        const { AuditLogService } = await import("./audit-log.service")
+        await AuditLogService.log('SYSTEM_CLEANUP', 'SYSTEM', 'MAINTENANCE', {
+            details: { deletedFiles: deleted, total: sweepable.length, confirmed: confirm, filenames: orphans.slice(0, 200) }
+        })
+
+        console.log(`[Maintenance] Deleted ${deleted} orphaned files.`)
+        return { ...summary, deleted }
     }
 
     /**
