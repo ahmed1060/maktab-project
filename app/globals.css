@@ -444,6 +444,36 @@ body::before {
   }
 }
 
+/* The Super Admin dashboard's top row: four stat tiles beside the donut chart.
+   The outer grid is auto-fit, so its column count falls to one on a narrow
+   screen — and asking a child to span 2 columns of a 1-column grid does not
+   clamp, it makes the browser invent an implicit second track. The block then
+   comes out wider than the page and the whole dashboard scrolls sideways, with
+   the first card clipped off the left edge.
+
+   Below the width where two 300px columns can fit, the block stops spanning and
+   simply occupies the single column it is in. Its own 2x2 arrangement of tiles
+   is unchanged. */
+.dashboard-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 2rem;
+  margin-bottom: 3rem;
+}
+
+.dashboard-stats-block {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+  grid-column: span 2;
+}
+
+@media (max-width: 700px) {
+  .dashboard-stats-block {
+    grid-column: auto;
+  }
+}
+
 @media (max-width: 600px) {
   /* The "Powered by" mark is fixed to the bottom corner, which is empty margin
      on a desktop and is card content on a phone — it was sitting on top of a

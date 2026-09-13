@@ -61,6 +61,29 @@ describe("nothing has a fixed width a phone cannot fit", () => {
     })
 })
 
+describe("nothing spans a grid column that may not exist", () => {
+    it("has no inline grid-column span", () => {
+        // grid-column: span 2 does not clamp when the grid has fewer tracks —
+        // the browser invents an implicit one, and the child comes out wider
+        // than its container. On the dashboard that made the whole page scroll
+        // sideways with the first stat card clipped off the left edge, which
+        // looks like nothing at all on a desktop where the grid has 2+ columns.
+        //
+        // Spans belong in CSS, where a media query can drop them at the width
+        // the columns actually collapse.
+        const offenders: string[] = []
+        for (const file of SOURCES) {
+            const lines = readFileSync(file, "utf8").split("\n")
+            lines.forEach((line, i) => {
+                if (/gridColumn:\s*['"`]span/.test(line)) {
+                    offenders.push(`${file}:${i + 1}  ${line.trim().slice(0, 80)}`)
+                }
+            })
+        }
+        expect(offenders, `inline column spans:\n${offenders.join("\n")}`).toEqual([])
+    })
+})
+
 describe("the viewport is declared", () => {
     it("has a viewport meta, without which none of the media queries apply", () => {
         // Next sets a default, but an explicit one is what stops a later layout

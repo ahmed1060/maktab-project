@@ -69,8 +69,8 @@ export default async function DashboardPage({ searchParams }: { searchParams: { 
                 <div className="animate-fade-in" style={{ direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
                     <HeaderSetter title={t('system_overview')} subtitle={t('dashboard_subtitle' as any)} />
 
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2rem', marginBottom: '3rem' }}>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', gridColumn: 'span 2' }}>
+                    <div className="dashboard-stats-grid">
+                        <div className="dashboard-stats-block">
                             <StatMetric label={t('total_companies')} value={totalCompanies} icon="🏢" color="var(--brand-primary)" />
                             <StatMetric label={t('total_users')} value={totalUsers} icon="👥" color="var(--brand-accent)" />
                             <StatMetric label={t('total_tasks')} value={totalTasks} icon="✅" color="var(--ok-solid)" />

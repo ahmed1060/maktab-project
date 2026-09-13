@@ -90,13 +90,27 @@ export function StatMetric({ label, value, icon, color, percentage, subLabel }: 
     return (
         <div className="glass-card" style={{ padding: '1.25rem', borderLeft: `4px solid ${color}` }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '0.75rem' }}>
-                <div>
-                    <div style={{ fontSize: '0.8rem', color: 'var(--text-soft)', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</div>
+                <div style={{ minWidth: 0 }}>
+                    {/* Two lines' worth of room whether or not the label needs
+                        it. Without this a one-line label ("Total Users") puts
+                        its number higher than a two-line one ("Total
+                        Companies") sitting beside it, and the row reads as
+                        misaligned rather than as two tiles. */}
+                    <div style={{
+                        fontSize: '0.8rem',
+                        color: 'var(--text-soft)',
+                        fontWeight: '600',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.05em',
+                        lineHeight: 1.25,
+                        minHeight: '2.5em',
+                    }}>{label}</div>
                     <div style={{ fontSize: '1.75rem', fontWeight: '800', color: 'var(--text-main)', marginTop: '0.25rem' }}>{value}</div>
                 </div>
                 <div style={{
                     width: '40px',
                     height: '40px',
+                    flexShrink: 0,
                     // color-mix rather than appending "15" as a hex alpha
                     // channel. That trick only works when `color` is a literal
                     // hex: once it is a custom property — which is the whole point
