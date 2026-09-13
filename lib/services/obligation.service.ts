@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma"
+import { nextOccurrence } from "@/lib/recurrence"
 import { CreateObligationInput } from "../validations/obligation.schema"
 import { supabase } from "@/lib/storage"
 
@@ -348,16 +349,15 @@ export class ObligationService {
             include: { assignees: { select: { id: true } } }
         })
 
-        // 2. Optimization: Batch check for existing instances
-        const checkPayloads = recurrentObligations.map(obl => {
-            const nextDeadline = new Date(obl.deadline)
-            switch (obl.recurrence) {
-                case 'DAILY': nextDeadline.setDate(nextDeadline.getDate() + 1); break
-                case 'WEEKLY': nextDeadline.setDate(nextDeadline.getDate() + 7); break
-                case 'MONTHLY': nextDeadline.setMonth(nextDeadline.getMonth() + 1); break
-                case 'YEARLY': nextDeadline.setFullYear(nextDeadline.getFullYear() + 1); break
-            }
-            return { obl, nextDeadline }
+        // 2. Optimization: Batch check for existing instances.
+        //    nextOccurrence clamps months and years instead of overflowing: the
+        //    previous `setMonth` turned a 31 January monthly obligation into
+        //    3 March, so February never got an instance and every later one
+        //    drifted to the 3rd. A recurrence with no next instance yields null
+        //    and is dropped rather than silently repeating its own deadline.
+        const checkPayloads = recurrentObligations.flatMap(obl => {
+            const nextDeadline = nextOccurrence(new Date(obl.deadline), obl.recurrence)
+            return nextDeadline ? [{ obl, nextDeadline }] : []
         })
 
         const existingInstances = await prisma.obligation.findMany({

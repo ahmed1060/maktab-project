@@ -6,47 +6,19 @@
  * be tested exhaustively rather than inlined into a service method.
  */
 
+import { addMonths, addYears } from "@/lib/date-math"
+
+// Re-exported so callers reading about subscription periods do not have to know
+// where the calendar arithmetic lives. Both are shared with recurring
+// obligations, which had the same overflow defect.
+export { addMonths, addYears }
+
 export type SubscriptionType = 'MONTHLY' | 'ANNUALLY' | 'LIFETIME'
 
 export const SUBSCRIPTION_TYPES: SubscriptionType[] = ['MONTHLY', 'ANNUALLY', 'LIFETIME']
 
 export function isSubscriptionType(value: string): value is SubscriptionType {
     return (SUBSCRIPTION_TYPES as string[]).includes(value)
-}
-
-/**
- * Adds calendar months, clamping to the last valid day of the target month.
- *
- * The native `setMonth` overflows instead of clamping: 31 January + 1 month
- * gives 3 March, because 31 February rolls forward. Everywhere a subscription
- * or a recurrence advances by months, that overflow silently moves the billing
- * day and, over a year, skips whole periods.
- *
- * Clamping is also what makes this stable: 31 January + 1 month is 28 February,
- * and 28 February + 1 month is 28 March, not 31 March. The billing day is
- * remembered by `startDate`, never reconstructed from the previous end.
- */
-export function addMonths(date: Date, months: number): Date {
-    const day = date.getDate()
-    const result = new Date(date.getTime())
-
-    // Move to the 1st before shifting the month, so the shift itself can never
-    // overflow, then restore the day against the target month's real length.
-    result.setDate(1)
-    result.setMonth(result.getMonth() + months)
-
-    const lastDayOfTargetMonth = new Date(result.getFullYear(), result.getMonth() + 1, 0).getDate()
-    result.setDate(Math.min(day, lastDayOfTargetMonth))
-
-    return result
-}
-
-/**
- * Adds calendar years, clamping 29 February to 28 February in a non-leap year.
- * Expressed in months so there is exactly one clamping rule in this file.
- */
-export function addYears(date: Date, years: number): Date {
-    return addMonths(date, years * 12)
 }
 
 /**
