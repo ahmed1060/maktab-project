@@ -754,6 +754,8 @@ export const en = {
         subscription_type: "Subscription Type",
         monthly: "Monthly",
         annually: "Annually",
+        lifetime: "Lifetime",
+        never_expires: "Never expires",
         payment_added_success: "Payment record added successfully!",
         payment_marked_paid: "Payment marked as PAID!",
         payment_deleted_success: "Payment deleted successfully",

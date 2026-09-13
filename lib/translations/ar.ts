@@ -717,6 +717,8 @@ export const ar = {
         subscription_type: "نوع الاشتراك",
         monthly: "شهري",
         annually: "سنوي",
+        lifetime: "مدى الحياة",
+        never_expires: "لا ينتهي",
         payment_added_success: "تم إضافة سجل الدفع بنجاح!",
         payment_marked_paid: "تم تحديد الدفعة كمدفوعة!",
         payment_deleted_success: "تم حذف الدفعة بنجاح!",

@@ -1,6 +1,8 @@
 import { prisma } from "@/lib/prisma"
 import { Prisma } from "@prisma/client"
 import { NotificationService } from "./notification.service"
+import { computePeriodStart, computePeriodEnd, isSubscriptionType, daysUntil } from "@/lib/billing/period"
+import { decideReminder, REMINDER_RUNGS } from "@/lib/billing/reminders"
 import { VerificationService } from "./verification.service"
 import { CreateCompanyInput, UpdateCompanyInput } from "../validations/company.schema"
 
@@ -143,30 +145,52 @@ export class CompanyService {
     }
 
     /**
-     * Mark a payment as PAID and calculate expiration.
+     * Mark a payment as PAID and compute the period it buys.
+     *
+     * Two rules live here, both of which used to be wrong:
+     *
+     * 1. A renewal continues from the end of the period already paid for, not
+     *    from today. Paying a week early previously threw that week away.
+     * 2. A "month" is a calendar month. It used to be 30 days while a year was a
+     *    calendar year, so twelve monthly payments bought 360 days — the
+     *    customer lost five days a year and nobody would ever have noticed.
+     *
+     * Neither is retroactive: endDate is written once, here, so rows confirmed
+     * before this change keep the dates they were given.
      */
     static async updatePaymentStatus(paymentId: string, status: string, session: any) {
         if (status !== 'PAID') throw new Error("ONLY_PAID_SUPPORTED")
 
         const payment = await prisma.companyPayment.findUnique({ where: { id: paymentId } })
         if (!payment) throw new Error("PAYMENT_NOT_FOUND")
+        if (!isSubscriptionType(payment.subscriptionType)) throw new Error("UNKNOWN_SUBSCRIPTION_TYPE")
 
-        const startDate = new Date()
-        const endDate = new Date()
+        const now = new Date()
 
-        if (payment.subscriptionType === 'MONTHLY') {
-            endDate.setDate(startDate.getDate() + 30)
-        } else if (payment.subscriptionType === 'ANNUALLY') {
-            endDate.setFullYear(startDate.getFullYear() + 1)
-        }
+        // The furthest-out period this company already holds. A row with a null
+        // endDate is a lifetime subscription, and `orderBy endDate desc` sorts
+        // nulls first in Postgres — so it is found by this query, and
+        // computePeriodStart reads it as "nothing to extend".
+        const currentPeriod = await prisma.companyPayment.findFirst({
+            where: { companyId: payment.companyId, status: 'PAID', id: { not: paymentId } },
+            orderBy: { endDate: 'desc' },
+            select: { endDate: true }
+        })
+
+        const startDate = computePeriodStart(now, currentPeriod?.endDate)
+        const endDate = computePeriodEnd(startDate, payment.subscriptionType)
 
         const updated = await prisma.companyPayment.update({
             where: { id: paymentId },
             data: {
                 status: 'PAID',
-                paidAt: startDate,
+                paidAt: now,
                 startDate,
-                endDate
+                endDate,
+                // A new period gets its reminders back. Any endDate write must
+                // do this, or the ladder stays spent and the period expires in
+                // silence — the exact failure the old boolean had.
+                remindersSent: []
             }
         })
 
@@ -201,18 +225,33 @@ export class CompanyService {
     }
 
     /**
-     * Cron-like method to check for expiring subscriptions and notify admins.
+     * Daily expiry reminders: the 14 / 3 / 1 ladder.
+     *
+     * Which rung a subscription is due for is decided by `decideReminder`, a
+     * pure function — this method only gathers recipients and writes. The rungs
+     * already spent live in `remindersSent`, replacing a single boolean that
+     * could say something had been sent but not which, so it could never drive
+     * more than one reminder and never survived an extension.
+     *
+     * Reminders now reach the company's own Admins as well as the platform's
+     * Super Admins. Telling only the vendor is survivable while renewals are
+     * chased by hand; once grace and lockout are automatic it is a trap, because
+     * the customer's first warning would be the screen going red.
      */
     static async checkSubscriptions() {
         const now = new Date()
-        const fourteenDaysFromNow = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000)
+        const widestRung = Math.max(...REMINDER_RUNGS)
+        const windowEnd = new Date(now.getTime() + widestRung * 24 * 60 * 60 * 1000)
 
-        // 1. Find PAID payments expiring within 14 days that haven't been notified
+        // Candidates: paid periods ending inside the widest rung's window that
+        // have not spent every rung. A null endDate is a lifetime subscription
+        // and is excluded by `gt: now` — it has no expiry to warn about, and
+        // this is one of the places where treating null as a date would have
+        // read as "expired in 1970".
         const expiringPayments = await prisma.companyPayment.findMany({
             where: {
                 status: 'PAID',
-                endDate: { gt: now, lte: fourteenDaysFromNow },
-                notifiedExpiryReminder: false
+                endDate: { gt: now, lte: windowEnd }
             },
             include: { company: { select: { id: true, name: true } } }
         })
@@ -221,13 +260,13 @@ export class CompanyService {
             return { message: "No expiring subscriptions found", count: 0 }
         }
 
-        // 2. Fetch all Super Admins. The two sources are kept apart, not merged
-        //    into one id list: they come from different tables with independent
-        //    UUID spaces, and Notification addresses each through its own FK
-        //    column. Flattening them is precisely what used to break this job —
-        //    every SuperAdmin-table id was written to Notification.userId, which
-        //    is FK-constrained to User, so the insert threw and no expiry
-        //    notification was ever delivered.
+        // Super Admin recipients. The two sources are kept apart, not merged
+        // into one id list: they come from different tables with independent
+        // UUID spaces, and Notification addresses each through its own FK
+        // column. Flattening them is precisely what used to break this job —
+        // every SuperAdmin-table id was written to Notification.userId, which is
+        // FK-constrained to User, so the insert threw and no expiry notification
+        // was ever delivered.
         const [adminsFromTable, adminsFromUserRole] = await Promise.all([
             prisma.superAdmin.findMany({ select: { id: true } }),
             prisma.user.findMany({
@@ -237,43 +276,86 @@ export class CompanyService {
         ])
 
         const superAdminIds = adminsFromTable.map(a => a.id)
-        const userAdminIds = adminsFromUserRole.map(a => a.id)
-        const recipientCount = superAdminIds.length + userAdminIds.length
+        const platformUserIds = adminsFromUserRole.map(a => a.id)
 
-        if (recipientCount === 0) {
-            return { expiringFound: expiringPayments.length, notificationsSent: 0, message: "No Super Admin recipients" }
+        // The customer's own Admins, fetched per company rather than globally:
+        // a billing message naming a company must never reach another company's
+        // Admin, and this codebase has shipped cross-tenant leaks before.
+        const companyIds = Array.from(new Set(expiringPayments.map(p => p.company.id)))
+        const companyAdmins = await prisma.user.findMany({
+            where: { companyId: { in: companyIds }, role: 'ADMIN', status: 'ACTIVE' },
+            select: { id: true, companyId: true }
+        })
+        const adminsByCompany = new Map<string, string[]>()
+        for (const admin of companyAdmins) {
+            if (!admin.companyId) continue
+            const list = adminsByCompany.get(admin.companyId) ?? []
+            list.push(admin.id)
+            adminsByCompany.set(admin.companyId, list)
         }
 
         let notificationsCreated = 0
+        let remindersSent = 0
 
-        // 3. Create notifications. One transaction per payment, covering both the
-        //    inserts and the notified flag: previously the flag was written
-        //    outside any transaction and after the inserts, so a failure partway
-        //    through left recipients notified with the flag still false and the
-        //    next run notified them a second time.
         for (const payment of expiringPayments) {
-            const timeLeft = Math.ceil((payment.endDate!.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
-            const message = `Subscription for ${payment.company.name} will expire in ${timeLeft} days (${payment.endDate?.toLocaleDateString()}).`
+            const daysLeft = daysUntil(payment.endDate, now)
+            if (daysLeft === null) continue
+
+            const decision = decideReminder(daysLeft, payment.remindersSent)
+
+            // Nothing due, but rungs may still need recording — a first sighting
+            // mid-period spends the rungs whose moment predates it, so they can
+            // never fire late as a backlog.
+            if (decision.send === null) {
+                if (decision.markSent.length > 0) {
+                    await prisma.companyPayment.update({
+                        where: { id: payment.id },
+                        data: { remindersSent: { push: decision.markSent } }
+                    })
+                }
+                continue
+            }
+
+            const endsOn = payment.endDate!.toLocaleDateString()
+            const operatorMessage = `Subscription for ${payment.company.name} will expire in ${decision.send} day(s) (${endsOn}).`
+            const customerMessage = `Your subscription expires in ${decision.send} day(s) (${endsOn}). Please renew to avoid interruption.`
 
             // relatedId carries a dashboard path rather than the payment id. The
             // bell has to reach that company's billing page, which needs the
             // companyId, and a notification row has only one related-id column.
             // This is the same convention the NOTE type already uses, and
             // NotificationBell dispatches on the leading slash.
-            const target = `/dashboard/companies/${payment.company.id}/payments`
+            const operatorTarget = `/dashboard/companies/${payment.company.id}/payments`
+            const customerAdminIds = adminsByCompany.get(payment.company.id) ?? []
 
+            // With nobody to tell, the rung is not spent. Recording it would burn
+            // the reminder against a delivery that never happened, and the next
+            // run — by which time a Super Admin may exist — would stay silent.
+            if (superAdminIds.length + platformUserIds.length + customerAdminIds.length === 0) {
+                continue
+            }
+
+            // One transaction per payment covering both the inserts and the rung
+            // record: previously the flag was written outside any transaction and
+            // after the inserts, so a failure partway through left recipients
+            // notified with nothing recorded, and the next run notified them again.
             await prisma.$transaction(async (tx) => {
-                await NotificationService.notifySuperAdmins(superAdminIds, 'SUBSCRIPTION_EXPIRY', message, target, tx)
-                await NotificationService.notifyMany(userAdminIds, 'SUBSCRIPTION_EXPIRY', message, target, tx)
+                await NotificationService.notifySuperAdmins(superAdminIds, 'SUBSCRIPTION_EXPIRY', operatorMessage, operatorTarget, tx)
+                await NotificationService.notifyMany(platformUserIds, 'SUBSCRIPTION_EXPIRY', operatorMessage, operatorTarget, tx)
+                // No link for the customer: the billing page is Super Admin only,
+                // and a notification that navigates to a 403 is worse than one
+                // that does not navigate at all.
+                await NotificationService.notifyMany(customerAdminIds, 'SUBSCRIPTION_EXPIRY', customerMessage, undefined, tx)
                 await tx.companyPayment.update({
                     where: { id: payment.id },
-                    data: { notifiedExpiryReminder: true }
+                    data: { remindersSent: { push: decision.markSent } }
                 })
             })
 
-            notificationsCreated += recipientCount
+            notificationsCreated += superAdminIds.length + platformUserIds.length + customerAdminIds.length
+            remindersSent++
         }
 
-        return { expiringFound: expiringPayments.length, notificationsSent: notificationsCreated }
+        return { expiringFound: expiringPayments.length, remindersSent, notificationsSent: notificationsCreated }
     }
 }

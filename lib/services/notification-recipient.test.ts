@@ -85,12 +85,19 @@ describe("checkSubscriptions recipient routing", () => {
         prismaMock.companyPayment.findMany.mockResolvedValue([
             {
                 id: "pay-1",
-                endDate: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000),
+                // 14 days out exactly: the rung fires on first sighting, which is
+                // the ordinary case rather than the mid-period backfill one.
+                endDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
+                remindersSent: [],
                 company: { id: "co-1", name: "Acme" },
             },
         ])
         prismaMock.superAdmin.findMany.mockResolvedValue([{ id: "sa-1" }])
-        prismaMock.user.findMany.mockResolvedValue([{ id: "u-1" }])
+        // checkSubscriptions calls user.findMany twice: platform Super Admins
+        // first, then the customer's own Admins.
+        prismaMock.user.findMany
+            .mockResolvedValueOnce([{ id: "u-1" }])
+            .mockResolvedValueOnce([{ id: "admin-1", companyId: "co-1" }])
         prismaMock.$transaction.mockImplementation(async (fn: any) => fn(tx))
 
         return { tx, txWrites }
@@ -101,13 +108,14 @@ describe("checkSubscriptions recipient routing", () => {
         await CompanyService.checkSubscriptions()
 
         const all = txWrites.flat()
-        expect(all).toHaveLength(2)
+        // One platform Super Admin, one platform User, one company Admin.
+        expect(all).toHaveLength(3)
 
         const bySuperAdmin = all.filter((r: any) => r.superAdminId)
         const byUser = all.filter((r: any) => r.userId)
 
         expect(bySuperAdmin.map((r: any) => r.superAdminId)).toEqual(["sa-1"])
-        expect(byUser.map((r: any) => r.userId)).toEqual(["u-1"])
+        expect(byUser.map((r: any) => r.userId).sort()).toEqual(["admin-1", "u-1"])
 
         // The actual bug: a SuperAdmin id appearing in userId.
         expect(all.some((r: any) => r.userId === "sa-1")).toBe(false)
@@ -123,7 +131,7 @@ describe("checkSubscriptions recipient routing", () => {
         // flag false and re-notifies everyone on the next run.
         expect(tx.companyPayment.update).toHaveBeenCalledWith({
             where: { id: "pay-1" },
-            data: { notifiedExpiryReminder: true },
+            data: { remindersSent: { push: [14] } },
         })
         expect(prismaMock.companyPayment.update).not.toHaveBeenCalled()
     })
@@ -132,22 +140,74 @@ describe("checkSubscriptions recipient routing", () => {
         const { txWrites } = setup()
         await CompanyService.checkSubscriptions()
 
-        for (const row of txWrites.flat()) {
+        const all = txWrites.flat()
+
+        // Operators get a link to the company's billing page...
+        for (const row of all.filter((r: any) => r.superAdminId || r.userId === "u-1")) {
             expect(row.relatedId).toBe("/dashboard/companies/co-1/payments")
         }
+
+        // ...the customer's Admin does not, because that page is Super Admin
+        // only and a notification that navigates to a 403 is worse than one
+        // that does not navigate.
+        const customerRow = all.find((r: any) => r.userId === "admin-1")
+        expect(customerRow.relatedId).toBeUndefined()
+        expect(customerRow.message).toMatch(/Your subscription expires/)
     })
 
-    it("writes nothing when there are no Super Admins to notify", async () => {
+    it("writes nothing, and spends no rung, when there is nobody to notify", async () => {
         const { tx } = setup()
         prismaMock.superAdmin.findMany.mockResolvedValue([])
+        prismaMock.user.findMany.mockReset()
         prismaMock.user.findMany.mockResolvedValue([])
 
         const result = await CompanyService.checkSubscriptions()
 
         expect(tx.notification.createMany).not.toHaveBeenCalled()
-        // And critically: the payment is NOT marked notified, so a later run with
-        // a real recipient still sends it.
+        // And critically: the rung is NOT recorded. Burning it here would leave
+        // the next run — by which time a recipient may exist — silent.
         expect(tx.companyPayment.update).not.toHaveBeenCalled()
+        expect(prismaMock.companyPayment.update).not.toHaveBeenCalled()
         expect(result.notificationsSent).toBe(0)
+    })
+
+    it("records the skipped rungs without notifying, when first seen mid-period", async () => {
+        const { tx } = setup()
+        // Five days out and never reminded: rung 14's moment has passed, rung 3's
+        // has not arrived. Nothing is sent, but 14 is spent so it cannot fire late.
+        prismaMock.companyPayment.findMany.mockResolvedValue([
+            {
+                id: "pay-1",
+                endDate: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000),
+                remindersSent: [],
+                company: { id: "co-1", name: "Acme" },
+            },
+        ])
+
+        const result = await CompanyService.checkSubscriptions()
+
+        expect(tx.notification.createMany).not.toHaveBeenCalled()
+        expect(prismaMock.companyPayment.update).toHaveBeenCalledWith({
+            where: { id: "pay-1" },
+            data: { remindersSent: { push: [14] } },
+        })
+        expect(result.remindersSent).toBe(0)
+    })
+
+    it("does not re-send a rung already spent", async () => {
+        const { tx } = setup()
+        prismaMock.companyPayment.findMany.mockResolvedValue([
+            {
+                id: "pay-1",
+                endDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
+                remindersSent: [14],
+                company: { id: "co-1", name: "Acme" },
+            },
+        ])
+
+        await CompanyService.checkSubscriptions()
+
+        expect(tx.notification.createMany).not.toHaveBeenCalled()
+        expect(prismaMock.companyPayment.update).not.toHaveBeenCalled()
     })
 })

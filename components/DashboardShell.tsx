@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import PageTitle from './PageTitle'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import DashboardHeader from './DashboardHeader'
@@ -59,6 +60,11 @@ export default function DashboardShell({ children, user }: DashboardShellProps) 
 
     return (
         <div style={{ display: 'flex', minHeight: '100vh', background: 'transparent' }}>
+            {/* Renders nothing; sets the browser tab title for the current route.
+                Mounted once here rather than per page, because 27 of the 35
+                dashboard pages are Client Components and cannot export metadata. */}
+            <PageTitle vendorsLabel={user?.vendorsLabel} />
+
             {/* Sidebar Overlay for Mobile */}
             {isMobile && isSidebarOpen && (
                 <div

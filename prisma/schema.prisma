@@ -508,7 +508,15 @@ model CompanyPayment {
   endDate                DateTime?
   createdAt              DateTime  @default(now())
   updatedAt              DateTime  @updatedAt
+  // Superseded by remindersSent. Kept for one deploy so a code rollback still
+  // has the column it reads; dropped in the contract step of this change.
   notifiedExpiryReminder Boolean   @default(false)
+  // Which rungs of the 14/3/1 expiry ladder have been spent on this period.
+  // A set, not a counter or a boolean: the old single flag could say "something
+  // was sent" but not which, so it could neither drive a ladder nor survive an
+  // extension. Reset to empty whenever endDate moves — an extended period is a
+  // new period and deserves its reminders again.
+  remindersSent          Int[]     @default([])
   company                Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
   @@index([companyId])

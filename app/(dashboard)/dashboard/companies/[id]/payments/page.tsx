@@ -12,7 +12,7 @@ import { useLanguage } from '@/context/LanguageContext'
 type Payment = {
     id: string
     cost: number
-    subscriptionType: 'MONTHLY' | 'ANNUALLY'
+    subscriptionType: 'MONTHLY' | 'ANNUALLY' | 'LIFETIME'
     status: 'PAID' | 'UNPAID'
     paidAt: string | null
     startDate: string | null
@@ -24,6 +24,14 @@ type Company = {
     id: string
     name: string
 }
+
+// Keyed by the stored value rather than a ternary, so adding a fourth type is
+// a one-line change here instead of a conditional that silently mislabels it.
+const SUBSCRIPTION_LABEL_KEY = {
+    MONTHLY: 'monthly',
+    ANNUALLY: 'annually',
+    LIFETIME: 'lifetime',
+} as const
 
 export default function CompanyPaymentsPage() {
     const params = useParams()
@@ -238,7 +246,7 @@ export default function CompanyPaymentsPage() {
                             {payments.map(payment => (
                                 <tr key={payment.id} style={{ borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
                                     <td style={{ padding: '1.25rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
-                                        <div style={{ fontWeight: '600', fontSize: '0.9rem' }}>{payment.subscriptionType === 'MONTHLY' ? t('monthly') : t('annually')}</div>
+                                        <div style={{ fontWeight: '600', fontSize: '0.9rem' }}>{t(SUBSCRIPTION_LABEL_KEY[payment.subscriptionType] ?? 'annually')}</div>
                                         <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>{t('created_at')} {new Date(payment.createdAt).toLocaleDateString(locale === 'ar' ? 'ar-EG' : 'en-US')}</div>
                                     </td>
                                     <td style={{ padding: '1.25rem', fontWeight: 'bold', color: '#1e293b', textAlign: locale === 'ar' ? 'right' : 'left' }}>
@@ -248,7 +256,15 @@ export default function CompanyPaymentsPage() {
                                         {payment.status === 'PAID' ? (
                                             <div style={{ fontSize: '0.85rem' }}>
                                                 <div><span style={{ color: '#64748b' }}>{t('start_date')}:</span> {new Date(payment.startDate!).toLocaleDateString(locale === 'ar' ? 'ar-EG' : 'en-US')}</div>
-                                                <div><span style={{ color: '#64748b' }}>{t('end_date')}:</span> {new Date(payment.endDate!).toLocaleDateString(locale === 'ar' ? 'ar-EG' : 'en-US')}</div>
+                                                <div>
+                                                    <span style={{ color: '#64748b' }}>{t('end_date')}:</span>{' '}
+                                                    {/* A lifetime subscription has no end date. new Date(null)
+                                                        is the epoch, so rendering it unguarded would print
+                                                        1 January 1970 to the customer who paid the most. */}
+                                                    {payment.endDate
+                                                        ? new Date(payment.endDate).toLocaleDateString(locale === 'ar' ? 'ar-EG' : 'en-US')
+                                                        : <span style={{ color: '#6d28d9', fontWeight: 600 }}>∞ {t('never_expires')}</span>}
+                                                </div>
                                             </div>
                                         ) : (
                                             <span style={{ fontSize: '0.85rem', color: '#94a3b8', fontStyle: 'italic' }}>{t('pending_activation')}</span>
@@ -334,6 +350,7 @@ export default function CompanyPaymentsPage() {
                         >
                             <option value="MONTHLY">{t('monthly')}</option>
                             <option value="ANNUALLY">{t('annually')}</option>
+                            <option value="LIFETIME">{t('lifetime')}</option>
                         </select>
                     </div>
 
