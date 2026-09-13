@@ -217,7 +217,7 @@ export default function LoginPage() {
             justifyContent: 'center',
             alignItems: 'center',
             minHeight: '100vh',
-            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            background: 'linear-gradient(135deg, var(--hero-from) 0%, var(--hero-to) 100%)',
             position: 'relative',
             overflow: 'hidden'
         }}>
@@ -253,7 +253,7 @@ export default function LoginPage() {
                         textAlign: 'center',
                         fontSize: '2rem',
                         fontWeight: '700',
-                        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                        background: 'linear-gradient(135deg, var(--hero-from) 0%, var(--hero-to) 100%)',
                         WebkitBackgroundClip: 'text',
                         WebkitTextFillColor: 'transparent',
                         backgroundClip: 'text'
@@ -264,7 +264,7 @@ export default function LoginPage() {
                     </h1>
                     <p style={{
                         textAlign: 'center',
-                        color: '#64748b',
+                        color: 'var(--text-soft)',
                         marginBottom: '2rem',
                         fontSize: '0.875rem'
                     }}>
@@ -282,24 +282,24 @@ export default function LoginPage() {
                         <div style={{
                             padding: '0.85rem 1rem',
                             marginBottom: '1.5rem',
-                            background: 'linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%)',
-                            color: '#166534',
+                            background: 'linear-gradient(135deg, var(--ok-bg) 0%, var(--ok-bg-strong) 100%)',
+                            color: 'var(--ok-fg)',
                             borderRadius: '12px',
                             fontSize: '0.85rem',
                             textAlign: 'center',
-                            border: '1px solid #86efac',
+                            border: '1px solid var(--ok-border)',
                         }}>{forgotMessage}</div>
                     )}
                     {error && (
                         <div style={{
                             padding: '1rem',
                             marginBottom: '1.5rem',
-                            background: 'linear-gradient(135deg, #fee2e2 0%, #fecaca 100%)',
-                            color: '#991b1b',
+                            background: 'linear-gradient(135deg, var(--danger-bg) 0%, var(--danger-border) 100%)',
+                            color: 'var(--danger-fg)',
                             borderRadius: '12px',
                             fontSize: '0.875rem',
                             textAlign: 'center',
-                            border: '1px solid #fca5a5',
+                            border: '1px solid var(--danger-border-firm)',
                             fontWeight: '500'
                         }}>{error}</div>
                     )}
@@ -363,7 +363,7 @@ export default function LoginPage() {
                                 style={{
                                     width: '100%',
                                     padding: '0.875rem',
-                                    background: forgotSubmitting ? '#9ca3af' : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                                    background: forgotSubmitting ? 'var(--grey-400)' : 'linear-gradient(135deg, var(--hero-from) 0%, var(--hero-to) 100%)',
                                     color: 'white',
                                     border: 'none',
                                     borderRadius: '12px',
@@ -386,7 +386,7 @@ export default function LoginPage() {
                                     width: '100%',
                                     padding: '0.6rem',
                                     background: 'transparent',
-                                    color: '#94a3b8',
+                                    color: 'var(--text-faint)',
                                     border: 'none',
                                     fontSize: '0.8rem',
                                     cursor: 'pointer',
@@ -446,7 +446,7 @@ export default function LoginPage() {
                                         padding: '0.25rem',
                                         display: 'flex',
                                         alignItems: 'center',
-                                        color: '#64748b'
+                                        color: 'var(--text-soft)'
                                     }}
                                 >
                                     {showPassword ? (
@@ -465,7 +465,7 @@ export default function LoginPage() {
                                     <button
                                         type="button"
                                         onClick={() => { setMode('forgot'); setForgotEmail(email); setError('') }}
-                                        style={{ background: 'none', border: 'none', color: '#667eea', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer', padding: 0 }}
+                                        style={{ background: 'none', border: 'none', color: 'var(--hero-from)', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer', padding: 0 }}
                                     >
                                         {isAr ? 'هل نسيت كلمة المرور؟' : 'Forgot your password?'}
                                     </button>
@@ -488,11 +488,11 @@ export default function LoginPage() {
                                     width: '18px',
                                     height: '18px',
                                     borderRadius: '4px',
-                                    border: '2px solid #667eea',
+                                    border: '2px solid var(--hero-from)',
                                     display: 'flex',
                                     alignItems: 'center',
                                     justifyContent: 'center',
-                                    background: staySignedIn ? '#667eea' : 'transparent',
+                                    background: staySignedIn ? 'var(--hero-from)' : 'transparent',
                                     transition: 'all 0.2s ease',
                                     flexShrink: 0
                                 }}>
@@ -502,7 +502,7 @@ export default function LoginPage() {
                                         </svg>
                                     )}
                                 </div>
-                                <span style={{ fontSize: '0.875rem', color: '#64748b' }}>
+                                <span style={{ fontSize: '0.875rem', color: 'var(--text-soft)' }}>
                                     {t('stay_signed_in')}
                                 </span>
                             </div>
@@ -513,7 +513,7 @@ export default function LoginPage() {
                                 style={{
                                     width: '100%',
                                     padding: '0.875rem',
-                                    background: loading ? '#9ca3af' : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                                    background: loading ? 'var(--grey-400)' : 'linear-gradient(135deg, var(--hero-from) 0%, var(--hero-to) 100%)',
                                     color: 'white',
                                     border: 'none',
                                     borderRadius: '12px',
@@ -574,11 +574,11 @@ export default function LoginPage() {
                                         width: '18px',
                                         height: '18px',
                                         borderRadius: '4px',
-                                        border: '2px solid #667eea',
+                                        border: '2px solid var(--hero-from)',
                                         display: 'flex',
                                         alignItems: 'center',
                                         justifyContent: 'center',
-                                        background: rememberDevice ? '#667eea' : 'transparent',
+                                        background: rememberDevice ? 'var(--hero-from)' : 'transparent',
                                         flexShrink: 0
                                     }}>
                                         {rememberDevice && (
@@ -587,14 +587,14 @@ export default function LoginPage() {
                                             </svg>
                                         )}
                                     </div>
-                                    <span style={{ fontSize: '0.875rem', color: '#64748b' }}>
+                                    <span style={{ fontSize: '0.875rem', color: 'var(--text-soft)' }}>
                                         {isAr ? 'تذكر هذا الجهاز لمدة 30 يومًا' : 'Remember this device for 30 days'}
                                     </span>
                                 </div>
                             )}
 
                             {stage === 'recovery' && (
-                                <p style={{ fontSize: '0.78rem', color: '#64748b', marginBottom: '1.25rem' }}>
+                                <p style={{ fontSize: '0.78rem', color: 'var(--text-soft)', marginBottom: '1.25rem' }}>
                                     {isAr ? 'لم يصلك؟ تحقق من مجلد الرسائل غير المرغوب فيها.' : "Didn't get it? Check your spam folder."}
                                 </p>
                             )}
@@ -605,7 +605,7 @@ export default function LoginPage() {
                                 style={{
                                     width: '100%',
                                     padding: '0.875rem',
-                                    background: loading ? '#9ca3af' : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                                    background: loading ? 'var(--grey-400)' : 'linear-gradient(135deg, var(--hero-from) 0%, var(--hero-to) 100%)',
                                     color: 'white',
                                     border: 'none',
                                     borderRadius: '12px',
@@ -627,7 +627,7 @@ export default function LoginPage() {
                                         width: '100%',
                                         padding: '0.6rem',
                                         background: 'transparent',
-                                        color: '#667eea',
+                                        color: 'var(--hero-from)',
                                         border: 'none',
                                         fontSize: '0.85rem',
                                         fontWeight: '600',
@@ -646,7 +646,7 @@ export default function LoginPage() {
                                         width: '100%',
                                         padding: '0.6rem',
                                         background: 'transparent',
-                                        color: '#64748b',
+                                        color: 'var(--text-soft)',
                                         border: 'none',
                                         fontSize: '0.85rem',
                                         fontWeight: '600',
@@ -664,7 +664,7 @@ export default function LoginPage() {
                                     width: '100%',
                                     padding: '0.6rem',
                                     background: 'transparent',
-                                    color: '#94a3b8',
+                                    color: 'var(--text-faint)',
                                     border: 'none',
                                     fontSize: '0.8rem',
                                     cursor: 'pointer',

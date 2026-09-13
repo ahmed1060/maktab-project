@@ -72,8 +72,8 @@ export default function MaintenancePage() {
                 <div style={{
                     width: '18px',
                     height: '18px',
-                    border: '2px solid #e2e8f0',
-                    borderTopColor: '#f59e0b',
+                    border: '2px solid var(--border)',
+                    borderTopColor: 'var(--warn-solid)',
                     borderRadius: '50%',
                     animation: 'spin 1s linear infinite'
                 }} />

@@ -153,13 +153,13 @@ export default function MfaSettingsPage() {
                 <div style={{
                     display: 'inline-block', margin: '0 0 1.5rem', padding: '0.2rem 0.6rem',
                     borderRadius: '999px', fontSize: '0.75rem', fontWeight: 700,
-                    background: mfaEnabled ? '#e1f1e6' : '#eae9df',
-                    color: mfaEnabled ? '#2f7a4f' : '#5b6660'
+                    background: mfaEnabled ? 'var(--ok-bg)' : 'var(--surface-sunk)',
+                    color: mfaEnabled ? 'var(--ok-fg)' : 'var(--text-soft)'
                 }}>
                     {mfaEnabled ? (isAr ? 'مفعّلة' : 'Enabled') : (isAr ? 'غير مفعّلة' : 'Not enabled')}
                 </div>
 
-                {error && <div style={{ marginBottom: '1rem', fontSize: '0.85rem', color: '#ef4444' }}>{error}</div>}
+                {error && <div style={{ marginBottom: '1rem', fontSize: '0.85rem', color: 'var(--danger-solid)' }}>{error}</div>}
 
                 {mfaEnabled ? (
                     isProtectedActor ? (
@@ -169,7 +169,7 @@ export default function MfaSettingsPage() {
                                 : 'MFA is enabled and required for this account. It cannot be disabled.'}
                         </p>
                     ) : !disabling ? (
-                        <button className="btn" onClick={() => setDisabling(true)} style={{ background: 'transparent', border: '1px solid #ef4444', color: '#ef4444' }}>
+                        <button className="btn" onClick={() => setDisabling(true)} style={{ background: 'transparent', border: '1px solid var(--danger-solid)', color: 'var(--danger-solid)' }}>
                             {isAr ? 'إيقاف المصادقة الثنائية' : 'Disable two-factor authentication'}
                         </button>
                     ) : (
@@ -181,10 +181,10 @@ export default function MfaSettingsPage() {
                                 <input type="password" className="input" value={password} onChange={e => setPassword(e.target.value)} required autoFocus />
                             </div>
                             <div style={{ display: 'flex', gap: '0.75rem' }}>
-                                <button type="button" className="btn" onClick={() => { setDisabling(false); setPassword(''); setError('') }} style={{ flex: 1, background: 'transparent', border: '1px solid #e2e8f0' }}>
+                                <button type="button" className="btn" onClick={() => { setDisabling(false); setPassword(''); setError('') }} style={{ flex: 1, background: 'transparent', border: '1px solid var(--border)' }}>
                                     {isAr ? 'رجوع' : 'Back'}
                                 </button>
-                                <button type="submit" className="btn" disabled={submittingDisable} style={{ flex: 1, background: '#ef4444' }}>
+                                <button type="submit" className="btn" disabled={submittingDisable} style={{ flex: 1, background: 'var(--danger-solid)' }}>
                                     {submittingDisable ? (isAr ? 'جارٍ الإيقاف...' : 'Disabling...') : (isAr ? 'إيقاف' : 'Disable')}
                                 </button>
                             </div>
@@ -223,7 +223,7 @@ export default function MfaSettingsPage() {
                             <input type="text" inputMode="numeric" className="input" value={code} onChange={e => setCode(e.target.value)} maxLength={6} minLength={6} required autoFocus />
                         </div>
                         <div style={{ display: 'flex', gap: '0.75rem' }}>
-                            <button type="button" className="btn" onClick={() => { setEnrolling(false); setCode(''); setError('') }} style={{ flex: 1, background: 'transparent', border: '1px solid #e2e8f0' }}>
+                            <button type="button" className="btn" onClick={() => { setEnrolling(false); setCode(''); setError('') }} style={{ flex: 1, background: 'transparent', border: '1px solid var(--border)' }}>
                                 {isAr ? 'إلغاء' : 'Cancel'}
                             </button>
                             <button type="submit" className="btn" disabled={confirming} style={{ flex: 1 }}>
@@ -244,7 +244,7 @@ export default function MfaSettingsPage() {
                             <button
                                 onClick={revokeAllDevices}
                                 disabled={revokingAll}
-                                style={{ background: 'none', border: 'none', color: '#ef4444', fontSize: '0.8rem', fontWeight: 600, cursor: revokingAll ? 'not-allowed' : 'pointer' }}
+                                style={{ background: 'none', border: 'none', color: 'var(--danger-solid)', fontSize: '0.8rem', fontWeight: 600, cursor: revokingAll ? 'not-allowed' : 'pointer' }}
                             >
                                 {revokingAll ? (isAr ? 'جارٍ الإلغاء...' : 'Revoking...') : (isAr ? 'إلغاء الكل' : 'Revoke all')}
                             </button>
@@ -260,7 +260,7 @@ export default function MfaSettingsPage() {
                             {devices.map(device => (
                                 <div key={device.id} style={{
                                     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                                    padding: '0.75rem 0.9rem', border: '1px solid #e2e8f0', borderRadius: '8px'
+                                    padding: '0.75rem 0.9rem', border: '1px solid var(--border)', borderRadius: '8px'
                                 }}>
                                     <div>
                                         <div style={{ fontSize: '0.88rem', fontWeight: 600, color: 'var(--text-main)' }}>
@@ -273,7 +273,7 @@ export default function MfaSettingsPage() {
                                     <button
                                         onClick={() => revokeDevice(device.id)}
                                         disabled={revokingId === device.id}
-                                        style={{ background: 'none', border: 'none', color: '#ef4444', fontSize: '0.8rem', fontWeight: 600, cursor: revokingId === device.id ? 'not-allowed' : 'pointer', flexShrink: 0 }}
+                                        style={{ background: 'none', border: 'none', color: 'var(--danger-solid)', fontSize: '0.8rem', fontWeight: 600, cursor: revokingId === device.id ? 'not-allowed' : 'pointer', flexShrink: 0 }}
                                     >
                                         {revokingId === device.id ? (isAr ? 'جارٍ...' : '...') : (isAr ? 'إلغاء' : 'Revoke')}
                                     </button>

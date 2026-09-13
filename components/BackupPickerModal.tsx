@@ -50,7 +50,7 @@ export default function BackupPickerModal({ isOpen, backups, loading, error, onS
                 direction: locale === 'ar' ? 'rtl' : 'ltr',
                 textAlign: locale === 'ar' ? 'right' : 'left'
             }}>
-                <h2 style={{ fontSize: '1.15rem', fontWeight: 700, color: '#1e293b', margin: '0 0 1rem' }}>
+                <h2 style={{ fontSize: '1.15rem', fontWeight: 700, color: 'var(--text-main)', margin: '0 0 1rem' }}>
                     {t('backup_picker_title' as any)}
                 </h2>
 
@@ -61,22 +61,22 @@ export default function BackupPickerModal({ isOpen, backups, loading, error, onS
                         </div>
                     )}
                     {!loading && error && (
-                        <p style={{ color: '#dc2626', fontSize: '0.9rem', padding: '1rem 0' }}>{error}</p>
+                        <p style={{ color: 'var(--danger-solid-hover)', fontSize: '0.9rem', padding: '1rem 0' }}>{error}</p>
                     )}
                     {!loading && !error && backups.length === 0 && (
-                        <p style={{ color: '#64748b', fontSize: '0.9rem', padding: '1rem 0' }}>{t('backup_picker_empty' as any)}</p>
+                        <p style={{ color: 'var(--text-soft)', fontSize: '0.9rem', padding: '1rem 0' }}>{t('backup_picker_empty' as any)}</p>
                     )}
                     {!loading && !error && backups.map((b) => (
                         <div key={`${b.folder}/${b.baseName}`} style={{
                             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                            padding: '0.75rem', borderRadius: '0.5rem', border: '1px solid #e2e8f0',
+                            padding: '0.75rem', borderRadius: '0.5rem', border: '1px solid var(--border)',
                             marginBottom: '0.5rem'
                         }}>
                             <div style={{ minWidth: 0 }}>
-                                <div style={{ fontSize: '0.85rem', fontWeight: 600, color: '#1e293b', overflowWrap: 'anywhere' }}>
+                                <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-main)', overflowWrap: 'anywhere' }}>
                                     {b.baseName}
                                 </div>
-                                <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.15rem' }}>
+                                <div style={{ fontSize: '0.75rem', color: 'var(--text-soft)', marginTop: '0.15rem' }}>
                                     {t(`backup_folder_${b.folder}` as any)} · {b.modifiedTime ? new Date(b.modifiedTime).toLocaleString(locale === 'ar' ? 'ar-EG' : 'en-US') : '—'} · {formatSize(b.sizeBytes)}
                                 </div>
                             </div>
@@ -94,9 +94,9 @@ export default function BackupPickerModal({ isOpen, backups, loading, error, onS
                 <button
                     onClick={onClose}
                     style={{
-                        marginTop: '1rem', padding: '0.6rem', border: '1px solid #e2e8f0',
+                        marginTop: '1rem', padding: '0.6rem', border: '1px solid var(--border)',
                         borderRadius: '0.5rem', background: 'white', cursor: 'pointer',
-                        fontSize: '0.85rem', fontWeight: 500, color: '#475569'
+                        fontSize: '0.85rem', fontWeight: 500, color: 'var(--text-muted)'
                     }}
                 >
                     {t('cancel') || 'Cancel'}

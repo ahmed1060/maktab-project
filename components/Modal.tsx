@@ -68,17 +68,17 @@ export default function Modal({ isOpen, onClose, title, children, hideFooter = t
                 }}
                 onClick={e => e.stopPropagation()}
             >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '1px solid #f1f5f9', paddingBottom: '1rem' }}>
-                    <h2 style={{ margin: 0, fontSize: '1.5rem', fontWeight: '700', color: '#0f172a' }}>{title}</h2>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '1px solid var(--surface-sunk)', paddingBottom: '1rem' }}>
+                    <h2 style={{ margin: 0, fontSize: '1.5rem', fontWeight: '700', color: 'var(--text-strong)' }}>{title}</h2>
                     {!hideCloseButton && (
                         <button
                             onClick={onClose}
                             style={{
-                                background: '#f1f5f9',
+                                background: 'var(--surface-sunk)',
                                 border: 'none',
                                 fontSize: '1.25rem',
                                 cursor: 'pointer',
-                                color: '#64748b',
+                                color: 'var(--text-soft)',
                                 width: '32px',
                                 height: '32px',
                                 borderRadius: '50%',
@@ -87,16 +87,16 @@ export default function Modal({ isOpen, onClose, title, children, hideFooter = t
                                 justifyContent: 'center',
                                 transition: 'all 0.2s'
                             }}
-                            onMouseEnter={(e) => { e.currentTarget.style.background = '#e2e8f0'; e.currentTarget.style.color = '#334155' }}
-                            onMouseLeave={(e) => { e.currentTarget.style.background = '#f1f5f9'; e.currentTarget.style.color = '#64748b' }}
+                            onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--border)'; e.currentTarget.style.color = 'var(--text-body)' }}
+                            onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--surface-sunk)'; e.currentTarget.style.color = 'var(--text-soft)' }}
                         >
                             &times;
                         </button>
                     )}
                 </div>
-                <div style={{ color: '#334155', lineHeight: '1.7' }}>{children}</div>
+                <div style={{ color: 'var(--text-body)', lineHeight: '1.7' }}>{children}</div>
                 {!hideFooter && (
-                    <div style={{ marginTop: '2rem', display: 'flex', justifyContent: 'flex-end', borderTop: '1px solid #f1f5f9', paddingTop: '1rem' }}>
+                    <div style={{ marginTop: '2rem', display: 'flex', justifyContent: 'flex-end', borderTop: '1px solid var(--surface-sunk)', paddingTop: '1rem' }}>
                         <button
                             className="btn glass"
                             onClick={onClose}

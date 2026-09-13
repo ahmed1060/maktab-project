@@ -113,7 +113,7 @@ export default function BulkTaskReviewModal({
                                                 </button>
                                             </div>
                                             {bt.validationErrors?.title && (
-                                                <div style={{ color: '#ef4444', fontSize: '0.7rem', marginTop: '0.25rem' }}>
+                                                <div style={{ color: 'var(--danger-solid)', fontSize: '0.7rem', marginTop: '0.25rem' }}>
                                                     {bt.validationErrors.title.map((err: string, i: number) => (
                                                         <div key={i}>• {err}</div>
                                                     ))}
@@ -130,7 +130,7 @@ export default function BulkTaskReviewModal({
                                                         left: locale === 'ar' ? editAnchorRect.left - 200 : editAnchorRect.right + 20,
                                                         transform: 'translateY(-50%)',
                                                         zIndex: 10501, minWidth: '280px', background: 'white', padding: '1rem',
-                                                        borderRadius: '0.75rem', boxShadow: '0 10px 25px rgba(0,0,0,0.2)', border: '1px solid #e2e8f0',
+                                                        borderRadius: '0.75rem', boxShadow: '0 10px 25px rgba(0,0,0,0.2)', border: '1px solid var(--border)',
                                                         direction: locale === 'ar' ? 'rtl' : 'ltr'
                                                     }}>
                                                         <input
@@ -182,7 +182,7 @@ export default function BulkTaskReviewModal({
                                                 </button>
                                             </div>
                                             {bt.validationErrors?.description && (
-                                                <div style={{ color: '#ef4444', fontSize: '0.7rem', marginTop: '0.25rem' }}>
+                                                <div style={{ color: 'var(--danger-solid)', fontSize: '0.7rem', marginTop: '0.25rem' }}>
                                                     {bt.validationErrors.description.map((err: string, i: number) => (
                                                         <div key={i}>• {err}</div>
                                                     ))}
@@ -199,7 +199,7 @@ export default function BulkTaskReviewModal({
                                                         left: locale === 'ar' ? editAnchorRect.left - 340 : editAnchorRect.right + 20,
                                                         transform: 'translateY(-50%)',
                                                         zIndex: 10501, minWidth: '320px', background: 'white', padding: '1rem',
-                                                        borderRadius: '0.75rem', boxShadow: '0 10px 25px rgba(0,0,0,0.2)', border: '1px solid #e2e8f0',
+                                                        borderRadius: '0.75rem', boxShadow: '0 10px 25px rgba(0,0,0,0.2)', border: '1px solid var(--border)',
                                                         direction: locale === 'ar' ? 'rtl' : 'ltr'
                                                     }}>
                                                         <textarea
@@ -232,7 +232,7 @@ export default function BulkTaskReviewModal({
                                                 <div style={{
                                                     flex: 1,
                                                     opacity: bt.isInvalid ? 0.6 : 1,
-                                                    color: bt.unresolvedUsernames.length > 0 ? '#ef4444' : 'inherit',
+                                                    color: bt.unresolvedUsernames.length > 0 ? 'var(--danger-solid)' : 'inherit',
                                                     fontSize: '0.85rem',
                                                     background: 'rgba(255, 255, 255, 0.2)',
                                                     padding: '0.5rem',
@@ -245,7 +245,7 @@ export default function BulkTaskReviewModal({
                                                     {bt.resolvedNames && bt.resolvedNames.length > 0 ? bt.resolvedNames.join(', ') : bt.usernamesRaw || t('no_assignees')}
                                                 </div>
                                                 {bt.validationErrors?.assignees && (
-                                                    <div style={{ color: '#ef4444', fontSize: '0.7rem', marginTop: '0.25rem' }}>
+                                                    <div style={{ color: 'var(--danger-solid)', fontSize: '0.7rem', marginTop: '0.25rem' }}>
                                                         {bt.validationErrors.assignees.map((err: string, i: number) => (
                                                             <div key={i}>• {err}</div>
                                                         ))}
@@ -274,7 +274,7 @@ export default function BulkTaskReviewModal({
                                                             cursor: 'pointer',
                                                             fontSize: '1.2rem',
                                                             fontWeight: 'bold',
-                                                            color: '#3b82f6',
+                                                            color: 'var(--info-solid)',
                                                             transition: 'all 0.2s'
                                                         }}
                                                         onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255, 255, 255, 0.6)'; e.currentTarget.style.transform = 'scale(1.1)'; }}
@@ -303,7 +303,7 @@ export default function BulkTaskReviewModal({
                                                             cursor: 'pointer',
                                                             fontSize: '1.2rem',
                                                             fontWeight: 'bold',
-                                                            color: '#ef4444',
+                                                            color: 'var(--danger-solid)',
                                                             transition: 'all 0.2s'
                                                         }}
                                                         onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255, 255, 255, 0.6)'; e.currentTarget.style.transform = 'scale(1.1)'; }}
@@ -349,7 +349,7 @@ export default function BulkTaskReviewModal({
                                                         {activeAssigneeEdit.type === 'add' ? (
                                                             // Add Dropdown
                                                             <div>
-                                                                <div style={{ padding: '0.25rem 0.25rem 0.5rem 0.25rem', borderBottom: '1px solid #e2e8f0', marginBottom: '0.5rem' }}>
+                                                                <div style={{ padding: '0.25rem 0.25rem 0.5rem 0.25rem', borderBottom: '1px solid var(--border)', marginBottom: '0.5rem' }}>
                                                                     <input
                                                                         autoFocus
                                                                         type="text"
@@ -361,9 +361,9 @@ export default function BulkTaskReviewModal({
                                                                             padding: '0.4rem 0.6rem',
                                                                             fontSize: '0.8rem',
                                                                             borderRadius: '0.5rem',
-                                                                            border: '1px solid #e2e8f0',
+                                                                            border: '1px solid var(--border)',
                                                                             outline: 'none',
-                                                                            background: '#f8fafc',
+                                                                            background: 'var(--surface-subtle)',
                                                                             textAlign: locale === 'ar' ? 'right' : 'left'
                                                                         }}
                                                                     />
@@ -400,22 +400,22 @@ export default function BulkTaskReviewModal({
                                                                                     transition: 'background 0.2s',
                                                                                     textAlign: locale === 'ar' ? 'right' : 'left'
                                                                                 }}
-                                                                                onMouseEnter={(e) => e.currentTarget.style.background = '#f1f5f9'}
+                                                                                onMouseEnter={(e) => e.currentTarget.style.background = 'var(--surface-sunk)'}
                                                                                 onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
                                                                             >
                                                                                 <div style={{ fontWeight: '600' }}>{u.firstName} {u.lastName}</div>
-                                                                                <div style={{ fontSize: '0.7rem', color: '#94a3b8' }}>{t(`role_${u.role?.toLowerCase()}` as any)}</div>
+                                                                                <div style={{ fontSize: '0.7rem', color: 'var(--text-faint)' }}>{t(`role_${u.role?.toLowerCase()}` as any)}</div>
                                                                             </div>
                                                                         ))}
                                                                     {users.filter(u => !bt.resolvedIds.includes(u.id) && `${u.firstName} ${u.lastName}`.toLowerCase().includes(assigneeSearch.toLowerCase())).length === 0 && (
-                                                                        <div style={{ padding: '1rem', textAlign: 'center', fontSize: '0.8rem', color: '#94a3b8' }}>{t('no_matches_found')}</div>
+                                                                        <div style={{ padding: '1rem', textAlign: 'center', fontSize: '0.8rem', color: 'var(--text-faint)' }}>{t('no_matches_found')}</div>
                                                                     )}
                                                                 </div>
                                                             </div>
                                                         ) : (
                                                             // Remove Popup
                                                             <div>
-                                                                <div style={{ fontSize: '0.75rem', fontWeight: 'bold', color: '#64748b', padding: '0.25rem 0.5rem', borderBottom: '1px solid #e2e8f0', marginBottom: '0.25rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
+                                                                <div style={{ fontSize: '0.75rem', fontWeight: 'bold', color: 'var(--text-soft)', padding: '0.25rem 0.5rem', borderBottom: '1px solid var(--border)', marginBottom: '0.25rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
                                                                     {t('remove_assignee')}
                                                                 </div>
                                                                 <div style={{ maxHeight: '180px', overflowY: 'auto' }}>
@@ -456,8 +456,8 @@ export default function BulkTaskReviewModal({
                                                                                 }}
                                                                                 style={{
                                                                                     border: 'none',
-                                                                                    background: '#fee2e2',
-                                                                                    color: '#ef4444',
+                                                                                    background: 'var(--danger-bg)',
+                                                                                    color: 'var(--danger-solid)',
                                                                                     borderRadius: '50%',
                                                                                     width: '20px',
                                                                                     height: '20px',
@@ -473,7 +473,7 @@ export default function BulkTaskReviewModal({
                                                                         </div>
                                                                     ))}
                                                                     {bt.resolvedIds.length === 0 && (
-                                                                        <div style={{ padding: '1rem', textAlign: 'center', fontSize: '0.8rem', color: '#94a3b8' }}>{t('no_assignees')}</div>
+                                                                        <div style={{ padding: '1rem', textAlign: 'center', fontSize: '0.8rem', color: 'var(--text-faint)' }}>{t('no_assignees')}</div>
                                                                     )}
                                                                 </div>
                                                             </div>
@@ -520,7 +520,7 @@ export default function BulkTaskReviewModal({
                                                 />
                                             </div>
                                             {bt.validationErrors?.deadline && (
-                                                <div style={{ color: '#ef4444', fontSize: '0.7rem', marginTop: '0.25rem' }}>
+                                                <div style={{ color: 'var(--danger-solid)', fontSize: '0.7rem', marginTop: '0.25rem' }}>
                                                     {bt.validationErrors.deadline.map((err: string, i: number) => (
                                                         <div key={i}>• {err}</div>
                                                     ))}
@@ -592,7 +592,7 @@ export default function BulkTaskReviewModal({
                                                     />
                                                 )}
                                                 {bt.validationErrors?.vendor && (
-                                                    <div style={{ color: '#ef4444', fontSize: '0.7rem', marginTop: '0.25rem' }}>
+                                                    <div style={{ color: 'var(--danger-solid)', fontSize: '0.7rem', marginTop: '0.25rem' }}>
                                                         {bt.validationErrors.vendor.map((err: string, i: number) => (
                                                             <div key={i}>• {err}</div>
                                                         ))}
@@ -606,7 +606,7 @@ export default function BulkTaskReviewModal({
                                                 style={{
                                                     padding: '0.4rem 0.8rem',
                                                     background: 'rgba(239, 68, 68, 0.1)',
-                                                    color: '#dc2626',
+                                                    color: 'var(--danger-solid-hover)',
                                                     borderRadius: '0.75rem'
                                                 }}
                                                 onClick={() => {
@@ -628,7 +628,7 @@ export default function BulkTaskReviewModal({
                 <div className="modal-footer" style={{ borderTop: '1px solid var(--glass-border)', background: 'rgba(255, 255, 255, 0.3)' }}>
                     <div style={{ flex: 1 }}>
                         {bulkTasks.some(bt => bt.isInvalid) && (
-                            <div style={{ color: '#991b1b', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <div style={{ color: 'var(--danger-fg)', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                 <span style={{ fontSize: '1.1rem' }}>⚠️</span>
                                 {t('skipped_status')}: {bulkTasks.filter(bt => bt.isInvalid).length} {t('rows_with_errors' as any)}
                             </div>

@@ -67,7 +67,7 @@ export default function LanguageToggleButton({ variant = 'fixed', onAction }: La
                 gap: '0.5rem',
                 fontSize: '0.9rem',
                 fontWeight: '600',
-                color: '#1e293b',
+                color: 'var(--text-main)',
                 transition: 'all 0.3s ease',
                 zIndex: 1000,
                 direction: locale === 'ar' ? 'rtl' : 'ltr'

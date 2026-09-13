@@ -145,7 +145,7 @@ export default function ObligationsClient({ obligations, total, page, totalPages
                         />
                     ))
                 ) : (
-                    <div className="card" style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>
+                    <div className="card" style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-soft)' }}>
                         {t('no_obligations_found')}
                     </div>
                 )}

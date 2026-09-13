@@ -82,10 +82,10 @@ export default function ObligationCard({ obligation, userRole, isHighlighted }: 
     return (
         <div id={`obligation-${obligation.id}`} className={`card ${showVisualHighlight ? 'highlight-pulse' : ''}`} style={{
             padding: '1rem',
-            border: isOverdue ? '1px solid #fca5a5' : '1px solid #eee',
+            border: isOverdue ? '1px solid var(--danger-border-firm)' : '1px solid var(--grey-100)',
             borderRadius: '8px',
-            background: isOverdue ? '#fee2e2' : (showVisualHighlight ? 'rgba(168, 85, 247, 0.05)' : 'white'),
-            borderInlineStart: showVisualHighlight ? '4px solid #a855f7' : (isOverdue ? '1px solid #fca5a5' : '1px solid #eee'),
+            background: isOverdue ? 'var(--danger-bg)' : (showVisualHighlight ? 'rgba(168, 85, 247, 0.05)' : 'white'),
+            borderInlineStart: showVisualHighlight ? '4px solid var(--accent-solid)' : (isOverdue ? '1px solid var(--danger-border-firm)' : '1px solid var(--grey-100)'),
             transition: 'all 0.3s ease'
         }}>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
@@ -95,14 +95,14 @@ export default function ObligationCard({ obligation, userRole, isHighlighted }: 
                     fontWeight: '600',
                     padding: '0.25rem 0.75rem',
                     borderRadius: '9999px',
-                    background: status === 'COMPLETED' ? '#dcfce7' : status === 'REJECTED' ? '#fee2e2' : '#f1f5f9',
-                    color: status === 'COMPLETED' ? '#166534' : status === 'REJECTED' ? '#991b1b' : '#475569'
+                    background: status === 'COMPLETED' ? 'var(--ok-bg)' : status === 'REJECTED' ? 'var(--danger-bg)' : 'var(--surface-sunk)',
+                    color: status === 'COMPLETED' ? 'var(--ok-fg)' : status === 'REJECTED' ? 'var(--danger-fg)' : 'var(--text-muted)'
                 }}>
                     {status}
                 </span>
             </div>
             <p style={{ margin: '0.5rem 0' }}>{obligation.description}</p>
-            <div style={{ fontSize: '0.875rem', color: '#64748b', marginBottom: '1rem' }}>
+            <div style={{ fontSize: '0.875rem', color: 'var(--text-soft)', marginBottom: '1rem' }}>
                 Assignee: {obligation.assignee.firstName} {obligation.assignee.lastName} | Deadline: <SafeDate date={obligation.deadline} locale="en" format="dateOnly" />
             </div>
 
@@ -115,12 +115,12 @@ export default function ObligationCard({ obligation, userRole, isHighlighted }: 
                         disabled={uploading}
                         style={{ display: 'block', width: '100%' }}
                     />
-                    {uploading && <span style={{ fontSize: '0.75rem', color: '#666' }}>Uploading...</span>}
+                    {uploading && <span style={{ fontSize: '0.75rem', color: 'var(--grey-600)' }}>Uploading...</span>}
                 </div>
             )}
 
             {obligation.attachments && (
-                <div style={{ marginTop: '1rem', padding: '0.5rem', background: '#f8fafc', borderRadius: '4px' }}>
+                <div style={{ marginTop: '1rem', padding: '0.5rem', background: 'var(--surface-subtle)', borderRadius: '4px' }}>
                     <strong>Evidence:</strong>
                     {JSON.parse(obligation.attachments).map((att: Attachment, i: number) => (
                         <div key={i}>

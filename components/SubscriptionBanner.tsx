@@ -53,9 +53,9 @@ export default function SubscriptionBanner() {
                 display: 'flex',
                 alignItems: 'center',
                 gap: '0.6rem',
-                border: `1px solid ${isGrace ? '#fca5a5' : '#bae6fd'}`,
-                background: isGrace ? '#fee2e2' : '#e0f2fe',
-                color: isGrace ? '#991b1b' : '#075985',
+                border: `1px solid ${isGrace ? 'var(--danger-border-firm)' : 'var(--info-bg-sky-firm)'}`,
+                background: isGrace ? 'var(--danger-bg)' : 'var(--info-bg)',
+                color: isGrace ? 'var(--danger-fg)' : 'var(--info-fg-deep)',
                 direction: locale === 'ar' ? 'rtl' : 'ltr',
             }}
         >

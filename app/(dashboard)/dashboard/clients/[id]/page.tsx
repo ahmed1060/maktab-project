@@ -355,8 +355,8 @@ export default function ClientDetailsPage() {
                                             <span style={{
                                                 padding: isMobile ? '0.15rem 0.6rem' : '0.25rem 0.75rem',
                                                 borderRadius: '9999px',
-                                                background: '#dbeafe',
-                                                color: '#1e40af',
+                                                background: 'var(--info-bg-indigo)',
+                                                color: 'var(--info-fg-indigo)',
                                                 fontSize: isMobile ? '0.75rem' : '0.875rem',
                                                 fontWeight: '600',
                                                 whiteSpace: 'nowrap',
@@ -415,8 +415,8 @@ export default function ClientDetailsPage() {
                                                 }}
                                                 className="btn"
                                                 style={{
-                                                    background: '#eff6ff',
-                                                    color: '#2563eb',
+                                                    background: 'var(--info-bg-subtle)',
+                                                    color: 'var(--info-solid-hover)',
                                                     padding: '0.4rem 0.85rem',
                                                     fontSize: '0.8125rem',
                                                     border: 'none',
@@ -435,8 +435,8 @@ export default function ClientDetailsPage() {
                                                 }}
                                                 className="btn"
                                                 style={{
-                                                    background: '#fef2f2',
-                                                    color: '#dc2626',
+                                                    background: 'var(--danger-bg-subtle)',
+                                                    color: 'var(--danger-solid-hover)',
                                                     padding: '0.4rem 0.85rem',
                                                     fontSize: '0.8125rem',
                                                     border: 'none',
@@ -453,22 +453,22 @@ export default function ClientDetailsPage() {
 
                                 <div style={{
                                     fontSize: '0.75rem',
-                                    color: '#94a3b8',
+                                    color: 'var(--text-faint)',
                                     display: 'flex',
                                     flexDirection: 'column',
                                     gap: '0.25rem',
                                     marginTop: '0.75rem',
                                     paddingTop: '0.75rem',
-                                    borderTop: '1px dashed #f1f5f9'
+                                    borderTop: '1px dashed var(--surface-sunk)'
                                 }}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                                         <span style={{
                                             padding: '0.15rem 0.4rem',
-                                            background: '#f1f5f9',
+                                            background: 'var(--surface-sunk)',
                                             borderRadius: '0.4rem',
                                             fontWeight: '700',
                                             fontSize: '0.65rem',
-                                            color: '#64748b'
+                                            color: 'var(--text-soft)'
                                         }}>
                                             {(section.createdBy?.role || 'SYSTEM').replace(/_/g, ' ')}
                                         </span>
@@ -480,11 +480,11 @@ export default function ClientDetailsPage() {
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                                             <span style={{
                                                 padding: '0.15rem 0.4rem',
-                                                background: '#f0f9ff',
+                                                background: 'var(--info-bg-sky)',
                                                 borderRadius: '0.4rem',
                                                 fontWeight: '700',
                                                 fontSize: '0.65rem',
-                                                color: '#0ea5e9'
+                                                color: 'var(--info-solid-sky)'
                                             }}>
                                                 {section.lastEditedBy.role.replace(/_/g, ' ')}
                                             </span>
@@ -518,11 +518,11 @@ export default function ClientDetailsPage() {
                         onClick={() => !isSubmitting && setIsModalOpen(false)}
                     />
                     <div style={{ background: 'white', padding: '2rem', borderRadius: '12px', width: '100%', maxWidth: '500px', position: 'relative', zIndex: 10, direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
-                        <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1.5rem', color: '#1e293b', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('add_section_title' as any)}</h2>
+                        <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1.5rem', color: 'var(--text-main)', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('add_section_title' as any)}</h2>
 
                         <form onSubmit={handleCreateSection}>
                             <div style={{ marginBottom: '1.5rem' }}>
-                                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '600', color: '#64748b', marginBottom: '0.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
+                                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '600', color: 'var(--text-soft)', marginBottom: '0.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
                                     {t('section_title_label' as any)}
                                 </label>
                                 <input
@@ -535,7 +535,7 @@ export default function ClientDetailsPage() {
                                         width: '100%',
                                         padding: '0.75rem 1rem',
                                         borderRadius: '0.5rem',
-                                        border: '1px solid #e2e8f0',
+                                        border: '1px solid var(--border)',
                                         outline: 'none',
                                         fontSize: '0.875rem',
                                         textAlign: locale === 'ar' ? 'right' : 'left'
@@ -552,8 +552,8 @@ export default function ClientDetailsPage() {
                                         borderRadius: '0.5rem',
                                         fontSize: '0.875rem',
                                         fontWeight: '600',
-                                        color: '#64748b',
-                                        background: '#f1f5f9',
+                                        color: 'var(--text-soft)',
+                                        background: 'var(--surface-sunk)',
                                         border: 'none',
                                         cursor: 'pointer'
                                     }}
@@ -629,7 +629,7 @@ export default function ClientDetailsPage() {
                 >
                     <form onSubmit={handleEditClient} style={{ direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
                         <div style={{ marginBottom: '1.25rem' }}>
-                            <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '600', color: '#64748b', marginBottom: '0.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
+                            <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '600', color: 'var(--text-soft)', marginBottom: '0.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
                                 {t('client_name_label')}
                             </label>
                             <input
@@ -641,7 +641,7 @@ export default function ClientDetailsPage() {
                                     width: '100%',
                                     padding: '0.75rem 1rem',
                                     borderRadius: '0.5rem',
-                                    border: '1px solid #e2e8f0',
+                                    border: '1px solid var(--border)',
                                     outline: 'none',
                                     fontSize: '0.875rem',
                                     textAlign: locale === 'ar' ? 'right' : 'left'
@@ -677,7 +677,7 @@ export default function ClientDetailsPage() {
                 >
                     <form onSubmit={handleEditSection} style={{ direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
                         <div style={{ marginBottom: '1.25rem' }}>
-                            <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '600', color: '#64748b', marginBottom: '0.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
+                            <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '600', color: 'var(--text-soft)', marginBottom: '0.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
                                 {t('section_title_label' as any)}
                             </label>
                             <input
@@ -689,7 +689,7 @@ export default function ClientDetailsPage() {
                                     width: '100%',
                                     padding: '0.75rem 1rem',
                                     borderRadius: '0.5rem',
-                                    border: '1px solid #e2e8f0',
+                                    border: '1px solid var(--border)',
                                     outline: 'none',
                                     fontSize: '0.875rem',
                                     textAlign: locale === 'ar' ? 'right' : 'left'

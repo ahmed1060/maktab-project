@@ -356,7 +356,7 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
                                 top: 'calc(100% + 8px)',
                                 [locale === 'ar' ? 'left' : 'right']: 0,
                                 background: 'white',
-                                border: '1px solid #e2e8f0',
+                                border: '1px solid var(--border)',
                                 borderRadius: '0.75rem',
                                 boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
                                 zIndex: 1000,
@@ -372,13 +372,13 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
                                         cursor: 'pointer',
                                         fontSize: '0.875rem',
                                         borderRadius: '0.5rem',
-                                        color: !selectedCompanyId ? '#2563eb' : '#475569',
-                                        background: !selectedCompanyId ? '#eff6ff' : 'transparent',
+                                        color: !selectedCompanyId ? 'var(--info-solid-hover)' : 'var(--text-muted)',
+                                        background: !selectedCompanyId ? 'var(--info-bg-subtle)' : 'transparent',
                                         fontWeight: !selectedCompanyId ? 600 : 500,
                                         marginBottom: '2px'
                                     }}
-                                    onMouseEnter={(e) => e.currentTarget.style.background = '#f1f5f9'}
-                                    onMouseLeave={(e) => e.currentTarget.style.background = !selectedCompanyId ? '#eff6ff' : 'transparent'}
+                                    onMouseEnter={(e) => e.currentTarget.style.background = 'var(--surface-sunk)'}
+                                    onMouseLeave={(e) => e.currentTarget.style.background = !selectedCompanyId ? 'var(--info-bg-subtle)' : 'transparent'}
                                 >
                                     {t('all_companies')}
                                 </div>
@@ -391,22 +391,22 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
                                             cursor: 'pointer',
                                             fontSize: '0.875rem',
                                             borderRadius: '0.5rem',
-                                            color: selectedCompanyId === company.id ? '#2563eb' : '#475569',
-                                            background: selectedCompanyId === company.id ? '#eff6ff' : 'transparent',
+                                            color: selectedCompanyId === company.id ? 'var(--info-solid-hover)' : 'var(--text-muted)',
+                                            background: selectedCompanyId === company.id ? 'var(--info-bg-subtle)' : 'transparent',
                                             fontWeight: selectedCompanyId === company.id ? 600 : 500,
                                             marginBottom: '2px',
                                             display: 'flex',
                                             justifyContent: 'space-between',
                                             alignItems: 'center'
                                         }}
-                                        onMouseEnter={(e) => e.currentTarget.style.background = '#f1f5f9'}
-                                        onMouseLeave={(e) => e.currentTarget.style.background = selectedCompanyId === company.id ? '#eff6ff' : 'transparent'}
+                                        onMouseEnter={(e) => e.currentTarget.style.background = 'var(--surface-sunk)'}
+                                        onMouseLeave={(e) => e.currentTarget.style.background = selectedCompanyId === company.id ? 'var(--info-bg-subtle)' : 'transparent'}
                                     >
                                         <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                             {company.name}
                                         </span>
                                         {selectedCompanyId === company.id && (
-                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--info-solid-hover)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                                                 <polyline points="20 6 9 17 4 12"></polyline>
                                             </svg>
                                         )}
@@ -456,7 +456,7 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
                                     position: 'absolute',
                                     top: '-5px',
                                     right: '-5px',
-                                    background: '#ef4444',
+                                    background: 'var(--danger-solid)',
                                     color: 'white',
                                     fontSize: '0.7rem',
                                     fontWeight: 'bold',
@@ -627,14 +627,14 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
                                             padding: '0.6rem 1rem',
                                             background: 'none',
                                             border: 'none',
-                                            color: '#ef4444',
+                                            color: 'var(--danger-solid)',
                                             fontSize: '0.9rem',
                                             fontWeight: 'bold',
                                             cursor: 'pointer',
                                             borderRadius: '0.5rem',
                                             transition: 'background 0.2s'
                                         }}
-                                        onMouseEnter={(e) => e.currentTarget.style.background = '#fef2f2'}
+                                        onMouseEnter={(e) => e.currentTarget.style.background = 'var(--danger-bg-subtle)'}
                                         onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
                                     >
                                         {t('sign_out')}

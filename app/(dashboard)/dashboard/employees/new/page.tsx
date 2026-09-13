@@ -120,8 +120,8 @@ export default function NewEmployeePage() {
                 <div style={{
                     padding: '0.75rem',
                     marginBottom: '1rem',
-                    background: '#fee2e2',
-                    color: '#991b1b',
+                    background: 'var(--danger-bg)',
+                    color: 'var(--danger-fg)',
                     borderRadius: '0.5rem'
                 }}>
                     {error}
@@ -139,7 +139,7 @@ export default function NewEmployeePage() {
                                 if (fieldErrors.firstName) setFieldErrors({ ...fieldErrors, firstName: '' })
                             }}
                             style={{
-                                ...(fieldErrors.firstName ? { borderColor: '#ef4444' } : {}),
+                                ...(fieldErrors.firstName ? { borderColor: 'var(--danger-solid)' } : {}),
                                 textAlign: locale === 'ar' ? 'right' : 'left'
                             }}
                             required
@@ -147,7 +147,7 @@ export default function NewEmployeePage() {
                             placeholder={locale === 'ar' ? 'جون' : "John"}
                         />
                         {fieldErrors.firstName && (
-                            <div style={{ color: '#ef4444', fontSize: '0.85rem', marginTop: '0.25rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
+                            <div style={{ color: 'var(--danger-solid)', fontSize: '0.85rem', marginTop: '0.25rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
                                 {fieldErrors.firstName}
                             </div>
                         )}
@@ -162,7 +162,7 @@ export default function NewEmployeePage() {
                                 if (fieldErrors.lastName) setFieldErrors({ ...fieldErrors, lastName: '' })
                             }}
                             style={{
-                                ...(fieldErrors.lastName ? { borderColor: '#ef4444' } : {}),
+                                ...(fieldErrors.lastName ? { borderColor: 'var(--danger-solid)' } : {}),
                                 textAlign: locale === 'ar' ? 'right' : 'left'
                             }}
                             required
@@ -170,7 +170,7 @@ export default function NewEmployeePage() {
                             placeholder={locale === 'ar' ? 'دو' : "Doe"}
                         />
                         {fieldErrors.lastName && (
-                            <div style={{ color: '#ef4444', fontSize: '0.85rem', marginTop: '0.25rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
+                            <div style={{ color: 'var(--danger-solid)', fontSize: '0.85rem', marginTop: '0.25rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
                                 {fieldErrors.lastName}
                             </div>
                         )}
@@ -187,14 +187,14 @@ export default function NewEmployeePage() {
                             if (fieldErrors.email) setFieldErrors({ ...fieldErrors, email: '' })
                         }}
                         style={{
-                            ...(fieldErrors.email ? { borderColor: '#ef4444' } : {}),
+                            ...(fieldErrors.email ? { borderColor: 'var(--danger-solid)' } : {}),
                             textAlign: locale === 'ar' ? 'right' : 'left'
                         }}
                         required
                         placeholder="john@example.com"
                     />
                     {fieldErrors.email && (
-                        <div style={{ color: '#ef4444', fontSize: '0.85rem', marginTop: '0.25rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
+                        <div style={{ color: 'var(--danger-solid)', fontSize: '0.85rem', marginTop: '0.25rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
                             {fieldErrors.email}
                         </div>
                     )}
@@ -211,7 +211,7 @@ export default function NewEmployeePage() {
                             if (fieldErrors.password) setFieldErrors({ ...fieldErrors, password: '' })
                         }}
                         style={{
-                            ...(fieldErrors.password ? { borderColor: '#ef4444' } : {}),
+                            ...(fieldErrors.password ? { borderColor: 'var(--danger-solid)' } : {}),
                             paddingRight: locale === 'ar' ? '1rem' : '2.5rem',
                             paddingLeft: locale === 'ar' ? '2.5rem' : '1rem',
                             textAlign: locale === 'ar' ? 'right' : 'left'
@@ -234,7 +234,7 @@ export default function NewEmployeePage() {
                             padding: '0.25rem',
                             display: 'flex',
                             alignItems: 'center',
-                            color: '#64748b'
+                            color: 'var(--text-soft)'
                         }}
                     >
                         {showPassword ? (
@@ -250,7 +250,7 @@ export default function NewEmployeePage() {
                         )}
                     </button>
                     {fieldErrors.password && (
-                        <div style={{ color: '#ef4444', fontSize: '0.85rem', marginTop: '0.25rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
+                        <div style={{ color: 'var(--danger-solid)', fontSize: '0.85rem', marginTop: '0.25rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
                             {fieldErrors.password}
                         </div>
                     )}
@@ -328,7 +328,7 @@ export default function NewEmployeePage() {
                     <button
                         type="button"
                         className="btn"
-                        style={{ background: '#e2e8f0', color: '#0f172a' }}
+                        style={{ background: 'var(--border)', color: 'var(--text-strong)' }}
                         onClick={() => router.push('/dashboard/employees')}
                     >
                         {t('cancel')}

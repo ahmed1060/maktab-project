@@ -29,15 +29,15 @@ export default function LockedModule({ module }: { module: Module }) {
                     {t('module_locked_title' as any)}
                 </h2>
 
-                <p style={{ color: '#64748b', fontSize: '0.92rem', lineHeight: 1.6, margin: '0 0 1.5rem' }}>
+                <p style={{ color: 'var(--text-soft)', fontSize: '0.92rem', lineHeight: 1.6, margin: '0 0 1.5rem' }}>
                     {t('module_locked_body' as any).replace('{bundle}', bundleName)}
                 </p>
 
                 <div style={{
                     display: 'inline-block', padding: '0.35rem 0.85rem', borderRadius: '999px',
                     fontSize: '0.8rem', fontWeight: 700, marginBottom: '1.5rem',
-                    background: bundle === 'HR' ? '#dcfce7' : '#e0f2fe',
-                    color: bundle === 'HR' ? '#166534' : '#0369a1',
+                    background: bundle === 'HR' ? 'var(--ok-bg)' : 'var(--info-bg)',
+                    color: bundle === 'HR' ? 'var(--ok-fg)' : 'var(--info-fg)',
                 }}>
                     {bundleName}
                 </div>

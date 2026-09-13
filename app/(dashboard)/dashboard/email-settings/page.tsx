@@ -121,7 +121,7 @@ export default function EmailSettingsPage() {
                         <div style={{
                             display: 'inline-block', margin: '0 0 1.5rem', padding: '0.2rem 0.6rem',
                             borderRadius: '999px', fontSize: '0.75rem', fontWeight: 700,
-                            background: '#e1f1e6', color: '#2f7a4f'
+                            background: 'var(--ok-bg)', color: 'var(--ok-fg)'
                         }}>
                             {isAr ? 'موثّق' : 'Verified'}
                         </div>
@@ -129,7 +129,7 @@ export default function EmailSettingsPage() {
                 )}
 
                 {error && (
-                    <div style={{ marginBottom: '1rem', fontSize: '0.85rem', color: '#ef4444' }}>{error}</div>
+                    <div style={{ marginBottom: '1rem', fontSize: '0.85rem', color: 'var(--danger-solid)' }}>{error}</div>
                 )}
 
                 {isProtectedActor ? (
@@ -150,7 +150,7 @@ export default function EmailSettingsPage() {
                                 value={email}
                                 onChange={e => { setTouched(true); setEmail(e.target.value) }}
                                 disabled={isProtectedActor}
-                                style={isProtectedActor ? { background: '#f1f5f9', cursor: 'not-allowed' } : undefined}
+                                style={isProtectedActor ? { background: 'var(--surface-sunk)', cursor: 'not-allowed' } : undefined}
                                 required
                             />
                         </div>
@@ -180,7 +180,7 @@ export default function EmailSettingsPage() {
                             {isAr ? 'لم يصلك؟ تحقق من مجلد الرسائل غير المرغوب فيها.' : "Didn't get it? Check your spam folder."}
                         </p>
                         <div style={{ display: 'flex', gap: '0.75rem' }}>
-                            <button type="button" className="btn" onClick={() => { setCodeSent(false); setCode(''); setError('') }} style={{ flex: 1, background: 'transparent', border: '1px solid #e2e8f0' }}>
+                            <button type="button" className="btn" onClick={() => { setCodeSent(false); setCode(''); setError('') }} style={{ flex: 1, background: 'transparent', border: '1px solid var(--border)' }}>
                                 {isAr ? 'رجوع' : 'Back'}
                             </button>
                             <button type="submit" className="btn" disabled={verifying} style={{ flex: 1 }}>

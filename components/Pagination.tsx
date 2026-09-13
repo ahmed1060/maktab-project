@@ -51,8 +51,8 @@ export default function Pagination({ currentPage, totalPages, onPageChange }: Pa
                         fontWeight: '600',
                         transition: 'all 0.2s',
                         background: currentPage === i ? 'rgba(99, 102, 241, 0.2)' : 'transparent',
-                        color: currentPage === i ? '#6366f1' : '#475569',
-                        border: currentPage === i ? '1px solid #6366f1' : 'none',
+                        color: currentPage === i ? 'var(--brand-primary)' : 'var(--text-muted)',
+                        border: currentPage === i ? '1px solid var(--brand-primary)' : 'none',
                         cursor: 'pointer'
                     }}
                 >
@@ -83,7 +83,7 @@ export default function Pagination({ currentPage, totalPages, onPageChange }: Pa
                 padding: '0.5rem 1rem',
                 borderRadius: '9999px',
                 boxShadow: '0 4px 15px rgba(0,0,0,0.05)',
-                border: '1px solid #f1f5f9',
+                border: '1px solid var(--surface-sunk)',
                 direction: 'ltr'
             }}>
                 <button
@@ -94,7 +94,7 @@ export default function Pagination({ currentPage, totalPages, onPageChange }: Pa
                         background: 'transparent',
                         border: 'none',
                         cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
-                        color: currentPage === 1 ? '#cbd5e1' : '#64748b',
+                        color: currentPage === 1 ? 'var(--border-firm)' : 'var(--text-soft)',
                         display: 'flex',
                         alignItems: 'center'
                     }}
@@ -116,7 +116,7 @@ export default function Pagination({ currentPage, totalPages, onPageChange }: Pa
                         background: 'transparent',
                         border: 'none',
                         cursor: currentPage === totalPages ? 'not-allowed' : 'pointer',
-                        color: currentPage === totalPages ? '#cbd5e1' : '#64748b',
+                        color: currentPage === totalPages ? 'var(--border-firm)' : 'var(--text-soft)',
                         display: 'flex',
                         alignItems: 'center'
                     }}
@@ -134,7 +134,7 @@ export default function Pagination({ currentPage, totalPages, onPageChange }: Pa
                     display: 'flex',
                     alignItems: 'center',
                     gap: '0.75rem',
-                    color: '#64748b',
+                    color: 'var(--text-soft)',
                     fontSize: '0.9rem',
                     fontWeight: '500'
                 }}
@@ -150,15 +150,15 @@ export default function Pagination({ currentPage, totalPages, onPageChange }: Pa
                         width: '50px',
                         height: '32px',
                         borderRadius: '1rem',
-                        border: '1px solid #e2e8f0',
+                        border: '1px solid var(--border)',
                         textAlign: 'center',
                         fontSize: '0.85rem',
-                        color: '#1e293b',
+                        color: 'var(--text-main)',
                         outline: 'none',
                         transition: 'border-color 0.2s'
                     }}
-                    onFocus={(e) => e.target.style.borderColor = '#6366f1'}
-                    onBlur={(e) => e.target.style.borderColor = '#e2e8f0'}
+                    onFocus={(e) => e.target.style.borderColor = 'var(--brand-primary)'}
+                    onBlur={(e) => e.target.style.borderColor = 'var(--border)'}
                 />
                 <span>{locale === 'ar' ? 'صفحة' : 'Page'}</span>
             </form>

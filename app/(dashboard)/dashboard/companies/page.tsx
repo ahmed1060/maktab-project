@@ -224,7 +224,7 @@ export default function CompaniesPage() {
                             both halves; the group's own label carries it once,
                             and the segments name only what differs. */}
                         <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
-                            <span style={{ fontSize: '0.82rem', color: '#64748b', fontWeight: 500 }}>
+                            <span style={{ fontSize: '0.82rem', color: 'var(--text-soft)', fontWeight: 500 }}>
                                 {t('sort_label' as any)}
                             </span>
                             <SegmentedToggle
@@ -254,7 +254,7 @@ export default function CompaniesPage() {
                        most valuable answer this screen can ever give. */
                     <div style={{ background: 'white', borderRadius: '12px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', padding: '3rem 1.5rem', textAlign: 'center' }}>
                         <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>✅</div>
-                        <div style={{ fontWeight: 600, color: '#166534', marginBottom: '0.75rem' }}>{t('nothing_needs_attention' as any)}</div>
+                        <div style={{ fontWeight: 600, color: 'var(--ok-fg)', marginBottom: '0.75rem' }}>{t('nothing_needs_attention' as any)}</div>
                         <button className="btn btn-secondary" onClick={() => changeFilter('all')} style={{ fontSize: '0.85rem' }}>
                             {t('show_all_companies' as any)}
                         </button>
@@ -262,19 +262,19 @@ export default function CompaniesPage() {
                 ) : (
                     <div style={{ background: 'white', borderRadius: '12px', overflowX: 'auto', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
                         <table style={{ width: '100%', borderCollapse: 'collapse', direction: locale === 'ar' ? 'rtl' : 'ltr', minWidth: '800px' }}>
-                            <thead style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+                            <thead style={{ background: 'var(--surface-subtle)', borderBottom: '1px solid var(--border)' }}>
                                 <tr>
-                                    <th style={{ textAlign: locale === 'ar' ? 'right' : 'left', padding: '1rem', fontSize: '0.875rem', color: '#64748b' }}>{t('name_label')}</th>
-                                    <th style={{ textAlign: locale === 'ar' ? 'right' : 'left', padding: '1rem', fontSize: '0.875rem', color: '#64748b' }}>{t('subscription_state' as any)}</th>
-                                    <th style={{ textAlign: locale === 'ar' ? 'right' : 'left', padding: '1rem', fontSize: '0.875rem', color: '#64748b' }}>{t('bundles' as any)}</th>
-                                    <th style={{ textAlign: locale === 'ar' ? 'right' : 'left', padding: '1rem', fontSize: '0.875rem', color: '#64748b' }}>{t('status_label')}</th>
-                                    <th style={{ textAlign: 'center', padding: '1rem', fontSize: '0.875rem', color: '#64748b' }}>{t('costs')}</th>
-                                    <th style={{ textAlign: locale === 'ar' ? 'left' : 'right', padding: '1rem', fontSize: '0.875rem', color: '#64748b' }}>{t('quick_actions')}</th>
+                                    <th style={{ textAlign: locale === 'ar' ? 'right' : 'left', padding: '1rem', fontSize: '0.875rem', color: 'var(--text-soft)' }}>{t('name_label')}</th>
+                                    <th style={{ textAlign: locale === 'ar' ? 'right' : 'left', padding: '1rem', fontSize: '0.875rem', color: 'var(--text-soft)' }}>{t('subscription_state' as any)}</th>
+                                    <th style={{ textAlign: locale === 'ar' ? 'right' : 'left', padding: '1rem', fontSize: '0.875rem', color: 'var(--text-soft)' }}>{t('bundles' as any)}</th>
+                                    <th style={{ textAlign: locale === 'ar' ? 'right' : 'left', padding: '1rem', fontSize: '0.875rem', color: 'var(--text-soft)' }}>{t('status_label')}</th>
+                                    <th style={{ textAlign: 'center', padding: '1rem', fontSize: '0.875rem', color: 'var(--text-soft)' }}>{t('costs')}</th>
+                                    <th style={{ textAlign: locale === 'ar' ? 'left' : 'right', padding: '1rem', fontSize: '0.875rem', color: 'var(--text-soft)' }}>{t('quick_actions')}</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {companies.map(company => (
-                                    <tr key={company.id} style={{ borderBottom: '1px solid #f1f5f9', background: (company as any).isBanned ? '#fff1f2' : 'white' }}>
+                                    <tr key={company.id} style={{ borderBottom: '1px solid var(--surface-sunk)', background: (company as any).isBanned ? 'var(--danger-bg-tint)' : 'white' }}>
                                         <td style={{ padding: '1rem', fontWeight: '500', textAlign: locale === 'ar' ? 'right' : 'left' }}>{company.name}</td>
                                         <td style={{ padding: '1rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
                                             {company.subscription ? (
@@ -286,7 +286,7 @@ export default function CompaniesPage() {
                                             ) : '—'}
                                             {company.hasUnpaidPayment && (
                                                 <div style={{ marginTop: '0.3rem' }}>
-                                                    <span style={{ padding: '0.15rem 0.45rem', borderRadius: '999px', fontSize: '0.68rem', fontWeight: 600, background: '#fef3c7', color: '#92400e' }}>
+                                                    <span style={{ padding: '0.15rem 0.45rem', borderRadius: '999px', fontSize: '0.68rem', fontWeight: 600, background: 'var(--warn-bg)', color: 'var(--warn-fg)' }}>
                                                         {t('unpaid_record' as any)}
                                                     </span>
                                                 </div>
@@ -296,20 +296,20 @@ export default function CompaniesPage() {
                                             {/* How you read your own book of business: who is on
                                                 Company Management alone and could be sold HR. */}
                                             {!company.package ? (
-                                                <span style={{ fontSize: '0.78rem', color: '#94a3b8' }}>{t('no_package' as any)}</span>
+                                                <span style={{ fontSize: '0.78rem', color: 'var(--text-faint)' }}>{t('no_package' as any)}</span>
                                             ) : (
                                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', alignItems: 'flex-start' }}>
-                                                    <span style={{ fontSize: '0.82rem', fontWeight: 600, color: '#334155' }}>{company.package.name}</span>
+                                                    <span style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-body)' }}>{company.package.name}</span>
                                                     <div style={{ display: 'flex', gap: '0.25rem', flexWrap: 'wrap' }}>
                                                         {bundleLabelKeys(company.package).length === 0 ? (
-                                                            <span style={{ padding: '0.15rem 0.45rem', borderRadius: '999px', fontSize: '0.68rem', fontWeight: 600, background: '#f1f5f9', color: '#475569' }}>
+                                                            <span style={{ padding: '0.15rem 0.45rem', borderRadius: '999px', fontSize: '0.68rem', fontWeight: 600, background: 'var(--surface-sunk)', color: 'var(--text-muted)' }}>
                                                                 {t('core_only' as any)}
                                                             </span>
                                                         ) : bundleLabelKeys(company.package).map(key => (
                                                             <span key={key} style={{
                                                                 padding: '0.15rem 0.45rem', borderRadius: '999px', fontSize: '0.68rem', fontWeight: 600,
-                                                                background: key === 'bundle_hr' ? '#dcfce7' : '#e0f2fe',
-                                                                color: key === 'bundle_hr' ? '#166534' : '#0369a1',
+                                                                background: key === 'bundle_hr' ? 'var(--ok-bg)' : 'var(--info-bg)',
+                                                                color: key === 'bundle_hr' ? 'var(--ok-fg)' : 'var(--info-fg)',
                                                             }}>
                                                                 {t(key as any)}
                                                             </span>
@@ -320,9 +320,9 @@ export default function CompaniesPage() {
                                         </td>
                                         <td style={{ padding: '1rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
                                             {(company as any).isBanned ? (
-                                                <span style={{ background: '#fee2e2', color: '#dc2626', padding: '0.25rem 0.5rem', borderRadius: '9999px', fontSize: '0.75rem', fontWeight: 'bold' }}>{t('status_banned')}</span>
+                                                <span style={{ background: 'var(--danger-bg)', color: 'var(--danger-solid-hover)', padding: '0.25rem 0.5rem', borderRadius: '9999px', fontSize: '0.75rem', fontWeight: 'bold' }}>{t('status_banned')}</span>
                                             ) : (
-                                                <span style={{ background: '#dcfce7', color: '#166534', padding: '0.25rem 0.5rem', borderRadius: '9999px', fontSize: '0.75rem', fontWeight: 'bold' }}>{t('status_active')}</span>
+                                                <span style={{ background: 'var(--ok-bg)', color: 'var(--ok-fg)', padding: '0.25rem 0.5rem', borderRadius: '9999px', fontSize: '0.75rem', fontWeight: 'bold' }}>{t('status_active')}</span>
                                             )}
                                         </td>
                                         <td style={{ padding: '1rem', textAlign: 'center' }}>
@@ -331,7 +331,7 @@ export default function CompaniesPage() {
                                                 className="btn"
                                                 style={{
                                                     background: 'rgba(99, 102, 241, 0.1)',
-                                                    color: '#6366f1',
+                                                    color: 'var(--brand-primary)',
                                                     padding: '0.4rem 0.8rem',
                                                     fontSize: '0.8rem',
                                                     border: '1px solid rgba(99, 102, 241, 0.2)'
@@ -359,7 +359,7 @@ export default function CompaniesPage() {
                                                     title={t('company_settings_title') || 'Settings'}
                                                     style={{
                                                         background: 'rgba(45, 93, 82, 0.1)',
-                                                        color: '#2f5d52',
+                                                        color: 'var(--ok-fg)',
                                                         padding: '0.4rem 0.6rem',
                                                         fontSize: '0.9rem',
                                                         border: '1px solid rgba(45, 93, 82, 0.2)'
@@ -370,7 +370,7 @@ export default function CompaniesPage() {
                                                 <button
                                                     onClick={() => handleOpenModal(company)}
                                                     className="btn"
-                                                    style={{ background: '#f1f5f9', color: '#0f172a', padding: '0.4rem 0.8rem', fontSize: '0.8rem' }}
+                                                    style={{ background: 'var(--surface-sunk)', color: 'var(--text-strong)', padding: '0.4rem 0.8rem', fontSize: '0.8rem' }}
                                                 >
                                                     {t('edit')}
                                                 </button>
@@ -384,8 +384,8 @@ export default function CompaniesPage() {
                                                     }}
                                                     className="btn"
                                                     style={{
-                                                        background: (company as any).isBanned ? '#dcfce7' : '#fee2e2',
-                                                        color: (company as any).isBanned ? '#166534' : '#b91c1c',
+                                                        background: (company as any).isBanned ? 'var(--ok-bg)' : 'var(--danger-bg)',
+                                                        color: (company as any).isBanned ? 'var(--ok-fg)' : 'var(--danger-fg-strong)',
                                                         padding: '0.4rem 0.8rem',
                                                         fontSize: '0.8rem',
                                                     }}
@@ -396,8 +396,8 @@ export default function CompaniesPage() {
                                                     onClick={() => openDeleteModal(company)}
                                                     className="btn"
                                                     style={{
-                                                        background: '#fee2e2',
-                                                        color: '#b91c1c',
+                                                        background: 'var(--danger-bg)',
+                                                        color: 'var(--danger-fg-strong)',
                                                         padding: '0.4rem 0.8rem',
                                                         fontSize: '0.8rem',
                                                     }}
@@ -464,9 +464,9 @@ export default function CompaniesPage() {
                                         way a clamping surprise (31 January + 1
                                         month) gets noticed by you rather than by a
                                         customer. */}
-                                    <div style={{ marginTop: '0.5rem', fontSize: '0.82rem', color: '#64748b' }}>
+                                    <div style={{ marginTop: '0.5rem', fontSize: '0.82rem', color: 'var(--text-soft)' }}>
                                         {t('trial_ends_on' as any)}:{' '}
-                                        <b style={{ color: '#334155' }}>
+                                        <b style={{ color: 'var(--text-body)' }}>
                                             {computeTrialEnd(new Date(), formData.trialPreset, 0)
                                                 ?.toLocaleDateString(locale === 'ar' ? 'ar-EG' : 'en-US', { day: 'numeric', month: 'long', year: 'numeric' })}
                                         </b>
@@ -494,7 +494,7 @@ export default function CompaniesPage() {
                             </div>
 
                             <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', flexDirection: 'row' }}>
-                                <button type="button" onClick={() => setShowModal(false)} className="btn" style={{ background: '#e2e8f0', color: '#0f172a' }}>
+                                <button type="button" onClick={() => setShowModal(false)} className="btn" style={{ background: 'var(--border)', color: 'var(--text-strong)' }}>
                                     {t('cancel')}
                                 </button>
                                 <button type="submit" className="btn btn-primary" disabled={submitLoading}>
@@ -512,10 +512,10 @@ export default function CompaniesPage() {
                     hideFooter={true}
                 >
                     <div style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>
-                        <p style={{ marginBottom: '1.5rem', color: '#64748b' }}>
+                        <p style={{ marginBottom: '1.5rem', color: 'var(--text-soft)' }}>
                             {t('delete_company_warning')} <strong>{companyToDelete?.name}</strong>?
                             <br /><br />
-                            <span style={{ fontWeight: 'bold', color: '#dc2626' }}>{t('delete_company_critical_warning')}</span>
+                            <span style={{ fontWeight: 'bold', color: 'var(--danger-solid-hover)' }}>{t('delete_company_critical_warning')}</span>
                         </p>
 
                         {deleteError && <div style={{ color: 'red', marginBottom: '1rem', fontSize: '0.9rem' }}>{deleteError}</div>}
@@ -535,10 +535,10 @@ export default function CompaniesPage() {
                             </div>
 
                             <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', flexDirection: 'row' }}>
-                                <button type="button" onClick={() => setShowDeleteModal(false)} className="btn" style={{ background: '#e2e8f0', color: '#0f172a' }}>
+                                <button type="button" onClick={() => setShowDeleteModal(false)} className="btn" style={{ background: 'var(--border)', color: 'var(--text-strong)' }}>
                                     {t('cancel')}
                                 </button>
-                                <button type="submit" className="btn" disabled={isDeleting} style={{ background: '#dc2626', color: 'white', padding: '0.75rem 1.5rem', borderRadius: '0.5rem', border: 'none', cursor: 'pointer' }}>
+                                <button type="submit" className="btn" disabled={isDeleting} style={{ background: 'var(--danger-solid-hover)', color: 'white', padding: '0.75rem 1.5rem', borderRadius: '0.5rem', border: 'none', cursor: 'pointer' }}>
                                     {isDeleting ? t('deleting') : t('delete_permanently')}
                                 </button>
                             </div>

@@ -36,7 +36,7 @@ export default function GlobalError({
 
     return (
         <html>
-            <body style={{ margin: 0, fontFamily: '-apple-system, BlinkMacSystemFont, sans-serif', background: '#f8fafc' }}>
+            <body style={{ margin: 0, fontFamily: '-apple-system, BlinkMacSystemFont, sans-serif', background: 'var(--surface-subtle)' }}>
                 <div style={{
                     minHeight: '100vh',
                     display: 'flex',
@@ -53,12 +53,12 @@ export default function GlobalError({
                         boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)',
                     }}>
                         <div style={{ fontSize: '3rem', marginBottom: '1.5rem' }}>⚠️</div>
-                        <h2 style={{ color: '#1e293b', marginBottom: '1rem', fontWeight: 800 }}>Something went wrong</h2>
-                        <p style={{ color: '#64748b', marginBottom: '1.5rem', lineHeight: 1.6 }}>
+                        <h2 style={{ color: 'var(--text-main)', marginBottom: '1rem', fontWeight: 800 }}>Something went wrong</h2>
+                        <p style={{ color: 'var(--text-soft)', marginBottom: '1.5rem', lineHeight: 1.6 }}>
                             The app hit an unexpected error and couldn&apos;t recover on its own.
                         </p>
                         {ref && (
-                            <p style={{ color: '#94a3b8', marginBottom: '1.5rem', fontSize: '0.85rem' }}>
+                            <p style={{ color: 'var(--text-faint)', marginBottom: '1.5rem', fontSize: '0.85rem' }}>
                                 If this keeps happening, share this reference with your admin: <b>{ref}</b>
                             </p>
                         )}
@@ -69,7 +69,7 @@ export default function GlobalError({
                                 fontWeight: 'bold',
                                 borderRadius: '0.5rem',
                                 border: 'none',
-                                background: '#3b82f6',
+                                background: 'var(--info-solid)',
                                 color: 'white',
                                 cursor: 'pointer',
                             }}

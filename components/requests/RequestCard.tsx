@@ -52,23 +52,23 @@ export default function RequestCard({ request, userRole, onView, onStatusUpdate,
                 justifyContent: 'space-between',
                 alignItems: 'center',
                 transition: 'all 0.3s ease',
-                borderInlineStart: showVisualHighlight ? '4px solid #a855f7' : '4px solid #6366f1',
+                borderInlineStart: showVisualHighlight ? '4px solid var(--accent-solid)' : '4px solid var(--brand-primary)',
                 background: showVisualHighlight ? 'rgba(168, 85, 247, 0.05)' : 'white'
             }}
         >
             <div style={{ flex: 1 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.25rem' }}>
-                    <h3 style={{ fontSize: '1.1rem', fontWeight: '700', margin: 0, color: '#1e293b' }}>{request.title}</h3>
+                    <h3 style={{ fontSize: '1.1rem', fontWeight: '700', margin: 0, color: 'var(--text-main)' }}>{request.title}</h3>
                     <span className="badge" style={{
-                        background: request.status === 'PENDING' ? '#fef9c3' : request.status === 'IN_PROGRESS' ? '#e0f2fe' : '#dcfce7',
-                        color: request.status === 'PENDING' ? '#854d0e' : request.status === 'IN_PROGRESS' ? '#0369a1' : '#166534',
+                        background: request.status === 'PENDING' ? 'var(--warn-bg-yellow)' : request.status === 'IN_PROGRESS' ? 'var(--info-bg)' : 'var(--ok-bg)',
+                        color: request.status === 'PENDING' ? 'var(--warn-fg-yellow)' : request.status === 'IN_PROGRESS' ? 'var(--info-fg)' : 'var(--ok-fg)',
                         fontSize: '0.7rem'
                     }}>
                         {t(`status_${request.status.toLowerCase()}` as any)}
                     </span>
                 </div>
                 {isAdmin && request.user && (
-                    <div style={{ fontSize: '0.85rem', color: '#64748b' }}>
+                    <div style={{ fontSize: '0.85rem', color: 'var(--text-soft)' }}>
                         {t('by' as any) || 'By'}: {request.user.firstName} {request.user.lastName}
                     </div>
                 )}
@@ -83,7 +83,7 @@ export default function RequestCard({ request, userRole, onView, onStatusUpdate,
                         fontSize: '0.85rem',
                         background: 'rgba(255,255,255,0.5)',
                         border: '1px solid rgba(0,0,0,0.1)',
-                        color: '#6366f1',
+                        color: 'var(--brand-primary)',
                         fontWeight: '600'
                     }}
                 >
@@ -95,9 +95,9 @@ export default function RequestCard({ request, userRole, onView, onStatusUpdate,
                         onClick={() => handleUpdate(request.status === 'PENDING' ? 'IN_PROGRESS' : 'COMPLETED')}
                         disabled={updating}
                         style={{
-                            background: request.status === 'PENDING' ? '#e0f2fe' : '#dcfce7',
-                            border: `1px solid ${request.status === 'PENDING' ? '#38bdf8' : '#22c55e'}`,
-                            color: request.status === 'PENDING' ? '#0369a1' : '#166534',
+                            background: request.status === 'PENDING' ? 'var(--info-bg)' : 'var(--ok-bg)',
+                            border: `1px solid ${request.status === 'PENDING' ? 'var(--info-solid-sky-light)' : 'var(--ok-solid-alt)'}`,
+                            color: request.status === 'PENDING' ? 'var(--info-fg)' : 'var(--ok-fg)',
                             width: '36px',
                             height: '36px',
                             borderRadius: '50%',
@@ -111,7 +111,7 @@ export default function RequestCard({ request, userRole, onView, onStatusUpdate,
                         title={request.status === 'PENDING' ? t('mark_in_progress' as any) : t('mark_completed' as any)}
                     >
                         {updating ? (
-                            <div className="animate-spin-local" style={{ width: '16px', height: '16px', border: `2px solid ${request.status === 'PENDING' ? '#0369a1' : '#166534'}`, borderTopColor: 'transparent', borderRadius: '50%' }} />
+                            <div className="animate-spin-local" style={{ width: '16px', height: '16px', border: `2px solid ${request.status === 'PENDING' ? 'var(--info-fg)' : 'var(--ok-fg)'}`, borderTopColor: 'transparent', borderRadius: '50%' }} />
                         ) : '✓'}
                     </button>
                 )}

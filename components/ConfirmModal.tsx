@@ -54,22 +54,22 @@ export default function ConfirmModal({
 
     const variantStyles = {
         danger: {
-            confirmBg: '#dc2626',
-            confirmHover: '#b91c1c',
-            iconBg: '#fee2e2',
-            iconColor: '#dc2626'
+            confirmBg: 'var(--danger-solid-hover)',
+            confirmHover: 'var(--danger-fg-strong)',
+            iconBg: 'var(--danger-bg)',
+            iconColor: 'var(--danger-solid-hover)'
         },
         warning: {
-            confirmBg: '#f59e0b',
-            confirmHover: '#d97706',
-            iconBg: '#fef3c7',
-            iconColor: '#f59e0b'
+            confirmBg: 'var(--warn-solid)',
+            confirmHover: 'var(--warn-solid-hover)',
+            iconBg: 'var(--warn-bg)',
+            iconColor: 'var(--warn-solid)'
         },
         info: {
-            confirmBg: '#3b82f6',
-            confirmHover: '#2563eb',
-            iconBg: '#dbeafe',
-            iconColor: '#3b82f6'
+            confirmBg: 'var(--info-solid)',
+            confirmHover: 'var(--info-solid-hover)',
+            iconBg: 'var(--info-bg-indigo)',
+            iconColor: 'var(--info-solid)'
         }
     }
 
@@ -123,16 +123,16 @@ export default function ConfirmModal({
                         </svg>
                     </div>
                     <div style={{ flex: 1 }}>
-                        <h2 style={{ fontSize: '1.25rem', fontWeight: 'bold', color: '#1e293b', margin: '0 0 0.5rem 0' }}>
+                        <h2 style={{ fontSize: '1.25rem', fontWeight: 'bold', color: 'var(--text-main)', margin: '0 0 0.5rem 0' }}>
                             {title}
                         </h2>
-                        <p style={{ fontSize: '0.875rem', color: '#64748b', margin: 0, lineHeight: '1.5' }}>
+                        <p style={{ fontSize: '0.875rem', color: 'var(--text-soft)', margin: 0, lineHeight: '1.5' }}>
                             {message}
                         </p>
                         {requireTypedText && (
                             <div style={{ marginTop: '1rem' }}>
-                                <label style={{ display: 'block', fontSize: '0.8rem', color: '#475569', marginBottom: '0.4rem' }}>
-                                    {t('type_to_confirm_prefix') || 'Type'} <code style={{ background: '#f1f5f9', padding: '0.1rem 0.4rem', borderRadius: '0.25rem', fontWeight: 700 }}>{requireTypedText}</code> {t('type_to_confirm_suffix') || 'to confirm'}
+                                <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.4rem' }}>
+                                    {t('type_to_confirm_prefix') || 'Type'} <code style={{ background: 'var(--surface-sunk)', padding: '0.1rem 0.4rem', borderRadius: '0.25rem', fontWeight: 700 }}>{requireTypedText}</code> {t('type_to_confirm_suffix') || 'to confirm'}
                                 </label>
                                 <input
                                     type="text"
@@ -144,7 +144,7 @@ export default function ConfirmModal({
                                     style={{
                                         width: '100%',
                                         padding: '0.5rem 0.75rem',
-                                        border: '1px solid #e2e8f0',
+                                        border: '1px solid var(--border)',
                                         borderRadius: '0.5rem',
                                         fontSize: '0.9rem',
                                         fontFamily: 'monospace'
@@ -160,16 +160,16 @@ export default function ConfirmModal({
                         onClick={onCancel}
                         style={{
                             padding: '0.625rem 1.25rem',
-                            border: '1px solid #e2e8f0',
+                            border: '1px solid var(--border)',
                             borderRadius: '0.5rem',
                             background: 'white',
                             cursor: 'pointer',
                             fontSize: '0.875rem',
                             fontWeight: '500',
-                            color: '#475569',
+                            color: 'var(--text-muted)',
                             transition: 'all 0.2s'
                         }}
-                        onMouseEnter={(e) => e.currentTarget.style.background = '#f8fafc'}
+                        onMouseEnter={(e) => e.currentTarget.style.background = 'var(--surface-subtle)'}
                         onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
                     >
                         {finalCancelText}
@@ -181,7 +181,7 @@ export default function ConfirmModal({
                             padding: '0.625rem 1.25rem',
                             border: 'none',
                             borderRadius: '0.5rem',
-                            background: confirmDisabled ? '#cbd5e1' : styles.confirmBg,
+                            background: confirmDisabled ? 'var(--border-firm)' : styles.confirmBg,
                             cursor: confirmDisabled ? 'not-allowed' : 'pointer',
                             fontSize: '0.875rem',
                             fontWeight: '500',

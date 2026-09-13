@@ -290,7 +290,7 @@ export default function EmployeeFilter({
                 {/* Search - Flexible width */}
                 {!hideSearch && (
                     <div style={{ flex: 1, minWidth: '300px', position: 'relative' }}>
-                        <div style={{ position: 'absolute', [locale === 'ar' ? 'right' : 'left']: '1.25rem', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', pointerEvents: 'none' }}>
+                        <div style={{ position: 'absolute', [locale === 'ar' ? 'right' : 'left']: '1.25rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-faint)', pointerEvents: 'none' }}>
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                                 <circle cx="11" cy="11" r="8"></circle>
                                 <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
@@ -312,7 +312,7 @@ export default function EmployeeFilter({
                                 padding: locale === 'ar' ? '0.625rem 3.5rem 0.625rem 1.25rem' : '0.625rem 1.25rem 0.625rem 3.5rem',
                                 borderRadius: '1.25rem',
                                 fontSize: '0.95rem',
-                                border: '1px solid #e2e8f0',
+                                border: '1px solid var(--border)',
                                 textAlign: locale === 'ar' ? 'right' : 'left',
                                 background: 'white',
                                 height: '48px',
@@ -341,9 +341,9 @@ export default function EmployeeFilter({
                                 gap: '0.75rem',
                                 padding: '0 1.5rem',
                                 borderRadius: '1.25rem',
-                                background: loading ? '#f1f5f9' : (activeFilterCount > 0 ? '#eff6ff' : 'white'),
-                                border: `2px solid ${loading ? '#e2e8f0' : (activeFilterCount > 0 ? '#3b82f6' : '#e2e8f0')}`,
-                                color: loading ? '#94a3b8' : (activeFilterCount > 0 ? '#2563eb' : '#475569'),
+                                background: loading ? 'var(--surface-sunk)' : (activeFilterCount > 0 ? 'var(--info-bg-subtle)' : 'white'),
+                                border: `2px solid ${loading ? 'var(--border)' : (activeFilterCount > 0 ? 'var(--info-solid)' : 'var(--border)')}`,
+                                color: loading ? 'var(--text-faint)' : (activeFilterCount > 0 ? 'var(--info-solid-hover)' : 'var(--text-muted)'),
                                 fontWeight: '700',
                                 fontSize: '0.95rem',
                                 cursor: loading ? 'default' : 'pointer',
@@ -356,7 +356,7 @@ export default function EmployeeFilter({
                         >
                             {loading ? (
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                    <div style={{ width: '16px', height: '16px', borderRadius: '50%', border: '2px solid #cbd5e1', borderTopColor: '#94a3b8', animation: 'spin 1s linear infinite' }} />
+                                    <div style={{ width: '16px', height: '16px', borderRadius: '50%', border: '2px solid var(--border-firm)', borderTopColor: 'var(--text-faint)', animation: 'spin 1s linear infinite' }} />
                                     <span>{t('loading_filters')}</span>
                                 </div>
                             ) : (
@@ -372,7 +372,7 @@ export default function EmployeeFilter({
                                     position: 'absolute',
                                     top: '-4px',
                                     [locale === 'ar' ? 'left' : 'right']: '-4px',
-                                    background: '#3b82f6',
+                                    background: 'var(--info-solid)',
                                     color: 'white',
                                     width: '20px',
                                     height: '20px',
@@ -410,11 +410,11 @@ export default function EmployeeFilter({
                                     width: isMobile ? 'min(calc(100vw - 3rem), 400px)' : '320px',
                                     maxHeight: isMobile ? 'calc(100vh - 4rem)' : 'auto',
                                     overflowY: isMobile ? 'auto' : 'visible',
-                                    backgroundColor: '#ffffff',
+                                    backgroundColor: 'var(--surface)',
                                     borderRadius: '1.25rem',
                                     padding: '1.5rem',
                                     boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.15), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
-                                    border: '1px solid #e2e8f0',
+                                    border: '1px solid var(--border)',
                                     zIndex: 1000,
                                     display: 'flex',
                                     flexDirection: 'column',
@@ -437,8 +437,8 @@ export default function EmployeeFilter({
 
                                     {/* Sort controls at the top of filter popup */}
                                     {onSortChange && sortOptions && (
-                                        <div style={{ paddingBottom: '1.25rem', borderBottom: '1px solid #f1f5f9' }}>
-                                            <label style={{ display: 'block', marginBottom: '0.75rem', fontWeight: '800', fontSize: '0.75rem', textTransform: 'uppercase', color: '#64748b', letterSpacing: '0.05em' }}>{t('sort_by')}</label>
+                                        <div style={{ paddingBottom: '1.25rem', borderBottom: '1px solid var(--surface-sunk)' }}>
+                                            <label style={{ display: 'block', marginBottom: '0.75rem', fontWeight: '800', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--text-soft)', letterSpacing: '0.05em' }}>{t('sort_by')}</label>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: 1 }}>
                                                 <div style={{ position: 'relative', flex: 1 }}>
                                                     <select
@@ -451,7 +451,7 @@ export default function EmployeeFilter({
                                                             borderRadius: '1.25rem',
                                                             fontSize: '0.9rem',
                                                             backgroundColor: 'white',
-                                                            border: '1px solid #e2e8f0',
+                                                            border: '1px solid var(--border)',
                                                             cursor: 'pointer',
                                                             height: '48px',
                                                             textAlign: locale === 'ar' ? 'right' : 'left',
@@ -464,7 +464,7 @@ export default function EmployeeFilter({
                                                             <option key={opt.value} value={opt.value}>{opt.label}</option>
                                                         ))}
                                                     </select>
-                                                    <div style={{ position: 'absolute', [locale === 'ar' ? 'left' : 'right']: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', pointerEvents: 'none' }}>
+                                                    <div style={{ position: 'absolute', [locale === 'ar' ? 'left' : 'right']: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-faint)', pointerEvents: 'none' }}>
                                                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                                                             <path d="M6 9l6 6 6-6"></path>
                                                         </svg>
@@ -476,13 +476,13 @@ export default function EmployeeFilter({
                                                         height: '48px',
                                                         width: '48px',
                                                         borderRadius: '1.25rem',
-                                                        border: '1px solid #e2e8f0',
+                                                        border: '1px solid var(--border)',
                                                         background: 'white',
                                                         cursor: 'pointer',
                                                         display: 'flex',
                                                         alignItems: 'center',
                                                         justifyContent: 'center',
-                                                        color: '#475569'
+                                                        color: 'var(--text-muted)'
                                                     }}
                                                 >
                                                     {localSortOrder === 'asc' ? '↑' : '↓'}
@@ -520,7 +520,7 @@ export default function EmployeeFilter({
                                                         padding: locale === 'ar' ? '0 0.75rem 0 2.25rem' : '0 2.25rem 0 0.75rem',
                                                         borderRadius: '1.25rem',
                                                         background: 'white',
-                                                        border: '1px solid #e2e8f0',
+                                                        border: '1px solid var(--border)',
                                                         height: '48px',
                                                         appearance: 'none',
                                                         backgroundImage: 'none',
@@ -535,7 +535,7 @@ export default function EmployeeFilter({
                                                     <option value="TEAM_LEADER">{t('role_team_leader')}</option>
                                                     <option value="ADMIN">{t('role_admin')}</option>
                                                 </select>
-                                                <div style={{ position: 'absolute', [locale === 'ar' ? 'left' : 'right']: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', pointerEvents: 'none' }}>
+                                                <div style={{ position: 'absolute', [locale === 'ar' ? 'left' : 'right']: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-faint)', pointerEvents: 'none' }}>
                                                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                                                         <path d="M6 9l6 6 6-6"></path>
                                                     </svg>
@@ -557,7 +557,7 @@ export default function EmployeeFilter({
                                                         padding: locale === 'ar' ? '0 0.75rem 0 2.25rem' : '0 2.25rem 0 0.75rem',
                                                         borderRadius: '1.25rem',
                                                         background: 'white',
-                                                        border: '1px solid #e2e8f0',
+                                                        border: '1px solid var(--border)',
                                                         height: '48px',
                                                         appearance: 'none',
                                                         backgroundImage: 'none',
@@ -572,7 +572,7 @@ export default function EmployeeFilter({
                                                         <option key={opt.value} value={opt.value}>{opt.label}</option>
                                                     ))}
                                                 </select>
-                                                <div style={{ position: 'absolute', [locale === 'ar' ? 'left' : 'right']: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', pointerEvents: 'none' }}>
+                                                <div style={{ position: 'absolute', [locale === 'ar' ? 'left' : 'right']: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-faint)', pointerEvents: 'none' }}>
                                                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                                                         <path d="M6 9l6 6 6-6"></path>
                                                     </svg>
@@ -594,7 +594,7 @@ export default function EmployeeFilter({
                                                         padding: locale === 'ar' ? '0 0.75rem 0 2.25rem' : '0 2.25rem 0 0.75rem',
                                                         borderRadius: '1.25rem',
                                                         background: 'white',
-                                                        border: '1px solid #e2e8f0',
+                                                        border: '1px solid var(--border)',
                                                         height: '48px',
                                                         appearance: 'none',
                                                         backgroundImage: 'none',
@@ -620,7 +620,7 @@ export default function EmployeeFilter({
                                                         </>
                                                     )}
                                                 </select>
-                                                <div style={{ position: 'absolute', [locale === 'ar' ? 'left' : 'right']: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', pointerEvents: 'none' }}>
+                                                <div style={{ position: 'absolute', [locale === 'ar' ? 'left' : 'right']: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-faint)', pointerEvents: 'none' }}>
                                                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                                                         <path d="M6 9l6 6 6-6"></path>
                                                     </svg>
@@ -648,15 +648,15 @@ export default function EmployeeFilter({
                                                 flex: 1,
                                                 height: '48px',
                                                 borderRadius: '1.25rem',
-                                                border: '1px solid #e2e8f0',
+                                                border: '1px solid var(--border)',
                                                 background: 'white',
                                                 fontWeight: '700',
                                                 cursor: 'pointer',
                                                 fontSize: '0.875rem',
-                                                color: '#64748b',
+                                                color: 'var(--text-soft)',
                                                 transition: 'all 0.2s ease'
                                             }}
-                                            onMouseOver={(e) => e.currentTarget.style.background = '#f8fafc'}
+                                            onMouseOver={(e) => e.currentTarget.style.background = 'var(--surface-subtle)'}
                                             onMouseOut={(e) => e.currentTarget.style.background = 'white'}
                                         >
                                             {t('reset_filters')}
@@ -668,7 +668,7 @@ export default function EmployeeFilter({
                                                 height: '48px',
                                                 borderRadius: '1.25rem',
                                                 border: 'none',
-                                                background: 'linear-gradient(135deg, #6366f1 0%, #a855f7 100%)',
+                                                background: 'linear-gradient(135deg, var(--brand-primary) 0%, var(--accent-solid) 100%)',
                                                 color: 'white',
                                                 fontWeight: '700',
                                                 cursor: 'pointer',
@@ -690,7 +690,7 @@ export default function EmployeeFilter({
                 <div style={{
                     height: '48px',
                     padding: '0 1.25rem',
-                    background: '#0f172a',
+                    background: 'var(--text-strong)',
                     borderRadius: '1.25rem',
                     display: 'flex',
                     alignItems: 'center',
@@ -713,17 +713,17 @@ export default function EmployeeFilter({
             {totalCost !== undefined && (
                 <div style={{ display: 'flex', justifyContent: locale === 'ar' ? 'flex-end' : 'flex-end', marginTop: '-0.5rem' }}>
                     <div style={{
-                        background: 'linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%)',
-                        color: '#9a3412',
+                        background: 'linear-gradient(135deg, var(--warn-bg-warm-subtle) 0%, var(--warn-bg-warm) 100%)',
+                        color: 'var(--warn-fg-warm)',
                         padding: '0.5rem 1.25rem',
                         borderRadius: '1rem',
-                        border: '1px solid #fed7aa',
+                        border: '1px solid var(--warn-border-warm)',
                         display: 'flex',
                         alignItems: 'center',
                         gap: '0.5rem',
                         boxShadow: '0 2px 4px rgba(251, 146, 60, 0.05)'
                     }}>
-                        <div style={{ background: '#fb923c', color: 'white', padding: '0.25rem', borderRadius: '0.5rem', display: 'flex' }}>
+                        <div style={{ background: 'var(--warn-solid-warm)', color: 'white', padding: '0.25rem', borderRadius: '0.5rem', display: 'flex' }}>
                             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
                                 <line x1="12" y1="1" x2="12" y2="23"></line>
                                 <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>

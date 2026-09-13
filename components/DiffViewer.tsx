@@ -10,8 +10,8 @@ interface DiffViewerProps {
 export default function DiffViewer({ oldText, newText }: DiffViewerProps) {
     const { locale } = useLanguage()
     if (!oldText && !newText) return null
-    if (!oldText) return <span style={{ backgroundColor: '#dcfce7', color: '#166534' }}>{newText}</span>
-    if (!newText) return <span style={{ textDecoration: 'line-through', color: '#dc2626' }}>{oldText}</span>
+    if (!oldText) return <span style={{ backgroundColor: 'var(--ok-bg)', color: 'var(--ok-fg)' }}>{newText}</span>
+    if (!newText) return <span style={{ textDecoration: 'line-through', color: 'var(--danger-solid-hover)' }}>{oldText}</span>
 
     const diffWords = (oldString: string, newString: string) => {
         const oldWords = oldString.split(/\s+/)
@@ -81,8 +81,8 @@ export default function DiffViewer({ oldText, newText }: DiffViewerProps) {
                 <span
                     key={index}
                     style={{
-                        backgroundColor: part.type === 'added' ? '#dcfce7' : part.type === 'removed' ? '#fee2e2' : 'transparent',
-                        color: part.type === 'added' ? '#166534' : part.type === 'removed' ? '#991b1b' : 'inherit',
+                        backgroundColor: part.type === 'added' ? 'var(--ok-bg)' : part.type === 'removed' ? 'var(--danger-bg)' : 'transparent',
+                        color: part.type === 'added' ? 'var(--ok-fg)' : part.type === 'removed' ? 'var(--danger-fg)' : 'inherit',
                         textDecoration: part.type === 'removed' ? 'line-through' : 'none',
                         marginRight: locale === 'ar' ? '0' : '4px',
                         marginLeft: locale === 'ar' ? '4px' : '0'

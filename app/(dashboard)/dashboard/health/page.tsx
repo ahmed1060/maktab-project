@@ -255,7 +255,7 @@ export default function SystemHealthPage() {
             {maintenanceMode && (
                 <div style={{
                     display: 'flex', alignItems: 'center', gap: '0.75rem',
-                    background: '#fffbeb', border: '1px solid #fde68a', color: '#92400e',
+                    background: 'var(--warn-bg-yellow-subtle)', border: '1px solid var(--warn-border-yellow)', color: 'var(--warn-fg)',
                     borderRadius: '0.75rem', padding: '0.85rem 1.25rem', marginBottom: '1.5rem',
                     fontWeight: 700, fontSize: '0.9rem'
                 }}>
@@ -275,7 +275,7 @@ export default function SystemHealthPage() {
                             <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>{t('total_assets' as any)}</p>
                         </div>
                     </div>
-                    <div style={{ fontSize: '2.5rem', fontWeight: '800', color: 'var(--accent-primary)', textAlign: 'center', margin: '1rem 0' }}>
+                    <div style={{ fontSize: '2.5rem', fontWeight: '800', color: 'var(--brand-primary)', textAlign: 'center', margin: '1rem 0' }}>
                         {metrics?.storage.totalFiles}
                     </div>
                     <button
@@ -303,7 +303,7 @@ export default function SystemHealthPage() {
                             <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>{t('total_label' as any)}</div>
                         </div>
                         <div style={{ textAlign: 'center' }}>
-                            <div style={{ fontSize: '1.5rem', fontWeight: '800', color: '#ef4444' }}>{metrics?.auditing.prunable}</div>
+                            <div style={{ fontSize: '1.5rem', fontWeight: '800', color: 'var(--danger-solid)' }}>{metrics?.auditing.prunable}</div>
                             <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>{t('prunable_logs' as any)}</div>
                         </div>
                     </div>
@@ -311,7 +311,7 @@ export default function SystemHealthPage() {
                         onClick={() => setPendingAction('PRUNE_LOGS')}
                         disabled={!!processing || metrics?.auditing.prunable === 0}
                         className="btn"
-                        style={{ width: '100%', marginTop: 'auto', background: metrics?.auditing.prunable === 0 ? '#f1f5f9' : undefined, color: metrics?.auditing.prunable === 0 ? '#94a3b8' : undefined }}
+                        style={{ width: '100%', marginTop: 'auto', background: metrics?.auditing.prunable === 0 ? 'var(--surface-sunk)' : undefined, color: metrics?.auditing.prunable === 0 ? 'var(--text-faint)' : undefined }}
                     >
                         {processing === 'PRUNE_LOGS' ? (locale === 'ar' ? 'جاري الحذف...' : 'Pruning...') : t('prune_logs_btn' as any)}
                     </button>
@@ -332,7 +332,7 @@ export default function SystemHealthPage() {
                             <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>{t('total_label' as any)}</div>
                         </div>
                         <div style={{ textAlign: 'center' }}>
-                            <div style={{ fontSize: '1.5rem', fontWeight: '800', color: '#f59e0b' }}>{metrics?.notifications.prunable}</div>
+                            <div style={{ fontSize: '1.5rem', fontWeight: '800', color: 'var(--warn-solid)' }}>{metrics?.notifications.prunable}</div>
                             <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>{t('prunable_notifications' as any)}</div>
                         </div>
                     </div>
@@ -340,7 +340,7 @@ export default function SystemHealthPage() {
                         onClick={() => setPendingAction('PRUNE_NOTIFICATIONS')}
                         disabled={!!processing || metrics?.notifications.prunable === 0}
                         className="btn"
-                        style={{ width: '100%', marginTop: 'auto', background: metrics?.notifications.prunable === 0 ? '#f1f5f9' : undefined, color: metrics?.notifications.prunable === 0 ? '#94a3b8' : undefined }}
+                        style={{ width: '100%', marginTop: 'auto', background: metrics?.notifications.prunable === 0 ? 'var(--surface-sunk)' : undefined, color: metrics?.notifications.prunable === 0 ? 'var(--text-faint)' : undefined }}
                     >
                         {processing === 'PRUNE_NOTIFICATIONS' ? (locale === 'ar' ? 'جاري الحذف...' : 'Pruning...') : t('prune_notifications_btn' as any)}
                     </button>
@@ -384,7 +384,7 @@ export default function SystemHealthPage() {
                         onClick={() => setPendingAction('RESTORE_LATEST')}
                         disabled={restoring}
                         className="btn"
-                        style={{ width: '100%', background: '#fee2e2', color: '#991b1b', border: '1px solid #fecaca' }}
+                        style={{ width: '100%', background: 'var(--danger-bg)', color: 'var(--danger-fg)', border: '1px solid var(--danger-border)' }}
                     >
                         {restoring ? t('restoring' as any) : t('recover_latest_backup' as any)}
                     </button>
@@ -420,7 +420,7 @@ export default function SystemHealthPage() {
                         rows={2}
                         style={{
                             width: '100%', resize: 'vertical', padding: '0.6rem 0.75rem',
-                            border: '1px solid #e2e8f0', borderRadius: '0.5rem', fontSize: '0.85rem',
+                            border: '1px solid var(--border)', borderRadius: '0.5rem', fontSize: '0.85rem',
                             fontFamily: 'inherit'
                         }}
                     />
@@ -430,9 +430,9 @@ export default function SystemHealthPage() {
                         className="btn"
                         style={{
                             width: '100%', marginTop: 'auto',
-                            background: maintenanceMode ? '#dcfce7' : '#fee2e2',
-                            color: maintenanceMode ? '#166534' : '#991b1b',
-                            border: `1px solid ${maintenanceMode ? '#bbf7d0' : '#fecaca'}`
+                            background: maintenanceMode ? 'var(--ok-bg)' : 'var(--danger-bg)',
+                            color: maintenanceMode ? 'var(--ok-fg)' : 'var(--danger-fg)',
+                            border: `1px solid ${maintenanceMode ? 'var(--ok-bg-strong)' : 'var(--danger-border)'}`
                         }}
                     >
                         {savingMaintenance

@@ -52,13 +52,13 @@ export default class DashboardErrorBoundary extends Component<Props, State> {
                     boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)'
                 }}>
                     <div style={{ fontSize: '3rem', marginBottom: '1.5rem' }}>⚠️</div>
-                    <h2 style={{ color: '#1e293b', marginBottom: '1rem', fontWeight: '800' }}>Something went wrong</h2>
-                    <p style={{ color: '#64748b', marginBottom: '2rem', lineHeight: '1.6' }}>
+                    <h2 style={{ color: 'var(--text-main)', marginBottom: '1rem', fontWeight: '800' }}>Something went wrong</h2>
+                    <p style={{ color: 'var(--text-soft)', marginBottom: '2rem', lineHeight: '1.6' }}>
                         A client-side exception has occurred in this section.<br />
                         This is often caused by a loading mismatch or a session error.
                     </p>
                     {this.state.ref && (
-                        <p style={{ color: '#94a3b8', marginBottom: '1.5rem', fontSize: '0.85rem' }}>
+                        <p style={{ color: 'var(--text-faint)', marginBottom: '1.5rem', fontSize: '0.85rem' }}>
                             If this keeps happening, share this reference with your admin: <b>{this.state.ref}</b>
                         </p>
                     )}
@@ -75,10 +75,10 @@ export default class DashboardErrorBoundary extends Component<Props, State> {
                             className="btn"
                             style={{
                                 padding: '0.75rem 1.5rem',
-                                background: '#fee2e2',
-                                color: '#991b1b',
+                                background: 'var(--danger-bg)',
+                                color: 'var(--danger-fg)',
                                 fontWeight: 'bold',
-                                border: '1px solid #fecaca'
+                                border: '1px solid var(--danger-border)'
                             }}
                         >
                             Reset Settings & Reload

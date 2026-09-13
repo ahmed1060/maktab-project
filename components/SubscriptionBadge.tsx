@@ -43,17 +43,17 @@ export default function SubscriptionBadge({ state, date, daysRemaining, showDate
                 fontSize: '0.72rem',
                 fontWeight: 600,
                 whiteSpace: 'nowrap',
-                background: grandfathered ? '#f1f5f9' : style.bg,
-                color: grandfathered ? '#475569' : style.color,
+                background: grandfathered ? 'var(--surface-sunk)' : style.bg,
+                color: grandfathered ? 'var(--text-muted)' : style.color,
             }}>
                 {label}
             </span>
 
             {showDate && (
-                <span style={{ fontSize: '0.72rem', color: '#64748b', whiteSpace: 'nowrap' }}>
+                <span style={{ fontSize: '0.72rem', color: 'var(--text-soft)', whiteSpace: 'nowrap' }}>
                     {formatted ?? (state === 'LIFETIME' ? `∞ ${t('never_expires' as any)}` : '—')}
                     {formatted && typeof daysRemaining === 'number' && (
-                        <span style={{ color: daysRemaining < 0 ? '#b91c1c' : daysRemaining <= 14 ? '#b45309' : '#94a3b8' }}>
+                        <span style={{ color: daysRemaining < 0 ? 'var(--danger-fg-strong)' : daysRemaining <= 14 ? 'var(--warn-fg-mid)' : 'var(--text-faint)' }}>
                             {' · '}
                             {daysRemaining < 0
                                 ? t('ended_days_ago' as any).replace('{days}', String(Math.abs(daysRemaining)))

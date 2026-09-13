@@ -210,7 +210,7 @@ export default function CompanyPaymentsPage() {
                     </button>
                     <div style={{ clear: 'both' }}></div>
                     <h1 style={{ margin: 0 }}>{t('payment_history')}</h1>
-                    <p style={{ color: '#64748b', marginTop: '0.25rem' }}>{t('management_for')} <strong>{company?.name || t('loading_data')}</strong></p>
+                    <p style={{ color: 'var(--text-soft)', marginTop: '0.25rem' }}>{t('management_for')} <strong>{company?.name || t('loading_data')}</strong></p>
                 </div>
                 <button
                     className="btn btn-primary"
@@ -222,24 +222,24 @@ export default function CompanyPaymentsPage() {
 
             {loading ? (
                 <div style={{ padding: '4rem', textAlign: 'center' }}>
-                    <p style={{ color: '#64748b' }}>{t('loading_payments')}</p>
+                    <p style={{ color: 'var(--text-soft)' }}>{t('loading_payments')}</p>
                 </div>
             ) : payments.length === 0 ? (
                 <div className="glass" style={{ padding: '4rem', textAlign: 'center', borderRadius: '1rem' }}>
                     <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🧾</div>
                     <h3 style={{ margin: '0 0 0.5rem' }}>{t('no_payments_found')}</h3>
-                    <p style={{ color: '#64748b', margin: 0 }}>{t('no_payments_hint')}</p>
+                    <p style={{ color: 'var(--text-soft)', margin: 0 }}>{t('no_payments_hint')}</p>
                 </div>
             ) : (
                 <div className="glass" style={{ borderRadius: '1rem', overflow: 'hidden' }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                         <thead style={{ background: 'rgba(255,255,255,0.5)', borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
                             <tr>
-                                <th style={{ textAlign: locale === 'ar' ? 'right' : 'left', padding: '1.25rem', fontSize: '0.8rem', textTransform: 'uppercase', color: '#64748b' }}>{t('subscription_type')}</th>
-                                <th style={{ textAlign: locale === 'ar' ? 'right' : 'left', padding: '1.25rem', fontSize: '0.8rem', textTransform: 'uppercase', color: '#64748b' }}>{t('costs')}</th>
-                                <th style={{ textAlign: locale === 'ar' ? 'right' : 'left', padding: '1.25rem', fontSize: '0.8rem', textTransform: 'uppercase', color: '#64748b' }}>{t('dates_column')}</th>
-                                <th style={{ textAlign: locale === 'ar' ? 'right' : 'left', padding: '1.25rem', fontSize: '0.8rem', textTransform: 'uppercase', color: '#64748b' }}>{t('status_label')}</th>
-                                <th style={{ textAlign: locale === 'ar' ? 'left' : 'right', padding: '1.25rem', fontSize: '0.8rem', textTransform: 'uppercase', color: '#64748b' }}>{t('quick_actions')}</th>
+                                <th style={{ textAlign: locale === 'ar' ? 'right' : 'left', padding: '1.25rem', fontSize: '0.8rem', textTransform: 'uppercase', color: 'var(--text-soft)' }}>{t('subscription_type')}</th>
+                                <th style={{ textAlign: locale === 'ar' ? 'right' : 'left', padding: '1.25rem', fontSize: '0.8rem', textTransform: 'uppercase', color: 'var(--text-soft)' }}>{t('costs')}</th>
+                                <th style={{ textAlign: locale === 'ar' ? 'right' : 'left', padding: '1.25rem', fontSize: '0.8rem', textTransform: 'uppercase', color: 'var(--text-soft)' }}>{t('dates_column')}</th>
+                                <th style={{ textAlign: locale === 'ar' ? 'right' : 'left', padding: '1.25rem', fontSize: '0.8rem', textTransform: 'uppercase', color: 'var(--text-soft)' }}>{t('status_label')}</th>
+                                <th style={{ textAlign: locale === 'ar' ? 'left' : 'right', padding: '1.25rem', fontSize: '0.8rem', textTransform: 'uppercase', color: 'var(--text-soft)' }}>{t('quick_actions')}</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -247,27 +247,27 @@ export default function CompanyPaymentsPage() {
                                 <tr key={payment.id} style={{ borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
                                     <td style={{ padding: '1.25rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
                                         <div style={{ fontWeight: '600', fontSize: '0.9rem' }}>{t(SUBSCRIPTION_LABEL_KEY[payment.subscriptionType] ?? 'annually')}</div>
-                                        <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>{t('created_at')} {new Date(payment.createdAt).toLocaleDateString(locale === 'ar' ? 'ar-EG' : 'en-US')}</div>
+                                        <div style={{ fontSize: '0.75rem', color: 'var(--text-faint)' }}>{t('created_at')} {new Date(payment.createdAt).toLocaleDateString(locale === 'ar' ? 'ar-EG' : 'en-US')}</div>
                                     </td>
-                                    <td style={{ padding: '1.25rem', fontWeight: 'bold', color: '#1e293b', textAlign: locale === 'ar' ? 'right' : 'left' }}>
+                                    <td style={{ padding: '1.25rem', fontWeight: 'bold', color: 'var(--text-main)', textAlign: locale === 'ar' ? 'right' : 'left' }}>
                                         ${payment.cost.toLocaleString()}
                                     </td>
                                     <td style={{ padding: '1.25rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
                                         {payment.status === 'PAID' ? (
                                             <div style={{ fontSize: '0.85rem' }}>
-                                                <div><span style={{ color: '#64748b' }}>{t('start_date')}:</span> {new Date(payment.startDate!).toLocaleDateString(locale === 'ar' ? 'ar-EG' : 'en-US')}</div>
+                                                <div><span style={{ color: 'var(--text-soft)' }}>{t('start_date')}:</span> {new Date(payment.startDate!).toLocaleDateString(locale === 'ar' ? 'ar-EG' : 'en-US')}</div>
                                                 <div>
-                                                    <span style={{ color: '#64748b' }}>{t('end_date')}:</span>{' '}
+                                                    <span style={{ color: 'var(--text-soft)' }}>{t('end_date')}:</span>{' '}
                                                     {/* A lifetime subscription has no end date. new Date(null)
                                                         is the epoch, so rendering it unguarded would print
                                                         1 January 1970 to the customer who paid the most. */}
                                                     {payment.endDate
                                                         ? new Date(payment.endDate).toLocaleDateString(locale === 'ar' ? 'ar-EG' : 'en-US')
-                                                        : <span style={{ color: '#6d28d9', fontWeight: 600 }}>∞ {t('never_expires')}</span>}
+                                                        : <span style={{ color: 'var(--lifetime-fg)', fontWeight: 600 }}>∞ {t('never_expires')}</span>}
                                                 </div>
                                             </div>
                                         ) : (
-                                            <span style={{ fontSize: '0.85rem', color: '#94a3b8', fontStyle: 'italic' }}>{t('pending_activation')}</span>
+                                            <span style={{ fontSize: '0.85rem', color: 'var(--text-faint)', fontStyle: 'italic' }}>{t('pending_activation')}</span>
                                         )}
                                     </td>
                                     <td style={{ padding: '1.25rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
@@ -276,8 +276,8 @@ export default function CompanyPaymentsPage() {
                                             borderRadius: '999px',
                                             fontSize: '0.7rem',
                                             fontWeight: 'bold',
-                                            background: payment.status === 'PAID' ? '#dcfce7' : '#fee2e2',
-                                            color: payment.status === 'PAID' ? '#166534' : '#dc2626'
+                                            background: payment.status === 'PAID' ? 'var(--ok-bg)' : 'var(--danger-bg)',
+                                            color: payment.status === 'PAID' ? 'var(--ok-fg)' : 'var(--danger-solid-hover)'
                                         }}>
                                             {payment.status === 'PAID' ? t('status_paid') : t('status_unpaid')}
                                         </span>
@@ -289,12 +289,12 @@ export default function CompanyPaymentsPage() {
                                                 className="btn"
                                                 disabled={payment.status === 'PAID'}
                                                 style={{
-                                                    background: payment.status === 'PAID' ? '#f1f5f9' : '#6366f1',
-                                                    color: payment.status === 'PAID' ? '#94a3b8' : 'white',
+                                                    background: payment.status === 'PAID' ? 'var(--surface-sunk)' : 'var(--brand-primary)',
+                                                    color: payment.status === 'PAID' ? 'var(--text-faint)' : 'white',
                                                     padding: '0.4rem 0.8rem',
                                                     fontSize: '0.8rem',
                                                     cursor: payment.status === 'PAID' ? 'not-allowed' : 'pointer',
-                                                    border: payment.status === 'PAID' ? '1px solid #e2e8f0' : 'none'
+                                                    border: payment.status === 'PAID' ? '1px solid var(--border)' : 'none'
                                                 }}
                                             >
                                                 {payment.status === 'PAID' ? `✅ ${t('status_paid')}` : t('mark_as_paid')}
@@ -305,8 +305,8 @@ export default function CompanyPaymentsPage() {
                                                     onClick={() => handleDelete(payment.id)}
                                                     className="btn"
                                                     style={{
-                                                        background: '#fee2e2',
-                                                        color: '#dc2626',
+                                                        background: 'var(--danger-bg)',
+                                                        color: 'var(--danger-solid-hover)',
                                                         padding: '0.4rem',
                                                         display: 'flex',
                                                         alignItems: 'center',
@@ -357,7 +357,7 @@ export default function CompanyPaymentsPage() {
                     <div style={{ marginBottom: '2rem' }}>
                         <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem', fontWeight: '500' }}>{t('total_cost')}</label>
                         <div style={{ position: 'relative' }}>
-                            <span style={{ position: 'absolute', [locale === 'ar' ? 'right' : 'left']: '1rem', top: '50%', transform: 'translateY(-50%)', color: '#64748b' }}>$</span>
+                            <span style={{ position: 'absolute', [locale === 'ar' ? 'right' : 'left']: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-soft)' }}>$</span>
                             <input
                                 type="number"
                                 step="0.01"
@@ -372,7 +372,7 @@ export default function CompanyPaymentsPage() {
                     </div>
 
                     <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', flexDirection: 'row' }}>
-                        <button type="button" onClick={() => setShowModal(false)} className="btn" style={{ background: '#f1f5f9', color: '#64748b' }}>
+                        <button type="button" onClick={() => setShowModal(false)} className="btn" style={{ background: 'var(--surface-sunk)', color: 'var(--text-soft)' }}>
                             {t('cancel')}
                         </button>
                         <button type="submit" disabled={submitting} className="btn btn-primary">

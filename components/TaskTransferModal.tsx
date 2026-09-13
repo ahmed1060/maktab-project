@@ -42,10 +42,10 @@ export default function TaskTransferModal({
                 <div style={{
                     maxHeight: '200px',
                     overflowY: 'auto',
-                    border: '1px solid #e2e8f0',
+                    border: '1px solid var(--border)',
                     borderRadius: '0.5rem',
                     padding: '0.75rem',
-                    background: '#f8fafc',
+                    background: 'var(--surface-subtle)',
                     marginBottom: '1.5rem'
                 }}>
                     {allUsers.length > 0 ? (
@@ -71,22 +71,22 @@ export default function TaskTransferModal({
                                         }}
                                     />
                                     <span style={{ fontSize: '0.9rem' }}>
-                                        {u.firstName} {u.lastName} <small style={{ color: '#64748b' }}>({t(`role_${u.role?.toLowerCase()}` as any)})</small>
+                                        {u.firstName} {u.lastName} <small style={{ color: 'var(--text-soft)' }}>({t(`role_${u.role?.toLowerCase()}` as any)})</small>
                                     </span>
                                 </label>
                             ))
                         ) : (
-                            <div style={{ fontSize: '0.9rem', color: '#64748b', textAlign: 'center' }}>{t('no_data_available')}</div>
+                            <div style={{ fontSize: '0.9rem', color: 'var(--text-soft)', textAlign: 'center' }}>{t('no_data_available')}</div>
                         )
                     ) : userFetchError ? (
-                        <div style={{ fontSize: '0.9rem', color: '#ef4444' }}>{t('failed_fetch_data')}</div>
+                        <div style={{ fontSize: '0.9rem', color: 'var(--danger-solid)' }}>{t('failed_fetch_data')}</div>
                     ) : (
-                        <div style={{ fontSize: '0.9rem', color: '#64748b' }}>{locale === 'ar' ? 'جاري التحميل...' : 'Loading...'}</div>
+                        <div style={{ fontSize: '0.9rem', color: 'var(--text-soft)' }}>{locale === 'ar' ? 'جاري التحميل...' : 'Loading...'}</div>
                     )}
                 </div>
 
                 <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', flexDirection: 'row' }}>
-                    <button onClick={onClose} className="btn" style={{ background: '#e2e8f0' }}>{t('cancel')}</button>
+                    <button onClick={onClose} className="btn" style={{ background: 'var(--border)' }}>{t('cancel')}</button>
                     <button onClick={onTransfer} disabled={transferAssigneeIds.length === 0 || transferring} className="btn btn-primary">{transferring ? '...' : t('confirm_transfer_button')}</button>
                 </div>
             </div>

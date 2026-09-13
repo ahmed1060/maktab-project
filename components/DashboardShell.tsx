@@ -189,7 +189,7 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
 
                                     const nameLength = cleanName.length;
                                     const textStyle: React.CSSProperties = {
-                                        background: 'linear-gradient(to right, #ffffff, #a5b4fc)',
+                                        background: 'linear-gradient(to right, var(--surface), var(--info-border-indigo))',
                                         WebkitBackgroundClip: 'text',
                                         WebkitTextFillColor: 'transparent',
                                         fontSize: nameLength > 20
@@ -264,7 +264,7 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
                     overflowX: 'hidden',
                     scrollbarGutter: 'stable'
                 }}>
-                    {!isCollapsed && <p style={{ fontSize: '0.75rem', fontWeight: 'bold', textTransform: 'uppercase', color: '#94a3b8', [isRtl ? 'paddingRight' : 'paddingLeft']: '1rem', marginBottom: '0.25rem', letterSpacing: '0.1em' }}>{t('menu')}</p>}
+                    {!isCollapsed && <p style={{ fontSize: '0.75rem', fontWeight: 'bold', textTransform: 'uppercase', color: 'var(--text-faint)', [isRtl ? 'paddingRight' : 'paddingLeft']: '1rem', marginBottom: '0.25rem', letterSpacing: '0.1em' }}>{t('menu')}</p>}
 
                     {[
                         { href: '/dashboard', label: t('dashboard'), icon: '📊' },
@@ -326,7 +326,7 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
                             {isCollapsed ? (
                                 <hr style={{ border: 'none', borderTop: '1px solid rgba(255, 255, 255, 0.3)', margin: '1rem auto', width: '50%' }} />
                             ) : (
-                                <p style={{ fontSize: '0.75rem', fontWeight: 'bold', textTransform: 'uppercase', color: '#94a3b8', [isRtl ? 'paddingRight' : 'paddingLeft']: '1rem', marginTop: '1.5rem', marginBottom: '0.25rem', letterSpacing: '0.1em' }}>{t('management')}</p>
+                                <p style={{ fontSize: '0.75rem', fontWeight: 'bold', textTransform: 'uppercase', color: 'var(--text-faint)', [isRtl ? 'paddingRight' : 'paddingLeft']: '1rem', marginTop: '1.5rem', marginBottom: '0.25rem', letterSpacing: '0.1em' }}>{t('management')}</p>
                             )}
 
                             {[
@@ -387,7 +387,7 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
                             {isCollapsed ? (
                                 <hr style={{ border: 'none', borderTop: '1px solid rgba(255, 255, 255, 0.3)', margin: '1rem auto', width: '50%' }} />
                             ) : (
-                                <p style={{ fontSize: '0.75rem', fontWeight: 'bold', textTransform: 'uppercase', color: '#94a3b8', [isRtl ? 'paddingRight' : 'paddingLeft']: '1rem', marginTop: '1.5rem', marginBottom: '0.25rem', letterSpacing: '0.1em' }}>{t('system')}</p>
+                                <p style={{ fontSize: '0.75rem', fontWeight: 'bold', textTransform: 'uppercase', color: 'var(--text-faint)', [isRtl ? 'paddingRight' : 'paddingLeft']: '1rem', marginTop: '1.5rem', marginBottom: '0.25rem', letterSpacing: '0.1em' }}>{t('system')}</p>
                             )}
 
                             {[
@@ -500,7 +500,7 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
                 }} className="floating-attribution">
                     <span style={{
                         fontSize: '0.45rem',
-                        color: '#64748b',
+                        color: 'var(--text-soft)',
                         fontWeight: '600',
                         textTransform: 'uppercase',
                         letterSpacing: '0.1em',
@@ -510,13 +510,13 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
                     </span>
                     <span style={{
                         fontSize: '1.35rem',
-                        color: '#1e293b',
+                        color: 'var(--text-main)',
                         fontWeight: '900',
                         letterSpacing: '0.15em',
                         marginTop: '0.05rem',
                         textTransform: 'uppercase',
                         fontFamily: "'Inter', sans-serif",
-                        background: 'linear-gradient(135deg, #1e293b 0%, #475569 100%)',
+                        background: 'linear-gradient(135deg, var(--text-main) 0%, var(--text-muted) 100%)',
                         WebkitBackgroundClip: 'text',
                         WebkitTextFillColor: 'transparent',
                     }}>

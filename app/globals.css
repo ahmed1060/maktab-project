@@ -25,6 +25,141 @@
 
   --radius: 1.5rem;
   /* Super rounded modern look */
+
+  /* ── Semantic tokens (D1) ─────────────────────────────────────────────────
+     Named by role, never by colour. This is what turns a dark palette into a
+     twenty-line block rather than 1,547 more decisions: --text-muted has one
+     dark value, whereas "#64748b" would have to be judged at each of its 222
+     call sites.
+
+     Every value here is the exact hex it replaces, so tokenising is provably
+     pixel-identical — the acceptance test for D1 is that the app looks the same
+     afterwards. Dark values arrive in D2 and nothing above this line changes.
+
+     The scale is the one the codebase already used by hand: Tailwind slate for
+     surfaces and text, and its status families for the badge pairs. */
+
+  /* Surfaces, lightest to most recessed */
+  --surface: #ffffff;
+  --surface-subtle: #f8fafc;
+  --surface-sunk: #f1f5f9;
+
+  /* Borders, by weight */
+  --border: #e2e8f0;
+  --border-firm: #cbd5e1;
+
+  /* Text, strongest to faintest. --text-main and --text-muted already existed
+     and keep their values; the rest fill in the scale that was being written
+     out by hand. */
+  --text-strong: #0f172a;
+  --text-body: #334155;
+  /* --text-main: #1e293b and --text-muted: #475569 are declared above */
+  --text-soft: #64748b;
+  --text-faint: #94a3b8;
+  --text-on-accent: #ffffff;
+
+  /* Status pairs. Each is a background and a foreground chosen together — in
+     D2 the dark equivalents are re-derived as pairs, never inverted, because
+     flipping a light pair produces a colour nobody chose. */
+  --ok-bg: #dcfce7;
+  --ok-fg: #166534;
+  --ok-solid: #10b981;
+
+  --danger-bg: #fee2e2;
+  --danger-bg-subtle: #fef2f2;
+  --danger-border: #fecaca;
+  --danger-fg: #991b1b;
+  --danger-fg-strong: #b91c1c;
+  --danger-solid: #ef4444;
+  --danger-solid-hover: #dc2626;
+
+  --warn-bg: #fef3c7;
+  --warn-border: #fcd34d;
+  --warn-fg: #92400e;
+  --warn-solid: #f59e0b;
+
+  --info-bg: #e0f2fe;
+  --info-bg-subtle: #eff6ff;
+  --info-fg: #0369a1;
+  --info-solid: #3b82f6;
+  --info-solid-hover: #2563eb;
+
+
+  /* Subscription and bundle badges, so lib/subscription-display.ts and
+     lib/recurrence.ts stop carrying literals of their own. */
+  --lifetime-bg: #ede9fe;
+  --lifetime-fg: #6d28d9;
+
+  /* Second wave: the long tail the first pass left. Same families, more
+     weights — the codebase reached for a lighter or darker shade whenever a
+     badge sat on an unusual ground, and each of those needs its own dark
+     counterpart rather than being collapsed into the nearest neighbour. */
+  --ok-bg-strong: #bbf7d0;
+  --ok-bg-subtle: #f0fdf4;
+  --ok-bg-faint: #d1fae5;
+  --ok-fg-strong: #15803d;
+  --ok-fg-deep: #065f46;
+  --ok-solid-alt: #22c55e;
+  --ok-solid-hover: #16a34a;
+  --ok-border: #86efac;
+
+  --danger-border-firm: #fca5a5;
+  --danger-bg-tint: #fff1f2;
+
+  /* Orange and yellow both read as "warning" here but were never the same
+     pair, so they keep separate scales rather than being merged. */
+  --warn-bg-warm: #ffedd5;
+  --warn-bg-warm-subtle: #fff7ed;
+  --warn-border-warm: #fed7aa;
+  --warn-border-warm-firm: #fdba74;
+  --warn-fg-warm: #9a3412;
+  --warn-fg-warm-strong: #c2410c;
+  --warn-solid-warm: #fb923c;
+
+  --warn-bg-yellow: #fef9c3;
+  --warn-bg-yellow-subtle: #fffbeb;
+  --warn-border-yellow: #fde68a;
+  --warn-fg-yellow: #854d0e;
+  --warn-fg-deep: #78350f;
+  --warn-fg-mid: #b45309;
+  --warn-solid-hover: #d97706;
+
+  --info-bg-sky: #f0f9ff;
+  --info-bg-sky-firm: #bae6fd;
+  --info-bg-indigo: #dbeafe;
+  --info-bg-indigo-subtle: #eef2ff;
+  --info-bg-indigo-faint: #e0e7ff;
+  --info-border-indigo: #a5b4fc;
+  --info-fg-deep: #075985;
+  --info-fg-deepest: #0c4a6e;
+  --info-fg-indigo: #1e40af;
+  --info-solid-sky: #0ea5e9;
+  --info-solid-sky-light: #38bdf8;
+
+  --accent-fg: #5b21b6;
+  --accent-solid: #a855f7;
+  --accent-solid-deep: #7c3aed;
+  --accent-deep: #4338ca;
+  --accent-deepest: #3730a3;
+
+  /* Plain greys written as shorthand or as the odd one-off. */
+  --grey-100: #eee;
+  --grey-200: #ddd;
+  --grey-400: #9ca3af;
+  --grey-600: #666;
+
+  /* The brand marks. Aliases rather than new values, so there is still exactly
+     one place each brand colour is defined. */
+  --brand-primary: var(--primary);
+  --brand-primary-hover: var(--primary-hover);
+  --brand-accent: var(--accent);
+
+  /* The login hero gradient. Its own pair rather than reusing the brand tokens,
+     because it is a decorative statement on the sign-in page and D2 may well
+     decide it stays exactly as it is on a dark ground — a decision worth making
+     once here rather than eleven times in that file. */
+  --hero-from: #667eea;
+  --hero-to: #764ba2;
 }
 
 body {

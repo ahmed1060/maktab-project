@@ -238,21 +238,21 @@ export default function VendorsPage() {
                                         <h3 className="text-lg font-bold text-slate-800 leading-tight" style={{ margin: 0 }}>
                                             {vendor.name}
                                         </h3>
-                                        <div style={{ fontSize: '0.85rem', color: '#64748b', display: 'flex', flexWrap: 'wrap', gap: '0.25rem 0.75rem' }}>
+                                        <div style={{ fontSize: '0.85rem', color: 'var(--text-soft)', display: 'flex', flexWrap: 'wrap', gap: '0.25rem 0.75rem' }}>
                                             {/* Only shown in the "all companies" view — vendor
                                                 names are only unique per company, so two
                                                 different companies can each have a vendor with
                                                 the same name and there's nothing else on the
                                                 card to tell them apart. */}
                                             {isAllCompaniesView && vendor.company?.name && (
-                                                <span style={{ background: '#f1f5f9', color: '#475569', padding: '0.1rem 0.5rem', borderRadius: '9999px', fontWeight: 500 }}>
+                                                <span style={{ background: 'var(--surface-sunk)', color: 'var(--text-muted)', padding: '0.1rem 0.5rem', borderRadius: '9999px', fontWeight: 500 }}>
                                                     🏢 {vendor.company.name}
                                                 </span>
                                             )}
                                             <span>👤 {vendor.ownerName}</span>
                                             <span>📞 {vendor.mobileNumber}</span>
                                             {vendor.locationLink ? (
-                                                <a href={vendor.locationLink} target="_blank" rel="noopener noreferrer" style={{ color: '#3b82f6' }}>
+                                                <a href={vendor.locationLink} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--info-solid)' }}>
                                                     📍 {vendor.locationName}
                                                 </a>
                                             ) : (
@@ -266,7 +266,7 @@ export default function VendorsPage() {
                                             already labels the same action there (with
                                             the actual Super Admin's name, since that
                                             page resolves it from the audit trail). */}
-                                        <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '0.1rem' }}>
+                                        <div style={{ fontSize: '0.75rem', color: 'var(--text-faint)', marginTop: '0.1rem' }}>
                                             {t('vendor_created_by' as any) || 'Created by'}: {vendor.createdBy ? `${vendor.createdBy.firstName} ${vendor.createdBy.lastName}` : t('role_super_admin')}
                                         </div>
                                     </div>
@@ -292,7 +292,7 @@ export default function VendorsPage() {
                                                 }}
                                                 className="btn"
                                                 style={{
-                                                    background: '#eff6ff', color: '#2563eb', padding: '0.4rem 0.85rem',
+                                                    background: 'var(--info-bg-subtle)', color: 'var(--info-solid-hover)', padding: '0.4rem 0.85rem',
                                                     fontSize: '0.8125rem', border: 'none', cursor: 'pointer',
                                                     whiteSpace: 'nowrap', flex: isMobile ? 1 : 'unset'
                                                 }}
@@ -303,7 +303,7 @@ export default function VendorsPage() {
                                                 onClick={() => setDeleteConfirm({ isOpen: true, vendor })}
                                                 className="btn"
                                                 style={{
-                                                    background: '#fef2f2', color: '#dc2626', padding: '0.4rem 0.85rem',
+                                                    background: 'var(--danger-bg-subtle)', color: 'var(--danger-solid-hover)', padding: '0.4rem 0.85rem',
                                                     fontSize: '0.8125rem', border: 'none', cursor: 'pointer',
                                                     whiteSpace: 'nowrap', flex: isMobile ? 1 : 'unset'
                                                 }}
@@ -327,7 +327,7 @@ export default function VendorsPage() {
                 }}>
                     <div className="absolute inset-0" onClick={() => !isSubmitting && setIsAddOpen(false)} />
                     <div style={{ background: 'white', padding: '2rem', borderRadius: '12px', width: '100%', maxWidth: '500px', maxHeight: '90vh', overflowY: 'auto', position: 'relative', zIndex: 10, direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
-                        <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1.5rem', color: '#1e293b' }}>
+                        <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1.5rem', color: 'var(--text-main)' }}>
                             {locale === 'ar' ? `إضافة ${vendorsLabel}` : `Add ${vendorsLabel}`}
                         </h2>
                         <form onSubmit={handleCreate}>
@@ -336,7 +336,7 @@ export default function VendorsPage() {
                                 sensible target and this would be redundant. */}
                             {isAllCompaniesView && (
                                 <div style={{ marginBottom: '1rem' }}>
-                                    <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', color: '#64748b', textAlign: locale === 'ar' ? 'right' : 'left' }}>
+                                    <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', color: 'var(--text-soft)', textAlign: locale === 'ar' ? 'right' : 'left' }}>
                                         {t('select_company' as any) || 'Select Company'}
                                     </label>
                                     <select
@@ -355,7 +355,7 @@ export default function VendorsPage() {
                             )}
                             <VendorFormFields form={addForm} setForm={setAddForm} locale={locale} t={t} />
                             <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', marginTop: '1rem' }}>
-                                <button type="button" onClick={() => setIsAddOpen(false)} style={{ padding: '0.75rem 1.5rem', border: '1px solid #e2e8f0', borderRadius: '0.5rem', background: 'transparent', cursor: 'pointer' }}>
+                                <button type="button" onClick={() => setIsAddOpen(false)} style={{ padding: '0.75rem 1.5rem', border: '1px solid var(--border)', borderRadius: '0.5rem', background: 'transparent', cursor: 'pointer' }}>
                                     {t('cancel')}
                                 </button>
                                 <button
@@ -380,13 +380,13 @@ export default function VendorsPage() {
                 }}>
                     <div className="absolute inset-0" onClick={() => !isEditing && setIsEditOpen(false)} />
                     <div style={{ background: 'white', padding: '2rem', borderRadius: '12px', width: '100%', maxWidth: '500px', maxHeight: '90vh', overflowY: 'auto', position: 'relative', zIndex: 10, direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
-                        <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1.5rem', color: '#1e293b' }}>
+                        <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1.5rem', color: 'var(--text-main)' }}>
                             {locale === 'ar' ? `تعديل ${vendorsLabel}` : `Edit ${vendorsLabel}`}
                         </h2>
                         <form onSubmit={handleEdit}>
                             <VendorFormFields form={editForm} setForm={setEditForm} locale={locale} t={t} />
                             <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', marginTop: '1rem' }}>
-                                <button type="button" onClick={() => setIsEditOpen(false)} style={{ padding: '0.75rem 1.5rem', border: '1px solid #e2e8f0', borderRadius: '0.5rem', background: 'transparent', cursor: 'pointer' }}>
+                                <button type="button" onClick={() => setIsEditOpen(false)} style={{ padding: '0.75rem 1.5rem', border: '1px solid var(--border)', borderRadius: '0.5rem', background: 'transparent', cursor: 'pointer' }}>
                                     {t('cancel')}
                                 </button>
                                 <button
@@ -437,8 +437,8 @@ function VendorFormFields({ form, setForm, locale, t }: {
     locale: string
     t: (key: any) => string
 }) {
-    const labelStyle: React.CSSProperties = { display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', color: '#64748b', textAlign: locale === 'ar' ? 'right' : 'left' }
-    const inputStyle: React.CSSProperties = { width: '100%', padding: '0.5rem', border: '1px solid #e2e8f0', borderRadius: '0.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }
+    const labelStyle: React.CSSProperties = { display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', color: 'var(--text-soft)', textAlign: locale === 'ar' ? 'right' : 'left' }
+    const inputStyle: React.CSSProperties = { width: '100%', padding: '0.5rem', border: '1px solid var(--border)', borderRadius: '0.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }
 
     return (
         <>

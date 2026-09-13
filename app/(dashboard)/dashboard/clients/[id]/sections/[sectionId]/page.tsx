@@ -366,13 +366,13 @@ export default function SectionNotesPage() {
     const getRoleStyles = (role: string) => {
         switch (role) {
             case 'SUPER_ADMIN':
-                return { background: 'rgba(254, 243, 199, 0.5)', color: '#92400e', border: '1px solid rgba(251, 191, 36, 0.3)' }
+                return { background: 'rgba(254, 243, 199, 0.5)', color: 'var(--warn-fg)', border: '1px solid rgba(251, 191, 36, 0.3)' }
             case 'ADMIN':
-                return { background: 'rgba(224, 242, 254, 0.5)', color: '#075985', border: '1px solid rgba(56, 189, 248, 0.3)' }
+                return { background: 'rgba(224, 242, 254, 0.5)', color: 'var(--info-fg-deep)', border: '1px solid rgba(56, 189, 248, 0.3)' }
             case 'TEAM_LEADER':
-                return { background: 'rgba(245, 243, 199, 0.5)', color: '#5b21b6', border: '1px solid rgba(167, 139, 250, 0.3)' }
+                return { background: 'rgba(245, 243, 199, 0.5)', color: 'var(--accent-fg)', border: '1px solid rgba(167, 139, 250, 0.3)' }
             default:
-                return { background: 'rgba(241, 245, 249, 0.5)', color: '#475569', border: '1px solid rgba(148, 163, 184, 0.3)' }
+                return { background: 'rgba(241, 245, 249, 0.5)', color: 'var(--text-muted)', border: '1px solid rgba(148, 163, 184, 0.3)' }
         }
     }
 
@@ -465,7 +465,7 @@ export default function SectionNotesPage() {
                                     marginBottom: '0.25rem',
                                     borderRadius: '1.5rem',
                                     background: visualHighlightId === note.id ? 'rgba(168, 85, 247, 0.05)' : '',
-                                    borderInlineStart: visualHighlightId === note.id ? '4px solid #a855f7' : ''
+                                    borderInlineStart: visualHighlightId === note.id ? '4px solid var(--accent-solid)' : ''
                                 }}
                             >
                                 {/* Header: User & Role */}
@@ -514,7 +514,7 @@ export default function SectionNotesPage() {
                                 <div style={{ flexGrow: 1, marginBottom: '1.25rem' }}>
                                     <p style={{
                                         fontSize: '0.95rem',
-                                        color: '#334155',
+                                        color: 'var(--text-body)',
                                         lineHeight: '1.6',
                                         margin: 0,
                                         display: '-webkit-box',
@@ -567,24 +567,24 @@ export default function SectionNotesPage() {
 
                                     <div style={{
                                         fontSize: '0.75rem',
-                                        color: '#94a3b8',
+                                        color: 'var(--text-faint)',
                                         display: 'flex',
                                         flexDirection: 'column',
                                         gap: '0.25rem',
                                         marginTop: '0.75rem',
                                         paddingTop: '0.75rem',
-                                        borderTop: '1px dashed #f1f5f9',
+                                        borderTop: '1px dashed var(--surface-sunk)',
                                         width: '100%',
                                         position: 'relative'
                                     }}>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
                                             <span style={{
                                                 padding: '0.15rem 0.4rem',
-                                                background: '#f1f5f9',
+                                                background: 'var(--surface-sunk)',
                                                 borderRadius: '0.4rem',
                                                 fontWeight: '700',
                                                 fontSize: '0.65rem',
-                                                color: '#64748b'
+                                                color: 'var(--text-soft)'
                                             }}>
                                                 {(note.createdBy?.role || 'SYSTEM').replace(/_/g, ' ')}
                                             </span>
@@ -596,15 +596,15 @@ export default function SectionNotesPage() {
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
                                                 <span style={{
                                                     padding: '0.15rem 0.4rem',
-                                                    background: '#f0f9ff',
+                                                    background: 'var(--info-bg-sky)',
                                                     borderRadius: '0.4rem',
                                                     fontWeight: '700',
                                                     fontSize: '0.65rem',
-                                                    color: '#0ea5e9'
+                                                    color: 'var(--info-solid-sky)'
                                                 }}>
                                                     {(note.lastEditedBy.role || 'SYSTEM').replace(/_/g, ' ')}
                                                 </span>
-                                                <span style={{ color: '#0ea5e9' }}>
+                                                <span style={{ color: 'var(--info-solid-sky)' }}>
                                                     {t('updated_by' as any) || 'Updated by'} {note.lastEditedBy.firstName} {note.lastEditedBy.lastName} {t('at' as any) || 'at'} {note.lastEditedAt ? new Date(note.lastEditedAt).toLocaleDateString(locale === 'ar' ? 'ar-EG' : 'en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) + ', ' + new Date(note.lastEditedAt).toLocaleTimeString(locale === 'ar' ? 'ar-EG' : 'en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) : ''}
                                                 </span>
                                             </div>
@@ -623,7 +623,7 @@ export default function SectionNotesPage() {
                                                         setPendingFiles([])
                                                         setIsEditModalOpen(true)
                                                     }}
-                                                    style={{ padding: '0.4rem', color: '#64748b', background: 'none', border: 'none', cursor: 'pointer' }}
+                                                    style={{ padding: '0.4rem', color: 'var(--text-soft)', background: 'none', border: 'none', cursor: 'pointer' }}
                                                     className="hover:text-blue-500 transition-colors"
                                                 >
                                                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
@@ -632,7 +632,7 @@ export default function SectionNotesPage() {
                                             {canDelete && (
                                                 <button
                                                     onClick={() => setDeleteConfirm({ isOpen: true, note })}
-                                                    style={{ padding: '0.4rem', color: '#64748b', background: 'none', border: 'none', cursor: 'pointer' }}
+                                                    style={{ padding: '0.4rem', color: 'var(--text-soft)', background: 'none', border: 'none', cursor: 'pointer' }}
                                                     className="hover:text-red-500 transition-colors"
                                                 >
                                                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
@@ -678,14 +678,14 @@ export default function SectionNotesPage() {
                                 border: '1px solid rgba(255, 255, 255, 0.4)'
                             }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-                                    <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#1e293b', margin: 0 }}>{t('add_note_button' as any)}</h2>
-                                    <span style={{ fontSize: '0.75rem', color: newNoteContent.length > MAX_CHARS ? '#ef4444' : '#64748b' }}>
+                                    <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'var(--text-main)', margin: 0 }}>{t('add_note_button' as any)}</h2>
+                                    <span style={{ fontSize: '0.75rem', color: newNoteContent.length > MAX_CHARS ? 'var(--danger-solid)' : 'var(--text-soft)' }}>
                                         {newNoteContent.length}/{MAX_CHARS}
                                     </span>
                                 </div>
                                 <form onSubmit={handleCreateNote}>
                                     <div style={{ marginBottom: '1.5rem' }}>
-                                        <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', color: '#64748b', textAlign: locale === 'ar' ? 'right' : 'left' }}>
+                                        <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', color: 'var(--text-soft)', textAlign: locale === 'ar' ? 'right' : 'left' }}>
                                             {t('note_content_label' as any)}
                                         </label>
                                         <textarea
@@ -695,7 +695,7 @@ export default function SectionNotesPage() {
                                             style={{
                                                 width: '100%',
                                                 padding: '0.75rem',
-                                                border: `1px solid ${newNoteContent.length > MAX_CHARS ? '#ef4444' : '#e2e8f0'}`,
+                                                border: `1px solid ${newNoteContent.length > MAX_CHARS ? 'var(--danger-solid)' : 'var(--border)'}`,
                                                 borderRadius: '0.5rem',
                                                 minHeight: '120px',
                                                 lineHeight: '1.5',
@@ -707,21 +707,21 @@ export default function SectionNotesPage() {
                                             autoFocus
                                         />
                                         {newNoteContent.length > MAX_CHARS && (
-                                            <p style={{ color: '#ef4444', fontSize: '0.75rem', marginTop: '0.5rem' }}>
+                                            <p style={{ color: 'var(--danger-solid)', fontSize: '0.75rem', marginTop: '0.5rem' }}>
                                                 {t('note_limit_exceeded' as any)}
                                             </p>
                                         )}
                                     </div>
 
                                     <div style={{ marginBottom: '1.5rem' }}>
-                                        <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.75rem', color: '#64748b', textAlign: locale === 'ar' ? 'right' : 'left' }}>
+                                        <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.75rem', color: 'var(--text-soft)', textAlign: locale === 'ar' ? 'right' : 'left' }}>
                                             {t('attachment_label' as any)}
                                         </label>
                                         <div
                                             onDragOver={e => { e.preventDefault(); setIsDragging(true); }}
                                             onDragLeave={() => setIsDragging(false)}
                                             onDrop={e => { e.preventDefault(); setIsDragging(false); if (e.dataTransfer.files.length) handleFiles(Array.from(e.dataTransfer.files)); }}
-                                            style={{ border: `2px dashed ${isDragging ? '#3b82f6' : '#cbd5e1'}`, borderRadius: '0.75rem', padding: '1.5rem', textAlign: 'center', background: isDragging ? '#eff6ff' : '#f8fafc', transition: 'all 0.2s', cursor: 'pointer', position: 'relative' }}
+                                            style={{ border: `2px dashed ${isDragging ? 'var(--info-solid)' : 'var(--border-firm)'}`, borderRadius: '0.75rem', padding: '1.5rem', textAlign: 'center', background: isDragging ? 'var(--info-bg-subtle)' : 'var(--surface-subtle)', transition: 'all 0.2s', cursor: 'pointer', position: 'relative' }}
                                         >
                                             <input
                                                 type="file"
@@ -733,19 +733,19 @@ export default function SectionNotesPage() {
                                             />
                                             <div style={{ pointerEvents: 'none' }}>
                                                 <div style={{ fontSize: '1.5rem', marginBottom: '0.25rem' }}>☁️</div>
-                                                <div style={{ fontSize: '0.85rem', fontWeight: '600', color: '#475569' }}>{t('upload_drag_files_msg')}</div>
+                                                <div style={{ fontSize: '0.85rem', fontWeight: '600', color: 'var(--text-muted)' }}>{t('upload_drag_files_msg')}</div>
                                             </div>
                                         </div>
 
                                         {pendingFiles.length > 0 && (
                                             <div style={{ marginTop: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
                                                 {pendingFiles.map((f, i) => (
-                                                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 0.75rem', background: 'white', border: '1px solid #e2e8f0', borderRadius: '0.5rem' }}>
+                                                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 0.75rem', background: 'white', border: '1px solid var(--border)', borderRadius: '0.5rem' }}>
                                                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', overflow: 'hidden' }}>
                                                             <span style={{ fontSize: '1rem' }}>📄</span>
-                                                            <div style={{ fontSize: '0.75rem', fontWeight: '500', color: '#1e293b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{f.name}</div>
+                                                            <div style={{ fontSize: '0.75rem', fontWeight: '500', color: 'var(--text-main)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{f.name}</div>
                                                         </div>
-                                                        <button type="button" onClick={() => removePendingFile(i)} style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', fontSize: '1rem', fontWeight: 'bold' }}>×</button>
+                                                        <button type="button" onClick={() => removePendingFile(i)} style={{ color: 'var(--danger-solid)', background: 'none', border: 'none', cursor: 'pointer', fontSize: '1rem', fontWeight: 'bold' }}>×</button>
                                                     </div>
                                                 ))}
                                             </div>
@@ -762,7 +762,7 @@ export default function SectionNotesPage() {
                                             />
                                         </div>
                                         <div style={{ flex: 1 }}>
-                                            <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', color: '#64748b', textAlign: locale === 'ar' ? 'right' : 'left' }}>
+                                            <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', color: 'var(--text-soft)', textAlign: locale === 'ar' ? 'right' : 'left' }}>
                                                 {t('reminder_days_label' as any)}
                                             </label>
                                             <input
@@ -783,7 +783,7 @@ export default function SectionNotesPage() {
                                                 setPendingFiles([])
                                                 setIsModalOpen(false)
                                             }}
-                                            style={{ padding: '0.75rem 1.5rem', border: '1px solid #e2e8f0', borderRadius: '0.5rem', background: 'transparent', cursor: 'pointer' }}
+                                            style={{ padding: '0.75rem 1.5rem', border: '1px solid var(--border)', borderRadius: '0.5rem', background: 'transparent', cursor: 'pointer' }}
                                         >
                                             {t('cancel')}
                                         </button>
@@ -837,7 +837,7 @@ export default function SectionNotesPage() {
                 >
                     <form onSubmit={handleEditSection} style={{ direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
                         <div style={{ marginBottom: '1.5rem' }}>
-                            <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', color: '#64748b', textAlign: locale === 'ar' ? 'right' : 'left' }}>
+                            <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', color: 'var(--text-soft)', textAlign: locale === 'ar' ? 'right' : 'left' }}>
                                 {t('section_title_label' as any)}
                             </label>
                             <input
@@ -845,7 +845,7 @@ export default function SectionNotesPage() {
                                 value={editSectionTitle}
                                 onChange={(e) => setEditSectionTitle(e.target.value)}
                                 className="input"
-                                style={{ width: '100%', padding: '0.5rem', border: '1px solid #e2e8f0', borderRadius: '0.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}
+                                style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border)', borderRadius: '0.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}
                                 placeholder={t('section_title_placeholder' as any)}
                                 autoFocus
                             />
@@ -856,7 +856,7 @@ export default function SectionNotesPage() {
                                 type="button"
                                 onClick={() => setIsEditSectionModalOpen(false)}
                                 className="btn"
-                                style={{ background: '#f1f5f9' }}
+                                style={{ background: 'var(--surface-sunk)' }}
                             >
                                 {t('cancel')}
                             </button>
@@ -898,14 +898,14 @@ export default function SectionNotesPage() {
                                 border: '1px solid rgba(255, 255, 255, 0.4)'
                             }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-                                    <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#1e293b', margin: 0 }}>{t('edit_note_title' as any) || 'Edit Note'}</h2>
-                                    <span style={{ fontSize: '0.75rem', color: editNoteContent.length > MAX_CHARS ? '#ef4444' : '#64748b' }}>
+                                    <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'var(--text-main)', margin: 0 }}>{t('edit_note_title' as any) || 'Edit Note'}</h2>
+                                    <span style={{ fontSize: '0.75rem', color: editNoteContent.length > MAX_CHARS ? 'var(--danger-solid)' : 'var(--text-soft)' }}>
                                         {editNoteContent.length}/{MAX_CHARS}
                                     </span>
                                 </div>
                                 <form onSubmit={handleUpdateNote}>
                                     <div style={{ marginBottom: '1.5rem' }}>
-                                        <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', color: '#64748b', textAlign: locale === 'ar' ? 'right' : 'left' }}>
+                                        <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', color: 'var(--text-soft)', textAlign: locale === 'ar' ? 'right' : 'left' }}>
                                             {t('note_content_label' as any)}
                                         </label>
                                         <textarea
@@ -915,7 +915,7 @@ export default function SectionNotesPage() {
                                             style={{
                                                 width: '100%',
                                                 padding: '0.75rem',
-                                                border: `1px solid ${editNoteContent.length > MAX_CHARS ? '#ef4444' : '#e2e8f0'}`,
+                                                border: `1px solid ${editNoteContent.length > MAX_CHARS ? 'var(--danger-solid)' : 'var(--border)'}`,
                                                 borderRadius: '0.5rem',
                                                 minHeight: '120px',
                                                 lineHeight: '1.5',
@@ -927,14 +927,14 @@ export default function SectionNotesPage() {
                                             autoFocus
                                         />
                                         {editNoteContent.length > MAX_CHARS && (
-                                            <p style={{ color: '#ef4444', fontSize: '0.75rem', marginTop: '0.5rem' }}>
+                                            <p style={{ color: 'var(--danger-solid)', fontSize: '0.75rem', marginTop: '0.5rem' }}>
                                                 {t('note_limit_exceeded' as any)}
                                             </p>
                                         )}
                                     </div>
 
                                     <div style={{ marginBottom: '1.5rem' }}>
-                                        <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.75rem', color: '#64748b', textAlign: locale === 'ar' ? 'right' : 'left' }}>
+                                        <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.75rem', color: 'var(--text-soft)', textAlign: locale === 'ar' ? 'right' : 'left' }}>
                                             {t('attachment_label' as any)}
                                         </label>
 
@@ -944,14 +944,14 @@ export default function SectionNotesPage() {
                                                 {editExistingAttachments.map((url, i) => {
                                                     if (!url) return null;
                                                     return (
-                                                        <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 0.75rem', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '0.5rem' }}>
+                                                        <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 0.75rem', background: 'var(--surface-subtle)', border: '1px solid var(--border)', borderRadius: '0.5rem' }}>
                                                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', overflow: 'hidden' }}>
                                                                 <span style={{ fontSize: '1rem' }}>🔗</span>
-                                                                <div style={{ fontSize: '0.75rem', fontWeight: '500', color: '#0369a1', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                                                <div style={{ fontSize: '0.75rem', fontWeight: '500', color: 'var(--info-fg)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                                                     {typeof url === 'string' ? url.split('/').pop() : url.name}
                                                                 </div>
                                                             </div>
-                                                            <button type="button" onClick={() => handleRemoveExistingAttachment(url)} style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', fontSize: '1rem', fontWeight: 'bold' }}>×</button>
+                                                            <button type="button" onClick={() => handleRemoveExistingAttachment(url)} style={{ color: 'var(--danger-solid)', background: 'none', border: 'none', cursor: 'pointer', fontSize: '1rem', fontWeight: 'bold' }}>×</button>
                                                         </div>
                                                     )
                                                 })}
@@ -962,7 +962,7 @@ export default function SectionNotesPage() {
                                             onDragOver={e => { e.preventDefault(); setIsDragging(true); }}
                                             onDragLeave={() => setIsDragging(false)}
                                             onDrop={e => { e.preventDefault(); setIsDragging(false); if (e.dataTransfer.files.length) handleFiles(Array.from(e.dataTransfer.files)); }}
-                                            style={{ border: `2px dashed ${isDragging ? '#3b82f6' : '#cbd5e1'}`, borderRadius: '0.75rem', padding: '1.5rem', textAlign: 'center', background: isDragging ? '#eff6ff' : '#f8fafc', transition: 'all 0.2s', cursor: 'pointer', position: 'relative' }}
+                                            style={{ border: `2px dashed ${isDragging ? 'var(--info-solid)' : 'var(--border-firm)'}`, borderRadius: '0.75rem', padding: '1.5rem', textAlign: 'center', background: isDragging ? 'var(--info-bg-subtle)' : 'var(--surface-subtle)', transition: 'all 0.2s', cursor: 'pointer', position: 'relative' }}
                                         >
                                             <input
                                                 type="file"
@@ -974,19 +974,19 @@ export default function SectionNotesPage() {
                                             />
                                             <div style={{ pointerEvents: 'none' }}>
                                                 <div style={{ fontSize: '1.5rem', marginBottom: '0.25rem' }}>☁️</div>
-                                                <div style={{ fontSize: '0.85rem', fontWeight: '600', color: '#475569' }}>{t('upload_drag_files_msg')}</div>
+                                                <div style={{ fontSize: '0.85rem', fontWeight: '600', color: 'var(--text-muted)' }}>{t('upload_drag_files_msg')}</div>
                                             </div>
                                         </div>
 
                                         {pendingFiles.length > 0 && (
                                             <div style={{ marginTop: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
                                                 {pendingFiles.map((f, i) => (
-                                                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 0.75rem', background: 'white', border: '1px solid #e2e8f0', borderRadius: '0.5rem' }}>
+                                                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 0.75rem', background: 'white', border: '1px solid var(--border)', borderRadius: '0.5rem' }}>
                                                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', overflow: 'hidden' }}>
                                                             <span style={{ fontSize: '1rem' }}>📄</span>
-                                                            <div style={{ fontSize: '0.75rem', fontWeight: '500', color: '#1e293b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{f.name}</div>
+                                                            <div style={{ fontSize: '0.75rem', fontWeight: '500', color: 'var(--text-main)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{f.name}</div>
                                                         </div>
-                                                        <button type="button" onClick={() => removePendingFile(i)} style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', fontSize: '1rem', fontWeight: 'bold' }}>×</button>
+                                                        <button type="button" onClick={() => removePendingFile(i)} style={{ color: 'var(--danger-solid)', background: 'none', border: 'none', cursor: 'pointer', fontSize: '1rem', fontWeight: 'bold' }}>×</button>
                                                     </div>
                                                 ))}
                                             </div>
@@ -1003,7 +1003,7 @@ export default function SectionNotesPage() {
                                             />
                                         </div>
                                         <div style={{ flex: 1 }}>
-                                            <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', color: '#64748b', textAlign: locale === 'ar' ? 'right' : 'left' }}>
+                                            <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', color: 'var(--text-soft)', textAlign: locale === 'ar' ? 'right' : 'left' }}>
                                                 {t('reminder_days_label' as any)}
                                             </label>
                                             <input
@@ -1024,7 +1024,7 @@ export default function SectionNotesPage() {
                                                 setPendingFiles([])
                                                 setIsEditModalOpen(false)
                                             }}
-                                            style={{ padding: '0.75rem 1.5rem', border: '1px solid #e2e8f0', borderRadius: '0.5rem', background: 'transparent', cursor: 'pointer' }}
+                                            style={{ padding: '0.75rem 1.5rem', border: '1px solid var(--border)', borderRadius: '0.5rem', background: 'transparent', cursor: 'pointer' }}
                                         >
                                             {t('cancel')}
                                         </button>

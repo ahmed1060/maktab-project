@@ -183,13 +183,13 @@ export default function DateTimePicker({ value, onChange, label, min, customTrig
                         minHeight: '42px',
                         transition: 'all 0.2s',
                         boxShadow: isOpen ? '0 0 0 4px rgba(99, 102, 241, 0.15)' : 'none',
-                        borderColor: isOpen ? '#6366f1' : 'rgba(255, 255, 255, 0.4)'
+                        borderColor: isOpen ? 'var(--brand-primary)' : 'rgba(255, 255, 255, 0.4)'
                     }}
                 >
-                    <span style={{ color: value ? 'var(--text-main)' : '#94a3b8', fontWeight: value ? '600' : '400' }}>
+                    <span style={{ color: value ? 'var(--text-main)' : 'var(--text-faint)', fontWeight: value ? '600' : '400' }}>
                         {selectedDate ? `${formatDate(selectedDate)} - ${formatTime(selectedDate)}` : t('select_deadline')}
                     </span>
-                    <span style={{ color: '#6366f1', fontSize: '1.2rem' }}>📅</span>
+                    <span style={{ color: 'var(--brand-primary)', fontSize: '1.2rem' }}>📅</span>
                 </div>
             )}
 
@@ -221,7 +221,7 @@ export default function DateTimePicker({ value, onChange, label, min, customTrig
                         onClick={(e) => e.stopPropagation()}
                         style={{
                             background: 'white',
-                            border: '1px solid #e2e8f0',
+                            border: '1px solid var(--border)',
                             borderRadius: '1.5rem',
                             boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
                             padding: '1.25rem',
@@ -244,15 +244,15 @@ export default function DateTimePicker({ value, onChange, label, min, customTrig
                                     <button
                                         type="button"
                                         onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + (locale === 'ar' ? 1 : -1)))}
-                                        style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '0.5rem', padding: '0.3rem', cursor: 'pointer' }}
+                                        style={{ background: 'var(--surface-subtle)', border: '1px solid var(--border)', borderRadius: '0.5rem', padding: '0.3rem', cursor: 'pointer' }}
                                     >
                                         {locale === 'ar' ? '→' : '←'}
                                     </button>
-                                    <div style={{ fontWeight: '800', color: '#1e293b', fontSize: '0.9rem' }}>{monthYear}</div>
+                                    <div style={{ fontWeight: '800', color: 'var(--text-main)', fontSize: '0.9rem' }}>{monthYear}</div>
                                     <button
                                         type="button"
                                         onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + (locale === 'ar' ? -1 : 1)))}
-                                        style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '0.5rem', padding: '0.3rem', cursor: 'pointer' }}
+                                        style={{ background: 'var(--surface-subtle)', border: '1px solid var(--border)', borderRadius: '0.5rem', padding: '0.3rem', cursor: 'pointer' }}
                                     >
                                         {locale === 'ar' ? '←' : '→'}
                                     </button>
@@ -260,7 +260,7 @@ export default function DateTimePicker({ value, onChange, label, min, customTrig
 
                                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '0.1rem', marginBottom: '0.4rem' }}>
                                     {[t('sun'), t('mon'), t('tue'), t('wed'), t('thu'), t('fri'), t('sat')].map(d => (
-                                        <div key={d} style={{ textAlign: 'center', fontSize: '0.65rem', fontWeight: 'bold', color: '#94a3b8' }}>{d}</div>
+                                        <div key={d} style={{ textAlign: 'center', fontSize: '0.65rem', fontWeight: 'bold', color: 'var(--text-faint)' }}>{d}</div>
                                     ))}
                                 </div>
 
@@ -281,8 +281,8 @@ export default function DateTimePicker({ value, onChange, label, min, customTrig
                                                     padding: '0.35rem',
                                                     borderRadius: '0.5rem',
                                                     border: 'none',
-                                                    background: selected ? '#6366f1' : today ? '#f59e0b20' : 'transparent',
-                                                    color: selected ? 'white' : today ? '#f59e0b' : disabled ? '#cbd5e1' : '#475569',
+                                                    background: selected ? 'var(--brand-primary)' : today ? 'color-mix(in srgb, var(--warn-solid) 13%, transparent)' : 'transparent',
+                                                    color: selected ? 'white' : today ? 'var(--warn-solid)' : disabled ? 'var(--border-firm)' : 'var(--text-muted)',
                                                     fontSize: '0.8rem',
                                                     fontWeight: selected || today ? '700' : '500',
                                                     cursor: disabled ? 'not-allowed' : 'pointer',
@@ -302,18 +302,18 @@ export default function DateTimePicker({ value, onChange, label, min, customTrig
                             {/* Time Picker Section */}
                             <div style={{
                                 width: isMobile ? '100%' : '140px',
-                                [locale === 'ar' ? 'borderRight' : 'borderLeft']: isMobile ? 'none' : '1px solid #f1f5f9',
+                                [locale === 'ar' ? 'borderRight' : 'borderLeft']: isMobile ? 'none' : '1px solid var(--surface-sunk)',
                                 [locale === 'ar' ? 'paddingRight' : 'paddingLeft']: isMobile ? '0' : '1.25rem',
-                                borderTop: isMobile ? '1px solid #f1f5f9' : 'none',
+                                borderTop: isMobile ? '1px solid var(--surface-sunk)' : 'none',
                                 paddingTop: isMobile ? '1rem' : '0'
                             }}>
-                                <div style={{ fontSize: '0.85rem', fontWeight: '800', marginBottom: '1rem', color: '#1e293b', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                                <div style={{ fontSize: '0.85rem', fontWeight: '800', marginBottom: '1rem', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                                     <span>🕒</span> {t('time_label' as any) || 'Time'}
                                 </div>
 
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                                     <div>
-                                        <label style={{ fontSize: '0.65rem', color: '#94a3b8', fontWeight: 'bold', display: 'block', marginBottom: '0.2rem' }}>{t('hour_label')}</label>
+                                        <label style={{ fontSize: '0.65rem', color: 'var(--text-faint)', fontWeight: 'bold', display: 'block', marginBottom: '0.2rem' }}>{t('hour_label')}</label>
                                         <select
                                             className="input"
                                             value={currentH12}
@@ -331,7 +331,7 @@ export default function DateTimePicker({ value, onChange, label, min, customTrig
                                     </div>
 
                                     <div>
-                                        <label style={{ fontSize: '0.65rem', color: '#94a3b8', fontWeight: 'bold', display: 'block', marginBottom: '0.2rem' }}>{t('minute_label')}</label>
+                                        <label style={{ fontSize: '0.65rem', color: 'var(--text-faint)', fontWeight: 'bold', display: 'block', marginBottom: '0.2rem' }}>{t('minute_label')}</label>
                                         <select
                                             className="input"
                                             value={selectedDate?.getMinutes() || 0}
@@ -345,7 +345,7 @@ export default function DateTimePicker({ value, onChange, label, min, customTrig
                                     </div>
 
                                     <div>
-                                        <label style={{ fontSize: '0.65rem', color: '#94a3b8', fontWeight: 'bold', display: 'block', marginBottom: '0.2rem' }}>{t('am_pm_label')}</label>
+                                        <label style={{ fontSize: '0.65rem', color: 'var(--text-faint)', fontWeight: 'bold', display: 'block', marginBottom: '0.2rem' }}>{t('am_pm_label')}</label>
                                         <select
                                             className="input"
                                             value={currentPeriod}
@@ -362,7 +362,7 @@ export default function DateTimePicker({ value, onChange, label, min, customTrig
 
                         {/* Validation Feedback */}
                         {min && selectedDate && selectedDate < new Date(min) && (
-                            <div style={{ color: '#ef4444', fontSize: '0.75rem', fontWeight: '600', textAlign: 'center' }}>
+                            <div style={{ color: 'var(--danger-solid)', fontSize: '0.75rem', fontWeight: '600', textAlign: 'center' }}>
                                 {t('min_selection_error')}
                             </div>
                         )}
@@ -376,8 +376,8 @@ export default function DateTimePicker({ value, onChange, label, min, customTrig
                                 padding: '0.7rem',
                                 borderRadius: '0.75rem',
                                 background: (min && selectedDate && selectedDate < new Date(min))
-                                    ? '#cbd5e1'
-                                    : 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
+                                    ? 'var(--border-firm)'
+                                    : 'linear-gradient(135deg, var(--brand-primary) 0%, var(--brand-accent) 100%)',
                                 color: 'white',
                                 border: 'none',
                                 fontWeight: '700',

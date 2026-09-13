@@ -59,10 +59,10 @@ export default async function DashboardPage({ searchParams }: { searchParams: { 
             const { totalCompanies, totalUsers, totalTasks, totalClients, taskStats, systemErrors24h, expiringSubscriptions, bannedCompanies } = await getSuperAdminOverviewStats()
 
             const chartData = [
-                { label: t('status_completed'), value: taskStats.find(s => s.status === 'COMPLETED')?._count || 0, color: '#10b981' },
-                { label: t('status_pending'), value: (taskStats.find(s => s.status === 'PENDING')?._count || 0) + (taskStats.find(s => s.status === 'IN_PROGRESS')?._count || 0), color: '#3b82f6' },
-                { label: t('status_review'), value: taskStats.find(s => s.status === 'PENDING_CONFIRMATION')?._count || 0, color: '#f59e0b' },
-                { label: t('status_others' as any), value: taskStats.filter((s: any) => !['COMPLETED', 'PENDING', 'IN_PROGRESS', 'PENDING_CONFIRMATION'].includes(s.status)).reduce((acc: any, s: any) => acc + s._count, 0), color: '#94a3b8' }
+                { label: t('status_completed'), value: taskStats.find(s => s.status === 'COMPLETED')?._count || 0, color: 'var(--ok-solid)' },
+                { label: t('status_pending'), value: (taskStats.find(s => s.status === 'PENDING')?._count || 0) + (taskStats.find(s => s.status === 'IN_PROGRESS')?._count || 0), color: 'var(--info-solid)' },
+                { label: t('status_review'), value: taskStats.find(s => s.status === 'PENDING_CONFIRMATION')?._count || 0, color: 'var(--warn-solid)' },
+                { label: t('status_others' as any), value: taskStats.filter((s: any) => !['COMPLETED', 'PENDING', 'IN_PROGRESS', 'PENDING_CONFIRMATION'].includes(s.status)).reduce((acc: any, s: any) => acc + s._count, 0), color: 'var(--text-faint)' }
             ]
 
             return (
@@ -71,10 +71,10 @@ export default async function DashboardPage({ searchParams }: { searchParams: { 
 
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2rem', marginBottom: '3rem' }}>
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', gridColumn: 'span 2' }}>
-                            <StatMetric label={t('total_companies')} value={totalCompanies} icon="🏢" color="#6366f1" />
-                            <StatMetric label={t('total_users')} value={totalUsers} icon="👥" color="#8b5cf6" />
-                            <StatMetric label={t('total_tasks')} value={totalTasks} icon="✅" color="#10b981" />
-                            <StatMetric label={t('business_clients')} value={totalClients} icon="🤝" color="#3b82f6" />
+                            <StatMetric label={t('total_companies')} value={totalCompanies} icon="🏢" color="var(--brand-primary)" />
+                            <StatMetric label={t('total_users')} value={totalUsers} icon="👥" color="var(--brand-accent)" />
+                            <StatMetric label={t('total_tasks')} value={totalTasks} icon="✅" color="var(--ok-solid)" />
+                            <StatMetric label={t('business_clients')} value={totalClients} icon="🤝" color="var(--info-solid)" />
                         </div>
                         <div className="glass-card">
                             <DonutChart title={t('global_task_status')} data={chartData} />
@@ -88,7 +88,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: { 
                             <Link href="/dashboard/companies" className="btn btn-primary" style={{ flex: 1, justifyContent: 'center', height: '3rem', minWidth: '200px' }}>
                                 {t('manage_companies')}
                             </Link>
-                            <Link href="/dashboard/all-users" className="btn" style={{ flex: 1, justifyContent: 'center', background: 'rgba(255,255,255,0.4)', color: '#334155', height: '3rem', border: '1px solid rgba(255,255,255,0.5)', minWidth: '200px' }}>
+                            <Link href="/dashboard/all-users" className="btn" style={{ flex: 1, justifyContent: 'center', background: 'rgba(255,255,255,0.4)', color: 'var(--text-body)', height: '3rem', border: '1px solid rgba(255,255,255,0.5)', minWidth: '200px' }}>
                                 {t('view_all_users')}
                             </Link>
                         </div>
@@ -96,16 +96,16 @@ export default async function DashboardPage({ searchParams }: { searchParams: { 
 
                     {/* Needs Attention */}
                     <section>
-                        <h2 style={{ fontSize: '1.25rem', fontWeight: '700', color: '#334155', marginBottom: '1.25rem' }}>⚠️ {t('needs_attention')}</h2>
+                        <h2 style={{ fontSize: '1.25rem', fontWeight: '700', color: 'var(--text-body)', marginBottom: '1.25rem' }}>⚠️ {t('needs_attention')}</h2>
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.5rem' }}>
                             <Link href={`/dashboard/audit-logs?action=SYSTEM_API_ERROR&startDate=${encodeURIComponent(oneDayAgo.toISOString())}`} style={{ textDecoration: 'none', color: 'inherit' }}>
-                                <StatMetric label={t('system_errors_24h')} value={systemErrors24h} icon="🚨" color="#ef4444" />
+                                <StatMetric label={t('system_errors_24h')} value={systemErrors24h} icon="🚨" color="var(--danger-solid)" />
                             </Link>
                             <Link href="/dashboard/companies" style={{ textDecoration: 'none', color: 'inherit' }}>
-                                <StatMetric label={t('expiring_subscriptions')} value={expiringSubscriptions} icon="⏳" color="#f59e0b" />
+                                <StatMetric label={t('expiring_subscriptions')} value={expiringSubscriptions} icon="⏳" color="var(--warn-solid)" />
                             </Link>
                             <Link href="/dashboard/companies" style={{ textDecoration: 'none', color: 'inherit' }}>
-                                <StatMetric label={t('banned_companies')} value={bannedCompanies} icon="🚫" color="#94a3b8" />
+                                <StatMetric label={t('banned_companies')} value={bannedCompanies} icon="🚫" color="var(--text-faint)" />
                             </Link>
                         </div>
                     </section>
@@ -185,10 +185,10 @@ export default async function DashboardPage({ searchParams }: { searchParams: { 
         const completionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0
 
         const chartData = [
-            { label: t('status_completed'), value: completedTasks, color: '#10b981' },
-            { label: t('status_pending'), value: pendingTasks, color: '#3b82f6' },
-            { label: t('status_review'), value: reviewTasks, color: '#f59e0b' },
-            { label: t('status_rejected'), value: rejectedTasks, color: '#ef4444' }
+            { label: t('status_completed'), value: completedTasks, color: 'var(--ok-solid)' },
+            { label: t('status_pending'), value: pendingTasks, color: 'var(--info-solid)' },
+            { label: t('status_review'), value: reviewTasks, color: 'var(--warn-solid)' },
+            { label: t('status_rejected'), value: rejectedTasks, color: 'var(--danger-solid)' }
         ]
 
         return (
@@ -203,10 +203,10 @@ export default async function DashboardPage({ searchParams }: { searchParams: { 
                         <DonutChart title={t('team_workload')} data={chartData} />
                     </div>
                     <div style={{ display: 'grid', gap: '1.5rem' }}>
-                        <StatMetric label={t('task_completion')} value={`${completedTasks}/${totalTasks}`} icon="✅" color="#10b981" percentage={completionRate} subLabel={t('completion_rate')} />
+                        <StatMetric label={t('task_completion')} value={`${completedTasks}/${totalTasks}`} icon="✅" color="var(--ok-solid)" percentage={completionRate} subLabel={t('completion_rate')} />
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                            <StatMetric label={t('team_bonuses')} value={formatDays(Number(salaryStats._sum.bonusDays || 0))} icon="⭐" color="#f59e0b" subLabel={t('total_this_month')} />
-                            <StatMetric label={t('team_deductions')} value={formatDays(Number(salaryStats._sum.deductions || 0))} icon="📉" color="#ef4444" subLabel={t('total_this_month')} />
+                            <StatMetric label={t('team_bonuses')} value={formatDays(Number(salaryStats._sum.bonusDays || 0))} icon="⭐" color="var(--warn-solid)" subLabel={t('total_this_month')} />
+                            <StatMetric label={t('team_deductions')} value={formatDays(Number(salaryStats._sum.deductions || 0))} icon="📉" color="var(--danger-solid)" subLabel={t('total_this_month')} />
                         </div>
                     </div>
                 </div>
@@ -219,7 +219,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: { 
                                 + {t('create_new_task')}
                             </Link>
                             {userRole !== 'TEAM_LEADER' && (
-                                <Link href="/dashboard/employees/new" className="btn" style={{ flex: 1, justifyContent: 'center', background: 'rgba(255,255,255,0.4)', color: '#334155', height: '3rem', border: '1px solid rgba(255,255,255,0.5)' }}>
+                                <Link href="/dashboard/employees/new" className="btn" style={{ flex: 1, justifyContent: 'center', background: 'rgba(255,255,255,0.4)', color: 'var(--text-body)', height: '3rem', border: '1px solid rgba(255,255,255,0.5)' }}>
                                     + {t('add_employee')}
                                 </Link>
                             )}
@@ -229,18 +229,18 @@ export default async function DashboardPage({ searchParams }: { searchParams: { 
 
                 {/* Needs Your Review */}
                 <section style={{ marginTop: '2.5rem' }}>
-                    <h2 style={{ fontSize: '1.25rem', fontWeight: '700', color: '#334155', marginBottom: '1.25rem' }}>📋 {t('needs_your_review')}</h2>
+                    <h2 style={{ fontSize: '1.25rem', fontWeight: '700', color: 'var(--text-body)', marginBottom: '1.25rem' }}>📋 {t('needs_your_review')}</h2>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.5rem' }}>
                         <Link href="/dashboard/tasks" style={{ textDecoration: 'none', color: 'inherit' }}>
-                            <StatMetric label={t('pending_task_reviews')} value={reviewTasks} icon="🔎" color="#f59e0b" />
+                            <StatMetric label={t('pending_task_reviews')} value={reviewTasks} icon="🔎" color="var(--warn-solid)" />
                         </Link>
                         {userRole === 'ADMIN' && (
                             <>
                                 <Link href="/dashboard/day-off-requests" style={{ textDecoration: 'none', color: 'inherit' }}>
-                                    <StatMetric label={t('pending_day_off_requests')} value={pendingDayOffRequests} icon="🌴" color="#0ea5e9" />
+                                    <StatMetric label={t('pending_day_off_requests')} value={pendingDayOffRequests} icon="🌴" color="var(--info-solid-sky)" />
                                 </Link>
                                 <Link href="/dashboard/profile-requests" style={{ textDecoration: 'none', color: 'inherit' }}>
-                                    <StatMetric label={t('pending_profile_requests')} value={pendingProfileRequests} icon="🪪" color="#8b5cf6" />
+                                    <StatMetric label={t('pending_profile_requests')} value={pendingProfileRequests} icon="🪪" color="var(--brand-accent)" />
                                 </Link>
                             </>
                         )}
@@ -249,18 +249,18 @@ export default async function DashboardPage({ searchParams }: { searchParams: { 
 
                 {/* Overdue Tasks */}
                 <section style={{ marginTop: '2.5rem' }}>
-                    <h2 style={{ fontSize: '1.25rem', fontWeight: '700', color: '#334155', marginBottom: '1.25rem' }}>⏰ {t('overdue_tasks')}</h2>
+                    <h2 style={{ fontSize: '1.25rem', fontWeight: '700', color: 'var(--text-body)', marginBottom: '1.25rem' }}>⏰ {t('overdue_tasks')}</h2>
                     {overdueTasks.length === 0 ? (
                         <div className="glass-card" style={{ padding: '2rem', textAlign: 'center' }}>
-                            <p style={{ margin: 0, color: '#94a3b8' }}>{t('no_overdue_tasks')}</p>
+                            <p style={{ margin: 0, color: 'var(--text-faint)' }}>{t('no_overdue_tasks')}</p>
                         </div>
                     ) : (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                             {overdueTasks.map(task => (
                                 <Link key={task.id} href={`/dashboard/tasks/${task.id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
-                                    <div className="glass-card" style={{ padding: '1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', [locale === 'ar' ? 'borderRight' : 'borderLeft']: '4px solid #ef4444' }}>
+                                    <div className="glass-card" style={{ padding: '1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', [locale === 'ar' ? 'borderRight' : 'borderLeft']: '4px solid var(--danger-solid)' }}>
                                         <span style={{ fontWeight: '600' }}>{task.title}</span>
-                                        <span style={{ fontSize: '0.85rem', color: '#ef4444' }}>{new Date(task.deadline).toLocaleDateString(locale === 'ar' ? 'ar-EG' : 'en-US')}</span>
+                                        <span style={{ fontSize: '0.85rem', color: 'var(--danger-solid)' }}>{new Date(task.deadline).toLocaleDateString(locale === 'ar' ? 'ar-EG' : 'en-US')}</span>
                                     </div>
                                 </Link>
                             ))}
@@ -354,10 +354,10 @@ export default async function DashboardPage({ searchParams }: { searchParams: { 
         const usedCredits = approvedRequests.reduce((acc, req) => acc + (req.daysDeducted || 0), 0)
 
         const chartData = [
-            { label: t('status_completed'), value: completedTasks, color: '#10b981' },
-            { label: t('status_pending'), value: pendingTasks, color: '#3b82f6' },
-            { label: t('status_review'), value: reviewTasks, color: '#f59e0b' },
-            { label: t('status_rejected'), value: rejectedTasks, color: '#ef4444' }
+            { label: t('status_completed'), value: completedTasks, color: 'var(--ok-solid)' },
+            { label: t('status_pending'), value: pendingTasks, color: 'var(--info-solid)' },
+            { label: t('status_review'), value: reviewTasks, color: 'var(--warn-solid)' },
+            { label: t('status_rejected'), value: rejectedTasks, color: 'var(--danger-solid)' }
         ]
 
 
@@ -374,16 +374,16 @@ export default async function DashboardPage({ searchParams }: { searchParams: { 
                         <DonutChart
                             title={t('credit_overview' as any)}
                             data={[
-                                { label: t('remaining_credit' as any), value: currentUser?.dayOffCredit || 0, color: '#10b981' },
-                                { label: t('used_credit' as any), value: usedCredits, color: '#ef4444' }
+                                { label: t('remaining_credit' as any), value: currentUser?.dayOffCredit || 0, color: 'var(--ok-solid)' },
+                                { label: t('used_credit' as any), value: usedCredits, color: 'var(--danger-solid)' }
                             ]}
                         />
                     </div>
                     <div style={{ display: 'grid', gap: '1.5rem' }}>
-                        <StatMetric label={t('overall_progress')} value={`${completedTasks}/${totalTasks}`} icon="🎯" color="#6366f1" percentage={completionRate} subLabel={t('completion_rate')} />
+                        <StatMetric label={t('overall_progress')} value={`${completedTasks}/${totalTasks}`} icon="🎯" color="var(--brand-primary)" percentage={completionRate} subLabel={t('completion_rate')} />
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                            <StatMetric label={t('bonus')} value={formatDays(Number(salaryRecord?.bonusDays || 0))} icon="🎁" color="#f59e0b" subLabel={t('extra_earnings')} />
-                            <StatMetric label={t('team_deductions')} value={formatDays(Number(salaryRecord?.deductions || 0))} icon="📉" color="#ef4444" subLabel={t('total_lost_days')} />
+                            <StatMetric label={t('bonus')} value={formatDays(Number(salaryRecord?.bonusDays || 0))} icon="🎁" color="var(--warn-solid)" subLabel={t('extra_earnings')} />
+                            <StatMetric label={t('team_deductions')} value={formatDays(Number(salaryRecord?.deductions || 0))} icon="📉" color="var(--danger-solid)" subLabel={t('total_lost_days')} />
                         </div>
                     </div>
                 </div>
@@ -399,8 +399,8 @@ export default async function DashboardPage({ searchParams }: { searchParams: { 
                             <div className="glass-card glass-success animate-delay-100" style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', padding: '2rem' }}>
                                 <div style={{ fontSize: '3rem', background: 'rgba(255,255,255,0.8)', borderRadius: '50%', width: '80px', height: '80px', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>🎉</div>
                                 <div>
-                                    <h3 style={{ fontSize: '1.25rem', marginBottom: '0.5rem', fontWeight: '700', color: '#166534' }}>{t('all_caught_up')}</h3>
-                                    <p style={{ margin: 0, color: '#15803d' }}>{t('no_pending_tasks_week')}</p>
+                                    <h3 style={{ fontSize: '1.25rem', marginBottom: '0.5rem', fontWeight: '700', color: 'var(--ok-fg)' }}>{t('all_caught_up')}</h3>
+                                    <p style={{ margin: 0, color: 'var(--ok-fg-strong)' }}>{t('no_pending_tasks_week')}</p>
                                 </div>
                             </div>
                         ) : (
@@ -408,14 +408,14 @@ export default async function DashboardPage({ searchParams }: { searchParams: { 
                                 const isDueToday = new Date(task.deadline) < tomorrow
                                 return (
                                     <Link key={task.id} href={`/dashboard/tasks/${task.id}`} style={{ textDecoration: 'none', color: 'inherit', display: 'block' }}>
-                                        <div className="glass-card" style={{ height: '100%', boxSizing: 'border-box', [locale === 'ar' ? 'borderRight' : 'borderLeft']: `6px solid ${isDueToday ? '#ef4444' : '#f59e0b'}`, padding: '1.75rem' }}>
+                                        <div className="glass-card" style={{ height: '100%', boxSizing: 'border-box', [locale === 'ar' ? 'borderRight' : 'borderLeft']: `6px solid ${isDueToday ? 'var(--danger-solid)' : 'var(--warn-solid)'}`, padding: '1.75rem' }}>
                                             <div style={{ marginBottom: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                                                    <h3 style={{ fontSize: '1.25rem', fontWeight: '700', lineHeight: '1.3', color: '#1e293b' }}>{task.title}</h3>
+                                                    <h3 style={{ fontSize: '1.25rem', fontWeight: '700', lineHeight: '1.3', color: 'var(--text-main)' }}>{task.title}</h3>
                                                     <span style={{
                                                         padding: '0.15rem 0.5rem',
                                                         borderRadius: '0.5rem',
-                                                        background: '#3b82f6',
+                                                        background: 'var(--info-solid)',
                                                         color: 'white',
                                                         fontWeight: 'bold',
                                                         fontSize: '0.7rem'
@@ -423,16 +423,16 @@ export default async function DashboardPage({ searchParams }: { searchParams: { 
                                                         {task.difficulty} {t('pts')}
                                                     </span>
                                                 </div>
-                                                <span className="badge" style={{ background: isDueToday ? '#fee2e2' : '#ffedd5', color: isDueToday ? '#b91c1c' : '#c2410c' }}>
+                                                <span className="badge" style={{ background: isDueToday ? 'var(--danger-bg)' : 'var(--warn-bg-warm)', color: isDueToday ? 'var(--danger-fg-strong)' : 'var(--warn-fg-warm-strong)' }}>
                                                     {isDueToday ? t('today') : new Date(task.deadline).toLocaleDateString(locale === 'ar' ? 'ar-EG' : 'en-US', { weekday: 'short', day: 'numeric', month: 'short' })}
                                                 </span>
                                             </div>
-                                            <p style={{ color: '#64748b', fontSize: '0.95rem', lineHeight: '1.6', marginBottom: '1.5rem', overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
+                                            <p style={{ color: 'var(--text-soft)', fontSize: '0.95rem', lineHeight: '1.6', marginBottom: '1.5rem', overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
                                                 {task.description}
                                             </p>
                                             <div style={{ marginTop: 'auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid rgba(255,255,255,0.2)', paddingTop: '1rem' }}>
-                                                <span className="badge" style={{ background: '#f8fafc', color: '#475569', border: '1px solid #e2e8f0' }}>{t(`status_${task.status.toLowerCase()}` as any)}</span>
-                                                <span style={{ fontSize: '0.9rem', fontWeight: '600', color: '#4f46e5' }}>{t('view_all')} →</span>
+                                                <span className="badge" style={{ background: 'var(--surface-subtle)', color: 'var(--text-muted)', border: '1px solid var(--border)' }}>{t(`status_${task.status.toLowerCase()}` as any)}</span>
+                                                <span style={{ fontSize: '0.9rem', fontWeight: '600', color: 'var(--brand-primary-hover)' }}>{t('view_all')} →</span>
                                             </div>
                                         </div>
                                     </Link>
@@ -446,21 +446,21 @@ export default async function DashboardPage({ searchParams }: { searchParams: { 
                 {myLatestDayOffRequest && (
                     <section style={{ marginBottom: '3rem' }}>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem' }}>
-                            <h2 style={{ fontSize: '1.25rem', fontWeight: '700', color: '#334155' }}>🌴 {t('my_day_off_request')}</h2>
+                            <h2 style={{ fontSize: '1.25rem', fontWeight: '700', color: 'var(--text-body)' }}>🌴 {t('my_day_off_request')}</h2>
                             <Link href="/dashboard/day-off-requests" style={{ fontSize: '0.9rem', fontWeight: '500' }}>{t('view_all')}</Link>
                         </div>
                         <Link href="/dashboard/day-off-requests" style={{ textDecoration: 'none', color: 'inherit' }}>
-                            <div className="glass-card" style={{ padding: '1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', [locale === 'ar' ? 'borderRight' : 'borderLeft']: `4px solid ${myLatestDayOffRequest.status === 'APPROVED' ? '#10b981' : myLatestDayOffRequest.status === 'REJECTED' ? '#ef4444' : '#0ea5e9'}` }}>
+                            <div className="glass-card" style={{ padding: '1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', [locale === 'ar' ? 'borderRight' : 'borderLeft']: `4px solid ${myLatestDayOffRequest.status === 'APPROVED' ? 'var(--ok-solid)' : myLatestDayOffRequest.status === 'REJECTED' ? 'var(--danger-solid)' : 'var(--info-solid-sky)'}` }}>
                                 <div>
                                     <div style={{ fontWeight: '600' }}>{t(`${myLatestDayOffRequest.type.toLowerCase()}_day_off` as any)}</div>
-                                    <div style={{ fontSize: '0.85rem', color: '#64748b', marginTop: '0.25rem' }}>
+                                    <div style={{ fontSize: '0.85rem', color: 'var(--text-soft)', marginTop: '0.25rem' }}>
                                         {new Date(myLatestDayOffRequest.date).toLocaleDateString(locale === 'ar' ? 'ar-EG' : 'en-US')}
                                         {myLatestDayOffRequest.endDate ? ` – ${new Date(myLatestDayOffRequest.endDate).toLocaleDateString(locale === 'ar' ? 'ar-EG' : 'en-US')}` : ''}
                                     </div>
                                 </div>
                                 <span className="badge" style={{
-                                    background: myLatestDayOffRequest.status === 'APPROVED' ? '#dcfce7' : myLatestDayOffRequest.status === 'REJECTED' ? '#fee2e2' : '#f0f9ff',
-                                    color: myLatestDayOffRequest.status === 'APPROVED' ? '#166534' : myLatestDayOffRequest.status === 'REJECTED' ? '#b91c1c' : '#0369a1'
+                                    background: myLatestDayOffRequest.status === 'APPROVED' ? 'var(--ok-bg)' : myLatestDayOffRequest.status === 'REJECTED' ? 'var(--danger-bg)' : 'var(--info-bg-sky)',
+                                    color: myLatestDayOffRequest.status === 'APPROVED' ? 'var(--ok-fg)' : myLatestDayOffRequest.status === 'REJECTED' ? 'var(--danger-fg-strong)' : 'var(--info-fg)'
                                 }}>
                                     {t(`status_${myLatestDayOffRequest.status.toLowerCase()}` as any)}
                                 </span>
@@ -473,25 +473,25 @@ export default async function DashboardPage({ searchParams }: { searchParams: { 
                     {/* Obligations */}
                     <section>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem' }}>
-                            <h2 style={{ fontSize: '1.25rem', fontWeight: '700', color: '#334155' }}>📌 {t('obligations')}</h2>
+                            <h2 style={{ fontSize: '1.25rem', fontWeight: '700', color: 'var(--text-body)' }}>📌 {t('obligations')}</h2>
                             <Link href="/dashboard/obligations" style={{ fontSize: '0.9rem', fontWeight: '500' }}>{t('view_all')}</Link>
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                             {myObligations.length === 0 ? (
                                 <div className="glass-card" style={{ padding: '2rem', textAlign: 'center' }}>
-                                    <p style={{ margin: 0, color: '#94a3b8' }}>{t('no_obligations_assigned')}</p>
+                                    <p style={{ margin: 0, color: 'var(--text-faint)' }}>{t('no_obligations_assigned')}</p>
                                 </div>
                             ) : (
                                 myObligations.slice(0, 5).map(ob => (
                                     <Link key={ob.id} href={`/dashboard/obligations/${ob.id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
-                                        <div className="glass-card" style={{ padding: '1.25rem', [locale === 'ar' ? 'borderRight' : 'borderLeft']: '4px solid #0ea5e9' }}>
+                                        <div className="glass-card" style={{ padding: '1.25rem', [locale === 'ar' ? 'borderRight' : 'borderLeft']: '4px solid var(--info-solid-sky)' }}>
                                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '0.5rem' }}>
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                                     <h3 style={{ fontSize: '1rem', fontWeight: '600', margin: 0 }}>{ob.title}</h3>
                                                     <span style={{
                                                         padding: '0.1rem 0.4rem',
                                                         borderRadius: '0.4rem',
-                                                        background: '#3b82f6',
+                                                        background: 'var(--info-solid)',
                                                         color: 'white',
                                                         fontWeight: 'bold',
                                                         fontSize: '0.65rem'
@@ -500,8 +500,8 @@ export default async function DashboardPage({ searchParams }: { searchParams: { 
                                                     </span>
                                                 </div>
                                                 <span className="badge" style={{
-                                                    background: ob.status === 'COMPLETED' ? '#dcfce7' : '#f0f9ff',
-                                                    color: ob.status === 'COMPLETED' ? '#166534' : '#0369a1',
+                                                    background: ob.status === 'COMPLETED' ? 'var(--ok-bg)' : 'var(--info-bg-sky)',
+                                                    color: ob.status === 'COMPLETED' ? 'var(--ok-fg)' : 'var(--info-fg)',
                                                     fontSize: '0.7rem'
                                                 }}>
                                                     {t(`status_${ob.status.toLowerCase()}` as any)}
@@ -512,7 +512,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: { 
                                                     )}
                                                 </span>
                                             </div>
-                                            <div style={{ fontSize: '0.85rem', color: '#64748b' }}>{t('due_by')} {new Date(ob.deadline).toLocaleDateString(locale === 'ar' ? 'ar-EG' : 'en-US')}</div>
+                                            <div style={{ fontSize: '0.85rem', color: 'var(--text-soft)' }}>{t('due_by')} {new Date(ob.deadline).toLocaleDateString(locale === 'ar' ? 'ar-EG' : 'en-US')}</div>
                                         </div>
                                     </Link>
                                 ))

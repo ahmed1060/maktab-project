@@ -393,7 +393,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                     width: '100px',
                     height: '100px',
                     borderRadius: '50%',
-                    background: '#e2e8f0',
+                    background: 'var(--border)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -435,8 +435,8 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                             type="button"
                             className="btn"
                             style={{
-                                background: '#f1f5f9',
-                                color: '#0f172a',
+                                background: 'var(--surface-sunk)',
+                                color: 'var(--text-strong)',
                                 fontSize: '0.8rem',
                                 padding: '0.4rem 0.8rem',
                                 cursor: 'pointer',
@@ -480,7 +480,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                         animation: 'slideUp 0.3s ease-out',
                         direction: locale === 'ar' ? 'rtl' : 'ltr'
                     }}>
-                        <h2 style={{ fontSize: '1.25rem', fontWeight: 'bold', color: '#1e293b', marginBottom: '1.5rem', textAlign: 'center' }}>
+                        <h2 style={{ fontSize: '1.25rem', fontWeight: 'bold', color: 'var(--text-main)', marginBottom: '1.5rem', textAlign: 'center' }}>
                             {avatarUrl ? t('manage_photo_title') : t('add_photo')}
                         </h2>
 
@@ -490,8 +490,8 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                             borderRadius: '50%',
                             margin: '0 auto 2rem',
                             overflow: 'hidden',
-                            border: '4px solid #f8fafc',
-                            background: '#f1f5f9',
+                            border: '4px solid var(--surface-subtle)',
+                            background: 'var(--surface-sunk)',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
@@ -543,17 +543,17 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                                         padding: '0.625rem 1.25rem',
                                         border: 'none',
                                         borderRadius: '0.5rem',
-                                        background: '#fee2e2',
+                                        background: 'var(--danger-bg)',
                                         cursor: uploadingAvatar ? 'not-allowed' : 'pointer',
                                         fontSize: '0.875rem',
                                         fontWeight: '500',
-                                        color: '#dc2626',
+                                        color: 'var(--danger-solid-hover)',
                                         transition: 'all 0.2s',
                                         flex: 1,
                                         opacity: uploadingAvatar ? 0.5 : 1
                                     }}
-                                    onMouseEnter={(e) => !uploadingAvatar && (e.currentTarget.style.background = '#fecaca')}
-                                    onMouseLeave={(e) => !uploadingAvatar && (e.currentTarget.style.background = '#fee2e2')}
+                                    onMouseEnter={(e) => !uploadingAvatar && (e.currentTarget.style.background = 'var(--danger-border)')}
+                                    onMouseLeave={(e) => !uploadingAvatar && (e.currentTarget.style.background = 'var(--danger-bg)')}
                                 >
                                     {t('reset_button')}
                                 </button>
@@ -565,30 +565,30 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                                 disabled={uploadingAvatar}
                                 style={{
                                     padding: '0.625rem 1.25rem',
-                                    border: '1px solid #e2e8f0',
+                                    border: '1px solid var(--border)',
                                     borderRadius: '0.5rem',
                                     background: 'white',
                                     cursor: uploadingAvatar ? 'not-allowed' : 'pointer',
                                     fontSize: '0.875rem',
                                     fontWeight: '500',
-                                    color: '#475569',
+                                    color: 'var(--text-muted)',
                                     transition: 'all 0.2s',
                                     flex: 1,
                                     opacity: uploadingAvatar ? 0.5 : 1
                                 }}
-                                onMouseEnter={(e) => !uploadingAvatar && (e.currentTarget.style.background = '#f8fafc')}
+                                onMouseEnter={(e) => !uploadingAvatar && (e.currentTarget.style.background = 'var(--surface-subtle)')}
                                 onMouseLeave={(e) => !uploadingAvatar && (e.currentTarget.style.background = 'white')}
                             >
                                 {t('close_button')}
                             </button>
                         </div>
                         {uploadingAvatar && (
-                            <div style={{ marginTop: '1rem', color: '#6366f1', fontSize: '0.875rem', fontWeight: 'bold' }}>
+                            <div style={{ marginTop: '1rem', color: 'var(--brand-primary)', fontSize: '0.875rem', fontWeight: 'bold' }}>
                                 {t('uploading_in_progress')}
                             </div>
                         )}
                         {isResetting && (
-                            <div style={{ marginTop: '1rem', color: '#dc2626', fontSize: '0.875rem', fontWeight: 'bold' }}>
+                            <div style={{ marginTop: '1rem', color: 'var(--danger-solid-hover)', fontSize: '0.875rem', fontWeight: 'bold' }}>
                                 {t('resetting_in_progress')}
                             </div>
                         )}
@@ -609,15 +609,15 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
 
             {pendingRequest && (
                 <div style={{
-                    background: '#fffbeb',
-                    border: '1px solid #fef3c7',
+                    background: 'var(--warn-bg-yellow-subtle)',
+                    border: '1px solid var(--warn-bg)',
                     padding: '1rem',
                     borderRadius: '0.75rem',
                     marginBottom: '1.5rem',
                     display: 'flex',
                     alignItems: 'center',
                     gap: '0.75rem',
-                    color: '#92400e',
+                    color: 'var(--warn-fg)',
                     textAlign: locale === 'ar' ? 'right' : 'left'
                 }}>
                     <span style={{ fontSize: '1.25rem' }}>⏳</span>
@@ -638,7 +638,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                             onChange={e => setFirstName(e.target.value)}
                             required
                             disabled={isViewMode}
-                            style={isViewMode ? { background: '#f1f5f9', cursor: 'not-allowed', textAlign: locale === 'ar' ? 'right' : 'left' } : { textAlign: locale === 'ar' ? 'right' : 'left' }}
+                            style={isViewMode ? { background: 'var(--surface-sunk)', cursor: 'not-allowed', textAlign: locale === 'ar' ? 'right' : 'left' } : { textAlign: locale === 'ar' ? 'right' : 'left' }}
                         />
                     </div>
                     <div>
@@ -649,7 +649,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                             onChange={e => setLastName(e.target.value)}
                             required
                             disabled={isViewMode}
-                            style={isViewMode ? { background: '#f1f5f9', cursor: 'not-allowed', textAlign: locale === 'ar' ? 'right' : 'left' } : { textAlign: locale === 'ar' ? 'right' : 'left' }}
+                            style={isViewMode ? { background: 'var(--surface-sunk)', cursor: 'not-allowed', textAlign: locale === 'ar' ? 'right' : 'left' } : { textAlign: locale === 'ar' ? 'right' : 'left' }}
                         />
                     </div>
                 </div>
@@ -662,7 +662,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                         onChange={e => setGender(e.target.value)}
                         required
                         disabled={isViewMode}
-                        style={isViewMode ? { background: '#f1f5f9', cursor: 'not-allowed', textAlign: locale === 'ar' ? 'right' : 'left' } : { textAlign: locale === 'ar' ? 'right' : 'left' }}
+                        style={isViewMode ? { background: 'var(--surface-sunk)', cursor: 'not-allowed', textAlign: locale === 'ar' ? 'right' : 'left' } : { textAlign: locale === 'ar' ? 'right' : 'left' }}
                     >
                         <option value="MALE">{t('male')}</option>
                         <option value="FEMALE">{t('female')}</option>
@@ -678,7 +678,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                                 value="SHSD"
                                 disabled
                                 readOnly
-                                style={{ background: '#f1f5f9', cursor: 'not-allowed', textAlign: locale === 'ar' ? 'right' : 'left' }}
+                                style={{ background: 'var(--surface-sunk)', cursor: 'not-allowed', textAlign: locale === 'ar' ? 'right' : 'left' }}
                             />
                         ) : (
                             <select
@@ -686,7 +686,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                                 value={companyId}
                                 onChange={e => setCompanyId(e.target.value)}
                                 disabled={isViewMode}
-                                style={isViewMode ? { background: '#f1f5f9', cursor: 'not-allowed', textAlign: locale === 'ar' ? 'right' : 'left' } : { textAlign: locale === 'ar' ? 'right' : 'left' }}
+                                style={isViewMode ? { background: 'var(--surface-sunk)', cursor: 'not-allowed', textAlign: locale === 'ar' ? 'right' : 'left' } : { textAlign: locale === 'ar' ? 'right' : 'left' }}
                             >
                                 <option value="">{t('select_company')}</option>
                                 {companies.map(c => (
@@ -706,7 +706,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                         onChange={e => setEmail(e.target.value)}
                         required
                         disabled={isViewMode || userId === session?.user?.id}
-                        style={(isViewMode || userId === session?.user?.id) ? { background: '#f1f5f9', cursor: 'not-allowed', textAlign: locale === 'ar' ? 'right' : 'left' } : { textAlign: locale === 'ar' ? 'right' : 'left' }}
+                        style={(isViewMode || userId === session?.user?.id) ? { background: 'var(--surface-sunk)', cursor: 'not-allowed', textAlign: locale === 'ar' ? 'right' : 'left' } : { textAlign: locale === 'ar' ? 'right' : 'left' }}
                     />
                 </div>
 
@@ -717,7 +717,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                         value={username}
                         onChange={e => setUsername(e.target.value)}
                         disabled={isViewMode || userRole !== 'SUPER_ADMIN'}
-                        style={(isViewMode || userRole !== 'SUPER_ADMIN') ? { background: '#f1f5f9', cursor: 'not-allowed', textAlign: locale === 'ar' ? 'right' : 'left' } : { textAlign: locale === 'ar' ? 'right' : 'left' }}
+                        style={(isViewMode || userRole !== 'SUPER_ADMIN') ? { background: 'var(--surface-sunk)', cursor: 'not-allowed', textAlign: locale === 'ar' ? 'right' : 'left' } : { textAlign: locale === 'ar' ? 'right' : 'left' }}
                         placeholder={t('username_placeholder' as any) || 'Username'}
                     />
                 </div>
@@ -734,7 +734,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                                 onChange={e => setSalary(e.target.value)}
                                 disabled={isViewMode || userId === session?.user?.id || !['ADMIN', 'SUPER_ADMIN'].includes(userRole)}
                                 max={1000000000}
-                                style={(isViewMode || userId === session?.user?.id || !['ADMIN', 'SUPER_ADMIN'].includes(userRole)) ? { background: '#f1f5f9', cursor: 'not-allowed', textAlign: locale === 'ar' ? 'right' : 'left' } : { textAlign: locale === 'ar' ? 'right' : 'left' }}
+                                style={(isViewMode || userId === session?.user?.id || !['ADMIN', 'SUPER_ADMIN'].includes(userRole)) ? { background: 'var(--surface-sunk)', cursor: 'not-allowed', textAlign: locale === 'ar' ? 'right' : 'left' } : { textAlign: locale === 'ar' ? 'right' : 'left' }}
                                 placeholder={userId === session?.user?.id && !salary ? t('no_data_available') : (locale === 'ar' ? 'أدخل الراتب' : 'Enter salary')}
                             />
                         </div>
@@ -754,7 +754,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                                     onChange={e => setBaseDayOffCredit(e.target.value)}
                                     disabled={isViewMode || userId === session?.user?.id || !['ADMIN', 'SUPER_ADMIN'].includes(userRole)}
                                     step="0.5"
-                                    style={(isViewMode || userId === session?.user?.id || !['ADMIN', 'SUPER_ADMIN'].includes(userRole)) ? { background: '#f1f5f9', cursor: 'not-allowed', textAlign: locale === 'ar' ? 'right' : 'left' } : { textAlign: locale === 'ar' ? 'right' : 'left' }}
+                                    style={(isViewMode || userId === session?.user?.id || !['ADMIN', 'SUPER_ADMIN'].includes(userRole)) ? { background: 'var(--surface-sunk)', cursor: 'not-allowed', textAlign: locale === 'ar' ? 'right' : 'left' } : { textAlign: locale === 'ar' ? 'right' : 'left' }}
                                 />
                             </div>
                         </>
@@ -793,7 +793,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                                         padding: '0.25rem',
                                         display: 'flex',
                                         alignItems: 'center',
-                                        color: '#64748b'
+                                        color: 'var(--text-soft)'
                                     }}
                                 >
                                     {showNewPassword ? (
@@ -827,9 +827,9 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                                         className="input"
                                         value={issuedTempPassword}
                                         readOnly
-                                        style={{ background: '#f1f5f9', cursor: 'default', textAlign: locale === 'ar' ? 'right' : 'left' }}
+                                        style={{ background: 'var(--surface-sunk)', cursor: 'default', textAlign: locale === 'ar' ? 'right' : 'left' }}
                                     />
-                                    <p style={{ margin: '0.5rem 0 0', fontSize: '0.78rem', color: '#b45309', textAlign: locale === 'ar' ? 'right' : 'left' }}>
+                                    <p style={{ margin: '0.5rem 0 0', fontSize: '0.78rem', color: 'var(--warn-fg-mid)', textAlign: locale === 'ar' ? 'right' : 'left' }}>
                                         {t('temp_password_warning' as any)}
                                     </p>
                                 </div>
@@ -858,7 +858,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                                 onChange={e => setRole(e.target.value)}
                                 required
                                 disabled={isViewMode || userId === session?.user?.id || role === 'SUPER_ADMIN'}
-                                style={(isViewMode || userId === session?.user?.id || role === 'SUPER_ADMIN') ? { background: '#f1f5f9', cursor: 'not-allowed', color: '#64748b', textAlign: locale === 'ar' ? 'right' : 'left' } : { textAlign: locale === 'ar' ? 'right' : 'left' }}
+                                style={(isViewMode || userId === session?.user?.id || role === 'SUPER_ADMIN') ? { background: 'var(--surface-sunk)', cursor: 'not-allowed', color: 'var(--text-soft)', textAlign: locale === 'ar' ? 'right' : 'left' } : { textAlign: locale === 'ar' ? 'right' : 'left' }}
                             >
                                 <option value="EMPLOYEE">{t('role_employee')}</option>
                                 <option value="TEAM_LEADER">{t('role_team_leader')}</option>
@@ -879,7 +879,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                                 onChange={e => setStatus(e.target.value)}
                                 required
                                 disabled={isViewMode}
-                                style={isViewMode ? { background: '#f1f5f9', cursor: 'not-allowed', textAlign: locale === 'ar' ? 'right' : 'left' } : { textAlign: locale === 'ar' ? 'right' : 'left' }}
+                                style={isViewMode ? { background: 'var(--surface-sunk)', cursor: 'not-allowed', textAlign: locale === 'ar' ? 'right' : 'left' } : { textAlign: locale === 'ar' ? 'right' : 'left' }}
                             >
                                 <option value="ACTIVE">{t('status_active' as any) || (locale === 'ar' ? 'نشط' : 'Active')}</option>
                                 <option value="SUSPENDED">{t('status_suspended' as any) || (locale === 'ar' ? 'موقوف' : 'Suspended')}</option>
@@ -898,7 +898,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                     <button
                         type="button"
                         className="btn"
-                        style={{ background: '#e2e8f0', color: '#0f172a' }}
+                        style={{ background: 'var(--border)', color: 'var(--text-strong)' }}
                         onClick={onClose || (() => router.back())}
                     >
                         {t('close_button')}
@@ -940,7 +940,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                                         <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
                                     </svg>
                                 </div>
-                                <p style={{ marginBottom: '1.5rem', fontSize: '1rem', color: '#475569', fontWeight: '500' }}>
+                                <p style={{ marginBottom: '1.5rem', fontSize: '1rem', color: 'var(--text-muted)', fontWeight: '500' }}>
                                     {t('enter_password_confirm')}
                                 </p>
                                 <div style={{ position: 'relative' }}>
@@ -967,8 +967,8 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                                             borderRadius: '1.25rem',
                                             paddingRight: (locale === 'ar' ? '1rem' : '3.5rem'),
                                             paddingLeft: (locale === 'ar' ? '3.5rem' : '1rem'),
-                                            background: '#f8fafc',
-                                            border: '2px solid #e2e8f0',
+                                            background: 'var(--surface-subtle)',
+                                            border: '2px solid var(--border)',
                                             boxShadow: 'inset 0 2px 4px 0 rgba(0, 0, 0, 0.05)'
                                         }}
                                     />
@@ -986,7 +986,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                                             padding: '0.5rem',
                                             display: 'flex',
                                             alignItems: 'center',
-                                            color: '#64748b'
+                                            color: 'var(--text-soft)'
                                         }}
                                     >
                                         {showVerificationPassword ? (
@@ -1006,7 +1006,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                             <div className="modal-footer" style={{ background: 'white', borderTop: 'none', paddingBottom: '2.5rem', justifyContent: 'center' }}>
                                 <button
                                     className="btn"
-                                    style={{ background: '#f1f5f9', color: '#64748b', minWidth: '100px' }}
+                                    style={{ background: 'var(--surface-sunk)', color: 'var(--text-soft)', minWidth: '100px' }}
                                     onClick={() => {
                                         setVerificationModalOpen(false)
                                         setVerificationPassword('')

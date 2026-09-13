@@ -56,11 +56,11 @@ export default function CostCard({ task, isHighlighted }: CostCardProps) {
                 style={{
                     cursor: 'pointer',
                     transition: 'all 0.2s ease',
-                    border: showVisualHighlight ? '2px solid #a855f7' : '2px solid #e2e8f0',
+                    border: showVisualHighlight ? '2px solid var(--accent-solid)' : '2px solid var(--border)',
                     height: '100%',
                     transform: (isHovered || showVisualHighlight) ? 'translateY(-2px)' : 'translateY(0)',
                     boxShadow: (isHovered || showVisualHighlight) ? '0 4px 12px rgba(0,0,0,0.1)' : 'none',
-                    borderColor: showVisualHighlight ? '#a855f7' : (isHovered ? '#3b82f6' : '#e2e8f0'),
+                    borderColor: showVisualHighlight ? 'var(--accent-solid)' : (isHovered ? 'var(--info-solid)' : 'var(--border)'),
                     background: showVisualHighlight ? 'rgba(168, 85, 247, 0.05)' : 'white',
                     textAlign: locale === 'ar' ? 'right' : 'left',
                     direction: locale === 'ar' ? 'rtl' : 'ltr'
@@ -70,22 +70,22 @@ export default function CostCard({ task, isHighlighted }: CostCardProps) {
             >
                 <div style={{ marginBottom: '1rem' }}>
                     <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1.1rem' }}>{task.title}</h3>
-                    <div style={{ fontSize: '0.85rem', color: '#64748b' }}>
+                    <div style={{ fontSize: '0.85rem', color: 'var(--text-soft)' }}>
                         {t('assignee_label')}: {task.assignee.firstName} {task.assignee.lastName}
                     </div>
                 </div>
 
                 <div style={{
-                    background: '#fef3c7',
-                    border: '2px solid #f59e0b',
+                    background: 'var(--warn-bg)',
+                    border: '2px solid var(--warn-solid)',
                     borderRadius: '0.5rem',
                     padding: '1rem',
                     textAlign: 'center'
                 }}>
-                    <div style={{ fontSize: '0.75rem', color: '#92400e', fontWeight: '600', marginBottom: '0.25rem' }}>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--warn-fg)', fontWeight: '600', marginBottom: '0.25rem' }}>
                         {t('total_cost')}
                     </div>
-                    <div style={{ fontSize: '1.75rem', fontWeight: 'bold', color: '#92400e' }}>
+                    <div style={{ fontSize: '1.75rem', fontWeight: 'bold', color: 'var(--warn-fg)' }}>
                         {new Intl.NumberFormat(locale === 'ar' ? 'ar-EG' : 'en-EG', { minimumFractionDigits: 2 }).format(task.totalCost)} {t('egp')}
                     </div>
                 </div>
@@ -100,15 +100,15 @@ export default function CostCard({ task, isHighlighted }: CostCardProps) {
                         padding: '0.5rem',
                         borderRadius: '0.25rem',
                         background: task.status === 'APPROVED'
-                            ? '#dcfce7'
+                            ? 'var(--ok-bg)'
                             : task.status === 'COMPLETED'
-                                ? '#e0f2fe'
-                                : '#fee2e2', // REJECTED
+                                ? 'var(--info-bg)'
+                                : 'var(--danger-bg)', // REJECTED
                         color: task.status === 'APPROVED'
-                            ? '#166534'
+                            ? 'var(--ok-fg)'
                             : task.status === 'COMPLETED'
-                                ? '#0369a1'
-                                : '#991b1b', // REJECTED
+                                ? 'var(--info-fg)'
+                                : 'var(--danger-fg)', // REJECTED
                         fontSize: '0.75rem',
                         fontWeight: '700',
                         textAlign: 'center'

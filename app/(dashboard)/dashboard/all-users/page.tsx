@@ -160,14 +160,14 @@ export default function AllUsersPage() {
     const getStatusStyles = (status: string) => {
         switch (status) {
             case 'ACTIVE':
-                return { background: '#dcfce7', color: '#166534' }
+                return { background: 'var(--ok-bg)', color: 'var(--ok-fg)' }
             case 'OFFLINE':
-                return { background: '#fef9c3', color: '#854d0e' }
+                return { background: 'var(--warn-bg-yellow)', color: 'var(--warn-fg-yellow)' }
             case 'SUSPENDED':
             case 'BANNED':
-                return { background: '#fee2e2', color: '#991b1b' }
+                return { background: 'var(--danger-bg)', color: 'var(--danger-fg)' }
             default:
-                return { background: '#f1f5f9', color: '#475569' }
+                return { background: 'var(--surface-sunk)', color: 'var(--text-muted)' }
         }
     }
 
@@ -248,29 +248,29 @@ export default function AllUsersPage() {
                         {showSuperAdmins && superAdmins.length > 0 && (
                             <div>
                                 <h2 style={{ fontSize: '1.4rem', fontWeight: 'bold', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
-                                    <span style={{ background: '#f59e0b', color: 'white', padding: '0.2rem 0.5rem', borderRadius: '4px', fontSize: '0.8rem' }}>SHSD</span>
+                                    <span style={{ background: 'var(--warn-solid)', color: 'white', padding: '0.2rem 0.5rem', borderRadius: '4px', fontSize: '0.8rem' }}>SHSD</span>
                                     {t('super_administrators_label')}
                                 </h2>
                                 <div style={{ background: 'white', borderRadius: '12px', overflowX: 'auto', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
                                     <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '600px' }}>
-                                        <thead style={{ background: '#fffbeb', borderBottom: '1px solid #fcd34d' }}>
+                                        <thead style={{ background: 'var(--warn-bg-yellow-subtle)', borderBottom: '1px solid var(--warn-border)' }}>
                                             <tr>
-                                                <th style={{ textAlign: locale === 'ar' ? 'right' : 'left', padding: '1rem', fontSize: '0.875rem', color: '#92400e' }}>{t('name_label')}</th>
-                                                <th style={{ textAlign: locale === 'ar' ? 'right' : 'left', padding: '1rem', fontSize: '0.875rem', color: '#92400e' }}>{t('email')}</th>
-                                                <th style={{ textAlign: locale === 'ar' ? 'right' : 'left', padding: '1rem', fontSize: '0.875rem', color: '#92400e' }}>{t('username_label' as any) || 'Username'}</th>
-                                                <th style={{ textAlign: locale === 'ar' ? 'right' : 'left', padding: '1rem', fontSize: '0.875rem', color: '#92400e' }}>{t('role_label')}</th>
-                                                <th style={{ textAlign: locale === 'ar' ? 'left' : 'right', padding: '1rem', fontSize: '0.875rem', color: '#92400e' }}>{t('status_label' as any) || t('system')}</th>
+                                                <th style={{ textAlign: locale === 'ar' ? 'right' : 'left', padding: '1rem', fontSize: '0.875rem', color: 'var(--warn-fg)' }}>{t('name_label')}</th>
+                                                <th style={{ textAlign: locale === 'ar' ? 'right' : 'left', padding: '1rem', fontSize: '0.875rem', color: 'var(--warn-fg)' }}>{t('email')}</th>
+                                                <th style={{ textAlign: locale === 'ar' ? 'right' : 'left', padding: '1rem', fontSize: '0.875rem', color: 'var(--warn-fg)' }}>{t('username_label' as any) || 'Username'}</th>
+                                                <th style={{ textAlign: locale === 'ar' ? 'right' : 'left', padding: '1rem', fontSize: '0.875rem', color: 'var(--warn-fg)' }}>{t('role_label')}</th>
+                                                <th style={{ textAlign: locale === 'ar' ? 'left' : 'right', padding: '1rem', fontSize: '0.875rem', color: 'var(--warn-fg)' }}>{t('status_label' as any) || t('system')}</th>
                                             </tr>
                                         </thead>
                                         <tbody>
                                             {superAdmins.map((user: User) => (
-                                                <tr key={user.id} style={{ borderBottom: '1px solid #fef3c7' }}>
+                                                <tr key={user.id} style={{ borderBottom: '1px solid var(--warn-bg)' }}>
                                                     <td style={{ padding: '1rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
                                                         <div style={{ fontWeight: '500' }}>{user.firstName} {user.lastName}</div>
                                                     </td>
                                                     <td style={{ padding: '1rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{user.email}</td>
                                                     <td style={{ padding: '1rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
-                                                        <code style={{ fontSize: '0.8rem', background: '#fef3c7', padding: '0.2rem 0.4rem', borderRadius: '4px' }}>
+                                                        <code style={{ fontSize: '0.8rem', background: 'var(--warn-bg)', padding: '0.2rem 0.4rem', borderRadius: '4px' }}>
                                                             {user.username || '-'}
                                                         </code>
                                                     </td>
@@ -278,7 +278,7 @@ export default function AllUsersPage() {
                                                         <span style={{
                                                             fontSize: '0.75rem', fontWeight: 'bold',
                                                             padding: '0.2rem 0.5rem', borderRadius: '4px',
-                                                            background: '#fef3c7', color: '#92400e'
+                                                            background: 'var(--warn-bg)', color: 'var(--warn-fg)'
                                                         }}>
                                                             {t(getRoleKey(user.role) as any)}
                                                         </span>
@@ -305,30 +305,30 @@ export default function AllUsersPage() {
                         {/* Company Sections */}
                         {companySections.map((section, idx) => (
                             <div key={idx}>
-                                <h2 style={{ fontSize: '1.4rem', fontWeight: 'bold', marginBottom: '1rem', paddingBottom: '0.5rem', borderBottom: '2px solid #e2e8f0', textAlign: locale === 'ar' ? 'right' : 'left' }}>
+                                <h2 style={{ fontSize: '1.4rem', fontWeight: 'bold', marginBottom: '1rem', paddingBottom: '0.5rem', borderBottom: '2px solid var(--border)', textAlign: locale === 'ar' ? 'right' : 'left' }}>
                                     {section.name}
                                 </h2>
                                 <div style={{ background: 'white', borderRadius: '12px', overflowX: 'auto', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
                                     <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '800px' }}>
-                                        <thead style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+                                        <thead style={{ background: 'var(--surface-subtle)', borderBottom: '1px solid var(--border)' }}>
                                             <tr>
-                                                <th style={{ textAlign: locale === 'ar' ? 'right' : 'left', padding: '1rem', fontSize: '0.875rem', color: '#64748b' }}>{t('name_label')}</th>
-                                                <th style={{ textAlign: locale === 'ar' ? 'right' : 'left', padding: '1rem', fontSize: '0.875rem', color: '#64748b' }}>{t('email')}</th>
-                                                <th style={{ textAlign: locale === 'ar' ? 'right' : 'left', padding: '1rem', fontSize: '0.875rem', color: '#64748b' }}>{t('username_label' as any) || 'Username'}</th>
-                                                <th style={{ textAlign: locale === 'ar' ? 'right' : 'left', padding: '1rem', fontSize: '0.875rem', color: '#64748b' }}>{t('role_label')}</th>
-                                                <th style={{ textAlign: locale === 'ar' ? 'right' : 'left', padding: '1rem', fontSize: '0.875rem', color: '#64748b' }}>{t('points_label')}</th>
-                                                <th style={{ textAlign: locale === 'ar' ? 'left' : 'right', padding: '1rem', fontSize: '0.875rem', color: '#64748b' }}>{t('status_label' as any) || t('system')}</th>
+                                                <th style={{ textAlign: locale === 'ar' ? 'right' : 'left', padding: '1rem', fontSize: '0.875rem', color: 'var(--text-soft)' }}>{t('name_label')}</th>
+                                                <th style={{ textAlign: locale === 'ar' ? 'right' : 'left', padding: '1rem', fontSize: '0.875rem', color: 'var(--text-soft)' }}>{t('email')}</th>
+                                                <th style={{ textAlign: locale === 'ar' ? 'right' : 'left', padding: '1rem', fontSize: '0.875rem', color: 'var(--text-soft)' }}>{t('username_label' as any) || 'Username'}</th>
+                                                <th style={{ textAlign: locale === 'ar' ? 'right' : 'left', padding: '1rem', fontSize: '0.875rem', color: 'var(--text-soft)' }}>{t('role_label')}</th>
+                                                <th style={{ textAlign: locale === 'ar' ? 'right' : 'left', padding: '1rem', fontSize: '0.875rem', color: 'var(--text-soft)' }}>{t('points_label')}</th>
+                                                <th style={{ textAlign: locale === 'ar' ? 'left' : 'right', padding: '1rem', fontSize: '0.875rem', color: 'var(--text-soft)' }}>{t('status_label' as any) || t('system')}</th>
                                             </tr>
                                         </thead>
                                         <tbody>
                                             {section.users.map((user: User) => (
-                                                <tr key={user.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                                                <tr key={user.id} style={{ borderBottom: '1px solid var(--surface-sunk)' }}>
                                                     <td style={{ padding: '1rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
                                                         <div style={{ fontWeight: '500' }}>{user.firstName} {user.lastName}</div>
                                                     </td>
                                                     <td style={{ padding: '1rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{user.email}</td>
                                                     <td style={{ padding: '1rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
-                                                        <code style={{ fontSize: '0.8rem', background: '#f8fafc', padding: '0.2rem 0.4rem', border: '1px solid #e2e8f0', borderRadius: '4px' }}>
+                                                        <code style={{ fontSize: '0.8rem', background: 'var(--surface-subtle)', padding: '0.2rem 0.4rem', border: '1px solid var(--border)', borderRadius: '4px' }}>
                                                             {user.username || '-'}
                                                         </code>
                                                     </td>
@@ -336,13 +336,13 @@ export default function AllUsersPage() {
                                                         <span style={{
                                                             fontSize: '0.75rem', fontWeight: 'bold',
                                                             padding: '0.2rem 0.5rem', borderRadius: '4px',
-                                                            background: '#f1f5f9', color: '#475569'
+                                                            background: 'var(--surface-sunk)', color: 'var(--text-muted)'
                                                         }}>
                                                             {t(getRoleKey(user.role) as any)}
                                                         </span>
                                                     </td>
                                                     <td style={{ padding: '1rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
-                                                        <span style={{ fontWeight: '600', color: user.totalDifficultyPoints >= 0 ? '#166534' : '#991b1b' }}>
+                                                        <span style={{ fontWeight: '600', color: user.totalDifficultyPoints >= 0 ? 'var(--ok-fg)' : 'var(--danger-fg)' }}>
                                                             {user.totalDifficultyPoints}
                                                         </span>
                                                     </td>
@@ -361,7 +361,7 @@ export default function AllUsersPage() {
                                             ))}
                                             {section.users.length === 0 && (
                                                 <tr>
-                                                    <td colSpan={6} style={{ padding: '2rem', textAlign: 'center', color: '#64748b' }}>{t('no_users_found_company')}</td>
+                                                    <td colSpan={6} style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-soft)' }}>{t('no_users_found_company')}</td>
                                                 </tr>
                                             )}
                                         </tbody>
@@ -371,7 +371,7 @@ export default function AllUsersPage() {
                         ))}
 
                         {companySections.length === 0 && !showSuperAdmins && (
-                            <div style={{ textAlign: 'center', padding: '3rem', color: '#64748b' }}>
+                            <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-soft)' }}>
                                 {t('no_companies_found_matching')} &quot;{filters.search}&quot;.
                             </div>
                         )}
@@ -389,17 +389,17 @@ export default function AllUsersPage() {
             {
                 hasAnyDeleted && (activeRegularUsers.length === 0 || page >= totalPages || totalPages === 0) && (
                     <div style={{ marginTop: '2rem' }}>
-                        <div style={{ background: '#f8fafc', padding: '1.5rem', borderRadius: '12px', border: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div style={{ background: 'var(--surface-subtle)', padding: '1.5rem', borderRadius: '12px', border: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                             <div style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>
-                                <h2 style={{ fontSize: '1.2rem', fontWeight: 'bold', color: '#64748b' }}>{t('ex_users_label')}</h2>
-                                <p style={{ margin: 0, color: '#94a3b8', fontSize: '0.9rem' }}>
+                                <h2 style={{ fontSize: '1.2rem', fontWeight: 'bold', color: 'var(--text-soft)' }}>{t('ex_users_label')}</h2>
+                                <p style={{ margin: 0, color: 'var(--text-faint)', fontSize: '0.9rem' }}>
                                     {realDeletedCount} {t('deleted_users_archive_msg')}
                                 </p>
                             </div>
                             <button
                                 onClick={() => setShowExUsersModal(true)}
                                 className="btn"
-                                style={{ background: 'white', border: '1px solid #cbd5e1', color: '#475569' }}
+                                style={{ background: 'white', border: '1px solid var(--border-firm)', color: 'var(--text-muted)' }}
                             >
                                 {t('view_archive_button')}
                             </button>
@@ -433,18 +433,18 @@ export default function AllUsersPage() {
                                     <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '0.5rem', flexDirection: 'row' }}>
                                         <span style={{ fontSize: '1.5rem' }}>🗑️</span> {t('ex_users_archive_title')}
                                     </h2>
-                                    <button onClick={() => setShowExUsersModal(false)} style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: '#64748b' }}>&times;</button>
+                                    <button onClick={() => setShowExUsersModal(false)} style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: 'var(--text-soft)' }}>&times;</button>
                                 </div>
 
                                 <div style={{ overflowY: 'auto', flex: 1 }}>
                                     <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '600px', textAlign: locale === 'ar' ? 'right' : 'left' }}>
-                                        <thead style={{ background: '#f1f5f9', position: 'sticky', top: 0 }}>
+                                        <thead style={{ background: 'var(--surface-sunk)', position: 'sticky', top: 0 }}>
                                             <tr>
-                                                <th style={{ textAlign: 'inherit', padding: '1rem', color: '#64748b' }}>{t('name_label')}</th>
-                                                <th style={{ textAlign: 'inherit', padding: '1rem', color: '#64748b' }}>{t('email')}</th>
-                                                <th style={{ textAlign: 'inherit', padding: '1rem', color: '#64748b' }}>{t('username_label' as any) || 'Username'}</th>
-                                                <th style={{ textAlign: 'inherit', padding: '1rem', color: '#64748b' }}>{t('previously_label')}</th>
-                                                <th style={{ textAlign: locale === 'ar' ? 'left' : 'right', padding: '1rem', color: '#64748b' }}>{t('profile_label')}</th>
+                                                <th style={{ textAlign: 'inherit', padding: '1rem', color: 'var(--text-soft)' }}>{t('name_label')}</th>
+                                                <th style={{ textAlign: 'inherit', padding: '1rem', color: 'var(--text-soft)' }}>{t('email')}</th>
+                                                <th style={{ textAlign: 'inherit', padding: '1rem', color: 'var(--text-soft)' }}>{t('username_label' as any) || 'Username'}</th>
+                                                <th style={{ textAlign: 'inherit', padding: '1rem', color: 'var(--text-soft)' }}>{t('previously_label')}</th>
+                                                <th style={{ textAlign: locale === 'ar' ? 'left' : 'right', padding: '1rem', color: 'var(--text-soft)' }}>{t('profile_label')}</th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -453,20 +453,20 @@ export default function AllUsersPage() {
                                                     <td colSpan={5} style={{ padding: '2rem', textAlign: 'center' }}>{t('loading_users')}</td>
                                                 </tr>
                                             ) : deletedUsersList.map((user: User) => (
-                                                <tr key={user.id} style={{ borderBottom: '1px solid #e2e8f0' }}>
+                                                <tr key={user.id} style={{ borderBottom: '1px solid var(--border)' }}>
                                                     <td style={{ padding: '1rem', fontWeight: '500', textAlign: 'inherit' }}>
                                                         {user.firstName} {user.lastName}
                                                     </td>
-                                                    <td style={{ padding: '1rem', color: '#64748b', textAlign: 'inherit' }}>
+                                                    <td style={{ padding: '1rem', color: 'var(--text-soft)', textAlign: 'inherit' }}>
                                                         {user.email.includes('_DELETED_') ? user.email.split('_DELETED_')[0] : user.email}
                                                     </td>
-                                                    <td style={{ padding: '1rem', color: '#64748b', textAlign: 'inherit' }}>
-                                                        <code style={{ fontSize: '0.8rem', background: '#f1f5f9', padding: '0.2rem 0.4rem', borderRadius: '4px' }}>
+                                                    <td style={{ padding: '1rem', color: 'var(--text-soft)', textAlign: 'inherit' }}>
+                                                        <code style={{ fontSize: '0.8rem', background: 'var(--surface-sunk)', padding: '0.2rem 0.4rem', borderRadius: '4px' }}>
                                                             {user.username || '-'}
                                                         </code>
                                                     </td>
                                                     <td style={{ padding: '1rem', textAlign: 'inherit' }}>
-                                                        <span style={{ fontSize: '0.75rem', background: '#f1f5f9', padding: '0.2rem 0.5rem', borderRadius: '0.25rem', color: '#475569' }}>
+                                                        <span style={{ fontSize: '0.75rem', background: 'var(--surface-sunk)', padding: '0.2rem 0.5rem', borderRadius: '0.25rem', color: 'var(--text-muted)' }}>
                                                             {user.company?.name || t('no_data_available')} &bull; {t(getRoleKey(user.role) as any)}
                                                         </span>
                                                     </td>
@@ -475,8 +475,8 @@ export default function AllUsersPage() {
                                                             <button
                                                                 onClick={() => setViewingProfileId(user.id)}
                                                                 style={{
-                                                                    background: '#eff6ff',
-                                                                    color: '#2563eb',
+                                                                    background: 'var(--info-bg-subtle)',
+                                                                    color: 'var(--info-solid-hover)',
                                                                     padding: '0.4rem 0.8rem',
                                                                     borderRadius: '0.5rem',
                                                                     fontWeight: '500',
@@ -491,8 +491,8 @@ export default function AllUsersPage() {
                                                                 onClick={() => setPermanentDeleteConfirm({ isOpen: true, user })}
                                                                 title={t('delete')}
                                                                 style={{
-                                                                    background: '#fee2e2',
-                                                                    color: '#dc2626',
+                                                                    background: 'var(--danger-bg)',
+                                                                    color: 'var(--danger-solid-hover)',
                                                                     padding: '0.4rem 0.6rem',
                                                                     borderRadius: '0.5rem',
                                                                     fontWeight: '600',
@@ -529,7 +529,7 @@ export default function AllUsersPage() {
                                     <button
                                         onClick={() => setShowExUsersModal(false)}
                                         className="btn"
-                                        style={{ background: '#e2e8f0', color: '#0f172a' }}
+                                        style={{ background: 'var(--border)', color: 'var(--text-strong)' }}
                                     >
                                         {t('close_button')}
                                     </button>
@@ -562,7 +562,7 @@ export default function AllUsersPage() {
                     <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>
                         {errorModal.title === 'Success' || errorModal.title === 'نجاح' ? '✅' : '⛔'}
                     </div>
-                    <p style={{ fontSize: '1.1rem', color: '#334155' }}>{errorModal.message}</p>
+                    <p style={{ fontSize: '1.1rem', color: 'var(--text-body)' }}>{errorModal.message}</p>
                 </div>
             </Modal>
         </div >

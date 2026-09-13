@@ -24,11 +24,11 @@ export default function LoadingSpinner({ message, fullPage = false }: LoadingSpi
                 width: '40px',
                 height: '40px',
                 border: '4px solid rgba(59, 130, 246, 0.1)',
-                borderTopColor: '#3b82f6',
+                borderTopColor: 'var(--info-solid)',
                 borderRadius: '50%'
             }}></div>
             <p style={{
-                color: '#64748b',
+                color: 'var(--text-soft)',
                 fontSize: '0.95rem',
                 fontWeight: '500',
                 textAlign: locale === 'ar' ? 'right' : 'left'
@@ -56,7 +56,7 @@ export default function LoadingSpinner({ message, fullPage = false }: LoadingSpi
                 position: 'fixed',
                 inset: 0,
                 zIndex: 99999,
-                backgroundColor: '#ffffff',
+                backgroundColor: 'var(--surface)',
                 backdropFilter: 'blur(20px)',
                 display: 'flex',
                 alignItems: 'center',

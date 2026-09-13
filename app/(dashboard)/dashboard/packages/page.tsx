@@ -153,7 +153,7 @@ export default function PackagesPage() {
             </div>
 
             {isLoading ? <LoadingSpinner /> : packages.length === 0 ? (
-                <div className="glass-card" style={{ padding: '3rem', textAlign: 'center', color: '#64748b' }}>
+                <div className="glass-card" style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-soft)' }}>
                     {t('no_packages_yet' as any)}
                 </div>
             ) : (
@@ -166,11 +166,11 @@ export default function PackagesPage() {
                                     <div>
                                         <div style={{ fontWeight: 700, fontSize: '1.05rem' }}>{pkg.name}</div>
                                         {pkg.description && (
-                                            <div style={{ fontSize: '0.85rem', color: '#64748b', marginTop: '0.25rem' }}>{pkg.description}</div>
+                                            <div style={{ fontSize: '0.85rem', color: 'var(--text-soft)', marginTop: '0.25rem' }}>{pkg.description}</div>
                                         )}
                                     </div>
                                     {!pkg.isActive && (
-                                        <span style={{ padding: '0.2rem 0.5rem', borderRadius: '999px', fontSize: '0.7rem', fontWeight: 600, background: '#f1f5f9', color: '#64748b', whiteSpace: 'nowrap' }}>
+                                        <span style={{ padding: '0.2rem 0.5rem', borderRadius: '999px', fontSize: '0.7rem', fontWeight: 600, background: 'var(--surface-sunk)', color: 'var(--text-soft)', whiteSpace: 'nowrap' }}>
                                             {t('package_retired' as any)}
                                         </span>
                                     )}
@@ -178,33 +178,33 @@ export default function PackagesPage() {
 
                                 <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap', margin: '0.85rem 0' }}>
                                     {!pkg.hasCompanyManagement && !pkg.hasHR && (
-                                        <span style={{ padding: '0.2rem 0.55rem', borderRadius: '999px', fontSize: '0.72rem', fontWeight: 600, background: '#f1f5f9', color: '#475569' }}>
+                                        <span style={{ padding: '0.2rem 0.55rem', borderRadius: '999px', fontSize: '0.72rem', fontWeight: 600, background: 'var(--surface-sunk)', color: 'var(--text-muted)' }}>
                                             {t('core_only' as any)}
                                         </span>
                                     )}
                                     {pkg.hasCompanyManagement && (
-                                        <span style={{ padding: '0.2rem 0.55rem', borderRadius: '999px', fontSize: '0.72rem', fontWeight: 600, background: '#e0f2fe', color: '#0369a1' }}>
+                                        <span style={{ padding: '0.2rem 0.55rem', borderRadius: '999px', fontSize: '0.72rem', fontWeight: 600, background: 'var(--info-bg)', color: 'var(--info-fg)' }}>
                                             {t('bundle_company_management' as any)}
                                         </span>
                                     )}
                                     {pkg.hasHR && (
-                                        <span style={{ padding: '0.2rem 0.55rem', borderRadius: '999px', fontSize: '0.72rem', fontWeight: 600, background: '#dcfce7', color: '#166534' }}>
+                                        <span style={{ padding: '0.2rem 0.55rem', borderRadius: '999px', fontSize: '0.72rem', fontWeight: 600, background: 'var(--ok-bg)', color: 'var(--ok-fg)' }}>
                                             {t('bundle_hr' as any)}
                                         </span>
                                     )}
                                 </div>
 
-                                <div style={{ fontSize: '0.85rem', color: '#334155', display: 'grid', gap: '0.2rem' }}>
+                                <div style={{ fontSize: '0.85rem', color: 'var(--text-body)', display: 'grid', gap: '0.2rem' }}>
                                     <div>{t('price_monthly' as any)}: <b>{money(pkg.priceMonthly)}</b></div>
                                     <div>{t('price_annual' as any)}: <b>{money(pkg.priceAnnual)}</b></div>
                                     <div>
                                         {t('price_lifetime' as any)}:{' '}
-                                        <b>{pkg.priceLifetime === null ? <span style={{ color: '#94a3b8', fontWeight: 400 }}>{t('not_sold_as_lifetime' as any)}</span> : money(pkg.priceLifetime)}</b>
+                                        <b>{pkg.priceLifetime === null ? <span style={{ color: 'var(--text-faint)', fontWeight: 400 }}>{t('not_sold_as_lifetime' as any)}</span> : money(pkg.priceLifetime)}</b>
                                     </div>
                                 </div>
 
-                                <div style={{ marginTop: '0.85rem', fontSize: '0.8rem', color: '#64748b' }}>
-                                    {t('companies_on_package' as any)}: <b style={{ color: '#334155' }}>{companies}</b>
+                                <div style={{ marginTop: '0.85rem', fontSize: '0.8rem', color: 'var(--text-soft)' }}>
+                                    {t('companies_on_package' as any)}: <b style={{ color: 'var(--text-body)' }}>{companies}</b>
                                 </div>
 
                                 <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
@@ -234,7 +234,7 @@ export default function PackagesPage() {
                         difference between deliberate repackaging and removing a
                         module from live customers mid-day. */}
                     {editing && (editing._count?.companies ?? 0) > 0 && (
-                        <div style={{ padding: '0.75rem', borderRadius: '8px', background: '#fef3c7', color: '#92400e', fontSize: '0.85rem', border: '1px solid #fcd34d' }}>
+                        <div style={{ padding: '0.75rem', borderRadius: '8px', background: 'var(--warn-bg)', color: 'var(--warn-fg)', fontSize: '0.85rem', border: '1px solid var(--warn-border)' }}>
                             {t('package_edit_warning' as any).replace('{count}', String(editing._count?.companies ?? 0))}
                         </div>
                     )}
@@ -283,7 +283,7 @@ export default function PackagesPage() {
                             </label>
                         </div>
                         {!form.hasCompanyManagement && !form.hasHR && (
-                            <div style={{ fontSize: '0.78rem', color: '#64748b', marginTop: '0.4rem' }}>
+                            <div style={{ fontSize: '0.78rem', color: 'var(--text-soft)', marginTop: '0.4rem' }}>
                                 {t('core_only' as any)}
                             </div>
                         )}
@@ -300,7 +300,7 @@ export default function PackagesPage() {
                         </label>
                     </div>
 
-                    {error && <div style={{ color: '#b91c1c', fontSize: '0.85rem' }}>{error}</div>}
+                    {error && <div style={{ color: 'var(--danger-fg-strong)', fontSize: '0.85rem' }}>{error}</div>}
 
                     <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', marginTop: '0.25rem' }}>
                         <button type="button" className="btn btn-secondary" onClick={() => setShowModal(false)}>{t('cancel' as any)}</button>

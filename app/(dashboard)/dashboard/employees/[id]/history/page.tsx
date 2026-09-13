@@ -357,7 +357,7 @@ export default function EmployeeHistoryPage() {
                     )}
                 </div>
                 {employee && (
-                    <div style={{ fontSize: '1.2rem', color: '#475569', textAlign: locale === 'ar' ? 'right' : 'left' }}>
+                    <div style={{ fontSize: '1.2rem', color: 'var(--text-muted)', textAlign: locale === 'ar' ? 'right' : 'left' }}>
                         <p style={{ margin: 0 }}>{t('for_label')}: <strong>{employee.firstName} {employee.lastName}</strong></p>
                         {activeTab === 'SALARY' ? (
                             employee.salary !== undefined && (
@@ -367,7 +367,7 @@ export default function EmployeeHistoryPage() {
                             dayOffHistory && (
                                 <p style={{ margin: '0.25rem 0 0 0', fontSize: '1rem' }}>
                                     {t('assigned_day_off_credit_label' as any) || 'Assigned Credit'}: <strong>{dayOffHistory.baseCredit}</strong> |
-                                    {t('remaining_day_off_credit_label' as any) || ' Remaining'}: <strong style={{ color: '#166534' }}>{dayOffHistory.remainingCredit}</strong>
+                                    {t('remaining_day_off_credit_label' as any) || ' Remaining'}: <strong style={{ color: 'var(--ok-fg)' }}>{dayOffHistory.remainingCredit}</strong>
                                 </p>
                             )
                         ) : null}
@@ -384,10 +384,15 @@ export default function EmployeeHistoryPage() {
                     zIndex: 2000,
                     padding: '1rem 1.5rem',
                     borderRadius: '1rem',
-                    background: alert.type === 'success' ? '#dcfce7' : '#fee2e2',
-                    color: alert.type === 'success' ? '#166534' : '#991b1b',
+                    background: alert.type === 'success' ? 'var(--ok-bg)' : 'var(--danger-bg)',
+                    color: alert.type === 'success' ? 'var(--ok-fg)' : 'var(--danger-fg)',
                     boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
-                    border: `1px solid ${alert.type === 'success' ? '#16653433' : '#991b1b33'}`,
+                    // 0x33/255 is 20%. Written as color-mix rather than an
+                    // eight-digit hex so the colour itself can be a token:
+                    // var(--ok-fg)33 is not a colour.
+                    border: `1px solid ${alert.type === 'success'
+                        ? 'color-mix(in srgb, var(--ok-fg) 20%, transparent)'
+                        : 'color-mix(in srgb, var(--danger-fg) 20%, transparent)'}`,
                     animation: 'slideInRight 0.3s ease-out'
                 }}>
                     {alert.message}
@@ -398,7 +403,7 @@ export default function EmployeeHistoryPage() {
                 <div className="card" style={{ overflowX: 'auto' }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '800px' }}>
                         <thead>
-                            <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
+                            <tr style={{ background: 'var(--surface-subtle)', borderBottom: '2px solid var(--border)' }}>
                                 <th style={{ padding: '1rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('month_year_column')}</th>
                                 <th style={{ padding: '1rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('base_salary_column')}</th>
                                 <th style={{ padding: '1rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('values_net_total_column')}</th>
@@ -411,7 +416,7 @@ export default function EmployeeHistoryPage() {
                         <tbody>
                             {records.length === 0 ? (
                                 <tr>
-                                    <td colSpan={7} style={{ padding: '2rem', textAlign: 'center', color: '#64748b' }}>
+                                    <td colSpan={7} style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-soft)' }}>
                                         {t('no_records_found')}
                                     </td>
                                 </tr>
@@ -437,27 +442,27 @@ export default function EmployeeHistoryPage() {
                                     const formattedBase = new Intl.NumberFormat(locale === 'ar' ? 'ar-EG' : 'en-EG', { style: 'currency', currency: 'EGP' }).format(baseSalaryToUse)
 
                                     return (
-                                        <tr key={record.id} style={{ borderBottom: '1px solid #e2e8f0' }}>
+                                        <tr key={record.id} style={{ borderBottom: '1px solid var(--border)' }}>
                                             <td style={{ padding: '1rem', fontWeight: '500', textAlign: locale === 'ar' ? 'right' : 'left' }}>
                                                 {getMonthName(record.month)} {record.year}
                                             </td>
-                                            <td style={{ padding: '1rem', color: '#475569', textAlign: locale === 'ar' ? 'right' : 'left' }}>
+                                            <td style={{ padding: '1rem', color: 'var(--text-muted)', textAlign: locale === 'ar' ? 'right' : 'left' }}>
                                                 {formattedBase}
                                             </td>
-                                            <td style={{ padding: '1rem', fontSize: '1.1rem', color: '#0f172a', textAlign: locale === 'ar' ? 'right' : 'left' }}>
+                                            <td style={{ padding: '1rem', fontSize: '1.1rem', color: 'var(--text-strong)', textAlign: locale === 'ar' ? 'right' : 'left' }}>
                                                 <span style={{ fontWeight: 'bold' }}>{fractionDisplay}</span>
-                                                <span style={{ color: '#94a3b8' }}> / {record.totalDays}</span>
+                                                <span style={{ color: 'var(--text-faint)' }}> / {record.totalDays}</span>
                                             </td>
-                                            <td style={{ padding: '1rem', color: '#dc2626', fontWeight: '500', textAlign: locale === 'ar' ? 'right' : 'left' }}>
+                                            <td style={{ padding: '1rem', color: 'var(--danger-solid-hover)', fontWeight: '500', textAlign: locale === 'ar' ? 'right' : 'left' }}>
                                                 {record.deductions > 0 ? `-${formatDays(record.deductions)}` : '-'}
                                             </td>
-                                            <td style={{ padding: '1rem', color: '#7c3aed', fontWeight: '500', textAlign: locale === 'ar' ? 'right' : 'left' }}>
+                                            <td style={{ padding: '1rem', color: 'var(--accent-solid-deep)', fontWeight: '500', textAlign: locale === 'ar' ? 'right' : 'left' }}>
                                                 {record.bonusDays ? `+${formatDays(record.bonusDays)}` : '-'}
                                             </td>
-                                            <td style={{ padding: '1rem', fontWeight: '600', color: '#166534', textAlign: locale === 'ar' ? 'right' : 'left' }}>
+                                            <td style={{ padding: '1rem', fontWeight: '600', color: 'var(--ok-fg)', textAlign: locale === 'ar' ? 'right' : 'left' }}>
                                                 {formattedCalculated}
                                             </td>
-                                            <td style={{ padding: '1rem', color: '#64748b', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
+                                            <td style={{ padding: '1rem', color: 'var(--text-soft)', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
                                                 {t('created_label')}: <SafeDate date={record.createdAt} locale={locale} format="dateOnly" />
                                             </td>
                                         </tr>
@@ -469,12 +474,12 @@ export default function EmployeeHistoryPage() {
                 </div>
             ) : activeTab === 'COSTS' ? (
                 <div className="card" style={{ overflowX: 'auto', padding: '1.5rem', background: 'rgba(255, 255, 255, 0.7)' }}>
-                    <h2 style={{ marginBottom: '1.5rem', borderBottom: '1px solid #e2e8f0', paddingBottom: '0.75rem' }}>
+                    <h2 style={{ marginBottom: '1.5rem', borderBottom: '1px solid var(--border)', paddingBottom: '0.75rem' }}>
                         {t('costs_tab' as any) || 'Costs'}
                     </h2>
                     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                         <thead>
-                            <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
+                            <tr style={{ background: 'var(--surface-subtle)', borderBottom: '2px solid var(--border)' }}>
                                 <th style={{ padding: '0.75rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('date_label')}</th>
                                 <th style={{ padding: '0.75rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('task_title' as any) || 'Task'}</th>
                                 <th style={{ padding: '0.75rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('amount_label' as any) || 'Amount'}</th>
@@ -484,13 +489,13 @@ export default function EmployeeHistoryPage() {
                         <tbody>
                             {userCosts.length === 0 ? (
                                 <tr>
-                                    <td colSpan={4} style={{ padding: '2rem', textAlign: 'center', color: '#64748b' }}>
+                                    <td colSpan={4} style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-soft)' }}>
                                         {t('no_records_found')}
                                     </td>
                                 </tr>
                             ) : (
                                 userCosts.map(cost => (
-                                    <tr key={cost.id} style={{ borderBottom: '1px solid #e2e8f0' }}>
+                                    <tr key={cost.id} style={{ borderBottom: '1px solid var(--border)' }}>
                                         <td style={{ padding: '0.75rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
                                             <SafeDate date={cost.date} locale={locale} format="dateOnly" />
                                         </td>
@@ -506,8 +511,8 @@ export default function EmployeeHistoryPage() {
                                                 borderRadius: '1rem',
                                                 fontSize: '0.875rem',
                                                 fontWeight: 'bold',
-                                                background: cost.status === 'PAID' ? '#dcfce7' : '#fee2e2',
-                                                color: cost.status === 'PAID' ? '#166534' : '#991b1b'
+                                                background: cost.status === 'PAID' ? 'var(--ok-bg)' : 'var(--danger-bg)',
+                                                color: cost.status === 'PAID' ? 'var(--ok-fg)' : 'var(--danger-fg)'
                                             }}>
                                                 {cost.status === 'PAID' ? t('payment_status_paid' as any) : t('payment_status_pending' as any)}
                                             </span>
@@ -522,10 +527,10 @@ export default function EmployeeHistoryPage() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
                     {dayOffHistory?.history.map(yearData => (
                         <div key={yearData.year} className="card" style={{ overflowX: 'auto', padding: '1.5rem', background: 'rgba(255, 255, 255, 0.7)' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '1px solid #e2e8f0', paddingBottom: '0.75rem' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '1px solid var(--border)', paddingBottom: '0.75rem' }}>
                                 <h2 style={{ margin: 0 }}>{yearData.year}</h2>
                                 {yearData.snapshot && (
-                                    <div style={{ fontSize: '0.9rem', color: '#64748b' }}>
+                                    <div style={{ fontSize: '0.9rem', color: 'var(--text-soft)' }}>
                                         {t('base_credit' as any) || 'Base'}: <strong>{yearData.snapshot.baseCredit}</strong> |
                                         {t('remaining_before_reset' as any) || ' Remaining (End of Year)'}: <strong>{yearData.snapshot.remainingCredit}</strong>
                                     </div>
@@ -533,7 +538,7 @@ export default function EmployeeHistoryPage() {
                             </div>
                             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                                 <thead>
-                                    <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
+                                    <tr style={{ background: 'var(--surface-subtle)', borderBottom: '2px solid var(--border)' }}>
                                         <th style={{ padding: '0.75rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('date_label')}</th>
                                         <th style={{ padding: '0.75rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('type_label')}</th>
                                         <th style={{ padding: '0.75rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('reason_label')}</th>
@@ -543,10 +548,10 @@ export default function EmployeeHistoryPage() {
                                 </thead>
                                 <tbody>
                                     {yearData.requests.length === 0 ? (
-                                        <tr><td colSpan={5} style={{ padding: '2rem', textAlign: 'center', color: '#64748b' }}>{t('no_records_found')}</td></tr>
+                                        <tr><td colSpan={5} style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-soft)' }}>{t('no_records_found')}</td></tr>
                                     ) : (
                                         yearData.requests.map(req => (
-                                            <tr key={req.id} style={{ borderBottom: '1px solid #e2e8f0' }}>
+                                            <tr key={req.id} style={{ borderBottom: '1px solid var(--border)' }}>
                                                 <td style={{ padding: '0.75rem', textAlign: locale === 'ar' ? 'right' : 'left' }}><SafeDate date={req.date} locale={locale} format="dateOnly" /></td>
                                                 <td style={{ padding: '0.75rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t(req.type as any) || req.type}</td>
                                                 <td style={{ padding: '0.75rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{req.reason || '-'}</td>
@@ -594,7 +599,7 @@ export default function EmployeeHistoryPage() {
                                 background: 'none',
                                 fontSize: '1.5rem',
                                 cursor: 'pointer',
-                                color: '#64748b'
+                                color: 'var(--text-soft)'
                             }}
                         >
                             ×
@@ -603,7 +608,7 @@ export default function EmployeeHistoryPage() {
 
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                             {adjustments.length === 0 ? (
-                                <p style={{ textAlign: 'center', color: '#64748b' }}>{t('no_adjustments_found' as any)}</p>
+                                <p style={{ textAlign: 'center', color: 'var(--text-soft)' }}>{t('no_adjustments_found' as any)}</p>
                             ) : (
                                 adjustments.map(adj => (
                                     <div
@@ -615,8 +620,8 @@ export default function EmployeeHistoryPage() {
                                             padding: '1.25rem',
                                             borderRadius: '1rem',
                                             background: visualHighlightId === adj.id ? 'rgba(168, 85, 247, 0.05)' : 'white',
-                                            border: '1px solid #e2e8f0',
-                                            borderInlineStart: visualHighlightId === adj.id ? '4px solid #a855f7' : '1px solid #e2e8f0',
+                                            border: '1px solid var(--border)',
+                                            borderInlineStart: visualHighlightId === adj.id ? '4px solid var(--accent-solid)' : '1px solid var(--border)',
                                             display: 'flex',
                                             justifyContent: 'space-between',
                                             alignItems: 'center',
@@ -631,7 +636,7 @@ export default function EmployeeHistoryPage() {
                                                 left: '-5px',
                                                 right: '-5px',
                                                 height: '2px',
-                                                background: '#ef4444',
+                                                background: 'var(--danger-solid)',
                                                 transform: 'rotate(-2deg)',
                                                 zIndex: 5,
                                                 opacity: 0.8,
@@ -640,15 +645,15 @@ export default function EmployeeHistoryPage() {
                                         )}
 
                                         <div style={{ opacity: adj.status === 'ROLLED_BACK' ? 0.6 : 1 }}>
-                                            <div style={{ fontWeight: 'bold', fontSize: '1.1rem', color: adj.type === 'BONUS' ? '#7c3aed' : '#dc2626' }}>
+                                            <div style={{ fontWeight: 'bold', fontSize: '1.1rem', color: adj.type === 'BONUS' ? 'var(--accent-solid-deep)' : 'var(--danger-solid-hover)' }}>
                                                 {adj.type === 'BONUS' ? '+' : '-'}{formatDays(adj.amount)}
                                             </div>
                                             {adj.reason && (
-                                                <div style={{ fontSize: '0.9rem', color: '#475569', marginTop: '0.25rem', maxWidth: '300px' }}>
+                                                <div style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginTop: '0.25rem', maxWidth: '300px' }}>
                                                     {adj.reason}
                                                 </div>
                                             )}
-                                            <div style={{ fontSize: '0.875rem', color: '#94a3b8', marginTop: '0.25rem' }}>
+                                            <div style={{ fontSize: '0.875rem', color: 'var(--text-faint)', marginTop: '0.25rem' }}>
                                                 <SafeDate date={adj.createdAt} locale={locale} showTime />
                                             </div>
                                         </div>
@@ -659,8 +664,8 @@ export default function EmployeeHistoryPage() {
                                                 disabled={!!rollbackLoading}
                                                 className="btn"
                                                 style={{
-                                                    background: '#fee2e2',
-                                                    color: '#991b1b',
+                                                    background: 'var(--danger-bg)',
+                                                    color: 'var(--danger-fg)',
                                                     fontSize: '0.875rem',
                                                     padding: '0.5rem 1rem'
                                                 }}
@@ -669,7 +674,7 @@ export default function EmployeeHistoryPage() {
                                             </button>
                                         )}
                                         {adj.status === 'ROLLED_BACK' && (
-                                            <span style={{ fontSize: '0.8rem', color: '#ef4444', fontWeight: 'bold' }}>
+                                            <span style={{ fontSize: '0.8rem', color: 'var(--danger-solid)', fontWeight: 'bold' }}>
                                                 {t('rollback_adjustment' as any)}
                                             </span>
                                         )}
@@ -703,11 +708,11 @@ export default function EmployeeHistoryPage() {
                         direction: locale === 'ar' ? 'rtl' : 'ltr'
                     }}>
                         <h2 style={{ marginBottom: '1rem' }}>{t('reevaluate')}</h2>
-                        <p style={{ color: '#64748b', fontSize: '0.9rem', marginBottom: '1.5rem' }}>
+                        <p style={{ color: 'var(--text-soft)', fontSize: '0.9rem', marginBottom: '1.5rem' }}>
                             <SafeDate date={selectedRequest.date} locale={locale} format="dateOnly" /> - {t(selectedRequest.type as any) || selectedRequest.type}
                         </p>
                         <div style={{ marginBottom: '1.5rem' }}>
-                            <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', color: '#475569', marginBottom: '0.5rem' }}>
+                            <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>
                                 {t('days_label')}
                             </label>
                             <input
@@ -759,23 +764,23 @@ export default function EmployeeHistoryPage() {
                     }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
                             <h2 style={{ margin: 0 }}>{t('manage_deductions')}</h2>
-                            <button onClick={() => setIsManageDeductionsOpen(false)} style={{ border: 'none', background: 'none', fontSize: '1.5rem', cursor: 'pointer', color: '#64748b' }}>×</button>
+                            <button onClick={() => setIsManageDeductionsOpen(false)} style={{ border: 'none', background: 'none', fontSize: '1.5rem', cursor: 'pointer', color: 'var(--text-soft)' }}>×</button>
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                             {dayOffHistory?.history.flatMap(y => y.requests).filter(r => r.deductionType === 'CREDIT').length === 0 ? (
-                                <p style={{ textAlign: 'center', color: '#64748b' }}>{t('no_records_found')}</p>
+                                <p style={{ textAlign: 'center', color: 'var(--text-soft)' }}>{t('no_records_found')}</p>
                             ) : (
                                 dayOffHistory?.history.flatMap(y => y.requests).filter(r => r.deductionType === 'CREDIT')
                                     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
                                     .map(req => (
-                                        <div key={req.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1.25rem', background: 'white', borderRadius: '1.25rem', border: '1px solid #e2e8f0' }}>
+                                        <div key={req.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1.25rem', background: 'white', borderRadius: '1.25rem', border: '1px solid var(--border)' }}>
                                             <div>
                                                 <div style={{ fontWeight: 'bold', fontSize: '1.05rem' }}>{t(req.type as any) || req.type}</div>
-                                                <div style={{ fontSize: '0.85rem', color: '#64748b' }}><SafeDate date={req.date} locale={locale} format="dateOnly" /></div>
-                                                {req.reason && <div style={{ fontSize: '0.85rem', color: '#94a3b8', fontStyle: 'italic' }}>{req.reason}</div>}
+                                                <div style={{ fontSize: '0.85rem', color: 'var(--text-soft)' }}><SafeDate date={req.date} locale={locale} format="dateOnly" /></div>
+                                                {req.reason && <div style={{ fontSize: '0.85rem', color: 'var(--text-faint)', fontStyle: 'italic' }}>{req.reason}</div>}
                                             </div>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                                                <div style={{ fontWeight: '800', fontSize: '1.2rem', color: '#dc2626' }}>-{req.daysDeducted}</div>
+                                                <div style={{ fontWeight: '800', fontSize: '1.2rem', color: 'var(--danger-solid-hover)' }}>-{req.daysDeducted}</div>
                                                 <button
                                                     onClick={() => { setSelectedRequest(req); setReevaluateValue(req.daysDeducted.toString()); setIsReevaluateModalOpen(true); }}
                                                     className="btn glass"

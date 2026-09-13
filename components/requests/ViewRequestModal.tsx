@@ -39,7 +39,7 @@ export default function ViewRequestModal({ isOpen, onClose, request, userRole, o
             <div>
                 <div style={{ marginBottom: '1.5rem' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
-                        <h3 style={{ margin: '0 0 0.5rem 0', color: '#1e293b', fontSize: '1.25rem', flex: 1 }}>{request.title}</h3>
+                        <h3 style={{ margin: '0 0 0.5rem 0', color: 'var(--text-main)', fontSize: '1.25rem', flex: 1 }}>{request.title}</h3>
 
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', alignItems: 'flex-end' }}>
                             {(request.status !== 'COMPLETED' || userRole === 'SUPER_ADMIN') && (
@@ -51,8 +51,8 @@ export default function ViewRequestModal({ isOpen, onClose, request, userRole, o
                                     }}
                                     className="btn"
                                     style={{
-                                        background: '#fef2f2',
-                                        color: '#dc2626',
+                                        background: 'var(--danger-bg-subtle)',
+                                        color: 'var(--danger-solid-hover)',
                                         padding: '0.4rem 0.85rem',
                                         fontSize: '0.8125rem',
                                         border: 'none',
@@ -73,9 +73,9 @@ export default function ViewRequestModal({ isOpen, onClose, request, userRole, o
                                     onClick={() => handleUpdate(request.status === 'PENDING' ? 'IN_PROGRESS' : 'COMPLETED')}
                                     disabled={updating}
                                     style={{
-                                        background: request.status === 'PENDING' ? '#e0f2fe' : '#dcfce7',
-                                        border: `1px solid ${request.status === 'PENDING' ? '#38bdf8' : '#22c55e'}`,
-                                        color: request.status === 'PENDING' ? '#0369a1' : '#166534',
+                                        background: request.status === 'PENDING' ? 'var(--info-bg)' : 'var(--ok-bg)',
+                                        border: `1px solid ${request.status === 'PENDING' ? 'var(--info-solid-sky-light)' : 'var(--ok-solid-alt)'}`,
+                                        color: request.status === 'PENDING' ? 'var(--info-fg)' : 'var(--ok-fg)',
                                         padding: '0.4rem 0.85rem',
                                         borderRadius: '0.75rem',
                                         fontSize: '0.8125rem',
@@ -90,7 +90,7 @@ export default function ViewRequestModal({ isOpen, onClose, request, userRole, o
                                     title={request.status === 'PENDING' ? t('mark_in_progress' as any) : t('mark_completed' as any)}
                                 >
                                     {updating ? (
-                                        <div className="animate-spin-local" style={{ width: '14px', height: '14px', border: `2px solid ${request.status === 'PENDING' ? '#0369a1' : '#166534'}`, borderTopColor: 'transparent', borderRadius: '50%' }} />
+                                        <div className="animate-spin-local" style={{ width: '14px', height: '14px', border: `2px solid ${request.status === 'PENDING' ? 'var(--info-fg)' : 'var(--ok-fg)'}`, borderTopColor: 'transparent', borderRadius: '50%' }} />
                                     ) : (
                                         <span style={{ fontSize: '1rem' }}>✓</span>
                                     )}
@@ -101,26 +101,26 @@ export default function ViewRequestModal({ isOpen, onClose, request, userRole, o
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                         <span className="badge" style={{
-                            background: request.status === 'PENDING' ? '#fef9c3' : request.status === 'IN_PROGRESS' ? '#e0f2fe' : '#dcfce7',
-                            color: request.status === 'PENDING' ? '#854d0e' : request.status === 'IN_PROGRESS' ? '#0369a1' : '#166534',
+                            background: request.status === 'PENDING' ? 'var(--warn-bg-yellow)' : request.status === 'IN_PROGRESS' ? 'var(--info-bg)' : 'var(--ok-bg)',
+                            color: request.status === 'PENDING' ? 'var(--warn-fg-yellow)' : request.status === 'IN_PROGRESS' ? 'var(--info-fg)' : 'var(--ok-fg)',
                             fontSize: '0.75rem',
                             fontWeight: '600'
                         }} title={t(`status_${request.status.toLowerCase()}` as any)}>
                             {t(`status_${request.status.toLowerCase()}` as any)}
                         </span>
-                        <span style={{ fontSize: '0.85rem', color: '#94a3b8' }}>
+                        <span style={{ fontSize: '0.85rem', color: 'var(--text-faint)' }}>
                             {new Date(request.createdAt).toLocaleString(locale)}
                         </span>
                     </div>
                 </div>
 
                 {request.user && (
-                    <div style={{ padding: '1rem', background: '#f8fafc', borderRadius: '0.75rem', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                    <div style={{ padding: '1rem', background: 'var(--surface-subtle)', borderRadius: '0.75rem', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
                         <div style={{
                             width: '40px',
                             height: '40px',
                             borderRadius: '50%',
-                            background: '#e2e8f0',
+                            background: 'var(--border)',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
@@ -134,8 +134,8 @@ export default function ViewRequestModal({ isOpen, onClose, request, userRole, o
                             )}
                         </div>
                         <div>
-                            <div style={{ fontWeight: '600', color: '#334155' }}>{request.user.firstName} {request.user.lastName}</div>
-                            <div style={{ fontSize: '0.75rem', color: '#64748b' }}>{request.user.role}</div>
+                            <div style={{ fontWeight: '600', color: 'var(--text-body)' }}>{request.user.firstName} {request.user.lastName}</div>
+                            <div style={{ fontSize: '0.75rem', color: 'var(--text-soft)' }}>{request.user.role}</div>
                         </div>
                     </div>
                 )}
@@ -148,31 +148,31 @@ export default function ViewRequestModal({ isOpen, onClose, request, userRole, o
                     borderRadius: '0.75rem',
                     fontSize: '0.85rem'
                 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', color: '#64748b' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', color: 'var(--text-soft)' }}>
                         <span>📅 {t('requested_on')}:</span>
-                        <span style={{ fontWeight: '600', color: '#334155' }}>{new Date(request.createdAt).toLocaleString(locale)}</span>
+                        <span style={{ fontWeight: '600', color: 'var(--text-body)' }}>{new Date(request.createdAt).toLocaleString(locale)}</span>
                     </div>
                     {request.inProgressAt && (
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', color: '#64748b' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', color: 'var(--text-soft)' }}>
                             <span>🚀 {t('started_at')}:</span>
-                            <span style={{ fontWeight: '600', color: '#334155' }}>{new Date(request.inProgressAt).toLocaleString(locale)}</span>
+                            <span style={{ fontWeight: '600', color: 'var(--text-body)' }}>{new Date(request.inProgressAt).toLocaleString(locale)}</span>
                         </div>
                     )}
                     {request.completedAt && (
-                        <div style={{ display: 'flex', justifyContent: 'space-between', color: '#64748b' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-soft)' }}>
                             <span>✅ {t('finished_at')}:</span>
-                            <span style={{ fontWeight: '600', color: '#334155' }}>{new Date(request.completedAt).toLocaleString(locale)}</span>
+                            <span style={{ fontWeight: '600', color: 'var(--text-body)' }}>{new Date(request.completedAt).toLocaleString(locale)}</span>
                         </div>
                     )}
                 </div>
 
                 <div style={{
                     whiteSpace: 'pre-wrap',
-                    color: '#475569',
+                    color: 'var(--text-muted)',
                     lineHeight: '1.7',
                     padding: '1.5rem',
                     background: 'white',
-                    border: '1px solid #f1f5f9',
+                    border: '1px solid var(--surface-sunk)',
                     borderRadius: '0.75rem',
                     minHeight: '150px'
                 }}>

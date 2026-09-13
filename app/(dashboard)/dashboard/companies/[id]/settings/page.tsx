@@ -150,12 +150,12 @@ export default function CompanySettingsPage() {
                 </button>
                 <div style={{ clear: 'both' }}></div>
                 <h1 style={{ margin: 0 }}>{t('company_settings_title') || 'Company Settings'}</h1>
-                <p style={{ color: '#64748b', marginTop: '0.25rem' }}>{t('management_for')} <strong>{company?.name || t('loading_data')}</strong></p>
+                <p style={{ color: 'var(--text-soft)', marginTop: '0.25rem' }}>{t('management_for')} <strong>{company?.name || t('loading_data')}</strong></p>
             </div>
 
             {loading ? (
                 <div style={{ padding: '4rem', textAlign: 'center' }}>
-                    <p style={{ color: '#64748b' }}>{t('loading_data')}</p>
+                    <p style={{ color: 'var(--text-soft)' }}>{t('loading_data')}</p>
                 </div>
             ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', maxWidth: '32rem' }}>
@@ -174,7 +174,7 @@ export default function CompanySettingsPage() {
                             />
                             <div>
                                 <div style={{ fontWeight: 500 }}>{t('auto_verify_location_label') || 'Auto-verify submitted task locations'}</div>
-                                <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '0.15rem' }}>
+                                <div style={{ fontSize: '0.8rem', color: 'var(--text-soft)', marginTop: '0.15rem' }}>
                                     {t('auto_verify_location_hint') || 'When on, a location submitted within the system’s distance setting is marked correct automatically. When off, every submitted location needs manual review.'}
                                 </div>
                             </div>
@@ -183,7 +183,7 @@ export default function CompanySettingsPage() {
 
                     <div className="glass" style={{ padding: '1.5rem', borderRadius: '1rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
                         <div style={{ fontWeight: 500, marginBottom: '0.15rem' }}>{t('vendors_label_setting') || 'Vendors tab label'}</div>
-                        <div style={{ fontSize: '0.8rem', color: '#64748b', marginBottom: '0.75rem' }}>
+                        <div style={{ fontSize: '0.8rem', color: 'var(--text-soft)', marginBottom: '0.75rem' }}>
                             {t('vendors_label_setting_hint') || 'Renames the "Vendors" tab for this company everywhere it appears. Leave blank to use the default.'}
                         </div>
                         <div style={{ display: 'flex', gap: '0.5rem', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>

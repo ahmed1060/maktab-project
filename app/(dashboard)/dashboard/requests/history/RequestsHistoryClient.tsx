@@ -152,7 +152,7 @@ export default function RequestsHistoryClient({ userRole }: { userRole: string }
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        color: '#6366f1',
+                        color: 'var(--brand-primary)',
                         textDecoration: 'none',
                         transition: 'all 0.3s ease',
                         border: '1px solid rgba(255, 255, 255, 0.4)',
@@ -198,11 +198,11 @@ export default function RequestsHistoryClient({ userRole }: { userRole: string }
             />
 
             {loading ? (
-                <div className="card" style={{ padding: '2rem', textAlign: 'center', color: '#64748b' }}>
+                <div className="card" style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-soft)' }}>
                     {t('loading_data')}
                 </div>
             ) : requests.length === 0 ? (
-                <div className="card" style={{ padding: '2rem', textAlign: 'center', color: '#94a3b8' }}>
+                <div className="card" style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-faint)' }}>
                     {t('no_requests_found')}
                 </div>
             ) : (

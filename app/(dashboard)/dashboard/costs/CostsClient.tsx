@@ -157,8 +157,8 @@ export default function CostsClient({ tasksWithCosts, userRole, total, page, tot
                     position: 'fixed',
                     top: '20px',
                     [locale === 'ar' ? 'left' : 'right']: '20px',
-                    background: feedbackMessage === t('successfully_marked_paid') ? '#dcfce7' : '#fee2e2',
-                    color: feedbackMessage === t('successfully_marked_paid') ? '#166534' : '#991b1b',
+                    background: feedbackMessage === t('successfully_marked_paid') ? 'var(--ok-bg)' : 'var(--danger-bg)',
+                    color: feedbackMessage === t('successfully_marked_paid') ? 'var(--ok-fg)' : 'var(--danger-fg)',
                     padding: '1rem 1.5rem',
                     borderRadius: '0.5rem',
                     boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
@@ -197,7 +197,7 @@ export default function CostsClient({ tasksWithCosts, userRole, total, page, tot
                             onClick={handleMarkAllAsPaid}
                             disabled={isUpdating}
                             style={{
-                                background: '#10b981',
+                                background: 'var(--ok-solid)',
                                 color: 'white',
                                 border: 'none',
                                 borderRadius: '1.25rem',
@@ -218,7 +218,7 @@ export default function CostsClient({ tasksWithCosts, userRole, total, page, tot
             />
 
             {sortedEntries.length === 0 ? (
-                <div className="card" style={{ textAlign: 'center', padding: '3rem', color: '#64748b' }}>
+                <div className="card" style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-soft)' }}>
                     <p style={{ fontSize: '1.1rem', marginBottom: '0.5rem' }}>
                         {filters.employeeId || filters.dateFrom || filters.dateTo || filters.search
                             ? t('no_costs_found_filters')

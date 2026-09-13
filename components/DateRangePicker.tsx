@@ -133,7 +133,7 @@ export default function DateRangePicker({ dateFrom, dateTo, onChange, label, min
                 transform: 'none',
                 marginTop: 0,
                 background: 'white',
-                border: '1px solid #e2e8f0',
+                border: '1px solid var(--border)',
                 borderRadius: '0.75rem',
                 boxShadow: '0 10px 25px rgba(0, 0, 0, 0.1)',
                 padding: '1rem',
@@ -154,12 +154,12 @@ export default function DateRangePicker({ dateFrom, dateTo, onChange, label, min
                         fontSize: '1.25rem',
                         cursor: 'pointer',
                         padding: '0.25rem 0.5rem',
-                        color: '#64748b'
+                        color: 'var(--text-soft)'
                     }}
                 >
                     {locale === 'ar' ? '›' : '‹'}
                 </button>
-                <div style={{ fontWeight: '600', fontSize: '0.95rem', color: '#64748b' }}>
+                <div style={{ fontWeight: '600', fontSize: '0.95rem', color: 'var(--text-soft)' }}>
                     {monthYear}
                 </div>
                 <button
@@ -170,7 +170,7 @@ export default function DateRangePicker({ dateFrom, dateTo, onChange, label, min
                         fontSize: '1.25rem',
                         cursor: 'pointer',
                         padding: '0.25rem 0.5rem',
-                        color: '#64748b'
+                        color: 'var(--text-soft)'
                     }}
                 >
                     {locale === 'ar' ? '‹' : '›'}
@@ -180,7 +180,7 @@ export default function DateRangePicker({ dateFrom, dateTo, onChange, label, min
             {/* Weekday Headers */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '0.25rem', marginBottom: '0.5rem' }}>
                 {weekdays.map(day => (
-                    <div key={day} style={{ textAlign: 'center', fontSize: '0.75rem', color: '#94a3b8', fontWeight: '600', padding: '0.25rem' }}>
+                    <div key={day} style={{ textAlign: 'center', fontSize: '0.75rem', color: 'var(--text-faint)', fontWeight: '600', padding: '0.25rem' }}>
                         {day}
                     </div>
                 ))}
@@ -209,13 +209,13 @@ export default function DateRangePicker({ dateFrom, dateTo, onChange, label, min
                                 padding: '0.5rem',
                                 border: 'none',
                                 borderRadius: '50%',
-                                background: isStart || isEnd ? '#3b82f6' : inRange ? '#dbeafe' : 'transparent',
-                                color: isStart || isEnd ? 'white' : inRange ? '#1e40af' : isToday ? '#f59e0b' : isDisabled ? '#e2e8f0' : '#1e293b',
+                                background: isStart || isEnd ? 'var(--info-solid)' : inRange ? 'var(--info-bg-indigo)' : 'transparent',
+                                color: isStart || isEnd ? 'white' : inRange ? 'var(--info-fg-indigo)' : isToday ? 'var(--warn-solid)' : isDisabled ? 'var(--border)' : 'var(--text-main)',
                                 fontSize: '0.875rem',
                                 cursor: isDisabled ? 'not-allowed' : 'pointer',
                                 fontWeight: isStart || isEnd || isToday ? '600' : '400',
                                 transition: 'all 0.2s',
-                                outline: isToday && !isStart && !isEnd ? '2px solid #f59e0b' : 'none',
+                                outline: isToday && !isStart && !isEnd ? '2px solid var(--warn-solid)' : 'none',
                                 opacity: isDisabled ? 0.5 : 1
                             }}
                         >
@@ -229,13 +229,13 @@ export default function DateRangePicker({ dateFrom, dateTo, onChange, label, min
             <div style={{
                 marginTop: '1.25rem',
                 paddingTop: '0.75rem',
-                borderTop: '1px solid #f1f5f9',
+                borderTop: '1px solid var(--surface-sunk)',
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
                 flexDirection: 'row'
             }}>
-                <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-soft)' }}>
                     {selectingFrom ? t('select_start_date' as any) : t('select_end_date' as any)}
                 </div>
                 <div style={{ display: 'flex', gap: '0.5rem' }}>
@@ -243,8 +243,8 @@ export default function DateRangePicker({ dateFrom, dateTo, onChange, label, min
                         <button
                             onClick={(e) => { e.stopPropagation(); handleReset(); }}
                             style={{
-                                background: '#fef2f2',
-                                color: '#ef4444',
+                                background: 'var(--danger-bg-subtle)',
+                                color: 'var(--danger-solid)',
                                 border: 'none',
                                 padding: '0.25rem 0.75rem',
                                 borderRadius: '0.375rem',
@@ -260,7 +260,7 @@ export default function DateRangePicker({ dateFrom, dateTo, onChange, label, min
                     <button
                         onClick={(e) => { e.stopPropagation(); setIsOpen(false); }}
                         style={{
-                            background: '#3b82f6',
+                            background: 'var(--info-solid)',
                             color: 'white',
                             border: 'none',
                             padding: '0.25rem 0.75rem',
@@ -288,7 +288,7 @@ export default function DateRangePicker({ dateFrom, dateTo, onChange, label, min
                 style={{
                     padding: '0 1rem',
                     borderRadius: '1.25rem',
-                    border: '1px solid #e2e8f0',
+                    border: '1px solid var(--border)',
                     fontSize: '0.875rem',
                     cursor: 'pointer',
                     background: 'white',
@@ -302,8 +302,8 @@ export default function DateRangePicker({ dateFrom, dateTo, onChange, label, min
                 }}
             >
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexDirection: 'row' }}>
-                    <span style={{ color: '#94a3b8' }}>📅</span>
-                    <span style={{ color: dateFrom || dateTo ? '#1e293b' : '#94a3b8' }}>
+                    <span style={{ color: 'var(--text-faint)' }}>📅</span>
+                    <span style={{ color: dateFrom || dateTo ? 'var(--text-main)' : 'var(--text-faint)' }}>
                         {dateFrom && dateTo
                             ? (dateFrom === dateTo
                                 ? formatDate(dateFrom)
@@ -313,7 +313,7 @@ export default function DateRangePicker({ dateFrom, dateTo, onChange, label, min
                                 : t('select_date_range' as any)}
                     </span>
                 </div>
-                <span style={{ color: '#94a3b8', fontSize: '0.7rem' }}>{isOpen ? '▲' : '▼'}</span>
+                <span style={{ color: 'var(--text-faint)', fontSize: '0.7rem' }}>{isOpen ? '▲' : '▼'}</span>
             </div>
 
             {isOpen && mounted && createPortal(

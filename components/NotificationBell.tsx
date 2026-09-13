@@ -190,18 +190,18 @@ export default function NotificationBell({ initialUnreadCount = 0 }: { initialUn
                     top: '100%',
                     width: 'min(300px, calc(100vw - 3rem))',
                     background: 'white',
-                    border: '1px solid #ddd',
+                    border: '1px solid var(--grey-200)',
                     borderRadius: '8px',
                     boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
                     zIndex: 1000,
                     maxHeight: '400px',
                     overflowY: 'auto'
                 }}>
-                    <div style={{ padding: '0.5rem', borderBottom: '1px solid #eee', fontWeight: 'bold' }}>
+                    <div style={{ padding: '0.5rem', borderBottom: '1px solid var(--grey-100)', fontWeight: 'bold' }}>
                         {t('notifications')}
                     </div>
                     {notifications.length === 0 ? (
-                        <div style={{ padding: '1rem', textAlign: 'center', color: '#666' }}>
+                        <div style={{ padding: '1rem', textAlign: 'center', color: 'var(--grey-600)' }}>
                             {t('no_notifications')}
                         </div>
                     ) : (
@@ -211,22 +211,22 @@ export default function NotificationBell({ initialUnreadCount = 0 }: { initialUn
                                 onClick={() => handleNotificationClick(notification)}
                                 style={{
                                     padding: '0.75rem',
-                                    borderBottom: '1px solid #eee',
-                                    background: notification.read ? 'white' : '#f0f9ff',
+                                    borderBottom: '1px solid var(--grey-100)',
+                                    background: notification.read ? 'white' : 'var(--info-bg-sky)',
                                     cursor: notification.relatedId ? 'pointer' : 'default',
                                     transition: 'background 0.2s'
                                 }}
                                 onMouseEnter={(e) => {
                                     if (notification.relatedId) {
-                                        e.currentTarget.style.background = '#e0f2fe'
+                                        e.currentTarget.style.background = 'var(--info-bg)'
                                     }
                                 }}
                                 onMouseLeave={(e) => {
-                                    e.currentTarget.style.background = notification.read ? 'white' : '#f0f9ff'
+                                    e.currentTarget.style.background = notification.read ? 'white' : 'var(--info-bg-sky)'
                                 }}
                             >
                                 <div style={{ fontSize: '0.875rem' }}>{notification.message}</div>
-                                <div style={{ fontSize: '0.75rem', color: '#666', marginTop: '0.25rem' }}>
+                                <div style={{ fontSize: '0.75rem', color: 'var(--grey-600)', marginTop: '0.25rem' }}>
                                     {new Date(notification.createdAt).toLocaleString()}
                                 </div>
                             </div>

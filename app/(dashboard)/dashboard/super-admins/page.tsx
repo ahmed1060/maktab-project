@@ -174,13 +174,13 @@ export default function SuperAdminsPage() {
     const getStatusStyles = (status: string) => {
         switch (status) {
             case 'ACTIVE':
-                return { background: '#dcfce7', color: '#166534' }
+                return { background: 'var(--ok-bg)', color: 'var(--ok-fg)' }
             case 'OFFLINE':
-                return { background: '#fef9c3', color: '#854d0e' }
+                return { background: 'var(--warn-bg-yellow)', color: 'var(--warn-fg-yellow)' }
             case 'BANNED':
-                return { background: '#fee2e2', color: '#991b1b' }
+                return { background: 'var(--danger-bg)', color: 'var(--danger-fg)' }
             default:
-                return { background: '#f1f5f9', color: '#475569' }
+                return { background: 'var(--surface-sunk)', color: 'var(--text-muted)' }
         }
     }
 
@@ -199,21 +199,21 @@ export default function SuperAdminsPage() {
             {loading ? <p style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('loading_users')}</p> : (
                 <div style={{ background: 'white', borderRadius: '12px', overflowX: 'auto', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '600px' }}>
-                        <thead style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+                        <thead style={{ background: 'var(--surface-subtle)', borderBottom: '1px solid var(--border)' }}>
                             <tr>
-                                <th style={{ textAlign: locale === 'ar' ? 'right' : 'left', padding: '1rem', fontSize: '0.875rem', color: '#64748b' }}>{t('name_label')}</th>
-                                <th style={{ textAlign: locale === 'ar' ? 'right' : 'left', padding: '1rem', fontSize: '0.875rem', color: '#64748b' }}>{t('email')}</th>
-                                <th style={{ textAlign: locale === 'ar' ? 'right' : 'left', padding: '1rem', fontSize: '0.875rem', color: '#64748b' }}>{t('system')}</th>
-                                <th style={{ textAlign: locale === 'ar' ? 'left' : 'right', padding: '1rem', fontSize: '0.875rem', color: '#64748b' }}>{t('quick_actions')}</th>
+                                <th style={{ textAlign: locale === 'ar' ? 'right' : 'left', padding: '1rem', fontSize: '0.875rem', color: 'var(--text-soft)' }}>{t('name_label')}</th>
+                                <th style={{ textAlign: locale === 'ar' ? 'right' : 'left', padding: '1rem', fontSize: '0.875rem', color: 'var(--text-soft)' }}>{t('email')}</th>
+                                <th style={{ textAlign: locale === 'ar' ? 'right' : 'left', padding: '1rem', fontSize: '0.875rem', color: 'var(--text-soft)' }}>{t('system')}</th>
+                                <th style={{ textAlign: locale === 'ar' ? 'left' : 'right', padding: '1rem', fontSize: '0.875rem', color: 'var(--text-soft)' }}>{t('quick_actions')}</th>
                             </tr>
                         </thead>
                         <tbody>
                             {admins.map(admin => (
-                                <tr key={admin.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                                <tr key={admin.id} style={{ borderBottom: '1px solid var(--surface-sunk)' }}>
                                     <td style={{ padding: '1rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                             <div
-                                                style={{ fontWeight: '500', cursor: 'pointer', color: '#2563eb' }}
+                                                style={{ fontWeight: '500', cursor: 'pointer', color: 'var(--info-solid-hover)' }}
                                                 onClick={() => setViewingAdmin(admin)}
                                             >
                                                 {admin.firstName} {admin.lastName}
@@ -226,8 +226,8 @@ export default function SuperAdminsPage() {
                                                         fontWeight: '700',
                                                         padding: '0.15rem 0.5rem',
                                                         borderRadius: '999px',
-                                                        background: '#eef2ff',
-                                                        color: '#4338ca',
+                                                        background: 'var(--info-bg-indigo-subtle)',
+                                                        color: 'var(--accent-deep)',
                                                         whiteSpace: 'nowrap'
                                                     }}
                                                 >
@@ -254,7 +254,7 @@ export default function SuperAdminsPage() {
                                                 <button
                                                     onClick={() => openEdit(admin)}
                                                     className="btn"
-                                                    style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem', background: '#f1f5f9', color: '#334155' }}
+                                                    style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem', background: 'var(--surface-sunk)', color: 'var(--text-body)' }}
                                                 >
                                                     {t('edit')}
                                                 </button>
@@ -263,7 +263,7 @@ export default function SuperAdminsPage() {
                                                 <button
                                                     onClick={() => setDeleteConfirm(admin)}
                                                     className="btn"
-                                                    style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem', background: '#fee2e2', color: '#dc2626' }}
+                                                    style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem', background: 'var(--danger-bg)', color: 'var(--danger-solid-hover)' }}
                                                 >
                                                     {t('delete')}
                                                 </button>
@@ -335,7 +335,7 @@ export default function SuperAdminsPage() {
                                         padding: '0.25rem',
                                         display: 'flex',
                                         alignItems: 'center',
-                                        color: '#64748b'
+                                        color: 'var(--text-soft)'
                                     }}
                                 >
                                     {showPassword ? (
@@ -359,7 +359,7 @@ export default function SuperAdminsPage() {
                                 </select>
                             </div>
                             <div style={{ display: 'flex', gap: '1rem', justifyContent: locale === 'ar' ? 'flex-start' : 'flex-end', flexDirection: 'row' }}>
-                                <button type="button" onClick={() => setShowCreateModal(false)} style={{ padding: '0.75rem 1.5rem', border: '1px solid #e2e8f0', borderRadius: '0.5rem', background: 'transparent' }}>{t('cancel')}</button>
+                                <button type="button" onClick={() => setShowCreateModal(false)} style={{ padding: '0.75rem 1.5rem', border: '1px solid var(--border)', borderRadius: '0.5rem', background: 'transparent' }}>{t('cancel')}</button>
                                 <button type="submit" className="btn btn-primary" disabled={submitLoading}>{submitLoading ? t('creating') : t('sign_in')}</button>
                             </div>
                         </form>
@@ -381,19 +381,19 @@ export default function SuperAdminsPage() {
                     <div style={{ background: 'white', padding: '2rem', borderRadius: '12px', width: '100%', maxWidth: '400px', position: 'relative', zIndex: 101, direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
                         <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('profile_title')}</h2>
                         <div style={{ marginBottom: '1rem' }}>
-                            <label style={{ color: '#64748b', fontSize: '0.875rem', display: 'block', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('full_name_label')}</label>
+                            <label style={{ color: 'var(--text-soft)', fontSize: '0.875rem', display: 'block', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('full_name_label')}</label>
                             <div style={{ fontWeight: '500', fontSize: '1.1rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{viewingAdmin.firstName} {viewingAdmin.lastName}</div>
                         </div>
                         <div style={{ marginBottom: '1rem' }}>
-                            <label style={{ color: '#64748b', fontSize: '0.875rem', display: 'block', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('email')}</label>
+                            <label style={{ color: 'var(--text-soft)', fontSize: '0.875rem', display: 'block', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('email')}</label>
                             <div style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>{viewingAdmin.email}</div>
                         </div>
                         <div style={{ marginBottom: '1rem' }}>
-                            <label style={{ color: '#64748b', fontSize: '0.875rem', display: 'block', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('role_label')}</label>
-                            <div style={{ color: '#d97706', fontWeight: 'bold', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('super_admins')}</div>
+                            <label style={{ color: 'var(--text-soft)', fontSize: '0.875rem', display: 'block', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('role_label')}</label>
+                            <div style={{ color: 'var(--warn-solid-hover)', fontWeight: 'bold', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('super_admins')}</div>
                         </div>
                         <div style={{ display: 'flex', justifyContent: locale === 'ar' ? 'flex-start' : 'flex-end', marginTop: '2rem' }}>
-                            <button className="btn" onClick={() => setViewingAdmin(null)} style={{ background: '#e2e8f0', color: '#0f172a' }}>{t('close_button')}</button>
+                            <button className="btn" onClick={() => setViewingAdmin(null)} style={{ background: 'var(--border)', color: 'var(--text-strong)' }}>{t('close_button')}</button>
                         </div>
                     </div>
                 </div>
@@ -430,8 +430,8 @@ export default function SuperAdminsPage() {
                                     settings) instead of this form — the backend rejects an
                                     email change here regardless, this just avoids a confusing
                                     round-trip error. */}
-                                <input className="input" type="email" required disabled value={editData.email} style={{ textAlign: locale === 'ar' ? 'right' : 'left', background: '#f1f5f9', cursor: 'not-allowed' }} />
-                                <p style={{ margin: '0.35rem 0 0', fontSize: '0.78rem', color: '#64748b', textAlign: locale === 'ar' ? 'right' : 'left' }}>
+                                <input className="input" type="email" required disabled value={editData.email} style={{ textAlign: locale === 'ar' ? 'right' : 'left', background: 'var(--surface-sunk)', cursor: 'not-allowed' }} />
+                                <p style={{ margin: '0.35rem 0 0', fontSize: '0.78rem', color: 'var(--text-soft)', textAlign: locale === 'ar' ? 'right' : 'left' }}>
                                     <Link href="/dashboard/email-settings" style={{ color: 'inherit', textDecoration: 'underline' }}>{t('email_settings_nav')}</Link>
                                 </p>
                             </div>
@@ -443,7 +443,7 @@ export default function SuperAdminsPage() {
                                 </select>
                             </div>
                             <div style={{ display: 'flex', gap: '1rem', justifyContent: locale === 'ar' ? 'flex-start' : 'flex-end', flexDirection: 'row' }}>
-                                <button type="button" onClick={() => setEditingAdmin(null)} style={{ padding: '0.75rem 1.5rem', border: '1px solid #e2e8f0', borderRadius: '0.5rem', background: 'transparent' }}>{t('cancel')}</button>
+                                <button type="button" onClick={() => setEditingAdmin(null)} style={{ padding: '0.75rem 1.5rem', border: '1px solid var(--border)', borderRadius: '0.5rem', background: 'transparent' }}>{t('cancel')}</button>
                                 <button type="submit" className="btn btn-primary" disabled={submitLoading}>{submitLoading ? t('saving') : t('save_changes_button')}</button>
                             </div>
                         </form>

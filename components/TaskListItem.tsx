@@ -68,10 +68,10 @@ export default function TaskListItem({ task, currentUserId, isHighlighted }: Tas
     return (
         <div id={`task-${task.id}`} className={`glass-card ${showVisualHighlight ? 'highlight-pulse' : ''}`} style={{
             marginBottom: '1rem',
-            borderInlineStart: showVisualHighlight ? '4px solid #a855f7' : '',
+            borderInlineStart: showVisualHighlight ? '4px solid var(--accent-solid)' : '',
             transition: 'all 0.3s ease',
-            background: isOverdue ? '#fee2e2' : (showVisualHighlight ? 'rgba(168, 85, 247, 0.05)' : ''),
-            borderColor: isOverdue ? '#fca5a5' : undefined
+            background: isOverdue ? 'var(--danger-bg)' : (showVisualHighlight ? 'rgba(168, 85, 247, 0.05)' : ''),
+            borderColor: isOverdue ? 'var(--danger-border-firm)' : undefined
         }}>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
@@ -79,7 +79,7 @@ export default function TaskListItem({ task, currentUserId, isHighlighted }: Tas
                         style={{ margin: 0, cursor: 'pointer', transition: 'color 0.2s', color: 'inherit' }}
                         title={task.title}
                         onClick={() => setIsModalOpen(true)}
-                        onMouseEnter={(e) => e.currentTarget.style.color = '#2563eb'}
+                        onMouseEnter={(e) => e.currentTarget.style.color = 'var(--info-solid-hover)'}
                         onMouseLeave={(e) => e.currentTarget.style.color = 'inherit'}
                     >
                         {task.title.length > 50 ? task.title.substring(0, 50) + '...' : task.title}
@@ -87,7 +87,7 @@ export default function TaskListItem({ task, currentUserId, isHighlighted }: Tas
                     <span style={{
                         padding: '0.15rem 0.5rem',
                         borderRadius: '0.5rem',
-                        background: '#3b82f6',
+                        background: 'var(--info-solid)',
                         color: 'white',
                         fontWeight: 'bold',
                         fontSize: '0.7rem',
@@ -102,8 +102,8 @@ export default function TaskListItem({ task, currentUserId, isHighlighted }: Tas
                     fontWeight: '600',
                     padding: '0.25rem 0.75rem',
                     borderRadius: '9999px',
-                    background: task.status === 'APPROVED' || task.status === 'COMPLETED' ? '#dcfce7' : task.status === 'PENDING_CONFIRMATION' ? '#fef9c3' : task.status === 'REJECTED' ? '#fee2e2' : '#f1f5f9',
-                    color: task.status === 'APPROVED' || task.status === 'COMPLETED' ? '#166534' : task.status === 'PENDING_CONFIRMATION' ? '#854d0e' : task.status === 'REJECTED' ? '#991b1b' : '#475569',
+                    background: task.status === 'APPROVED' || task.status === 'COMPLETED' ? 'var(--ok-bg)' : task.status === 'PENDING_CONFIRMATION' ? 'var(--warn-bg-yellow)' : task.status === 'REJECTED' ? 'var(--danger-bg)' : 'var(--surface-sunk)',
+                    color: task.status === 'APPROVED' || task.status === 'COMPLETED' ? 'var(--ok-fg)' : task.status === 'PENDING_CONFIRMATION' ? 'var(--warn-fg-yellow)' : task.status === 'REJECTED' ? 'var(--danger-fg)' : 'var(--text-muted)',
                     display: 'inline-flex',
                     alignItems: 'center'
                 }}>
@@ -117,7 +117,7 @@ export default function TaskListItem({ task, currentUserId, isHighlighted }: Tas
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1rem' }}>
-                <div style={{ fontSize: '0.875rem', color: '#64748b' }}>
+                <div style={{ fontSize: '0.875rem', color: 'var(--text-soft)' }}>
                     <div style={{ marginBottom: '0.25rem' }}>
                         {task.assignees?.some((a: any) => a.id === currentUserId) && task.creator ? (
                             <span>{t('assigned_by')}: <strong>{task.creator.firstName} {task.creator.lastName}</strong></span>
@@ -142,7 +142,7 @@ export default function TaskListItem({ task, currentUserId, isHighlighted }: Tas
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', alignItems: 'flex-end' }}>
                     {isMultiAssignee && userCost > 0 && (
-                        <div style={{ background: '#3b82f6', color: 'white', padding: '0.2rem 0.6rem', borderRadius: '0.5rem', fontSize: '0.75rem', fontWeight: 'bold' }}>
+                        <div style={{ background: 'var(--info-solid)', color: 'white', padding: '0.2rem 0.6rem', borderRadius: '0.5rem', fontSize: '0.75rem', fontWeight: 'bold' }}>
                             {locale === 'ar' ? 'تكلفني' : 'My Cost'}: {userCost.toFixed(2)}
                         </div>
                     )}

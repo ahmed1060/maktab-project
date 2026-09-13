@@ -47,8 +47,8 @@ export default function ObligationListItem({ obligation, isHighlighted }: Obliga
 
     return (
         <div id={`obligation-${obligation.id}`} className={`card ${isHighlighted ? 'highlight-shading' : ''}`} style={{
-            background: isOverdue ? '#fff1f2' : undefined,
-            borderColor: isOverdue ? '#fecaca' : undefined
+            background: isOverdue ? 'var(--danger-bg-tint)' : undefined,
+            borderColor: isOverdue ? 'var(--danger-border)' : undefined
         }}>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
@@ -56,7 +56,7 @@ export default function ObligationListItem({ obligation, isHighlighted }: Obliga
                         style={{ margin: 0, cursor: 'pointer', transition: 'color 0.2s', color: 'inherit' }}
                         title={obligation.title}
                         onClick={() => setIsModalOpen(true)}
-                        onMouseEnter={(e) => e.currentTarget.style.color = '#2563eb'}
+                        onMouseEnter={(e) => e.currentTarget.style.color = 'var(--info-solid-hover)'}
                         onMouseLeave={(e) => e.currentTarget.style.color = 'inherit'}
                     >
                         {obligation.title.length > 50 ? obligation.title.substring(0, 50) + '...' : obligation.title}
@@ -64,7 +64,7 @@ export default function ObligationListItem({ obligation, isHighlighted }: Obliga
                     <span style={{
                         padding: '0.15rem 0.5rem',
                         borderRadius: '0.5rem',
-                        background: '#3b82f6',
+                        background: 'var(--info-solid)',
                         color: 'white',
                         fontWeight: 'bold',
                         fontSize: '0.7rem'
@@ -93,8 +93,8 @@ export default function ObligationListItem({ obligation, isHighlighted }: Obliga
                     fontWeight: '600',
                     padding: '0.25rem 0.75rem',
                     borderRadius: '9999px',
-                    background: obligation.status === 'COMPLETED' || obligation.status === 'APPROVED' ? '#dcfce7' : obligation.status === 'REJECTED' ? '#fee2e2' : '#f1f5f9',
-                    color: obligation.status === 'COMPLETED' || obligation.status === 'APPROVED' ? '#166534' : obligation.status === 'REJECTED' ? '#991b1b' : '#475569',
+                    background: obligation.status === 'COMPLETED' || obligation.status === 'APPROVED' ? 'var(--ok-bg)' : obligation.status === 'REJECTED' ? 'var(--danger-bg)' : 'var(--surface-sunk)',
+                    color: obligation.status === 'COMPLETED' || obligation.status === 'APPROVED' ? 'var(--ok-fg)' : obligation.status === 'REJECTED' ? 'var(--danger-fg)' : 'var(--text-muted)',
                     display: 'inline-flex',
                     alignItems: 'center'
                 }}>
@@ -108,7 +108,7 @@ export default function ObligationListItem({ obligation, isHighlighted }: Obliga
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1rem' }}>
-                <div style={{ fontSize: '0.875rem', color: '#64748b' }}>
+                <div style={{ fontSize: '0.875rem', color: 'var(--text-soft)' }}>
                     <div>
                         {obligation.assignees && obligation.assignees.length > 1 ? (t('assignees_label' as any) || 'Assignees') : t('assignee_label')}: {obligation.assignees && obligation.assignees.length >= 1
                             ? obligation.assignees.length <= 2

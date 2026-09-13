@@ -182,13 +182,13 @@ export default function EmployeesPage() {
     const getRoleStyles = (role: string) => {
         switch (role) {
             case 'ADMIN':
-                return { background: '#fef3c7', color: '#92400e' }
+                return { background: 'var(--warn-bg)', color: 'var(--warn-fg)' }
             case 'TEAM_LEADER':
-                return { background: '#ede9fe', color: '#5b21b6' }
+                return { background: 'var(--lifetime-bg)', color: 'var(--accent-fg)' }
             case 'EMPLOYEE':
-                return { background: '#f1f5f9', color: '#475569' }
+                return { background: 'var(--surface-sunk)', color: 'var(--text-muted)' }
             default:
-                return { background: '#f1f5f9', color: '#475569' }
+                return { background: 'var(--surface-sunk)', color: 'var(--text-muted)' }
         }
     }
 
@@ -210,9 +210,9 @@ export default function EmployeesPage() {
                     left: locale === 'ar' ? '2rem' : 'auto',
                     padding: '0.75rem 1.25rem',
                     borderRadius: '0.5rem',
-                    background: alert.type === 'success' ? '#dcfce7' : '#fee2e2',
-                    color: alert.type === 'success' ? '#166534' : '#991b1b',
-                    border: `1px solid ${alert.type === 'success' ? '#86efac' : '#fca5a5'}`,
+                    background: alert.type === 'success' ? 'var(--ok-bg)' : 'var(--danger-bg)',
+                    color: alert.type === 'success' ? 'var(--ok-fg)' : 'var(--danger-fg)',
+                    border: `1px solid ${alert.type === 'success' ? 'var(--ok-border)' : 'var(--danger-border-firm)'}`,
                     display: 'flex',
                     alignItems: 'center',
                     gap: '0.5rem',
@@ -304,10 +304,10 @@ export default function EmployeesPage() {
                                             width: '12px',
                                             height: '12px',
                                             borderRadius: '50%',
-                                            background: emp.status === 'SUSPENDED' ? '#ef4444' : emp.status === 'ACTIVE' ? '#22c55e' : emp.status === 'OFFLINE' ? '#f59e0b' : '#94a3b8',
+                                            background: emp.status === 'SUSPENDED' ? 'var(--danger-solid)' : emp.status === 'ACTIVE' ? 'var(--ok-solid-alt)' : emp.status === 'OFFLINE' ? 'var(--warn-solid)' : 'var(--text-faint)',
                                             cursor: userRole === 'SUPER_ADMIN' ? 'pointer' : 'default',
                                             flexShrink: 0,
-                                            boxShadow: `0 0 0 2px ${emp.status === 'SUSPENDED' ? '#fecaca' : emp.status === 'ACTIVE' ? '#bbf7d0' : emp.status === 'OFFLINE' ? '#fef9c3' : '#e2e8f0'}`
+                                            boxShadow: `0 0 0 2px ${emp.status === 'SUSPENDED' ? 'var(--danger-border)' : emp.status === 'ACTIVE' ? 'var(--ok-bg-strong)' : emp.status === 'OFFLINE' ? 'var(--warn-bg-yellow)' : 'var(--border)'}`
                                         }}
                                     />
                                     <div style={{ display: 'flex', flexDirection: 'column' }}>
@@ -316,15 +316,15 @@ export default function EmployeesPage() {
                                                 {emp.firstName} {emp.lastName}
                                             </h3>
                                         </Link>
-                                        <p style={{ margin: 0, color: '#64748b', fontSize: '0.85rem' }}>{emp.email}</p>
+                                        <p style={{ margin: 0, color: 'var(--text-soft)', fontSize: '0.85rem' }}>{emp.email}</p>
                                     </div>
                                 </div>
                                 {emp.role !== 'ADMIN' && (
                                     <span style={{
                                         padding: '0.375rem 0.75rem',
                                         borderRadius: '1rem',
-                                        background: '#eff6ff',
-                                        color: '#1e40af',
+                                        background: 'var(--info-bg-subtle)',
+                                        color: 'var(--info-fg-indigo)',
                                         fontSize: '0.85rem',
                                         fontWeight: '800'
                                     }}>
@@ -353,9 +353,9 @@ export default function EmployeesPage() {
                                         borderRadius: '0.5rem',
                                         fontSize: '0.75rem',
                                         fontWeight: '700',
-                                        background: '#f8fafc',
-                                        color: '#64748b',
-                                        border: '1px solid #e2e8f0'
+                                        background: 'var(--surface-subtle)',
+                                        color: 'var(--text-soft)',
+                                        border: '1px solid var(--border)'
                                     }}>
                                         @{emp.username}
                                     </span>
@@ -366,8 +366,8 @@ export default function EmployeesPage() {
                                         borderRadius: '0.5rem',
                                         fontSize: '0.75rem',
                                         fontWeight: '800',
-                                        background: '#fee2e2',
-                                        color: '#991b1b',
+                                        background: 'var(--danger-bg)',
+                                        color: 'var(--danger-fg)',
                                         textTransform: 'uppercase'
                                     }}>
                                         {t('status_suspended')}
@@ -376,21 +376,21 @@ export default function EmployeesPage() {
                             </div>
 
                             {['ADMIN', 'SUPER_ADMIN'].includes(userRole) && (
-                                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: 'auto', paddingTop: '1rem', borderTop: '1px dashed #e2e8f0' }}>
+                                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: 'auto', paddingTop: '1rem', borderTop: '1px dashed var(--border)' }}>
                                     {(emp.role !== 'ADMIN' || userRole === 'SUPER_ADMIN') && (
                                         <Link
                                             href={`/dashboard/employees/${emp.id}`}
                                             prefetch={false}
                                             className="btn"
                                             style={{
-                                                background: '#f8fafc',
-                                                color: '#475569',
+                                                background: 'var(--surface-subtle)',
+                                                color: 'var(--text-muted)',
                                                 padding: '0.5rem 0.75rem',
                                                 fontSize: '0.8rem',
                                                 fontWeight: '700',
                                                 textDecoration: 'none',
                                                 borderRadius: '0.75rem',
-                                                border: '1px solid #e2e8f0',
+                                                border: '1px solid var(--border)',
                                                 flex: 1,
                                                 textAlign: 'center'
                                             }}
@@ -404,14 +404,14 @@ export default function EmployeesPage() {
                                             prefetch={false}
                                             className="btn"
                                             style={{
-                                                background: '#f8fafc',
-                                                color: '#475569',
+                                                background: 'var(--surface-subtle)',
+                                                color: 'var(--text-muted)',
                                                 padding: '0.5rem 0.75rem',
                                                 fontSize: '0.8rem',
                                                 fontWeight: '700',
                                                 textDecoration: 'none',
                                                 borderRadius: '0.75rem',
-                                                border: '1px solid #e2e8f0',
+                                                border: '1px solid var(--border)',
                                                 flex: 1,
                                                 textAlign: 'center'
                                             }}
@@ -427,8 +427,8 @@ export default function EmployeesPage() {
                                                     prefetch={false}
                                                     className="btn"
                                                     style={{
-                                                        background: '#f0fdf4',
-                                                        color: '#166534',
+                                                        background: 'var(--ok-bg-subtle)',
+                                                        color: 'var(--ok-fg)',
                                                         padding: '0.5rem 0.75rem',
                                                         fontSize: '0.8rem',
                                                         fontWeight: '800',
@@ -445,8 +445,8 @@ export default function EmployeesPage() {
                                                     prefetch={false}
                                                     className="btn"
                                                     style={{
-                                                        background: '#fef2f2',
-                                                        color: '#991b1b',
+                                                        background: 'var(--danger-bg-subtle)',
+                                                        color: 'var(--danger-fg)',
                                                         padding: '0.5rem 0.75rem',
                                                         fontSize: '0.8rem',
                                                         fontWeight: '800',
@@ -464,8 +464,8 @@ export default function EmployeesPage() {
                                                 disabled={resettingPoints === emp.id}
                                                 className="btn"
                                                 style={{
-                                                    background: '#fffbeb',
-                                                    color: '#92400e',
+                                                    background: 'var(--warn-bg-yellow-subtle)',
+                                                    color: 'var(--warn-fg)',
                                                     padding: '0.5rem 0.75rem',
                                                     fontSize: '0.8rem',
                                                     fontWeight: '700',
@@ -484,8 +484,8 @@ export default function EmployeesPage() {
                                             disabled={deletingUser === emp.id}
                                             className="btn"
                                             style={{
-                                                background: '#fee2e2',
-                                                color: '#dc2626',
+                                                background: 'var(--danger-bg)',
+                                                color: 'var(--danger-solid-hover)',
                                                 padding: '0.5rem 0.75rem',
                                                 fontSize: '0.8rem',
                                                 fontWeight: '700',
@@ -517,24 +517,24 @@ export default function EmployeesPage() {
                 hideFooter={true}
             >
                 <div>
-                    <p style={{ margin: '0 0 1rem 0', color: '#64748b' }}>
+                    <p style={{ margin: '0 0 1rem 0', color: 'var(--text-soft)' }}>
                         {t('delete_warning')} <strong>{deleteConfirm?.name}</strong>?
                     </p>
-                    <p style={{ color: '#991b1b', fontSize: '0.875rem', marginBottom: '1.5rem', background: '#fee2e2', padding: '0.5rem', borderRadius: '0.25rem' }}>
+                    <p style={{ color: 'var(--danger-fg)', fontSize: '0.875rem', marginBottom: '1.5rem', background: 'var(--danger-bg)', padding: '0.5rem', borderRadius: '0.25rem' }}>
                         {t('undone_warning')}
                     </p>
                     <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
                         <button
                             onClick={() => setDeleteConfirm(null)}
                             className="btn"
-                            style={{ background: '#e2e8f0', color: '#0f172a' }}
+                            style={{ background: 'var(--border)', color: 'var(--text-strong)' }}
                         >
                             {t('cancel')}
                         </button>
                         <button
                             onClick={confirmDelete}
                             className="btn"
-                            style={{ background: '#dc2626', color: 'white' }}
+                            style={{ background: 'var(--danger-solid-hover)', color: 'white' }}
                         >
                             {t('delete_employee')}
                         </button>

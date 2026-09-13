@@ -60,18 +60,18 @@ export default function AddBonusPage() {
     return (
         <div className="card" style={{ maxWidth: '500px', margin: '2rem auto', ...containerStyle }}>
             <h1>{t('add_monthly_bonus_title' as any)}</h1>
-            <p style={{ color: '#64748b', marginBottom: '1.5rem' }}>
+            <p style={{ color: 'var(--text-soft)', marginBottom: '1.5rem' }}>
                 {t('bonus_days_hint' as any)}
             </p>
 
             {error && (
-                <div style={{ color: '#dc2626', background: '#fee2e2', padding: '0.75rem', borderRadius: '0.5rem', marginBottom: '1rem' }}>
+                <div style={{ color: 'var(--danger-solid-hover)', background: 'var(--danger-bg)', padding: '0.75rem', borderRadius: '0.5rem', marginBottom: '1rem' }}>
                     {error}
                 </div>
             )}
 
             {success && (
-                <div style={{ color: '#166534', background: '#dcfce7', padding: '0.75rem', borderRadius: '0.5rem', marginBottom: '1rem' }}>
+                <div style={{ color: 'var(--ok-fg)', background: 'var(--ok-bg)', padding: '0.75rem', borderRadius: '0.5rem', marginBottom: '1rem' }}>
                     {success}
                 </div>
             )}
@@ -87,7 +87,7 @@ export default function AddBonusPage() {
                             setAmount(e.target.value)
                             setFieldError('')
                         }}
-                        style={fieldError ? { borderColor: '#ef4444' } : {}}
+                        style={fieldError ? { borderColor: 'var(--danger-solid)' } : {}}
                         required
                         min="0"
                         max="1000"
@@ -96,7 +96,7 @@ export default function AddBonusPage() {
                         autoFocus
                     />
                     {fieldError && (
-                        <div style={{ color: '#ef4444', fontSize: '0.85rem', marginTop: '0.25rem' }}>
+                        <div style={{ color: 'var(--danger-solid)', fontSize: '0.85rem', marginTop: '0.25rem' }}>
                             {fieldError}
                         </div>
                     )}
@@ -117,7 +117,7 @@ export default function AddBonusPage() {
                     <Link
                         href="/dashboard/employees"
                         className="btn"
-                        style={{ background: '#e2e8f0', color: '#0f172a', textAlign: 'center', textDecoration: 'none' }}
+                        style={{ background: 'var(--border)', color: 'var(--text-strong)', textAlign: 'center', textDecoration: 'none' }}
                     >
                         {t('cancel')}
                     </Link>

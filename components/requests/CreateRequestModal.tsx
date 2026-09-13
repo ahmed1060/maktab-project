@@ -74,8 +74,8 @@ export default function CreateRequestModal({ isOpen, onClose, onSubmit }: Create
                         onClick={onClose}
                         className="btn"
                         style={{
-                            background: '#f1f5f9',
-                            color: '#64748b',
+                            background: 'var(--surface-sunk)',
+                            color: 'var(--text-soft)',
                             minWidth: '100px'
                         }}
                         disabled={submitting}

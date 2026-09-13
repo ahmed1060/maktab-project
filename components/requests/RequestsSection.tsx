@@ -181,7 +181,7 @@ export default function RequestsSection({ userRole }: { userRole: string }) {
                         height: '48px',
                         fontSize: '0.95rem',
                         background: 'rgba(254, 243, 199, 0.4)',
-                        color: '#b45309',
+                        color: 'var(--warn-fg-mid)',
                         border: '1px solid rgba(251, 191, 36, 0.3)',
                         fontWeight: '800',
                         borderRadius: '1.25rem',
@@ -235,7 +235,7 @@ export default function RequestsSection({ userRole }: { userRole: string }) {
                             fontSize: '0.95rem',
                             fontWeight: '800',
                             borderRadius: '1.25rem',
-                            background: 'linear-gradient(135deg, #6366f1 0%, #a855f7 100%)',
+                            background: 'linear-gradient(135deg, var(--brand-primary) 0%, var(--accent-solid) 100%)',
                             border: 'none',
                             color: 'white',
                             boxShadow: '0 4px 15px rgba(99, 102, 241, 0.3)',
@@ -250,11 +250,11 @@ export default function RequestsSection({ userRole }: { userRole: string }) {
             />
 
             {loading ? (
-                <div className="card" style={{ padding: '2rem', textAlign: 'center', color: '#64748b' }}>
+                <div className="card" style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-soft)' }}>
                     {t('loading_data')}
                 </div>
             ) : requests.length === 0 ? (
-                <div className="card" style={{ padding: '2rem', textAlign: 'center', color: '#94a3b8' }}>
+                <div className="card" style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-faint)' }}>
                     {t('no_requests_found')}
                 </div>
             ) : (

@@ -65,8 +65,8 @@ export default function SegmentedToggle<T extends string>({
                             // The unselected half stays clearly legible rather
                             // than fading out: it is a choice on offer, not
                             // disabled.
-                            color: selected ? '#0f172a' : '#475569',
-                            background: selected ? '#ffffff' : 'transparent',
+                            color: selected ? 'var(--text-strong)' : 'var(--text-muted)',
+                            background: selected ? 'var(--surface)' : 'transparent',
                             boxShadow: selected ? '0 1px 3px rgba(15, 23, 42, 0.12)' : 'none',
                             cursor: disabled ? 'not-allowed' : selected ? 'default' : 'pointer',
                             opacity: disabled ? 0.6 : 1,
@@ -84,8 +84,8 @@ export default function SegmentedToggle<T extends string>({
                                 // Amber only when the selected filter has
                                 // something in it. An amber zero pulls the eye
                                 // every morning and teaches you to stop looking.
-                                background: selected && option.count > 0 ? '#fef3c7' : 'rgba(15, 23, 42, 0.07)',
-                                color: selected && option.count > 0 ? '#92400e' : '#64748b',
+                                background: selected && option.count > 0 ? 'var(--warn-bg)' : 'rgba(15, 23, 42, 0.07)',
+                                color: selected && option.count > 0 ? 'var(--warn-fg)' : 'var(--text-soft)',
                             }}>
                                 {option.count}
                             </span>

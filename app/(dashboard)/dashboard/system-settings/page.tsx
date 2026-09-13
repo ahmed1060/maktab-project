@@ -136,7 +136,7 @@ export default function SystemSettingsPage() {
         <div className="animate-in fade-in duration-500" style={{ direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
             {loading ? (
                 <div style={{ padding: '4rem', textAlign: 'center' }}>
-                    <p style={{ color: '#64748b' }}>{t('loading_data')}</p>
+                    <p style={{ color: 'var(--text-soft)' }}>{t('loading_data')}</p>
                 </div>
             ) : (
                 /* Two independent cards rather than one panel with a divider.
@@ -161,7 +161,7 @@ export default function SystemSettingsPage() {
                         style={{ padding: '1.5rem', borderRadius: '1rem', display: 'flex', flexDirection: 'column' }}
                     >
                         <h3 style={{ margin: '0 0 0.35rem' }}>{t('location_verification_settings') || 'Location Verification'}</h3>
-                        <p style={{ fontSize: '0.8rem', color: '#64748b', margin: '0 0 1.25rem' }}>
+                        <p style={{ fontSize: '0.8rem', color: 'var(--text-soft)', margin: '0 0 1.25rem' }}>
                             {t('location_verify_radius_hint') || 'A submitted task location within this distance of the task location is auto-approved, for companies that have auto-verify turned on.'}
                         </p>
 
@@ -194,7 +194,7 @@ export default function SystemSettingsPage() {
                         style={{ padding: '1.5rem', borderRadius: '1rem', display: 'flex', flexDirection: 'column' }}
                     >
                         <h3 style={{ margin: '0 0 0.35rem' }}>{t('branding_settings' as any)}</h3>
-                        <p style={{ fontSize: '0.8rem', color: '#64748b', margin: '0 0 1.25rem' }}>
+                        <p style={{ fontSize: '0.8rem', color: 'var(--text-soft)', margin: '0 0 1.25rem' }}>
                             {t('powered_by_hint' as any)}
                         </p>
 
@@ -231,15 +231,15 @@ export default function SystemSettingsPage() {
                         <div style={{ marginTop: '1rem', padding: '0.85rem 1rem', borderRadius: '0.6rem', background: 'rgba(0,0,0,0.03)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.1rem', opacity: showPoweredBy ? 1 : 0.35 }}>
                             {showPoweredBy ? (
                                 <>
-                                    <span style={{ fontSize: '0.45rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+                                    <span style={{ fontSize: '0.45rem', color: 'var(--text-soft)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
                                         {t('powered_by')}
                                     </span>
-                                    <span style={{ fontSize: '1.35rem', color: '#1e293b', fontWeight: 900, letterSpacing: '0.15em', textTransform: 'uppercase' }}>
+                                    <span style={{ fontSize: '1.35rem', color: 'var(--text-main)', fontWeight: 900, letterSpacing: '0.15em', textTransform: 'uppercase' }}>
                                         {poweredByName.trim() || DEFAULT_POWERED_BY_NAME}
                                     </span>
                                 </>
                             ) : (
-                                <span style={{ fontSize: '0.8rem', color: '#64748b' }}>{t('powered_by_hidden' as any)}</span>
+                                <span style={{ fontSize: '0.8rem', color: 'var(--text-soft)' }}>{t('powered_by_hidden' as any)}</span>
                             )}
                         </div>
 

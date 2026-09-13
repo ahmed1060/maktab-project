@@ -138,7 +138,7 @@ export default function LocationSearchInput({ value, onChange, placeholder, labe
                 />
                 {loading && (
                     <div style={{ position: 'absolute', right: locale === 'ar' ? 'auto' : '0.75rem', left: locale === 'ar' ? '0.75rem' : 'auto', top: '50%', transform: 'translateY(-50%)' }}>
-                        <div style={{ width: '16px', height: '16px', border: '2px solid #e2e8f0', borderTopColor: '#3b82f6', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
+                        <div style={{ width: '16px', height: '16px', border: '2px solid var(--border)', borderTopColor: 'var(--info-solid)', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
                     </div>
                 )}
             </div>
@@ -151,7 +151,7 @@ export default function LocationSearchInput({ value, onChange, placeholder, labe
                     right: 0,
                     zIndex: 1000,
                     background: 'white',
-                    border: '1px solid #e2e8f0',
+                    border: '1px solid var(--border)',
                     borderRadius: '0.5rem',
                     boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)',
                     marginTop: '0.25rem',
@@ -169,12 +169,12 @@ export default function LocationSearchInput({ value, onChange, placeholder, labe
                             style={{
                                 padding: '0.75rem 1rem',
                                 cursor: 'pointer',
-                                borderBottom: i < suggestions.length - 1 ? '1px solid #f1f5f9' : 'none',
+                                borderBottom: i < suggestions.length - 1 ? '1px solid var(--surface-sunk)' : 'none',
                                 fontSize: '0.85rem',
-                                color: '#1e293b',
+                                color: 'var(--text-main)',
                                 transition: 'background 0.2s'
                             }}
-                            onMouseEnter={(e) => (e.currentTarget.style.background = '#f8fafc')}
+                            onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--surface-subtle)')}
                             onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
                         >
                             {s.address?.label || s.title}

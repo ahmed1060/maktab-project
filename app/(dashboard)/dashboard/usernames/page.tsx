@@ -119,7 +119,7 @@ export default function UsernamesPage() {
                     className="btn"
                     title={t('download_excel')}
                     style={{
-                        background: '#10b981',
+                        background: 'var(--ok-solid)',
                         color: 'white',
                         fontWeight: '600',
                         display: 'flex',
@@ -154,7 +154,7 @@ export default function UsernamesPage() {
                                 background: 'white',
                                 padding: '1rem',
                                 borderRadius: '1rem',
-                                border: '1px solid #e2e8f0',
+                                border: '1px solid var(--border)',
                                 boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
                                 transition: 'transform 0.2s, box-shadow 0.2s'
                             }}
@@ -164,21 +164,21 @@ export default function UsernamesPage() {
                                     <div style={{
                                         fontSize: '1.1rem',
                                         fontWeight: 'bold',
-                                        color: '#0f172a',
+                                        color: 'var(--text-strong)',
                                         marginBottom: '0.1rem',
                                         lineHeight: '1.2'
                                     }}>
                                         {user.firstName} {user.lastName}
                                     </div>
-                                    <div style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: '500', textTransform: 'capitalize' }}>
+                                    <div style={{ fontSize: '0.8rem', color: 'var(--text-soft)', fontWeight: '500', textTransform: 'capitalize' }}>
                                         {t(`role_${(user as any).role?.toLowerCase()}` as any) || (user as any).role || '-'}
                                     </div>
                                 </div>
                                 <div style={{
-                                    background: '#eff6ff',
+                                    background: 'var(--info-bg-subtle)',
                                     padding: '0.25rem 0.5rem',
                                     borderRadius: '0.5rem',
-                                    border: '1px solid #dbeafe',
+                                    border: '1px solid var(--info-bg-indigo)',
                                     display: 'flex',
                                     alignItems: 'center',
                                     justifyContent: 'center',
@@ -186,7 +186,7 @@ export default function UsernamesPage() {
                                 }}>
                                     <code style={{
                                         fontSize: '0.85rem',
-                                        color: '#2563eb',
+                                        color: 'var(--info-solid-hover)',
                                         fontWeight: '800',
                                         letterSpacing: '0.5px'
                                     }}>
@@ -197,7 +197,7 @@ export default function UsernamesPage() {
                         </div>
                     ))}
                     {users.length === 0 && (
-                        <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: '3rem', color: '#64748b' }}>
+                        <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: '3rem', color: 'var(--text-soft)' }}>
                             {t('no_employees_found')}
                         </div>
                     )}

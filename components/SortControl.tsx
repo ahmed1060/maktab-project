@@ -18,7 +18,7 @@ export default function SortControl({ options, sortBy, sortOrder, onSortChange }
 
     return (
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <span style={{ fontSize: '0.875rem', fontWeight: '600', color: '#64748b' }}>{t('sort_by')}:</span>
+            <span style={{ fontSize: '0.875rem', fontWeight: '600', color: 'var(--text-soft)' }}>{t('sort_by')}:</span>
             <select
                 value={sortBy}
                 onChange={(e) => onSortChange(e.target.value, sortOrder)}
@@ -44,12 +44,12 @@ export default function SortControl({ options, sortBy, sortOrder, onSortChange }
                 style={{
                     padding: '0.375rem 0.5rem',
                     borderRadius: '0.375rem',
-                    border: '1px solid #cbd5e1',
+                    border: '1px solid var(--border-firm)',
                     background: 'white',
                     cursor: 'pointer',
                     display: 'flex',
                     alignItems: 'center',
-                    color: '#475569'
+                    color: 'var(--text-muted)'
                 }}
             >
                 {sortOrder === 'asc' ? '↑' : '↓'}

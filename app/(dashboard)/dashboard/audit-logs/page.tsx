@@ -131,16 +131,16 @@ export default function AuditLogsPage() {
                 const entries = Object.entries(parsed)
                 return (
                     <div style={{
-                        background: '#f8fafc',
+                        background: 'var(--surface-subtle)',
                         padding: '0.5rem',
                         borderRadius: '0.5rem',
-                        border: '1px solid #e2e8f0',
+                        border: '1px solid var(--border)',
                         fontSize: '0.7rem',
                         fontFamily: 'monospace',
                         maxHeight: '120px',
                         overflowY: 'auto'
                     }}>
-                        <div style={{ color: '#94a3b8', marginBottom: '4px' }}>{'{'}</div>
+                        <div style={{ color: 'var(--text-faint)', marginBottom: '4px' }}>{'{'}</div>
                         {entries.map(([key, value], i) => (
                             <div key={key} style={{
                                 display: 'flex',
@@ -148,9 +148,9 @@ export default function AuditLogsPage() {
                                 paddingLeft: '0.75rem',
                                 marginBottom: i === entries.length - 1 ? '4px' : '2px'
                             }}>
-                                <span style={{ color: '#475569', fontWeight: 'bold', whiteSpace: 'nowrap' }}>&quot;{key}&quot;:</span>
+                                <span style={{ color: 'var(--text-muted)', fontWeight: 'bold', whiteSpace: 'nowrap' }}>&quot;{key}&quot;:</span>
                                 <span style={{
-                                    color: '#1e293b',
+                                    color: 'var(--text-main)',
                                     overflowWrap: 'anywhere',
                                     flex: 1
                                 }}>
@@ -159,7 +159,7 @@ export default function AuditLogsPage() {
                                 </span>
                             </div>
                         ))}
-                        <div style={{ color: '#94a3b8' }}>{'}'}</div>
+                        <div style={{ color: 'var(--text-faint)' }}>{'}'}</div>
                     </div>
                 )
             }
@@ -171,10 +171,10 @@ export default function AuditLogsPage() {
                         fontFamily: 'monospace',
                         maxHeight: '120px',
                         overflowY: 'auto',
-                        background: '#f8fafc',
+                        background: 'var(--surface-subtle)',
                         padding: '0.5rem',
                         borderRadius: '0.5rem',
-                        border: '1px solid #e2e8f0',
+                        border: '1px solid var(--border)',
                         fontSize: '0.7rem',
                         overflowWrap: 'break-word'
                     }}>
@@ -183,7 +183,7 @@ export default function AuditLogsPage() {
                 </div>
             )
         } catch {
-            return <span style={{ fontSize: '0.7rem', color: '#94a3b8', overflowWrap: 'anywhere' }}>{String(details)}</span>
+            return <span style={{ fontSize: '0.7rem', color: 'var(--text-faint)', overflowWrap: 'anywhere' }}>{String(details)}</span>
         }
     }
 
@@ -212,30 +212,30 @@ export default function AuditLogsPage() {
                 </div>
             ) : (
                 <>
-                    <div style={{ background: 'white', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', border: '1px solid #e2e8f0' }}>
+                    <div style={{ background: 'white', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', border: '1px solid var(--border)' }}>
                         <div style={{ overflowX: 'auto' }}>
                             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                                 <thead>
-                                    <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
-                                        <th style={{ textAlign: locale === 'ar' ? 'right' : 'left', padding: '1rem', color: '#64748b', fontSize: '0.75rem', fontWeight: '800', textTransform: 'uppercase', minWidth: '160px' }}>{t('timestamp')}</th>
-                                        <th style={{ textAlign: locale === 'ar' ? 'right' : 'left', padding: '1rem', color: '#64748b', fontSize: '0.75rem', fontWeight: '800', textTransform: 'uppercase', minWidth: '120px' }}>{t('action')}</th>
-                                        <th style={{ textAlign: locale === 'ar' ? 'right' : 'left', padding: '1rem', color: '#64748b', fontSize: '0.75rem', fontWeight: '800', textTransform: 'uppercase', minWidth: '130px' }}>{t('entity')}</th>
-                                        <th style={{ textAlign: locale === 'ar' ? 'right' : 'left', padding: '1rem', color: '#64748b', fontSize: '0.75rem', fontWeight: '800', textTransform: 'uppercase', minWidth: '180px' }}>{t('performed_by')}</th>
-                                        <th style={{ textAlign: locale === 'ar' ? 'right' : 'left', padding: '1rem', color: '#64748b', fontSize: '0.75rem', fontWeight: '800', textTransform: 'uppercase', minWidth: '300px' }}>{t('details')}</th>
+                                    <tr style={{ background: 'var(--surface-subtle)', borderBottom: '1px solid var(--border)' }}>
+                                        <th style={{ textAlign: locale === 'ar' ? 'right' : 'left', padding: '1rem', color: 'var(--text-soft)', fontSize: '0.75rem', fontWeight: '800', textTransform: 'uppercase', minWidth: '160px' }}>{t('timestamp')}</th>
+                                        <th style={{ textAlign: locale === 'ar' ? 'right' : 'left', padding: '1rem', color: 'var(--text-soft)', fontSize: '0.75rem', fontWeight: '800', textTransform: 'uppercase', minWidth: '120px' }}>{t('action')}</th>
+                                        <th style={{ textAlign: locale === 'ar' ? 'right' : 'left', padding: '1rem', color: 'var(--text-soft)', fontSize: '0.75rem', fontWeight: '800', textTransform: 'uppercase', minWidth: '130px' }}>{t('entity')}</th>
+                                        <th style={{ textAlign: locale === 'ar' ? 'right' : 'left', padding: '1rem', color: 'var(--text-soft)', fontSize: '0.75rem', fontWeight: '800', textTransform: 'uppercase', minWidth: '180px' }}>{t('performed_by')}</th>
+                                        <th style={{ textAlign: locale === 'ar' ? 'right' : 'left', padding: '1rem', color: 'var(--text-soft)', fontSize: '0.75rem', fontWeight: '800', textTransform: 'uppercase', minWidth: '300px' }}>{t('details')}</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {logs.map((log) => (
-                                        <tr key={log.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                                            <td style={{ padding: '1rem', fontSize: '0.8rem', color: '#64748b' }}>
+                                        <tr key={log.id} style={{ borderBottom: '1px solid var(--surface-sunk)' }}>
+                                            <td style={{ padding: '1rem', fontSize: '0.8rem', color: 'var(--text-soft)' }}>
                                                 {formatDate(log.createdAt)}
                                             </td>
                                             <td style={{ padding: '1rem' }}>
                                                 <span style={{
                                                     fontSize: '0.65rem',
                                                     fontWeight: '700',
-                                                    background: log.action.includes('DELETE') ? '#fee2e2' : log.action.includes('CREATE') ? '#dcfce7' : '#e0e7ff',
-                                                    color: log.action.includes('DELETE') ? '#991b1b' : log.action.includes('CREATE') ? '#166534' : '#3730a3',
+                                                    background: log.action.includes('DELETE') ? 'var(--danger-bg)' : log.action.includes('CREATE') ? 'var(--ok-bg)' : 'var(--info-bg-indigo-faint)',
+                                                    color: log.action.includes('DELETE') ? 'var(--danger-fg)' : log.action.includes('CREATE') ? 'var(--ok-fg)' : 'var(--accent-deepest)',
                                                     padding: '0.2rem 0.4rem',
                                                     borderRadius: '4px',
                                                     display: 'inline-block',
@@ -245,11 +245,11 @@ export default function AuditLogsPage() {
                                                 </span>
                                             </td>
                                             <td style={{ padding: '1rem', fontSize: '0.8rem' }}>
-                                                <div style={{ fontWeight: '600', color: '#1e293b' }}>
+                                                <div style={{ fontWeight: '600', color: 'var(--text-main)' }}>
                                                     {(t as any)(`audit_entity_${log.entityType}`) || log.entityType}
                                                 </div>
                                                 <div style={{
-                                                    color: '#94a3b8',
+                                                    color: 'var(--text-faint)',
                                                     fontSize: '0.7rem',
                                                     fontFamily: 'monospace',
                                                     overflowWrap: 'anywhere',
@@ -259,10 +259,10 @@ export default function AuditLogsPage() {
                                                 </div>
                                             </td>
                                             <td style={{ padding: '1rem', fontSize: '0.8rem' }}>
-                                                <div style={{ fontWeight: '600', color: '#1e293b' }}>
+                                                <div style={{ fontWeight: '600', color: 'var(--text-main)' }}>
                                                     {log.superAdmin ? `${log.superAdmin.firstName} ${log.superAdmin.lastName}` : log.user ? `${log.user.firstName} ${log.user.lastName}` : (locale === 'ar' ? 'النظام' : 'System')}
                                                 </div>
-                                                <div style={{ color: '#64748b', fontSize: '0.7rem' }}>
+                                                <div style={{ color: 'var(--text-soft)', fontSize: '0.7rem' }}>
                                                     {log.superAdmin ? (locale === 'ar' ? 'مسؤول عام' : 'Super Admin') : log.user ? log.user.role : (locale === 'ar' ? 'مهمة تلقائية' : 'Automated Task')}
                                                 </div>
                                             </td>
@@ -273,7 +273,7 @@ export default function AuditLogsPage() {
                                     ))}
                                     {logs.length === 0 && (
                                         <tr>
-                                            <td colSpan={5} style={{ padding: '4rem', textAlign: 'center', color: '#94a3b8' }}>
+                                            <td colSpan={5} style={{ padding: '4rem', textAlign: 'center', color: 'var(--text-faint)' }}>
                                                 {t('no_audit_logs_found')}
                                             </td>
                                         </tr>

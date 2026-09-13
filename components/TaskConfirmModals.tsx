@@ -66,11 +66,11 @@ export default function TaskConfirmModals({
                 <div style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>
                     <p>{t('delete_task_warning')}</p>
                     <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem', justifyContent: 'flex-end', flexDirection: 'row' }}>
-                        <button onClick={() => setShowDeleteConfirm(false)} className="btn" style={{ background: '#e2e8f0' }}>{t('cancel')}</button>
+                        <button onClick={() => setShowDeleteConfirm(false)} className="btn" style={{ background: 'var(--border)' }}>{t('cancel')}</button>
                         <button onClick={() => {
                             setShowDeleteConfirm(false)
                             onDelete()
-                        }} className="btn" style={{ background: '#ef4444', color: 'white' }}>{t('delete')}</button>
+                        }} className="btn" style={{ background: 'var(--danger-solid)', color: 'white' }}>{t('delete')}</button>
                     </div>
                 </div>
             </Modal>
@@ -89,8 +89,8 @@ export default function TaskConfirmModals({
                         </div>
                     )}
                     <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', flexDirection: 'row' }}>
-                        <button onClick={() => setIsReviewModalOpen(false)} className="btn" style={{ background: '#e2e8f0' }}>{t('cancel')}</button>
-                        <button onClick={onSubmitReview} disabled={submittingReview} className="btn" style={{ background: reviewAction === 'APPROVED' ? '#16a34a' : '#dc2626', color: 'white', minWidth: '100px' }}>
+                        <button onClick={() => setIsReviewModalOpen(false)} className="btn" style={{ background: 'var(--border)' }}>{t('cancel')}</button>
+                        <button onClick={onSubmitReview} disabled={submittingReview} className="btn" style={{ background: reviewAction === 'APPROVED' ? 'var(--ok-solid-hover)' : 'var(--danger-solid-hover)', color: 'white', minWidth: '100px' }}>
                             {submittingReview ? '...' : t('confirm_action_button')}
                         </button>
                     </div>
@@ -102,7 +102,7 @@ export default function TaskConfirmModals({
                 <div style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>
                     <p>{t('confirm_submission_msg')}</p>
                     <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem', justifyContent: 'flex-end', flexDirection: 'row' }}>
-                        <button onClick={() => setShowSubmitConfirm(false)} className="btn" style={{ background: '#e2e8f0' }}>{t('cancel')}</button>
+                        <button onClick={() => setShowSubmitConfirm(false)} className="btn" style={{ background: 'var(--border)' }}>{t('cancel')}</button>
                         <button onClick={() => { setShowSubmitConfirm(false); onConfirmSubmit(); }} className="btn btn-primary">{t('confirm_submit_button')}</button>
                     </div>
                 </div>
@@ -117,8 +117,8 @@ export default function TaskConfirmModals({
                 <div style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>
                     <p>{t('confirm_item_delete')}</p>
                     <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem', justifyContent: 'flex-end', flexDirection: 'row' }}>
-                        <button onClick={() => setItemToDelete(null)} className="btn" style={{ background: '#e2e8f0' }}>{t('cancel')}</button>
-                        <button onClick={onConfirmDeleteItem} className="btn" style={{ background: '#dc2626', color: 'white' }}>{t('delete')}</button>
+                        <button onClick={() => setItemToDelete(null)} className="btn" style={{ background: 'var(--border)' }}>{t('cancel')}</button>
+                        <button onClick={onConfirmDeleteItem} className="btn" style={{ background: 'var(--danger-solid-hover)', color: 'white' }}>{t('delete')}</button>
                     </div>
                 </div>
             </Modal>
@@ -128,8 +128,8 @@ export default function TaskConfirmModals({
                 <div style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>
                     <p>{t('delete_location_warning')}</p>
                     <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem', justifyContent: 'flex-end', flexDirection: 'row' }}>
-                        <button onClick={() => setLocationToDelete(null)} className="btn" style={{ background: '#e2e8f0' }}>{t('cancel')}</button>
-                        <button onClick={onConfirmDeleteLocation} className="btn" style={{ background: '#dc2626', color: 'white' }}>{t('delete')}</button>
+                        <button onClick={() => setLocationToDelete(null)} className="btn" style={{ background: 'var(--border)' }}>{t('cancel')}</button>
+                        <button onClick={onConfirmDeleteLocation} className="btn" style={{ background: 'var(--danger-solid-hover)', color: 'white' }}>{t('delete')}</button>
                     </div>
                 </div>
             </Modal>
@@ -139,8 +139,8 @@ export default function TaskConfirmModals({
                 <div style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>
                     <p>{t('confirm_action_button') + '?'}</p>
                     <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem', justifyContent: 'flex-end', flexDirection: 'row' }}>
-                        <button onClick={() => setShowRevertConfirm(false)} className="btn" style={{ background: '#e2e8f0' }}>{t('cancel')}</button>
-                        <button onClick={onRevert} className="btn" style={{ background: '#2563eb', color: 'white' }}>
+                        <button onClick={() => setShowRevertConfirm(false)} className="btn" style={{ background: 'var(--border)' }}>{t('cancel')}</button>
+                        <button onClick={onRevert} className="btn" style={{ background: 'var(--info-solid-hover)', color: 'white' }}>
                             {isReverting ? '...' : t('confirm_action_button')}
                         </button>
                     </div>

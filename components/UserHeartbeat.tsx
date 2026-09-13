@@ -197,7 +197,7 @@ export default function UserHeartbeat() {
                 textAlign: 'center',
                 padding: '2rem'
             }}>
-                <h1 style={{ color: '#ef4444', fontSize: '2rem', margin: 0 }}>
+                <h1 style={{ color: 'var(--danger-solid)', fontSize: '2rem', margin: 0 }}>
                     {isSuspended ? t('account_suspended') : t('company_banned')}
                 </h1>
                 <p style={{ fontSize: '1.1rem', maxWidth: '500px' }}>
@@ -210,7 +210,7 @@ export default function UserHeartbeat() {
                     width: '30px',
                     height: '30px',
                     border: '3px solid rgba(255,255,255,0.3)',
-                    borderTopColor: '#ef4444',
+                    borderTopColor: 'var(--danger-solid)',
                     borderRadius: '50%',
                     animation: 'spin 1s linear infinite'
                 }}></div>
@@ -235,7 +235,7 @@ export default function UserHeartbeat() {
                 padding: '2rem'
             }}>
                 <span style={{ fontSize: '3rem' }}>🔧</span>
-                <h1 style={{ color: '#f59e0b', fontSize: '2rem', margin: 0 }}>
+                <h1 style={{ color: 'var(--warn-solid)', fontSize: '2rem', margin: 0 }}>
                     {t('maintenance_detected_title')}
                 </h1>
                 <p style={{ fontSize: '1.1rem', maxWidth: '500px' }}>
@@ -246,7 +246,7 @@ export default function UserHeartbeat() {
                     width: '30px',
                     height: '30px',
                     border: '3px solid rgba(255,255,255,0.3)',
-                    borderTopColor: '#f59e0b',
+                    borderTopColor: 'var(--warn-solid)',
                     borderRadius: '50%',
                     animation: 'spin 1s linear infinite'
                 }}></div>

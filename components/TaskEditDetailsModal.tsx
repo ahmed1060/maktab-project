@@ -34,13 +34,13 @@ export default function TaskEditDetailsModal({ isOpen, onClose, onSubmit, editFo
             <form onSubmit={onSubmit} style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>
                 <div style={{ marginBottom: '1.25rem' }}>
                     <label className="label">{t('name_label')}</label>
-                    <input className="input" value={editForm.title} onChange={e => { setEditForm({ ...editForm, title: e.target.value }); setEditFieldErrors({ ...editFieldErrors, title: '' }); }} style={{ borderColor: editFieldErrors.title ? '#ef4444' : undefined }} maxLength={100} required />
-                    <div style={{ textAlign: locale === 'ar' ? 'left' : 'right', fontSize: '0.7rem', color: '#94a3b8', marginTop: '0.25rem' }}>{editForm.title.length}/100</div>
+                    <input className="input" value={editForm.title} onChange={e => { setEditForm({ ...editForm, title: e.target.value }); setEditFieldErrors({ ...editFieldErrors, title: '' }); }} style={{ borderColor: editFieldErrors.title ? 'var(--danger-solid)' : undefined }} maxLength={100} required />
+                    <div style={{ textAlign: locale === 'ar' ? 'left' : 'right', fontSize: '0.7rem', color: 'var(--text-faint)', marginTop: '0.25rem' }}>{editForm.title.length}/100</div>
                 </div>
                 <div style={{ marginBottom: '1.25rem' }}>
                     <label className="label">{t('description_changes_title').split(' ')[0]}</label>
-                    <textarea className="input" rows={4} value={editForm.description} onChange={e => { setEditForm({ ...editForm, description: e.target.value }); setEditFieldErrors({ ...editFieldErrors, description: '' }); }} style={{ borderColor: editFieldErrors.description ? '#ef4444' : undefined }} maxLength={1000} required />
-                    <div style={{ textAlign: locale === 'ar' ? 'left' : 'right', fontSize: '0.7rem', color: '#94a3b8', marginTop: '0.25rem' }}>{editForm.description.length}/1000</div>
+                    <textarea className="input" rows={4} value={editForm.description} onChange={e => { setEditForm({ ...editForm, description: e.target.value }); setEditFieldErrors({ ...editFieldErrors, description: '' }); }} style={{ borderColor: editFieldErrors.description ? 'var(--danger-solid)' : undefined }} maxLength={1000} required />
+                    <div style={{ textAlign: locale === 'ar' ? 'left' : 'right', fontSize: '0.7rem', color: 'var(--text-faint)', marginTop: '0.25rem' }}>{editForm.description.length}/1000</div>
                 </div>
                 <div style={{ marginBottom: '1.25rem' }}>
                     <LocationSearchInput
@@ -58,10 +58,10 @@ export default function TaskEditDetailsModal({ isOpen, onClose, onSubmit, editFo
                     <div style={{
                         maxHeight: '150px',
                         overflowY: 'auto',
-                        border: '1px solid #e2e8f0',
+                        border: '1px solid var(--border)',
                         borderRadius: '0.5rem',
                         padding: '1rem',
-                        background: '#f8fafc',
+                        background: 'var(--surface-subtle)',
                         display: 'flex',
                         flexWrap: 'wrap',
                         gap: '0.5rem'
@@ -70,22 +70,22 @@ export default function TaskEditDetailsModal({ isOpen, onClose, onSubmit, editFo
                             task.assignees.map((u: any) => (
                                 <div key={u.id} style={{
                                     background: 'white',
-                                    border: '1px solid #e2e8f0',
+                                    border: '1px solid var(--border)',
                                     borderRadius: '2rem',
                                     padding: '0.4rem 1rem',
                                     fontSize: '0.9rem',
-                                    color: '#334155',
+                                    color: 'var(--text-body)',
                                     display: 'flex',
                                     alignItems: 'center',
                                     boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
                                 }}>
-                                    {u.firstName} {u.lastName} <small style={{ color: '#64748b', marginLeft: locale === 'ar' ? 0 : '0.4rem', marginRight: locale === 'ar' ? '0.4rem' : 0 }}>({t(`role_${u.role?.toLowerCase()}` as any)})</small>
+                                    {u.firstName} {u.lastName} <small style={{ color: 'var(--text-soft)', marginLeft: locale === 'ar' ? 0 : '0.4rem', marginRight: locale === 'ar' ? '0.4rem' : 0 }}>({t(`role_${u.role?.toLowerCase()}` as any)})</small>
                                 </div>
                             ))
                         ) : (
                             <div style={{
                                 background: 'white',
-                                border: '1px solid #e2e8f0',
+                                border: '1px solid var(--border)',
                                 borderRadius: '2rem',
                                 padding: '0.5rem 1rem',
                                 fontSize: '0.9rem',
@@ -95,7 +95,7 @@ export default function TaskEditDetailsModal({ isOpen, onClose, onSubmit, editFo
                             </div>
                         )}
                     </div>
-                    <p style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.5rem' }}>
+                    <p style={{ fontSize: '0.75rem', color: 'var(--text-soft)', marginTop: '0.5rem' }}>
                         {t('transfer_notice' as any) || (locale === 'ar' ? 'يرجى استخدام زر "التحويل" لتغيير الموظفين.' : 'Please use the "Transfer" button to change employees.')}
                     </p>
                 </div>
@@ -114,7 +114,7 @@ export default function TaskEditDetailsModal({ isOpen, onClose, onSubmit, editFo
                     <input type="number" className="input" value={editForm.difficulty} onChange={e => setEditForm({ ...editForm, difficulty: parseInt(e.target.value) || 0 })} min={0} max={10} required />
                 </div>
                 <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', flexDirection: 'row' }}>
-                    <button type="button" onClick={onClose} className="btn" style={{ background: '#e2e8f0' }}>{t('cancel')}</button>
+                    <button type="button" onClick={onClose} className="btn" style={{ background: 'var(--border)' }}>{t('cancel')}</button>
                     <button type="submit" className="btn btn-primary">{t('save_changes_button')}</button>
                 </div>
             </form>

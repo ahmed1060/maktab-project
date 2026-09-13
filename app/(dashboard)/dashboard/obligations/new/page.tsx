@@ -138,7 +138,7 @@ export default function NewObligationPage() {
         <div className="card" style={{ maxWidth: '600px', margin: '0 auto', ...containerStyle }}>
             <h1 style={{ marginBottom: '1.5rem' }}>{t('add_obligation')}</h1>
             {error && (
-                <div style={{ background: '#fee2e2', color: '#991b1b', padding: '1rem', borderRadius: '0.5rem', marginBottom: '1rem', border: '1px solid #fecaca' }}>
+                <div style={{ background: 'var(--danger-bg)', color: 'var(--danger-fg)', padding: '1rem', borderRadius: '0.5rem', marginBottom: '1rem', border: '1px solid var(--danger-border)' }}>
                     {error}
                 </div>
             )}
@@ -152,16 +152,16 @@ export default function NewObligationPage() {
                             setTitle(e.target.value)
                             if (fieldErrors.title) setFieldErrors({ ...fieldErrors, title: '' })
                         }}
-                        style={fieldErrors.title ? { borderColor: '#ef4444' } : {}}
+                        style={fieldErrors.title ? { borderColor: 'var(--danger-solid)' } : {}}
                         required
                         maxLength={100}
                     />
                     {fieldErrors.title && (
-                        <div style={{ color: '#ef4444', fontSize: '0.85rem', marginTop: '0.25rem' }}>
+                        <div style={{ color: 'var(--danger-solid)', fontSize: '0.85rem', marginTop: '0.25rem' }}>
                             {fieldErrors.title}
                         </div>
                     )}
-                    <div style={{ fontSize: '0.75rem', color: title.length >= 100 ? '#ef4444' : '#94a3b8', textAlign: locale === 'ar' ? 'left' : 'right', marginTop: '0.25rem' }}>
+                    <div style={{ fontSize: '0.75rem', color: title.length >= 100 ? 'var(--danger-solid)' : 'var(--text-faint)', textAlign: locale === 'ar' ? 'left' : 'right', marginTop: '0.25rem' }}>
                         {title.length}/100
                     </div>
                 </div>
@@ -174,17 +174,17 @@ export default function NewObligationPage() {
                             setDescription(e.target.value)
                             if (fieldErrors.description) setFieldErrors({ ...fieldErrors, description: '' })
                         }}
-                        style={fieldErrors.description ? { borderColor: '#ef4444' } : {}}
+                        style={fieldErrors.description ? { borderColor: 'var(--danger-solid)' } : {}}
                         rows={4}
                         required
                         maxLength={500}
                     />
                     {fieldErrors.description && (
-                        <div style={{ color: '#ef4444', fontSize: '0.85rem', marginTop: '0.25rem' }}>
+                        <div style={{ color: 'var(--danger-solid)', fontSize: '0.85rem', marginTop: '0.25rem' }}>
                             {fieldErrors.description}
                         </div>
                     )}
-                    <div style={{ fontSize: '0.75rem', color: description.length >= 500 ? '#ef4444' : '#94a3b8', textAlign: locale === 'ar' ? 'left' : 'right', marginTop: '0.25rem' }}>
+                    <div style={{ fontSize: '0.75rem', color: description.length >= 500 ? 'var(--danger-solid)' : 'var(--text-faint)', textAlign: locale === 'ar' ? 'left' : 'right', marginTop: '0.25rem' }}>
                         {description.length}/500
                     </div>
                 </div>
@@ -201,10 +201,10 @@ export default function NewObligationPage() {
                     <div style={{
                         maxHeight: '200px',
                         overflowY: 'auto',
-                        border: '1px solid #e2e8f0',
+                        border: '1px solid var(--border)',
                         borderRadius: '0.5rem',
                         padding: '0.75rem',
-                        background: '#fff'
+                        background: 'var(--surface)'
                     }}>
                         {filteredUsers.length > 0 ? filteredUsers.map(u => (
                             <label key={u.id} style={{
@@ -215,7 +215,7 @@ export default function NewObligationPage() {
                                 cursor: 'pointer',
                                 padding: '0.25rem',
                                 borderRadius: '0.25rem',
-                                background: assigneeIds.includes(u.id) ? '#f0f9ff' : 'transparent'
+                                background: assigneeIds.includes(u.id) ? 'var(--info-bg-sky)' : 'transparent'
                             }}>
                                 <input
                                     type="checkbox"
@@ -230,17 +230,17 @@ export default function NewObligationPage() {
                                     }}
                                 />
                                 <span style={{ fontSize: '0.9rem' }}>
-                                    {u.firstName} {u.lastName} <small style={{ color: '#64748b' }}>({t(`role_${u.role?.toLowerCase().replace('team_leader', 'team_leader').replace('employee', 'employee').replace('admin', 'admin')}` as any)})</small>
+                                    {u.firstName} {u.lastName} <small style={{ color: 'var(--text-soft)' }}>({t(`role_${u.role?.toLowerCase().replace('team_leader', 'team_leader').replace('employee', 'employee').replace('admin', 'admin')}` as any)})</small>
                                 </span>
                             </label>
                         )) : (
-                            <div style={{ color: '#64748b', fontSize: '0.9rem', textAlign: 'center', padding: '1rem' }}>
+                            <div style={{ color: 'var(--text-soft)', fontSize: '0.9rem', textAlign: 'center', padding: '1rem' }}>
                                 {t('no_data_available')}
                             </div>
                         )}
                     </div>
                     {fieldErrors.assigneeIds && (
-                        <div style={{ color: '#ef4444', fontSize: '0.85rem', marginTop: '0.25rem' }}>
+                        <div style={{ color: 'var(--danger-solid)', fontSize: '0.85rem', marginTop: '0.25rem' }}>
                             {fieldErrors.assigneeIds}
                         </div>
                     )}
@@ -298,7 +298,7 @@ export default function NewObligationPage() {
                     <button
                         type="button"
                         className="btn"
-                        style={{ background: '#e2e8f0', color: '#0f172a' }}
+                        style={{ background: 'var(--border)', color: 'var(--text-strong)' }}
                         onClick={() => router.push('/dashboard/obligations')}
                     >
                         {t('cancel')}

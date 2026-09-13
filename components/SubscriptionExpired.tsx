@@ -26,12 +26,12 @@ export default function SubscriptionExpired({ lockedOn }: { lockedOn: string | n
                 </h2>
 
                 {formatted && (
-                    <p style={{ color: '#b91c1c', fontSize: '0.88rem', fontWeight: 600, margin: '0 0 1rem' }}>
+                    <p style={{ color: 'var(--danger-fg-strong)', fontSize: '0.88rem', fontWeight: 600, margin: '0 0 1rem' }}>
                         {t('locked_on' as any)}: {formatted}
                     </p>
                 )}
 
-                <p style={{ color: '#64748b', fontSize: '0.92rem', lineHeight: 1.65, margin: '0 0 1.25rem' }}>
+                <p style={{ color: 'var(--text-soft)', fontSize: '0.92rem', lineHeight: 1.65, margin: '0 0 1.25rem' }}>
                     {t('subscription_expired_body' as any)}
                 </p>
 
@@ -39,7 +39,7 @@ export default function SubscriptionExpired({ lockedOn }: { lockedOn: string | n
                     believes their records are gone does not renew. */}
                 <div style={{
                     padding: '0.85rem 1rem', borderRadius: '0.6rem',
-                    background: '#dcfce7', color: '#166534',
+                    background: 'var(--ok-bg)', color: 'var(--ok-fg)',
                     fontSize: '0.88rem', fontWeight: 600,
                 }}>
                     {t('subscription_expired_data_safe' as any)}

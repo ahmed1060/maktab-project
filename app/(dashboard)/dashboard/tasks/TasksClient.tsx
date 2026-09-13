@@ -133,8 +133,8 @@ export default function TasksClient({ tasks, total, page, totalPages, role, curr
                         style={{
                             background: view === 'my'
                                 ? 'linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%)'
-                                : '#f1f5f9',
-                            color: view === 'my' ? '#fff' : '#0f172a',
+                                : 'var(--surface-sunk)',
+                            color: view === 'my' ? 'var(--text-on-accent)' : 'var(--text-strong)',
                             border: 'none',
                             padding: '0.6rem 1.75rem',
                             borderRadius: '99px',
@@ -157,8 +157,8 @@ export default function TasksClient({ tasks, total, page, totalPages, role, curr
                         style={{
                             background: view === 'active'
                                 ? 'linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%)'
-                                : '#f1f5f9',
-                            color: view === 'active' ? '#fff' : '#0f172a',
+                                : 'var(--surface-sunk)',
+                            color: view === 'active' ? 'var(--text-on-accent)' : 'var(--text-strong)',
                             border: 'none',
                             padding: '0.6rem 1.75rem',
                             borderRadius: '99px',
@@ -217,7 +217,7 @@ export default function TasksClient({ tasks, total, page, totalPages, role, curr
                         />
                     ))
                 ) : (
-                    <div className="card" style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>
+                    <div className="card" style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-soft)' }}>
                         {t('no_tasks_found')}
                     </div>
                 )}

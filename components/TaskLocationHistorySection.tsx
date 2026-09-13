@@ -43,7 +43,7 @@ export default function TaskLocationHistorySection({ task, setTask, userRole, us
         if (locations.length === 0) return null
 
         return (
-            <div style={{ marginTop: '2rem', borderTop: '1px solid #e2e8f0', paddingTop: '1.5rem' }}>
+            <div style={{ marginTop: '2rem', borderTop: '1px solid var(--border)', paddingTop: '1.5rem' }}>
                 <style>{`
                 @keyframes spin-local {
                     to { transform: rotate(360deg); }
@@ -65,7 +65,7 @@ export default function TaskLocationHistorySection({ task, setTask, userRole, us
                     {features.has('SALARY_ADJUSTMENTS') && ['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole) && !['PENDING', 'IN_PROGRESS'].includes(task.status) && (
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
                             {showPenaltyUI && (
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: '#f8fafc', padding: '0.25rem 0.5rem', borderRadius: '2rem', border: '1px solid #e2e8f0' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'var(--surface-subtle)', padding: '0.25rem 0.5rem', borderRadius: '2rem', border: '1px solid var(--border)' }}>
                                     {[0.25, 0.5, 1].map(amount => (
                                         <button
                                             key={amount}
@@ -74,9 +74,9 @@ export default function TaskLocationHistorySection({ task, setTask, userRole, us
                                                 width: '32px',
                                                 height: '32px',
                                                 borderRadius: '50%',
-                                                border: selectedPenalty === amount ? '2px solid #ef4444' : '1px solid #cbd5e1',
-                                                background: selectedPenalty === amount ? '#fee2e2' : 'white',
-                                                color: selectedPenalty === amount ? '#991b1b' : '#64748b',
+                                                border: selectedPenalty === amount ? '2px solid var(--danger-solid)' : '1px solid var(--border-firm)',
+                                                background: selectedPenalty === amount ? 'var(--danger-bg)' : 'white',
+                                                color: selectedPenalty === amount ? 'var(--danger-fg)' : 'var(--text-soft)',
                                                 fontSize: '0.7rem',
                                                 fontWeight: 'bold',
                                                 cursor: 'pointer',
@@ -130,7 +130,7 @@ export default function TaskLocationHistorySection({ task, setTask, userRole, us
                                         style={{
                                             padding: '0.25rem 0.75rem',
                                             borderRadius: '1rem',
-                                            background: '#ef4444',
+                                            background: 'var(--danger-solid)',
                                             color: 'white',
                                             fontSize: '0.75rem',
                                             fontWeight: 'bold',
@@ -146,9 +146,9 @@ export default function TaskLocationHistorySection({ task, setTask, userRole, us
                             <button
                                 onClick={() => setShowPenaltyUI(!showPenaltyUI)}
                                 style={{
-                                    background: showPenaltyUI ? '#f1f5f9' : '#fee2e2',
-                                    color: showPenaltyUI ? '#475569' : '#991b1b',
-                                    border: '1px solid ' + (showPenaltyUI ? '#cbd5e1' : '#fca5a5'),
+                                    background: showPenaltyUI ? 'var(--surface-sunk)' : 'var(--danger-bg)',
+                                    color: showPenaltyUI ? 'var(--text-muted)' : 'var(--danger-fg)',
+                                    border: '1px solid ' + (showPenaltyUI ? 'var(--border-firm)' : 'var(--danger-border-firm)'),
                                     padding: '0.4rem 0.8rem',
                                     borderRadius: '0.5rem',
                                     fontSize: '0.8rem',
@@ -223,15 +223,15 @@ export default function TaskLocationHistorySection({ task, setTask, userRole, us
                         }
 
                         return (
-                            <div key={i} style={{ border: '1px solid #bae6fd', background: '#f0f9ff', borderRadius: '0.5rem', padding: '1rem' }}>
+                            <div key={i} style={{ border: '1px solid var(--info-bg-sky-firm)', background: 'var(--info-bg-sky)', borderRadius: '0.5rem', padding: '1rem' }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexDirection: 'row', gap: '1rem' }}>
                                     <div style={{ display: 'flex', gap: '0.75rem', flexDirection: 'row' }}>
                                         <span style={{ fontSize: '1.25rem' }}>📍</span>
                                         <div style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>
-                                            {mapsLink ? <a href={mapsLink} target="_blank" rel="noreferrer" style={{ fontWeight: '600', color: '#0369a1', textDecoration: 'underline' }}>{displayLoc}</a> : <span style={{ fontWeight: '600', color: '#0c4a6e' }}>{displayLoc}</span>}
-                                            <div style={{ fontSize: '0.75rem', color: '#0369a1', marginTop: '0.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                            {mapsLink ? <a href={mapsLink} target="_blank" rel="noreferrer" style={{ fontWeight: '600', color: 'var(--info-fg)', textDecoration: 'underline' }}>{displayLoc}</a> : <span style={{ fontWeight: '600', color: 'var(--info-fg-deepest)' }}>{displayLoc}</span>}
+                                            <div style={{ fontSize: '0.75rem', color: 'var(--info-fg)', marginTop: '0.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                                 {(task.assignees?.length > 1) && (
-                                                    <span style={{ background: '#e0f2fe', border: '1px solid #38bdf8', color: '#0369a1', padding: '0.1rem 0.4rem', borderRadius: '1rem', fontSize: '0.65rem', fontWeight: 'bold' }}>
+                                                    <span style={{ background: 'var(--info-bg)', border: '1px solid var(--info-solid-sky-light)', color: 'var(--info-fg)', padding: '0.1rem 0.4rem', borderRadius: '1rem', fontSize: '0.65rem', fontWeight: 'bold' }}>
                                                         {locale === 'ar' ? 'بواسطة:' : 'By:'} {loc.author}
                                                     </span>
                                                 )}
@@ -242,7 +242,7 @@ export default function TaskLocationHistorySection({ task, setTask, userRole, us
                                     </div>
                                     <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexDirection: 'row' }}>
                                         {loc.verificationStatus && (
-                                            <span style={{ fontSize: '0.75rem', fontWeight: '700', color: loc.verificationStatus === 'CORRECT' ? '#16a34a' : '#dc2626', background: loc.verificationStatus === 'CORRECT' ? '#dcfce7' : '#fee2e2', padding: '0.25rem 0.5rem', borderRadius: '0.25rem' }}>
+                                            <span style={{ fontSize: '0.75rem', fontWeight: '700', color: loc.verificationStatus === 'CORRECT' ? 'var(--ok-solid-hover)' : 'var(--danger-solid-hover)', background: loc.verificationStatus === 'CORRECT' ? 'var(--ok-bg)' : 'var(--danger-bg)', padding: '0.25rem 0.5rem', borderRadius: '0.25rem' }}>
                                                 {loc.verificationStatus === 'CORRECT' ? t('verified_correct_title') : t('verified_wrong_title')}
                                             </span>
                                         )}
@@ -252,9 +252,9 @@ export default function TaskLocationHistorySection({ task, setTask, userRole, us
                                                     onClick={() => handleVerify('CORRECT')}
                                                     disabled={!!verifyingLocation}
                                                     style={{
-                                                        background: '#dcfce7',
-                                                        border: '1px solid #22c55e',
-                                                        color: '#166534',
+                                                        background: 'var(--ok-bg)',
+                                                        border: '1px solid var(--ok-solid-alt)',
+                                                        color: 'var(--ok-fg)',
                                                         width: '32px',
                                                         height: '32px',
                                                         borderRadius: '50%',
@@ -265,15 +265,15 @@ export default function TaskLocationHistorySection({ task, setTask, userRole, us
                                                     }}
                                                     title={t('mark_correct_title')}
                                                 >
-                                                    {verifyingLocation === `${loc.date}-CORRECT` ? <div className="animate-spin-local" style={{ width: '14px', height: '14px', border: '2px solid #166534', borderTopColor: 'transparent', borderRadius: '50%' }} /> : '✓'}
+                                                    {verifyingLocation === `${loc.date}-CORRECT` ? <div className="animate-spin-local" style={{ width: '14px', height: '14px', border: '2px solid var(--ok-fg)', borderTopColor: 'transparent', borderRadius: '50%' }} /> : '✓'}
                                                 </button>
                                                 <button
                                                     onClick={() => handleVerify('WRONG')}
                                                     disabled={!!verifyingLocation}
                                                     style={{
-                                                        background: '#fee2e2',
-                                                        border: '1px solid #ef4444',
-                                                        color: '#991b1b',
+                                                        background: 'var(--danger-bg)',
+                                                        border: '1px solid var(--danger-solid)',
+                                                        color: 'var(--danger-fg)',
                                                         width: '32px',
                                                         height: '32px',
                                                         borderRadius: '50%',
@@ -284,12 +284,12 @@ export default function TaskLocationHistorySection({ task, setTask, userRole, us
                                                     }}
                                                     title={t('mark_wrong_title')}
                                                 >
-                                                    {verifyingLocation === `${loc.date}-WRONG` ? <div className="animate-spin-local" style={{ width: '14px', height: '14px', border: '2px solid #991b1b', borderTopColor: 'transparent', borderRadius: '50%' }} /> : '✕'}
+                                                    {verifyingLocation === `${loc.date}-WRONG` ? <div className="animate-spin-local" style={{ width: '14px', height: '14px', border: '2px solid var(--danger-fg)', borderTopColor: 'transparent', borderRadius: '50%' }} /> : '✕'}
                                                 </button>
                                             </div>
                                         )}
                                         {canDelete && task.status === 'IN_PROGRESS' && (loc.authorId === userId || ['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole)) && (
-                                            <button onClick={() => setLocationToDelete({ date: loc.date })} style={{ background: '#fee2e2', color: '#dc2626', border: 'none', borderRadius: '0.25rem', padding: '0.4rem', cursor: 'pointer', display: 'flex' }} title={t('delete_location_title')}>
+                                            <button onClick={() => setLocationToDelete({ date: loc.date })} style={{ background: 'var(--danger-bg)', color: 'var(--danger-solid-hover)', border: 'none', borderRadius: '0.25rem', padding: '0.4rem', cursor: 'pointer', display: 'flex' }} title={t('delete_location_title')}>
                                                 <TrashIcon size={16} />
                                             </button>
                                         )}

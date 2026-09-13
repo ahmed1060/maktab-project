@@ -21,13 +21,13 @@ export default function AccessDenied() {
             <h1 style={{
                 fontSize: '2rem',
                 fontWeight: 'bold',
-                color: '#1e293b',
+                color: 'var(--text-main)',
                 marginBottom: '1rem'
             }}>
                 Access Restricted
             </h1>
             <p style={{
-                color: '#64748b',
+                color: 'var(--text-soft)',
                 marginBottom: '2rem',
                 maxWidth: '400px',
                 lineHeight: '1.6'
