@@ -155,9 +155,9 @@ export default function RequestsHistoryClient({ userRole }: { userRole: string }
                         color: 'var(--brand-primary)',
                         textDecoration: 'none',
                         transition: 'all 0.3s ease',
-                        border: '1px solid rgba(255, 255, 255, 0.4)',
+                        border: '1px solid var(--veil-40)',
                         borderRadius: '0.75rem',
-                        background: 'rgba(255, 255, 255, 0.4)',
+                        background: 'var(--veil-40)',
                         backdropFilter: 'blur(8px)',
                         transform: locale === 'ar' ? 'scaleX(-1)' : 'none'
                     }}

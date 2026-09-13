@@ -419,7 +419,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                         <div style={{
                             position: 'absolute',
                             inset: 0,
-                            background: 'rgba(255,255,255,0.7)',
+                            background: 'var(--panel-70)',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center'

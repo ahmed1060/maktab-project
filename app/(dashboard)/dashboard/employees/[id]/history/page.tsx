@@ -286,7 +286,7 @@ export default function EmployeeHistoryPage() {
                         color: 'var(--primary)',
                         textDecoration: 'none',
                         transition: 'all 0.3s ease',
-                        border: '1px solid rgba(255, 255, 255, 0.4)',
+                        border: '1px solid var(--veil-40)',
                         transform: `translateY(-2px)${locale === 'ar' ? ' scaleX(-1)' : ''}`,
                         float: locale === 'ar' ? 'right' : 'left',
                         marginInlineEnd: '1.25rem',
@@ -295,11 +295,11 @@ export default function EmployeeHistoryPage() {
                     }}
                     onMouseOver={(e) => {
                         e.currentTarget.style.transform = `translateY(-4px)${locale === 'ar' ? ' scaleX(-1)' : ''}`
-                        e.currentTarget.style.background = 'rgba(255, 255, 255, 0.9)'
+                        e.currentTarget.style.background = 'var(--panel-90)'
                     }}
                     onMouseOut={(e) => {
                         e.currentTarget.style.transform = `translateY(-2px)${locale === 'ar' ? ' scaleX(-1)' : ''}`
-                        e.currentTarget.style.background = 'rgba(255, 255, 255, 0.7)'
+                        e.currentTarget.style.background = 'var(--panel-70)'
                     }}
                     title={t('back_to_employees')}
                 >
@@ -473,7 +473,7 @@ export default function EmployeeHistoryPage() {
                     </table>
                 </div>
             ) : activeTab === 'COSTS' ? (
-                <div className="card" style={{ overflowX: 'auto', padding: '1.5rem', background: 'rgba(255, 255, 255, 0.7)' }}>
+                <div className="card" style={{ overflowX: 'auto', padding: '1.5rem', background: 'var(--panel-70)' }}>
                     <h2 style={{ marginBottom: '1.5rem', borderBottom: '1px solid var(--border)', paddingBottom: '0.75rem' }}>
                         {t('costs_tab' as any) || 'Costs'}
                     </h2>
@@ -526,7 +526,7 @@ export default function EmployeeHistoryPage() {
             ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
                     {dayOffHistory?.history.map(yearData => (
-                        <div key={yearData.year} className="card" style={{ overflowX: 'auto', padding: '1.5rem', background: 'rgba(255, 255, 255, 0.7)' }}>
+                        <div key={yearData.year} className="card" style={{ overflowX: 'auto', padding: '1.5rem', background: 'var(--panel-70)' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '1px solid var(--border)', paddingBottom: '0.75rem' }}>
                                 <h2 style={{ margin: 0 }}>{yearData.year}</h2>
                                 {yearData.snapshot && (
@@ -587,7 +587,7 @@ export default function EmployeeHistoryPage() {
                         overflowY: 'auto',
                         padding: '2rem',
                         position: 'relative',
-                        background: 'rgba(255, 255, 255, 0.95)'
+                        background: 'var(--panel-95)'
                     }}>
                         <button
                             onClick={() => setIsAdjustmentsModalOpen(false)}
@@ -702,7 +702,7 @@ export default function EmployeeHistoryPage() {
                         width: '100%',
                         maxWidth: '400px',
                         padding: '2rem',
-                        background: 'rgba(255, 255, 255, 0.95)',
+                        background: 'var(--panel-95)',
                         borderRadius: '1.5rem',
                         boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)',
                         direction: locale === 'ar' ? 'rtl' : 'ltr'
@@ -758,7 +758,7 @@ export default function EmployeeHistoryPage() {
                         maxHeight: '85vh',
                         overflowY: 'auto',
                         padding: '2rem',
-                        background: 'rgba(255, 255, 255, 0.95)',
+                        background: 'var(--panel-95)',
                         borderRadius: '2rem',
                         direction: locale === 'ar' ? 'rtl' : 'ltr'
                     }}>

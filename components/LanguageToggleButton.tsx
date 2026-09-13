@@ -37,7 +37,7 @@ export default function LanguageToggleButton({ variant = 'fixed', onAction }: La
                     gap: '0.5rem',
                     direction: locale === 'ar' ? 'rtl' : 'ltr'
                 }}
-                onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.4)'}
+                onMouseEnter={(e) => e.currentTarget.style.background = 'var(--veil-40)'}
                 onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
             >
                 <span style={{ fontSize: '1.1rem' }}>🌐</span>
@@ -56,9 +56,9 @@ export default function LanguageToggleButton({ variant = 'fixed', onAction }: La
                 right: locale === 'en' ? '2rem' : 'auto',
                 left: locale === 'ar' ? '2rem' : 'auto',
                 padding: '0.75rem 1.25rem',
-                background: 'rgba(255, 255, 255, 0.9)',
+                background: 'var(--panel-90)',
                 backdropFilter: 'blur(10px)',
-                border: '1px solid rgba(255, 255, 255, 0.3)',
+                border: '1px solid var(--veil-30)',
                 borderRadius: '50px',
                 boxShadow: '0 4px 15px rgba(0, 0, 0, 0.1)',
                 cursor: 'pointer',

@@ -6,7 +6,7 @@ export default function LogoutButton() {
         <button
             onClick={() => signOut()}
             style={{
-                background: 'rgba(255,255,255,0.1)',
+                background: 'var(--veil-10)',
                 border: 'none',
                 color: 'var(--text-on-accent)',
                 padding: '0.5rem 1rem',

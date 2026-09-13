@@ -128,18 +128,18 @@ export default function CompanySettingsPage() {
                         color: 'var(--primary)',
                         textDecoration: 'none',
                         transition: 'all 0.3s ease',
-                        border: '1px solid rgba(255, 255, 255, 0.4)',
+                        border: '1px solid var(--veil-40)',
                         transform: `translateY(-2px)${locale === 'ar' ? ' scaleX(-1)' : ''}`,
                         float: locale === 'ar' ? 'right' : 'left',
                         cursor: 'pointer'
                     }}
                     onMouseOver={(e) => {
                         e.currentTarget.style.transform = `translateY(-4px)${locale === 'ar' ? ' scaleX(-1)' : ''}`
-                        e.currentTarget.style.background = 'rgba(255, 255, 255, 0.9)'
+                        e.currentTarget.style.background = 'var(--panel-90)'
                     }}
                     onMouseOut={(e) => {
                         e.currentTarget.style.transform = `translateY(-2px)${locale === 'ar' ? ' scaleX(-1)' : ''}`
-                        e.currentTarget.style.background = 'rgba(255, 255, 255, 0.7)'
+                        e.currentTarget.style.background = 'var(--panel-70)'
                     }}
                     title={t('back_to_companies')}
                 >

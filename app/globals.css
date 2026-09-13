@@ -198,6 +198,31 @@
   --chip-solid-bg: #0f172a;
   --chip-solid-fg: #ffffff;
 
+  /* Translucent whites, which the codebase writes out by hand about a hundred
+     times. They split into two roles that need opposite treatment in dark:
+
+     --veil-*  is elevation, a border, or a hover state. On light it whitens; on
+               dark it also whitens, much more faintly, because lighter is how
+               dark interfaces express raised.
+
+     --panel-* is a surface whose job is to hide what is behind it — a modal, a
+               dropdown, the login card. On dark it has to become a near-opaque
+               dark surface, not a faint white, or the content behind it reads
+               straight through. */
+  --veil-10: rgba(255, 255, 255, 0.1);
+  --veil-15: rgba(255, 255, 255, 0.15);
+  --veil-20: rgba(255, 255, 255, 0.2);
+  --veil-30: rgba(255, 255, 255, 0.3);
+  --veil-40: rgba(255, 255, 255, 0.4);
+  --veil-50: rgba(255, 255, 255, 0.5);
+  --veil-60: rgba(255, 255, 255, 0.6);
+
+  --panel-70: rgba(255, 255, 255, 0.7);
+  --panel-80: rgba(255, 255, 255, 0.8);
+  --panel-85: rgba(255, 255, 255, 0.85);
+  --panel-90: rgba(255, 255, 255, 0.9);
+  --panel-95: rgba(255, 255, 255, 0.95);
+
   /* The page ground itself. */
   --page-bg: #eef2ff;
   --page-veil-a: rgba(99, 102, 241, 0.15);
@@ -880,6 +905,20 @@ input::-webkit-credentials-auto-fill-button {
     --chip-solid-bg: #2b3340;
     --chip-solid-fg: #f0f6fc;
 
+    --veil-10: rgba(255, 255, 255, 0.04);
+    --veil-15: rgba(255, 255, 255, 0.05);
+    --veil-20: rgba(255, 255, 255, 0.06);
+    --veil-30: rgba(255, 255, 255, 0.07);
+    --veil-40: rgba(255, 255, 255, 0.09);
+    --veil-50: rgba(255, 255, 255, 0.11);
+    --veil-60: rgba(255, 255, 255, 0.14);
+
+    --panel-70: rgba(22, 27, 34, 0.8);
+    --panel-80: rgba(22, 27, 34, 0.88);
+    --panel-85: rgba(22, 27, 34, 0.91);
+    --panel-90: rgba(22, 27, 34, 0.94);
+    --panel-95: rgba(22, 27, 34, 0.97);
+
     --page-bg: #0b0f14;
     --page-veil-a: rgba(99, 102, 241, 0.1);
     --page-veil-b: rgba(236, 72, 153, 0.08);
@@ -996,6 +1035,20 @@ input::-webkit-credentials-auto-fill-button {
     --highlight-tint: rgba(168, 85, 247, 0.14);
     --chip-solid-bg: #2b3340;
     --chip-solid-fg: #f0f6fc;
+
+    --veil-10: rgba(255, 255, 255, 0.04);
+    --veil-15: rgba(255, 255, 255, 0.05);
+    --veil-20: rgba(255, 255, 255, 0.06);
+    --veil-30: rgba(255, 255, 255, 0.07);
+    --veil-40: rgba(255, 255, 255, 0.09);
+    --veil-50: rgba(255, 255, 255, 0.11);
+    --veil-60: rgba(255, 255, 255, 0.14);
+
+    --panel-70: rgba(22, 27, 34, 0.8);
+    --panel-80: rgba(22, 27, 34, 0.88);
+    --panel-85: rgba(22, 27, 34, 0.91);
+    --panel-90: rgba(22, 27, 34, 0.94);
+    --panel-95: rgba(22, 27, 34, 0.97);
 
     --page-bg: #0b0f14;
     --page-veil-a: rgba(99, 102, 241, 0.1);

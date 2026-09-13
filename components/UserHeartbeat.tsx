@@ -209,7 +209,7 @@ export default function UserHeartbeat() {
                 <div style={{
                     width: '30px',
                     height: '30px',
-                    border: '3px solid rgba(255,255,255,0.3)',
+                    border: '3px solid var(--veil-30)',
                     borderTopColor: 'var(--danger-solid)',
                     borderRadius: '50%',
                     animation: 'spin 1s linear infinite'
@@ -245,7 +245,7 @@ export default function UserHeartbeat() {
                 <div style={{
                     width: '30px',
                     height: '30px',
-                    border: '3px solid rgba(255,255,255,0.3)',
+                    border: '3px solid var(--veil-30)',
                     borderTopColor: 'var(--warn-solid)',
                     borderRadius: '50%',
                     animation: 'spin 1s linear infinite'

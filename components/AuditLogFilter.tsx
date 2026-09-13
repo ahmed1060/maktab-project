@@ -107,10 +107,10 @@ export default function AuditLogFilter({
                 <div style={{
                     position: 'absolute',
                     inset: 0,
-                    background: 'rgba(255, 255, 255, 0.4)',
+                    background: 'var(--veil-40)',
                     backdropFilter: 'blur(8px)',
                     borderRadius: '1.5rem',
-                    border: '1px solid rgba(255, 255, 255, 0.5)',
+                    border: '1px solid var(--veil-50)',
                     zIndex: -1,
                     pointerEvents: 'none'
                 }} />

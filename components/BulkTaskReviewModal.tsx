@@ -65,9 +65,9 @@ export default function BulkTaskReviewModal({
 
                 <div className="modal-body" style={{ overflowY: 'auto', flex: 1, padding: '1.5rem' }}>
                     <div style={{ overflowX: 'auto', borderRadius: '1rem', border: '1px solid var(--glass-border)' }}>
-                        <table style={{ width: '100%', borderCollapse: 'collapse', background: 'rgba(255, 255, 255, 0.4)' }}>
+                        <table style={{ width: '100%', borderCollapse: 'collapse', background: 'var(--veil-40)' }}>
                             <thead>
-                                <tr style={{ background: 'rgba(255, 255, 255, 0.6)', borderBottom: '2px solid var(--glass-border)' }}>
+                                <tr style={{ background: 'var(--veil-60)', borderBottom: '2px solid var(--glass-border)' }}>
                                     <th style={{ padding: '1rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>#</th>
                                     <th style={{ padding: '1rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('title')}</th>
                                     <th style={{ padding: '1rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('description_label' as any)}</th>
@@ -234,7 +234,7 @@ export default function BulkTaskReviewModal({
                                                     opacity: bt.isInvalid ? 0.6 : 1,
                                                     color: bt.unresolvedUsernames.length > 0 ? 'var(--danger-solid)' : 'inherit',
                                                     fontSize: '0.85rem',
-                                                    background: 'rgba(255, 255, 255, 0.2)',
+                                                    background: 'var(--veil-20)',
                                                     padding: '0.5rem',
                                                     borderRadius: '0.5rem',
                                                     border: '1px solid var(--glass-border)',
@@ -266,7 +266,7 @@ export default function BulkTaskReviewModal({
                                                             height: '28px',
                                                             borderRadius: '50%',
                                                             border: '1px solid var(--glass-border)',
-                                                            background: 'rgba(255, 255, 255, 0.4)',
+                                                            background: 'var(--veil-40)',
                                                             backdropFilter: 'blur(8px)',
                                                             display: 'flex',
                                                             alignItems: 'center',
@@ -277,8 +277,8 @@ export default function BulkTaskReviewModal({
                                                             color: 'var(--info-solid)',
                                                             transition: 'all 0.2s'
                                                         }}
-                                                        onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255, 255, 255, 0.6)'; e.currentTarget.style.transform = 'scale(1.1)'; }}
-                                                        onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(255, 255, 255, 0.4)'; e.currentTarget.style.transform = 'scale(1)'; }}
+                                                        onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--veil-60)'; e.currentTarget.style.transform = 'scale(1.1)'; }}
+                                                        onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--veil-40)'; e.currentTarget.style.transform = 'scale(1)'; }}
                                                     >
                                                         +
                                                     </button>
@@ -295,7 +295,7 @@ export default function BulkTaskReviewModal({
                                                             height: '28px',
                                                             borderRadius: '50%',
                                                             border: '1px solid var(--glass-border)',
-                                                            background: 'rgba(255, 255, 255, 0.4)',
+                                                            background: 'var(--veil-40)',
                                                             backdropFilter: 'blur(8px)',
                                                             display: 'flex',
                                                             alignItems: 'center',
@@ -306,8 +306,8 @@ export default function BulkTaskReviewModal({
                                                             color: 'var(--danger-solid)',
                                                             transition: 'all 0.2s'
                                                         }}
-                                                        onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255, 255, 255, 0.6)'; e.currentTarget.style.transform = 'scale(1.1)'; }}
-                                                        onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(255, 255, 255, 0.4)'; e.currentTarget.style.transform = 'scale(1)'; }}
+                                                        onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--veil-60)'; e.currentTarget.style.transform = 'scale(1.1)'; }}
+                                                        onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--veil-40)'; e.currentTarget.style.transform = 'scale(1)'; }}
                                                     >
                                                         -
                                                     </button>
@@ -337,7 +337,7 @@ export default function BulkTaskReviewModal({
                                                         transform: 'translateY(-50%)',
                                                         zIndex: 10501,
                                                         minWidth: '240px',
-                                                        background: 'rgba(255, 255, 255, 0.95)',
+                                                        background: 'var(--panel-95)',
                                                         backdropFilter: 'blur(12px)',
                                                         border: '1px solid var(--glass-border)',
                                                         borderRadius: '0.75rem',
@@ -625,7 +625,7 @@ export default function BulkTaskReviewModal({
                     </div>
                 </div>
 
-                <div className="modal-footer" style={{ borderTop: '1px solid var(--glass-border)', background: 'rgba(255, 255, 255, 0.3)' }}>
+                <div className="modal-footer" style={{ borderTop: '1px solid var(--glass-border)', background: 'var(--veil-30)' }}>
                     <div style={{ flex: 1 }}>
                         {bulkTasks.some(bt => bt.isInvalid) && (
                             <div style={{ color: 'var(--danger-fg)', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>

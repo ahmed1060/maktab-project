@@ -398,7 +398,7 @@ export default function SectionNotesPage() {
                             color: 'var(--primary)',
                             textDecoration: 'none',
                             transition: 'all 0.3s ease',
-                            border: '1px solid rgba(255, 255, 255, 0.4)',
+                            border: '1px solid var(--veil-40)',
                             transform: `translateY(-2px)${locale === 'ar' ? ' scaleX(-1)' : ''}`
                         }}
                         title={t('back_to_sections' as any)}
@@ -675,7 +675,7 @@ export default function SectionNotesPage() {
                                 zIndex: 10,
                                 direction: locale === 'ar' ? 'rtl' : 'ltr',
                                 boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-                                border: '1px solid rgba(255, 255, 255, 0.4)'
+                                border: '1px solid var(--veil-40)'
                             }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
                                     <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'var(--text-main)', margin: 0 }}>{t('add_note_button' as any)}</h2>
@@ -895,7 +895,7 @@ export default function SectionNotesPage() {
                                 zIndex: 10,
                                 direction: locale === 'ar' ? 'rtl' : 'ltr',
                                 boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-                                border: '1px solid rgba(255, 255, 255, 0.4)'
+                                border: '1px solid var(--veil-40)'
                             }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
                                     <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'var(--text-main)', margin: 0 }}>{t('edit_note_title' as any) || 'Edit Note'}</h2>

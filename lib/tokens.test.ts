@@ -73,6 +73,37 @@ describe("every defined token is used", () => {
     })
 })
 
+describe("no raw colour survives in any notation", () => {
+    // The tokenising pass ran three times because each pass only caught the
+    // notation it was written for: hex first, then 'white'/'black' keywords,
+    // then rgba(). Each gap showed up the same way — a light surface left
+    // stranded on a dark page. This asserts all three at once.
+    const EXEMPT_FILE = "ManageTemplatesModal"
+
+    const scan = (pattern: RegExp, what: string) => {
+        const offenders: string[] = []
+        for (const file of SOURCES) {
+            if (file.includes(EXEMPT_FILE)) continue
+            if (file.endsWith("globals.css")) continue
+            const lines = readFileSync(file, "utf8").split("\n")
+            lines.forEach((line, i) => {
+                if (pattern.test(line)) offenders.push(`${file}:${i + 1}  ${line.trim().slice(0, 90)}`)
+            })
+        }
+        expect(offenders, `${what}:\n${offenders.join("\n")}`).toEqual([])
+    }
+
+    it("has no translucent white written out by hand", () => {
+        // A white veil stays white on a dark ground. This is what left the
+        // company switcher and the header buttons as pale blobs in dark mode.
+        scan(/rgba\(\s*255\s*,\s*255\s*,\s*255\s*,/, "hardcoded translucent white")
+    })
+
+    it("has no 'white' or 'black' keyword colours", () => {
+        scan(/:\s*'(white|black)'/, "keyword colours")
+    })
+})
+
 describe("D1 left no raw colour behind", () => {
     it("has no hex literals outside the two files that keep fixed identity", () => {
         // ManageTemplatesModal draws national flags. A flag does not follow a

@@ -142,8 +142,8 @@ export default function ProfileRequestsPage() {
                 <button
                     onClick={() => router.back()}
                     style={{
-                        background: 'rgba(255, 255, 255, 0.5)',
-                        border: '1px solid rgba(255, 255, 255, 0.8)',
+                        background: 'var(--veil-50)',
+                        border: '1px solid var(--panel-80)',
                         width: '40px',
                         height: '40px',
                         borderRadius: '12px',
@@ -155,11 +155,11 @@ export default function ProfileRequestsPage() {
                         color: 'var(--text-soft)'
                     }}
                     onMouseEnter={(e) => {
-                        e.currentTarget.style.background = 'rgba(255, 255, 255, 0.8)'
+                        e.currentTarget.style.background = 'var(--panel-80)'
                         e.currentTarget.style.color = 'var(--text-main)'
                     }}
                     onMouseLeave={(e) => {
-                        e.currentTarget.style.background = 'rgba(255, 255, 255, 0.5)'
+                        e.currentTarget.style.background = 'var(--veil-50)'
                         e.currentTarget.style.color = 'var(--text-soft)'
                     }}
                 >

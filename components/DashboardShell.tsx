@@ -287,7 +287,7 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
                             title={isCollapsed ? link.label : ''}
                             className="nav-link"
                             style={{
-                                color: 'rgba(255,255,255,0.8)',
+                                color: 'var(--panel-80)',
                                 textDecoration: 'none',
                                 padding: '0.85rem 1rem',
                                 borderRadius: '1rem',
@@ -301,13 +301,13 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
                                 border: '1px solid transparent'
                             }}
                             onMouseOver={(e) => {
-                                e.currentTarget.style.background = 'rgba(255,255,255,0.1)'
+                                e.currentTarget.style.background = 'var(--veil-10)'
                                 e.currentTarget.style.color = 'white'
                                 e.currentTarget.style.transform = isCollapsed ? 'scale(1.1)' : 'translateX(5px)'
                             }}
                             onMouseOut={(e) => {
                                 e.currentTarget.style.background = 'transparent'
-                                e.currentTarget.style.color = 'rgba(255,255,255,0.8)'
+                                e.currentTarget.style.color = 'var(--panel-80)'
                                 e.currentTarget.style.transform = 'none'
                             }}
                         >
@@ -324,7 +324,7 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
                     {(['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(user?.role || '')) && (
                         <>
                             {isCollapsed ? (
-                                <hr style={{ border: 'none', borderTop: '1px solid rgba(255, 255, 255, 0.3)', margin: '1rem auto', width: '50%' }} />
+                                <hr style={{ border: 'none', borderTop: '1px solid var(--veil-30)', margin: '1rem auto', width: '50%' }} />
                             ) : (
                                 <p style={{ fontSize: '0.75rem', fontWeight: 'bold', textTransform: 'uppercase', color: 'var(--text-faint)', [isRtl ? 'paddingRight' : 'paddingLeft']: '1rem', marginTop: '1.5rem', marginBottom: '0.25rem', letterSpacing: '0.1em' }}>{t('management')}</p>
                             )}
@@ -346,7 +346,7 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
                                     title={isCollapsed ? link.label : ''}
                                     className="nav-link"
                                     style={{
-                                        color: 'rgba(255,255,255,0.8)',
+                                        color: 'var(--panel-80)',
                                         textDecoration: 'none',
                                         padding: '0.85rem 1rem',
                                         borderRadius: '1rem',
@@ -359,13 +359,13 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
                                         fontWeight: '500'
                                     }}
                                     onMouseOver={(e) => {
-                                        e.currentTarget.style.background = 'rgba(255,255,255,0.1)'
+                                        e.currentTarget.style.background = 'var(--veil-10)'
                                         e.currentTarget.style.color = 'white'
                                         e.currentTarget.style.transform = isCollapsed ? 'scale(1.1)' : 'translateX(5px)'
                                     }}
                                     onMouseOut={(e) => {
                                         e.currentTarget.style.background = 'transparent'
-                                        e.currentTarget.style.color = 'rgba(255,255,255,0.8)'
+                                        e.currentTarget.style.color = 'var(--panel-80)'
                                         e.currentTarget.style.transform = 'none'
                                     }}
                                 >
@@ -385,7 +385,7 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
                     {user?.role === 'SUPER_ADMIN' && (
                         <>
                             {isCollapsed ? (
-                                <hr style={{ border: 'none', borderTop: '1px solid rgba(255, 255, 255, 0.3)', margin: '1rem auto', width: '50%' }} />
+                                <hr style={{ border: 'none', borderTop: '1px solid var(--veil-30)', margin: '1rem auto', width: '50%' }} />
                             ) : (
                                 <p style={{ fontSize: '0.75rem', fontWeight: 'bold', textTransform: 'uppercase', color: 'var(--text-faint)', [isRtl ? 'paddingRight' : 'paddingLeft']: '1rem', marginTop: '1.5rem', marginBottom: '0.25rem', letterSpacing: '0.1em' }}>{t('system')}</p>
                             )}
@@ -400,7 +400,7 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
                                 { href: '/dashboard/system-settings', label: t('system_settings') || 'System Settings', icon: '⚙️' }
                             ].map(link => (
                                 <Link key={link.href} href={link.href} onClick={() => isMobile && setIsSidebarOpen(false)} title={isCollapsed ? link.label : ''} className="nav-link" style={{
-                                    color: 'rgba(255,255,255,0.8)',
+                                    color: 'var(--panel-80)',
                                     textDecoration: 'none',
                                     padding: '0.85rem 1rem',
                                     borderRadius: '1rem',
@@ -413,13 +413,13 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
                                     fontWeight: '500'
                                 }}
                                     onMouseOver={(e) => {
-                                        e.currentTarget.style.background = 'rgba(255,255,255,0.1)'
+                                        e.currentTarget.style.background = 'var(--veil-10)'
                                         e.currentTarget.style.color = 'white'
                                         e.currentTarget.style.transform = isCollapsed ? 'scale(1.1)' : 'translateX(5px)'
                                     }}
                                     onMouseOut={(e) => {
                                         e.currentTarget.style.background = 'transparent'
-                                        e.currentTarget.style.color = 'rgba(255,255,255,0.8)'
+                                        e.currentTarget.style.color = 'var(--panel-80)'
                                         e.currentTarget.style.transform = 'none'
                                     }}
                                 >

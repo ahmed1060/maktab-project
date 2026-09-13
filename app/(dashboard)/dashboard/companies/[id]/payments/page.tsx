@@ -188,18 +188,18 @@ export default function CompanyPaymentsPage() {
                             color: 'var(--primary)',
                             textDecoration: 'none',
                             transition: 'all 0.3s ease',
-                            border: '1px solid rgba(255, 255, 255, 0.4)',
+                            border: '1px solid var(--veil-40)',
                             transform: `translateY(-2px)${locale === 'ar' ? ' scaleX(-1)' : ''}`,
                             float: locale === 'ar' ? 'right' : 'left',
                             cursor: 'pointer'
                         }}
                         onMouseOver={(e) => {
                             e.currentTarget.style.transform = `translateY(-4px)${locale === 'ar' ? ' scaleX(-1)' : ''}`
-                            e.currentTarget.style.background = 'rgba(255, 255, 255, 0.9)'
+                            e.currentTarget.style.background = 'var(--panel-90)'
                         }}
                         onMouseOut={(e) => {
                             e.currentTarget.style.transform = `translateY(-2px)${locale === 'ar' ? ' scaleX(-1)' : ''}`
-                            e.currentTarget.style.background = 'rgba(255, 255, 255, 0.7)'
+                            e.currentTarget.style.background = 'var(--panel-70)'
                         }}
                         title={t('back_to_companies')}
                     >
@@ -233,7 +233,7 @@ export default function CompanyPaymentsPage() {
             ) : (
                 <div className="glass" style={{ borderRadius: '1rem', overflow: 'hidden' }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                        <thead style={{ background: 'rgba(255,255,255,0.5)', borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
+                        <thead style={{ background: 'var(--veil-50)', borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
                             <tr>
                                 <th style={{ textAlign: locale === 'ar' ? 'right' : 'left', padding: '1.25rem', fontSize: '0.8rem', textTransform: 'uppercase', color: 'var(--text-soft)' }}>{t('subscription_type')}</th>
                                 <th style={{ textAlign: locale === 'ar' ? 'right' : 'left', padding: '1.25rem', fontSize: '0.8rem', textTransform: 'uppercase', color: 'var(--text-soft)' }}>{t('costs')}</th>

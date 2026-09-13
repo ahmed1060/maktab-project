@@ -44,10 +44,10 @@ export default class DashboardErrorBoundary extends Component<Props, State> {
                 <div style={{
                     padding: '2rem',
                     textAlign: 'center',
-                    background: 'rgba(255,255,255,0.6)',
+                    background: 'var(--veil-60)',
                     backdropFilter: 'blur(10px)',
                     borderRadius: '1.5rem',
-                    border: '1px solid rgba(255,255,255,0.4)',
+                    border: '1px solid var(--veil-40)',
                     margin: '2rem',
                     boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)'
                 }}>

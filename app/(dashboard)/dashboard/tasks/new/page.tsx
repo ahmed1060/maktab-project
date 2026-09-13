@@ -436,7 +436,7 @@ export default function NewTaskPage() {
                         }}
                         className="btn"
                         style={{
-                            background: 'rgba(255, 255, 255, 0.4)',
+                            background: 'var(--veil-40)',
                             color: 'var(--text-main)',
                             border: '1px solid var(--glass-border)',
                             backdropFilter: 'blur(8px)',
@@ -455,7 +455,7 @@ export default function NewTaskPage() {
                             onClick={() => window.open('/dashboard/usernames', '_blank')}
                             title={t('view_usernames')}
                             style={{
-                                background: 'rgba(255, 255, 255, 0.15)',
+                                background: 'var(--veil-15)',
                                 color: 'var(--text-main)',
                                 border: '2.5px solid white',
                                 padding: '0',
@@ -472,12 +472,12 @@ export default function NewTaskPage() {
                             }}
                             onMouseOver={(e) => {
                                 e.currentTarget.style.transform = 'scale(1.1) rotate(5deg)';
-                                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.3)';
+                                e.currentTarget.style.background = 'var(--veil-30)';
                                 e.currentTarget.style.boxShadow = '0 8px 25px rgba(0, 0, 0, 0.1)';
                             }}
                             onMouseOut={(e) => {
                                 e.currentTarget.style.transform = 'scale(1) rotate(0deg)';
-                                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.15)';
+                                e.currentTarget.style.background = 'var(--veil-15)';
                                 e.currentTarget.style.boxShadow = '0 4px 15px rgba(0, 0, 0, 0.05)';
                             }}
                         >

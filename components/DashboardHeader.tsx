@@ -231,7 +231,7 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
             }}
         >
             {/* Left: Page Name */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', minWidth: 0, flex: 1 }}>
                 {onMenuClick && (
                     <button
                         onClick={onMenuClick}
@@ -252,7 +252,11 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
                         ☰
                     </button>
                 )}
-                <div>
+                {/* minWidth: 0 again here — the floor applies at every level of
+                    the flex chain, so lifting it only on the row above leaves
+                    this wrapper refusing to shrink and the title still running
+                    under the buttons. */}
+                <div style={{ minWidth: 0, flex: 1 }}>
                     <h1 style={{
                         fontSize: 'clamp(1rem, 4.5vw, 1.4rem)',
                         fontWeight: '800',
@@ -298,8 +302,8 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
                                 fontSize: '0.9rem',
                                 outline: 'none',
                                 cursor: 'pointer',
-                                background: 'rgba(255,255,255,0.4)',
-                                border: '1px solid rgba(255,255,255,0.6)',
+                                background: 'var(--veil-40)',
+                                border: '1px solid var(--veil-60)',
                                 transition: 'all 0.2s ease',
                                 color: 'var(--text-main)',
                                 minWidth: '130px',
@@ -420,7 +424,7 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
 
                 {/* Profile Name Requests Counter (for admin/super_admin) */}
                 {['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role) && (
-                    <Suspense fallback={<div style={{ width: '45px', height: '45px', borderRadius: '50%', background: 'rgba(255,255,255,0.2)' }} />}>
+                    <Suspense fallback={<div style={{ width: '45px', height: '45px', borderRadius: '50%', background: 'var(--veil-20)' }} />}>
                         <Link
                             href="/dashboard/profile-requests"
                             title={t('profile_name_requests')}
@@ -431,8 +435,8 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
                                 width: '45px',
                                 height: '45px',
                                 borderRadius: '50%',
-                                background: 'rgba(255,255,255,0.5)',
-                                border: '2px solid rgba(255,255,255,0.8)',
+                                background: 'var(--veil-50)',
+                                border: '2px solid var(--panel-80)',
                                 color: 'var(--text-main)',
                                 position: 'relative',
                                 transition: 'all 0.2s ease',
@@ -444,7 +448,7 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
                             }}
                             onMouseLeave={(e) => {
                                 e.currentTarget.style.transform = 'scale(1)'
-                                e.currentTarget.style.background = 'rgba(255,255,255,0.5)'
+                                e.currentTarget.style.background = 'var(--veil-50)'
                             }}
                         >
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -501,8 +505,8 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
                                 width: '45px',
                                 height: '45px',
                                 borderRadius: '50%',
-                                background: 'rgba(255,255,255,0.5)',
-                                border: '2px solid rgba(255,255,255,0.8)',
+                                background: 'var(--veil-50)',
+                                border: '2px solid var(--panel-80)',
                                 overflow: 'hidden',
                                 cursor: 'pointer',
                                 display: 'flex',
@@ -558,7 +562,7 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
                                             transition: 'background 0.2s',
                                             fontWeight: '500'
                                         }}
-                                        onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.4)'}
+                                        onMouseEnter={(e) => e.currentTarget.style.background = 'var(--veil-40)'}
                                         onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
                                     >
                                         {t('my_profile')}
@@ -576,7 +580,7 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
                                             transition: 'background 0.2s',
                                             fontWeight: '500'
                                         }}
-                                        onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.4)'}
+                                        onMouseEnter={(e) => e.currentTarget.style.background = 'var(--veil-40)'}
                                         onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
                                     >
                                         {t('email_settings_nav')}
@@ -594,7 +598,7 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
                                             transition: 'background 0.2s',
                                             fontWeight: '500'
                                         }}
-                                        onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.4)'}
+                                        onMouseEnter={(e) => e.currentTarget.style.background = 'var(--veil-40)'}
                                         onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
                                     >
                                         {t('mfa_settings_nav')}
@@ -613,7 +617,7 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
                                                 transition: 'background 0.2s',
                                                 fontWeight: '500'
                                             }}
-                                            onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.4)'}
+                                            onMouseEnter={(e) => e.currentTarget.style.background = 'var(--veil-40)'}
                                             onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
                                         >
                                             {t('history')}

@@ -263,7 +263,7 @@ export default function ClientDetailsPage() {
                             color: 'var(--primary)',
                             textDecoration: 'none',
                             transition: 'all 0.3s ease',
-                            border: '1px solid rgba(255, 255, 255, 0.4)',
+                            border: '1px solid var(--veil-40)',
                             transform: `translateY(-2px)${locale === 'ar' ? ' scaleX(-1)' : ''}`
                         }}
                         title={t('back_to_clients' as any)}

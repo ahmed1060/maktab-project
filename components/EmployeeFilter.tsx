@@ -274,7 +274,7 @@ export default function EmployeeFilter({
                     backdropFilter: 'blur(8px) saturate(150%)',
                     WebkitBackdropFilter: 'blur(8px) saturate(150%)',
                     borderRadius: '1.5rem',
-                    border: '1px solid rgba(255, 255, 255, 0.5)',
+                    border: '1px solid var(--veil-50)',
                     zIndex: -1,
                     pointerEvents: 'none'
                 }} />

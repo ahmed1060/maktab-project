@@ -63,7 +63,7 @@ export default function Modal({ isOpen, onClose, title, children, hideFooter = t
                     position: 'relative',
                     boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', // Deep shadow for lift
                     animation: 'slideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
-                    background: 'rgba(255, 255, 255, 0.85)', // Slightly more opaque for content readability
+                    background: 'var(--panel-85)', // Slightly more opaque for content readability
                     backdropFilter: 'blur(24px)'
                 }}
                 onClick={e => e.stopPropagation()}
@@ -105,15 +105,15 @@ export default function Modal({ isOpen, onClose, title, children, hideFooter = t
                                 fontWeight: '600',
                                 padding: '0.6rem 1.2rem',
                                 borderRadius: '0.75rem',
-                                background: 'rgba(255,255,255,0.5)',
-                                border: '1px solid rgba(255,255,255,0.5)'
+                                background: 'var(--veil-50)',
+                                border: '1px solid var(--veil-50)'
                             }}
                             onMouseEnter={(e) => {
-                                e.currentTarget.style.background = 'rgba(255,255,255,0.8)'
+                                e.currentTarget.style.background = 'var(--panel-80)'
                                 e.currentTarget.style.transform = 'translateY(-1px)'
                             }}
                             onMouseLeave={(e) => {
-                                e.currentTarget.style.background = 'rgba(255,255,255,0.5)'
+                                e.currentTarget.style.background = 'var(--veil-50)'
                                 e.currentTarget.style.transform = 'translateY(0)'
                             }}
                         >

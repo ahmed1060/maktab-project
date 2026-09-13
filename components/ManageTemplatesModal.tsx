@@ -87,7 +87,7 @@ export default function ManageTemplatesModal({ isOpen, onClose }: ManageTemplate
 
                 <div className="modal-body" style={{ padding: '1.25rem 1.5rem' }}>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                        <div className="glass" style={{ padding: '1rem', background: 'rgba(255, 255, 255, 0.3)' }}>
+                        <div className="glass" style={{ padding: '1rem', background: 'var(--veil-30)' }}>
                             <label style={{ display: 'flex', alignItems: 'center', marginBottom: '0.75rem', fontWeight: '600', fontSize: '0.9rem', color: 'var(--text-main)' }}>
                                 <UKFlag /> {t('upload_en_template')}
                             </label>
@@ -95,7 +95,7 @@ export default function ManageTemplatesModal({ isOpen, onClose }: ManageTemplate
                                 <label className="btn" style={{
                                     flex: 1,
                                     cursor: 'pointer',
-                                    background: 'rgba(255, 255, 255, 0.6)',
+                                    background: 'var(--veil-60)',
                                     fontSize: '0.85rem',
                                     justifyContent: 'flex-start',
                                     overflow: 'hidden',
@@ -151,7 +151,7 @@ export default function ManageTemplatesModal({ isOpen, onClose }: ManageTemplate
                             )}
                         </div>
 
-                        <div className="glass" style={{ padding: '1rem', background: 'rgba(255, 255, 255, 0.3)' }}>
+                        <div className="glass" style={{ padding: '1rem', background: 'var(--veil-30)' }}>
                             <label style={{ display: 'flex', alignItems: 'center', marginBottom: '0.75rem', fontWeight: '600', fontSize: '0.9rem', color: 'var(--text-main)' }}>
                                 <SAFlag /> {t('upload_ar_template')}
                             </label>
@@ -159,7 +159,7 @@ export default function ManageTemplatesModal({ isOpen, onClose }: ManageTemplate
                                 <label className="btn" style={{
                                     flex: 1,
                                     cursor: 'pointer',
-                                    background: 'rgba(255, 255, 255, 0.6)',
+                                    background: 'var(--veil-60)',
                                     fontSize: '0.85rem',
                                     justifyContent: 'flex-start',
                                     overflow: 'hidden',
@@ -229,7 +229,7 @@ export default function ManageTemplatesModal({ isOpen, onClose }: ManageTemplate
                         disabled={!selectedCompanyId}
                         title={!selectedCompanyId ? (t('select_company_prompt' as any) || 'Select a company first') : ''}
                         style={{
-                            background: 'rgba(255, 255, 255, 0.6)',
+                            background: 'var(--veil-60)',
                             border: '1px solid var(--glass-border)',
                             flex: 1,
                             fontSize: '0.85rem',
@@ -284,7 +284,7 @@ function TemplateStatusRow({ status, locale, t }: {
                 onClick={() => window.open(`/api/templates/raw?locale=${locale}`, '_blank')}
                 className="btn"
                 style={{
-                    background: 'rgba(255, 255, 255, 0.6)',
+                    background: 'var(--veil-60)',
                     padding: '0.3rem 0.7rem',
                     fontSize: '0.78rem',
                     border: '1px solid var(--glass-border)',

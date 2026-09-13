@@ -172,10 +172,10 @@ export default function DateTimePicker({ value, onChange, label, min, customTrig
                     style={{
                         padding: '0.625rem 1rem',
                         borderRadius: '1rem',
-                        border: '1px solid rgba(255, 255, 255, 0.4)',
+                        border: '1px solid var(--veil-40)',
                         fontSize: '1rem',
                         cursor: 'pointer',
-                        background: 'rgba(255, 255, 255, 0.6)',
+                        background: 'var(--veil-60)',
                         backdropFilter: 'blur(4px)',
                         display: 'flex',
                         alignItems: 'center',
@@ -183,7 +183,7 @@ export default function DateTimePicker({ value, onChange, label, min, customTrig
                         minHeight: '42px',
                         transition: 'all 0.2s',
                         boxShadow: isOpen ? '0 0 0 4px rgba(99, 102, 241, 0.15)' : 'none',
-                        borderColor: isOpen ? 'var(--brand-primary)' : 'rgba(255, 255, 255, 0.4)'
+                        borderColor: isOpen ? 'var(--brand-primary)' : 'var(--veil-40)'
                     }}
                 >
                     <span style={{ color: value ? 'var(--text-main)' : 'var(--text-faint)', fontWeight: value ? '600' : '400' }}>

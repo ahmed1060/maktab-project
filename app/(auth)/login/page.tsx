@@ -229,7 +229,7 @@ export default function LoginPage() {
                 left: '-50%',
                 width: '200%',
                 height: '200%',
-                background: 'radial-gradient(circle, rgba(255,255,255,0.1) 1px, transparent 1px)',
+                background: 'radial-gradient(circle, var(--veil-10) 1px, transparent 1px)',
                 backgroundSize: '50px 50px',
                 animation: 'float 20s linear infinite',
                 pointerEvents: 'none'
@@ -242,12 +242,12 @@ export default function LoginPage() {
                 padding: '0 1rem'
             }}>
                 <div style={{
-                    background: 'rgba(255, 255, 255, 0.95)',
+                    background: 'var(--panel-95)',
                     backdropFilter: 'blur(20px)',
                     borderRadius: '24px',
                     padding: '2.5rem',
-                    boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.1)',
-                    border: '1px solid rgba(255, 255, 255, 0.2)'
+                    boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3), 0 0 0 1px var(--veil-10)',
+                    border: '1px solid var(--veil-20)'
                 }}>
                     <h1 style={{
                         marginBottom: '0.5rem',
@@ -530,7 +530,7 @@ export default function LoginPage() {
                                         <span style={{
                                             width: '16px',
                                             height: '16px',
-                                            border: '2px solid rgba(255,255,255,0.3)',
+                                            border: '2px solid var(--veil-30)',
                                             borderTopColor: 'var(--text-on-accent)',
                                             borderRadius: '50%',
                                             animation: 'spin 0.6s linear infinite'

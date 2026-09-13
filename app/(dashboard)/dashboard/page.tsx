@@ -88,7 +88,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: { 
                             <Link href="/dashboard/companies" className="btn btn-primary" style={{ flex: 1, justifyContent: 'center', height: '3rem', minWidth: '200px' }}>
                                 {t('manage_companies')}
                             </Link>
-                            <Link href="/dashboard/all-users" className="btn" style={{ flex: 1, justifyContent: 'center', background: 'rgba(255,255,255,0.4)', color: 'var(--text-body)', height: '3rem', border: '1px solid rgba(255,255,255,0.5)', minWidth: '200px' }}>
+                            <Link href="/dashboard/all-users" className="btn" style={{ flex: 1, justifyContent: 'center', background: 'var(--veil-40)', color: 'var(--text-body)', height: '3rem', border: '1px solid var(--veil-50)', minWidth: '200px' }}>
                                 {t('view_all_users')}
                             </Link>
                         </div>
@@ -219,7 +219,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: { 
                                 + {t('create_new_task')}
                             </Link>
                             {userRole !== 'TEAM_LEADER' && (
-                                <Link href="/dashboard/employees/new" className="btn" style={{ flex: 1, justifyContent: 'center', background: 'rgba(255,255,255,0.4)', color: 'var(--text-body)', height: '3rem', border: '1px solid rgba(255,255,255,0.5)' }}>
+                                <Link href="/dashboard/employees/new" className="btn" style={{ flex: 1, justifyContent: 'center', background: 'var(--veil-40)', color: 'var(--text-body)', height: '3rem', border: '1px solid var(--veil-50)' }}>
                                     + {t('add_employee')}
                                 </Link>
                             )}
@@ -397,7 +397,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: { 
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1.5rem' }}>
                         {upcomingTasks.length === 0 ? (
                             <div className="glass-card glass-success animate-delay-100" style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', padding: '2rem' }}>
-                                <div style={{ fontSize: '3rem', background: 'rgba(255,255,255,0.8)', borderRadius: '50%', width: '80px', height: '80px', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>🎉</div>
+                                <div style={{ fontSize: '3rem', background: 'var(--panel-80)', borderRadius: '50%', width: '80px', height: '80px', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>🎉</div>
                                 <div>
                                     <h3 style={{ fontSize: '1.25rem', marginBottom: '0.5rem', fontWeight: '700', color: 'var(--ok-fg)' }}>{t('all_caught_up')}</h3>
                                     <p style={{ margin: 0, color: 'var(--ok-fg-strong)' }}>{t('no_pending_tasks_week')}</p>
@@ -430,7 +430,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: { 
                                             <p style={{ color: 'var(--text-soft)', fontSize: '0.95rem', lineHeight: '1.6', marginBottom: '1.5rem', overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
                                                 {task.description}
                                             </p>
-                                            <div style={{ marginTop: 'auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid rgba(255,255,255,0.2)', paddingTop: '1rem' }}>
+                                            <div style={{ marginTop: 'auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--veil-20)', paddingTop: '1rem' }}>
                                                 <span className="badge" style={{ background: 'var(--surface-subtle)', color: 'var(--text-muted)', border: '1px solid var(--border)' }}>{t(`status_${task.status.toLowerCase()}` as any)}</span>
                                                 <span style={{ fontSize: '0.9rem', fontWeight: '600', color: 'var(--brand-primary-hover)' }}>{t('view_all')} →</span>
                                             </div>

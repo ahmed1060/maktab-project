@@ -81,7 +81,7 @@ export default function RequestCard({ request, userRole, onView, onStatusUpdate,
                     style={{
                         padding: '0.4rem 0.8rem',
                         fontSize: '0.85rem',
-                        background: 'rgba(255,255,255,0.5)',
+                        background: 'var(--veil-50)',
                         border: '1px solid rgba(0,0,0,0.1)',
                         color: 'var(--brand-primary)',
                         fontWeight: '600'
