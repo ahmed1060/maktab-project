@@ -5,6 +5,7 @@ import { useLanguage } from '@/context/LanguageContext'
 import { useToast } from '@/context/ToastContext'
 import SafeDate from '@/components/SafeDate'
 import TrashIcon from '@/components/TrashIcon'
+import { useFeatures } from '@/lib/features/useFeatures'
 
 // F-23: extracted verbatim out of tasks/[id]/client.tsx. The lateness-
 // penalty UI state (showPenaltyUI/selectedPenalty/applyingPenalty) and the
@@ -27,6 +28,7 @@ export default function TaskLocationHistorySection({ task, setTask, userRole, us
     const { t, locale } = useLanguage()
     const { showToast } = useToast()
     const router = useRouter()
+    const features = useFeatures()
 
     const [showPenaltyUI, setShowPenaltyUI] = useState(false)
     const [selectedPenalty, setSelectedPenalty] = useState<number | null>(null)
@@ -52,7 +54,15 @@ export default function TaskLocationHistorySection({ task, setTask, userRole, us
             `}</style>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexDirection: 'row', gap: '1rem', flexWrap: 'wrap' }}>
                     <h3 style={{ margin: 0 }}>{t('location_history_title')}</h3>
-                    {['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole) && !['PENDING', 'IN_PROGRESS'].includes(task.status) && (
+                    {/* The penalty writes into payroll, so it belongs to HR even
+                        though it lives on a task. Hidden outright rather than
+                        shown locked: this is an action inside a feature the
+                        company already owns, and a locked button buried in a page
+                        they own reads as a broken screen rather than an upsell.
+                        The endpoint refuses it either way — see
+                        lib/features/routes.ts, which routes this one child of
+                        /api/tasks to SALARY_ADJUSTMENTS. */}
+                    {features.has('SALARY_ADJUSTMENTS') && ['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole) && !['PENDING', 'IN_PROGRESS'].includes(task.status) && (
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
                             {showPenaltyUI && (
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: '#f8fafc', padding: '0.25rem 0.5rem', borderRadius: '2rem', border: '1px solid #e2e8f0' }}>

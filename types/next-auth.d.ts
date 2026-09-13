@@ -49,6 +49,12 @@ declare module "next-auth" {
             // same 60s recheck as maintenanceMode, not just seeded at sign-in
             // — see lib/auth.ts. Undefined/null for a SuperAdmin session.
             vendorsLabel?: string | null
+            // Which bundles this company holds, resolved from its package.
+            // Serialized (bundles as an array) because a Set does not survive
+            // the JSON round trip a session token makes. Absent on a token
+            // minted before packages shipped, which deserializes to
+            // unrestricted — see deserializeAccess.
+            featureAccess?: { unrestricted: boolean; bundles: ('COMPANY_MANAGEMENT' | 'HR')[] } | null
         } & DefaultSession["user"]
     }
 
@@ -72,6 +78,7 @@ declare module "next-auth" {
         emailVerified?: boolean
         mfaEnabled?: boolean
         vendorsLabel?: string | null
+        featureAccess?: { unrestricted: boolean; bundles: ('COMPANY_MANAGEMENT' | 'HR')[] } | null
     }
 }
 
@@ -97,6 +104,7 @@ declare module "next-auth/jwt" {
         emailVerified?: boolean
         mfaEnabled?: boolean
         vendorsLabel?: string | null
+        featureAccess?: { unrestricted: boolean; bundles: ('COMPANY_MANAGEMENT' | 'HR')[] } | null
         // F-11: last time the merged revocation/suspension check actually
         // ran against the database, so it can be throttled instead of
         // running on every single request.

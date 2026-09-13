@@ -119,16 +119,16 @@ model Package {
 }
 
 model Company {
-  id                 String           @id @default(uuid())
-  name               String           @unique
-  isBanned           Boolean          @default(false)
+  id                 String                @id @default(uuid())
+  name               String                @unique
+  isBanned           Boolean               @default(false)
   // Company Settings: whether a submitted task location auto-verifies
   // against the task's target location at all, for any task belonging to
   // this company. The distance threshold itself is a system-wide setting
   // (SystemSettings.locationVerifyRadiusMeters) — this is deliberately
   // company policy only, not per-task, so one company can't quietly
   // change what another company's tasks do.
-  autoVerifyLocation Boolean          @default(true)
+  autoVerifyLocation Boolean               @default(true)
   // Vendors feature: null shows the default translated "Vendors" label.
   // Only a Super Admin can set this (Company Settings page) — the vendor
   // list itself (add/edit/delete) is managed by that company's own Admin,
@@ -148,11 +148,12 @@ model Company {
   // "give them another week" is how the request always arrives. Kept apart from
   // the preset so "how often do we extend, and by how much" is answerable
   // without reading an audit log.
-  trialExtensionDays Int              @default(0)
-  createdAt          DateTime         @default(now())
-  updatedAt          DateTime         @updatedAt
+  trialExtensionDays Int                   @default(0)
+  createdAt          DateTime              @default(now())
+  updatedAt          DateTime              @updatedAt
   businessClients    BusinessClient[]
-  package            Package?         @relation(fields: [packageId], references: [id], onDelete: Restrict)
+  package            Package?              @relation(fields: [packageId], references: [id], onDelete: Restrict)
+  lockedAttempts     LockedModuleAttempt[]
   payments           CompanyPayment[]
   obligations        Obligation[]
   requests           Request[]
@@ -166,6 +167,32 @@ model Company {
 // deliberately separate from Company, which holds per-company policy.
 // Add new global settings here as plain columns, same pattern as this
 // first one.
+// How often each company's users reach for a module their package does not
+// include. Because a gated module stays visible and locked, every attempt
+// already arrives at the server as a request — so the signal exists to be
+// counted without a single client-side event.
+//
+// A tally per company per module, never per person. The count answers the
+// commercial question ("eleven people at Cura Tech tried to open Payroll this
+// month"); storing which individual employee clicked what is behavioural data
+// about a customer's staff, with real privacy weight and no extra sales value.
+model LockedModuleAttempt {
+  id        String   @id @default(uuid())
+  companyId String
+  module    String
+  // Bucketed by month rather than one row per click: the question is a trend,
+  // and an unbounded event log for something this repetitive is a table nobody
+  // ever prunes. Stored as the first day of the month, UTC.
+  month     DateTime
+  count     Int      @default(0)
+  updatedAt DateTime @updatedAt
+  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@unique([companyId, module, month])
+  @@index([companyId])
+  @@index([month])
+}
+
 model SystemSettings {
   id                         String   @id @default("default")
   locationVerifyRadiusMeters Int      @default(70)

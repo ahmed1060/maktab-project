@@ -1,4 +1,5 @@
 import { NextAuthOptions } from "next-auth"
+import { resolveBundles, serializeAccess } from "@/lib/features"
 import CredentialsProvider from "next-auth/providers/credentials"
 import { prisma } from "@/lib/prisma"
 import bcrypt from "bcryptjs"
@@ -124,7 +125,11 @@ export const authOptions: NextAuthOptions = {
                     })
                     const user = superAdmin ? null : await prisma.user.findUnique({
                         where: { email: credentials.email },
-                        include: { company: true }
+                        // The package rides along so feature access can be resolved
+                        // at sign-in rather than only at the first throttled
+                        // re-check — otherwise a fresh login would see every gated
+                        // module locked for up to a minute.
+                        include: { company: { include: { package: true } } }
                     })
 
                     const passwordHash = superAdmin?.password || user?.password || DUMMY_PASSWORD_HASH
@@ -253,6 +258,7 @@ export const authOptions: NextAuthOptions = {
                         companyId: validatedUser.companyId,
                         companyName: validatedUser.company?.name || null,
                         vendorsLabel: validatedUser.company?.vendorsLabel || null,
+                        featureAccess: serializeAccess(resolveBundles(validatedUser.company?.package)),
                         username: validatedUser.username,
                         language: validatedUser.language || 'en',
                         sessionVersion: (validatedUser as any).sessionVersion || 0,
@@ -301,6 +307,7 @@ export const authOptions: NextAuthOptions = {
                 session.user.maintenanceMode = !!token.maintenanceMode
                 session.user.maintenanceMessage = token.maintenanceMessage as string | null | undefined
                 session.user.vendorsLabel = token.vendorsLabel as string | null | undefined
+                session.user.featureAccess = token.featureAccess as any
             }
             return session
         },
@@ -343,6 +350,7 @@ export const authOptions: NextAuthOptions = {
                 // this represents — the Vendors page itself resolves the
                 // label for whichever company they've switched to).
                 token.vendorsLabel = (user as any).vendorsLabel || null
+                token.featureAccess = (user as any).featureAccess || null
                 token.checkedAt = Date.now()
                 token.jti = uuidv4()
 
@@ -407,7 +415,18 @@ export const authOptions: NextAuthOptions = {
                             const [u, settings] = await Promise.all([
                                 prisma.user.findUnique({
                                     where: { id: userId },
-                                    select: { sessionVersion: true, status: true, company: { select: { isBanned: true, vendorsLabel: true } }, emailVerifiedAt: true, mfaEnabled: true }
+                                    select: {
+                                        sessionVersion: true, status: true, emailVerifiedAt: true, mfaEnabled: true,
+                                        company: {
+                                            select: {
+                                                isBanned: true, vendorsLabel: true,
+                                                // Same reasoning as vendorsLabel: assigning or
+                                                // changing a package has to take effect promptly,
+                                                // not only after the customer next signs in.
+                                                package: { select: { hasCompanyManagement: true, hasHR: true } },
+                                            },
+                                        },
+                                    }
                                 }),
                                 prisma.systemSettings.findUnique({ where: { id: 'default' }, select: { maintenanceMode: true, maintenanceMessage: true } })
                             ])
@@ -423,6 +442,8 @@ export const authOptions: NextAuthOptions = {
                             // point of letting a Super Admin rename this tab is that it
                             // takes effect promptly, not just after the next login.
                             token.vendorsLabel = u?.company?.vendorsLabel || null
+                            // Null package resolves to unrestricted — grandfathered.
+                            token.featureAccess = serializeAccess(resolveBundles(u?.company?.package))
                         }
 
                         if (token.sessionVersion === undefined) {

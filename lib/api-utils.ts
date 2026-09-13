@@ -3,6 +3,7 @@ import { authOptions } from "@/lib/auth"
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { ApiResponse } from "./api-response"
+import { moduleForApiPath, requireFeature } from "@/lib/features"
 import { AuditLogService } from "./services/audit-log.service"
 import { isNextInternalError } from "./next-internal-error"
 
@@ -197,6 +198,28 @@ export function withStandardHandler(
                 // Allow ONLY a one-time draft save during suspension/maintenance
                 if (!(isEmergencySave && isDraftUpload)) {
                     return ApiResponse.forbidden(isMaintenanceBlocked && !isSuspendedOrBanned ? "System is under maintenance" : "Account suspended or company banned")
+                }
+            }
+            // -----------------------------------
+
+            // --- PACKAGE FEATURE GATE ---
+            // The single server-side check. One table (lib/features/routes.ts)
+            // maps each API path to the module it belongs to; anything unlisted
+            // is Core and ungated. Putting this in each of sixty route files
+            // instead is how gating rots — the sixty-first route ships without
+            // a check and nothing fails to tell you.
+            //
+            // Placed after the suspension and maintenance checks on purpose:
+            // those are about whether this account may act at all, which is a
+            // more fundamental answer than what its company bought. It runs off
+            // the session, so it costs no query.
+            const gatedModule = moduleForApiPath(new URL(req.url).pathname)
+            if (gatedModule) {
+                const decision = requireFeature(session, gatedModule, { onDeny: 'lock' })
+                if (!decision.allowed) {
+                    return ApiResponse.forbidden(
+                        `This feature is not included in your current package (${decision.bundle === 'HR' ? 'HR' : 'Company Management'}).`
+                    )
                 }
             }
             // -----------------------------------

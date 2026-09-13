@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import PageTitle from './PageTitle'
+import { moduleForPagePath } from '@/lib/features'
+import { useFeatures } from '@/lib/features/useFeatures'
 import { DEFAULT_POWERED_BY_NAME } from '@/lib/services/system-settings.service'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
@@ -25,6 +27,7 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
     const [isMobile, setIsMobile] = useState(false)
     const [isCollapsed, setIsCollapsed] = useState(false) // New State for Desktop Collapse
     const { t, locale } = useLanguage()
+    const features = useFeatures()
     const isRtl = locale === 'ar'
 
     // Handle responsive state matches
@@ -65,6 +68,18 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
     const displayName = user?.role === 'SUPER_ADMIN'
         ? (selectedCompanyName || t('app_name'))
         : (user?.companyName || t('app_name'));
+
+    // A module the package does not include stays in the sidebar, marked with a
+    // lock, and still navigates. That is the point: it is the sales surface, and
+    // the page it lands on is what records the attempt. Hiding it instead would
+    // mean nobody ever discovers what else the product does — and would make the
+    // signal in LockedModuleAttempt impossible to gather.
+    const isLockedHref = (href: string) => {
+        // Not named `module`: Next forbids assigning that identifier, since it
+        // collides with the CommonJS global in some bundling paths.
+        const gated = moduleForPagePath(href)
+        return gated !== null && !features.has(gated)
+    }
 
     return (
         <div style={{ display: 'flex', minHeight: '100vh', background: 'transparent' }}>
@@ -295,8 +310,13 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
                                 e.currentTarget.style.transform = 'none'
                             }}
                         >
-                            <span style={{ fontSize: '1.4rem' }}>{link.icon}</span>
-                            {!isCollapsed && <span>{link.label}</span>}
+                            <span style={{ fontSize: '1.4rem', opacity: isLockedHref(link.href) ? 0.45 : 1 }}>{link.icon}</span>
+                            {!isCollapsed && (
+                                <span style={{ opacity: isLockedHref(link.href) ? 0.55 : 1, display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                                    {link.label}
+                                    {isLockedHref(link.href) && <span style={{ fontSize: '0.75rem' }} title={t('module_locked_title' as any)}>🔒</span>}
+                                </span>
+                            )}
                         </Link>
                     ))}
 
@@ -348,8 +368,13 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
                                         e.currentTarget.style.transform = 'none'
                                     }}
                                 >
-                                    <span style={{ fontSize: '1.4rem' }}>{link.icon}</span>
-                                    {!isCollapsed && <span>{link.label}</span>}
+                                    <span style={{ fontSize: '1.4rem', opacity: isLockedHref(link.href) ? 0.45 : 1 }}>{link.icon}</span>
+                                    {!isCollapsed && (
+                                        <span style={{ opacity: isLockedHref(link.href) ? 0.55 : 1, display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                                            {link.label}
+                                            {isLockedHref(link.href) && <span style={{ fontSize: '0.75rem' }} title={t('module_locked_title' as any)}>🔒</span>}
+                                        </span>
+                                    )}
                                 </Link>
                             ))}
                         </>
@@ -397,8 +422,13 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
                                         e.currentTarget.style.transform = 'none'
                                     }}
                                 >
-                                    <span style={{ fontSize: '1.4rem' }}>{link.icon}</span>
-                                    {!isCollapsed && <span>{link.label}</span>}
+                                    <span style={{ fontSize: '1.4rem', opacity: isLockedHref(link.href) ? 0.45 : 1 }}>{link.icon}</span>
+                                    {!isCollapsed && (
+                                        <span style={{ opacity: isLockedHref(link.href) ? 0.55 : 1, display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                                            {link.label}
+                                            {isLockedHref(link.href) && <span style={{ fontSize: '0.75rem' }} title={t('module_locked_title' as any)}>🔒</span>}
+                                        </span>
+                                    )}
                                 </Link>
                             ))}
                         </>
