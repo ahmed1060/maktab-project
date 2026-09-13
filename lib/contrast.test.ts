@@ -98,28 +98,25 @@ for (const [themeName, tokens] of [["light", LIGHT], ["dark", DARK]] as const) {
         }
     })
 
-    describe(`${themeName}: faint text`, () => {
-        it("--text-faint on --surface", () => {
-            const r = ratio(tokens["--text-faint"], tokens["--surface"])
+    describe(`${themeName}: faint text meets AA on the surfaces it sits on`, () => {
+        // Raised from #94a3b8, which was 2.56:1 on white — below even AA Large,
+        // and the colour of every timestamp and placeholder hint in the app. It
+        // is held here on both the card surface and the sunk one, because faint
+        // text appears on each.
+        for (const bg of ["--surface", "--surface-sunk"]) {
+            it(`--text-faint on ${bg}`, () => {
+                const r = ratio(tokens["--text-faint"], tokens[bg])
+                expect(r, `is ${r.toFixed(2)}:1`).toBeGreaterThanOrEqual(4.5)
+            })
+        }
 
-            if (themeName === "light") {
-                // KNOWN, PRE-EXISTING, and not introduced by dark mode: #94a3b8
-                // on white is 2.56:1, below even AA Large. It has been the
-                // colour of every timestamp and placeholder hint in this app
-                // since long before this work, and the plan for dark mode is
-                // explicit that light mode stays exactly as it is — so it is
-                // recorded here rather than quietly changed or quietly excused.
-                //
-                // Asserted as a bound, not skipped: if it ever gets worse this
-                // fails, and when somebody decides to fix light mode the number
-                // below is what they raise.
-                expect(r).toBeGreaterThanOrEqual(2.5)
-                expect(r, "light --text-faint is a known AA failure; see comment").toBeLessThan(3)
-                return
-            }
-
-            // Dark is new, so it is held to the bar from the start.
-            expect(r, `is ${r.toFixed(2)}:1`).toBeGreaterThanOrEqual(3)
+        it("stays lighter than --text-soft, or the two tokens collapse into one", () => {
+            const faint = luminance(tokens["--text-faint"])
+            const soft = luminance(tokens["--text-soft"])
+            // Lighter on light, lighter on dark — "faint" is a step away from
+            // the body colour in whichever direction the ground goes.
+            if (themeName === "light") expect(faint).toBeGreaterThan(soft)
+            else expect(faint).toBeLessThan(soft)
         })
     })
 }

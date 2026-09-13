@@ -453,13 +453,18 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
             }}>
                 {/* Floating Glass Header */}
                 <div style={{
-                    background: isScrolled ? 'rgba(255, 255, 255, 0.65)' : 'transparent',
-                    backdropFilter: isScrolled ? 'blur(16px)' : 'none',
-                    borderBottom: isScrolled ? '1px solid rgba(255,255,255,0.3)' : '1px solid transparent',
+                    // Tokenised: this was a hardcoded white glass, so on a dark
+                    // ground it became a pale bar with the page heading behind
+                    // it showing straight through. Saturation on top of the blur
+                    // is what makes it read as glass rather than as a veil.
+                    background: isScrolled ? 'var(--header-glass-bg)' : 'transparent',
+                    backdropFilter: isScrolled ? 'blur(20px) saturate(160%)' : 'none',
+                    WebkitBackdropFilter: isScrolled ? 'blur(20px) saturate(160%)' : 'none',
+                    borderBottom: isScrolled ? '1px solid var(--header-glass-border)' : '1px solid transparent',
                     position: 'sticky',
                     top: 0,
                     zIndex: 40,
-                    boxShadow: isScrolled ? '0 4px 30px rgba(0,0,0,0.05)' : 'none',
+                    boxShadow: isScrolled ? 'var(--header-shadow)' : 'none',
                     transition: 'all 0.3s ease',
                     margin: isScrolled ? '1rem' : '0',
                     borderRadius: isScrolled ? '1.5rem' : '0',

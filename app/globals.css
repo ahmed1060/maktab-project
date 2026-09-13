@@ -54,8 +54,15 @@
   --text-strong: #0f172a;
   --text-body: #334155;
   /* --text-main: #1e293b and --text-muted: #475569 are declared above */
-  --text-soft: #64748b;
-  --text-faint: #94a3b8;
+  /* Raised from #64748b (4.34:1 on the sunk surface). --text-faint has to clear
+     AA as well and must stay lighter than this, so the two moved together. */
+  --text-soft: #5b6878;
+  /* Raised from #94a3b8, which was 2.56:1 on white — below even AA Large, and
+     this is the colour of every timestamp and placeholder hint in the app.
+     #65707e is the lightest slate that clears AA 4.5:1 on both the white card
+     surface (5.03:1) and the sunk one (4.59:1), while staying a visible step
+     lighter than --text-soft rather than collapsing into it. */
+  --text-faint: #65707e;
   --text-on-accent: #ffffff;
 
   /* Status pairs. Each is a background and a foreground chosen together — in
@@ -172,6 +179,14 @@
   --glass-card-border-hover: rgba(255, 255, 255, 0.8);
   --glass-shadow-hover: 0 12px 40px 0 rgba(31, 38, 135, 0.15);
   --sidebar-bg: rgba(15, 23, 42, 0.65);
+
+  /* The sticky header that appears on scroll. Its own tokens rather than the
+     card ones: it sits over moving content, so it needs enough opacity to stop
+     that content reading through it — a translucent bar with a heading bleeding
+     through is not glass, it is a rendering artefact. */
+  --header-glass-bg: rgba(255, 255, 255, 0.82);
+  --header-glass-border: rgba(255, 255, 255, 0.45);
+  --header-shadow: 0 4px 30px rgba(0, 0, 0, 0.05);
 
   /* The page ground itself. */
   --page-bg: #eef2ff;
@@ -737,7 +752,7 @@ input::-webkit-credentials-auto-fill-button {
     --text-body: #c9d1d9;
     --text-muted: #b9c2cc;
     --text-soft: #9aa4af;
-    --text-faint: #7d8590;
+    --text-faint: #8f97a2;
 
     --ok-bg: #0b2b1a;
     --ok-fg: #6fdc9b;
@@ -822,6 +837,9 @@ input::-webkit-credentials-auto-fill-button {
     --glass-card-border-hover: rgba(255, 255, 255, 0.16);
     --glass-shadow-hover: 0 12px 40px 0 rgba(0, 0, 0, 0.5);
     --sidebar-bg: rgba(9, 12, 17, 0.78);
+    --header-glass-bg: rgba(13, 17, 23, 0.88);
+    --header-glass-border: rgba(255, 255, 255, 0.1);
+    --header-shadow: 0 4px 30px rgba(0, 0, 0, 0.45);
 
     --page-bg: #0b0f14;
     --page-veil-a: rgba(99, 102, 241, 0.1);
@@ -848,7 +866,7 @@ input::-webkit-credentials-auto-fill-button {
     --text-body: #c9d1d9;
     --text-muted: #b9c2cc;
     --text-soft: #9aa4af;
-    --text-faint: #7d8590;
+    --text-faint: #8f97a2;
 
     --ok-bg: #0b2b1a;
     --ok-fg: #6fdc9b;
@@ -933,6 +951,9 @@ input::-webkit-credentials-auto-fill-button {
     --glass-card-border-hover: rgba(255, 255, 255, 0.16);
     --glass-shadow-hover: 0 12px 40px 0 rgba(0, 0, 0, 0.5);
     --sidebar-bg: rgba(9, 12, 17, 0.78);
+    --header-glass-bg: rgba(13, 17, 23, 0.88);
+    --header-glass-border: rgba(255, 255, 255, 0.1);
+    --header-shadow: 0 4px 30px rgba(0, 0, 0, 0.45);
 
     --page-bg: #0b0f14;
     --page-veil-a: rgba(99, 102, 241, 0.1);
