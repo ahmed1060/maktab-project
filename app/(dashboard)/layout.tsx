@@ -4,6 +4,10 @@ import UserHeartbeat from "@/components/UserHeartbeat"
 import { authOptions } from "@/lib/auth"
 import DashboardShell from "@/components/DashboardShell"
 import { SystemSettingsService } from "@/lib/services/system-settings.service"
+import { CompanyService } from "@/lib/services/company.service"
+import { SCOPED_COMPANY_COOKIE, scopedCompanyId } from "@/lib/company-scope"
+import { CompanyBrandingProvider } from "@/context/CompanyBrandingContext"
+import { cookies } from "next/headers"
 
 import { Suspense } from "react"
 import DashboardErrorBoundary from "@/components/DashboardErrorBoundary"
@@ -30,7 +34,25 @@ export default async function DashboardLayout({
     // flipping a switch mid-demo expects. It also keeps this out of lib/auth.ts.
     const { showPoweredBy, poweredByName } = await SystemSettingsService.get()
 
+    // §7.5 rule 1. A Super Admin scoped to one company sees that company's
+    // module names, icons and logo; everyone else reads their own session, and
+    // a Super Admin on All Companies reads the defaults — rule 2, do not
+    // customise a screen that is showing everybody.
+    //
+    // Read from a cookie rather than from the selection in CompanyContext,
+    // because a layout cannot see search params and localStorage does not exist
+    // until the client has mounted. Resolved here, once, and handed to the whole
+    // tree so nothing below has to ask again and get a different answer.
+    //
+    // scopedCompanyId does the role check. The cookie is written by the browser
+    // and can say anything, so what stops it mattering is that it is ignored for
+    // anyone who is not a Super Admin — and a Super Admin can already see every
+    // company, so it grants nothing they did not have.
+    const scopeId = scopedCompanyId(user.role, cookies().get(SCOPED_COMPANY_COOKIE)?.value)
+    const scopedBranding = scopeId ? await CompanyService.getBranding(scopeId) : null
+
     return (
+        <CompanyBrandingProvider value={scopedBranding}>
         <DashboardShell user={user} showPoweredBy={showPoweredBy} poweredByName={poweredByName}>
             <UserHeartbeat />
             <DashboardErrorBoundary>
@@ -39,5 +61,6 @@ export default async function DashboardLayout({
                 </Suspense>
             </DashboardErrorBoundary>
         </DashboardShell>
+        </CompanyBrandingProvider>
     )
 }

@@ -10,6 +10,8 @@ import { en } from "@/lib/translations/en"
 import { ar } from "@/lib/translations/ar"
 import { getSuperAdminOverviewStats } from "@/lib/services/dashboard-stats.service"
 import { modulesFrom } from "@/lib/modules"
+import { SCOPED_COMPANY_COOKIE, scopedCompanyId } from "@/lib/company-scope"
+import { CompanyService } from "@/lib/services/company.service"
 
 export const dynamic = 'force-dynamic'
 
@@ -24,9 +26,14 @@ export default async function DashboardPage({ searchParams }: { searchParams: { 
     const dict = locale === 'ar' ? ar : en
     const t = (key: TranslationKey) => dict[key] || en[key]
 
-    // This company's names and icons for its modules, off the same session the
-    // sidebar reads — so a heading here and its sidebar entry always agree.
-    const modules = modulesFrom(session?.user, t)
+    // This company's names and icons for its modules. Resolved exactly the way
+    // the dashboard layout resolves the sidebar's — same cookie, same role
+    // check, same loader — so a heading here and its sidebar entry cannot end
+    // up describing different companies. Falls through to the session for
+    // everyone who is not a Super Admin scoped to one company.
+    const scopeId = scopedCompanyId(userRole, cookieStore.get(SCOPED_COMPANY_COOKIE)?.value)
+    const scopedBranding = scopeId ? await CompanyService.getBranding(scopeId) : null
+    const modules = modulesFrom(scopedBranding ?? session?.user, t)
 
     const formatDays = (days: number) => {
         if (locale === 'ar') {

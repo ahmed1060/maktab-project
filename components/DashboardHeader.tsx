@@ -104,6 +104,13 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
             const matchingCompany = companies.find(c => c.name === companyNameFromUrl)
             if (matchingCompany && matchingCompany.id !== selectedCompanyId) {
                 setSelectedCompanyId(matchingCompany.id)
+                // A deep link into another company: the server already rendered
+                // this page against whatever the scope cookie said before that
+                // call rewrote it, so the sidebar would be describing the wrong
+                // company. Safe against looping because the guard above only
+                // lets this run when the selection actually changed, and the
+                // early return at the top of the effect covers the re-run.
+                router.refresh()
             }
         } else if (selectedCompanyId && companies.length > 0) {
             // URL is missing param, but we have a selection (persistence)
@@ -165,6 +172,13 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
         // overriding our new context selection before the router has finished updating the URL.
         lastProcessedCompany.current = searchParams.get('company')
         router.push(`${pathname}?${params.toString()}`)
+        // setSelectedCompanyId has just rewritten the scope cookie, and the
+        // dashboard layout reads that cookie on the server. Without this the
+        // sidebar would keep the previous company's names until something else
+        // caused a server render — refresh() re-runs the layout while leaving
+        // client state alone, which is what makes the switch land everywhere at
+        // once rather than in two visible steps.
+        router.refresh()
     }
 
     // Map path to title. A module's own landing page takes this company's name

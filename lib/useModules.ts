@@ -4,6 +4,7 @@ import { useMemo } from "react"
 import { useSession } from "next-auth/react"
 import { useLanguage } from "@/context/LanguageContext"
 import { modulesFrom, type ResolvedModules } from "@/lib/modules"
+import { useCompanyBranding } from "@/context/CompanyBrandingContext"
 
 /**
  * What this company calls each module, and which emoji it uses for it.
@@ -21,10 +22,16 @@ import { modulesFrom, type ResolvedModules } from "@/lib/modules"
 export function useModules(): ResolvedModules {
     const { data: session } = useSession()
     const { t, locale } = useLanguage()
+    // §7.5 rule 1: when the dashboard layout has scoped this render to one
+    // company, that company's names win over the session's. Null — which is
+    // every non-Super-Admin, and a Super Admin on All Companies — falls through
+    // to the session, which is rules 2 and 3.
+    const scoped = useCompanyBranding()
 
     const user = session?.user as { moduleLabels?: unknown; moduleIcons?: unknown } | undefined
-    const rawLabels = user?.moduleLabels
-    const rawIcons = user?.moduleIcons
+    const source = scoped ?? user
+    const rawLabels = source?.moduleLabels
+    const rawIcons = source?.moduleIcons
 
     // Memoized so the returned object is referentially stable: several callers
     // put it in a useEffect dependency array, and a fresh object every render

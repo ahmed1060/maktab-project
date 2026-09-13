@@ -7,6 +7,7 @@ import { moduleForPagePath } from '@/lib/features'
 import { useFeatures } from '@/lib/features/useFeatures'
 import { MANAGEMENT_MODULES, MENU_MODULES } from '@/lib/modules'
 import { useModules } from '@/lib/useModules'
+import { useCompanyBranding } from '@/context/CompanyBrandingContext'
 import { DEFAULT_POWERED_BY_NAME } from '@/lib/services/system-settings.service'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
@@ -32,6 +33,11 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
     const { t, locale } = useLanguage()
     const features = useFeatures()
     const modules = useModules()
+    // The mark follows the same scope as the names beside it — a Super Admin
+    // looking at one company sees that company's logo, not a default mark over
+    // that company's module names.
+    const scopedBranding = useCompanyBranding()
+    const logoUrl = scopedBranding ? scopedBranding.logoUrl : (user?.logoUrl ?? null)
     const isRtl = locale === 'ar'
 
     // Handle responsive state matches
@@ -163,7 +169,7 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
                             marginRight: (!isCollapsed && locale === 'ar') ? '0.8rem' : '0',
                             transition: 'all 0.3s ease'
                         }}>
-                            {user?.logoUrl ? (
+                            {logoUrl ? (
                                 /* On a plate, always, in both themes — and the plate is
                                    not a dark-mode concession. This sidebar is dark in
                                    light mode too (--sidebar-bg is slate-900 at 65%), so
@@ -179,7 +185,7 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
                                    in next.config, and this is one small image. */
                                 // eslint-disable-next-line @next/next/no-img-element
                                 <img
-                                    src={user.logoUrl}
+                                    src={logoUrl}
                                     alt=""
                                     style={{
                                         width: '2rem',

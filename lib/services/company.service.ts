@@ -10,6 +10,7 @@ import { VerificationService } from "./verification.service"
 import { CreateCompanyInput, UpdateCompanyInput } from "../validations/company.schema"
 import { parseModuleIcons, parseModuleOverrides, planOverrideWrite, sameOverrides } from "@/lib/modules"
 import { bucketPathFor, logoExtension, validateLogo } from "@/lib/company-logo"
+import type { CompanyBranding } from "@/lib/company-scope"
 import { uploadToCloud } from "@/lib/storage"
 
 // cost is a Prisma.Decimal (F-07); Decimal.toJSON() returns a string, which
@@ -274,6 +275,27 @@ export class CompanyService {
      * ever a URL this app minted from a file it checked, so there is no shape
      * of request that can aim a company's every page load at another server.
      */
+    /**
+     * One company's names, icons and logo — the three things a screen renders
+     * with, and nothing else.
+     *
+     * Returns null for an id that matches no company, so a stale cookie naming
+     * a deleted company falls back to the defaults rather than erroring on a
+     * page load.
+     */
+    static async getBranding(companyId: string): Promise<CompanyBranding | null> {
+        const company = await prisma.company.findUnique({
+            where: { id: companyId },
+            select: { moduleLabels: true, moduleIcons: true, logoUrl: true },
+        })
+        if (!company) return null
+        return {
+            moduleLabels: company.moduleLabels,
+            moduleIcons: company.moduleIcons,
+            logoUrl: company.logoUrl,
+        }
+    }
+
     static async setLogo(companyId: string, bytes: Buffer, session: any) {
         const existing = await prisma.company.findUnique({
             where: { id: companyId },
