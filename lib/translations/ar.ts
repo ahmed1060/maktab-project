@@ -1046,5 +1046,14 @@ export const ar = {
         module_icon_custom: "أو الصق أي إيموجي",
         module_icon_reset: "استخدام الأيقونة الافتراضية",
         module_icon_invalid: "هذا ليس إيموجي",
-        module_reset_all: "إعادة الكل إلى الافتراضي"
+        module_reset_all: "إعادة الكل إلى الافتراضي",
+        company_logo_setting: "شعار الشركة",
+        company_logo_setting_hint: "يظهر في القائمة الجانبية بدلاً من الشعار الافتراضي. PNG أو JPG أو WebP، بحد أقصى 1 ميجابايت و2000×2000 بكسل. ملفات SVG غير مقبولة.",
+        company_logo_plate_note: "القائمة الجانبية داكنة في الوضعين الفاتح والداكن، لذا يُعرض كل شعار على خلفية فاتحة — الشعار ذو الخلفية البيضاء لن يظهر كمربع أبيض.",
+        company_logo_upload: "رفع شعار",
+        company_logo_replace: "استبدال",
+        company_logo_remove: "إزالة",
+        company_logo_removed: "تمت إزالة الشعار",
+        company_logo_none: "لا يوجد شعار — يُعرض الشعار الافتراضي",
+        company_logo_preview: "معاينة القائمة الجانبية"
 };

@@ -291,6 +291,7 @@ export const authOptions: NextAuthOptions = {
                         companyId: validatedUser.companyId,
                         companyName: validatedUser.company?.name || null,
                         moduleLabels: parseModuleOverrides(validatedUser.company?.moduleLabels),
+                        logoUrl: validatedUser.company?.logoUrl || null,
                         moduleIcons: parseModuleIcons(validatedUser.company?.moduleIcons),
                         featureAccess: serializeAccess(resolveBundles(validatedUser.company?.package)),
                         subscription: summarizeSubscription(validatedUser.company),
@@ -345,6 +346,7 @@ export const authOptions: NextAuthOptions = {
                 session.user.maintenanceMessage = token.maintenanceMessage as string | null | undefined
                 session.user.moduleLabels = token.moduleLabels as Record<string, string> | null | undefined
                 session.user.moduleIcons = token.moduleIcons as Record<string, string> | null | undefined
+                session.user.logoUrl = token.logoUrl as string | null | undefined
                 session.user.featureAccess = token.featureAccess as any
                 session.user.subscription = token.subscription as any
             }
@@ -393,6 +395,7 @@ export const authOptions: NextAuthOptions = {
                 // would be — they see the built-in defaults.
                 token.moduleLabels = (user as any).moduleLabels || null
                 token.moduleIcons = (user as any).moduleIcons || null
+                token.logoUrl = (user as any).logoUrl || null
                 token.featureAccess = (user as any).featureAccess || null
                 token.subscription = (user as any).subscription || null
                 token.checkedAt = Date.now()
@@ -469,6 +472,7 @@ export const authOptions: NextAuthOptions = {
                                                 // module is that the rename shows up, not that it
                                                 // waits for whenever that company next logs in.
                                                 moduleLabels: true, moduleIcons: true,
+                                                logoUrl: true,
                                                 // Same reasoning: assigning or changing a package
                                                 // has to take effect promptly, not only after the
                                                 // customer next signs in.
@@ -506,6 +510,7 @@ export const authOptions: NextAuthOptions = {
                             // takes effect promptly, not just after the next login.
                             token.moduleLabels = parseModuleOverrides(u?.company?.moduleLabels)
                             token.moduleIcons = parseModuleIcons(u?.company?.moduleIcons)
+                            token.logoUrl = u?.company?.logoUrl || null
                             // Null package resolves to unrestricted — grandfathered.
                             token.featureAccess = serializeAccess(resolveBundles(u?.company?.package))
                             // Refreshed on the same throttle: a lockout that only

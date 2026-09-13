@@ -147,6 +147,16 @@ model Company {
   // what narrows the untyped Json back to a known shape on the way out.
   moduleLabels         Json?
   moduleIcons          Json?
+  // This company's own mark, shown in the sidebar in place of the default one.
+  // Null is not a missing logo, it is a company that never uploaded one — and
+  // that company looks exactly as it did before this column existed.
+  //
+  // A URL rather than bytes: it is minted by the logo endpoint from a file that
+  // endpoint itself uploaded, never accepted as a string from a client. That
+  // distinction is the whole security of the field — a settable logoUrl would
+  // let a Super Admin be talked into pointing every page load of a company's
+  // dashboard at somebody else's server.
+  logoUrl              String?
   // Null means grandfathered: every feature on, no gating. Every company that
   // existed before packages shipped is untouched, and stays that way until
   // somebody deliberately assigns one.

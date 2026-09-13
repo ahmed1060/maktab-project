@@ -100,6 +100,19 @@ export class MaintenanceService {
                 userSkip += BATCH_SIZE
             }
 
+            // Process Company logos. Every table whose rows point at this
+            // bucket has to be represented here: a file this loop does not see
+            // a reference to is deleted as an orphan, so adding a column that
+            // stores a URL without adding it here is a delayed data loss.
+            const companies = await prisma.company.findMany({
+                where: { logoUrl: { not: null } },
+                select: { logoUrl: true }
+            })
+            companies.forEach(c => {
+                const parts = c.logoUrl?.split('/app-assets/')
+                if (parts && parts.length > 1) activeFiles.add(parts[1])
+            })
+
             // Process Tasks
             let taskSkip = 0
             while (true) {

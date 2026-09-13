@@ -1051,5 +1051,14 @@ export const en = {
         module_icon_custom: "Or paste any emoji",
         module_icon_reset: "Use the default icon",
         module_icon_invalid: "That is not an emoji",
-        module_reset_all: "Reset all to defaults"
+        module_reset_all: "Reset all to defaults",
+        company_logo_setting: "Company logo",
+        company_logo_setting_hint: "Shown in the sidebar in place of the default mark. PNG, JPG or WebP, at most 1 MB and 2000×2000 pixels. SVG files are not accepted.",
+        company_logo_plate_note: "The sidebar is dark in both light and dark mode, so every logo is drawn on a light plate — a logo with a white background will not show as a white box.",
+        company_logo_upload: "Upload a logo",
+        company_logo_replace: "Replace",
+        company_logo_remove: "Remove",
+        company_logo_removed: "Logo removed",
+        company_logo_none: "No logo — the default mark is shown",
+        company_logo_preview: "Sidebar preview"
 };

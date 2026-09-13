@@ -7,6 +7,7 @@ import AccessDenied from '@/components/AccessDenied'
 import { useToast } from '@/context/ToastContext'
 import { useLanguage } from '@/context/LanguageContext'
 import CompanyModulesCard from '@/components/CompanyModulesCard'
+import CompanyLogoCard from '@/components/CompanyLogoCard'
 import type { ModuleOverrides } from '@/lib/modules'
 
 type Company = {
@@ -15,6 +16,7 @@ type Company = {
     autoVerifyLocation: boolean
     moduleLabels: unknown
     moduleIcons: unknown
+    logoUrl: string | null
 }
 
 export default function CompanySettingsPage() {
@@ -150,6 +152,15 @@ export default function CompanySettingsPage() {
                             </div>
                         </div>
                     </div>
+
+                    {company && (
+                        <CompanyLogoCard
+                            companyId={companyId}
+                            companyName={company.name}
+                            logoUrl={company.logoUrl}
+                            onChanged={(logoUrl: string | null) => setCompany({ ...company, logoUrl })}
+                        />
+                    )}
 
                     {/* Replaces the Vendors-only rename this screen used to
                         carry: every module can be renamed now, and Vendors is

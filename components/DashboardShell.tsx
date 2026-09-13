@@ -162,7 +162,37 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
                             marginLeft: (!isCollapsed && locale === 'en') ? '0.8rem' : '0',
                             marginRight: (!isCollapsed && locale === 'ar') ? '0.8rem' : '0',
                             transition: 'all 0.3s ease'
-                        }}>🚀</span>
+                        }}>
+                            {user?.logoUrl ? (
+                                /* On a plate, always, in both themes — and the plate is
+                                   not a dark-mode concession. This sidebar is dark in
+                                   light mode too (--sidebar-bg is slate-900 at 65%), so
+                                   a logo with a baked-in white background was already a
+                                   white rectangle here before dark mode existed, and a
+                                   dark-ink logo on a transparent background would be
+                                   invisible on it either way. Requiring transparency
+                                   would trade one of those failures for the other; a
+                                   light plate is the only thing that renders every
+                                   customer's logo the same way in both themes.
+                                   eslint-disable-next-line @next/next/no-img-element —
+                                   next/image would need every customer's Supabase host
+                                   in next.config, and this is one small image. */
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img
+                                    src={user.logoUrl}
+                                    alt=""
+                                    style={{
+                                        width: '2rem',
+                                        height: '2rem',
+                                        objectFit: 'contain',
+                                        background: 'var(--logo-plate)',
+                                        borderRadius: '0.45rem',
+                                        padding: '0.15rem',
+                                        boxSizing: 'border-box',
+                                    }}
+                                />
+                            ) : '🚀'}
+                        </span>
                         {!isCollapsed && (
                             <div style={{
                                 display: 'flex',

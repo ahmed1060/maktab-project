@@ -179,6 +179,10 @@
   --glass-card-border-hover: rgba(255, 255, 255, 0.8);
   --glass-shadow-hover: 0 12px 40px 0 rgba(31, 38, 135, 0.15);
   --sidebar-bg: rgba(15, 23, 42, 0.65);
+  /* The ground a company's own logo is drawn on. Near-white in both themes on
+     purpose: the sidebar is dark in both, so this is not a theme decision, it
+     is what makes an arbitrary customer logo legible there at all. */
+  --logo-plate: #f4f6fa;
 
   /* The sticky header that appears on scroll. Its own tokens rather than the
      card ones: it sits over moving content, so it needs enough opacity to stop

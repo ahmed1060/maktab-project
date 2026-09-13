@@ -54,6 +54,11 @@ declare module "next-auth" {
             // Null for a SuperAdmin session, who has no one company.
             moduleLabels?: Record<string, string> | null
             moduleIcons?: Record<string, string> | null
+            // This company's own mark, shown in the sidebar in place of the
+            // default one. Always a URL this app minted — see the logo
+            // endpoint. Null for a company that never uploaded one, and for a
+            // SuperAdmin session, who has no one company.
+            logoUrl?: string | null
             // Which bundles this company holds, resolved from its package.
             // Serialized (bundles as an array) because a Set does not survive
             // the JSON round trip a session token makes. Absent on a token
@@ -91,6 +96,7 @@ declare module "next-auth" {
         mfaEnabled?: boolean
         moduleLabels?: Record<string, string> | null
         moduleIcons?: Record<string, string> | null
+        logoUrl?: string | null
         featureAccess?: { unrestricted: boolean; bundles: ('COMPANY_MANAGEMENT' | 'HR')[] } | null
         subscription?: { state: 'TRIAL' | 'ACTIVE' | 'GRACE' | 'LOCKED' | 'LIFETIME'; date: string | null; daysRemaining: number | null } | null
     }
@@ -120,6 +126,7 @@ declare module "next-auth/jwt" {
         mfaEnabled?: boolean
         moduleLabels?: Record<string, string> | null
         moduleIcons?: Record<string, string> | null
+        logoUrl?: string | null
         featureAccess?: { unrestricted: boolean; bundles: ('COMPANY_MANAGEMENT' | 'HR')[] } | null
         subscription?: { state: 'TRIAL' | 'ACTIVE' | 'GRACE' | 'LOCKED' | 'LIFETIME'; date: string | null; daysRemaining: number | null } | null
         // F-11: last time the merged revocation/suspension check actually

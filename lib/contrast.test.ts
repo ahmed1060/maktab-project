@@ -134,9 +134,17 @@ describe("the two themes are actually different", () => {
         // grounds, text on a filled accent button stays white wherever the page
         // ground goes, and the login hero gradient is a decorative statement
         // that does not follow the theme.
+        //
+        // --logo-plate is invariant for a different and stronger reason: the
+        // sidebar it appears in is dark in *both* themes (--sidebar-bg is
+        // slate-900 at 65% even in light mode), so the plate behind a customer's
+        // logo is not following the page ground and must not be made to. Giving
+        // it a dark value would make every white-background logo vanish into it
+        // — the failure it exists to prevent.
         const INVARIANT = new Set([
             "--primary", "--primary-hover", "--secondary", "--accent",
             "--text-on-accent", "--hero-from", "--hero-to",
+            "--logo-plate",
         ])
 
         const missing = Object.keys(LIGHT).filter(t => !(t in DARK) && !INVARIANT.has(t))

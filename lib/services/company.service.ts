@@ -9,6 +9,8 @@ import { resolveSubscriptionState, needsAttention, computeTrialEnd, DEFAULT_TRIA
 import { VerificationService } from "./verification.service"
 import { CreateCompanyInput, UpdateCompanyInput } from "../validations/company.schema"
 import { parseModuleIcons, parseModuleOverrides, planOverrideWrite, sameOverrides } from "@/lib/modules"
+import { bucketPathFor, logoExtension, validateLogo } from "@/lib/company-logo"
+import { uploadToCloud } from "@/lib/storage"
 
 // cost is a Prisma.Decimal (F-07); Decimal.toJSON() returns a string, which
 // would silently change this response field's type on the wire.
@@ -262,6 +264,88 @@ export class CompanyService {
         }
 
         return updated
+    }
+
+    /**
+     * Stores a company's logo, replacing whatever it had.
+     *
+     * The bytes are validated and uploaded here rather than the caller handing
+     * over a URL. That is the point of the whole endpoint: `logoUrl` is only
+     * ever a URL this app minted from a file it checked, so there is no shape
+     * of request that can aim a company's every page load at another server.
+     */
+    static async setLogo(companyId: string, bytes: Buffer, session: any) {
+        const existing = await prisma.company.findUnique({
+            where: { id: companyId },
+            select: { id: true, name: true, logoUrl: true },
+        })
+        if (!existing) throw new Error("COMPANY_NOT_FOUND")
+
+        const verdict = validateLogo(bytes)
+        if (!verdict.ok) return verdict
+
+        // Named from the format that was detected, not from what the file
+        // arrived called — lib/storage.ts derives the stored content-type from
+        // the extension, so this is what keeps that content-type honest.
+        const named = new File([new Uint8Array(bytes)], `logo${logoExtension(verdict.info.format)}`)
+        const url = await uploadToCloud(named, `${companyId}/logos`)
+
+        const updated = await prisma.company.update({
+            where: { id: companyId },
+            data: { logoUrl: url },
+        })
+
+        // Best-effort, and after the row is written: an orphaned file costs
+        // storage, while deleting the old one first and then failing the update
+        // would leave the company pointing at a file that no longer exists.
+        await this.removeStoredLogo(existing.logoUrl)
+
+        const { AuditLogService } = await import("./audit-log.service")
+        await AuditLogService.log('UPDATE_COMPANY', 'COMPANY', companyId, {
+            superAdminId: session.user.id,
+            details: {
+                companyName: existing.name,
+                logoUrl: { old: existing.logoUrl, new: url },
+                dimensions: `${verdict.info.width}x${verdict.info.height}`,
+                format: verdict.info.format,
+            },
+        })
+
+        return { ok: true as const, logoUrl: updated.logoUrl }
+    }
+
+    /** Removes a company's logo and the file behind it. */
+    static async clearLogo(companyId: string, session: any) {
+        const existing = await prisma.company.findUnique({
+            where: { id: companyId },
+            select: { id: true, name: true, logoUrl: true },
+        })
+        if (!existing) throw new Error("COMPANY_NOT_FOUND")
+        if (!existing.logoUrl) return { ok: true as const, logoUrl: null }
+
+        await prisma.company.update({ where: { id: companyId }, data: { logoUrl: null } })
+        await this.removeStoredLogo(existing.logoUrl)
+
+        const { AuditLogService } = await import("./audit-log.service")
+        await AuditLogService.log('UPDATE_COMPANY', 'COMPANY', companyId, {
+            superAdminId: session.user.id,
+            details: { companyName: existing.name, logoUrl: { old: existing.logoUrl, new: null } },
+        })
+
+        return { ok: true as const, logoUrl: null }
+    }
+
+    /** Deletes the bucket object behind a logo URL, if it is one of ours.
+     *  Never throws: losing the file is a storage cost, not a failed request. */
+    private static async removeStoredLogo(url: string | null | undefined) {
+        const path = bucketPathFor(url)
+        if (!path) return
+        try {
+            const { supabase } = await import("@/lib/storage")
+            await supabase?.storage.from('app-assets').remove([path])
+        } catch (e) {
+            console.error('[CompanyService] failed to remove old logo', path, e)
+        }
     }
 
     static async delete(id: string, passcode: string, session: any) {
