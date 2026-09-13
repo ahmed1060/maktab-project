@@ -13,7 +13,7 @@ import SafeDate from '@/components/SafeDate'
 // flags) was only ever read here, so it moved in with the JSX rather than
 // staying threaded through props from the parent page.
 const UKFlag = () => (
-    <svg width="24" height="18" viewBox="0 0 32 24" style={{ borderRadius: '2px', verticalAlign: 'middle', marginRight: '10px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+    <svg width="24" height="18" viewBox="0 0 32 24" style={{ borderRadius: '2px', verticalAlign: 'middle', marginRight: '10px', boxShadow: '0 1px 3px var(--shadow-weak)' }}>
         <rect width="32" height="24" fill="#012169" />
         <path d="M0 0 L32 24 M32 0 L0 24" stroke="#fff" strokeWidth="3" />
         <path d="M0 0 L32 24 M32 0 L0 24" stroke="#C8102E" strokeWidth="1.5" />
@@ -23,7 +23,7 @@ const UKFlag = () => (
 )
 
 const SAFlag = () => (
-    <svg width="24" height="18" viewBox="0 0 32 24" style={{ borderRadius: '2px', verticalAlign: 'middle', marginRight: '10px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+    <svg width="24" height="18" viewBox="0 0 32 24" style={{ borderRadius: '2px', verticalAlign: 'middle', marginRight: '10px', boxShadow: '0 1px 3px var(--shadow-weak)' }}>
         <rect width="32" height="24" fill="#006C35" />
         {/* Simplified but clearer SA sword */}
         <path d="M8 18 H24 M10 18 L12 20 M10 18 L12 16" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none" />
@@ -223,7 +223,7 @@ export default function ManageTemplatesModal({ isOpen, onClose }: ManageTemplate
                     </div>
                 </div>
 
-                <div className="modal-footer" style={{ background: 'rgba(0, 0, 0, 0.03)', padding: '0.9rem 1.5rem' }}>
+                <div className="modal-footer" style={{ background: 'var(--hairline)', padding: '0.9rem 1.5rem' }}>
                     <button
                         className="btn"
                         disabled={!selectedCompanyId}
@@ -264,7 +264,7 @@ function TemplateStatusRow({ status, locale, t }: {
         <div style={{
             marginTop: '0.6rem',
             paddingTop: '0.6rem',
-            borderTop: '1px solid rgba(0,0,0,0.06)',
+            borderTop: '1px solid var(--hairline)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',

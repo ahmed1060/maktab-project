@@ -398,7 +398,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                     alignItems: 'center',
                     justifyContent: 'center',
                     border: '4px solid white',
-                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+                    boxShadow: '0 4px 6px -1px var(--shadow-weak)',
                     overflow: 'hidden'
                 }}>
                     {avatarUrl ? (
@@ -457,7 +457,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                 <div style={{
                     position: 'fixed',
                     top: 0, left: 0, right: 0, bottom: 0,
-                    background: 'rgba(0,0,0,0.5)',
+                    background: 'var(--scrim)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -476,7 +476,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                         textAlign: 'center',
                         position: 'relative',
                         zIndex: 10,
-                        boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+                        boxShadow: '0 20px 25px -5px var(--shadow-weak), 0 10px 10px -5px var(--shadow-faint)',
                         animation: 'slideUp 0.3s ease-out',
                         direction: locale === 'ar' ? 'rtl' : 'ltr'
                     }}>
@@ -495,7 +495,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                            boxShadow: '0 4px 6px -1px var(--shadow-weak)'
                         }}>
                             {avatarUrl ? (
                                 <Image
@@ -969,7 +969,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                                             paddingLeft: (locale === 'ar' ? '3.5rem' : '1rem'),
                                             background: 'var(--surface-subtle)',
                                             border: '2px solid var(--border)',
-                                            boxShadow: 'inset 0 2px 4px 0 rgba(0, 0, 0, 0.05)'
+                                            boxShadow: 'inset 0 2px 4px 0 var(--shadow-faint)'
                                         }}
                                     />
                                     <button

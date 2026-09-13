@@ -196,7 +196,7 @@ export default function AuditLogFilter({
                                     position: 'fixed',
                                     inset: 0,
                                     zIndex: 999,
-                                    backgroundColor: isMobile ? 'rgba(0,0,0,0.3)' : 'transparent',
+                                    backgroundColor: isMobile ? 'var(--scrim)' : 'transparent',
                                     backdropFilter: isMobile ? 'blur(4px)' : 'none'
                                 }}
                             />
@@ -209,7 +209,7 @@ export default function AuditLogFilter({
                                 backgroundColor: 'var(--surface)',
                                 borderRadius: '1.25rem',
                                 padding: '1.5rem',
-                                boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.15)',
+                                boxShadow: '0 20px 25px -5px var(--shadow-weak)',
                                 border: '1px solid var(--border)',
                                 zIndex: 1000,
                                 display: 'flex',

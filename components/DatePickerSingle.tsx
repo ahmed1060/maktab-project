@@ -106,7 +106,7 @@ export default function DatePickerSingle({ value, onChange, label, minDate, maxD
                 background: 'var(--surface)',
                 border: '1px solid var(--border)',
                 borderRadius: '0.75rem',
-                boxShadow: '0 10px 25px rgba(0, 0, 0, 0.1)',
+                boxShadow: '0 10px 25px var(--shadow-weak)',
                 padding: '1rem',
                 zIndex: 10001,
                 width: isMobile ? 'min(calc(100vw - 3rem), 400px)' : '350px',
@@ -212,7 +212,7 @@ export default function DatePickerSingle({ value, onChange, label, minDate, maxD
                     style={{
                         position: 'fixed',
                         inset: 0,
-                        background: 'rgba(0,0,0,0.4)',
+                        background: 'var(--scrim)',
                         zIndex: 10000,
                         display: 'flex',
                         alignItems: 'center',

@@ -102,6 +102,19 @@ describe("no raw colour survives in any notation", () => {
     it("has no 'white' or 'black' keyword colours", () => {
         scan(/:\s*'(white|black)'/, "keyword colours")
     })
+
+    it("has no hardcoded black", () => {
+        // Black does three different jobs — shadow, scrim, hairline — and all
+        // three break differently on a dark ground. A 5% black shadow is simply
+        // invisible there, so cards lose the separation it was carrying.
+        scan(/rgba\(\s*0\s*,\s*0\s*,\s*0\s*,/, "hardcoded black")
+    })
+
+    it("has no CSS named colours", () => {
+        // 'red' is #ff0000, harsher than the danger palette and jarring beside
+        // it; 'blue' is the browser's unstyled-link colour.
+        scan(/:\s*'(red|blue|green|orange|yellow|purple|pink|gray|grey)'/, "named colours")
+    })
 })
 
 describe("D1 left no raw colour behind", () => {

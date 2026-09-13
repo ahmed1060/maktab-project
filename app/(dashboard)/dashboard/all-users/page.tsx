@@ -251,7 +251,7 @@ export default function AllUsersPage() {
                                     <span style={{ background: 'var(--warn-solid)', color: 'var(--text-on-accent)', padding: '0.2rem 0.5rem', borderRadius: '4px', fontSize: '0.8rem' }}>SHSD</span>
                                     {t('super_administrators_label')}
                                 </h2>
-                                <div style={{ background: 'var(--surface)', borderRadius: '12px', overflowX: 'auto', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+                                <div style={{ background: 'var(--surface)', borderRadius: '12px', overflowX: 'auto', boxShadow: '0 1px 3px var(--shadow-weak)' }}>
                                     <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '600px' }}>
                                         <thead style={{ background: 'var(--warn-bg-yellow-subtle)', borderBottom: '1px solid var(--warn-border)' }}>
                                             <tr>
@@ -308,7 +308,7 @@ export default function AllUsersPage() {
                                 <h2 style={{ fontSize: '1.4rem', fontWeight: 'bold', marginBottom: '1rem', paddingBottom: '0.5rem', borderBottom: '2px solid var(--border)', textAlign: locale === 'ar' ? 'right' : 'left' }}>
                                     {section.name}
                                 </h2>
-                                <div style={{ background: 'var(--surface)', borderRadius: '12px', overflowX: 'auto', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+                                <div style={{ background: 'var(--surface)', borderRadius: '12px', overflowX: 'auto', boxShadow: '0 1px 3px var(--shadow-weak)' }}>
                                     <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '800px' }}>
                                         <thead style={{ background: 'var(--surface-subtle)', borderBottom: '1px solid var(--border)' }}>
                                             <tr>
@@ -412,7 +412,7 @@ export default function AllUsersPage() {
                 showExUsersModal && (
                     <div style={{
                         position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-                        background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center',
+                        background: 'var(--scrim)', display: 'flex', justifyContent: 'center',
                         alignItems: 'center', zIndex: 100
                     }}>
                         <div

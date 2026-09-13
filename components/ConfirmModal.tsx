@@ -82,7 +82,7 @@ export default function ConfirmModal({
             left: 0,
             right: 0,
             bottom: 0,
-            background: 'rgba(0,0,0,0.5)',
+            background: 'var(--scrim)',
             display: 'flex',
             justifyContent: 'center',
             alignItems: 'center',
@@ -100,7 +100,7 @@ export default function ConfirmModal({
                 width: 'min(calc(100vw - 3rem), 450px)',
                 position: 'relative',
                 zIndex: 10,
-                boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+                boxShadow: '0 20px 25px -5px var(--shadow-weak), 0 10px 10px -5px var(--shadow-faint)',
                 animation: 'slideUp 0.3s ease-out',
                 direction: locale === 'ar' ? 'rtl' : 'ltr',
                 textAlign: locale === 'ar' ? 'right' : 'left'

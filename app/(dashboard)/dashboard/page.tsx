@@ -397,7 +397,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: { 
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1.5rem' }}>
                         {upcomingTasks.length === 0 ? (
                             <div className="glass-card glass-success animate-delay-100" style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', padding: '2rem' }}>
-                                <div style={{ fontSize: '3rem', background: 'var(--panel-80)', borderRadius: '50%', width: '80px', height: '80px', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>🎉</div>
+                                <div style={{ fontSize: '3rem', background: 'var(--panel-80)', borderRadius: '50%', width: '80px', height: '80px', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 6px -1px var(--shadow-faint)' }}>🎉</div>
                                 <div>
                                     <h3 style={{ fontSize: '1.25rem', marginBottom: '0.5rem', fontWeight: '700', color: 'var(--ok-fg)' }}>{t('all_caught_up')}</h3>
                                     <p style={{ margin: 0, color: 'var(--ok-fg-strong)' }}>{t('no_pending_tasks_week')}</p>

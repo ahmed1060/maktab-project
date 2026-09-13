@@ -233,7 +233,7 @@ export default function CompanyPaymentsPage() {
             ) : (
                 <div className="glass" style={{ borderRadius: '1rem', overflow: 'hidden' }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                        <thead style={{ background: 'var(--veil-50)', borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
+                        <thead style={{ background: 'var(--veil-50)', borderBottom: '1px solid var(--hairline)' }}>
                             <tr>
                                 <th style={{ textAlign: locale === 'ar' ? 'right' : 'left', padding: '1.25rem', fontSize: '0.8rem', textTransform: 'uppercase', color: 'var(--text-soft)' }}>{t('subscription_type')}</th>
                                 <th style={{ textAlign: locale === 'ar' ? 'right' : 'left', padding: '1.25rem', fontSize: '0.8rem', textTransform: 'uppercase', color: 'var(--text-soft)' }}>{t('costs')}</th>
@@ -244,7 +244,7 @@ export default function CompanyPaymentsPage() {
                         </thead>
                         <tbody>
                             {payments.map(payment => (
-                                <tr key={payment.id} style={{ borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
+                                <tr key={payment.id} style={{ borderBottom: '1px solid var(--hairline)' }}>
                                     <td style={{ padding: '1.25rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
                                         <div style={{ fontWeight: '600', fontSize: '0.9rem' }}>{t(SUBSCRIPTION_LABEL_KEY[payment.subscriptionType] ?? 'annually')}</div>
                                         <div style={{ fontSize: '0.75rem', color: 'var(--text-faint)' }}>{t('created_at')} {new Date(payment.createdAt).toLocaleDateString(locale === 'ar' ? 'ar-EG' : 'en-US')}</div>

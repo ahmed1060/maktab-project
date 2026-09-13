@@ -60,7 +60,7 @@ export default function LanguageToggleButton({ variant = 'fixed', onAction }: La
                 backdropFilter: 'blur(10px)',
                 border: '1px solid var(--veil-30)',
                 borderRadius: '50px',
-                boxShadow: '0 4px 15px rgba(0, 0, 0, 0.1)',
+                boxShadow: '0 4px 15px var(--shadow-weak)',
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
@@ -74,11 +74,11 @@ export default function LanguageToggleButton({ variant = 'fixed', onAction }: La
             }}
             onMouseEnter={(e) => {
                 e.currentTarget.style.transform = 'translateY(-2px)';
-                e.currentTarget.style.boxShadow = '0 6px 20px rgba(0, 0, 0, 0.15)';
+                e.currentTarget.style.boxShadow = '0 6px 20px var(--shadow-weak)';
             }}
             onMouseLeave={(e) => {
                 e.currentTarget.style.transform = 'translateY(0)';
-                e.currentTarget.style.boxShadow = '0 4px 15px rgba(0, 0, 0, 0.1)';
+                e.currentTarget.style.boxShadow = '0 4px 15px var(--shadow-weak)';
             }}
         >
             <span style={{ fontSize: '1.2rem' }}>🌐</span>

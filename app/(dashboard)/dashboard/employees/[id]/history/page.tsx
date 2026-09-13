@@ -386,7 +386,7 @@ export default function EmployeeHistoryPage() {
                     borderRadius: '1rem',
                     background: alert.type === 'success' ? 'var(--ok-bg)' : 'var(--danger-bg)',
                     color: alert.type === 'success' ? 'var(--ok-fg)' : 'var(--danger-fg)',
-                    boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
+                    boxShadow: '0 10px 15px -3px var(--shadow-weak)',
                     // 0x33/255 is 20%. Written as color-mix rather than an
                     // eight-digit hex so the colour itself can be a token:
                     // var(--ok-fg)33 is not a colour.
@@ -576,7 +576,7 @@ export default function EmployeeHistoryPage() {
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    background: 'rgba(0,0,0,0.4)',
+                    background: 'var(--scrim)',
                     backdropFilter: 'blur(4px)',
                     padding: '1rem'
                 }}>
@@ -694,7 +694,7 @@ export default function EmployeeHistoryPage() {
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    background: 'rgba(0,0,0,0.4)',
+                    background: 'var(--scrim)',
                     backdropFilter: 'blur(4px)',
                     padding: '1rem'
                 }}>
@@ -704,7 +704,7 @@ export default function EmployeeHistoryPage() {
                         padding: '2rem',
                         background: 'var(--panel-95)',
                         borderRadius: '1.5rem',
-                        boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)',
+                        boxShadow: '0 20px 25px -5px var(--shadow-weak)',
                         direction: locale === 'ar' ? 'rtl' : 'ltr'
                     }}>
                         <h2 style={{ marginBottom: '1rem' }}>{t('reevaluate')}</h2>
@@ -748,7 +748,7 @@ export default function EmployeeHistoryPage() {
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    background: 'rgba(0,0,0,0.4)',
+                    background: 'var(--scrim)',
                     backdropFilter: 'blur(4px)',
                     padding: '1rem'
                 }}>

@@ -171,7 +171,7 @@ export default function ProfileRequestsPage() {
             </div>
 
             {loading ? <LoadingSpinner message={t('loading_requests')} /> : (
-                <div style={{ background: 'var(--surface)', borderRadius: '12px', overflowX: 'auto', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+                <div style={{ background: 'var(--surface)', borderRadius: '12px', overflowX: 'auto', boxShadow: '0 1px 3px var(--shadow-weak)' }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '800px' }}>
                         <thead style={{ background: 'var(--surface-subtle)', borderBottom: '1px solid var(--border)' }}>
                             <tr>

@@ -482,7 +482,7 @@ export default function SectionNotesPage() {
                                             justifyContent: 'center',
                                             fontSize: '0.8rem',
                                             fontWeight: 'bold',
-                                            boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                                            boxShadow: '0 2px 4px var(--shadow-weak)'
                                         }}>
                                             {note.createdBy?.firstName?.[0]}{note.createdBy?.lastName?.[0]}
                                         </div>
@@ -656,7 +656,7 @@ export default function SectionNotesPage() {
                     isModalOpen && createPortal(
                         <div style={{
                             position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-                            background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center',
+                            background: 'var(--scrim)', display: 'flex', justifyContent: 'center',
                             alignItems: 'center', zIndex: 9999
                         }}>
                             <div
@@ -674,7 +674,7 @@ export default function SectionNotesPage() {
                                 position: 'relative',
                                 zIndex: 10,
                                 direction: locale === 'ar' ? 'rtl' : 'ltr',
-                                boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+                                boxShadow: '0 25px 50px -12px var(--shadow-mid)',
                                 border: '1px solid var(--veil-40)'
                             }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
@@ -876,7 +876,7 @@ export default function SectionNotesPage() {
                     isEditModalOpen && createPortal(
                         <div style={{
                             position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-                            background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center',
+                            background: 'var(--scrim)', display: 'flex', justifyContent: 'center',
                             alignItems: 'center', zIndex: 9999
                         }}>
                             <div
@@ -894,7 +894,7 @@ export default function SectionNotesPage() {
                                 position: 'relative',
                                 zIndex: 10,
                                 direction: locale === 'ar' ? 'rtl' : 'ltr',
-                                boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+                                boxShadow: '0 25px 50px -12px var(--shadow-mid)',
                                 border: '1px solid var(--veil-40)'
                             }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>

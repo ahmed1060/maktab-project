@@ -129,12 +129,12 @@ export default function UsernamesPage() {
                         padding: '0.6rem 1rem',
                         borderRadius: '0.75rem',
                         border: 'none',
-                        boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)',
+                        boxShadow: '0 4px 6px -1px var(--shadow-weak)',
                         cursor: 'pointer',
                         transition: 'all 0.2s ease'
                     }}
-                    onMouseOver={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 6px 12px -2px rgba(0,0,0,0.15)'; }}
-                    onMouseOut={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0,0,0,0.1)'; }}
+                    onMouseOver={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 6px 12px -2px var(--shadow-weak)'; }}
+                    onMouseOut={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 6px -1px var(--shadow-weak)'; }}
                 >
                     <span style={{ fontSize: '1.2rem' }}>📊</span>
                     <span style={{ fontSize: '1.2rem' }}>📥</span>
@@ -155,7 +155,7 @@ export default function UsernamesPage() {
                                 padding: '1rem',
                                 borderRadius: '1rem',
                                 border: '1px solid var(--border)',
-                                boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+                                boxShadow: '0 1px 3px var(--shadow-faint)',
                                 transition: 'transform 0.2s, box-shadow 0.2s'
                             }}
                         >

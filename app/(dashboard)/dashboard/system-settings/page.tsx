@@ -176,7 +176,7 @@ export default function SystemSettingsPage() {
                             disabled={savingSection === 'location'}
                             onChange={(e) => setRadiusInput(e.target.value)}
                             className="input-field"
-                            style={{ width: '100%', maxWidth: '12rem', padding: '0.6rem 0.85rem', borderRadius: '0.6rem', border: '1px solid rgba(0,0,0,0.1)' }}
+                            style={{ width: '100%', maxWidth: '12rem', padding: '0.6rem 0.85rem', borderRadius: '0.6rem', border: '1px solid var(--hairline-firm)' }}
                         />
 
                         {/* Pushed to the bottom so both cards' buttons line up
@@ -223,12 +223,12 @@ export default function SystemSettingsPage() {
                             placeholder={DEFAULT_POWERED_BY_NAME}
                             onChange={(e) => setPoweredByName(e.target.value)}
                             className="input-field"
-                            style={{ width: '100%', maxWidth: '16rem', padding: '0.6rem 0.85rem', borderRadius: '0.6rem', border: '1px solid rgba(0,0,0,0.1)' }}
+                            style={{ width: '100%', maxWidth: '16rem', padding: '0.6rem 0.85rem', borderRadius: '0.6rem', border: '1px solid var(--hairline-firm)' }}
                         />
 
                         {/* What it will actually look like, so the result is
                             checkable before saving rather than after. */}
-                        <div style={{ marginTop: '1rem', padding: '0.85rem 1rem', borderRadius: '0.6rem', background: 'rgba(0,0,0,0.03)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.1rem', opacity: showPoweredBy ? 1 : 0.35 }}>
+                        <div style={{ marginTop: '1rem', padding: '0.85rem 1rem', borderRadius: '0.6rem', background: 'var(--hairline)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.1rem', opacity: showPoweredBy ? 1 : 0.35 }}>
                             {showPoweredBy ? (
                                 <>
                                     <span style={{ fontSize: '0.45rem', color: 'var(--text-soft)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em' }}>

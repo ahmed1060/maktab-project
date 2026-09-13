@@ -85,7 +85,7 @@ export default function ViewRequestModal({ isOpen, onClose, request, userRole, o
                                         alignItems: 'center',
                                         gap: '0.4rem',
                                         transition: 'all 0.2s',
-                                        boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)'
+                                        boxShadow: '0 4px 6px -1px var(--shadow-weak)'
                                     }}
                                     title={request.status === 'PENDING' ? t('mark_in_progress' as any) : t('mark_completed' as any)}
                                 >

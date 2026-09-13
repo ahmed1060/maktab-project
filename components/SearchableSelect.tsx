@@ -73,7 +73,7 @@ export default function SearchableSelect({ options, value, onChange, placeholder
                     alignItems: 'center',
                     minHeight: '48px',
                     height: '48px',
-                    boxShadow: isOpen ? '0 0 0 3px rgba(59, 130, 246, 0.1)' : '0 1px 2px rgba(0, 0, 0, 0.05)',
+                    boxShadow: isOpen ? '0 0 0 3px rgba(59, 130, 246, 0.1)' : '0 1px 2px var(--shadow-faint)',
                     transition: 'all 0.2s ease',
                     color: 'var(--text-main)'
                 }}
@@ -175,7 +175,7 @@ export default function SearchableSelect({ options, value, onChange, placeholder
                     background: 'var(--surface)',
                     border: '1px solid var(--border)',
                     borderRadius: '0.75rem',
-                    boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+                    boxShadow: '0 10px 15px -3px var(--shadow-weak), 0 4px 6px -2px var(--shadow-faint)',
                     zIndex: 50,
                     maxHeight: '320px',
                     overflow: 'hidden',

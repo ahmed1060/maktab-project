@@ -37,7 +37,7 @@ export default function BackupPickerModal({ isOpen, backups, loading, error, onS
     return createPortal(
         <div style={{
             position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-            background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center',
+            background: 'var(--scrim)', display: 'flex', justifyContent: 'center',
             alignItems: 'center', zIndex: 10000
         }}>
             <div className="absolute inset-0" onClick={onClose} />
@@ -46,7 +46,7 @@ export default function BackupPickerModal({ isOpen, backups, loading, error, onS
                 width: 'min(calc(100vw - 3rem), 560px)', maxHeight: '80vh',
                 display: 'flex', flexDirection: 'column',
                 position: 'relative', zIndex: 10,
-                boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04)',
+                boxShadow: '0 20px 25px -5px var(--shadow-weak), 0 10px 10px -5px var(--shadow-faint)',
                 direction: locale === 'ar' ? 'rtl' : 'ltr',
                 textAlign: locale === 'ar' ? 'right' : 'left'
             }}>

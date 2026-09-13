@@ -161,7 +161,7 @@ export default function CostsClient({ tasksWithCosts, userRole, total, page, tot
                     color: feedbackMessage === t('successfully_marked_paid') ? 'var(--ok-fg)' : 'var(--danger-fg)',
                     padding: '1rem 1.5rem',
                     borderRadius: '0.5rem',
-                    boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                    boxShadow: '0 4px 12px var(--shadow-weak)',
                     zIndex: 1000,
                     fontWeight: '600',
                     width: 'calc(100vw - 3rem)',

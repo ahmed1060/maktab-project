@@ -95,7 +95,7 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
                     onClick={() => setIsSidebarOpen(false)}
                     style={{
                         position: 'fixed', inset: 0,
-                        backgroundColor: 'rgba(0,0,0,0.3)',
+                        backgroundColor: 'var(--scrim)',
                         backdropFilter: 'blur(4px)',
                         zIndex: 49
                     }}
@@ -113,7 +113,7 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
                 transition: 'width 0.4s cubic-bezier(0.16, 1, 0.3, 1), transform 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
                 [isRtl ? 'right' : 'left']: 0,
                 transform: (isMobile && !isSidebarOpen) ? (isRtl ? 'translateX(100%)' : 'translateX(-100%)') : 'translateX(0)',
-                boxShadow: (isMobile && isSidebarOpen) ? (isRtl ? '-20px 0 50px rgba(0,0,0,0.2)' : '20px 0 50px rgba(0,0,0,0.2)') : 'none',
+                boxShadow: (isMobile && isSidebarOpen) ? (isRtl ? '-20px 0 50px var(--shadow-mid)' : '20px 0 50px var(--shadow-mid)') : 'none',
                 overflow: 'hidden',
                 direction: isRtl ? 'rtl' : 'ltr'
             }}>
@@ -151,7 +151,7 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
                     >
                         <span style={{
                             fontSize: '1.4rem',
-                            filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.1))',
+                            filter: 'drop-shadow(0 2px 4px var(--shadow-weak))',
                             width: isCollapsed ? '100%' : 'auto',
                             display: 'flex',
                             justifyContent: 'center',

@@ -28,7 +28,7 @@ export function DonutChart({ data, title }: DonutChartProps) {
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
             <h4 style={{ margin: '0 0 1rem 0', fontSize: '1rem', color: 'var(--text-main)' }}>{title}</h4>
             <div style={{ position: 'relative', width: '160px', height: '160px' }}>
-                <svg viewBox="0 0 100 100" style={{ transform: 'rotate(-90deg)', filter: 'drop-shadow(0 4px 6px rgba(0,0,0,0.1))' }}>
+                <svg viewBox="0 0 100 100" style={{ transform: 'rotate(-90deg)', filter: 'drop-shadow(0 4px 6px var(--shadow-weak))' }}>
                     {data.map((item, idx) => {
                         const percentage = (item.value / total) * 100
                         const dashArray = (percentage * 2 * Math.PI * radius) / 100

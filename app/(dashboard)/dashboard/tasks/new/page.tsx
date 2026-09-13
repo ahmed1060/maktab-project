@@ -467,18 +467,18 @@ export default function NewTaskPage() {
                                 width: '46px',
                                 height: '46px',
                                 transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                                boxShadow: '0 4px 15px rgba(0, 0, 0, 0.05)',
+                                boxShadow: '0 4px 15px var(--shadow-faint)',
                                 backdropFilter: 'blur(4px)'
                             }}
                             onMouseOver={(e) => {
                                 e.currentTarget.style.transform = 'scale(1.1) rotate(5deg)';
                                 e.currentTarget.style.background = 'var(--veil-30)';
-                                e.currentTarget.style.boxShadow = '0 8px 25px rgba(0, 0, 0, 0.1)';
+                                e.currentTarget.style.boxShadow = '0 8px 25px var(--shadow-weak)';
                             }}
                             onMouseOut={(e) => {
                                 e.currentTarget.style.transform = 'scale(1) rotate(0deg)';
                                 e.currentTarget.style.background = 'var(--veil-15)';
-                                e.currentTarget.style.boxShadow = '0 4px 15px rgba(0, 0, 0, 0.05)';
+                                e.currentTarget.style.boxShadow = '0 4px 15px var(--shadow-faint)';
                             }}
                         >
                             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">

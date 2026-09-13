@@ -42,7 +42,7 @@ export default function Modal({ isOpen, onClose, title, children, hideFooter = t
             left: 0,
             right: 0,
             bottom: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.4)',
+            backgroundColor: 'var(--scrim)',
             // No blur as requested
             display: 'flex',
             alignItems: 'center',
@@ -61,7 +61,7 @@ export default function Modal({ isOpen, onClose, title, children, hideFooter = t
                     maxHeight: '90vh',
                     overflowY: 'auto',
                     position: 'relative',
-                    boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', // Deep shadow for lift
+                    boxShadow: '0 25px 50px -12px var(--shadow-mid)', // Deep shadow for lift
                     animation: 'slideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
                     background: 'var(--panel-85)', // Slightly more opaque for content readability
                     backdropFilter: 'blur(24px)'

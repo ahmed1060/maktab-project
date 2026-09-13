@@ -153,7 +153,7 @@ export default function LocationSearchInput({ value, onChange, placeholder, labe
                     background: 'var(--surface)',
                     border: '1px solid var(--border)',
                     borderRadius: '0.5rem',
-                    boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)',
+                    boxShadow: '0 4px 6px -1px var(--shadow-weak)',
                     marginTop: '0.25rem',
                     maxHeight: '200px',
                     overflowY: 'auto'

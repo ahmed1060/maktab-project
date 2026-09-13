@@ -77,7 +77,7 @@ export default function TaskEditDetailsModal({ isOpen, onClose, onSubmit, editFo
                                     color: 'var(--text-body)',
                                     display: 'flex',
                                     alignItems: 'center',
-                                    boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
+                                    boxShadow: '0 1px 2px var(--shadow-faint)'
                                 }}>
                                     {u.firstName} {u.lastName} <small style={{ color: 'var(--text-soft)', marginLeft: locale === 'ar' ? 0 : '0.4rem', marginRight: locale === 'ar' ? '0.4rem' : 0 }}>({t(`role_${u.role?.toLowerCase()}` as any)})</small>
                                 </div>

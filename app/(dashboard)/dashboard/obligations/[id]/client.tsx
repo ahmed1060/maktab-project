@@ -538,7 +538,7 @@ export default function ObligationDetailClient({ obligation, userRole, userId, u
                                     border: '1px solid var(--border)',
                                     padding: '0.5rem 0.75rem',
                                     borderRadius: '0.5rem',
-                                    boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
+                                    boxShadow: '0 1px 2px var(--shadow-faint)'
                                 }}>
                                     <span style={{ fontSize: '1.2rem' }}>📎</span>
                                     <div style={{ display: 'flex', flexDirection: 'column' }}>
@@ -662,7 +662,7 @@ export default function ObligationDetailClient({ obligation, userRole, userId, u
                                     background: 'var(--surface)',
                                     border: '1px solid var(--border)',
                                     borderRadius: '0.5rem',
-                                    boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
+                                    boxShadow: '0 1px 2px 0 var(--shadow-faint)',
                                     flexDirection: 'row'
                                 }}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexDirection: 'row' }}>
@@ -742,7 +742,7 @@ export default function ObligationDetailClient({ obligation, userRole, userId, u
                     background: 'var(--surface)',
                     padding: '1rem',
                     borderRadius: '0.5rem',
-                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+                    boxShadow: '0 4px 6px -1px var(--shadow-weak)',
                     zIndex: 2000,
                     [locale === 'ar' ? 'borderRight' : 'borderLeft']: `4px solid ${feedbackType === 'error' ? 'var(--danger-solid)' : 'var(--ok-solid-alt)'}`,
                     display: 'flex',

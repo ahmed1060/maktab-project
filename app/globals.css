@@ -223,6 +223,27 @@
   --panel-90: rgba(255, 255, 255, 0.9);
   --panel-95: rgba(255, 255, 255, 0.95);
 
+  /* Black, in the three jobs it does here. Each needs different treatment on a
+     dark ground:
+
+     --shadow-*  a drop shadow. Black at 5-10% is simply invisible against a
+                 dark page, so cards lose the separation that shadow was
+                 carrying. Dark needs a far heavier one to read at all.
+     --scrim-*   the dimming layer behind a modal. Stays dark in both themes —
+                 its job is to push the page back — but goes deeper on dark,
+                 where a 50% scrim over an already-dark page barely registers.
+     --hairline  a faint dark rule. On dark it has to invert to a faint light
+                 one, like the veils above. */
+  --shadow-faint: rgba(0, 0, 0, 0.05);
+  --shadow-weak: rgba(0, 0, 0, 0.1);
+  --shadow-mid: rgba(0, 0, 0, 0.25);
+
+  --scrim: rgba(0, 0, 0, 0.5);
+  --scrim-deep: rgba(0, 0, 0, 0.85);
+
+  --hairline: rgba(0, 0, 0, 0.05);
+  --hairline-firm: rgba(0, 0, 0, 0.1);
+
   /* The page ground itself. */
   --page-bg: #eef2ff;
   --page-veil-a: rgba(99, 102, 241, 0.15);
@@ -919,6 +940,16 @@ input::-webkit-credentials-auto-fill-button {
     --panel-90: rgba(22, 27, 34, 0.94);
     --panel-95: rgba(22, 27, 34, 0.97);
 
+    --shadow-faint: rgba(0, 0, 0, 0.3);
+    --shadow-weak: rgba(0, 0, 0, 0.45);
+    --shadow-mid: rgba(0, 0, 0, 0.6);
+
+    --scrim: rgba(0, 0, 0, 0.7);
+    --scrim-deep: rgba(0, 0, 0, 0.9);
+
+    --hairline: rgba(255, 255, 255, 0.06);
+    --hairline-firm: rgba(255, 255, 255, 0.1);
+
     --page-bg: #0b0f14;
     --page-veil-a: rgba(99, 102, 241, 0.1);
     --page-veil-b: rgba(236, 72, 153, 0.08);
@@ -1049,6 +1080,16 @@ input::-webkit-credentials-auto-fill-button {
     --panel-85: rgba(22, 27, 34, 0.91);
     --panel-90: rgba(22, 27, 34, 0.94);
     --panel-95: rgba(22, 27, 34, 0.97);
+
+    --shadow-faint: rgba(0, 0, 0, 0.3);
+    --shadow-weak: rgba(0, 0, 0, 0.45);
+    --shadow-mid: rgba(0, 0, 0, 0.6);
+
+    --scrim: rgba(0, 0, 0, 0.7);
+    --scrim-deep: rgba(0, 0, 0, 0.9);
+
+    --hairline: rgba(255, 255, 255, 0.06);
+    --hairline-firm: rgba(255, 255, 255, 0.1);
 
     --page-bg: #0b0f14;
     --page-veil-a: rgba(99, 102, 241, 0.1);

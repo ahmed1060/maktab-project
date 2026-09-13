@@ -167,7 +167,7 @@ export default function NotificationBell({ initialUnreadCount = 0 }: { initialUn
                         position: 'absolute',
                         top: -5,
                         right: -5,
-                        background: 'red',
+                        background: 'var(--danger-solid)',
                         color: 'var(--text-on-accent)',
                         borderRadius: '50%',
                         width: '20px',
@@ -192,7 +192,7 @@ export default function NotificationBell({ initialUnreadCount = 0 }: { initialUn
                     background: 'var(--surface)',
                     border: '1px solid var(--grey-200)',
                     borderRadius: '8px',
-                    boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+                    boxShadow: '0 4px 6px var(--shadow-weak)',
                     zIndex: 1000,
                     maxHeight: '400px',
                     overflowY: 'auto'

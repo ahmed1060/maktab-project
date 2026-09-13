@@ -82,7 +82,7 @@ export default function Pagination({ currentPage, totalPages, onPageChange }: Pa
                 background: 'var(--surface)',
                 padding: '0.5rem 1rem',
                 borderRadius: '9999px',
-                boxShadow: '0 4px 15px rgba(0,0,0,0.05)',
+                boxShadow: '0 4px 15px var(--shadow-faint)',
                 border: '1px solid var(--surface-sunk)',
                 direction: 'ltr'
             }}>

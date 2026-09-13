@@ -398,7 +398,7 @@ export default function EmployeeFilter({
                                         position: 'fixed',
                                         inset: 0,
                                         zIndex: 999,
-                                        backgroundColor: isMobile ? 'rgba(0,0,0,0.3)' : 'transparent',
+                                        backgroundColor: isMobile ? 'var(--scrim)' : 'transparent',
                                         backdropFilter: isMobile ? 'blur(4px)' : 'none'
                                     }}
                                 />
@@ -414,7 +414,7 @@ export default function EmployeeFilter({
                                     backgroundColor: 'var(--surface)',
                                     borderRadius: '1.25rem',
                                     padding: '1.5rem',
-                                    boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.15), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+                                    boxShadow: '0 20px 25px -5px var(--shadow-weak), 0 10px 10px -5px var(--shadow-faint)',
                                     border: '1px solid var(--border)',
                                     zIndex: 1000,
                                     display: 'flex',

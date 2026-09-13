@@ -310,7 +310,7 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
                                 maxWidth: '200px',
                                 textAlign: 'center',
                                 fontWeight: '600',
-                                boxShadow: '0 2px 4px rgba(0,0,0,0.02)',
+                                boxShadow: '0 2px 4px var(--shadow-faint)',
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
@@ -363,7 +363,7 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
                                 background: 'var(--surface)',
                                 border: '1px solid var(--border)',
                                 borderRadius: '0.75rem',
-                                boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+                                boxShadow: '0 10px 15px -3px var(--shadow-weak), 0 4px 6px -2px var(--shadow-faint)',
                                 zIndex: 1000,
                                 maxHeight: '300px',
                                 overflowY: 'auto',
@@ -440,7 +440,7 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
                                 color: 'var(--text-main)',
                                 position: 'relative',
                                 transition: 'all 0.2s ease',
-                                boxShadow: '0 4px 6px rgba(0,0,0,0.05)'
+                                boxShadow: '0 4px 6px var(--shadow-faint)'
                             }}
                             onMouseEnter={(e) => {
                                 e.currentTarget.style.transform = 'scale(1.05)'
@@ -472,7 +472,7 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
                                     alignItems: 'center',
                                     justifyContent: 'center',
                                     border: '2px solid white',
-                                    boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                                    boxShadow: '0 2px 4px var(--shadow-weak)'
                                 }}>
                                     {pendingRequestsCount}
                                 </span>
@@ -512,7 +512,7 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
-                                boxShadow: '0 4px 6px rgba(0,0,0,0.05)',
+                                boxShadow: '0 4px 6px var(--shadow-faint)',
                                 position: 'relative'
                             }}
                         >

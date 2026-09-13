@@ -246,7 +246,7 @@ export default function LoginPage() {
                     backdropFilter: 'blur(20px)',
                     borderRadius: '24px',
                     padding: '2.5rem',
-                    boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3), 0 0 0 1px var(--veil-10)',
+                    boxShadow: '0 20px 60px var(--shadow-mid), 0 0 0 1px var(--veil-10)',
                     border: '1px solid var(--veil-20)'
                 }}>
                     <h1 style={{

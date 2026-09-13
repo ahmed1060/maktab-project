@@ -329,7 +329,7 @@ export default function DayOffRequestsPage() {
                     gap: '0.5rem',
                     fontSize: '0.875rem',
                     fontWeight: '500',
-                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+                    boxShadow: '0 4px 6px -1px var(--shadow-weak), 0 2px 4px -1px var(--shadow-faint)',
                     zIndex: 1000,
                     width: 'calc(100vw - 3rem)',
                     minWidth: '200px',
@@ -391,7 +391,7 @@ export default function DayOffRequestsPage() {
                                             flexDirection: 'column',
                                             alignItems: 'center',
                                             gap: '0.1rem',
-                                            boxShadow: '0 2px 4px -1px rgba(0, 0, 0, 0.05)',
+                                            boxShadow: '0 2px 4px -1px var(--shadow-faint)',
                                             width: 'fit-content'
                                         }}>
                                             <span style={{ fontSize: '0.6rem', fontWeight: '800', color: colors.text, opacity: 0.8, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
@@ -466,7 +466,7 @@ export default function DayOffRequestsPage() {
                                             letterSpacing: '0.025em',
                                             background: req.status === 'APPROVED' ? 'var(--ok-bg)' : req.status === 'REJECTED' ? 'var(--danger-bg)' : 'var(--warn-bg-yellow)',
                                             color: req.status === 'APPROVED' ? 'var(--ok-fg)' : req.status === 'REJECTED' ? 'var(--danger-fg)' : 'var(--warn-fg-yellow)',
-                                            boxShadow: '0 2px 4px rgba(0,0,0,0.02)'
+                                            boxShadow: '0 2px 4px var(--shadow-faint)'
                                         }}>
                                             {t(`status_${req.status.toLowerCase()}` as any)}
                                         </span>
@@ -519,7 +519,7 @@ export default function DayOffRequestsPage() {
                                                 fontSize: '0.9rem',
                                                 color: 'var(--text-muted)',
                                                 lineHeight: '1.5',
-                                                background: 'rgba(0,0,0,0.03)',
+                                                background: 'var(--hairline)',
                                                 padding: '0.75rem',
                                                 borderRadius: '0.75rem',
                                                 fontStyle: 'italic',
@@ -652,7 +652,7 @@ export default function DayOffRequestsPage() {
 
             {/* Request Modal */}
             {isRequestModalOpen && (
-                <div className="modal-overlay" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
+                <div className="modal-overlay" style={{ position: 'fixed', inset: 0, background: 'var(--scrim)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
                     <div className="card" style={{ width: 'min(calc(100vw - 3rem), 400px)' }}>
                         <h2 className="text-xl font-bold mb-4">{t('request_day_off' as any)}</h2>
                         <form onSubmit={handleSubmitRequest}>
@@ -726,7 +726,7 @@ export default function DayOffRequestsPage() {
 
             {/* Approval Modal (Deduction Popup) */}
             {isApprovalModalOpen && selectedRequest && (
-                <div className="modal-overlay" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
+                <div className="modal-overlay" style={{ position: 'fixed', inset: 0, background: 'var(--scrim)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
                     <div className="card" style={{ width: 'min(calc(100vw - 3rem), 400px)' }}>
                         <h2 className="text-xl font-bold mb-4">{t('approve_deduction_title' as any)}</h2>
                         <p style={{ marginBottom: '1rem', fontSize: '0.9rem', color: 'var(--text-soft)' }}>
@@ -815,7 +815,7 @@ export default function DayOffRequestsPage() {
             )}
             {/* Rejection Confirmation Modal */}
             {isRejectModalOpen && selectedRequest && (
-                <div className="modal-overlay" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
+                <div className="modal-overlay" style={{ position: 'fixed', inset: 0, background: 'var(--scrim)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
                     <div className="card" style={{ width: 'min(calc(100vw - 3rem), 400px)' }}>
                         <h2 className="text-xl font-bold mb-4">{t('confirm_rejection_title' as any)}</h2>
                         <p style={{ marginBottom: '1.5rem', color: 'var(--text-soft)' }}>

@@ -105,7 +105,7 @@ export default function BulkTaskReviewModal({
                                                         borderRadius: '0.3rem', transition: 'all 0.2s', fontSize: '1rem',
                                                         opacity: bt.validationErrors?.title ? 1 : 0.4
                                                     }}
-                                                    onMouseEnter={e => e.currentTarget.style.background = 'rgba(0,0,0,0.05)'}
+                                                    onMouseEnter={e => e.currentTarget.style.background = 'var(--hairline)'}
                                                     onMouseLeave={e => e.currentTarget.style.background = 'none'}
                                                     title={t('edit')}
                                                 >
@@ -130,7 +130,7 @@ export default function BulkTaskReviewModal({
                                                         left: locale === 'ar' ? editAnchorRect.left - 200 : editAnchorRect.right + 20,
                                                         transform: 'translateY(-50%)',
                                                         zIndex: 10501, minWidth: '280px', background: 'var(--surface)', padding: '1rem',
-                                                        borderRadius: '0.75rem', boxShadow: '0 10px 25px rgba(0,0,0,0.2)', border: '1px solid var(--border)',
+                                                        borderRadius: '0.75rem', boxShadow: '0 10px 25px var(--shadow-mid)', border: '1px solid var(--border)',
                                                         direction: locale === 'ar' ? 'rtl' : 'ltr'
                                                     }}>
                                                         <input
@@ -174,7 +174,7 @@ export default function BulkTaskReviewModal({
                                                         borderRadius: '0.3rem', transition: 'all 0.2s', fontSize: '1rem',
                                                         opacity: bt.validationErrors?.description ? 1 : 0.4
                                                     }}
-                                                    onMouseEnter={e => e.currentTarget.style.background = 'rgba(0,0,0,0.05)'}
+                                                    onMouseEnter={e => e.currentTarget.style.background = 'var(--hairline)'}
                                                     onMouseLeave={e => e.currentTarget.style.background = 'none'}
                                                     title={t('edit')}
                                                 >
@@ -199,7 +199,7 @@ export default function BulkTaskReviewModal({
                                                         left: locale === 'ar' ? editAnchorRect.left - 340 : editAnchorRect.right + 20,
                                                         transform: 'translateY(-50%)',
                                                         zIndex: 10501, minWidth: '320px', background: 'var(--surface)', padding: '1rem',
-                                                        borderRadius: '0.75rem', boxShadow: '0 10px 25px rgba(0,0,0,0.2)', border: '1px solid var(--border)',
+                                                        borderRadius: '0.75rem', boxShadow: '0 10px 25px var(--shadow-mid)', border: '1px solid var(--border)',
                                                         direction: locale === 'ar' ? 'rtl' : 'ltr'
                                                     }}>
                                                         <textarea
@@ -341,7 +341,7 @@ export default function BulkTaskReviewModal({
                                                         backdropFilter: 'blur(12px)',
                                                         border: '1px solid var(--glass-border)',
                                                         borderRadius: '0.75rem',
-                                                        boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)',
+                                                        boxShadow: '0 10px 15px -3px var(--shadow-weak)',
                                                         padding: '0.5rem',
                                                         animation: 'fadeIn 0.2s ease-out',
                                                         direction: locale === 'ar' ? 'rtl' : 'ltr'
@@ -510,7 +510,7 @@ export default function BulkTaskReviewModal({
                                                                 borderRadius: '0.3rem', transition: 'all 0.2s', fontSize: '1.1rem',
                                                                 opacity: bt.validationErrors?.deadline ? 1 : 0.4
                                                             }}
-                                                            onMouseEnter={e => e.currentTarget.style.background = 'rgba(0,0,0,0.05)'}
+                                                            onMouseEnter={e => e.currentTarget.style.background = 'var(--hairline)'}
                                                             onMouseLeave={e => e.currentTarget.style.background = 'none'}
                                                             title={t('edit_deadline')}
                                                         >
@@ -634,7 +634,7 @@ export default function BulkTaskReviewModal({
                             </div>
                         )}
                     </div>
-                    <button className="btn" onClick={onClose} style={{ background: 'rgba(0,0,0,0.05)' }}>
+                    <button className="btn" onClick={onClose} style={{ background: 'var(--hairline)' }}>
                         {t('cancel')}
                     </button>
                     <button

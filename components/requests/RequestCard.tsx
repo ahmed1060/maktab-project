@@ -82,7 +82,7 @@ export default function RequestCard({ request, userRole, onView, onStatusUpdate,
                         padding: '0.4rem 0.8rem',
                         fontSize: '0.85rem',
                         background: 'var(--veil-50)',
-                        border: '1px solid rgba(0,0,0,0.1)',
+                        border: '1px solid var(--hairline-firm)',
                         color: 'var(--brand-primary)',
                         fontWeight: '600'
                     }}
@@ -106,7 +106,7 @@ export default function RequestCard({ request, userRole, onView, onStatusUpdate,
                             alignItems: 'center',
                             justifyContent: 'center',
                             transition: 'all 0.2s',
-                            boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)'
+                            boxShadow: '0 4px 6px -1px var(--shadow-weak)'
                         }}
                         title={request.status === 'PENDING' ? t('mark_in_progress' as any) : t('mark_completed' as any)}
                     >

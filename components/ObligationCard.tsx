@@ -124,7 +124,7 @@ export default function ObligationCard({ obligation, userRole, isHighlighted }: 
                     <strong>Evidence:</strong>
                     {JSON.parse(obligation.attachments).map((att: Attachment, i: number) => (
                         <div key={i}>
-                            <a href={att.url} target="_blank" rel="noopener noreferrer" style={{ color: 'blue', textDecoration: 'underline' }}>
+                            <a href={att.url} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--info-solid-hover)', textDecoration: 'underline' }}>
                                 {att.name || 'View Attachment'}
                             </a>
                         </div>

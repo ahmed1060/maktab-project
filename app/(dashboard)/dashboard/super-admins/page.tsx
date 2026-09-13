@@ -197,7 +197,7 @@ export default function SuperAdminsPage() {
             </div>
 
             {loading ? <p style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('loading_users')}</p> : (
-                <div style={{ background: 'var(--surface)', borderRadius: '12px', overflowX: 'auto', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+                <div style={{ background: 'var(--surface)', borderRadius: '12px', overflowX: 'auto', boxShadow: '0 1px 3px var(--shadow-weak)' }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '600px' }}>
                         <thead style={{ background: 'var(--surface-subtle)', borderBottom: '1px solid var(--border)' }}>
                             <tr>
@@ -287,7 +287,7 @@ export default function SuperAdminsPage() {
             {showCreateModal && (
                 <div style={{
                     position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-                    background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center',
+                    background: 'var(--scrim)', display: 'flex', justifyContent: 'center',
                     alignItems: 'center', zIndex: 100
                 }}>
                     <div
@@ -296,7 +296,7 @@ export default function SuperAdminsPage() {
                     />
                     <div style={{ background: 'var(--surface)', padding: '2rem', borderRadius: '12px', width: '100%', maxWidth: '500px', position: 'relative', zIndex: 101, direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
                         <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('add_super_admin_title')}</h2>
-                        {error && <div style={{ color: 'red', marginBottom: '1rem', fontSize: '0.9rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{error}</div>}
+                        {error && <div style={{ color: 'var(--danger-fg-strong)', marginBottom: '1rem', fontSize: '0.9rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{error}</div>}
                         <form onSubmit={handleCreate}>
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
                                 <div>
@@ -371,7 +371,7 @@ export default function SuperAdminsPage() {
             {viewingAdmin && (
                 <div style={{
                     position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-                    background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center',
+                    background: 'var(--scrim)', display: 'flex', justifyContent: 'center',
                     alignItems: 'center', zIndex: 100
                 }}>
                     <div
@@ -403,7 +403,7 @@ export default function SuperAdminsPage() {
             {editingAdmin && (
                 <div style={{
                     position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-                    background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center',
+                    background: 'var(--scrim)', display: 'flex', justifyContent: 'center',
                     alignItems: 'center', zIndex: 100
                 }}>
                     <div
@@ -412,7 +412,7 @@ export default function SuperAdminsPage() {
                     />
                     <div style={{ background: 'var(--surface)', padding: '2rem', borderRadius: '12px', width: '100%', maxWidth: '500px', position: 'relative', zIndex: 101, direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
                         <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('edit_admin_title')}</h2>
-                        {error && <div style={{ color: 'red', marginBottom: '1rem', fontSize: '0.9rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{error}</div>}
+                        {error && <div style={{ color: 'var(--danger-fg-strong)', marginBottom: '1rem', fontSize: '0.9rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{error}</div>}
                         <form onSubmit={handleUpdate}>
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
                                 <div>

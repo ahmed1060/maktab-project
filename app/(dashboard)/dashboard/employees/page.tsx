@@ -218,7 +218,7 @@ export default function EmployeesPage() {
                     gap: '0.5rem',
                     fontSize: '0.875rem',
                     fontWeight: '500',
-                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+                    boxShadow: '0 4px 6px -1px var(--shadow-weak), 0 2px 4px -1px var(--shadow-faint)',
                     zIndex: 1000,
                     minWidth: '250px',
                     maxWidth: '350px',

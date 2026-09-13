@@ -252,7 +252,7 @@ export default function CompaniesPage() {
                     /* Said plainly, not as an empty table — an empty table reads
                        as a loading failure, and "nothing needs attention" is the
                        most valuable answer this screen can ever give. */
-                    <div style={{ background: 'var(--surface)', borderRadius: '12px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', padding: '3rem 1.5rem', textAlign: 'center' }}>
+                    <div style={{ background: 'var(--surface)', borderRadius: '12px', boxShadow: '0 1px 3px var(--shadow-weak)', padding: '3rem 1.5rem', textAlign: 'center' }}>
                         <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>✅</div>
                         <div style={{ fontWeight: 600, color: 'var(--ok-fg)', marginBottom: '0.75rem' }}>{t('nothing_needs_attention' as any)}</div>
                         <button className="btn btn-secondary" onClick={() => changeFilter('all')} style={{ fontSize: '0.85rem' }}>
@@ -260,7 +260,7 @@ export default function CompaniesPage() {
                         </button>
                     </div>
                 ) : (
-                    <div style={{ background: 'var(--surface)', borderRadius: '12px', overflowX: 'auto', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+                    <div style={{ background: 'var(--surface)', borderRadius: '12px', overflowX: 'auto', boxShadow: '0 1px 3px var(--shadow-weak)' }}>
                         <table style={{ width: '100%', borderCollapse: 'collapse', direction: locale === 'ar' ? 'rtl' : 'ltr', minWidth: '800px' }}>
                             <thead style={{ background: 'var(--surface-subtle)', borderBottom: '1px solid var(--border)' }}>
                                 <tr>
@@ -426,7 +426,7 @@ export default function CompaniesPage() {
                     hideFooter={true}
                 >
                     <div style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>
-                        {error && <div style={{ color: 'red', marginBottom: '1rem', fontSize: '0.9rem' }}>{error}</div>}
+                        {error && <div style={{ color: 'var(--danger-fg-strong)', marginBottom: '1rem', fontSize: '0.9rem' }}>{error}</div>}
 
                         <form onSubmit={handleSubmit}>
                             <div style={{ marginBottom: '1.5rem' }}>
@@ -518,7 +518,7 @@ export default function CompaniesPage() {
                             <span style={{ fontWeight: 'bold', color: 'var(--danger-solid-hover)' }}>{t('delete_company_critical_warning')}</span>
                         </p>
 
-                        {deleteError && <div style={{ color: 'red', marginBottom: '1rem', fontSize: '0.9rem' }}>{deleteError}</div>}
+                        {deleteError && <div style={{ color: 'var(--danger-fg-strong)', marginBottom: '1rem', fontSize: '0.9rem' }}>{deleteError}</div>}
 
                         <form onSubmit={handleDelete}>
                             <div style={{ marginBottom: '1.5rem' }}>

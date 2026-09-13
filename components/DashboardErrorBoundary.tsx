@@ -49,7 +49,7 @@ export default class DashboardErrorBoundary extends Component<Props, State> {
                     borderRadius: '1.5rem',
                     border: '1px solid var(--veil-40)',
                     margin: '2rem',
-                    boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)'
+                    boxShadow: '0 20px 25px -5px var(--shadow-weak)'
                 }}>
                     <div style={{ fontSize: '3rem', marginBottom: '1.5rem' }}>⚠️</div>
                     <h2 style={{ color: 'var(--text-main)', marginBottom: '1rem', fontWeight: '800' }}>Something went wrong</h2>
