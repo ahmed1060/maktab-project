@@ -45,19 +45,15 @@ declare module "next-auth" {
             // session (that would defeat the point), it queries fresh in
             // authorize() before a session even exists.
             mfaEnabled?: boolean
-            // E2: this company's names and emoji for the nine company-facing
+            // This company's names and emoji for the nine company-facing
             // modules, keyed by lib/modules.ts's module keys. Typed loosely
             // because they arrive as Json from the database and travel through
             // the token's JSON round trip; parseModuleOverrides/parseModuleIcons
             // narrow them at every read. Refreshed on the same 60s recheck as
-            // vendorsLabel is, so a rename takes effect without a re-login.
+            // maintenanceMode, so a rename takes effect without a re-login.
+            // Null for a SuperAdmin session, who has no one company.
             moduleLabels?: Record<string, string> | null
             moduleIcons?: Record<string, string> | null
-            // Vendors feature: this company's custom label for the Vendors
-            // tab (null = default translated "Vendors"). Refreshed on the
-            // same 60s recheck as maintenanceMode, not just seeded at sign-in
-            // — see lib/auth.ts. Undefined/null for a SuperAdmin session.
-            vendorsLabel?: string | null
             // Which bundles this company holds, resolved from its package.
             // Serialized (bundles as an array) because a Set does not survive
             // the JSON round trip a session token makes. Absent on a token
@@ -93,7 +89,6 @@ declare module "next-auth" {
         isProtected?: boolean
         emailVerified?: boolean
         mfaEnabled?: boolean
-        vendorsLabel?: string | null
         moduleLabels?: Record<string, string> | null
         moduleIcons?: Record<string, string> | null
         featureAccess?: { unrestricted: boolean; bundles: ('COMPANY_MANAGEMENT' | 'HR')[] } | null
@@ -123,7 +118,6 @@ declare module "next-auth/jwt" {
         isProtected?: boolean
         emailVerified?: boolean
         mfaEnabled?: boolean
-        vendorsLabel?: string | null
         moduleLabels?: Record<string, string> | null
         moduleIcons?: Record<string, string> | null
         featureAccess?: { unrestricted: boolean; bundles: ('COMPANY_MANAGEMENT' | 'HR')[] } | null

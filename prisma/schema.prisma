@@ -129,19 +129,15 @@ model Company {
   // company policy only, not per-task, so one company can't quietly
   // change what another company's tasks do.
   autoVerifyLocation   Boolean               @default(true)
-  // Vendors feature: null shows the default translated "Vendors" label.
-  // Only a Super Admin can set this (Company Settings page) — the vendor
-  // list itself (add/edit/delete) is managed by that company's own Admin,
-  // same split as everywhere else this app separates "who owns naming
-  // policy" from "who owns the day-to-day data".
-  // Superseded by moduleLabels.vendors. Kept and still written during the
-  // migrate step, then dropped in the contract step — this field is seeded onto
-  // the session JWT, so renaming it in one deploy would make the label vanish
-  // for everyone holding a live token until it refreshed.
-  vendorsLabel         String?
   // Per-company module names and icons, keyed by the module keys in
   // lib/modules.ts. Null, or a missing key, falls through to the built-in
   // default, so every existing company is untouched.
+  //
+  // These replaced a single `vendorsLabel` column, which is why Vendors is the
+  // one module with customers already relying on a rename. Only a Super Admin
+  // sets these (Company Settings) — the lists themselves are managed by that
+  // company's own Admin, the same split this app uses everywhere between "who
+  // owns naming policy" and "who owns the day-to-day data".
   //
   // Json rather than a column per module — deliberately the opposite call to
   // Package's feature switches. There the set is small, closed and load-bearing

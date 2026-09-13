@@ -45,7 +45,7 @@ export default function NewTaskPage() {
     const { selectedCompanyId } = useCompany()
     const userRole = (session?.user as any)?.role
     const modules = useModules()
-    const vendorsLabelText = modules.label('vendors')
+    const vendorsName = modules.label('vendors')
     // Same role check as the vendors-fetch effect below — a role that was
     // never going to see vendors either way (e.g. Employee, if this page
     // is ever reached with that role) gets the plain location field only,
@@ -590,11 +590,11 @@ export default function NewTaskPage() {
                                     opacity: vendors.length === 0 ? 0.5 : 1,
                                     cursor: vendors.length === 0 ? 'not-allowed' : 'pointer'
                                 }}
-                                title={vendors.length === 0 ? (locale === 'ar' ? `لا يوجد ${vendorsLabelText} بعد` : `No ${vendorsLabelText} yet`) : ''}
+                                title={vendors.length === 0 ? (locale === 'ar' ? `لا يوجد ${vendorsName} بعد` : `No ${vendorsName} yet`) : ''}
                             >
                                 {/* Composed directly from the custom label, not a
                                     translation key — see vendors/page.tsx for why. */}
-                                {locale === 'ar' ? `اختر ${vendorsLabelText}` : `Select a ${vendorsLabelText}`}
+                                {locale === 'ar' ? `اختر ${vendorsName}` : `Select a ${vendorsName}`}
                             </button>
                             {/* Always shown, not hidden, when there are zero vendors
                                 — the toggle used to disappear entirely in that case
@@ -607,7 +607,7 @@ export default function NewTaskPage() {
                                     rel="noopener noreferrer"
                                     style={{ fontSize: '0.75rem', color: 'var(--info-solid)', textDecoration: 'none' }}
                                 >
-                                    {locale === 'ar' ? `+ إضافة ${vendorsLabelText}` : `+ Add a ${vendorsLabelText}`}
+                                    {locale === 'ar' ? `+ إضافة ${vendorsName}` : `+ Add a ${vendorsName}`}
                                 </a>
                             )}
                         </div>
@@ -616,7 +616,7 @@ export default function NewTaskPage() {
                     {useVendor ? (
                         <div>
                             <label style={{ display: 'block', marginBottom: '0.5rem' }}>
-                                {vendorsLabelText}
+                                {vendorsName}
                             </label>
                             <select
                                 value={vendorId}
@@ -758,7 +758,7 @@ export default function NewTaskPage() {
                 setBulkTasks={setBulkTasks}
                 users={users}
                 vendors={vendors}
-                vendorsLabel={vendorsLabelText}
+                vendorsName={vendorsName}
                 revalidateRow={revalidateRow}
                 isSubmitting={isSubmitting}
                 setIsSubmitting={setIsSubmitting}

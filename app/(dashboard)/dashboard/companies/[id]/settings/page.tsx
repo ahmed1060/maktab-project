@@ -13,9 +13,6 @@ type Company = {
     id: string
     name: string
     autoVerifyLocation: boolean
-    // Still selected by the API during the migrate step, but no longer read
-    // here — moduleLabels.vendors is what this screen edits now.
-    vendorsLabel: string | null
     moduleLabels: unknown
     moduleIcons: unknown
 }
@@ -163,7 +160,7 @@ export default function CompanySettingsPage() {
                             moduleLabels={company.moduleLabels}
                             moduleIcons={company.moduleIcons}
                             onSaved={(labels: ModuleOverrides | null, icons: ModuleOverrides | null) =>
-                                setCompany({ ...company, moduleLabels: labels, moduleIcons: icons, vendorsLabel: labels?.vendors ?? null })
+                                setCompany({ ...company, moduleLabels: labels, moduleIcons: icons })
                             }
                         />
                     )}

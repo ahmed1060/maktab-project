@@ -290,7 +290,6 @@ export const authOptions: NextAuthOptions = {
                         image: validatedUser.avatar || null, // Map to standard NextAuth field
                         companyId: validatedUser.companyId,
                         companyName: validatedUser.company?.name || null,
-                        vendorsLabel: validatedUser.company?.vendorsLabel || null,
                         moduleLabels: parseModuleOverrides(validatedUser.company?.moduleLabels),
                         moduleIcons: parseModuleIcons(validatedUser.company?.moduleIcons),
                         featureAccess: serializeAccess(resolveBundles(validatedUser.company?.package)),
@@ -344,7 +343,6 @@ export const authOptions: NextAuthOptions = {
                 session.user.companyBanned = !!token.companyBanned
                 session.user.maintenanceMode = !!token.maintenanceMode
                 session.user.maintenanceMessage = token.maintenanceMessage as string | null | undefined
-                session.user.vendorsLabel = token.vendorsLabel as string | null | undefined
                 session.user.moduleLabels = token.moduleLabels as Record<string, string> | null | undefined
                 session.user.moduleIcons = token.moduleIcons as Record<string, string> | null | undefined
                 session.user.featureAccess = token.featureAccess as any
@@ -389,12 +387,10 @@ export const authOptions: NextAuthOptions = {
                 const signInSettings = await prisma.systemSettings.findUnique({ where: { id: 'default' }, select: { maintenanceMode: true, maintenanceMessage: true } })
                 token.maintenanceMode = signInSettings?.maintenanceMode || false
                 token.maintenanceMessage = signInSettings?.maintenanceMessage || null
-                // Seeded here so it's populated immediately rather than only
-                // after the first 60s-throttled refresh below; undefined for
-                // a SuperAdmin sign-in (SuperAdmin has no fixed "own company"
-                // this represents — the Vendors page itself resolves the
-                // label for whichever company they've switched to).
-                token.vendorsLabel = (user as any).vendorsLabel || null
+                // Seeded here so they're populated immediately rather than
+                // only after the first 60s-throttled refresh below; null for a
+                // SuperAdmin sign-in, who has no one company whose names these
+                // would be — they see the built-in defaults.
                 token.moduleLabels = (user as any).moduleLabels || null
                 token.moduleIcons = (user as any).moduleIcons || null
                 token.featureAccess = (user as any).featureAccess || null
@@ -467,14 +463,15 @@ export const authOptions: NextAuthOptions = {
                                         sessionVersion: true, status: true, emailVerifiedAt: true, mfaEnabled: true,
                                         company: {
                                             select: {
-                                                isBanned: true, vendorsLabel: true,
-                                                // Same reasoning again: the point of letting a
-                                                // Super Admin rename a module is that the rename
-                                                // shows up, not that it waits for a re-login.
+                                                isBanned: true,
+                                                // Refreshed rather than only seeded at sign-in:
+                                                // the point of letting a Super Admin rename a
+                                                // module is that the rename shows up, not that it
+                                                // waits for whenever that company next logs in.
                                                 moduleLabels: true, moduleIcons: true,
-                                                // Same reasoning as vendorsLabel: assigning or
-                                                // changing a package has to take effect promptly,
-                                                // not only after the customer next signs in.
+                                                // Same reasoning: assigning or changing a package
+                                                // has to take effect promptly, not only after the
+                                                // customer next signs in.
                                                 package: { select: { hasCompanyManagement: true, hasHR: true } },
                                                 // The furthest-reaching confirmed period,
                                                 // for the subscription state. NULLs sort
@@ -507,7 +504,6 @@ export const authOptions: NextAuthOptions = {
                             // only seeded at sign-in like companyName is — the whole
                             // point of letting a Super Admin rename this tab is that it
                             // takes effect promptly, not just after the next login.
-                            token.vendorsLabel = u?.company?.vendorsLabel || null
                             token.moduleLabels = parseModuleOverrides(u?.company?.moduleLabels)
                             token.moduleIcons = parseModuleIcons(u?.company?.moduleIcons)
                             // Null package resolves to unrestricted — grandfathered.

@@ -268,46 +268,30 @@ export function sameOverrides(
 }
 
 /**
- * What a company update should write for the label map and for the old
- * `vendorsLabel` column, given what the caller sent.
+ * What a company update should store for one of the two override maps.
  *
- * Extracted from CompanyService.update because this is the one piece of the
- * migrate step whose failure is silent: if the two ever disagree, a rename
- * shows up in one place and not another, and nothing errors. `undefined` for
- * either field means "this update does not touch it".
+ * Three cases, and the whole reason this is a named function is that two of
+ * them look alike and mean opposite things:
  *
- * The rules, in order:
- *   - `moduleLabels` wins if sent, being the newer and more complete of the two,
- *     with an explicit `null` meaning "clear every override" rather than
- *     "leave them alone" — that is what `undefined` means;
- *   - a caller that sends only `vendorsLabel` has its one value folded into the
- *     stored map — the only merge here, and it exists because such a caller
- *     cannot know about the other eight modules;
- *   - either way the old column is set to whatever the map ends up saying about
- *     vendors, so the two cannot drift. It stops being written at the contract
- *     step, when it is dropped.
+ *   - `undefined` — this update is not about these overrides. Leave the column
+ *     as it is.
+ *   - `null` — clear every override. Reset.
+ *   - a map — replace what is stored with it, wholesale. The settings form
+ *     holds all nine modules and posts all nine, so a key absent from the
+ *     payload was cleared, not left alone.
+ *
+ * Labels and icons differ only in how they are narrowed, which is what `kind`
+ * selects: an icon that is not an emoji is dropped, a label is kept as typed.
+ * They were asymmetric until the contract step, because labels also had to keep
+ * the old `vendorsLabel` column in step with `moduleLabels.vendors`. That column
+ * is gone, and with it the only merge this ever did.
  */
-export function planOverrideWrite(input: {
-    existingLabels: unknown
-    moduleLabels?: Record<string, string> | null
-    vendorsLabel?: string | null
-}): { labels: ModuleOverrides | null | undefined; vendorsLabel: string | null | undefined } {
-    let labels: ModuleOverrides | null | undefined
-
-    if (input.moduleLabels !== undefined) {
-        labels = input.moduleLabels === null ? null : emptyToNull(parseModuleOverrides(input.moduleLabels))
-    } else if (input.vendorsLabel !== undefined) {
-        const merged = parseModuleOverrides(input.existingLabels)
-        // An empty string is "reset to the default", stored as the absence of
-        // an override rather than as a literal empty name.
-        const vendors = input.vendorsLabel?.trim()
-        if (vendors) merged.vendors = vendors
-        else delete merged.vendors
-        labels = emptyToNull(merged)
-    }
-
-    return {
-        labels,
-        vendorsLabel: labels !== undefined ? (labels?.vendors ?? null) : undefined,
-    }
+export function planOverrideWrite(
+    incoming: Record<string, string> | null | undefined,
+    kind: "labels" | "icons"
+): ModuleOverrides | null | undefined {
+    if (incoming === undefined) return undefined
+    if (incoming === null) return null
+    const parse = kind === "icons" ? parseModuleIcons : parseModuleOverrides
+    return emptyToNull(parse(incoming))
 }

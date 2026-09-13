@@ -61,7 +61,7 @@ export default function VendorsPage() {
     const [addFormCompanyId, setAddFormCompanyId] = useState('')
 
     const modules = useModules()
-    const vendorsLabel = modules.label('vendors')
+    const vendorsName = modules.label('vendors')
 
     useEffect(() => {
         const checkMobile = () => setIsMobile(window.innerWidth < 1024)
@@ -75,14 +75,14 @@ export default function VendorsPage() {
     }, [])
 
     useEffect(() => {
-        setTitle(vendorsLabel)
+        setTitle(vendorsName)
         setSubtitle(t('vendors_subtitle' as any))
         return () => {
             setTitle(null)
             setSubtitle(null)
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [setTitle, setSubtitle, vendorsLabel])
+    }, [setTitle, setSubtitle, vendorsName])
 
     // Super Admin manages vendors for whichever company they've picked via
     // the switcher — same pattern as Employees/Clients. No selection means
@@ -131,7 +131,7 @@ export default function VendorsPage() {
                 setAddFormCompanyId('')
                 setIsAddOpen(false)
                 mutateVendors()
-                showToast(locale === 'ar' ? `تمت إضافة ${vendorsLabel}` : `${vendorsLabel} added`, 'success')
+                showToast(locale === 'ar' ? `تمت إضافة ${vendorsName}` : `${vendorsName} added`, 'success')
             } else {
                 const err = await res.json().catch(() => ({}))
                 showToast(err.error || t('error_generic'), 'error')
@@ -159,7 +159,7 @@ export default function VendorsPage() {
                 setIsEditOpen(false)
                 setEditingId(null)
                 mutateVendors()
-                showToast(locale === 'ar' ? `تم تحديث ${vendorsLabel}` : `${vendorsLabel} updated`, 'success')
+                showToast(locale === 'ar' ? `تم تحديث ${vendorsName}` : `${vendorsName} updated`, 'success')
             } else {
                 const err = await res.json().catch(() => ({}))
                 showToast(err.error || t('error_generic'), 'error')
@@ -193,10 +193,10 @@ export default function VendorsPage() {
                             className="btn btn-primary"
                             style={{ height: '48px', display: 'flex', alignItems: 'center', borderRadius: '1.25rem' }}
                         >
-                            {/* Composed directly from vendorsLabel, not a translation
+                            {/* Composed directly from the module's name, not a translation
                                 key — "add_vendor" always says "Vendor" in the dictionary,
                                 which would silently ignore a company's custom tab name. */}
-                            {locale === 'ar' ? `إضافة ${vendorsLabel}` : `Add ${vendorsLabel}`}
+                            {locale === 'ar' ? `إضافة ${vendorsName}` : `Add ${vendorsName}`}
                         </button>
                     ) : undefined}
                 />
@@ -207,7 +207,7 @@ export default function VendorsPage() {
                     <div className="glass-card flex flex-col items-center justify-center py-16 text-center text-slate-500">
                         <span className="text-5xl mb-4">{modules.icon('vendors')}</span>
                         <h3 className="text-xl font-bold text-slate-800">
-                            {locale === 'ar' ? `لا يوجد ${vendorsLabel}` : `No ${vendorsLabel} found`}
+                            {locale === 'ar' ? `لا يوجد ${vendorsName}` : `No ${vendorsName} found`}
                         </h3>
                     </div>
                 ) : (
@@ -330,7 +330,7 @@ export default function VendorsPage() {
                     <div className="absolute inset-0" onClick={() => !isSubmitting && setIsAddOpen(false)} />
                     <div style={{ background: 'var(--surface)', padding: '2rem', borderRadius: '12px', width: '100%', maxWidth: '500px', maxHeight: '90vh', overflowY: 'auto', position: 'relative', zIndex: 10, direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
                         <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1.5rem', color: 'var(--text-main)' }}>
-                            {locale === 'ar' ? `إضافة ${vendorsLabel}` : `Add ${vendorsLabel}`}
+                            {locale === 'ar' ? `إضافة ${vendorsName}` : `Add ${vendorsName}`}
                         </h2>
                         <form onSubmit={handleCreate}>
                             {/* Only in the "all companies" view — with one company
@@ -383,7 +383,7 @@ export default function VendorsPage() {
                     <div className="absolute inset-0" onClick={() => !isEditing && setIsEditOpen(false)} />
                     <div style={{ background: 'var(--surface)', padding: '2rem', borderRadius: '12px', width: '100%', maxWidth: '500px', maxHeight: '90vh', overflowY: 'auto', position: 'relative', zIndex: 10, direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
                         <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1.5rem', color: 'var(--text-main)' }}>
-                            {locale === 'ar' ? `تعديل ${vendorsLabel}` : `Edit ${vendorsLabel}`}
+                            {locale === 'ar' ? `تعديل ${vendorsName}` : `Edit ${vendorsName}`}
                         </h2>
                         <form onSubmit={handleEdit}>
                             <VendorFormFields form={editForm} setForm={setEditForm} locale={locale} t={t} />
@@ -407,7 +407,7 @@ export default function VendorsPage() {
 
             <ConfirmModal
                 isOpen={deleteConfirm.isOpen}
-                title={locale === 'ar' ? `حذف ${vendorsLabel}` : `Delete ${vendorsLabel}`}
+                title={locale === 'ar' ? `حذف ${vendorsName}` : `Delete ${vendorsName}`}
                 message={`${t('delete_vendor_warning' as any) || 'Are you sure you want to delete'} ${deleteConfirm.vendor?.name}?`}
                 confirmText={t('delete')}
                 onConfirm={async () => {

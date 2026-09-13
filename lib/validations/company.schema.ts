@@ -24,11 +24,7 @@ export const updateCompanySchema = z.object({
     // Company Settings: whether task-location auto-verify runs at all for
     // this company's tasks. See the matching comment on the Company model.
     autoVerifyLocation: z.boolean().optional(),
-    // Vendors feature: custom label for the Vendors tab. Empty string is
-    // treated the same as omitting it (reset to the default) rather than
-    // stored literally — see the PUT handler.
-    vendorsLabel: z.string().max(50).optional().nullable(),
-    // E2: this company's names and emoji for its modules, sent as whole maps
+    // This company's names and emoji for its modules, sent as whole maps
     // rather than one key at a time — the settings form holds all nine and
     // saves them together, so a partial PATCH shape would only invite the two
     // to drift. An empty-string value means "clear this override"; the service

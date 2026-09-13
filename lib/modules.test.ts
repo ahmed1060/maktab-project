@@ -282,98 +282,98 @@ describe("mapping a tab title back to a module", () => {
     })
 })
 
-describe("deciding what a company update writes", () => {
-    it("writes nothing when the update is about something else", () => {
-        expect(planOverrideWrite({ existingLabels: { vendors: "Suppliers" } }))
-            .toEqual({ labels: undefined, vendorsLabel: undefined })
+describe("deciding what a company update stores", () => {
+    it("leaves the column alone when the update is about something else", () => {
+        expect(planOverrideWrite(undefined, "labels")).toBeUndefined()
+        expect(planOverrideWrite(undefined, "icons")).toBeUndefined()
+    })
+
+    it("distinguishes an explicit null from an absent field", () => {
+        // The distinction the whole function exists for. null is "clear every
+        // override"; undefined is "this update is not about them". Conflating
+        // the two would make either a rename survive a reset, or an unrelated
+        // save silently wipe one.
+        expect(planOverrideWrite(null, "labels")).toBeNull()
+        expect(planOverrideWrite(null, "icons")).toBeNull()
     })
 
     it("replaces the whole map when the settings form saves", () => {
         // The form holds all nine and posts all nine, so a key it left out was
         // cleared, not left alone.
-        expect(planOverrideWrite({
-            existingLabels: { vendors: "Suppliers", clients: "Patients" },
-            moduleLabels: { clients: "Patients" },
-        })).toEqual({ labels: { clients: "Patients" }, vendorsLabel: null })
-    })
-
-    it("keeps the legacy column in step with the map, in both directions", () => {
-        // The whole point of the migrate step: whatever moduleLabels.vendors
-        // says, the old column says the same, so nothing reading either one
-        // sees a rename that the other missed.
-        expect(planOverrideWrite({ existingLabels: null, moduleLabels: { vendors: "Suppliers" } }))
-            .toEqual({ labels: { vendors: "Suppliers" }, vendorsLabel: "Suppliers" })
-
-        expect(planOverrideWrite({ existingLabels: null, vendorsLabel: "Suppliers" }))
-            .toEqual({ labels: { vendors: "Suppliers" }, vendorsLabel: "Suppliers" })
-    })
-
-    it("folds a legacy vendorsLabel in without disturbing the other eight", () => {
-        // The only merge in here. A caller that predates this feature cannot
-        // know about the other modules, so replacing the map wholesale from its
-        // one field would wipe renames it never heard of.
-        expect(planOverrideWrite({
-            existingLabels: { clients: "Patients", costs: "Spend" },
-            vendorsLabel: "Suppliers",
-        })).toEqual({
-            labels: { clients: "Patients", costs: "Spend", vendors: "Suppliers" },
-            vendorsLabel: "Suppliers",
-        })
-    })
-
-    it("treats a blank legacy vendorsLabel as clearing that one override", () => {
-        expect(planOverrideWrite({
-            existingLabels: { clients: "Patients", vendors: "Suppliers" },
-            vendorsLabel: "",
-        })).toEqual({ labels: { clients: "Patients" }, vendorsLabel: null })
+        expect(planOverrideWrite({ clients: "Patients" }, "labels"))
+            .toEqual({ clients: "Patients" })
     })
 
     it("stores nothing rather than an empty map when the last override goes", () => {
-        expect(planOverrideWrite({ existingLabels: { vendors: "Suppliers" }, vendorsLabel: "" }))
-            .toEqual({ labels: null, vendorsLabel: null })
-        expect(planOverrideWrite({ existingLabels: { vendors: "Suppliers" }, moduleLabels: {} }))
-            .toEqual({ labels: null, vendorsLabel: null })
+        // So a company that cleared every rename reads back identical to one
+        // that never renamed anything.
+        expect(planOverrideWrite({}, "labels")).toBeNull()
+        expect(planOverrideWrite({ vendors: "" }, "labels")).toBeNull()
+        expect(planOverrideWrite({ vendors: "not an emoji" }, "icons")).toBeNull()
     })
 
-    it("lets moduleLabels win when a caller sends both", () => {
-        expect(planOverrideWrite({
-            existingLabels: null,
-            moduleLabels: { vendors: "Suppliers" },
-            vendorsLabel: "Contractors",
-        })).toEqual({ labels: { vendors: "Suppliers" }, vendorsLabel: "Suppliers" })
+    it("narrows labels and icons differently, which is what the kind selects", () => {
+        // The only difference left between the two now that vendorsLabel is
+        // gone: a label is kept as typed, an icon that is not an emoji is not
+        // an icon.
+        const incoming = { vendors: "Suppliers", clients: "🏥" }
+        expect(planOverrideWrite(incoming, "labels")).toEqual({ vendors: "Suppliers", clients: "🏥" })
+        expect(planOverrideWrite(incoming, "icons")).toEqual({ clients: "🏥" })
+    })
+
+    it("drops unknown module keys whichever kind it is asked for", () => {
+        expect(planOverrideWrite({ superAdmins: "Owners", costs: "Spend" }, "labels"))
+            .toEqual({ costs: "Spend" })
+        expect(planOverrideWrite({ superAdmins: "🛡️", costs: "🏦" }, "icons"))
+            .toEqual({ costs: "🏦" })
     })
 })
 
-describe("the migrate step's reach", () => {
+describe("the contract step", () => {
+    // Every file that ever touched the dropped column, plus the resolver layer
+    // that replaced it. Listed rather than globbed so a new file cannot quietly
+    // reintroduce the name without somebody adding it here deliberately.
     const SOURCES = [
+        "prisma/schema.prisma",
+        "lib/auth.ts",
+        "lib/modules.ts",
+        "lib/services/company.service.ts",
+        "lib/validations/company.schema.ts",
+        "types/next-auth.d.ts",
+        "app/api/companies/route.ts",
         "components/DashboardShell.tsx",
         "components/PageTitle.tsx",
         "components/DashboardHeader.tsx",
+        "components/BulkTaskReviewModal.tsx",
         "app/(dashboard)/dashboard/vendors/page.tsx",
         "app/(dashboard)/dashboard/tasks/new/page.tsx",
         "app/(dashboard)/dashboard/companies/[id]/settings/page.tsx",
     ]
 
-    it("leaves no screen reading the legacy session field", () => {
-        // vendorsLabel still exists on the row and on the token until the
-        // contract step, so nothing fails if a screen keeps reading it — it
-        // just stops being renameable alongside the other eight. That is the
-        // kind of miss this catches.
+    it("leaves the dropped column named nowhere but in prose", () => {
+        // E2's version of this guarded the session field only, because the
+        // column still existed and still had to be written. Now that it is
+        // gone, any surviving `vendorsLabel` identifier is either a read of a
+        // column that no longer exists — which Postgres answers with an error,
+        // not a default — or a Prisma select that will throw. Comments are
+        // allowed: the column's history is worth keeping, its name is not.
         for (const path of SOURCES) {
-            const source = readFileSync(path, "utf8")
-            expect(source, `${path} still reads vendorsLabel off the session`)
-                .not.toMatch(/user\s*(as any)?\)?\??\.vendorsLabel/)
+            const code = readFileSync(path, "utf8")
+                .split("\n")
+                .filter(line => !/^\s*(\/\/|\*|\/\*)/.test(line))
+                .join("\n")
+            expect(code, `${path} still names vendorsLabel outside a comment`)
+                .not.toMatch(/vendorsLabel/)
         }
     })
-})
 
-describe("clearing every override at once", () => {
-    it("distinguishes an explicit null from an absent field", () => {
-        // null is "clear them all"; undefined is "this update is not about
-        // labels". Conflating the two would make a rename survive a reset.
-        expect(planOverrideWrite({ existingLabels: { vendors: "Suppliers" }, moduleLabels: null }))
-            .toEqual({ labels: null, vendorsLabel: null })
-        expect(planOverrideWrite({ existingLabels: { vendors: "Suppliers" } }))
-            .toEqual({ labels: undefined, vendorsLabel: undefined })
+    it("keeps the vendors module itself, which is the point", () => {
+        // Dropping the column must not drop the feature. Vendors is still a
+        // module, still renameable, and still reachable at its own route — via
+        // the maps now rather than a column of its own.
+        expect(isModuleKey("vendors")).toBe(true)
+        expect(MODULES.vendors.href).toBe("/dashboard/vendors")
+        expect(modulesFrom({ moduleLabels: { vendors: "Suppliers" } }, t).label("vendors"))
+            .toBe("Suppliers")
     })
 })

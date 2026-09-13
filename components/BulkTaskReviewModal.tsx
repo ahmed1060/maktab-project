@@ -20,14 +20,14 @@ interface BulkTaskReviewModalProps {
     setBulkTasks: (tasks: any[]) => void
     users: any[]
     vendors: any[]
-    vendorsLabel: string
+    vendorsName: string
     revalidateRow: (task: any) => any
     isSubmitting: boolean
     setIsSubmitting: (v: boolean) => void
 }
 
 export default function BulkTaskReviewModal({
-    isOpen, onClose, bulkTasks, setBulkTasks, users, vendors, vendorsLabel, revalidateRow, isSubmitting, setIsSubmitting
+    isOpen, onClose, bulkTasks, setBulkTasks, users, vendors, vendorsName, revalidateRow, isSubmitting, setIsSubmitting
 }: BulkTaskReviewModalProps) {
     const { t, locale } = useLanguage()
     const { showToast } = useToast()
@@ -548,7 +548,7 @@ export default function BulkTaskReviewModal({
                                                                 className={mode === 'vendor' ? 'btn btn-primary' : 'btn'}
                                                                 style={{ padding: '0.2rem 0.5rem', fontSize: '0.7rem' }}
                                                             >
-                                                                {vendorsLabel}
+                                                                {vendorsName}
                                                             </button>
                                                         </div>
                                                     )

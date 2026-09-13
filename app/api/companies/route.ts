@@ -14,7 +14,7 @@ export const GET = withStandardHandler(async (req, session) => {
         const company = await prisma.company.findUnique({
             where: { id },
             select: {
-                id: true, name: true, isBanned: true, autoVerifyLocation: true, vendorsLabel: true,
+                id: true, name: true, isBanned: true, autoVerifyLocation: true,
                 moduleLabels: true, moduleIcons: true,
                 packageId: true, trialPreset: true, trialExtensionDays: true, createdAt: true,
                 package: { select: { id: true, name: true, hasCompanyManagement: true, hasHR: true } }
