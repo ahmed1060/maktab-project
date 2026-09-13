@@ -1,4 +1,4 @@
-# Maktab Project
+# Nizmo
 
 ## Prerequisites
 Before you start, make sure you have installed:

@@ -26,10 +26,10 @@ const transporter = (process.env.GMAIL_USER && process.env.GMAIL_APP_PASSWORD)
 export type VerificationEmailPurpose = 'EMAIL_VERIFY' | 'EMAIL_CHANGE' | 'MFA_RECOVERY' | 'PASSWORD_RESET'
 
 const SUBJECTS: Record<VerificationEmailPurpose, string> = {
-    EMAIL_VERIFY: 'Verify your email — Maktab',
-    EMAIL_CHANGE: 'Confirm your new email — Maktab',
-    MFA_RECOVERY: 'Your Maktab sign-in code',
-    PASSWORD_RESET: 'Reset your Maktab password',
+    EMAIL_VERIFY: 'Verify your email — Nizmo',
+    EMAIL_CHANGE: 'Confirm your new email — Nizmo',
+    MFA_RECOVERY: 'Your Nizmo sign-in code',
+    PASSWORD_RESET: 'Reset your Nizmo password',
 }
 
 const INTROS: Record<VerificationEmailPurpose, string> = {
@@ -60,7 +60,7 @@ export async function sendVerificationCodeEmail(to: string, code: string, purpos
     `
 
     await transporter.sendMail({
-        from: `Maktab <${process.env.GMAIL_USER}>`,
+        from: `Nizmo <${process.env.GMAIL_USER}>`,
         to,
         subject: SUBJECTS[purpose],
         text,

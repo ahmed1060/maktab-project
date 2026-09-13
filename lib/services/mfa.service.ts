@@ -4,7 +4,7 @@ import bcrypt from 'bcryptjs'
 import { prisma } from '@/lib/prisma'
 import { encryptMfaSecret, decryptMfaSecret } from '@/lib/mfa-crypto'
 
-const ISSUER = 'Maktab'
+const ISSUER = 'Nizmo'
 // otplib's default is 0 — only the exact current 30s window. A little
 // slack each direction is standard practice (phone/server clocks drift a
 // few seconds without anyone noticing) without meaningfully widening the
