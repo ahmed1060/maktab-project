@@ -214,7 +214,7 @@ export class CompanyService {
                 endDate: { gt: now, lte: fourteenDaysFromNow },
                 notifiedExpiryReminder: false
             },
-            include: { company: { select: { name: true } } }
+            include: { company: { select: { id: true, name: true } } }
         })
 
         if (expiringPayments.length === 0) {
@@ -255,9 +255,16 @@ export class CompanyService {
             const timeLeft = Math.ceil((payment.endDate!.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
             const message = `Subscription for ${payment.company.name} will expire in ${timeLeft} days (${payment.endDate?.toLocaleDateString()}).`
 
+            // relatedId carries a dashboard path rather than the payment id. The
+            // bell has to reach that company's billing page, which needs the
+            // companyId, and a notification row has only one related-id column.
+            // This is the same convention the NOTE type already uses, and
+            // NotificationBell dispatches on the leading slash.
+            const target = `/dashboard/companies/${payment.company.id}/payments`
+
             await prisma.$transaction(async (tx) => {
-                await NotificationService.notifySuperAdmins(superAdminIds, 'SUBSCRIPTION_EXPIRY', message, payment.id, tx)
-                await NotificationService.notifyMany(userAdminIds, 'SUBSCRIPTION_EXPIRY', message, payment.id, tx)
+                await NotificationService.notifySuperAdmins(superAdminIds, 'SUBSCRIPTION_EXPIRY', message, target, tx)
+                await NotificationService.notifyMany(userAdminIds, 'SUBSCRIPTION_EXPIRY', message, target, tx)
                 await tx.companyPayment.update({
                     where: { id: payment.id },
                     data: { notifiedExpiryReminder: true }

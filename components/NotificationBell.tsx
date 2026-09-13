@@ -90,7 +90,14 @@ export default function NotificationBell({ initialUnreadCount = 0 }: { initialUn
             // Normalize type - handle subtypes like TASK_ASSIGNED, TASK_COMPLETED, etc.
             const type = notification.type.toUpperCase()
 
-            if (type.includes('TASK')) {
+            if (type.includes('SUBSCRIPTION')) {
+                // The first notification type a Super Admin can receive. Its
+                // relatedId is a dashboard path (see checkSubscriptions), not an
+                // entity id — the same convention NOTE uses below.
+                if (notification.relatedId.startsWith('/')) {
+                    router.push(notification.relatedId)
+                }
+            } else if (type.includes('TASK')) {
                 router.push(`/dashboard/tasks?highlight=${notification.relatedId}`)
             } else if (type.includes('OBLIGATION')) {
                 router.push(`/dashboard/obligations?highlight=${notification.relatedId}`)
