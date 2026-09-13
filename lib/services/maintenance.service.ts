@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma"
 import { Prisma } from "@prisma/client"
 import { supabase } from "@/lib/storage"
+import { decideCleanup } from "@/lib/orphan-guard"
 
 export class MaintenanceService {
     /**
@@ -45,24 +46,46 @@ export class MaintenanceService {
     }
 
     /**
-     * List all assets in the storage bucket.
+     * Every object in the bucket, by full path.
+     *
+     * Supabase's list() is not recursive: it returns one level, with folders
+     * appearing as entries that have no id. Called on '' it therefore returned
+     * "avatars", "templates", "<companyId>" — prefixes, not objects — while
+     * every caller was comparing them against full paths like
+     * "avatars/1712-ab.png". Nothing could ever match, so every prefix looked
+     * orphaned and every real file looked referenced. Verified against the live
+     * bucket: 106 objects, none of them at the root.
      */
-    static async listAllAssets() {
-        let allFiles: { name: string }[] = []
-        let offset = 0
+    static async listAllAssets(prefix = ''): Promise<{ name: string }[]> {
         const LIMIT = 1000
+        let entries: any[] = []
+        let offset = 0
 
         while (true) {
-            const { data: batch, error } = await supabase.storage.from('app-assets').list('', { limit: LIMIT, offset })
+            const { data: batch, error } = await supabase.storage.from('app-assets').list(prefix, { limit: LIMIT, offset })
             if (error) throw error
             if (!batch || batch.length === 0) break
 
-            allFiles = allFiles.concat(batch)
+            entries = entries.concat(batch)
             if (batch.length < LIMIT) break
             offset += LIMIT
         }
-        return allFiles
+
+        const files: { name: string }[] = []
+        for (const entry of entries) {
+            const path = prefix ? `${prefix}/${entry.name}` : entry.name
+            // A folder is an entry with no id. Recursing on it is what turns
+            // this into a list of objects rather than a list of directories.
+            if (entry.id === null || entry.id === undefined) {
+                files.push(...await this.listAllAssets(path))
+            } else {
+                files.push({ name: path })
+            }
+        }
+        return files
     }
+
+
 
     /**
      * Cleanup orphaned assets from Supabase storage.
@@ -147,6 +170,28 @@ export class MaintenanceService {
             if (orphaned.length === 0) {
                 console.log("[Maintenance] No orphaned assets found.")
                 return { deleted: 0, total: fileNames.length }
+            }
+
+            // Refuse rather than delete when the result is implausible. A
+            // genuine orphan is a leftover from a failed write or a deleted
+            // row — a handful. A large fraction of the whole bucket means the
+            // reference set above is missing a table, not that most of the
+            // bucket is garbage.
+            //
+            // This is not hypothetical. As of writing, the queries above cover
+            // User.avatar and Task.attachments and Company.logoUrl, and the
+            // bucket also holds note attachments, obligation attachments and
+            // the Excel templates — none of which are gathered. Against the
+            // live bucket that is 101 of 106 objects. This refusal is the only
+            // reason fixing listAllAssets above is not a data-loss bug.
+            const decision = decideCleanup(orphaned.length, fileNames.length)
+            if (!decision.proceed && decision.reason === 'implausible') {
+                console.error(`[Maintenance] Refusing to delete ${orphaned.length} of ${fileNames.length} objects (${Math.round(decision.share * 100)}%) — the reference set is probably incomplete.`)
+                const { AuditLogService } = await import("./audit-log.service")
+                await AuditLogService.log('SYSTEM_CLEANUP', 'SYSTEM', 'MAINTENANCE', {
+                    details: { refused: true, wouldHaveDeleted: orphaned.length, total: fileNames.length, reason: 'orphan share above threshold' }
+                })
+                return { deleted: 0, total: fileNames.length, refused: true, wouldHaveDeleted: orphaned.length }
             }
 
             // 4. Delete orphaned files

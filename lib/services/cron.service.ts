@@ -1,6 +1,4 @@
 import { prisma } from "@/lib/prisma"
-import { ObligationService } from "./obligation.service"
-import { MaintenanceService } from "./maintenance.service"
 
 export class CronService {
     static async resetDayOffCredits() {
@@ -82,36 +80,17 @@ export class CronService {
         return { success: true, month, year, created: createdCount }
     }
 
-    /**
-     * Entry point for daily automated tasks.
-     */
-    static async dailyCheck() {
-        console.log("[Cron] Running daily checks...")
-        await this.resetDayOffCredits()
-        await this.initializeSalaries()
-        await MaintenanceService.cleanupOrphanedAssets()
-        await MaintenanceService.pruneOldLogs(90)
-        await MaintenanceService.pruneOldNotifications(30)
-        await ObligationService.processRecurrentObligations()
-
-        // Subscription lifecycle: grace beginning, grace ending, lockout, and a
-        // trial about to run out. Runs here rather than in its own cron so it
-        // shares the daily pass, and after the others so a company entering
-        // lockout has already had its data written for the day — the plan is
-        // explicit that background jobs keep running for locked companies,
-        // since stopping them creates permanent gaps nobody can backfill.
-        const { CompanyService } = await import("./company.service")
-        await CompanyService.checkSubscriptionLifecycle()
-
-        // --- NEW: Automated Note Expiry Checks ---
-        const { NoteService } = await import("./note.service")
-        await NoteService.checkExpiries()
-
-        // Audit Log (Centralized)
-        const { AuditLogService } = await import("./audit-log.service")
-        await AuditLogService.log('SYSTEM_DAILY_CHECK', 'SYSTEM', 'CRON', {
-            details: { timestamp: new Date().toISOString() }
-        })
-        console.log("[Cron] Daily checks completed.")
-    }
+    // CronService.dailyCheck() was removed here.
+    //
+    // Nothing ever called it. Over time every job inside it grew its own route
+    // and its own schedule in vercel.json — reset-day-off, salary-init,
+    // check-expiry, prune — and two never did: the subscription lifecycle, and
+    // recurring obligations. Both had therefore never run in production. They
+    // are now on /api/companies/check-subscriptions and /api/cron/obligations
+    // respectively.
+    //
+    // Deleted rather than wired up, because reviving it would have re-run five
+    // jobs that already have correct schedules, and because it also called
+    // MaintenanceService.cleanupOrphanedAssets, which must not run on a
+    // schedule — see the refusal inside that method.
 }
