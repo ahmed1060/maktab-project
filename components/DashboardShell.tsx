@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import PageTitle from './PageTitle'
+import { DEFAULT_POWERED_BY_NAME } from '@/lib/services/system-settings.service'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import DashboardHeader from './DashboardHeader'
@@ -10,9 +11,16 @@ import { useLanguage } from '@/context/LanguageContext'
 interface DashboardShellProps {
     children: React.ReactNode
     user: any // Typed from session
+    // Resolved server-side in the dashboard layout from SystemSettings.
+    // Defaults true so a caller that does not pass it still shows the mark —
+    // attribution should never disappear because a prop was forgotten.
+    showPoweredBy?: boolean
+    // The name shown in that mark. Falls back to the default rather than to an
+    // empty string: "Powered by" with nothing after it reads as a bug.
+    poweredByName?: string
 }
 
-export default function DashboardShell({ children, user }: DashboardShellProps) {
+export default function DashboardShell({ children, user, showPoweredBy = true, poweredByName }: DashboardShellProps) {
     const [isSidebarOpen, setIsSidebarOpen] = useState(false)
     const [isMobile, setIsMobile] = useState(false)
     const [isCollapsed, setIsCollapsed] = useState(false) // New State for Desktop Collapse
@@ -435,7 +443,11 @@ export default function DashboardShell({ children, user }: DashboardShellProps) 
                 <div style={{ padding: '2rem', maxWidth: '1600px', width: '100%', margin: '0 auto', boxSizing: 'border-box' }}>
                     {children}
                 </div>
-                {/* Floating Attribution - Minimalist CYSHIELD style */}
+                {/* Floating Attribution - Minimalist CYSHIELD style.
+                    Hidden entirely when switched off in System Settings, not
+                    merely made transparent: an invisible element still takes a
+                    corner of the screen and still reads out to a screen reader. */}
+                {showPoweredBy && (
                 <div style={{
                     position: 'fixed',
                     bottom: '1rem',
@@ -471,9 +483,10 @@ export default function DashboardShell({ children, user }: DashboardShellProps) 
                         WebkitBackgroundClip: 'text',
                         WebkitTextFillColor: 'transparent',
                     }}>
-                        SHSD
+                        {poweredByName?.trim() || DEFAULT_POWERED_BY_NAME}
                     </span>
                 </div>
+                )}
 
                 <style jsx>{`
                     .floating-attribution:hover {

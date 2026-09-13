@@ -171,6 +171,16 @@ model SystemSettings {
   locationVerifyRadiusMeters Int      @default(70)
   maintenanceMode            Boolean  @default(false)
   maintenanceMessage         String?
+  // The "Powered by SHSD" mark in the corner of every dashboard page.
+  // Defaults on, so the signature keeps showing unless somebody deliberately
+  // turns it off — a default that silently removed attribution would be a
+  // strange thing for an upgrade to do.
+  showPoweredBy              Boolean  @default(true)
+  // The name in that mark. A column rather than a constant, so the attribution
+  // can be changed without a deploy — rebranding, or a reseller putting their
+  // own name on it. Defaults to SHSD, which is what it read before it moved
+  // out of the component.
+  poweredByName              String   @default("SHSD")
   updatedAt                  DateTime @updatedAt
 }
 

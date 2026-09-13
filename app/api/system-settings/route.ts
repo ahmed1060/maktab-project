@@ -8,6 +8,8 @@ const updateSystemSettingsSchema = z.object({
     locationVerifyRadiusMeters: z.number().int().min(1).max(10000).optional(),
     maintenanceMode: z.boolean().optional(),
     maintenanceMessage: z.string().max(500).nullable().optional(),
+    showPoweredBy: z.boolean().optional(),
+    poweredByName: z.string().max(40).optional(),
 }).refine(data => Object.keys(data).length > 0, { message: "No fields to update" })
 
 export const GET = withStandardHandler(async (req, session) => {
@@ -37,6 +39,12 @@ export const PUT = withStandardHandler(async (req, session, json) => {
     }
     if (before.maintenanceMessage !== updated.maintenanceMessage) {
         changes.maintenanceMessage = { old: before.maintenanceMessage, new: updated.maintenanceMessage }
+    }
+    if (before.showPoweredBy !== updated.showPoweredBy) {
+        changes.showPoweredBy = { old: before.showPoweredBy, new: updated.showPoweredBy }
+    }
+    if (before.poweredByName !== updated.poweredByName) {
+        changes.poweredByName = { old: before.poweredByName, new: updated.poweredByName }
     }
 
     if (Object.keys(changes).length > 0) {
