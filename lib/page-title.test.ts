@@ -32,8 +32,7 @@ const ROUTES = [
     "/dashboard/audit-logs",
     "/dashboard/health",
     "/dashboard/system-settings",
-    "/dashboard/email-settings",
-    "/dashboard/mfa-settings",
+    "/dashboard/security-settings",
     "/dashboard/profile-requests",
     "/dashboard/usernames",
     "/dashboard/maintenance",
@@ -44,6 +43,16 @@ describe("every route's title key exists in both locales", () => {
         it(route, () => {
             const key = resolveTitleKey(route)
             expect(key).not.toBeNull()
+            // Anything under /dashboard that has no entry of its own still
+            // matches the /dashboard prefix and resolves to "dashboard" — a
+            // real key in both locales, so it passes every assertion below
+            // while the tab says the wrong thing. That is not hypothetical:
+            // this fixture kept two routes after their entries were removed,
+            // and went on passing. A route in this list is here because it
+            // has a name of its own.
+            if (route !== "/dashboard") {
+                expect(key, `${route} falls through to the generic dashboard title`).not.toBe("dashboard")
+            }
             expect(en, `missing "${key}" in en`).toHaveProperty(key!)
             expect(ar, `missing "${key}" in ar`).toHaveProperty(key!)
             expect(String((en as any)[key!]).length).toBeGreaterThan(0)

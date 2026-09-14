@@ -205,6 +205,10 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
         if (path === '/dashboard/requests/history') return t('requests_history')
         if (path === '/dashboard/day-off-requests') return modules.label('dayOff')
         if (path === '/dashboard/usernames') return t('usernames_list')
+        // Named here as well as set by the page, because the page deliberately
+        // sets no header while the email gate is up — without this the fallback
+        // below would title that screen "System".
+        if (path === '/dashboard/security-settings') return t('security_settings_nav')
         return t('system')
     }
 
@@ -587,8 +591,11 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
                                     >
                                         {t('my_profile')}
                                     </Link>
+                                    {/* One entry, not two: both screens were
+                                        answers to "how do I get into this
+                                        account", and they now live together. */}
                                     <Link
-                                        href="/dashboard/email-settings"
+                                        href="/dashboard/security-settings"
                                         onClick={() => setIsMenuOpen(false)}
                                         style={{
                                             display: 'block',
@@ -603,25 +610,7 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
                                         onMouseEnter={(e) => e.currentTarget.style.background = 'var(--veil-40)'}
                                         onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
                                     >
-                                        {t('email_settings_nav')}
-                                    </Link>
-                                    <Link
-                                        href="/dashboard/mfa-settings"
-                                        onClick={() => setIsMenuOpen(false)}
-                                        style={{
-                                            display: 'block',
-                                            padding: '0.6rem 1rem',
-                                            textDecoration: 'none',
-                                            color: 'var(--text-main)',
-                                            fontSize: '0.9rem',
-                                            borderRadius: '0.5rem',
-                                            transition: 'background 0.2s',
-                                            fontWeight: '500'
-                                        }}
-                                        onMouseEnter={(e) => e.currentTarget.style.background = 'var(--veil-40)'}
-                                        onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-                                    >
-                                        {t('mfa_settings_nav')}
+                                        {t('security_settings_nav')}
                                     </Link>
                                     {!['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role) && (
                                         <Link

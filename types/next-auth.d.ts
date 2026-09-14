@@ -37,7 +37,7 @@ declare module "next-auth" {
             // F-27: true once emailVerifiedAt is set on the account row.
             // middleware.ts blocks the rest of /dashboard until this is
             // true, the same way it already does for mustChangePassword —
-            // see app/(dashboard)/dashboard/email-settings/page.tsx.
+            // see components/security/EmailSection.tsx.
             emailVerified?: boolean
             // F-27, Phase 4: whether TOTP MFA is enrolled. Refreshed on the
             // same 60s recheck as isProtected/emailVerified — the actual

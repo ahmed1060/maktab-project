@@ -432,7 +432,7 @@ export default function SuperAdminsPage() {
                                     round-trip error. */}
                                 <input className="input" type="email" required disabled value={editData.email} style={{ textAlign: locale === 'ar' ? 'right' : 'left', background: 'var(--surface-sunk)', cursor: 'not-allowed' }} />
                                 <p style={{ margin: '0.35rem 0 0', fontSize: '0.78rem', color: 'var(--text-soft)', textAlign: locale === 'ar' ? 'right' : 'left' }}>
-                                    <Link href="/dashboard/email-settings" style={{ color: 'inherit', textDecoration: 'underline' }}>{t('email_settings_nav')}</Link>
+                                    <Link href="/dashboard/security-settings" style={{ color: 'inherit', textDecoration: 'underline' }}>{t('security_settings_nav')}</Link>
                                 </p>
                             </div>
                             <div style={{ marginBottom: '1.5rem' }}>

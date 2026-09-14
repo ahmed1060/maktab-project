@@ -1065,5 +1065,7 @@ export const en = {
         orphan_report_none: "Nothing to clean up — every stored file is still referenced.",
         orphan_report_delete: "Delete these files",
         confirm_delete_orphans_title: "Delete orphaned files?",
-        confirm_delete_orphans_msg: "These files will be permanently removed from storage and cannot be recovered. Nothing still referenced by a record is included."
+        confirm_delete_orphans_msg: "These files will be permanently removed from storage and cannot be recovered. Nothing still referenced by a record is included.",
+        security_settings_nav: "Security settings",
+        security_settings_subtitle: "Your email address and two-factor authentication"
 };

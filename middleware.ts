@@ -33,15 +33,21 @@ export default withAuth(
         // same way. Checked after mustChangePassword (not instead of it) —
         // a temp-password takeover is the more urgent thing to resolve
         // first if somehow both are true at once. Excludes change-password
-        // too, not just email-settings, so the redirect above still wins
+        // too, not just the security screen, so the redirect above still wins
         // when both conditions hold.
+        //
+        // The excluded path and the redirect target must be the same page, and
+        // must be the *new* one. /dashboard/email-settings is now a redirect
+        // into here: leave it as the exclusion and an unverified user bounces
+        // between the gate letting that path through and the page sending them
+        // on, forever.
         if (
             token && !token.mustChangePassword && !token.emailVerified &&
             pathname.startsWith('/dashboard') &&
-            pathname !== '/dashboard/email-settings' &&
+            pathname !== '/dashboard/security-settings' &&
             pathname !== '/dashboard/change-password'
         ) {
-            return NextResponse.redirect(new URL('/dashboard/email-settings', req.url))
+            return NextResponse.redirect(new URL('/dashboard/security-settings', req.url))
         }
 
         // 2d. System-wide maintenance mode: non-super-admins get held on a

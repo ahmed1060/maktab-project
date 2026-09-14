@@ -100,7 +100,7 @@ describe("page paths and their guards", () => {
         for (const path of [
             '/dashboard', '/dashboard/employees', '/dashboard/employees/abc',
             '/dashboard/requests', '/dashboard/profile-requests', '/dashboard/usernames',
-            '/dashboard/companies', '/dashboard/packages', '/dashboard/mfa-settings',
+            '/dashboard/companies', '/dashboard/packages', '/dashboard/security-settings',
         ]) {
             expect(moduleForPagePath(path), path).toBeNull()
         }
