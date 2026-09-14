@@ -1061,6 +1061,7 @@ export const ar = {
         orphan_report_delete: "حذف هذه الملفات",
         confirm_delete_orphans_title: "حذف الملفات غير المرتبطة؟",
         confirm_delete_orphans_msg: "سيتم حذف هذه الملفات نهائيًا من التخزين ولا يمكن استرجاعها. لا يشمل ذلك أي ملف لا يزال مرتبطًا بسجل.",
+        orphans_deleted_msg: "تم حذف {count} ملفًا من التخزين، بمساحة {size}.",
         security_settings_nav: "إعدادات الأمان",
         security_settings_subtitle: "بريدك الإلكتروني والمصادقة الثنائية"
 };

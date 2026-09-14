@@ -170,7 +170,7 @@ export default function ConfirmModal({
                             transition: 'all 0.2s'
                         }}
                         onMouseEnter={(e) => e.currentTarget.style.background = 'var(--surface-subtle)'}
-                        onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
+                        onMouseLeave={(e) => e.currentTarget.style.background = 'var(--surface)'}
                     >
                         {finalCancelText}
                     </button>

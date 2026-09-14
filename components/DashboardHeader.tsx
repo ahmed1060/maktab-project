@@ -468,7 +468,7 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
                             }}
                             onMouseEnter={(e) => {
                                 e.currentTarget.style.transform = 'scale(1.05)'
-                                e.currentTarget.style.background = 'white'
+                                e.currentTarget.style.background = 'var(--panel-80)'
                             }}
                             onMouseLeave={(e) => {
                                 e.currentTarget.style.transform = 'scale(1)'

@@ -57,12 +57,9 @@ export default function LanguageToggleButton({ variant = 'inline', onAction }: L
             <div style={{
                 display: 'flex',
                 alignItems: 'center',
-                justifyContent: 'space-between',
-                gap: '0.6rem',
-                padding: '0.5rem 1rem',
+                padding: '0.35rem 1rem',
                 direction: locale === 'ar' ? 'rtl' : 'ltr',
             }}>
-                <span style={{ fontSize: '1.1rem' }}>🌐</span>
                 {control}
             </div>
         );

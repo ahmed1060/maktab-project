@@ -577,7 +577,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                                     opacity: uploadingAvatar ? 0.5 : 1
                                 }}
                                 onMouseEnter={(e) => !uploadingAvatar && (e.currentTarget.style.background = 'var(--surface-subtle)')}
-                                onMouseLeave={(e) => !uploadingAvatar && (e.currentTarget.style.background = 'white')}
+                                onMouseLeave={(e) => !uploadingAvatar && (e.currentTarget.style.background = 'var(--surface)')}
                             >
                                 {t('close_button')}
                             </button>

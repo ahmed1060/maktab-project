@@ -658,7 +658,7 @@ export default function EmployeeFilter({
                                                 transition: 'all 0.2s ease'
                                             }}
                                             onMouseOver={(e) => e.currentTarget.style.background = 'var(--surface-subtle)'}
-                                            onMouseOut={(e) => e.currentTarget.style.background = 'white'}
+                                            onMouseOut={(e) => e.currentTarget.style.background = 'var(--surface)'}
                                         >
                                             {t('reset_filters')}
                                         </button>

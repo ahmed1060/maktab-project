@@ -5,6 +5,7 @@ import { useLanguage } from '@/context/LanguageContext'
 import LoadingSpinner from '@/components/LoadingSpinner'
 import ConfirmModal from '@/components/ConfirmModal'
 import BackupPickerModal, { BackupEntry } from '@/components/BackupPickerModal'
+import NoticeModal, { Notice } from '@/components/NoticeModal'
 import { useHeader } from '@/context/HeaderContext'
 
 type HealthMetrics = {
@@ -40,6 +41,10 @@ export default function SystemHealthPage() {
     const [metrics, setMetrics] = useState<HealthMetrics | null>(null)
     const [loading, setLoading] = useState(true)
     const [processing, setProcessing] = useState<string | null>(null)
+    // Replaces alert(): a native dialog cannot be themed, and it blocks the
+    // main thread, so a result could land on top of a button still painting
+    // its pending label.
+    const [notice, setNotice] = useState<Notice | null>(null)
     const [triggeringBackup, setTriggeringBackup] = useState(false)
     const [pendingAction, setPendingAction] = useState<PendingAction>(null)
     // The orphan sweep is two steps: a report, then a confirmed delete. The
@@ -113,14 +118,14 @@ export default function SystemHealthPage() {
 
             const result = await res.json()
             if (result.success) {
-                alert(t('maintenance_success' as any))
+                setNotice({ variant: 'success', title: t('maintenance_success' as any) })
                 fetchMetrics()
             } else {
-                alert(t('maintenance_failed' as any) + ': ' + result.error)
+                setNotice({ variant: 'error', title: t('maintenance_failed' as any), detail: result.error })
             }
         } catch (error) {
             console.error('Maintenance error:', error)
-            alert(t('maintenance_failed' as any))
+            setNotice({ variant: 'error', title: t('maintenance_failed' as any) })
         } finally {
             setProcessing(null)
         }
@@ -137,13 +142,13 @@ export default function SystemHealthPage() {
             })
             const result = await res.json()
             if (!result.success) {
-                alert(t('maintenance_failed' as any) + ': ' + result.error)
+                setNotice({ variant: 'error', title: t('maintenance_failed' as any), detail: result.error })
                 return
             }
             setOrphanReport(result.data.result)
         } catch (error) {
             console.error('Maintenance error:', error)
-            alert(t('maintenance_failed' as any))
+            setNotice({ variant: 'error', title: t('maintenance_failed' as any) })
         } finally {
             setProcessing(null)
         }
@@ -163,15 +168,21 @@ export default function SystemHealthPage() {
             })
             const result = await res.json()
             if (result.success) {
-                alert(`${t('maintenance_success' as any)} (${result.data.result.deleted})`)
+                setNotice({
+                    variant: 'success',
+                    title: t('maintenance_success' as any),
+                    message: t('orphans_deleted_msg' as any)
+                        .replace('{count}', String(result.data.result.deleted))
+                        .replace('{size}', formatBytes(result.data.result.bytes ?? 0)),
+                })
                 setOrphanReport(null)
                 fetchMetrics()
             } else {
-                alert(t('maintenance_failed' as any) + ': ' + result.error)
+                setNotice({ variant: 'error', title: t('maintenance_failed' as any), detail: result.error })
             }
         } catch (error) {
             console.error('Maintenance error:', error)
-            alert(t('maintenance_failed' as any))
+            setNotice({ variant: 'error', title: t('maintenance_failed' as any) })
         } finally {
             setDeletingOrphans(false)
         }
@@ -183,13 +194,13 @@ export default function SystemHealthPage() {
             const res = await fetch('/api/admin/maintenance/backup', { method: 'POST' })
             const result = await res.json()
             if (result.success) {
-                alert(t('backup_triggered_success' as any))
+                setNotice({ variant: 'success', title: t('backup_triggered_success' as any) })
             } else {
-                alert(t('backup_trigger_failed' as any) + ': ' + result.error)
+                setNotice({ variant: 'error', title: t('backup_trigger_failed' as any), detail: result.error })
             }
         } catch (error) {
             console.error('Backup trigger error:', error)
-            alert(t('backup_trigger_failed' as any))
+            setNotice({ variant: 'error', title: t('backup_trigger_failed' as any) })
         } finally {
             setTriggeringBackup(false)
         }
@@ -234,13 +245,13 @@ export default function SystemHealthPage() {
             })
             const result = await res.json()
             if (result.success) {
-                alert(t('restore_started_success' as any))
+                setNotice({ variant: 'success', title: t('restore_started_success' as any) })
             } else {
-                alert(t('restore_trigger_failed' as any) + ': ' + result.error)
+                setNotice({ variant: 'error', title: t('restore_trigger_failed' as any), detail: result.error })
             }
         } catch (error) {
             console.error('Restore trigger error:', error)
-            alert(t('restore_trigger_failed' as any))
+            setNotice({ variant: 'error', title: t('restore_trigger_failed' as any) })
         } finally {
             setRestoring(false)
             setSelectedBackup(null)
@@ -260,11 +271,11 @@ export default function SystemHealthPage() {
                 setMaintenanceMode(!!result.data.maintenanceMode)
                 setMaintenanceMessage(result.data.maintenanceMessage || '')
             } else {
-                alert(t('maintenance_toggle_failed' as any) + ': ' + result.error)
+                setNotice({ variant: 'error', title: t('maintenance_toggle_failed' as any), detail: result.error })
             }
         } catch (error) {
             console.error('Maintenance toggle error:', error)
-            alert(t('maintenance_toggle_failed' as any))
+            setNotice({ variant: 'error', title: t('maintenance_toggle_failed' as any) })
         } finally {
             setSavingMaintenance(false)
         }
@@ -574,6 +585,8 @@ export default function SystemHealthPage() {
                 onConfirm={handleConfirm}
                 onCancel={() => { setPendingAction(null); setSelectedBackup(null) }}
             />
+
+            <NoticeModal notice={notice} onClose={() => setNotice(null)} />
 
             <BackupPickerModal
                 isOpen={pickerOpen}
