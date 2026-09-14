@@ -48,7 +48,7 @@ export default function CompaniesPage() {
     })
     const [submitLoading, setSubmitLoading] = useState(false)
     const [error, setError] = useState('')
-    const { triggerRefresh, setSelectedCompanyId: setGlobalSelectedCompanyId } = useCompany()
+    const { triggerRefresh } = useCompany()
 
     const { data: session } = useSession()
     const userRole = session?.user?.role || ''
@@ -347,14 +347,19 @@ export default function CompaniesPage() {
                                                     not billing), so it reads as "manage this company" alongside
                                                     Edit/Ban/Delete instead of looking bundled with Payments. */}
                                                 <button
-                                                    onClick={() => {
-                                                        // Settings is reached by company id, not through the
-                                                        // global switcher — sync it here too, or Vendors/Tasks
-                                                        // (which only read the switcher) look like they have
-                                                        // nothing in them for the company you just opened.
-                                                        setGlobalSelectedCompanyId(company.id)
-                                                        router.push(`/dashboard/companies/${company.id}/settings`)
-                                                    }}
+                                                    // Navigates, and nothing else. It used to set the global
+                                                    // company scope on the way, so that Vendors and Tasks —
+                                                    // which read only the switcher — would follow you into the
+                                                    // company you had just opened. That traded a navigation
+                                                    // problem for a persistent one: setSelectedCompanyId writes
+                                                    // a year-long cookie and localStorage, so one click on a
+                                                    // gear silently re-scoped the whole product until somebody
+                                                    // changed it back by hand. It also made this the only one
+                                                    // of five row actions with a global side effect — Payments
+                                                    // is reached by id in exactly the same way and never did
+                                                    // this. Which company you are editing is answered on the
+                                                    // settings page itself instead.
+                                                    onClick={() => router.push(`/dashboard/companies/${company.id}/settings`)}
                                                     className="btn"
                                                     title={t('company_settings_title') || 'Settings'}
                                                     style={{

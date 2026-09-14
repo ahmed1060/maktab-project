@@ -121,8 +121,12 @@ export default function CompanySettingsPage() {
                     </svg>
                 </button>
                 <div style={{ clear: 'both' }}></div>
-                <h1 style={{ margin: 0 }}>{t('company_settings_title') || 'Company Settings'}</h1>
-                <p style={{ color: 'var(--text-soft)', marginTop: '0.25rem' }}>{t('management_for')} <strong>{company?.name || t('loading_data')}</strong></p>
+                {/* The company is the heading, not a strong tag in the line
+                    under it. This page is the only answer to "whose settings am
+                    I changing" now that opening it no longer moves the global
+                    switcher, so the answer belongs where the eye lands first. */}
+                <h1 style={{ margin: 0 }}>{company?.name || t('company_settings_title') || 'Company Settings'}</h1>
+                <p style={{ color: 'var(--text-soft)', marginTop: '0.25rem' }}>{t('company_settings_title') || 'Company Settings'}</p>
             </div>
 
             {loading ? (
