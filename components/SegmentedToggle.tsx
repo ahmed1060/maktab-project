@@ -22,13 +22,28 @@ export default function SegmentedToggle<T extends string>({
     onChange,
     ariaLabel,
     disabled = false,
+    size = 'md',
+    fixedOrder = false,
 }: {
     value: T
     options: Option<T>[]
     onChange: (value: T) => void
     ariaLabel: string
     disabled?: boolean
+    /** 'sm' for tight places — a dropdown row rather than a page toolbar. */
+    size?: 'sm' | 'md'
+    /**
+     * Keep the options in array order even in an RTL layout.
+     *
+     * Off by default: a filter belongs to the page and should mirror with it.
+     * On for the language picker, which is *about* language rather than in one
+     * — it would otherwise swap sides the moment you used it, moving the half
+     * you just clicked to the opposite end of the control.
+     */
+    fixedOrder?: boolean
 }) {
+    const pad = size === 'sm' ? '0.35rem 0.7rem' : '0.45rem 0.9rem'
+    const font = size === 'sm' ? '0.8rem' : '0.85rem'
     return (
         <div
             role="group"
@@ -40,6 +55,7 @@ export default function SegmentedToggle<T extends string>({
                 borderRadius: '999px',
                 background: 'color-mix(in srgb, var(--text-strong) 6%, transparent)',
                 border: '1px solid color-mix(in srgb, var(--text-strong) 8%, transparent)',
+                ...(fixedOrder ? { direction: 'ltr' as const } : {}),
             }}
         >
             {options.map(option => {
@@ -57,10 +73,10 @@ export default function SegmentedToggle<T extends string>({
                             display: 'inline-flex',
                             alignItems: 'center',
                             gap: '0.4rem',
-                            padding: '0.45rem 0.9rem',
+                            padding: pad,
                             borderRadius: '999px',
                             border: 'none',
-                            fontSize: '0.85rem',
+                            fontSize: font,
                             fontWeight: selected ? 700 : 500,
                             // The unselected half stays clearly legible rather
                             // than fading out: it is a choice on offer, not

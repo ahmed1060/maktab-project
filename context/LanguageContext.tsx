@@ -9,7 +9,13 @@ import LoadingSpinner from '@/components/LoadingSpinner';
 
 interface LanguageContextType {
     locale: Locale;
+    /** Pick a language. A no-op when it is already the current one. */
+    setLanguage: (next: Locale) => void;
     toggleLanguage: () => void;
+    /** True while a switch is in flight — the dictionary for the target locale
+     *  may still be loading, and the provider is holding a full-page overlay
+     *  over everything including whatever control started it. */
+    isChangingLocale: boolean;
     t: (key: TranslationKey) => string;
 }
 
@@ -78,8 +84,11 @@ export function LanguageProvider({ children, initialLocale, initialDict }: { chi
         }
     }, [status, session?.user?.language, hasSyncedWithSession, locale]);
 
-    const toggleLanguage = async () => {
-        const newLocale = locale === 'en' ? 'ar' : 'en';
+    // Takes the locale to move to rather than flipping, because the control
+    // that calls it is a two-option picker: clicking the half you are already
+    // on should do nothing, not swap you to the other one.
+    const setLanguage = async (newLocale: Locale) => {
+        if (newLocale === locale || isChangingLocale) return;
         setIsChangingLocale(true);
 
         // F-24: kick off loading the target locale's dictionary (if it
@@ -143,8 +152,10 @@ export function LanguageProvider({ children, initialLocale, initialDict }: { chi
         return currentDict?.[key] || dicts.en?.[key] || '';
     };
 
+    const toggleLanguage = () => setLanguage(locale === 'en' ? 'ar' : 'en');
+
     return (
-        <LanguageContext.Provider value={{ locale, toggleLanguage, t }}>
+        <LanguageContext.Provider value={{ locale, setLanguage, toggleLanguage, isChangingLocale, t }}>
             {isChangingLocale && <LoadingSpinner fullPage />}
             {children}
         </LanguageContext.Provider>

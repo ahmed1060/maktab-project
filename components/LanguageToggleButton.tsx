@@ -2,87 +2,71 @@
 
 import React from 'react';
 import { useLanguage } from '@/context/LanguageContext';
+import SegmentedToggle from '@/components/SegmentedToggle';
+import type { Locale } from '@/lib/translations';
 
 interface LanguageToggleButtonProps {
-    variant?: 'fixed' | 'menu-item';
+    /** 'inline' is positioned by whatever holds it — see PreferenceBar. */
+    variant?: 'inline' | 'menu-item';
     onAction?: () => void;
 }
 
-export default function LanguageToggleButton({ variant = 'fixed', onAction }: LanguageToggleButtonProps) {
-    const { locale, toggleLanguage, t } = useLanguage();
+/**
+ * Both languages visible, the current one marked.
+ *
+ * Was a single button that flipped. With two options that shape has the same
+ * problem a self-renaming filter button had: it cannot say which language is on
+ * and what clicking would do at the same time, so you find out by clicking.
+ *
+ * Each option is labelled in its own language rather than translated into the
+ * other. Somebody who cannot read the current interface is exactly the person
+ * reaching for this control.
+ *
+ * No pending state of its own: LanguageProvider holds a full-page overlay at
+ * z-index 99999 for the whole switch, so anything rendered here would be
+ * underneath it. It is disabled during the switch anyway, so the control does
+ * not depend on an overlay in another file to stop a second click.
+ */
+const OPTIONS: { value: Locale; label: string }[] = [
+    { value: 'en', label: 'English' },
+    { value: 'ar', label: 'العربية' },
+];
 
-    const handleToggle = () => {
-        toggleLanguage();
+export default function LanguageToggleButton({ variant = 'inline', onAction }: LanguageToggleButtonProps) {
+    const { locale, setLanguage, isChangingLocale, t } = useLanguage();
+
+    const handleChange = (next: Locale) => {
+        setLanguage(next);
         if (onAction) onAction();
     };
 
+    const control = (
+        <SegmentedToggle
+            value={locale}
+            options={OPTIONS}
+            onChange={handleChange}
+            ariaLabel={t('toggle_language')}
+            disabled={isChangingLocale}
+            size={variant === 'menu-item' ? 'sm' : 'md'}
+            fixedOrder
+        />
+    );
+
     if (variant === 'menu-item') {
         return (
-            <button
-                onClick={handleToggle}
-                style={{
-                    width: '100%',
-                    textAlign: 'left',
-                    padding: '0.6rem 1rem',
-                    background: 'none',
-                    border: 'none',
-                    color: 'var(--text-main)',
-                    fontSize: '0.9rem',
-                    borderRadius: '0.5rem',
-                    transition: 'background 0.2s',
-                    fontWeight: '500',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.5rem',
-                    direction: locale === 'ar' ? 'rtl' : 'ltr'
-                }}
-                onMouseEnter={(e) => e.currentTarget.style.background = 'var(--veil-40)'}
-                onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-            >
+            <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: '0.6rem',
+                padding: '0.5rem 1rem',
+                direction: locale === 'ar' ? 'rtl' : 'ltr',
+            }}>
                 <span style={{ fontSize: '1.1rem' }}>🌐</span>
-                {t('toggle_language')}
-            </button>
+                {control}
+            </div>
         );
     }
 
-    // Default 'fixed' variant for login page
-    return (
-        <button
-            onClick={handleToggle}
-            style={{
-                position: 'fixed',
-                bottom: '2rem',
-                right: locale === 'en' ? '2rem' : 'auto',
-                left: locale === 'ar' ? '2rem' : 'auto',
-                padding: '0.75rem 1.25rem',
-                background: 'var(--panel-90)',
-                backdropFilter: 'blur(10px)',
-                border: '1px solid var(--veil-30)',
-                borderRadius: '50px',
-                boxShadow: '0 4px 15px var(--shadow-weak)',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem',
-                fontSize: '0.9rem',
-                fontWeight: '600',
-                color: 'var(--text-main)',
-                transition: 'all 0.3s ease',
-                zIndex: 1000,
-                direction: locale === 'ar' ? 'rtl' : 'ltr'
-            }}
-            onMouseEnter={(e) => {
-                e.currentTarget.style.transform = 'translateY(-2px)';
-                e.currentTarget.style.boxShadow = '0 6px 20px var(--shadow-weak)';
-            }}
-            onMouseLeave={(e) => {
-                e.currentTarget.style.transform = 'translateY(0)';
-                e.currentTarget.style.boxShadow = '0 4px 15px var(--shadow-weak)';
-            }}
-        >
-            <span style={{ fontSize: '1.2rem' }}>🌐</span>
-            {t('toggle_language')}
-        </button>
-    );
+    return control;
 }

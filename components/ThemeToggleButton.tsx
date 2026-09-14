@@ -6,7 +6,8 @@ import { useTheme } from '@/context/ThemeContext';
 import { THEMES, type Theme } from '@/lib/theme';
 
 interface ThemeToggleButtonProps {
-    variant?: 'fixed' | 'menu-item';
+    /** 'inline' is positioned by whatever holds it — see PreferenceBar. */
+    variant?: 'inline' | 'menu-item';
     onAction?: () => void;
 }
 
@@ -28,7 +29,7 @@ const LABEL_KEY: Record<Theme, string> = {
  * points, same shape — so the two preferences behave identically and neither
  * has to be learned separately.
  */
-export default function ThemeToggleButton({ variant = 'fixed', onAction }: ThemeToggleButtonProps) {
+export default function ThemeToggleButton({ variant = 'inline', onAction }: ThemeToggleButtonProps) {
     const { locale, t } = useLanguage();
     const { theme, setTheme } = useTheme();
 
@@ -73,17 +74,16 @@ export default function ThemeToggleButton({ variant = 'fixed', onAction }: Theme
         );
     }
 
-    // Fixed variant for the login page. Sits beside the language button rather
-    // than on top of it — the offset is what keeps them from overlapping.
+    // Inline variant. It used to position itself at a hand-tuned 11.5rem to sit
+    // clear of the language button; PreferenceBar lays both out instead, so the
+    // offset does not have to be re-derived every time either control changes
+    // width — which it was about to be, when the language button became a
+    // wider segmented control.
     return (
         <button
             onClick={handleToggle}
             aria-label={`${t('theme_label' as any)}: ${label}`}
             style={{
-                position: 'fixed',
-                bottom: '2rem',
-                right: locale === 'en' ? '11.5rem' : 'auto',
-                left: locale === 'ar' ? '11.5rem' : 'auto',
                 padding: '0.75rem 1.25rem',
                 background: 'var(--glass-solid)',
                 backdropFilter: 'blur(10px)',
