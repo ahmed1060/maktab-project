@@ -23,18 +23,6 @@ export type Theme = (typeof THEMES)[number]
 
 export const DEFAULT_THEME: Theme = 'light'
 
-/**
- * The value this used to allow, still sitting in stored columns and in cookies
- * and session tokens issued before the change.
- *
- * Nothing writes it any more, and `parseTheme` folds it into the default — the
- * decision was to map everyone on it to light rather than resolve each person
- * against their operating system. It is named here rather than left as a bare
- * string so the migrate step that clears it, and the contract step that stops
- * tolerating it, both have something to refer to.
- */
-export const LEGACY_THEME = 'system'
-
 /** The cookie is what makes the stamp work on pages with no session. */
 export const THEME_COOKIE = 'NEXT_THEME'
 export const THEME_COOKIE_MAX_AGE = 31536000 // one year, matching NEXT_LOCALE
@@ -44,9 +32,15 @@ export function isTheme(value: unknown): value is Theme {
 }
 
 /**
- * Anything unrecognised becomes the default, which is what quietly retires
- * "system": a stored value, cookie or token still carrying it resolves to
- * light without any branch anywhere having to know about it.
+ * Anything unrecognised becomes the default.
+ *
+ * This is what retired the third state without a branch for it anywhere: a
+ * stored value, cookie or session token still saying "system" is simply not a
+ * theme, so it resolves to light. The stored columns were cleared, but cookies
+ * carry a year and tokens outlive the deploy that issued them, so this has to
+ * keep absorbing it — along with every other value someone can type into a
+ * cookie. It handles the old state by not knowing about it, which is why there
+ * is no longer a constant naming it.
  */
 export function parseTheme(value: unknown): Theme {
     return isTheme(value) ? value : DEFAULT_THEME

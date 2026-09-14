@@ -3,6 +3,7 @@ import { resolveBundles, serializeAccess } from "@/lib/features"
 import { summarizeSubscription } from "@/lib/billing/summary"
 import { isBlockedBySubscription } from "@/lib/billing/state"
 import { parseModuleIcons, parseModuleOverrides } from "@/lib/modules"
+import { parseTheme } from "@/lib/theme"
 import CredentialsProvider from "next-auth/providers/credentials"
 import { prisma } from "@/lib/prisma"
 import bcrypt from "bcryptjs"
@@ -208,7 +209,7 @@ export const authOptions: NextAuthOptions = {
                             companyName: 'SHSD',
                             username: superAdmin.username,
                             language: superAdmin.language || 'en',
-                            theme: superAdmin.theme || 'system',
+                            theme: parseTheme(superAdmin.theme),
                             sessionVersion: (superAdmin as any).sessionVersion || 0,
                             mustChangePassword: (superAdmin as any).mustChangePassword || false,
                             isProtected: (superAdmin as any).isProtected || false,
@@ -297,7 +298,7 @@ export const authOptions: NextAuthOptions = {
                         subscription: summarizeSubscription(validatedUser.company),
                         username: validatedUser.username,
                         language: validatedUser.language || 'en',
-                        theme: validatedUser.theme || 'system',
+                        theme: parseTheme(validatedUser.theme),
                         sessionVersion: (validatedUser as any).sessionVersion || 0,
                         mustChangePassword: (validatedUser as any).mustChangePassword || false,
                         // F-11: seed the merged revocation/suspension check's fields at
@@ -372,7 +373,7 @@ export const authOptions: NextAuthOptions = {
                 // Seeded at sign-in only. The cookie is what the server reads
                 // per request; this exists so a first sign-in on a new browser
                 // can adopt the preference the account already carries.
-                token.theme = (user as any).theme || 'system'
+                token.theme = parseTheme((user as any).theme)
                 token.mustChangePassword = (user as any).mustChangePassword || false
                 token.isProtected = (user as any).isProtected || false
                 token.emailVerified = (user as any).emailVerified || false

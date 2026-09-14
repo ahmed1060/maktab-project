@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest"
 import { readFileSync } from "node:fs"
 import { stripComments } from "./strip-comments"
-import { THEMES, DEFAULT_THEME, LEGACY_THEME, isTheme, parseTheme, themeAttribute } from "./theme"
+import { THEMES, DEFAULT_THEME, isTheme, parseTheme, themeAttribute } from "./theme"
 import { en } from "@/lib/translations/en"
 import { ar } from "@/lib/translations/ar"
 
@@ -30,16 +30,45 @@ describe("two states", () => {
 })
 
 describe("retiring the third state", () => {
+    // The literal is spelled out here and nowhere else. There used to be a
+    // LEGACY_THEME constant for it; it went when the last three writers of the
+    // value did, because a constant naming a value nothing writes is a standing
+    // invitation to write it. This file is the right place to keep knowing it:
+    // a test may remember what production has forgotten.
+    const RETIRED = "system"
+
     it("folds a stored 'system' into the default without a branch for it", () => {
-        // 20 of 22 accounts were on this, and it is also sitting in cookies and
-        // in session tokens issued before the change. Nothing anywhere has to
-        // know about it: it simply is not a theme, so it parses to the default.
-        expect(isTheme(LEGACY_THEME)).toBe(false)
-        expect(parseTheme(LEGACY_THEME)).toBe(DEFAULT_THEME)
+        // 20 of 22 accounts were on this. The rows were cleared in the migrate
+        // step, but cookies hold a year and session tokens outlive the deploy
+        // that issued them, so this still has to hold.
+        expect(isTheme(RETIRED)).toBe(false)
+        expect(parseTheme(RETIRED)).toBe(DEFAULT_THEME)
     })
 
     it("is not offered by the toggle", () => {
-        expect([...THEMES] as string[]).not.toContain(LEGACY_THEME)
+        expect([...THEMES] as string[]).not.toContain(RETIRED)
+    })
+
+    it("is not written back by the sign-in callbacks", () => {
+        // Three lines in auth.ts read `theme: user.theme || 'system'`, left
+        // over from when it was the column default. They could not fire — the
+        // column is NOT NULL — but they were the only path that could still put
+        // the retired value into a session token, and a value nothing writes is
+        // the whole point of having cleared the rows.
+        // The quoted literal, not the bare word: auth.ts reads
+        // prisma.systemSettings twice, and the first version of this guard
+        // matched that instead of anything to do with themes.
+        const code = stripComments(readFileSync("lib/auth.ts", "utf8"))
+        expect(code).not.toMatch(new RegExp(`['"]${RETIRED}['"]`))
+        expect(code.match(/theme:\s*parseTheme\(/g) ?? []).toHaveLength(2)
+        expect(code).toContain("token.theme = parseTheme(")
+    })
+
+    it("parses rather than falls back, so a junk stored value is caught too", () => {
+        // `|| DEFAULT_THEME` would have fixed the literal and still passed
+        // through anything else the column happened to hold.
+        expect(parseTheme("blue")).toBe(DEFAULT_THEME)
+        expect(parseTheme(null)).toBe(DEFAULT_THEME)
     })
 })
 
