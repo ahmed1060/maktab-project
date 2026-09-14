@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest"
 import { readFileSync } from "node:fs"
+import { stripComments } from "./strip-comments"
 import { THEMES, DEFAULT_THEME, LEGACY_THEME, isTheme, parseTheme, themeAttribute } from "./theme"
 import { en } from "@/lib/translations/en"
 import { ar } from "@/lib/translations/ar"
@@ -53,22 +54,22 @@ describe("what gets stamped on <html>", () => {
     })
 })
 
-// The media-query copy of the dark palette is now unreachable: the root is
-// always stamped, so :root:not([data-theme="light"]) can only match when the
-// stamp says dark, which the explicit block already handles. These assertions
-// hold until the contract step deletes that copy — they are kept until then so
-// the two do not drift while both exist.
 describe("the CSS answers both states", () => {
     const CSS = readFileSync("app/globals.css", "utf8")
+    // Comments stripped: the ones explaining this deletion name the very thing
+    // it forbids, which is how the first version of this test failed.
+    const CODE = stripComments(CSS)
 
-    it("has a media query that yields to an explicit light choice", () => {
-        // Without :not([data-theme="light"]), somebody on a dark OS who picks
-        // light would still get dark.
-        expect(CSS).toMatch(/@media \(prefers-color-scheme: dark\)[\s\S]*?:root:not\(\[data-theme="light"\]\)/)
-    })
-
-    it("has an explicit dark block that wins on a light system", () => {
+    it("has exactly one dark palette", () => {
+        // There were two, identical, because the un-stamped "follow the system"
+        // state could only be served by a media query and a custom property
+        // cannot be applied conditionally any other way. A test used to hold
+        // the copies in step. With every render stamped there is nothing for a
+        // media query to catch, so the copy went with the state — and this
+        // asserts it stays gone rather than being reintroduced as a courtesy to
+        // people on a dark OS, which is precisely the state that was dropped.
         expect(CSS).toContain(':root[data-theme="dark"]')
+        expect(CODE.match(/prefers-color-scheme/g) ?? []).toHaveLength(0)
     })
 
     it("declares color-scheme in both directions", () => {
@@ -77,20 +78,15 @@ describe("the CSS answers both states", () => {
         expect(CSS).toMatch(/color-scheme:\s*dark/)
     })
 
-    it("keeps the two dark palettes identical", () => {
-        // They are duplicated because a custom property cannot be applied
-        // conditionally any other way; if they drift, the same person sees two
-        // different dark modes depending on their OS setting.
-        const tokensIn = (selector: string) => {
-            const at = CSS.indexOf(selector)
-            const body = CSS.slice(at, CSS.indexOf("\n  }", at))
-            return [...body.matchAll(/(--[a-z0-9-]+)\s*:\s*([^;]+);/g)]
-                .map(m => `${m[1]}:${m[2].trim()}`).sort()
-        }
-        const viaMedia = tokensIn("@media (prefers-color-scheme: dark)")
-        const viaAttr = tokensIn(':root[data-theme="dark"]')
-        expect(viaMedia.length).toBeGreaterThan(50)
-        expect(viaAttr).toEqual(viaMedia)
+    it("still defines every dark token it did before the copy was removed", () => {
+        // The deletion is only safe because the two blocks were identical, which
+        // the test this replaces had been asserting all along. This is the other
+        // half of that: the surviving block is the full palette, not a subset
+        // that happened to compile.
+        const at = CSS.indexOf(':root[data-theme="dark"]')
+        const body = CSS.slice(at, CSS.indexOf("\n}", at))
+        const tokens = [...body.matchAll(/(--[a-z0-9-]+)\s*:/g)]
+        expect(tokens.length).toBeGreaterThan(50)
     })
 })
 
@@ -115,11 +111,7 @@ describe("the third state is gone from the UI, not just from the type", () => {
     // was, and a plain substring check would match that instead of the code —
     // which is how three earlier guards in this repo passed while the thing
     // they forbade was still there.
-    const code = (path: string) =>
-        readFileSync(path, "utf8")
-            .split("\n")
-            .filter(line => !/^\s*(\/\/|\*|\/\*)/.test(line))
-            .join("\n")
+    const code = (path: string) => stripComments(readFileSync(path, "utf8"))
 
     it("is not offered, labelled or branched on by the toggle", () => {
         expect(code("components/ThemeToggleButton.tsx")).not.toContain("system")

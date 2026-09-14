@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest"
 import { readFileSync } from "node:fs"
+import { stripComments } from "./strip-comments"
 
 // The control is presentational; what is worth pinning is the handful of
 // decisions inside it that a later edit would quietly undo.
@@ -10,11 +11,7 @@ import { readFileSync } from "node:fs"
  * thing they were meant to forbid — including this one, whose first version
  * matched the comment that says 11.5rem is gone.
  */
-const read = (path: string) =>
-    readFileSync(path, "utf8")
-        .split("\n")
-        .filter(line => !/^\s*(\/\/|\*|\/\*)/.test(line))
-        .join("\n")
+const read = (path: string) => stripComments(readFileSync(path, "utf8"))
 
 const TOGGLE = readFileSync("components/LanguageToggleButton.tsx", "utf8")
 const BAR = readFileSync("components/PreferenceBar.tsx", "utf8")

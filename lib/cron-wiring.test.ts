@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest"
 import { existsSync, readFileSync } from "node:fs"
+import { stripComments } from "./strip-comments"
 import { MAX_ORPHAN_SHARE, decideCleanup } from "./orphan-guard"
 
 const vercel = JSON.parse(readFileSync("vercel.json", "utf8")) as {
@@ -10,11 +11,6 @@ const vercel = JSON.parse(readFileSync("vercel.json", "utf8")) as {
 // carry the jobs they do, so a plain substring check passes on the explanation
 // alone — which it did, and which made these guards useless until the call one
 // of them was meant to pin was actually removed to test it.
-const stripComments = (source: string) =>
-    source
-        .split("\n")
-        .filter(line => !/^\s*(\/\/|\*|\/\*)/.test(line))
-        .join("\n")
 
 describe("every scheduled path is a route that exists", () => {
     it.each(vercel.crons.map(c => [c.path, c.schedule]))("%s (%s)", (path) => {

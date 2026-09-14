@@ -838,10 +838,12 @@ input::-webkit-credentials-auto-fill-button {
 }
 
 /* ── Dark mode (D2) ────────────────────────────────────────────────────────
-   Three blocks because there are three states, not two. "Follow the system" is
-   the default and stamps no attribute, so it is served by the media query
-   alone; each explicit choice then has to win against the system in its own
-   direction — dark when the OS is light, and light when the OS is dark.
+   One block, because there are two states and the root is always stamped with
+   one of them. It was three: "follow the system" stamped no attribute and was
+   served by a copy of this palette inside @media (prefers-color-scheme: dark),
+   which each explicit choice then had to win against in its own direction.
+   That copy is gone with the state it existed for — nothing can reach it once
+   every render carries a data-theme.
 
    Status colours are re-derived, never inverted. A #dcfce7 background under
    #166534 text is a light-mode pair; flipping those two produces a colour
@@ -849,151 +851,17 @@ input::-webkit-credentials-auto-fill-button {
    picked for contrast on dark — see lib/contrast.test.ts, which holds every
    pair in both themes to 4.5:1.
 
-   Light mode above is untouched. Anyone who never uses the toggle sees no
-   change at all. */
+   Light mode above is untouched — but "no change at all" no longer follows
+   from that, and it used to. While the third state existed, somebody on a dark
+   operating system who had never touched the toggle got dark. They now get
+   light until they choose otherwise, which is the trade that dropping the state
+   was accepted on. */
 
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    color-scheme: dark;
-
-    --surface: #161b22;
-    --surface-subtle: #1c2128;
-    --surface-sunk: #21262d;
-
-    --border: #30363d;
-    --border-firm: #474e57;
-
-    --text-strong: #f0f6fc;
-    --text-main: #e6edf3;
-    --text-body: #c9d1d9;
-    --text-muted: #b9c2cc;
-    --text-soft: #9aa4af;
-    --text-faint: #8f97a2;
-
-    --ok-bg: #0b2b1a;
-    --ok-fg: #6fdc9b;
-    --ok-solid: #2ebd77;
-    --ok-bg-strong: #12402a;
-    --ok-bg-subtle: #0a2416;
-    --ok-bg-faint: #0d3320;
-    --ok-fg-strong: #7ee3a6;
-    --ok-fg-deep: #9beec0;
-    --ok-solid-alt: #35c97f;
-    --ok-solid-hover: #2aa869;
-    --ok-border: #1c5c3a;
-
-    --danger-bg: #3a161a;
-    --danger-bg-subtle: #2a1013;
-    --danger-bg-tint: #2a1013;
-    --danger-border: #6b2328;
-    --danger-border-firm: #8a2d33;
-    --danger-fg: #ff9d9d;
-    --danger-fg-strong: #ffb3b3;
-    --danger-solid: #f2565a;
-    --danger-solid-hover: #d9484c;
-
-    --warn-bg: #3a2c0d;
-    --warn-border: #6b5117;
-    --warn-fg: #f0c96b;
-    --warn-solid: #e0a52e;
-    --warn-bg-warm: #3a2110;
-    --warn-bg-warm-subtle: #2a1809;
-    --warn-border-warm: #6b3d1c;
-    --warn-border-warm-firm: #8a4f24;
-    --warn-fg-warm: #f5b183;
-    --warn-fg-warm-strong: #ffc59e;
-    --warn-solid-warm: #e08a4e;
-    --warn-bg-yellow: #35300d;
-    --warn-bg-yellow-subtle: #262208;
-    --warn-border-yellow: #63591a;
-    --warn-fg-yellow: #e8d47a;
-    --warn-fg-deep: #f2e3a0;
-    --warn-fg-mid: #f0c96b;
-    --warn-solid-hover: #c79127;
-
-    --info-bg: #0d2b3d;
-    --info-bg-subtle: #0a1f2e;
-    --info-fg: #7cc9f0;
-    --info-solid: #4aa3e0;
-    --info-solid-hover: #3d8cc4;
-    --info-bg-sky: #0a2130;
-    --info-bg-sky-firm: #16455e;
-    --info-bg-indigo: #16243f;
-    --info-bg-indigo-subtle: #131b30;
-    --info-bg-indigo-faint: #1a2547;
-    --info-border-indigo: #3d4b7a;
-    --info-fg-deep: #96d4f5;
-    --info-fg-deepest: #b3e2fa;
-    --info-fg-indigo: #9db4f0;
-    --info-solid-sky: #38a8dd;
-    --info-solid-sky-light: #5ec0ed;
-
-    --lifetime-bg: #251b3d;
-    --lifetime-fg: #c4a8f5;
-    --accent-fg: #c4a8f5;
-    --accent-solid: #a86ef0;
-    --accent-solid-deep: #9457e0;
-    --accent-deep: #7c6ae0;
-    --accent-deepest: #6a5ad0;
-
-    --grey-100: #21262d;
-    --grey-200: #30363d;
-    --grey-400: #7d8590;
-    --grey-600: #9aa4af;
-
-    /* Dark glass: its own tint, at a lower alpha. White tint on a dark ground
-       reads as fog rather than as glass. */
-    --glass-border: rgba(255, 255, 255, 0.09);
-    --glass-bg: rgba(255, 255, 255, 0.04);
-    --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
-    --glass-solid: rgba(22, 27, 34, 0.82);
-    --glass-card-bg: rgba(22, 27, 34, 0.7);
-    --glass-card-border: rgba(255, 255, 255, 0.09);
-    --glass-card-hover: rgba(28, 33, 41, 0.85);
-    --glass-card-border-hover: rgba(255, 255, 255, 0.16);
-    --glass-shadow-hover: 0 12px 40px 0 rgba(0, 0, 0, 0.5);
-    --sidebar-bg: rgba(9, 12, 17, 0.78);
-    --header-glass-bg: rgba(13, 17, 23, 0.88);
-    --header-glass-border: rgba(255, 255, 255, 0.1);
-    --header-shadow: 0 4px 30px rgba(0, 0, 0, 0.45);
-    --highlight-tint: rgba(168, 85, 247, 0.14);
-    --chip-solid-bg: #2b3340;
-    --chip-solid-fg: #f0f6fc;
-
-    --veil-10: rgba(255, 255, 255, 0.04);
-    --veil-15: rgba(255, 255, 255, 0.05);
-    --veil-20: rgba(255, 255, 255, 0.06);
-    --veil-30: rgba(255, 255, 255, 0.07);
-    --veil-40: rgba(255, 255, 255, 0.09);
-    --veil-50: rgba(255, 255, 255, 0.11);
-    --veil-60: rgba(255, 255, 255, 0.14);
-
-    --panel-70: rgba(22, 27, 34, 0.8);
-    --panel-80: rgba(22, 27, 34, 0.88);
-    --panel-85: rgba(22, 27, 34, 0.91);
-    --panel-90: rgba(22, 27, 34, 0.94);
-    --panel-95: rgba(22, 27, 34, 0.97);
-
-    --shadow-faint: rgba(0, 0, 0, 0.3);
-    --shadow-weak: rgba(0, 0, 0, 0.45);
-    --shadow-mid: rgba(0, 0, 0, 0.6);
-
-    --scrim: rgba(0, 0, 0, 0.7);
-    --scrim-deep: rgba(0, 0, 0, 0.9);
-
-    --hairline: rgba(255, 255, 255, 0.06);
-    --hairline-firm: rgba(255, 255, 255, 0.1);
-
-    --page-bg: #0b0f14;
-    --page-veil-a: rgba(99, 102, 241, 0.1);
-    --page-veil-b: rgba(236, 72, 153, 0.08);
-  }
-}
-
-/* The explicit "dark" choice, winning even where the operating system is light.
-   Same values as the media query above — duplicated rather than shared via a
-   third selector because a custom property cannot be conditionally applied any
-   other way without a preprocessor. */
+/* Dark, whatever the operating system says. The only dark palette now: its
+   twin inside a prefers-color-scheme media query existed so the un-stamped
+   "follow the system" state could be served, and went with that state. The
+   duplication was never wanted — a custom property cannot be applied
+   conditionally without one — so there is nothing left to keep in step. */
 :root[data-theme="dark"] {
     color-scheme: dark;
 

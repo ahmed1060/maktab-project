@@ -19,6 +19,7 @@ import {
 import { en } from "@/lib/translations/en"
 import { ar } from "@/lib/translations/ar"
 import { readFileSync } from "node:fs"
+import { stripComments } from "./strip-comments"
 import { resolveTitleKey } from "./page-title"
 
 describe("the module registry", () => {
@@ -358,10 +359,7 @@ describe("the contract step", () => {
         // not a default — or a Prisma select that will throw. Comments are
         // allowed: the column's history is worth keeping, its name is not.
         for (const path of SOURCES) {
-            const code = readFileSync(path, "utf8")
-                .split("\n")
-                .filter(line => !/^\s*(\/\/|\*|\/\*)/.test(line))
-                .join("\n")
+            const code = stripComments(readFileSync(path, "utf8"))
             expect(code, `${path} still names vendorsLabel outside a comment`)
                 .not.toMatch(/vendorsLabel/)
         }
