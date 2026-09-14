@@ -184,6 +184,23 @@
      is what makes an arbitrary customer logo legible there at all. */
   --logo-plate: #f4f6fa;
 
+  /* Text on that same sidebar, and so declared once for both themes for the
+     same reason --logo-plate is. The nav links used --panel-80, which is a
+     *surface* token: white at 80% on light, so it happened to look right, and
+     near-black on dark — which painted the labels the colour of the sidebar
+     they sit on. A background token read as a foreground one. */
+  --sidebar-fg: rgba(255, 255, 255, 0.8);
+  --sidebar-fg-strong: #ffffff;
+
+  /* The raised half of a segmented toggle, and the shadow under it.
+     Not --surface: the toggle's track is a percentage of the text colour, so
+     on dark the track lifts *above* --surface and the selected pill sank into
+     the panel behind it — the same hole, punched the other way. The shadow has
+     to be its own token for the same reason: a percentage of --text-strong is
+     a drop shadow on light and a white halo on dark. */
+  --segment-raised: #ffffff;
+  --segment-raised-shadow: rgba(15, 23, 42, 0.12);
+
   /* The sticky header that appears on scroll. Its own tokens rather than the
      card ones: it sits over moving content, so it needs enough opacity to stop
      that content reading through it — a translucent bar with a heading bleeding
@@ -871,6 +888,9 @@ input::-webkit-credentials-auto-fill-button {
 
     --border: #30363d;
     --border-firm: #474e57;
+
+    --segment-raised: #30363d;
+    --segment-raised-shadow: rgba(0, 0, 0, 0.45);
 
     --text-strong: #f0f6fc;
     --text-main: #e6edf3;

@@ -106,7 +106,7 @@ export default function CompanyLogoCard({ companyId, companyName, logoUrl, onCha
                     ) : '🚀'}
                 </span>
                 <span style={{
-                    color: 'var(--panel-80)', fontWeight: 600, fontSize: '0.95rem',
+                    color: 'var(--sidebar-fg)', fontWeight: 600, fontSize: '0.95rem',
                     overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0,
                 }}>
                     {companyName}

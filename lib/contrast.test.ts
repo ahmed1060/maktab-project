@@ -141,10 +141,17 @@ describe("the two themes are actually different", () => {
         // logo is not following the page ground and must not be made to. Giving
         // it a dark value would make every white-background logo vanish into it
         // — the failure it exists to prevent.
+        //
+        // --sidebar-fg/-strong are invariant for exactly that reason: same
+        // sidebar, other end of the contrast. They exist because the nav links
+        // used --panel-* — a surface token — as their text colour, so the dark
+        // palette dutifully gave the labels the sidebar's own colour and they
+        // disappeared. A dark value here would restore that bug under a name
+        // that reads correct.
         const INVARIANT = new Set([
             "--primary", "--primary-hover", "--secondary", "--accent",
             "--text-on-accent", "--hero-from", "--hero-to",
-            "--logo-plate",
+            "--logo-plate", "--sidebar-fg", "--sidebar-fg-strong",
         ])
 
         const missing = Object.keys(LIGHT).filter(t => !(t in DARK) && !INVARIANT.has(t))

@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest"
 import { readFileSync, readdirSync, statSync } from "node:fs"
 import { join } from "node:path"
+import { stripComments } from "./strip-comments"
 
 /**
  * D1's safety net.
@@ -144,5 +145,69 @@ describe("D1 left no raw colour behind", () => {
         }
 
         expect(offenders, `hardcoded colours:\n${offenders.join("\n")}`).toEqual([])
+    })
+})
+
+describe("a token is used in the role it was defined for", () => {
+    // Two dark-mode bugs, one cause: a token whose job is to be a *surface*
+    // was read as a *foreground*. --panel-* is documented in globals.css as
+    // "a surface whose job is to hide what is behind it"; on light it is white
+    // at 80%, so painting text with it looked correct, and on dark it is the
+    // panel colour itself — which painted the sidebar's labels the colour of
+    // the sidebar. Nothing could catch that but a rule about roles.
+    //
+    // Comments stripped: the prose above and in globals.css names every token
+    // these checks forbid.
+    const code = (file: string) => stripComments(readFileSync(file, "utf8"))
+    const CSS_CODE = stripComments(CSS)
+
+    const SURFACE_ONLY = ["--panel-", "--veil-", "--sidebar-bg", "--segment-raised", "--logo-plate"]
+
+    it("never paints text with a surface or elevation token", () => {
+        const offenders: string[] = []
+        for (const file of SOURCES) {
+            if (file.endsWith(".css")) continue
+            code(file).split("\n").forEach((line, i) => {
+                const m = line.match(/(?:^|\W)color:\s*'var\((--[a-z0-9-]+)\)'|style\.color\s*=\s*'var\((--[a-z0-9-]+)\)'/)
+                const token = m?.[1] ?? m?.[2]
+                if (token && SURFACE_ONLY.some(p => token.startsWith(p)) && token !== "--segment-raised-shadow") {
+                    offenders.push(`${file}:${i + 1}  ${token}`)
+                }
+            })
+        }
+        expect(offenders, `surface token used as a colour:\n${offenders.join("\n")}`).toEqual([])
+    })
+
+    it("gives the sidebar its own foreground, declared once for both themes", () => {
+        // The sidebar is dark in light mode too, which is why --logo-plate is
+        // also theme-independent. A dark value for these would be the original
+        // bug wearing a better name.
+        for (const token of ["--sidebar-fg", "--sidebar-fg-strong"]) {
+            const declarations = CSS_CODE.match(new RegExp(`^\\s*${token}\\s*:`, "gm")) ?? []
+            expect(declarations, token).toHaveLength(1)
+        }
+    })
+
+    it("gives the raised half of a toggle a value in each theme", () => {
+        // The opposite rule, and the reason it cannot share the sidebar's:
+        // this one sits on whatever the page's surface is, so it has to flip.
+        for (const token of ["--segment-raised", "--segment-raised-shadow"]) {
+            const declarations = CSS_CODE.match(new RegExp(`^\\s*${token}\\s*:`, "gm")) ?? []
+            expect(declarations, token).toHaveLength(2)
+        }
+    })
+
+    it("does not draw the selected half of a toggle with the panel behind it", () => {
+        // --surface *is* the dropdown panel on dark, so the selected pill was
+        // the same colour as the menu and read as a hole punched in the track.
+        const toggle = code("components/SegmentedToggle.tsx")
+        expect(toggle).not.toMatch(/background:\s*selected\s*\?\s*'var\(--surface\)'/)
+        expect(toggle).toContain("var(--segment-raised)")
+    })
+
+    it("does not build a drop shadow out of the text colour", () => {
+        // color-mix over --text-strong is a shadow on light and a halo on dark.
+        const toggle = code("components/SegmentedToggle.tsx")
+        expect(toggle).not.toMatch(/boxShadow[^\n]*color-mix[^\n]*--text-strong/)
     })
 })

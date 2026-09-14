@@ -82,8 +82,13 @@ export default function SegmentedToggle<T extends string>({
                             // than fading out: it is a choice on offer, not
                             // disabled.
                             color: selected ? 'var(--text-strong)' : 'var(--text-muted)',
-                            background: selected ? 'var(--surface)' : 'transparent',
-                            boxShadow: selected ? '0 1px 3px color-mix(in srgb, var(--text-strong) 12%, transparent)' : 'none',
+                            // Raised above the track in both themes. --surface
+                            // is the panel behind the toggle on dark, so using
+                            // it made the selected half a hole rather than a
+                            // pill; and a shadow mixed from --text-strong is a
+                            // white halo once --text-strong is near-white.
+                            background: selected ? 'var(--segment-raised)' : 'transparent',
+                            boxShadow: selected ? '0 1px 3px var(--segment-raised-shadow)' : 'none',
                             cursor: disabled ? 'not-allowed' : selected ? 'default' : 'pointer',
                             opacity: disabled ? 0.6 : 1,
                             transition: 'background 0.15s, color 0.15s, box-shadow 0.15s',

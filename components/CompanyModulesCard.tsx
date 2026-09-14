@@ -275,7 +275,7 @@ export default function CompanyModulesCard({ companyId, moduleLabels, moduleIcon
                     <div key={key} style={{
                         display: 'flex', alignItems: 'center', gap: '0.75rem',
                         padding: '0.4rem 0.6rem', borderRadius: '0.6rem',
-                        color: 'var(--panel-80)', fontSize: '0.9rem', fontWeight: 500,
+                        color: 'var(--sidebar-fg)', fontSize: '0.9rem', fontWeight: 500,
                     }}>
                         <span style={{ fontSize: '1.2rem' }}>{entry.icon}</span>
                         <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{entry.label}</span>

@@ -323,7 +323,7 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
                             title={isCollapsed ? link.label : ''}
                             className="nav-link"
                             style={{
-                                color: 'var(--panel-80)',
+                                color: 'var(--sidebar-fg)',
                                 textDecoration: 'none',
                                 padding: '0.85rem 1rem',
                                 borderRadius: '1rem',
@@ -338,12 +338,12 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
                             }}
                             onMouseOver={(e) => {
                                 e.currentTarget.style.background = 'var(--veil-10)'
-                                e.currentTarget.style.color = 'white'
+                                e.currentTarget.style.color = 'var(--sidebar-fg-strong)'
                                 e.currentTarget.style.transform = isCollapsed ? 'scale(1.1)' : 'translateX(5px)'
                             }}
                             onMouseOut={(e) => {
                                 e.currentTarget.style.background = 'transparent'
-                                e.currentTarget.style.color = 'var(--panel-80)'
+                                e.currentTarget.style.color = 'var(--sidebar-fg)'
                                 e.currentTarget.style.transform = 'none'
                             }}
                         >
@@ -379,7 +379,7 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
                                     title={isCollapsed ? link.label : ''}
                                     className="nav-link"
                                     style={{
-                                        color: 'var(--panel-80)',
+                                        color: 'var(--sidebar-fg)',
                                         textDecoration: 'none',
                                         padding: '0.85rem 1rem',
                                         borderRadius: '1rem',
@@ -393,12 +393,12 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
                                     }}
                                     onMouseOver={(e) => {
                                         e.currentTarget.style.background = 'var(--veil-10)'
-                                        e.currentTarget.style.color = 'white'
+                                        e.currentTarget.style.color = 'var(--sidebar-fg-strong)'
                                         e.currentTarget.style.transform = isCollapsed ? 'scale(1.1)' : 'translateX(5px)'
                                     }}
                                     onMouseOut={(e) => {
                                         e.currentTarget.style.background = 'transparent'
-                                        e.currentTarget.style.color = 'var(--panel-80)'
+                                        e.currentTarget.style.color = 'var(--sidebar-fg)'
                                         e.currentTarget.style.transform = 'none'
                                     }}
                                 >
@@ -433,7 +433,7 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
                                 { href: '/dashboard/system-settings', label: t('system_settings') || 'System Settings', icon: '⚙️' }
                             ].map(link => (
                                 <Link key={link.href} href={link.href} onClick={() => isMobile && setIsSidebarOpen(false)} title={isCollapsed ? link.label : ''} className="nav-link" style={{
-                                    color: 'var(--panel-80)',
+                                    color: 'var(--sidebar-fg)',
                                     textDecoration: 'none',
                                     padding: '0.85rem 1rem',
                                     borderRadius: '1rem',
@@ -447,12 +447,12 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
                                 }}
                                     onMouseOver={(e) => {
                                         e.currentTarget.style.background = 'var(--veil-10)'
-                                        e.currentTarget.style.color = 'white'
+                                        e.currentTarget.style.color = 'var(--sidebar-fg-strong)'
                                         e.currentTarget.style.transform = isCollapsed ? 'scale(1.1)' : 'translateX(5px)'
                                     }}
                                     onMouseOut={(e) => {
                                         e.currentTarget.style.background = 'transparent'
-                                        e.currentTarget.style.color = 'var(--panel-80)'
+                                        e.currentTarget.style.color = 'var(--sidebar-fg)'
                                         e.currentTarget.style.transform = 'none'
                                     }}
                                 >
