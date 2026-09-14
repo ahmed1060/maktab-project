@@ -16,6 +16,7 @@ import { useCompany } from '@/context/CompanyContext'
 import Pagination from '@/components/Pagination'
 import SafeDate from '@/components/SafeDate'
 import { fetcher } from '@/lib/swr-fetcher'
+import NoticeModal, { Notice } from '@/components/NoticeModal'
 
 
 interface Client {
@@ -47,6 +48,9 @@ export default function ClientsPage() {
     const [isModalOpen, setIsModalOpen] = useState(false)
     const [newClientName, setNewClientName] = useState('')
     const [isSubmitting, setIsSubmitting] = useState(false)
+    // Replaces alert(): a native dialog ignores the palette entirely, and it
+    // blocks the main thread for as long as it is up.
+    const [notice, setNotice] = useState<Notice | null>(null)
     const [mounted, setMounted] = useState(false)
     const [deleteConfirm, setDeleteConfirm] = useState<{ isOpen: boolean, client: Client | null }>({ isOpen: false, client: null })
     const [isEditClientModalOpen, setIsEditClientModalOpen] = useState(false)
@@ -125,11 +129,11 @@ export default function ClientsPage() {
                 mutateClients()
             } else {
                 const err = await res.json()
-                window.alert(`${t('failed_create_client')}: ${err.error}`)
+                setNotice({ variant: 'error', title: t('failed_create_client'), detail: err.error })
             }
         } catch (error) {
             console.error('Failed to create client', error)
-            window.alert(t('error_generic'))
+            setNotice({ variant: 'error', title: t('error_generic') })
         } finally {
             setIsSubmitting(false)
         }
@@ -485,10 +489,10 @@ export default function ClientsPage() {
                                 setDeleteConfirm({ isOpen: false, client: null })
                             } else {
                                 const err = await res.json()
-                                alert(`${t('error_generic')}: ${err.error}`)
+                                setNotice({ variant: 'error', title: t('error_generic'), detail: err.error })
                             }
                         } catch {
-                            alert(t('error_delete_client'))
+                            setNotice({ variant: 'error', title: t('error_delete_client') })
                         }
                     }
                 }}
@@ -555,6 +559,7 @@ export default function ClientsPage() {
                 </div>,
                 document.body
             )}
+            <NoticeModal notice={notice} onClose={() => setNotice(null)} />
         </>
     )
 }

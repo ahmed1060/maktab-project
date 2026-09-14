@@ -14,6 +14,7 @@ import { useModules } from '@/lib/useModules'
 import { useHeader } from '@/context/HeaderContext'
 import LoadingSpinner from '@/components/LoadingSpinner'
 import { fetcher } from '@/lib/swr-fetcher'
+import NoticeModal, { Notice } from '@/components/NoticeModal'
 
 interface Employee {
     id: string
@@ -46,6 +47,9 @@ export default function EmployeesPage() {
     const [filters, setFilters] = useState({ search: '', status: '', dateFrom: '', dateTo: '', employeeId: '' })
     const [alert, setAlert] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
     const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; name: string } | null>(null)
+    // Replaces alert(): a native dialog ignores the palette entirely, and it
+    // blocks the main thread for as long as it is up.
+    const [notice, setNotice] = useState<Notice | null>(null)
     const [resettingPoints, setResettingPoints] = useState<string | null>(null)
     const [deletingUser, setDeletingUser] = useState<string | null>(null)
     const [, setTogglingStatus] = useState<string | null>(null)
@@ -123,11 +127,11 @@ export default function EmployeesPage() {
                 setDeleteConfirm(null)
             } else {
                 const data = await res.json()
-                window.alert(data.error || t('error_generic'))
+                setNotice({ variant: 'error', title: t('error_generic'), detail: data.error })
             }
         } catch (err) {
             console.error('Delete error:', err)
-            window.alert(t('error_generic'))
+            setNotice({ variant: 'error', title: t('error_generic') })
         } finally {
             setDeletingUser(null)
             setDeleteConfirm(null)
@@ -171,11 +175,11 @@ export default function EmployeesPage() {
             if (res.ok) {
                 mutate()
             } else {
-                window.alert(t('error_generic'))
+                setNotice({ variant: 'error', title: t('error_generic') })
             }
         } catch (err) {
             console.error('Status toggle error:', err)
-            window.alert(t('error_generic'))
+            setNotice({ variant: 'error', title: t('error_generic') })
         } finally {
             setTogglingStatus(null)
         }
@@ -543,6 +547,7 @@ export default function EmployeesPage() {
                     </div>
                 </div>
             </Modal>
+            <NoticeModal notice={notice} onClose={() => setNotice(null)} />
         </div>
     )
 }

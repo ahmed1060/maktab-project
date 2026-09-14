@@ -21,6 +21,7 @@ import { bundleLabelKeys } from '@/lib/subscription-display'
 import type { SubscriptionState, TrialPreset } from '@/lib/billing/state'
 import { DEFAULT_TRIAL_PRESET, computeTrialEnd, TRIAL_PRESETS } from '@/lib/billing/state'
 import { TRIAL_PRESET_LABEL_KEY } from '@/lib/subscription-display'
+import NoticeModal, { Notice } from '@/components/NoticeModal'
 
 type Company = {
     id: string
@@ -64,6 +65,9 @@ export default function CompaniesPage() {
     const { showToast } = useToast()
     const [isDeleting, setIsDeleting] = useState(false)
     const [banConfirm, setBanConfirm] = useState<{ isOpen: boolean, company: Company | null, action: 'ban' | 'unban' | null }>({ isOpen: false, company: null, action: null })
+    // Replaces alert(): a native dialog ignores the palette entirely, and it
+    // blocks the main thread for as long as it is up.
+    const [notice, setNotice] = useState<Notice | null>(null)
 
     const [page, setPage] = useState(1)
     const limit = 10
@@ -572,16 +576,17 @@ export default function CompaniesPage() {
                                 fetchCompanies()
                                 setBanConfirm({ isOpen: false, company: null, action: null })
                             } else {
-                                alert(t('failed_change_ban_status'))
+                                setNotice({ variant: 'error', title: t('failed_change_ban_status') })
                             }
                         } catch {
-                            alert(t('error_changing_status'))
+                            setNotice({ variant: 'error', title: t('error_changing_status') })
                         }
                     }
                 }}
                 onCancel={() => setBanConfirm({ isOpen: false, company: null, action: null })}
                 variant={banConfirm.action === 'ban' ? 'danger' : 'warning'}
             />
+            <NoticeModal notice={notice} onClose={() => setNotice(null)} />
         </>
     )
 }

@@ -10,6 +10,7 @@ import { useLanguage } from '@/context/LanguageContext'
 import { useHeader } from '@/context/HeaderContext'
 import Pagination from '@/components/Pagination'
 import { fetcher } from '@/lib/swr-fetcher'
+import NoticeModal, { Notice } from '@/components/NoticeModal'
 
 type Admin = {
     id: string
@@ -29,6 +30,9 @@ export default function SuperAdminsPage() {
     const [viewingAdmin, setViewingAdmin] = useState<Admin | null>(null)
     const [editingAdmin, setEditingAdmin] = useState<Admin | null>(null)
     const [deleteConfirm, setDeleteConfirm] = useState<Admin | null>(null)
+    // Replaces alert(): a native dialog ignores the palette entirely, and it
+    // blocks the main thread for as long as it is up.
+    const [notice, setNotice] = useState<Notice | null>(null)
     const [deleting, setDeleting] = useState(false)
 
     const { data: session } = useSession()
@@ -146,7 +150,7 @@ export default function SuperAdminsPage() {
         } catch (err: any) {
             // The delete confirm modal has no inline error slot, so surface
             // this the same way other destructive actions in the app do.
-            window.alert(err.message)
+            setNotice({ variant: 'error', title: t('error_generic'), detail: err.message })
         } finally {
             setDeleting(false)
         }
@@ -464,6 +468,7 @@ export default function SuperAdminsPage() {
                 onCancel={() => setDeleteConfirm(null)}
                 variant="danger"
             />
+            <NoticeModal notice={notice} onClose={() => setNotice(null)} />
         </div>
     )
 }

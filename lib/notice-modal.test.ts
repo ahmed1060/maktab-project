@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest"
-import { readFileSync } from "node:fs"
+import { readFileSync, readdirSync, statSync } from "node:fs"
+import { join } from "node:path"
 import { stripComments } from "./strip-comments"
 import { en } from "@/lib/translations/en"
 import { ar } from "@/lib/translations/ar"
@@ -9,13 +10,52 @@ import { ar } from "@/lib/translations/ar"
 const read = (path: string) => stripComments(readFileSync(path, "utf8"))
 
 const HEALTH = read("app/(dashboard)/dashboard/health/page.tsx")
+
+/** Every page and component in the product, so neither guard below is scoped to one screen. */
+function walkPages(dir = "app", out: string[] = []): string[] {
+    for (const entry of readdirSync(dir)) {
+        const path = join(dir, entry)
+        if (statSync(path).isDirectory()) walkPages(path, out)
+        else if (entry.endsWith(".tsx")) out.push(path)
+    }
+    if (dir === "app") for (const entry of readdirSync("components", { recursive: true }) as string[]) {
+        const path = join("components", entry)
+        if (statSync(path).isFile() && path.endsWith(".tsx")) out.push(path)
+    }
+    return out
+}
 const NOTICE = read("components/NoticeModal.tsx")
 
 describe("results are reported in the application's own theme", () => {
-    it("leaves no native alert() on the page that raises them", () => {
-        // 16 of them, and the one the Super Admin saw after deleting 97 files
-        // opened as a browser-chrome grey box on a dark page.
-        expect(HEALTH).not.toMatch(/(^|[^.\w])alert\(/)
+    it("leaves no native alert() anywhere in the product", () => {
+        // Started as a check on one page -- the 16 calls behind the message a
+        // Super Admin saw after deleting 97 files, which opened as a
+        // browser-chrome grey box on a dark page. The other 13 were spread over
+        // five pages and had exactly the same problem, so the guard is the
+        // whole app rather than the page that happened to be reported.
+        //
+        // Both spellings: window.alert() was the more common of the two.
+        const offenders: string[] = []
+        for (const file of walkPages()) {
+            stripComments(readFileSync(file, "utf8")).split("\n").forEach((line, i) => {
+                if (/(^|[^.\w])alert\(|\bwindow\.alert\(/.test(line)) {
+                    offenders.push(`${file}:${i + 1}  ${line.trim().slice(0, 70)}`)
+                }
+            })
+        }
+        expect(offenders, `native alert():\n${offenders.join("\n")}`).toEqual([])
+    })
+
+    it("mounts the modal on every page that reports one", () => {
+        // setNotice without <NoticeModal /> in the tree is a silent no-op: the
+        // state changes and nothing appears. Worse than the alert() it replaced.
+        const missing = walkPages()
+            .map(file => ({ file, code: stripComments(readFileSync(file, "utf8")) }))
+            .filter(({ code }) => code.includes("setNotice({"))
+            .filter(({ code }) => !code.includes("<NoticeModal"))
+            .map(({ file }) => file)
+
+        expect(missing, `sets a notice but never renders one:\n${missing.join("\n")}`).toEqual([])
     })
 
     it("routes every outcome through the same modal", () => {

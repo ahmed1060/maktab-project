@@ -14,6 +14,7 @@ import Modal from '@/components/Modal'
 import EmployeeFilter from '@/components/EmployeeFilter'
 import DatePickerSingle from '@/components/DatePickerSingle'
 import Pagination from '@/components/Pagination'
+import NoticeModal, { Notice } from '@/components/NoticeModal'
 
 interface Note {
     id: string
@@ -57,6 +58,9 @@ export default function SectionNotesPage() {
     const [isModalOpen, setIsModalOpen] = useState(false)
     const [newNoteContent, setNewNoteContent] = useState('')
     const [isSubmitting, setIsSubmitting] = useState(false)
+    // Replaces alert(): a native dialog ignores the palette entirely, and it
+    // blocks the main thread for as long as it is up.
+    const [notice, setNotice] = useState<Notice | null>(null)
     const [deleteConfirm, setDeleteConfirm] = useState<{ isOpen: boolean, note: Note | null }>({ isOpen: false, note: null })
     const { setTitle } = useHeader()
     const { data: session } = useSession()
@@ -817,10 +821,10 @@ export default function SectionNotesPage() {
                                     setDeleteConfirm({ isOpen: false, note: null })
                                 } else {
                                     const err = await res.json()
-                                    alert(`${t('failed_save_generic')}: ${err.error}`)
+                                    setNotice({ variant: 'error', title: t('failed_save_generic'), detail: err.error })
                                 }
                             } catch {
-                                alert(t('failed_save_generic'))
+                                setNotice({ variant: 'error', title: t('failed_save_generic') })
                             }
                         }
                     }}
@@ -1044,6 +1048,7 @@ export default function SectionNotesPage() {
                     )
                 }
             </div>
+            <NoticeModal notice={notice} onClose={() => setNotice(null)} />
         </div>
     )
 }
