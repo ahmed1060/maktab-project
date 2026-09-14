@@ -38,8 +38,8 @@ export default function SegmentedToggle<T extends string>({
                 padding: '0.25rem',
                 gap: '0.2rem',
                 borderRadius: '999px',
-                background: 'rgba(15, 23, 42, 0.06)',
-                border: '1px solid rgba(15, 23, 42, 0.08)',
+                background: 'color-mix(in srgb, var(--text-strong) 6%, transparent)',
+                border: '1px solid color-mix(in srgb, var(--text-strong) 8%, transparent)',
             }}
         >
             {options.map(option => {
@@ -67,7 +67,7 @@ export default function SegmentedToggle<T extends string>({
                             // disabled.
                             color: selected ? 'var(--text-strong)' : 'var(--text-muted)',
                             background: selected ? 'var(--surface)' : 'transparent',
-                            boxShadow: selected ? '0 1px 3px rgba(15, 23, 42, 0.12)' : 'none',
+                            boxShadow: selected ? '0 1px 3px color-mix(in srgb, var(--text-strong) 12%, transparent)' : 'none',
                             cursor: disabled ? 'not-allowed' : selected ? 'default' : 'pointer',
                             opacity: disabled ? 0.6 : 1,
                             transition: 'background 0.15s, color 0.15s, box-shadow 0.15s',
@@ -84,7 +84,7 @@ export default function SegmentedToggle<T extends string>({
                                 // Amber only when the selected filter has
                                 // something in it. An amber zero pulls the eye
                                 // every morning and teaches you to stop looking.
-                                background: selected && option.count > 0 ? 'var(--warn-bg)' : 'rgba(15, 23, 42, 0.07)',
+                                background: selected && option.count > 0 ? 'var(--warn-bg)' : 'color-mix(in srgb, var(--text-strong) 7%, transparent)',
                                 color: selected && option.count > 0 ? 'var(--warn-fg)' : 'var(--text-soft)',
                             }}>
                                 {option.count}

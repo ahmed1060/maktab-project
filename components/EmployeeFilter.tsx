@@ -674,7 +674,7 @@ export default function EmployeeFilter({
                                                 fontWeight: '700',
                                                 cursor: 'pointer',
                                                 fontSize: '0.875rem',
-                                                boxShadow: '0 4px 12px rgba(99, 102, 241, 0.2)'
+                                                boxShadow: '0 4px 12px color-mix(in srgb, var(--primary) 20%, transparent)'
                                             }}
                                         >
                                             {t('show_results')}
@@ -730,7 +730,7 @@ export default function EmployeeFilter({
                         display: 'flex',
                         alignItems: 'center',
                         gap: '0.5rem',
-                        boxShadow: '0 2px 4px rgba(251, 146, 60, 0.05)'
+                        boxShadow: '0 2px 4px color-mix(in srgb, var(--warn-solid-warm) 5%, transparent)'
                     }}>
                         <div style={{ background: 'var(--warn-solid-warm)', color: 'var(--text-on-accent)', padding: '0.25rem', borderRadius: '0.5rem', display: 'flex' }}>
                             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">

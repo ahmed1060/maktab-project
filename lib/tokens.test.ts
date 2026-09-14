@@ -74,10 +74,13 @@ describe("every defined token is used", () => {
 })
 
 describe("no raw colour survives in any notation", () => {
-    // The tokenising pass ran three times because each pass only caught the
+    // The tokenising pass ran four times because each pass only caught the
     // notation it was written for: hex first, then 'white'/'black' keywords,
-    // then rgba(). Each gap showed up the same way — a light surface left
-    // stranded on a dark page. This asserts all three at once.
+    // then white rgba(), then black rgba() and named colours. A fifth gap —
+    // every rgba() that was neither white nor black — stayed open until the
+    // control that used one was about to go on every screen. The rgba check
+    // below is now general rather than per-colour, which is what closes the
+    // class instead of the instance.
     const EXEMPT_FILE = "ManageTemplatesModal"
 
     const scan = (pattern: RegExp, what: string) => {
@@ -93,21 +96,30 @@ describe("no raw colour survives in any notation", () => {
         expect(offenders, `${what}:\n${offenders.join("\n")}`).toEqual([])
     }
 
-    it("has no translucent white written out by hand", () => {
-        // A white veil stays white on a dark ground. This is what left the
-        // company switcher and the header buttons as pale blobs in dark mode.
-        scan(/rgba\(\s*255\s*,\s*255\s*,\s*255\s*,/, "hardcoded translucent white")
+    it("has no rgba() literal of any colour", () => {
+        // Supersedes the two notation-specific rgba checks this replaces, which
+        // matched only 255,255,255 and 0,0,0 and are the reason this gap stayed
+        // open after four tokenising passes.
+        //
+        // A white veil stays white on a dark ground — that is what left the
+        // company switcher and the header buttons as pale blobs. Black does
+        // three jobs, shadow, scrim and hairline, and all three break
+        // differently there: a 5% black shadow is simply invisible, so cards
+        // lose the separation it was carrying.
+        //
+        // What neither check could see was everything in between.
+        // SegmentedToggle drew its track with rgba(15, 23, 42, 0.06) — slate,
+        // not black — which composites to within one value of the dark surface
+        // it sits on, so the control lost its track and its selected pill lost
+        // its lift, on the one screen that used it. The fix is not a third
+        // special case: a raw rgba() is a colour outside the palette whatever
+        // its channels are, and color-mix over a token expresses the same thing
+        // while following the theme.
+        scan(/rgba\(/, "raw rgba() — use color-mix(in srgb, var(--token) N%, transparent)")
     })
 
     it("has no 'white' or 'black' keyword colours", () => {
         scan(/:\s*'(white|black)'/, "keyword colours")
-    })
-
-    it("has no hardcoded black", () => {
-        // Black does three different jobs — shadow, scrim, hairline — and all
-        // three break differently on a dark ground. A 5% black shadow is simply
-        // invisible there, so cards lose the separation it was carrying.
-        scan(/rgba\(\s*0\s*,\s*0\s*,\s*0\s*,/, "hardcoded black")
     })
 
     it("has no CSS named colours", () => {

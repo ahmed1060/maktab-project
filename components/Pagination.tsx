@@ -50,7 +50,7 @@ export default function Pagination({ currentPage, totalPages, onPageChange }: Pa
                         fontSize: '0.9rem',
                         fontWeight: '600',
                         transition: 'all 0.2s',
-                        background: currentPage === i ? 'rgba(99, 102, 241, 0.2)' : 'transparent',
+                        background: currentPage === i ? 'color-mix(in srgb, var(--primary) 20%, transparent)' : 'transparent',
                         color: currentPage === i ? 'var(--brand-primary)' : 'var(--text-muted)',
                         border: currentPage === i ? '1px solid var(--brand-primary)' : 'none',
                         cursor: 'pointer'

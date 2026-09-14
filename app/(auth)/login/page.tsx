@@ -522,7 +522,7 @@ export default function LoginPage() {
                                     fontWeight: '600',
                                     cursor: loading ? 'not-allowed' : 'pointer',
                                     transition: 'all 0.3s ease',
-                                    boxShadow: loading ? 'none' : '0 4px 15px rgba(102, 126, 234, 0.4)',
+                                    boxShadow: loading ? 'none' : '0 4px 15px color-mix(in srgb, var(--hero-from) 40%, transparent)',
                                 }}
                             >
                                 {loading ? (

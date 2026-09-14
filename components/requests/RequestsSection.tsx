@@ -180,9 +180,9 @@ export default function RequestsSection({ userRole }: { userRole: string }) {
                         padding: '0 1.5rem',
                         height: '48px',
                         fontSize: '0.95rem',
-                        background: 'rgba(254, 243, 199, 0.4)',
+                        background: 'color-mix(in srgb, var(--warn-bg) 40%, transparent)',
                         color: 'var(--warn-fg-mid)',
-                        border: '1px solid rgba(251, 191, 36, 0.3)',
+                        border: '1px solid color-mix(in srgb, var(--warn-border) 30%, transparent)',
                         fontWeight: '800',
                         borderRadius: '1.25rem',
                         display: 'flex',
@@ -190,7 +190,7 @@ export default function RequestsSection({ userRole }: { userRole: string }) {
                         gap: '0.5rem',
                         backdropFilter: 'blur(10px)',
                         textDecoration: 'none',
-                        boxShadow: '0 4px 12px rgba(251, 191, 36, 0.1)'
+                        boxShadow: '0 4px 12px color-mix(in srgb, var(--warn-border) 10%, transparent)'
                     }}
                 >
                     📜 {t('history')}
@@ -238,7 +238,7 @@ export default function RequestsSection({ userRole }: { userRole: string }) {
                             background: 'linear-gradient(135deg, var(--brand-primary) 0%, var(--accent-solid) 100%)',
                             border: 'none',
                             color: 'var(--text-on-accent)',
-                            boxShadow: '0 4px 15px rgba(99, 102, 241, 0.3)',
+                            boxShadow: '0 4px 15px color-mix(in srgb, var(--primary) 30%, transparent)',
                             whiteSpace: 'nowrap',
                             display: 'flex',
                             alignItems: 'center'

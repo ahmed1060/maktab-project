@@ -81,7 +81,7 @@ export default function BulkTaskReviewModal({
                                 {bulkTasks.map((bt, idx) => (
                                     <tr key={idx} style={{
                                         borderBottom: '1px solid var(--glass-border)',
-                                        background: bt.isInvalid ? 'rgba(239, 68, 68, 0.05)' : 'transparent',
+                                        background: bt.isInvalid ? 'color-mix(in srgb, var(--danger-solid) 5%, transparent)' : 'transparent',
                                         transition: 'background 0.3s'
                                     }}>
                                         <td style={{ padding: '1rem' }}>{idx + 1}</td>
@@ -605,7 +605,7 @@ export default function BulkTaskReviewModal({
                                                 className="btn"
                                                 style={{
                                                     padding: '0.4rem 0.8rem',
-                                                    background: 'rgba(239, 68, 68, 0.1)',
+                                                    background: 'color-mix(in srgb, var(--danger-solid) 10%, transparent)',
                                                     color: 'var(--danger-solid-hover)',
                                                     borderRadius: '0.75rem'
                                                 }}

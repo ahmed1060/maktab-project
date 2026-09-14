@@ -330,11 +330,11 @@ export default function CompaniesPage() {
                                                 onClick={() => router.push(`/dashboard/companies/${company.id}/payments`)}
                                                 className="btn"
                                                 style={{
-                                                    background: 'rgba(99, 102, 241, 0.1)',
+                                                    background: 'color-mix(in srgb, var(--primary) 10%, transparent)',
                                                     color: 'var(--brand-primary)',
                                                     padding: '0.4rem 0.8rem',
                                                     fontSize: '0.8rem',
-                                                    border: '1px solid rgba(99, 102, 241, 0.2)'
+                                                    border: '1px solid color-mix(in srgb, var(--primary) 20%, transparent)'
                                                 }}
                                             >
                                                 💳 {t('payments_history')}
@@ -358,11 +358,11 @@ export default function CompaniesPage() {
                                                     className="btn"
                                                     title={t('company_settings_title') || 'Settings'}
                                                     style={{
-                                                        background: 'rgba(45, 93, 82, 0.1)',
+                                                        background: 'color-mix(in srgb, var(--ok-fg-deep) 10%, transparent)',
                                                         color: 'var(--ok-fg)',
                                                         padding: '0.4rem 0.6rem',
                                                         fontSize: '0.9rem',
-                                                        border: '1px solid rgba(45, 93, 82, 0.2)'
+                                                        border: '1px solid color-mix(in srgb, var(--ok-fg-deep) 20%, transparent)'
                                                     }}
                                                 >
                                                     ⚙️

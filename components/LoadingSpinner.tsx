@@ -23,7 +23,7 @@ export default function LoadingSpinner({ message, fullPage = false }: LoadingSpi
             <div className="animate-spin" style={{
                 width: '40px',
                 height: '40px',
-                border: '4px solid rgba(59, 130, 246, 0.1)',
+                border: '4px solid color-mix(in srgb, var(--info-solid) 10%, transparent)',
                 borderTopColor: 'var(--info-solid)',
                 borderRadius: '50%'
             }}></div>

@@ -73,7 +73,7 @@ export default function SearchableSelect({ options, value, onChange, placeholder
                     alignItems: 'center',
                     minHeight: '48px',
                     height: '48px',
-                    boxShadow: isOpen ? '0 0 0 3px rgba(59, 130, 246, 0.1)' : '0 1px 2px var(--shadow-faint)',
+                    boxShadow: isOpen ? '0 0 0 3px color-mix(in srgb, var(--info-solid) 10%, transparent)' : '0 1px 2px var(--shadow-faint)',
                     transition: 'all 0.2s ease',
                     color: 'var(--text-main)'
                 }}

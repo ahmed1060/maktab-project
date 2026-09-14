@@ -143,8 +143,8 @@ export default function ViewRequestModal({ isOpen, onClose, request, userRole, o
                 <div style={{
                     marginBottom: '1.5rem',
                     padding: '1rem',
-                    background: 'rgba(99, 102, 241, 0.03)',
-                    border: '1px dashed rgba(99, 102, 241, 0.2)',
+                    background: 'color-mix(in srgb, var(--primary) 3%, transparent)',
+                    border: '1px dashed color-mix(in srgb, var(--primary) 20%, transparent)',
                     borderRadius: '0.75rem',
                     fontSize: '0.85rem'
                 }}>

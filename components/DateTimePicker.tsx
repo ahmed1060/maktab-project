@@ -182,7 +182,7 @@ export default function DateTimePicker({ value, onChange, label, min, customTrig
                         justifyContent: 'space-between',
                         minHeight: '42px',
                         transition: 'all 0.2s',
-                        boxShadow: isOpen ? '0 0 0 4px rgba(99, 102, 241, 0.15)' : 'none',
+                        boxShadow: isOpen ? '0 0 0 4px color-mix(in srgb, var(--primary) 15%, transparent)' : 'none',
                         borderColor: isOpen ? 'var(--brand-primary)' : 'var(--veil-40)'
                     }}
                 >

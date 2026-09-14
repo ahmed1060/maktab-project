@@ -145,8 +145,8 @@ export default function TasksClient({ tasks, total, page, totalPages, role, curr
                             transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
                             transform: isMyHovered ? 'translateY(-2px)' : 'none',
                             boxShadow: isMyHovered
-                                ? '0 8px 25px rgba(99, 102, 241, 0.45)'
-                                : (view === 'my' ? '0 4px 12px rgba(139, 92, 246, 0.25)' : 'none')
+                                ? '0 8px 25px color-mix(in srgb, var(--primary) 45%, transparent)'
+                                : (view === 'my' ? '0 4px 12px color-mix(in srgb, var(--accent) 25%, transparent)' : 'none')
                         }}
                     >
                         {t('my_tasks' as any)}
@@ -169,8 +169,8 @@ export default function TasksClient({ tasks, total, page, totalPages, role, curr
                             transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
                             transform: isActiveHovered ? 'translateY(-2px)' : 'none',
                             boxShadow: isActiveHovered
-                                ? '0 8px 25px rgba(99, 102, 241, 0.45)'
-                                : (view === 'active' ? '0 4px 12px rgba(139, 92, 246, 0.25)' : 'none')
+                                ? '0 8px 25px color-mix(in srgb, var(--primary) 45%, transparent)'
+                                : (view === 'active' ? '0 4px 12px color-mix(in srgb, var(--accent) 25%, transparent)' : 'none')
                         }}
                     >
                         {t('active_tasks' as any)}

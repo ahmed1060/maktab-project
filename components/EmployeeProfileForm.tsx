@@ -927,7 +927,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                                 <div style={{
                                     width: '64px',
                                     height: '64px',
-                                    background: 'rgba(99, 102, 241, 0.1)',
+                                    background: 'color-mix(in srgb, var(--primary) 10%, transparent)',
                                     borderRadius: '50%',
                                     display: 'flex',
                                     alignItems: 'center',

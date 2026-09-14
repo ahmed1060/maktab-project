@@ -366,13 +366,13 @@ export default function SectionNotesPage() {
     const getRoleStyles = (role: string) => {
         switch (role) {
             case 'SUPER_ADMIN':
-                return { background: 'rgba(254, 243, 199, 0.5)', color: 'var(--warn-fg)', border: '1px solid rgba(251, 191, 36, 0.3)' }
+                return { background: 'color-mix(in srgb, var(--warn-bg) 50%, transparent)', color: 'var(--warn-fg)', border: '1px solid color-mix(in srgb, var(--warn-border) 30%, transparent)' }
             case 'ADMIN':
-                return { background: 'rgba(224, 242, 254, 0.5)', color: 'var(--info-fg-deep)', border: '1px solid rgba(56, 189, 248, 0.3)' }
+                return { background: 'color-mix(in srgb, var(--info-bg) 50%, transparent)', color: 'var(--info-fg-deep)', border: '1px solid color-mix(in srgb, var(--info-solid-sky-light) 30%, transparent)' }
             case 'TEAM_LEADER':
-                return { background: 'rgba(245, 243, 199, 0.5)', color: 'var(--accent-fg)', border: '1px solid rgba(167, 139, 250, 0.3)' }
+                return { background: 'color-mix(in srgb, var(--lifetime-bg) 50%, transparent)', color: 'var(--accent-fg)', border: '1px solid color-mix(in srgb, var(--accent-solid) 30%, transparent)' }
             default:
-                return { background: 'rgba(241, 245, 249, 0.5)', color: 'var(--text-muted)', border: '1px solid rgba(148, 163, 184, 0.3)' }
+                return { background: 'color-mix(in srgb, var(--surface-sunk) 50%, transparent)', color: 'var(--text-muted)', border: '1px solid color-mix(in srgb, var(--border-firm) 30%, transparent)' }
         }
     }
 
@@ -528,7 +528,7 @@ export default function SectionNotesPage() {
                                 </div>
 
                                 {/* Divider */}
-                                <div style={{ height: '1px', width: '100%', background: 'rgba(226, 232, 240, 0.5)', marginBottom: '1rem' }} />
+                                <div style={{ height: '1px', width: '100%', background: 'color-mix(in srgb, var(--border) 50%, transparent)', marginBottom: '1rem' }} />
 
                                 {/* Footer Actions */}
                                 <div style={{ display: 'flex', flexDirection: 'column', marginTop: 'auto' }}>
@@ -548,7 +548,7 @@ export default function SectionNotesPage() {
                                                         display: 'flex',
                                                         alignItems: 'center',
                                                         gap: '0.25rem',
-                                                        background: 'rgba(56, 189, 248, 0.1)',
+                                                        background: 'color-mix(in srgb, var(--info-solid-sky-light) 10%, transparent)',
                                                         padding: '0.25rem 0.5rem',
                                                         borderRadius: '0.5rem',
                                                         textDecoration: 'none',
