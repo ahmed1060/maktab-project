@@ -57,7 +57,7 @@ export class MaintenanceService {
      * orphaned and every real file looked referenced. Verified against the live
      * bucket: 106 objects, none of them at the root.
      */
-    static async listAllAssets(prefix = ''): Promise<{ name: string }[]> {
+    static async listAllAssets(prefix = ''): Promise<{ name: string; size: number }[]> {
         const LIMIT = 1000
         let entries: any[] = []
         let offset = 0
@@ -72,7 +72,7 @@ export class MaintenanceService {
             offset += LIMIT
         }
 
-        const files: { name: string }[] = []
+        const files: { name: string; size: number }[] = []
         for (const entry of entries) {
             const path = prefix ? `${prefix}/${entry.name}` : entry.name
             // A folder is an entry with no id. Recursing on it is what turns
@@ -80,7 +80,10 @@ export class MaintenanceService {
             if (entry.id === null || entry.id === undefined) {
                 files.push(...await this.listAllAssets(path))
             } else {
-                files.push({ name: path })
+                // Size carried through so a report can say how much a sweep
+                // would free. A count alone does not tell anybody whether this
+                // is worth doing or worth double-checking.
+                files.push({ name: path, size: Number(entry.metadata?.size ?? 0) })
             }
         }
         return files
@@ -189,13 +192,14 @@ export class MaintenanceService {
         console.log(`[Maintenance] Orphan sweep (${dryRun ? 'report only' : 'deleting'})...`)
 
         const allFiles = await this.listAllAssets()
-        const sweepable = allFiles.map(f => f.name).filter(isSweepable)
+        const sweepable = allFiles.filter(f => isSweepable(f.name))
         if (sweepable.length === 0) {
-            return { deleted: 0, total: 0, orphaned: 0, orphans: [], dryRun, reserved: RESERVED_PATHS.length }
+            return { deleted: 0, total: 0, orphaned: 0, orphans: [], bytes: 0, dryRun, reserved: RESERVED_PATHS.length }
         }
 
         const referenced = await this.collectReferencedPaths()
-        const orphans = sweepable.filter(name => !referenced.has(name))
+        const orphanFiles = sweepable.filter(f => !referenced.has(f.name))
+        const orphans = orphanFiles.map(f => f.name)
 
         const decision = decideCleanup(orphans.length, sweepable.length)
         const summary = {
@@ -203,6 +207,7 @@ export class MaintenanceService {
             referenced: referenced.size,
             orphaned: orphans.length,
             orphans,
+            bytes: orphanFiles.reduce((sum, f) => sum + f.size, 0),
             dryRun,
         }
 

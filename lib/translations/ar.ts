@@ -1055,5 +1055,10 @@ export const ar = {
         company_logo_remove: "إزالة",
         company_logo_removed: "تمت إزالة الشعار",
         company_logo_none: "لا يوجد شعار — يُعرض الشعار الافتراضي",
-        company_logo_preview: "معاينة القائمة الجانبية"
+        company_logo_preview: "معاينة القائمة الجانبية",
+        orphan_report_title: "ملفات لا يشير إليها أي سجل",
+        orphan_report_none: "لا يوجد ما يُنظَّف — كل ملف مُخزَّن لا يزال مُستخدَمًا.",
+        orphan_report_delete: "حذف هذه الملفات",
+        confirm_delete_orphans_title: "حذف الملفات غير المرتبطة؟",
+        confirm_delete_orphans_msg: "سيتم حذف هذه الملفات نهائيًا من التخزين ولا يمكن استرجاعها. لا يشمل ذلك أي ملف لا يزال مرتبطًا بسجل."
 };

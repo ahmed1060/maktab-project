@@ -1060,5 +1060,10 @@ export const en = {
         company_logo_remove: "Remove",
         company_logo_removed: "Logo removed",
         company_logo_none: "No logo — the default mark is shown",
-        company_logo_preview: "Sidebar preview"
+        company_logo_preview: "Sidebar preview",
+        orphan_report_title: "Files no record refers to",
+        orphan_report_none: "Nothing to clean up — every stored file is still referenced.",
+        orphan_report_delete: "Delete these files",
+        confirm_delete_orphans_title: "Delete orphaned files?",
+        confirm_delete_orphans_msg: "These files will be permanently removed from storage and cannot be recovered. Nothing still referenced by a record is included."
 };

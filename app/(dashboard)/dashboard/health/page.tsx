@@ -23,9 +23,16 @@ type HealthMetrics = {
     }
 }
 
-type PendingAction = 'CLEANUP_ASSETS' | 'PRUNE_LOGS' | 'PRUNE_NOTIFICATIONS' | 'BACKUP' | 'RESTORE_LATEST' | 'RESTORE_SPECIFIC' | 'MAINTENANCE_ON' | 'MAINTENANCE_OFF' | null
+type PendingAction = 'CLEANUP_ASSETS' | 'DELETE_ORPHANS' | 'PRUNE_LOGS' | 'PRUNE_NOTIFICATIONS' | 'BACKUP' | 'RESTORE_LATEST' | 'RESTORE_SPECIFIC' | 'MAINTENANCE_ON' | 'MAINTENANCE_OFF' | null
 
 const RESTORE_CONFIRM_WORD = 'RESTORE'
+const DELETE_CONFIRM_WORD = 'DELETE'
+
+function formatBytes(bytes: number): string {
+    if (bytes < 1024) return `${bytes} B`
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`
+    return `${(bytes / 1024 / 1024).toFixed(1)} MB`
+}
 
 export default function SystemHealthPage() {
     const { t, locale } = useLanguage()
@@ -35,6 +42,13 @@ export default function SystemHealthPage() {
     const [processing, setProcessing] = useState<string | null>(null)
     const [triggeringBackup, setTriggeringBackup] = useState(false)
     const [pendingAction, setPendingAction] = useState<PendingAction>(null)
+    // The orphan sweep is two steps: a report, then a confirmed delete. The
+    // reference set behind it is a hand-kept list of queries, so the one thing
+    // that must not happen is a mass delete nobody looked at first.
+    const [orphanReport, setOrphanReport] = useState<
+        { orphaned: number; total: number; bytes: number; orphans: string[] } | null
+    >(null)
+    const [deletingOrphans, setDeletingOrphans] = useState(false)
     const [restoring, setRestoring] = useState(false)
     const [pickerOpen, setPickerOpen] = useState(false)
     const [backups, setBackups] = useState<BackupEntry[]>([])
@@ -88,13 +102,13 @@ export default function SystemHealthPage() {
         fetchSystemSettings()
     }, [fetchMetrics, fetchSystemSettings])
 
-    const runMaintenance = async (action: string) => {
+    const runMaintenance = async (action: string, params?: Record<string, unknown>) => {
         setProcessing(action)
         try {
             const res = await fetch('/api/admin/maintenance', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action })
+                body: JSON.stringify(params ? { action, params } : { action })
             })
 
             const result = await res.json()
@@ -109,6 +123,57 @@ export default function SystemHealthPage() {
             alert(t('maintenance_failed' as any))
         } finally {
             setProcessing(null)
+        }
+    }
+
+    /** Step one: ask what a sweep would delete, and show it. Deletes nothing. */
+    const previewOrphans = async () => {
+        setProcessing('CLEANUP_ASSETS')
+        try {
+            const res = await fetch('/api/admin/maintenance', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'CLEANUP_ASSETS', params: { dryRun: true } })
+            })
+            const result = await res.json()
+            if (!result.success) {
+                alert(t('maintenance_failed' as any) + ': ' + result.error)
+                return
+            }
+            setOrphanReport(result.data.result)
+        } catch (error) {
+            console.error('Maintenance error:', error)
+            alert(t('maintenance_failed' as any))
+        } finally {
+            setProcessing(null)
+        }
+    }
+
+    /** Step two, and only from the report: delete what it listed. */
+    const deleteOrphans = async () => {
+        setDeletingOrphans(true)
+        try {
+            const res = await fetch('/api/admin/maintenance', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                // confirm authorises going past the plausibility threshold —
+                // which a real backlog will always exceed, and which only
+                // somebody who has read the list above can judge.
+                body: JSON.stringify({ action: 'CLEANUP_ASSETS', params: { dryRun: false, confirm: true } })
+            })
+            const result = await res.json()
+            if (result.success) {
+                alert(`${t('maintenance_success' as any)} (${result.data.result.deleted})`)
+                setOrphanReport(null)
+                fetchMetrics()
+            } else {
+                alert(t('maintenance_failed' as any) + ': ' + result.error)
+            }
+        } catch (error) {
+            console.error('Maintenance error:', error)
+            alert(t('maintenance_failed' as any))
+        } finally {
+            setDeletingOrphans(false)
         }
     }
 
@@ -210,6 +275,10 @@ export default function SystemHealthPage() {
     // keyed off which button was clicked.
     const confirmCopy: Record<Exclude<PendingAction, null>, { title: string; message: string }> = {
         CLEANUP_ASSETS: { title: t('confirm_cleanup_assets_title' as any), message: t('confirm_cleanup_assets_msg' as any) },
+        DELETE_ORPHANS: {
+            title: t('confirm_delete_orphans_title' as any),
+            message: `${t('confirm_delete_orphans_msg' as any)} (${orphanReport?.orphaned ?? 0} · ${formatBytes(orphanReport?.bytes ?? 0)})`
+        },
         PRUNE_LOGS: { title: t('confirm_prune_logs_title' as any), message: t('confirm_prune_logs_msg' as any) },
         PRUNE_NOTIFICATIONS: { title: t('confirm_prune_notifications_title' as any), message: t('confirm_prune_notifications_msg' as any) },
         BACKUP: { title: t('confirm_trigger_backup_title' as any), message: t('confirm_trigger_backup_msg' as any) },
@@ -236,6 +305,10 @@ export default function SystemHealthPage() {
             toggleMaintenance(true)
         } else if (action === 'MAINTENANCE_OFF') {
             toggleMaintenance(false)
+        } else if (action === 'CLEANUP_ASSETS') {
+            previewOrphans()
+        } else if (action === 'DELETE_ORPHANS') {
+            deleteOrphans()
         } else {
             runMaintenance(action)
         }
@@ -284,8 +357,53 @@ export default function SystemHealthPage() {
                         className="btn"
                         style={{ width: '100%', marginTop: 'auto' }}
                     >
-                        {processing === 'CLEANUP_ASSETS' ? (locale === 'ar' ? 'جاري التنظيف...' : 'Cleaning...') : t('cleanup_orphaned' as any)}
+                        {processing === 'CLEANUP_ASSETS' ? (locale === 'ar' ? 'جاري الفحص...' : 'Scanning...') : t('cleanup_orphaned' as any)}
                     </button>
+
+                    {/* The report. Shown in place rather than in the confirm
+                        dialog because the point is that somebody reads the
+                        paths before agreeing to delete them, and a dialog is
+                        the wrong shape for a scrollable list. */}
+                    {orphanReport && (
+                        <div style={{
+                            border: '1px solid var(--border)', borderRadius: '0.75rem',
+                            padding: '0.85rem', background: 'var(--surface-sunk, var(--surface))',
+                            textAlign: locale === 'ar' ? 'right' : 'left'
+                        }}>
+                            <div style={{ fontWeight: 600, fontSize: '0.9rem', marginBottom: '0.2rem' }}>
+                                {t('orphan_report_title' as any)}
+                            </div>
+                            <div style={{ fontSize: '0.82rem', color: 'var(--text-soft)', marginBottom: '0.6rem' }}>
+                                {orphanReport.orphaned} / {orphanReport.total} · {formatBytes(orphanReport.bytes)}
+                            </div>
+
+                            {orphanReport.orphaned === 0 ? (
+                                <div style={{ fontSize: '0.85rem', color: 'var(--text-soft)' }}>
+                                    {t('orphan_report_none' as any)}
+                                </div>
+                            ) : (
+                                <>
+                                    <div style={{
+                                        maxHeight: '9rem', overflowY: 'auto', fontFamily: 'monospace',
+                                        fontSize: '0.72rem', lineHeight: 1.6, color: 'var(--text-soft)',
+                                        direction: 'ltr', textAlign: 'left', wordBreak: 'break-all'
+                                    }}>
+                                        {orphanReport.orphans.map(path => <div key={path}>{path}</div>)}
+                                    </div>
+                                    <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.75rem' }}>
+                                        <button className="btn" style={{ flex: 1 }}
+                                            onClick={() => setOrphanReport(null)} disabled={deletingOrphans}>
+                                            {t('cancel')}
+                                        </button>
+                                        <button className="btn" style={{ flex: 1, background: 'var(--danger-solid)', color: 'var(--text-on-accent)' }}
+                                            onClick={() => setPendingAction('DELETE_ORPHANS')} disabled={deletingOrphans}>
+                                            {deletingOrphans ? t('saving') : t('orphan_report_delete' as any)}
+                                        </button>
+                                    </div>
+                                </>
+                            )}
+                        </div>
+                    )}
                 </div>
 
                 {/* Auditing Card */}
@@ -447,8 +565,12 @@ export default function SystemHealthPage() {
                 isOpen={!!pendingAction}
                 title={pendingAction ? confirmCopy[pendingAction].title : ''}
                 message={pendingAction ? confirmCopy[pendingAction].message : ''}
-                variant={pendingAction === 'BACKUP' ? 'info' : (pendingAction === 'RESTORE_LATEST' || pendingAction === 'RESTORE_SPECIFIC') ? 'danger' : 'warning'}
-                requireTypedText={(pendingAction === 'RESTORE_LATEST' || pendingAction === 'RESTORE_SPECIFIC') ? RESTORE_CONFIRM_WORD : undefined}
+                variant={pendingAction === 'BACKUP' ? 'info' : (pendingAction === 'RESTORE_LATEST' || pendingAction === 'RESTORE_SPECIFIC' || pendingAction === 'DELETE_ORPHANS') ? 'danger' : 'warning'}
+                requireTypedText={
+                    (pendingAction === 'RESTORE_LATEST' || pendingAction === 'RESTORE_SPECIFIC')
+                        ? RESTORE_CONFIRM_WORD
+                        : pendingAction === 'DELETE_ORPHANS' ? DELETE_CONFIRM_WORD : undefined
+                }
                 onConfirm={handleConfirm}
                 onCancel={() => { setPendingAction(null); setSelectedBackup(null) }}
             />
