@@ -544,7 +544,7 @@ body::before {
     height: 36px !important;
     color: var(--text-main) !important;
     background-image: none !important;
-    background-color: rgba(255, 255, 255, 0.45) !important;
+    background-color: var(--veil-50) !important;
     -webkit-appearance: none !important;
     -moz-appearance: none !important;
     appearance: none !important;
@@ -571,8 +571,8 @@ body::before {
   /* Slate 900 at 65% */
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border-right: 1px solid rgba(255, 255, 255, 0.1);
-  color: white;
+  border-right: 1px solid var(--hairline-firm);
+  color: var(--sidebar-fg-strong);
 }
 
 .glass-card {
@@ -603,31 +603,31 @@ body::before {
 
 .card:hover {
   transform: translateY(-5px);
-  background: rgba(255, 255, 255, 0.75);
-  box-shadow: 0 12px 40px 0 rgba(31, 38, 135, 0.15);
-  border-color: rgba(255, 255, 255, 0.8);
+  background: var(--glass-card-hover);
+  box-shadow: var(--glass-shadow-hover);
+  border-color: var(--glass-card-border-hover);
 }
 
 /* Glass Variants */
 .glass-success {
-  background: rgba(220, 252, 231, 0.4);
+  background: color-mix(in srgb, var(--ok-bg) 40%, transparent);
   backdrop-filter: blur(12px);
-  border: 1px solid rgba(22, 101, 52, 0.2);
-  color: #14532d;
+  border: 1px solid var(--ok-border);
+  color: var(--ok-fg-deep);
 }
 
 .glass-warning {
-  background: rgba(254, 249, 195, 0.4);
+  background: color-mix(in srgb, var(--warn-bg) 40%, transparent);
   backdrop-filter: blur(12px);
-  border: 1px solid rgba(133, 77, 14, 0.2);
-  color: #713f12;
+  border: 1px solid var(--warn-border);
+  color: var(--warn-fg);
 }
 
 .glass-info {
-  background: rgba(239, 246, 255, 0.4);
+  background: color-mix(in srgb, var(--info-bg) 40%, transparent);
   backdrop-filter: blur(12px);
-  border: 1px solid rgba(30, 64, 175, 0.2);
-  color: #1e3a8a;
+  border: 1px solid var(--info-border-indigo);
+  color: var(--info-fg);
 }
 
 
@@ -638,7 +638,13 @@ body::before {
   /* Reduced padding for compact inputs */
   height: 42px;
   /* Fixed height instead of min-height */
-  background: rgba(255, 255, 255, 0.85); /* Slightly more opaque background */
+  /* --panel-85, not a white literal: this rule sets color to --text-main,
+     which the dark palette makes near-white. A hardcoded white ground under a
+     themed foreground is near-white text on near-white, and .input is on 115
+     elements — every text field in the product. The placeholder has its own
+     colour, so the only rows that looked broken were the ones somebody had
+     actually typed in. */
+  background: var(--panel-85);
   border: 1px solid rgba(99, 102, 241, 0.25); /* Subtle Indigo border for better visibility */
   border-radius: 1rem;
   font-family: inherit;
@@ -672,7 +678,7 @@ html[dir="rtl"] select.input {
 
 .input:focus {
   outline: none;
-  background: rgba(255, 255, 255, 0.9);
+  background: var(--panel-90);
   border-color: var(--primary);
   box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.15);
 }
@@ -712,9 +718,9 @@ html[dir="rtl"] select.input {
   font-weight: 700;
   letter-spacing: 0.05em;
   text-transform: uppercase;
-  background: rgba(255, 255, 255, 0.5);
+  background: var(--veil-50);
   backdrop-filter: blur(4px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: 1px solid var(--veil-20);
 }
 
 /* Scrollbar */
@@ -741,7 +747,7 @@ html[dir="rtl"] select.input {
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(15, 23, 42, 0.4);
+  background: var(--scrim);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   display: flex;
@@ -752,10 +758,10 @@ html[dir="rtl"] select.input {
 }
 
 .modal-content {
-  background: rgba(255, 255, 255, 0.85);
+  background: var(--panel-85);
   backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.5);
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  border: 1px solid var(--veil-50);
+  box-shadow: 0 25px 50px -12px var(--shadow-mid);
   border-radius: 2rem;
   padding: 0;
   overflow: hidden;
@@ -764,8 +770,8 @@ html[dir="rtl"] select.input {
 
 .modal-header {
   padding: 1.5rem 2rem;
-  background: rgba(255, 255, 255, 0.5);
-  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  background: var(--veil-50);
+  border-bottom: 1px solid var(--hairline);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -784,7 +790,7 @@ html[dir="rtl"] select.input {
 
 .modal-footer {
   padding: 1.5rem 2rem;
-  background: rgba(0, 0, 0, 0.02);
+  background: var(--hairline);
   display: flex;
   justify-content: flex-end;
   gap: 1rem;

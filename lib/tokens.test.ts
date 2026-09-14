@@ -211,3 +211,49 @@ describe("a token is used in the role it was defined for", () => {
         expect(toggle).not.toMatch(/boxShadow[^\n]*color-mix[^\n]*--text-strong/)
     })
 })
+
+describe("globals.css tokenises its own rules, not just its token block", () => {
+    /**
+     * The gap every previous pass left open.
+     *
+     * The raw-colour scan above skips globals.css, and had to: it is the file
+     * where tokens are *defined*, and a definition is a literal by nature. But
+     * the exemption was written for the whole file, so the stylesheet's own
+     * rules were never tokenised — 42 literals across .input, .card:hover,
+     * .badge and the .modal-* utilities, none of which any check could see.
+     *
+     * .input was the one that mattered: a hardcoded white ground under
+     * color: var(--text-main), on 115 elements. Every text field in the product
+     * rendered near-white text on near-white in dark mode. It stayed hidden
+     * because placeholders take their own colour, so a field only looked broken
+     * once somebody typed in it.
+     *
+     * So the exemption is now the declaration, not the file.
+     */
+    const DECLARATION = /^\s*--[a-z0-9-]+\s*:/
+
+    // Accent and brand colours that are deliberately the same on both grounds:
+    // an indigo focus ring, the purple attention pulse, white on a filled
+    // gradient button, the chevron baked into a data: URI.
+    const INVARIANT = /rgba\(99, 102, 241|rgba\(168, 85, 247|data:image|color:\s*white|2px solid #fff|rgba\(255, 255, 255, 0\.3\)/
+
+    it("leaves no raw colour in any rule", () => {
+        const offenders = stripComments(CSS)
+            .split("\n")
+            .map((line, i) => ({ line: line.trim(), n: i + 1 }))
+            .filter(({ line }) => /#[0-9a-fA-F]{3,8}\b|\brgba?\(|\b(?:white|black)\b/.test(line))
+            .filter(({ line }) => !DECLARATION.test(line))
+            .filter(({ line }) => !INVARIANT.test(line))
+            .map(({ line, n }) => `globals.css:${n}  ${line.slice(0, 90)}`)
+
+        expect(offenders, `raw colour in a rule:\n${offenders.join("\n")}`).toEqual([])
+    })
+
+    it("gives every input a themed ground rather than a white one", () => {
+        // The specific regression, named: .input sets a themed foreground, so
+        // its background must be themed too or the two meet in the middle.
+        const rule = stripComments(CSS).match(/\.input\s*\{[^}]*\}/)?.[0] ?? ""
+        expect(rule).toContain("color: var(--text-main)")
+        expect(rule).toMatch(/background:\s*var\(--/)
+    })
+})
