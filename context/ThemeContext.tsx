@@ -2,14 +2,14 @@
 
 import { createContext, useContext, useCallback, useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
-import { parseTheme, THEME_COOKIE, THEME_COOKIE_MAX_AGE, themeAttribute, type Theme } from '@/lib/theme'
+import { DEFAULT_THEME, parseTheme, THEME_COOKIE, THEME_COOKIE_MAX_AGE, themeAttribute, type Theme } from '@/lib/theme'
 
 type ThemeContextValue = {
     theme: Theme
     setTheme: (theme: Theme) => void
 }
 
-const ThemeContext = createContext<ThemeContextValue>({ theme: 'system', setTheme: () => { } })
+const ThemeContext = createContext<ThemeContextValue>({ theme: DEFAULT_THEME, setTheme: () => { } })
 
 export const useTheme = () => useContext(ThemeContext)
 
@@ -26,12 +26,9 @@ export function ThemeProvider({ initialTheme, children }: { initialTheme: Theme;
     const [theme, setThemeState] = useState<Theme>(initialTheme)
 
     const apply = useCallback((next: Theme) => {
-        const attr = themeAttribute(next)
-        // "system" removes the attribute rather than setting one, so the
-        // prefers-color-scheme media query takes over again.
-        if (attr) document.documentElement.setAttribute('data-theme', attr)
-        else document.documentElement.removeAttribute('data-theme')
-
+        // Always an attribute now. While "system" existed this had to be able
+        // to remove one, so the media query could take back over.
+        document.documentElement.setAttribute('data-theme', themeAttribute(next))
         document.cookie = `${THEME_COOKIE}=${next};path=/;max-age=${THEME_COOKIE_MAX_AGE};samesite=lax`
     }, [])
 

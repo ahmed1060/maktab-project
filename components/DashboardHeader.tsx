@@ -633,7 +633,13 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
                                         </Link>
                                     )}
                                     <LanguageToggleButton variant="menu-item" onAction={() => setIsMenuOpen(false)} />
-                                    <ThemeToggleButton variant="menu-item" onAction={() => setIsMenuOpen(false)} />
+                                    {/* No onAction, unlike the language row: switching
+                                        theme is instant and visible, so closing the
+                                        menu on the click would hide the thing you
+                                        just changed and make comparing the two a
+                                        round trip. Language closes it because the
+                                        whole page reloads behind an overlay anyway. */}
+                                    <ThemeToggleButton variant="menu-item" />
                                     <button
                                         onClick={handleLogout}
                                         style={{

@@ -262,7 +262,7 @@ model SuperAdmin {
   // Three states, not a boolean: "system" is the default and means follow the
   // operating system, which is what most people want and what every app they
   // already use does. A boolean cannot express it.
-  theme              String             @default("system")
+  theme              String             @default("light")
   username           String             @unique
   sessionVersion     Int                @default(0)
   mustChangePassword Boolean            @default(false)
@@ -311,7 +311,7 @@ model User {
   // Three states, not a boolean: "system" is the default and means follow the
   // operating system, which is what most people want and what every app they
   // already use does. A boolean cannot express it.
-  theme                      String                  @default("system")
+  theme                      String                  @default("light")
   dayOffCredit               Float                   @default(0)
   baseDayOffCredit           Float                   @default(0)
   // No @default: a hardcoded year here meant every account created after

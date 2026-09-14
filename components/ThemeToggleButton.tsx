@@ -3,7 +3,8 @@
 import React from 'react';
 import { useLanguage } from '@/context/LanguageContext';
 import { useTheme } from '@/context/ThemeContext';
-import { THEMES, type Theme } from '@/lib/theme';
+import SegmentedToggle from '@/components/SegmentedToggle';
+import { type Theme } from '@/lib/theme';
 
 interface ThemeToggleButtonProps {
     /** 'inline' is positioned by whatever holds it — see PreferenceBar. */
@@ -11,101 +12,58 @@ interface ThemeToggleButtonProps {
     onAction?: () => void;
 }
 
-const ICON: Record<Theme, string> = { light: '☀️', dark: '🌙', system: '💻' };
-const LABEL_KEY: Record<Theme, string> = {
-    light: 'theme_light',
-    dark: 'theme_dark',
-    system: 'theme_system',
-};
+const ICON: Record<Theme, string> = { light: '☀️', dark: '🌙' };
+const LABEL_KEY: Record<Theme, string> = { light: 'theme_light', dark: 'theme_dark' };
+const ORDER: Theme[] = ['light', 'dark'];
 
 /**
- * Cycles light → dark → system.
+ * Both themes visible, the current one marked.
  *
- * A cycle rather than a two-way switch because there are three states: a
- * toggle that only flips light and dark makes "follow my operating system"
- * unreachable once you have touched it even once.
+ * Was a cycle through light → dark → system, which had to name the state it was
+ * in and so could never say what clicking would do. With "system" gone there
+ * are two options, and a segmented control shows both at once.
  *
- * Deliberately mirrors LanguageToggleButton — same two variants, same mount
- * points, same shape — so the two preferences behave identically and neither
- * has to be learned separately.
+ * Deliberately the same control as the language picker, mounted in the same two
+ * places — so a person learns one and has learned both.
+ *
+ * Order is *not* pinned here, unlike the language picker. Light and dark have
+ * no side of their own to belong on; the language control is about language
+ * rather than in one, which is the whole reason that one is exempt.
  */
 export default function ThemeToggleButton({ variant = 'inline', onAction }: ThemeToggleButtonProps) {
     const { locale, t } = useLanguage();
     const { theme, setTheme } = useTheme();
 
-    const handleToggle = () => {
-        const next = THEMES[(THEMES.indexOf(theme) + 1) % THEMES.length];
+    const handleChange = (next: Theme) => {
         setTheme(next);
         if (onAction) onAction();
     };
 
-    // Names the state it is in, not the one it would move to. A control that
-    // says "Dark" while the app is light cannot be read without clicking it.
-    const label = t(LABEL_KEY[theme] as any);
+    const control = (
+        <SegmentedToggle
+            value={theme}
+            options={ORDER.map(value => ({ value, label: `${ICON[value]} ${t(LABEL_KEY[value] as any)}` }))}
+            onChange={handleChange}
+            ariaLabel={t('theme_label' as any)}
+            size={variant === 'menu-item' ? 'sm' : 'md'}
+        />
+    );
 
     if (variant === 'menu-item') {
         return (
-            <button
-                onClick={handleToggle}
-                aria-label={`${t('theme_label' as any)}: ${label}`}
-                style={{
-                    width: '100%',
-                    textAlign: 'left',
-                    padding: '0.6rem 1rem',
-                    background: 'none',
-                    border: 'none',
-                    color: 'var(--text-main)',
-                    fontSize: '0.9rem',
-                    borderRadius: '0.5rem',
-                    transition: 'background 0.2s',
-                    fontWeight: '500',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.5rem',
-                    direction: locale === 'ar' ? 'rtl' : 'ltr'
-                }}
-                onMouseEnter={(e) => e.currentTarget.style.background = 'var(--glass-card-border)'}
-                onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-            >
-                <span style={{ fontSize: '1.1rem' }}>{ICON[theme]}</span>
-                {label}
-            </button>
+            <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: '0.6rem',
+                padding: '0.5rem 1rem',
+                direction: locale === 'ar' ? 'rtl' : 'ltr',
+            }}>
+                <span style={{ fontSize: '1.1rem' }}>🎨</span>
+                {control}
+            </div>
         );
     }
 
-    // Inline variant. It used to position itself at a hand-tuned 11.5rem to sit
-    // clear of the language button; PreferenceBar lays both out instead, so the
-    // offset does not have to be re-derived every time either control changes
-    // width — which it was about to be, when the language button became a
-    // wider segmented control.
-    return (
-        <button
-            onClick={handleToggle}
-            aria-label={`${t('theme_label' as any)}: ${label}`}
-            style={{
-                padding: '0.75rem 1.25rem',
-                background: 'var(--glass-solid)',
-                backdropFilter: 'blur(10px)',
-                border: '1px solid var(--glass-card-border)',
-                borderRadius: '50px',
-                boxShadow: 'var(--glass-shadow)',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem',
-                fontSize: '0.9rem',
-                fontWeight: '600',
-                color: 'var(--text-main)',
-                transition: 'all 0.3s ease',
-                zIndex: 1000,
-                direction: locale === 'ar' ? 'rtl' : 'ltr'
-            }}
-            onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-2px)' }}
-            onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)' }}
-        >
-            <span style={{ fontSize: '1.2rem' }}>{ICON[theme]}</span>
-            {label}
-        </button>
-    );
+    return control;
 }
