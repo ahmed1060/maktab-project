@@ -676,6 +676,33 @@ export default function LoginPage() {
                     )}
                 </div>
             </div>
+            {/* The policy has to be reachable from the product, not only from
+                Google's consent screen. This is the one page every user passes
+                through, and the app has no footer to put them in. */}
+            <div style={{
+                // Mirrors PreferenceBar's anchoring so the two never collide:
+                // it takes the reading-end corner, these take the other one,
+                // and both flip together with direction. Fixed rather than a
+                // flex child, because the parent centres a single card in a
+                // row and an extra child would sit beside it.
+                position: 'fixed',
+                bottom: '2rem',
+                [isAr ? 'right' : 'left']: '2rem',
+                [isAr ? 'left' : 'right']: 'auto',
+                display: 'flex',
+                gap: '1.25rem',
+                flexWrap: 'wrap',
+                maxWidth: 'calc(100vw - 4rem)',
+                zIndex: 1000,
+                fontSize: '0.8rem',
+            }}>
+                <a href="/privacy" style={{ color: 'var(--text-on-accent)', opacity: 0.75, textDecoration: 'none' }}>
+                    {isAr ? 'سياسة الخصوصية' : 'Privacy Policy'}
+                </a>
+                <a href="/terms" style={{ color: 'var(--text-on-accent)', opacity: 0.75, textDecoration: 'none' }}>
+                    {isAr ? 'شروط الخدمة' : 'Terms of Service'}
+                </a>
+            </div>
             <PreferenceBar />
         </div>
     )

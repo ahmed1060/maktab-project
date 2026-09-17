@@ -1023,3 +1023,108 @@ input::-webkit-credentials-auto-fill-button {
     --page-veil-a: rgba(99, 102, 241, 0.1);
     --page-veil-b: rgba(236, 72, 153, 0.08);
 }
+
+/* ── Public legal documents (/privacy, /terms) ───────────────────────────────
+   Long-form prose, which nothing else in this app is: every other screen is a
+   dashboard. So these get their own type scale rather than reusing .card, and
+   the measure is set in ch so it tracks the font rather than the viewport.
+
+   Every colour is a token, including the ones that would be "obviously black"
+   — the D1 guard checks rules here, not just the :root block, and a literal
+   would be invisible until someone loaded the page in dark mode. */
+.legal {
+  font-size: 1rem;
+  line-height: 1.7;
+  color: var(--text-body);
+}
+
+.legal h1 {
+  font-size: clamp(1.8rem, 5vw, 2.4rem);
+  line-height: 1.15;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--text-strong);
+  margin: 0 0 0.5rem;
+  text-wrap: balance;
+}
+
+.legal .legal-updated {
+  font-size: 0.85rem;
+  color: var(--text-faint);
+  margin: 0 0 2.5rem;
+}
+
+.legal .legal-lede {
+  font-size: 1.08rem;
+  color: var(--text-muted);
+  margin: 0 0 2.5rem;
+}
+
+.legal h2 {
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--text-strong);
+  margin: 2.75rem 0 0.75rem;
+  text-wrap: balance;
+}
+
+.legal h3 {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-main);
+  margin: 1.75rem 0 0.5rem;
+}
+
+.legal p {
+  margin: 0 0 1rem;
+  max-width: 68ch;
+}
+
+.legal ul {
+  margin: 0 0 1.25rem;
+  padding-inline-start: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-width: 68ch;
+}
+
+.legal li::marker { color: var(--text-faint); }
+
+.legal strong { color: var(--text-strong); font-weight: 600; }
+
+.legal a { color: var(--primary); }
+
+/* Definition rows — "what we collect" and "who we share it with" are both
+   term/description pairs, and a table would scroll sideways on a phone. */
+.legal dl {
+  margin: 0 0 1.5rem;
+  display: grid;
+  gap: 0.15rem;
+  max-width: 68ch;
+}
+
+.legal dt {
+  font-weight: 600;
+  color: var(--text-strong);
+  margin-top: 1rem;
+}
+
+.legal dd {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+.legal .legal-note {
+  background: var(--surface-sunk);
+  border-inline-start: 3px solid var(--border-firm);
+  border-radius: 0 0.5rem 0.5rem 0;
+  padding: 0.9rem 1.1rem;
+  margin: 1.5rem 0;
+  font-size: 0.93rem;
+  color: var(--text-muted);
+  max-width: 68ch;
+}
+
+.legal .legal-note p:last-child { margin-bottom: 0; }

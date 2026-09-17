@@ -469,8 +469,40 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
                     )}
                 </nav>
 
-                {/* Sidebar Bottom Spacer */}
-                <div style={{ marginTop: 'auto', padding: '1rem' }} />
+                {/* Sidebar Bottom — the legal documents live here because the
+                    app has no footer, and a policy reachable only from Google's
+                    consent screen is a link in a console rather than something
+                    a user can find. marginTop:auto keeps them pinned under the
+                    nav whatever its length, which is what the old spacer did.
+                    Hidden when collapsed: the rail is icon-width there, and a
+                    truncated "Priv…" is worse than nothing. */}
+                <div style={{ marginTop: 'auto', padding: '1rem' }}>
+                    {!isCollapsed && (
+                        <div style={{
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '0.35rem',
+                            fontSize: '0.7rem',
+                        }}>
+                            <a
+                                href="/privacy"
+                                style={{ color: 'var(--sidebar-fg)', textDecoration: 'none', opacity: 0.7 }}
+                                onMouseEnter={e => { e.currentTarget.style.color = 'var(--sidebar-fg-strong)'; e.currentTarget.style.opacity = '1' }}
+                                onMouseLeave={e => { e.currentTarget.style.color = 'var(--sidebar-fg)'; e.currentTarget.style.opacity = '0.7' }}
+                            >
+                                {t('privacy_policy' as any)}
+                            </a>
+                            <a
+                                href="/terms"
+                                style={{ color: 'var(--sidebar-fg)', textDecoration: 'none', opacity: 0.7 }}
+                                onMouseEnter={e => { e.currentTarget.style.color = 'var(--sidebar-fg-strong)'; e.currentTarget.style.opacity = '1' }}
+                                onMouseLeave={e => { e.currentTarget.style.color = 'var(--sidebar-fg)'; e.currentTarget.style.opacity = '0.7' }}
+                            >
+                                {t('terms_of_service' as any)}
+                            </a>
+                        </div>
+                    )}
+                </div>
             </aside>
 
             {/* Main Content Wrapper */}

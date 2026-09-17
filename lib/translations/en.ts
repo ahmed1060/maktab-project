@@ -903,6 +903,8 @@ export const en = {
         mark_in_progress: "Mark In Progress",
         mark_completed: "Mark Completed",
         powered_by: "Powered by",
+        privacy_policy: "Privacy Policy",
+        terms_of_service: "Terms of Service",
         branding_settings: "Branding",
         show_powered_by_label: "Show the \"Powered by\" signature",
         powered_by_name_label: "Signature name",

@@ -866,6 +866,8 @@ export const ar = {
         mark_in_progress: "تميز قيد التنفيذ",
         mark_completed: "تم إكمال المهمة",
         powered_by: "بدعم من",
+        privacy_policy: "سياسة الخصوصية",
+        terms_of_service: "شروط الخدمة",
         branding_settings: "العلامة التجارية",
         show_powered_by_label: "إظهار توقيع \"بدعم من\"",
         powered_by_name_label: "اسم التوقيع",
