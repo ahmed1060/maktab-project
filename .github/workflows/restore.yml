@@ -134,7 +134,7 @@ jobs:
           # is what keeps Supabase's own event triggers and extensions — which
           # the postgres role cannot drop or create — out of the file.
           /usr/lib/postgresql/17/bin/pg_dump "$PGCONN" \
-            --no-owner --no-privileges --clean --if-exists \
+            --no-owner --no-privileges \
             --schema=public \
             | gzip -9 > pre_db.sql.gz
           test "$(stat -c%s pre_db.sql.gz)" -gt 10240 || { echo "Pre-restore dump suspiciously small"; exit 1; }
@@ -227,9 +227,9 @@ jobs:
           #   pipefail          — the default shell is `bash -e` without it, so
           #                       a gunzip dying on a truncated file was invisible
           #   ON_ERROR_STOP     — psql otherwise prints errors and exits 0
-          #   --single-transaction — the dump runs --clean --if-exists and drops
-          #                       as it goes, so a failure halfway leaves the
-          #                       database half-dropped and half-restored
+          #   --single-transaction — the restore clears the target before it
+          #                       loads, so a failure halfway without this
+          #                       leaves the database emptied and not refilled
           #
           # All-or-nothing is the only acceptable shape for this: a restore that
           # fails now leaves the pre-restore state exactly as it was.
@@ -262,11 +262,51 @@ jobs:
           # Once it is, there is nothing left for the drill to do differently.
           # A drill that skips statements production runs is not a rehearsal of
           # production; it is a rehearsal of something easier.
-          # --echo-errors, because "ERROR: relation X does not exist" without
-          # the statement that caused it is most of a diagnosis and none of an
-          # answer. A restore fails once, in the worst hour of the year, and the
-          # log it leaves is all anybody gets — it should name the line.
-          gunzip -c db.sql.gz | /usr/lib/postgresql/17/bin/psql "$PGCONN" \
+          # Clearing the target is the restore's job, not the dump's.
+          #
+          # The dump used to carry --clean's DROP section, and every restore
+          # failure so far lived in it. The last one is the clearest: --if-exists
+          # binds to the object named, not to the table it hangs off, so
+          #
+          #   DROP TRIGGER IF EXISTS trg_... ON public."SuperAdmin";
+          #
+          # errors on Postgres 17 when that table is absent. It passes against a
+          # populated database and fails against an empty one — so the restore
+          # worked only where the thing being restored was already there, which
+          # is the case that needs it least. Losing a project outright means
+          # restoring into a new and empty one, and that is the path that has to
+          # work.
+          #
+          # This asks the target what it holds instead of replaying a list built
+          # against a different database at a different time. On an empty target
+          # the loops do nothing; on a populated one they clear exactly what the
+          # dump is about to recreate. It is deliberately everything in public,
+          # not just what the dump names: a restore means "make this match the
+          # backup", and a table that has since been added is not in the backup.
+          #
+          # In the same transaction as the load, so a failure anywhere leaves the
+          # target exactly as it was.
+          { cat <<'RESET'
+          DO $$
+          DECLARE r record;
+          BEGIN
+            FOR r IN SELECT tablename FROM pg_tables WHERE schemaname = 'public' LOOP
+              EXECUTE format('DROP TABLE IF EXISTS public.%I CASCADE', r.tablename);
+            END LOOP;
+            FOR r IN SELECT p.oid::regprocedure AS sig FROM pg_proc p
+                     JOIN pg_namespace n ON n.oid = p.pronamespace
+                     WHERE n.nspname = 'public' LOOP
+              EXECUTE format('DROP FUNCTION IF EXISTS %s CASCADE', r.sig);
+            END LOOP;
+            FOR r IN SELECT t.typname FROM pg_type t
+                     JOIN pg_namespace n ON n.oid = t.typnamespace
+                     WHERE n.nspname = 'public' AND t.typtype = 'e' LOOP
+              EXECUTE format('DROP TYPE IF EXISTS public.%I CASCADE', r.typname);
+            END LOOP;
+          END $$;
+          RESET
+            gunzip -c db.sql.gz
+          } | /usr/lib/postgresql/17/bin/psql "$PGCONN" \
             --single-transaction -v ON_ERROR_STOP=1 -q --echo-errors
 
       - name: Verify the restored database

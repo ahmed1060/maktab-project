@@ -32,10 +32,37 @@ describe("a restore is all-or-nothing", () => {
     })
 
     it("wraps the restore in one transaction", () => {
-        // The dump runs --clean --if-exists and drops as it goes. A failure
-        // halfway through without this leaves the database half-dropped and
-        // half-restored, which is worse than not having started.
+        // The restore clears the target before loading it, so a failure halfway
+        // through without this leaves the database emptied and not refilled,
+        // which is worse than not having started.
         expect(RESTORE_CODE).toContain("--single-transaction")
+    })
+
+    it("clears the target itself, rather than trusting the dump to", () => {
+        // --clean's DROP section is where every restore failure has lived, and
+        // the last one showed why: --if-exists binds to the object named, not
+        // to the table it hangs off, so
+        //
+        //   DROP TRIGGER IF EXISTS trg_... ON public."SuperAdmin";
+        //
+        // errors on Postgres 17 when that table is absent. It passes against a
+        // populated database and fails against an empty one — so the restore
+        // worked only where what it was restoring was already there, which is
+        // the case that needs it least.
+        for (const [name, source] of [["backup", BACKUP_CODE], ["restore", RESTORE_CODE]] as const) {
+            expect(source, `${name}.yml dumps with --clean again`).not.toContain("--clean")
+        }
+
+        const restoreStep = RESTORE_CODE.split("- name:").find(s => s.includes("Restore database"))!
+        expect(restoreStep, "the restore no longer clears the target").toContain("DROP TABLE IF EXISTS public.%I CASCADE")
+        expect(restoreStep, "the reset replays a list instead of asking the target").toContain("FROM pg_tables WHERE schemaname = 'public'")
+        // Enums and the one function too, or the dump cannot recreate them.
+        expect(restoreStep).toContain("DROP TYPE IF EXISTS public.%I CASCADE")
+        expect(restoreStep).toContain("DROP FUNCTION IF EXISTS %s CASCADE")
+        // And in the same transaction as the load, so a failure anywhere leaves
+        // the target as it was rather than emptied.
+        expect(restoreStep.indexOf("DROP TABLE IF EXISTS"))
+            .toBeLessThan(restoreStep.indexOf("--single-transaction"))
     })
 
     it("fails a pipe whose left-hand side dies", () => {
@@ -246,6 +273,14 @@ describe("every night's dump is loaded back", () => {
         }
     })
 
+    it("proves the dump carries no DROP statements at all", () => {
+        // A stronger and simpler claim than the list of specific ones it
+        // replaced, and the reason the dump has no DROP section: every one of
+        // them asserted something about a target the dump has never seen.
+        const check = BACKUP_CODE.split("- name:").find(s => s.includes("nothing the restore role cannot own"))!
+        expect(check).toContain("Dump contains DROP statements")
+    })
+
     it("proves the dump carries nothing the restore role cannot own", () => {
         // Asserted on the artifact rather than inferred from the flag. Every
         // one of these was in a real dump and each broke a real restore, so if
@@ -253,7 +288,7 @@ describe("every night's dump is loaded back", () => {
         // restore nobody gets to retry.
         const check = BACKUP_CODE.split("- name:").find(s => s.includes("nothing the restore role cannot own"))!
         expect(check, "the dump is no longer checked for platform objects").toBeTruthy()
-        for (const pattern of ["EVENT TRIGGER", "EXTENSION", "DROP SCHEMA", "CREATE SCHEMA"]) {
+        for (const pattern of ["EVENT TRIGGER", "EXTENSION", "CREATE SCHEMA"]) {
             expect(check, `the dump is no longer checked for ${pattern}`).toContain(pattern)
         }
         // And that "clean" cannot be achieved by dumping nothing at all.

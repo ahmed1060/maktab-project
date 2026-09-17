@@ -136,8 +136,23 @@ jobs:
           # postgres owns. Objects with no schema — event triggers, extensions —
           # are not dumped at all under -n, so the whole class disappears at the
           # source rather than being filtered downstream.
+          # No --clean either. The DROP section it generates is where every
+          # restore failure has lived, and the last one showed why: --if-exists
+          # binds to the object named, not to the table it hangs off, so
+          #
+          #   DROP TRIGGER IF EXISTS trg_... ON public."SuperAdmin";
+          #
+          # is an error on Postgres 17 when the table is absent. That statement
+          # passes on production, where the table exists, and fails on an empty
+          # database — which is the one target that matters most, because a
+          # project lost outright is restored into a new and empty one.
+          #
+          # A dump describes the source. What to clear at the other end is the
+          # restore's decision, and restore.yml makes it from what is actually
+          # there rather than from a list generated against a different database
+          # at a different time.
           /usr/lib/postgresql/17/bin/pg_dump "$PGCONN" \
-            --no-owner --no-privileges --clean --if-exists \
+            --no-owner --no-privileges \
             --schema=public \
             | gzip -9 > db.sql.gz
           ls -lh db.sql.gz
@@ -159,7 +174,17 @@ jobs:
       - name: Verify the dump carries nothing the restore role cannot own
         run: |
           set -o pipefail
-          for pattern in 'EVENT TRIGGER' 'EXTENSION' 'DROP SCHEMA' 'CREATE SCHEMA'; do
+          # No DROP statements at all, of any kind. That is a stronger and much
+          # simpler claim than the list of specific ones this replaced, and it
+          # is the whole reason the dump no longer carries a DROP section: every
+          # one of them asserted something about the target.
+          if zcat db.sql.gz | grep -qE '^(DROP|ALTER TABLE IF EXISTS) '; then
+            echo "Dump contains DROP statements; it is supposed to describe the source only:"
+            zcat db.sql.gz | grep -nE '^(DROP|ALTER TABLE IF EXISTS) ' | head -5
+            exit 1
+          fi
+
+          for pattern in 'EVENT TRIGGER' 'EXTENSION' 'CREATE SCHEMA'; do
             if zcat db.sql.gz | grep -qE "^(DROP|CREATE|ALTER|COMMENT ON).*${pattern}"; then
               echo "Dump contains a ${pattern} statement, which the postgres role cannot execute:"
               zcat db.sql.gz | grep -nE "^(DROP|CREATE|ALTER|COMMENT ON).*${pattern}" | head -5
