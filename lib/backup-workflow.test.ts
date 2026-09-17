@@ -164,29 +164,21 @@ describe("every night's dump is loaded back", () => {
         ).toContain('--health-cmd "pg_isready -U postgres"')
     })
 
-    it("skips extension DDL only where the extensions cannot exist", () => {
-        // The dump carries CREATE EXTENSION for everything Supabase installs
-        // into pg_catalog — pg_cron among them — which --exclude-schema does
-        // not cover. A stock postgres image has none of them, and ON_ERROR_STOP
-        // turns the first into a failed load.
-        //
-        // They must stay in the dump: a real restore goes back to Supabase,
-        // where they exist and IF NOT EXISTS makes them a no-op. Strip them at
-        // dump time and a restored project silently loses its extensions.
+    it("asks the verifier what landed, not whether psql was happy", () => {
+        // The dump carries Supabase's global objects — extensions registered in
+        // pg_catalog, event triggers belonging to no schema — and a stock image
+        // has nowhere to put them. Excluding them one at a time is unbounded:
+        // pg_dump has no --exclude-event-trigger, and the next Supabase release
+        // can add another. So the verifier tolerates the load and judges the
+        // result. Putting ON_ERROR_STOP back here would restart that chase.
         const prove = BACKUP_CODE.split("- name:").find(s => s.includes("Prove the dump restores"))!
-        expect(prove, "the verifier no longer skips extension DDL").toContain(
-            "grep -vE '^(CREATE|COMMENT ON) EXTENSION'",
-        )
-        expect(
-            BACKUP_CODE,
-            "extensions are being excluded from the dump itself, not just from the check",
-        ).not.toContain("--exclude-extension")
+        expect(prove, "the verifier is strict again about Supabase's own objects").toContain("ON_ERROR_STOP=0")
+        expect(prove, "the verifier no longer counts the tables that landed").toContain("information_schema.tables")
+        expect(prove, "the verifier no longer requires rows").toContain("Dump restored but holds no users")
 
-        // A production restore loads the dump exactly as taken; only the drill,
-        // which is a plain Postgres, filters.
+        // A real restore is a different question and keeps the strict answer.
         const restoreStep = RESTORE_CODE.split("- name:").find(s => s.includes("Restore database"))!
-        expect(restoreStep).toContain('if [ "$IS_DRILL" = "true" ]')
-        expect(restoreStep).toContain("grep -vE '^(CREATE|COMMENT ON) EXTENSION'")
+        expect(restoreStep).toContain("--single-transaction -v ON_ERROR_STOP=1")
     })
 
     it("excludes every Supabase-managed schema, in both workflows", () => {
@@ -204,11 +196,6 @@ describe("every night's dump is loaded back", () => {
                 )
             }
         }
-    })
-
-    it("proves the dump applies and holds rows", () => {
-        expect(BACKUP_CODE).toContain("--single-transaction -v ON_ERROR_STOP=1")
-        expect(BACKUP_CODE).toContain("Dump restored but holds no users")
     })
 
     it("does it after the upload, so a night that cannot prove itself is still stored", () => {

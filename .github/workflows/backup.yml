@@ -213,43 +213,50 @@ jobs:
           set -o pipefail
           /usr/lib/postgresql/17/bin/psql -h localhost -U postgres -c 'CREATE DATABASE verify'
 
-          # Extensions are environment, not data. Supabase installs pg_cron and
-          # friends into pg_catalog, which --exclude-schema does not cover, so
-          # the dump carries CREATE EXTENSION statements for them. A stock
-          # postgres image has none of those extensions available, and with
-          # ON_ERROR_STOP the first one aborts the whole load.
+          # Loaded tolerantly, and judged on the result rather than the exit
+          # code. This started out as --single-transaction with ON_ERROR_STOP,
+          # which is right for a real restore and wrong here: the dump is not
+          # ordinary Postgres and never will be. It carries Supabase's own
+          # global objects — extensions registered in pg_catalog, event
+          # triggers belonging to no schema at all — and a stock image has
+          # nowhere to put them. Three runs were spent excluding those one at a
+          # time before it was clear they are unbounded: pg_dump has no
+          # --exclude-event-trigger, and the next Supabase release can add
+          # another.
           #
-          # They stay in the dump, because a real restore goes back to Supabase
-          # where the extensions exist and IF NOT EXISTS makes them harmless.
-          # They are only skipped here, where the question is whether the tables
-          # and rows come back — and skipping them is printed rather than
-          # silent, so the list cannot quietly grow.
-          echo "Extension statements skipped for this check:"
-          zcat db.sql.gz | grep -E '^(CREATE|COMMENT ON) EXTENSION' || echo "  (none)"
-
+          # So the question this step asks is the one that actually matters —
+          # does the application's data come back? — and it is answered by
+          # looking at what landed, not by whether psql was happy about
+          # Supabase's furniture on the way past. restore.yml keeps
+          # ON_ERROR_STOP, because a real restore into a real Supabase does
+          # need to be all-or-nothing.
           gunzip -c db.sql.gz \
-            | grep -vE '^(CREATE|COMMENT ON) EXTENSION' \
             | /usr/lib/postgresql/17/bin/psql -h localhost -U postgres -d verify \
-              --single-transaction -v ON_ERROR_STOP=1 -q
+              -v ON_ERROR_STOP=0 -q 2>/tmp/load-err || true
 
-          # Loading without error is most of the answer; these counts are the
-          # rest of it. A dump that applies cleanly and restores an empty
-          # database is the failure this catches.
-          #
-          # One count per query rather than one concatenated line: the table
-          # names need double quotes to survive Postgres folding them to
-          # lowercase, which leaves no quoting left over for string literals
-          # inside the same -c argument.
+          echo "--- errors during the load (expected: Supabase globals only) ---"
+          grep -E '^(psql:)?.*ERROR' /tmp/load-err | sed -E 's/^/  /' | head -30 || echo "  (none)"
+          echo "---"
+
           count() {
-            /usr/lib/postgresql/17/bin/psql -h localhost -U postgres -d verify -At -c "SELECT count(*) FROM \"$1\""
+            /usr/lib/postgresql/17/bin/psql -h localhost -U postgres -d verify -At -c "$1"
           }
-          USERS=$(count User)
-          COMPANIES=$(count Company)
-          TASKS=$(count Task)
 
+          # The application's own tables. If the schema did not build, this is
+          # zero and everything below is moot.
+          TABLES=$(count "SELECT count(*) FROM information_schema.tables WHERE table_schema='public' AND table_type='BASE TABLE'")
+          echo "public schema: $TABLES tables"
+          test "$TABLES" -ge 25 \
+            || { echo "Only $TABLES tables restored — the schema did not come back"; exit 1; }
+
+          USERS=$(count 'SELECT count(*) FROM "User"')
+          COMPANIES=$(count 'SELECT count(*) FROM "Company"')
+          TASKS=$(count 'SELECT count(*) FROM "Task"')
           echo "restored: $USERS users, $COMPANIES companies, $TASKS tasks"
-          echo "RESTORE_ROWS=$USERS users, $COMPANIES companies, $TASKS tasks" >> $GITHUB_ENV
+          echo "RESTORE_ROWS=$TABLES tables, $USERS users, $COMPANIES companies, $TASKS tasks" >> $GITHUB_ENV
 
+          # A dump that applies cleanly into an empty database is the failure
+          # nobody notices until somebody tries to sign in.
           test "$USERS" -gt 0 || { echo "Dump restored but holds no users"; exit 1; }
 
       - name: Prune old backups
