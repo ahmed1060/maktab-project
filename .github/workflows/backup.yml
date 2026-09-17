@@ -165,58 +165,6 @@ jobs:
           zcat db.sql.gz | tail -5 | grep -q "PostgreSQL database dump complete" \
             || { echo "Dump is truncated"; exit 1; }
 
-      # What --schema=public is supposed to have achieved, asserted rather than
-      # assumed. Every one of these statements was in a real dump and each one
-      # broke a real restore; if any comes back — a pg_dump change, a flag
-      # edited by somebody who did not read the comment above — this fails here,
-      # on the night it starts happening, instead of during the restore nobody
-      # gets to retry.
-      - name: Verify the dump carries nothing the restore role cannot own
-        run: |
-          set -o pipefail
-          # No DROP statements at all, of any kind. That is a stronger and much
-          # simpler claim than the list of specific ones this replaced, and it
-          # is the whole reason the dump no longer carries a DROP section: every
-          # one of them asserted something about the target.
-          # Anchored on the verb, not on a prefix-plus-anything. The first
-          # version of this check read ^(DROP|CREATE|...).*CREATE SCHEMA, which
-          # cannot match "CREATE SCHEMA public;" at all — it needs a second
-          # "CREATE SCHEMA" later in the same line. It passed on a dump that
-          # contained exactly the statement it was written to forbid, and the
-          # restore found out instead. A guard that cannot fail is worse than no
-          # guard, because it is also a claim.
-          forbid() {
-            if zcat db.sql.gz | grep -qE "$1"; then
-              echo "Dump contains $2:"
-              zcat db.sql.gz | grep -nE "$1" | head -5
-              exit 1
-            fi
-          }
-
-          # No DROP section of any kind. Every statement in one asserts
-          # something about a target the dump has never seen, and that is where
-          # each restore failure has lived. Clearing the target is restore.yml's
-          # job now.
-          forbid '^(DROP|ALTER TABLE IF EXISTS) ' 'DROP statements; it should describe the source only'
-
-          # Platform objects the postgres role does not own and cannot recreate.
-          forbid '^(DROP|CREATE|ALTER|COMMENT ON) EVENT TRIGGER' 'an EVENT TRIGGER statement'
-          forbid '^(DROP|CREATE|ALTER|COMMENT ON) EXTENSION' 'an EXTENSION statement'
-
-          # Required, not forbidden: restore.yml drops the schema before loading
-          # and depends on the dump to bring it back. If pg_dump ever stops
-          # emitting this, the backup fails here rather than the restore failing
-          # later against an empty database.
-          zcat db.sql.gz | grep -qE '^CREATE SCHEMA public;' \
-            || { echo "Dump has no CREATE SCHEMA public; the restore drops the schema and relies on it"; exit 1; }
-
-          # And that it still carries the application, so a dump of nothing
-          # cannot satisfy every check above.
-          TABLES=$(zcat db.sql.gz | grep -cE '^CREATE TABLE public\.')
-          test "$TABLES" -ge 25 || { echo "Only $TABLES tables in the dump"; exit 1; }
-          echo "Dump carries $TABLES application tables, recreates its schema, and holds no platform objects."
-
-
       - name: Mirror the storage bucket
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
@@ -285,6 +233,61 @@ jobs:
       # and because this failing stops the job, the prune below never runs, so
       # a night that cannot prove itself also cannot age out the nights that
       # could.
+      # After the upload, like the restore proof below and for the same reason:
+      # a dump that fails a check is still better than no dump at all. In its
+      # first position — before the upload — a failed assertion meant the night
+      # was not stored, which is the opposite of what a check on the backup is
+      # for.
+      #
+      # Every pattern here was in a real dump and each one broke a real restore.
+      - name: Verify the dump carries nothing the restore role cannot own
+        run: |
+          set -o pipefail
+          # Decompressed once to a file, and every check reads the file.
+          #
+          # Not `zcat db.sql.gz | grep -q ...`: grep -q exits on the first match
+          # and zcat then dies of SIGPIPE, which under pipefail makes the whole
+          # pipeline non-zero — so a *successful* match read as a failure, and
+          # an `if zcat | grep -q` guard could never fire at all. That shipped,
+          # and it reported a dump as missing the very statement it contained.
+          zcat db.sql.gz > /tmp/dump.sql
+
+          forbid() {
+            if grep -qE "$1" /tmp/dump.sql; then
+              echo "Dump contains $2:"
+              grep -nE "$1" /tmp/dump.sql | head -5
+              exit 1
+            fi
+          }
+
+          # No DROP section of any kind. Every statement in one asserts
+          # something about a target the dump has never seen, and that is where
+          # each restore failure has lived. Clearing the target is restore.yml's
+          # job now.
+          forbid '^(DROP|ALTER TABLE IF EXISTS) ' 'DROP statements; it should describe the source only'
+
+          # Platform objects the postgres role does not own and cannot recreate.
+          forbid '^(DROP|CREATE|ALTER|COMMENT ON) EVENT TRIGGER' 'an EVENT TRIGGER statement'
+          forbid '^(DROP|CREATE|ALTER|COMMENT ON) EXTENSION' 'an EXTENSION statement'
+
+          # And that it carries the application, so a dump of nothing cannot
+          # satisfy every check above.
+          TABLES=$(grep -cE '^CREATE TABLE public\.' /tmp/dump.sql)
+          test "$TABLES" -ge 25 || { echo "Only $TABLES tables in the dump"; exit 1; }
+
+          # Required, because restore.yml drops the schema and depends on the
+          # dump to bring it back. Backup 34 established that it does — by
+          # executing the statement and colliding with the existing schema —
+          # while the first version of this check claimed the opposite, being
+          # broken in the way described above. If pg_dump ever stops emitting
+          # it, this fails on the night it changes rather than leaving a restore
+          # to discover it against an empty database.
+          grep -qE '^CREATE SCHEMA public;' /tmp/dump.sql \
+            || { echo "Dump has no CREATE SCHEMA public; restore.yml drops the schema and relies on it"; exit 1; }
+
+          echo "Dump carries $TABLES application tables, recreates its schema, and holds no platform objects."
+          rm -f /tmp/dump.sql
+
       - name: Prove the dump restores
         env:
           PGPASSWORD: verify
