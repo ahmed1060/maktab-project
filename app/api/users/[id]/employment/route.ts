@@ -1,8 +1,8 @@
 import { withStandardHandler } from "@/lib/api-utils"
 import { ApiResponse } from "@/lib/api-response"
 import { EmploymentService } from "@/lib/services/employment.service"
+import { SettlementService } from "@/lib/services/settlement.service"
 import { verifyResourceAccess } from "@/lib/security"
-import { endOfContractInstant } from "@/lib/employment"
 import { toMajor } from "@/lib/payroll"
 import { calendarMonth } from "@/lib/time"
 
@@ -37,15 +37,8 @@ export const GET = withStandardHandler(async (req, session, _json, { params }) =
         return ApiResponse.success({ history, timeline, preview: null })
     }
 
-    let endsAt: Date
     try {
-        endsAt = endOfContractInstant(lastWorkingDay)
-    } catch {
-        return ApiResponse.badRequest("lastWorkingDay must be YYYY-MM-DD")
-    }
-
-    try {
-        const preview = await EmploymentService.previewSettlement({ userId, endsAt })
+        const preview = await SettlementService.preview(userId, lastWorkingDay)
         return ApiResponse.success({
             history,
             timeline,
@@ -60,11 +53,15 @@ export const GET = withStandardHandler(async (req, session, _json, { params }) =
             },
         })
     } catch (error: any) {
-        // ratesForMonth refuses a month with no salary in force rather than
-        // guessing one. That is a real answer, not a crash: it means this
-        // person has no salary history covering the month they would leave in.
-        if (/No salary in effect/.test(error?.message ?? '')) {
-            return ApiResponse.badRequest(error.message)
+        const message = error?.message ?? ""
+        // Both are real answers rather than crashes: a date this system cannot
+        // read, or a person with no salary history covering the month they
+        // would leave in.
+        if (/Not a date/.test(message)) {
+            return ApiResponse.badRequest("lastWorkingDay must be YYYY-MM-DD")
+        }
+        if (/No salary in effect/.test(message)) {
+            return ApiResponse.badRequest(message)
         }
         throw error
     }
@@ -93,27 +90,39 @@ export const POST = withStandardHandler(async (req, session, json, { params }) =
     if (action !== 'END_CONTRACT') return ApiResponse.badRequest("Unknown action")
     if (typeof lastWorkingDay !== 'string') return ApiResponse.badRequest("lastWorkingDay is required")
 
-    let endsAt: Date
+    // P5 shipped the preview and said plainly that the refusal had to wait for
+    // a table to persist a settlement into. This is that refusal: there is no
+    // path here that ends a contract without producing the statement, because
+    // both happen in one transaction or neither does.
     try {
-        endsAt = endOfContractInstant(lastWorkingDay)
-    } catch {
-        return ApiResponse.badRequest("lastWorkingDay must be YYYY-MM-DD")
+        const { event, settlement, debt, preview } = await SettlementService.settleAndEnd({
+            userId,
+            lastWorkingDay,
+            reason: typeof reason === 'string' ? reason : undefined,
+            createdById: session.user.id,
+        })
+
+        return ApiResponse.success({
+            event,
+            settlement,
+            debtId: debt?.id ?? null,
+            // record() archives straight away when the date has already arrived,
+            // and leaves the status alone when it has not — the nightly job
+            // applies it at the local day boundary. Saying which happened keeps
+            // the screen honest about whether this person can still sign in.
+            archivedNow: preview.endsAt.getTime() <= Date.now(),
+        })
+    } catch (error: any) {
+        const message = error?.message ?? ""
+        if (/Not a date/.test(message)) {
+            return ApiResponse.badRequest("lastWorkingDay must be YYYY-MM-DD")
+        }
+        if (/No salary in effect/.test(message)) {
+            return ApiResponse.badRequest(message)
+        }
+        if (message === "USER_HAS_NO_COMPANY") {
+            return ApiResponse.badRequest("This account belongs to no company, so there is nobody to settle with.")
+        }
+        throw error
     }
-
-    const event = await EmploymentService.record({
-        userId,
-        type: 'CONTRACT_ENDED',
-        effectiveFrom: endsAt,
-        reason: typeof reason === 'string' ? reason : undefined,
-        createdById: session.user.id,
-    })
-
-    return ApiResponse.success({
-        event,
-        // record() archives straight away when the date has already arrived,
-        // and leaves the status alone when it has not — the nightly job applies
-        // it at the local day boundary. Saying which happened keeps the screen
-        // honest about whether this person can still sign in tonight.
-        archivedNow: endsAt.getTime() <= Date.now(),
-    })
 })

@@ -195,6 +195,31 @@ model Company {
   // wholesale rather than selectively: sending one notice twice after an
   // extension is a much smaller failure than never sending it at all.
   lifecycleNoticesSent String[]              @default([])
+  /// The day of the month this company pays on.
+  ///
+  /// Load-bearing rather than cosmetic: it is what decides which side of payday
+  /// a leaver falls on, and therefore whether a final settlement pays them or
+  /// bills them. P5's preview assumed 25 because this column did not exist yet.
+  ///
+  /// 1-28, validated in code. Not 29-31: a payroll day that does not occur in
+  /// February is a payroll day that silently moves, and "the 30th" meaning the
+  /// 28th in one month out of twelve is the kind of rule nobody remembers when
+  /// they are reading a payslip.
+  payrollDay           Int                   @default(25)
+  /// Whether an employee can see their own payslip at all.
+  ///
+  /// Off by default, and deliberately so: turning payslips on is a decision a
+  /// company makes once, knowingly. A default of "on" would publish pay records
+  /// to every employee of every existing company on the deploy that adds them.
+  payslipsVisible      Boolean               @default(false)
+  /// The calendar this company's months are measured in.
+  ///
+  /// Everything in lib/time.ts already takes a zone as an argument; this is
+  /// where the argument finally comes from. Validated, not merely stored — see
+  /// lib/timezone.ts for why the accepted set is narrower than the IANA list.
+  timezone             String                @default("Africa/Cairo")
+  payrollRuns          PayrollRun[]
+  finalSettlements     FinalSettlement[]
   createdAt            DateTime              @default(now())
   updatedAt            DateTime              @updatedAt
   businessClients      BusinessClient[]
@@ -254,6 +279,11 @@ model SystemSettings {
   // own name on it. Defaults to SHSD, which is what it read before it moved
   // out of the component.
   poweredByName              String   @default("SHSD")
+  /// The calendar zone for anybody with no company — a Super Admin, or a user
+  /// whose companyId is null. Resolution is company, then this, then the
+  /// constant in lib/time.ts, so the fallback is never re-improvised at a call
+  /// site.
+  defaultTimezone            String   @default("Africa/Cairo")
   updatedAt                  DateTime @updatedAt
 }
 
@@ -360,6 +390,9 @@ model User {
   createdObligations         Obligation[]            @relation("ObligationCreatedBy")
   SalaryChange               SalaryChange[]
   EmploymentEvent            EmploymentEvent[]
+  payslips                   Payslip[]
+  finalSettlements           FinalSettlement[]
+  debts                      Debt[]
 
   @@index([email])
   @@index([companyId])
@@ -947,4 +980,200 @@ enum EmploymentEventType {
   /// A contract end undone — the person is employed again, continuously. Not
   /// the same as a new HIRED, which would start a second period of employment.
   REINSTATED
+}
+
+/// One company's payroll for one month.
+///
+/// The unit of approval. Figures live on the payslips below and are frozen when
+/// this moves out of DRAFT — after that the run is a record of what was paid,
+/// not a view that recomputes. That distinction is the whole reason this table
+/// exists: without it, opening last March's payroll would show today's answer to
+/// March's question, and the two would differ every time anything changed.
+model PayrollRun {
+  id           String            @id @default(uuid())
+  companyId    String
+  /// 1-12, in the company's own calendar.
+  month        Int
+  year         Int
+  status       PayrollRunStatus  @default(DRAFT)
+  approvedAt   DateTime?
+  approvedById String?
+  paidAt       DateTime?
+  paidById     String?
+  /// What the company's payroll day was when this ran. Copied, not read back
+  /// through Company: changing the payroll day must not rewrite what a past
+  /// settlement was measured against.
+  payrollDay   Int
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+  company      Company           @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  payslips     Payslip[]
+  settlements  FinalSettlement[]
+
+  /// One run per company per month. A second draft for a month that already has
+  /// one is how two people approve different figures for the same payroll.
+  @@unique([companyId, month, year])
+  @@index([companyId, year, month])
+  @@index([status])
+}
+
+enum PayrollRunStatus {
+  DRAFT
+  /// Figures frozen. Payslips exist and can be issued; the money has not moved.
+  APPROVED
+  PAID
+}
+
+/// One person's pay for one month, as issued.
+///
+/// Totals are stored rather than derived. They are sums of the lines below —
+/// never a re-derivation from the underlying rates — because that is what makes
+/// the printed lines add up to the printed total. A document whose column does
+/// not sum to the figure beneath it reads as an error however it is explained.
+model Payslip {
+  id               String        @id @default(uuid())
+  payrollRunId     String
+  userId           String
+  earningsAmount   Decimal       @default(0) @db.Decimal(12, 2)
+  deductionsAmount Decimal       @default(0) @db.Decimal(12, 2)
+  /// Never negative. What the deductions could not take is carried out as a
+  /// debt instead — see Debt, and totalPayslip() in lib/payroll.ts.
+  netAmount        Decimal       @default(0) @db.Decimal(12, 2)
+  /// The excess the net could not absorb. Zero on an ordinary payslip.
+  carriedAmount    Decimal       @default(0) @db.Decimal(12, 2)
+  /// Days actually paid for. Less than the month for a joiner, a leaver, or a
+  /// suspension that was ruled deductible.
+  daysPaid         Int
+  /// Kept out of the run's totals, but still shown. An excluded person with no
+  /// row at all is a person nobody notices is missing, which is the failure a
+  /// register exists to prevent.
+  excluded         Boolean       @default(false)
+  exclusionReason  String?
+  /// Stamped as each send succeeds, so a bulk issue resumes rather than
+  /// restarting — the difference between a timeout costing a pause and sixty
+  /// people receiving their payslip twice.
+  emailedAt        DateTime?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+  payrollRun       PayrollRun    @relation(fields: [payrollRunId], references: [id], onDelete: Cascade)
+  user             User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lines            PayslipLine[]
+
+  @@unique([payrollRunId, userId])
+  @@index([userId])
+  @@index([emailedAt])
+}
+
+/// One line on a payslip. Always positive; the kind carries the sign.
+model PayslipLine {
+  id        String          @id @default(uuid())
+  payslipId String
+  kind      PayslipLineKind
+  label     String
+  amount    Decimal         @db.Decimal(12, 2)
+  /// Where it came from, on the same reasoning as SalaryAdjustment.source: a
+  /// line somebody disputes has to be traceable to the thing that caused it,
+  /// and matching on the label is matching on free text.
+  source    String          @default("MANUAL")
+  sourceId  String?
+  /// Print order, so a reissued payslip is identical to the original.
+  sortOrder Int             @default(0)
+  payslip   Payslip         @relation(fields: [payslipId], references: [id], onDelete: Cascade)
+
+  @@index([payslipId])
+  @@index([source, sourceId])
+}
+
+enum PayslipLineKind {
+  EARNING
+  DEDUCTION
+}
+
+/// What is owed when a contract ends, in either direction.
+///
+/// Produced the moment the contract ends, not when the money moves: the
+/// document and the payment are different events, and an employee who has left
+/// is entitled to the statement before payday comes round.
+///
+/// The net is signed, which is the point. Positive means the company owes;
+/// negative means the person does. Two columns, or an unsigned amount beside a
+/// direction flag, allow a state where the sign and the figure disagree — and
+/// the one thing a settlement must never be is ambiguous about which way it
+/// points.
+model FinalSettlement {
+  id             String           @id @default(uuid())
+  userId         String
+  companyId      String
+  /// The last day they were employed. The contract ends at the start of the
+  /// next one, matching EmploymentEvent's half-open convention.
+  lastWorkingDay DateTime
+  /// What the final month's worked days were worth.
+  earnedAmount   Decimal          @db.Decimal(12, 2)
+  /// What had already gone out for that month when the contract ended.
+  paidAmount     Decimal          @default(0) @db.Decimal(12, 2)
+  /// earned − paid. Positive: the company owes. Negative: the person owes.
+  netAmount      Decimal          @db.Decimal(12, 2)
+  status         SettlementStatus @default(PENDING)
+  /// Defaults to the settlement date and is editable when something else is
+  /// agreed, so the list of what is outstanding is a queue rather than a pile.
+  dueDate        DateTime
+  /// Set when a payroll run picks this up to pay or collect it. Null while it
+  /// is waiting for one.
+  payrollRunId   String?
+  reason         String?
+  emailedAt      DateTime?
+  createdById    String?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  user           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  company        Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  payrollRun     PayrollRun?      @relation(fields: [payrollRunId], references: [id], onDelete: SetNull)
+
+  @@index([companyId, status])
+  @@index([userId])
+  @@index([dueDate])
+}
+
+enum SettlementStatus {
+  /// Produced, not yet carried by a payroll run.
+  PENDING
+  APPROVED
+  PAID
+  /// Written off deliberately, with a reason. Distinct from PAID, which claims
+  /// money moved.
+  WAIVED
+}
+
+/// Money a person owes the company, from wherever it arose.
+///
+/// Two things produce one: a payslip whose deductions exceeded its earnings
+/// (the net floors at zero and the excess is carried), and a final settlement
+/// that came out negative. They are the same object to whoever has to collect
+/// it, so they are one table with a source rather than two lists that have to
+/// be merged and sorted by hand every time somebody asks what is outstanding.
+model Debt {
+  id        String     @id @default(uuid())
+  userId    String
+  companyId String
+  amount    Decimal    @db.Decimal(12, 2)
+  /// PAYSLIP_CARRY or SETTLEMENT, and the row it came from.
+  source    String
+  sourceId  String?
+  status    DebtStatus @default(OUTSTANDING)
+  dueDate   DateTime
+  settledAt DateTime?
+  reason    String?
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([companyId, status, dueDate])
+  @@index([userId])
+  @@index([source, sourceId])
+}
+
+enum DebtStatus {
+  OUTSTANDING
+  SETTLED
+  WAIVED
 }

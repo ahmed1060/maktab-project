@@ -603,10 +603,19 @@ describe("a future-dated event is applied when its date arrives", () => {
 describe("the end-contract screen and the commit agree", () => {
     const route = stripComments(readFileSync("app/api/users/[id]/employment/route.ts", "utf8"))
 
-    it("converts the date the same way on both", () => {
+    it("previews and commits through one calculation", () => {
         // The preview and the commit have to be the same calculation over the
         // same date, or an admin is shown one figure and another is recorded.
-        expect(route.split("endOfContractInstant(lastWorkingDay)").length - 1).toBe(2)
+        // P5 achieved that by converting the date identically in two places;
+        // P8 achieves it better, by having the commit call the preview — so
+        // there is only one calculation to agree with.
+        expect(route).toContain("SettlementService.preview")
+        expect(route).toContain("SettlementService.settleAndEnd")
+
+        const service = stripComments(readFileSync("lib/services/settlement.service.ts", "utf8"))
+        const settle = service.slice(service.indexOf("static async settleAndEnd"))
+        expect(settle, "the commit computes its own figures instead of reusing the preview")
+            .toContain("this.preview(")
     })
 
     it("is managers only, and company-scoped", () => {
