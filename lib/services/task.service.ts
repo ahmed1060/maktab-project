@@ -4,7 +4,7 @@ import { extractCoords, extractAccuracy, locationVerdict } from "@/lib/location"
 import { supabase } from "@/lib/storage"
 import { normalizeJsonInput } from "@/lib/json-input"
 import { SystemSettingsService } from "./system-settings.service"
-import { calendarMonth, calendarYear } from "@/lib/time"
+import { calendarMonth } from "@/lib/time"
 
 /**
  * TaskService

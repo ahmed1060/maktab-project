@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma"
 import { Prisma } from "@prisma/client"
-import { calendarMonth, calendarYear } from "@/lib/time"
+import { calendarMonth } from "@/lib/time"
 
 // Decimal.toJSON() returns a *string*, so a SalaryRecord/SalaryAdjustment
 // passed straight into ApiResponse.success(...) would silently change these
