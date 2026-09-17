@@ -4,7 +4,6 @@ import { extractCoords, extractAccuracy, locationVerdict } from "@/lib/location"
 import { supabase } from "@/lib/storage"
 import { normalizeJsonInput } from "@/lib/json-input"
 import { SystemSettingsService } from "./system-settings.service"
-import { calendarMonth } from "@/lib/time"
 
 /**
  * TaskService
@@ -482,45 +481,26 @@ export class TaskService {
      */
     static async applyPenalty(id: string, targetUserId: string, amount: number, session: any) {
         const now = new Date()
-        const { month: currentMonth, year: currentYear } = calendarMonth(now)
 
         return await prisma.$transaction(async (tx) => {
             const task = await tx.task.findUnique({ where: { id } })
             if (!task) throw new Error("TASK_NOT_FOUND")
 
-            const salaryRecord = await tx.salaryRecord.findUnique({
-                where: { userId_month_year: { userId: targetUserId, month: currentMonth, year: currentYear } }
-            })
-
-            if (salaryRecord) {
-                await tx.salaryRecord.update({
-                    where: { id: salaryRecord.id },
-                    data: { deductions: { increment: amount } }
-                })
-            } else {
-                const daysInMonth = new Date(currentYear, currentMonth, 0).getDate()
-                const targetUser = await tx.user.findUnique({ where: { id: targetUserId } })
-                await tx.salaryRecord.create({
-                    data: {
-                        userId: targetUserId,
-                        month: currentMonth,
-                        year: currentYear,
-                        totalDays: daysInMonth,
-                        deductions: amount,
-                        baseSalary: targetUser?.salary || 0
-                    }
-                })
-            }
-
-            await tx.salaryAdjustment.create({
-                data: {
-                    userId: targetUserId,
-                    type: 'DEDUCTION',
-                    amount: amount,
-                    reason: "Lateness Penalty Deduction",
-                    status: 'ACTIVE'
-                }
-            })
+            // Through SalaryService, not a second hand-rolled find-or-create.
+            // This block used to compute its own days-in-month and read its own
+            // base salary, so there were two definitions of how a SalaryRecord
+            // is born and they could disagree about the same month. It also
+            // wrote an adjustment row with no period and no provenance, which
+            // is what made a penalty impossible to trace back to its task.
+            const { SalaryService } = await import("./salary.service")
+            const { month: currentMonth, year: currentYear } = await SalaryService.applyAdjustment({
+                userId: targetUserId,
+                type: 'DEDUCTION',
+                amount,
+                source: 'TASK_PENALTY',
+                sourceId: id,
+                reason: "Lateness Penalty Deduction",
+            }, tx)
 
             const comments: any[] = Array.isArray(task.comments) ? task.comments : []
             comments.push({
@@ -542,7 +522,7 @@ export class TaskService {
                 tx,
                 userId: session.user.role !== 'SUPER_ADMIN' ? session.user.id : null,
                 superAdminId: session.user.role === 'SUPER_ADMIN' ? session.user.id : null,
-                details: { targetUserId, amount, reason: "Lateness Penalty Deduction" }
+                details: { targetUserId, amount, month: currentMonth, year: currentYear, reason: "Lateness Penalty Deduction" }
             })
 
             return { id }

@@ -20,10 +20,10 @@ export const POST = withStandardHandler(async (req, session, json, { params }) =
         return ApiResponse.success(result)
     } catch (error: any) {
         if (error.message === 'INVALID_ADJUSTMENT') {
-            return ApiResponse.badRequest("Invalid adjustment or already rolled back")
+            return ApiResponse.badRequest("Invalid adjustment, or it has already been rolled back or reversed")
         }
         if (error.message === 'RECORD_NOT_FOUND') {
-            return ApiResponse.notFound("Salary record not found for this month")
+            return ApiResponse.notFound("Salary record not found for this adjustment's month")
         }
         throw error
     }

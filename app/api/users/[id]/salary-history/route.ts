@@ -19,10 +19,13 @@ export const GET = withStandardHandler(async (req, session, json, { params }) =>
     const hasAccess = await verifyResourceAccess(session, userId, 'USER')
     if (!hasAccess) return ApiResponse.forbidden("Access denied")
 
-    try {
-        const history = await SalaryService.getHistory(userId)
-        return ApiResponse.success(history)
-    } catch (error: any) {
-        throw error
-    }
+    // The gap fill is named and called deliberately, rather than happening
+    // inside getHistory as a side effect of reading. Same net result for this
+    // screen — every month from the first record to this one — but getHistory
+    // is now a read, so nothing else that wants the history has to accept a
+    // write it did not ask for.
+    await SalaryService.ensureRecordsThrough(userId)
+
+    const history = await SalaryService.getHistory(userId)
+    return ApiResponse.success(history)
 })

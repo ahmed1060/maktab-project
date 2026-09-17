@@ -1,7 +1,18 @@
 import { prisma } from "@/lib/prisma"
 import { calendarMonth, calendarYear } from "@/lib/time"
+import { planReset, RECONSTRUCTED_NOTE } from "@/lib/leave-reset"
 
 export class CronService {
+    /**
+     * The annual leave reset: snapshot the closing balance, then hand back the
+     * allowance.
+     *
+     * It writes a snapshot for every year it owes one, not just the most recent.
+     * See lib/leave-reset.ts for why — the short version is that this job gets
+     * one attempt a year, has no retry, and the snapshot table is unique on
+     * [userId, year], so a year skipped here is a year that can never be
+     * recorded at all.
+     */
     static async resetDayOffCredits() {
         const now = new Date()
         const currentYear = calendarYear(now)
@@ -13,17 +24,41 @@ export class CronService {
         })
 
         let count = 0
+        let snapshots = 0
+        const refused: { userId: string; lastResetYear: number }[] = []
+
         for (const user of usersToReset) {
+            const plan = planReset(user.lastDayOffResetYear, currentYear)
+
+            if (plan.kind === "UP_TO_DATE") continue
+            if (plan.kind === "REFUSED") {
+                // Surfaced rather than acted on. A span this long is a corrupt
+                // lastDayOffResetYear, and the fix is for somebody to look at
+                // that account, not for this job to write a quarter-century of
+                // invented snapshots into a table nothing can delete from.
+                console.error(`Refusing to reset user ${user.id}: lastDayOffResetYear is ${user.lastDayOffResetYear}`)
+                refused.push({ userId: user.id, lastResetYear: user.lastDayOffResetYear })
+                continue
+            }
+
             try {
                 await prisma.$transaction(async (tx) => {
-                    await tx.dayOffCreditSnapshot.create({
-                        data: {
+                    // skipDuplicates, because a row that already exists must not
+                    // abort the whole user. The old code let a unique-constraint
+                    // collision fail the transaction, which left that account
+                    // un-reset — and it would fail again identically every year
+                    // after, forever.
+                    const written = await tx.dayOffCreditSnapshot.createMany({
+                        data: plan.years.map(({ year, reconstructed }) => ({
                             userId: user.id,
-                            year: user.lastDayOffResetYear,
+                            year,
                             baseCredit: user.baseDayOffCredit,
-                            remainingCredit: user.dayOffCredit
-                        }
+                            remainingCredit: user.dayOffCredit,
+                            note: reconstructed ? RECONSTRUCTED_NOTE : null,
+                        })),
+                        skipDuplicates: true,
                     })
+                    snapshots += written.count
 
                     await tx.user.update({
                         where: { id: user.id },
@@ -37,7 +72,14 @@ export class CronService {
                     const { AuditLogService } = await import("./audit-log.service")
                     await AuditLogService.log('SYSTEM_DAY_OFF_RESET', 'USER', user.id, {
                         tx,
-                        details: { oldYear: user.lastDayOffResetYear, newYear: currentYear, creditWas: user.dayOffCredit, creditNow: user.baseDayOffCredit }
+                        details: {
+                            oldYear: user.lastDayOffResetYear,
+                            newYear: currentYear,
+                            yearsSnapshotted: plan.years.map(y => y.year),
+                            reconstructedYears: plan.years.filter(y => y.reconstructed).map(y => y.year),
+                            creditWas: user.dayOffCredit,
+                            creditNow: user.baseDayOffCredit
+                        }
                     })
                 })
                 count++
@@ -46,7 +88,7 @@ export class CronService {
             }
         }
 
-        return { success: true, count, year: currentYear }
+        return { success: true, count, snapshots, refused, year: currentYear }
     }
 
     static async initializeSalaries() {

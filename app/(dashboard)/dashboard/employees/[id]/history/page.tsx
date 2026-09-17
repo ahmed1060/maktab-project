@@ -32,6 +32,8 @@ interface DayOffCreditSnapshot {
     year: number
     baseCredit: number
     remainingCredit: number
+    /** Set when the reset had to reconstruct this year rather than measure it. */
+    note?: string | null
 }
 
 interface DayOffHistoryYear {
@@ -45,9 +47,20 @@ interface SalaryAdjustment {
     type: 'BONUS' | 'DEDUCTION'
     amount: number
     reason?: string
-    status: 'ACTIVE' | 'ROLLED_BACK'
+    // Two terminal statuses, not one. A row that only knew about ROLLED_BACK
+    // would render a reversed adjustment as live and offer a Rollback button
+    // that the API refuses.
+    status: 'ACTIVE' | 'ROLLED_BACK' | 'REVERSED'
+    /** The month the days landed on, which is not always the month it was entered in. */
+    month: number
+    year: number
+    source: 'MANUAL' | 'TASK_PENALTY' | 'DAY_OFF' | 'SETTLEMENT'
+    sourceId?: string | null
     createdAt: string
 }
+
+const TERMINAL_ADJUSTMENT_STATUSES = ['ROLLED_BACK', 'REVERSED'] as const
+const isTerminal = (status: string) => (TERMINAL_ADJUSTMENT_STATUSES as readonly string[]).includes(status)
 
 interface Employee {
     id: string
@@ -77,6 +90,8 @@ export default function EmployeeHistoryPage() {
     const [isAdjustmentsModalOpen, setIsAdjustmentsModalOpen] = useState(false)
     const [adjustments, setAdjustments] = useState<SalaryAdjustment[]>([])
     const [rollbackLoading, setRollbackLoading] = useState<string | null>(null)
+    const [reversing, setReversing] = useState<SalaryAdjustment | null>(null)
+    const [reverseReason, setReverseReason] = useState('')
     const [alert, setAlert] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
     const [activeTab, setActiveTab] = useState<'SALARY' | 'DAY_OFF' | 'COSTS'>('SALARY')
     const [dayOffHistory, setDayOffHistory] = useState<{ baseCredit: number, remainingCredit: number, history: DayOffHistoryYear[] } | null>(null)
@@ -201,14 +216,19 @@ export default function EmployeeHistoryPage() {
         }
     }, [highlightId, isAdjustmentsModalOpen, adjustments]);
 
-    const handleRollback = async (adjId: string) => {
+    const handleUndo = async (adjId: string, action: 'rollback' | 'reverse', reason?: string) => {
         setRollbackLoading(adjId)
         try {
-            const res = await fetch(`/api/users/${params.id}/adjustments/${adjId}/rollback`, {
-                method: 'POST'
+            const res = await fetch(`/api/users/${params.id}/adjustments/${adjId}/${action}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ reason: reason || undefined }),
             })
             if (res.ok) {
-                setAlert({ type: 'success', message: t('rollback_success' as any) })
+                setAlert({
+                    type: 'success',
+                    message: action === 'reverse' ? t('reverse_success' as any) : t('rollback_success' as any),
+                })
                 fetchAdjustments()
                 // Refresh records too
                 const historyRes = await fetch(`/api/users/${params.id}/salary-history`)
@@ -217,16 +237,24 @@ export default function EmployeeHistoryPage() {
                     setRecords(historyData)
                 }
             } else {
-                setAlert({ type: 'error', message: t('failed_rollback' as any) })
+                setAlert({
+                    type: 'error',
+                    message: action === 'reverse' ? t('failed_reverse' as any) : t('failed_rollback' as any),
+                })
             }
         } catch {
-            console.error('Error rolling back')
-            setAlert({ type: 'error', message: t('failed_rollback' as any) })
+            console.error(`Error applying ${action}`)
+            setAlert({
+                type: 'error',
+                message: action === 'reverse' ? t('failed_reverse' as any) : t('failed_rollback' as any),
+            })
         } finally {
             setRollbackLoading(null)
             setTimeout(() => setAlert(null), 3000)
         }
     }
+
+    const handleRollback = (adjId: string) => handleUndo(adjId, 'rollback')
 
     const handleReevaluate = async () => {
         if (!selectedRequest || !reevaluateValue) return
@@ -258,6 +286,8 @@ export default function EmployeeHistoryPage() {
     const getMonthName = (month: number) => {
         return new Date(2000, month - 1).toLocaleString(locale === 'ar' ? 'ar-EG' : 'en-US', { month: 'long' })
     }
+
+    const monthLabel = (year: number, month: number) => `${getMonthName(month)} ${year}`
 
     const formatDays = (days: number) => {
         if (locale === 'ar') {
@@ -530,9 +560,24 @@ export default function EmployeeHistoryPage() {
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '1px solid var(--border)', paddingBottom: '0.75rem' }}>
                                 <h2 style={{ margin: 0 }}>{yearData.year}</h2>
                                 {yearData.snapshot && (
-                                    <div style={{ fontSize: '0.9rem', color: 'var(--text-soft)' }}>
-                                        {t('base_credit' as any) || 'Base'}: <strong>{yearData.snapshot.baseCredit}</strong> |
-                                        {t('remaining_before_reset' as any) || ' Remaining (End of Year)'}: <strong>{yearData.snapshot.remainingCredit}</strong>
+                                    <div style={{ fontSize: '0.9rem', color: 'var(--text-soft)', textAlign: locale === 'ar' ? 'left' : 'right' }}>
+                                        <div>
+                                            {t('base_credit' as any) || 'Base'}: <strong>{yearData.snapshot.baseCredit}</strong> |
+                                            {t('remaining_before_reset' as any) || ' Remaining (End of Year)'}: <strong>{yearData.snapshot.remainingCredit}</strong>
+                                        </div>
+                                        {/*
+                                          A reconstructed year says so on the
+                                          screen, not only in the column. The
+                                          figures beside it are carried, not
+                                          measured, and somebody reading a leave
+                                          balance from years ago should be told
+                                          which kind of number they are looking at.
+                                        */}
+                                        {yearData.snapshot.note && (
+                                            <div style={{ fontSize: '0.75rem', color: 'var(--warn-fg)', marginTop: '0.35rem', maxWidth: '420px' }}>
+                                                {yearData.snapshot.note}
+                                            </div>
+                                        )}
                                     </div>
                                 )}
                             </div>
@@ -629,7 +674,7 @@ export default function EmployeeHistoryPage() {
                                         }}
                                     >
                                         {/* Strikethrough Line */}
-                                        {adj.status === 'ROLLED_BACK' && (
+                                        {isTerminal(adj.status) && (
                                             <div style={{
                                                 position: 'absolute',
                                                 top: '50%',
@@ -644,7 +689,7 @@ export default function EmployeeHistoryPage() {
                                             }} />
                                         )}
 
-                                        <div style={{ opacity: adj.status === 'ROLLED_BACK' ? 0.6 : 1 }}>
+                                        <div style={{ opacity: isTerminal(adj.status) ? 0.6 : 1 }}>
                                             <div style={{ fontWeight: 'bold', fontSize: '1.1rem', color: adj.type === 'BONUS' ? 'var(--accent-solid-deep)' : 'var(--danger-solid-hover)' }}>
                                                 {adj.type === 'BONUS' ? '+' : '-'}{formatDays(adj.amount)}
                                             </div>
@@ -653,29 +698,67 @@ export default function EmployeeHistoryPage() {
                                                     {adj.reason}
                                                 </div>
                                             )}
+                                            {/*
+                                              The month it applies to, beside the
+                                              moment it was entered. They are
+                                              usually the same and occasionally
+                                              not, and only one of them decides
+                                              what anybody is paid.
+                                            */}
+                                            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.4rem', display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                                                <span style={{ fontWeight: 600 }}>
+                                                    {t('applies_to_month' as any)} {monthLabel(adj.year, adj.month)}
+                                                </span>
+                                                <span style={{
+                                                    padding: '0.1rem 0.5rem',
+                                                    borderRadius: '0.5rem',
+                                                    background: 'var(--surface-sunk)',
+                                                    color: 'var(--text-soft)',
+                                                    fontSize: '0.72rem',
+                                                }}>
+                                                    {t(`adjustment_source_${adj.source}` as any)}
+                                                </span>
+                                            </div>
                                             <div style={{ fontSize: '0.875rem', color: 'var(--text-faint)', marginTop: '0.25rem' }}>
                                                 <SafeDate date={adj.createdAt} locale={locale} showTime />
                                             </div>
                                         </div>
 
-                                        {adj.status === 'ACTIVE' && (
-                                            <button
-                                                onClick={() => handleRollback(adj.id)}
-                                                disabled={!!rollbackLoading}
-                                                className="btn"
-                                                style={{
-                                                    background: 'var(--danger-bg)',
-                                                    color: 'var(--danger-fg)',
-                                                    fontSize: '0.875rem',
-                                                    padding: '0.5rem 1rem'
-                                                }}
-                                            >
-                                                {rollbackLoading === adj.id ? '...' : t('rollback_adjustment' as any)}
-                                            </button>
+                                        {adj.status === 'ACTIVE' && isAdmin && (
+                                            <div style={{ display: 'flex', gap: '0.5rem', flexShrink: 0 }}>
+                                                <button
+                                                    onClick={() => { setReversing(adj); setReverseReason('') }}
+                                                    disabled={!!rollbackLoading}
+                                                    className="btn"
+                                                    style={{
+                                                        background: 'var(--surface-sunk)',
+                                                        color: 'var(--text-strong)',
+                                                        fontSize: '0.875rem',
+                                                        padding: '0.5rem 1rem'
+                                                    }}
+                                                >
+                                                    {t('reverse_adjustment' as any)}
+                                                </button>
+                                                <button
+                                                    onClick={() => handleRollback(adj.id)}
+                                                    disabled={!!rollbackLoading}
+                                                    className="btn"
+                                                    style={{
+                                                        background: 'var(--danger-bg)',
+                                                        color: 'var(--danger-fg)',
+                                                        fontSize: '0.875rem',
+                                                        padding: '0.5rem 1rem'
+                                                    }}
+                                                >
+                                                    {rollbackLoading === adj.id ? '...' : t('rollback_adjustment' as any)}
+                                                </button>
+                                            </div>
                                         )}
-                                        {adj.status === 'ROLLED_BACK' && (
-                                            <span style={{ fontSize: '0.8rem', color: 'var(--danger-solid)', fontWeight: 'bold' }}>
-                                                {t('rollback_adjustment' as any)}
+                                        {isTerminal(adj.status) && (
+                                            <span style={{ fontSize: '0.8rem', color: 'var(--danger-solid)', fontWeight: 'bold', flexShrink: 0 }}>
+                                                {adj.status === 'REVERSED'
+                                                    ? t('reversed_label' as any)
+                                                    : t('rolled_back_label' as any)}
                                             </span>
                                         )}
                                     </div>
@@ -685,6 +768,72 @@ export default function EmployeeHistoryPage() {
                     </div>
                 </div>
             )}
+            {/* Reverse Modal */}
+            {reversing && (
+                <div style={{
+                    position: 'fixed',
+                    inset: 0,
+                    zIndex: 1100,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    background: 'var(--scrim)',
+                    padding: '1rem',
+                }}>
+                    <div style={{
+                        background: 'var(--surface)',
+                        borderRadius: '1rem',
+                        border: '1px solid var(--border)',
+                        padding: '1.5rem',
+                        maxWidth: '460px',
+                        width: '100%',
+                        textAlign: locale === 'ar' ? 'right' : 'left',
+                    }}>
+                        <h3 style={{ margin: '0 0 0.75rem' }}>{t('reverse_adjustment_title' as any)}</h3>
+                        <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginTop: 0 }}>
+                            {t('reverse_adjustment_msg' as any)}
+                        </p>
+                        <p style={{ fontSize: '0.9rem', fontWeight: 600 }}>
+                            {reversing.type === 'BONUS' ? '+' : '-'}{formatDays(reversing.amount)}
+                            {' · '}
+                            {monthLabel(reversing.year, reversing.month)}
+                        </p>
+                        <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.4rem' }}>
+                            {t('reverse_reason' as any)}
+                        </label>
+                        <textarea
+                            className="input"
+                            rows={2}
+                            value={reverseReason}
+                            onChange={e => setReverseReason(e.target.value)}
+                        />
+                        <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', marginTop: '1rem' }}>
+                            <button
+                                type="button"
+                                className="btn"
+                                style={{ background: 'var(--border)', color: 'var(--text-strong)' }}
+                                onClick={() => setReversing(null)}
+                            >
+                                {t('close_button')}
+                            </button>
+                            <button
+                                type="button"
+                                className="btn"
+                                style={{ background: 'var(--danger-solid)', color: 'var(--text-on-accent)' }}
+                                disabled={!!rollbackLoading}
+                                onClick={async () => {
+                                    const target = reversing
+                                    setReversing(null)
+                                    await handleUndo(target.id, 'reverse', reverseReason)
+                                }}
+                            >
+                                {t('reverse_adjustment' as any)}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* ReEvaluate Modal */}
             {isReevaluateModalOpen && selectedRequest && (
                 <div style={{

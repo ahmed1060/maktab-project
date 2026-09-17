@@ -1,6 +1,5 @@
 import { prisma } from "@/lib/prisma"
 import { CreateDayOffInput, AdminUpdateDayOffInput } from "../validations/day-off.schema"
-import { calendarMonth } from "@/lib/time"
 
 export class DayOffService {
     static async getMany(userId: string, skip: number, take: number) {
@@ -130,27 +129,20 @@ export class DayOffService {
                 updateData.deductionType = deductionType || 'CREDIT'
 
                 if (deductionType === 'SALARY') {
-                    const now = new Date()
-                    const { month: m, year: y } = calendarMonth(now)
-
-                    // USE CONSOLIDATED HELPER
+                    // One call: it ensures the month's record, increments it,
+                    // and writes the adjustment with its period and the request
+                    // it came from. The sourceId is what replaces finding this
+                    // row again by substring-matching its reason text.
                     const { SalaryService } = await import("./salary.service")
-                    const record = await SalaryService.ensureRecordExists(requestToUpdate.userId, m, y, requestToUpdate.user.salary || 0, tx)
-
-                    await tx.salaryRecord.update({
-                        where: { id: record.id },
-                        data: { deductions: { increment: deduction } }
-                    })
-
-                    await tx.salaryAdjustment.create({
-                        data: {
-                            userId: requestToUpdate.userId,
-                            type: 'DEDUCTION',
-                            amount: deduction,
-                            reason: `Day off deduction for request #${id}`,
-                            status: 'ACTIVE'
-                        }
-                    })
+                    await SalaryService.applyAdjustment({
+                        userId: requestToUpdate.userId,
+                        type: 'DEDUCTION',
+                        amount: deduction,
+                        source: 'DAY_OFF',
+                        sourceId: id,
+                        reason: `Day off deduction for request #${id}`,
+                        baseSalary: requestToUpdate.user.salary || 0,
+                    }, tx)
                 } else {
                     // CONCURRENCY SAFE CREDIT DEDUCTION
                     const updatedUser = await tx.user.update({
@@ -268,19 +260,31 @@ export class DayOffService {
             })
 
             if (requestToUpdate.deductionType === 'SALARY') {
-                // Adjust Salary Deduction
+                // Found by where it came from, not by substring-matching a free
+                // text field an admin can edit. `reason: { contains: id }` also
+                // matched any other adjustment whose reason happened to contain
+                // this request's id, and silently did nothing when it matched
+                // none — leaving the salary record holding the old figure while
+                // the request said the new one.
                 const adj = await tx.salaryAdjustment.findFirst({
-                    where: { userId: requestToUpdate.userId, reason: { contains: id }, status: 'ACTIVE' }
+                    where: {
+                        userId: requestToUpdate.userId,
+                        source: 'DAY_OFF',
+                        sourceId: id,
+                        status: 'ACTIVE',
+                    },
+                    orderBy: { createdAt: 'desc' },
                 })
                 if (adj) {
                     await tx.salaryAdjustment.update({
                         where: { id: adj.id },
                         data: { amount: newDays }
                     })
-                    // Also update the record (diff)
-                    const date = new Date(adj.createdAt)
-                    const { month: m, year: y } = calendarMonth(date)
-                    const record = await tx.salaryRecord.findUnique({ where: { userId_month_year: { userId: requestToUpdate.userId, month: m, year: y } } })
+                    // The month the days actually landed on, read off the row
+                    // rather than re-derived from when it was written.
+                    const record = await tx.salaryRecord.findUnique({
+                        where: { userId_month_year: { userId: requestToUpdate.userId, month: adj.month, year: adj.year } }
+                    })
                     if (record) {
                         await tx.salaryRecord.update({
                             where: { id: record.id },
