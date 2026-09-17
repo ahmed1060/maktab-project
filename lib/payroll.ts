@@ -85,12 +85,39 @@ export function valueDaysIn(
     days: number,
     monthlyMinor: Minor,
 ): Minor {
-    if (days < 0) throw new Error(`Negative days: ${days}`)
     const length = daysInMonth(year, month)
     if (days > length) {
+        // Only a *window* of the month is bounded by its length. See
+        // valueDayQuantity for the other kind of day, and why conflating them
+        // was a real fault rather than a theoretical one.
         throw new Error(`${days} days in a ${length}-day month (${year}-${month})`)
     }
-    return roundHalfUp((monthlyMinor * days) / length)
+    return valueDayQuantity(year, month, days, monthlyMinor)
+}
+
+/**
+ * What some number of days' pay is worth, where the number is a quantity rather
+ * than a stretch of the month.
+ *
+ * The same arithmetic as valueDaysIn and deliberately not the same guard. A
+ * segment cannot span more days than its month has — that is a bug in the
+ * caller. An *adjustment* can: forty days' pay deducted to repay an advance is
+ * an ordinary thing to record against a thirty-day month, and the excess
+ * becomes debt rather than a negative payslip.
+ *
+ * These were one function until a register tried to value such a deduction and
+ * threw, which would have taken down the whole company's payroll rather than
+ * produced one large line. The bound that belongs on a window does not belong
+ * on a quantity, and SalaryService already caps what can be written at all.
+ */
+export function valueDayQuantity(
+    year: number,
+    month: number,
+    days: number,
+    monthlyMinor: Minor,
+): Minor {
+    if (days < 0) throw new Error(`Negative days: ${days}`)
+    return roundHalfUp((monthlyMinor * days) / daysInMonth(year, month))
 }
 
 /**

@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest"
 import {
-    toMinor, toMajor, formatMinor, daysInMonth, valueDaysIn,
+    toMinor, toMajor, formatMinor, daysInMonth, valueDaysIn, valueDayQuantity,
     valueSegment, segmentDays, splitMonth, totalPayslip,
     type PayslipLine,
 } from "./payroll"
@@ -297,5 +297,33 @@ describe("the worked example, end to end", () => {
         ])
         expect(totals.netMinor).toBe(0)
         expect(formatMinor(totals.carriedMinor)).toBe("1000.00")
+    })
+})
+
+describe("a window of the month and a quantity of days are different things", () => {
+    it("refuses a window longer than its month", () => {
+        // A segment that spans more days than the month has is a bug in
+        // whatever produced it, and the throw is what catches it.
+        expect(() => valueDaysIn(2026, 9, 31, toMinor(30_000))).toThrow(/31 days in a 30-day month/)
+    })
+
+    it("allows a quantity longer than its month", () => {
+        // Forty days' pay deducted to repay an advance is an ordinary entry
+        // against a thirty-day month. These were one function until a register
+        // tried to value exactly this and threw — which would have taken down a
+        // whole company's payroll rather than produced one large line.
+        expect(formatMinor(valueDayQuantity(2026, 9, 40, toMinor(30_000)))).toBe("40000.00")
+    })
+
+    it("agree wherever both are legal", () => {
+        for (const days of [0, 1, 15, 30]) {
+            expect(valueDaysIn(2026, 9, days, toMinor(30_000)))
+                .toBe(valueDayQuantity(2026, 9, days, toMinor(30_000)))
+        }
+    })
+
+    it("both refuse a negative", () => {
+        expect(() => valueDaysIn(2026, 9, -1, toMinor(30_000))).toThrow(/Negative days/)
+        expect(() => valueDayQuantity(2026, 9, -1, toMinor(30_000))).toThrow(/Negative days/)
     })
 })
