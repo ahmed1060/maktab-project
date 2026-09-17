@@ -152,6 +152,18 @@ describe("every night's dump is loaded back", () => {
         expect(BACKUP_CODE).toContain("image: postgres:17")
     })
 
+    it("health-checks it as a role that exists", () => {
+        // A bare `pg_isready` runs as the container's OS user, which is root,
+        // and Postgres answers "FATAL: role root does not exist" every time.
+        // The service then never reports healthy, and GitHub fails the job
+        // before a single step runs — so the whole backup is lost to a check
+        // that was only ever meant to wait for the database.
+        expect(
+            BACKUP_CODE,
+            "the service health check does not name a database user",
+        ).toContain('--health-cmd "pg_isready -U postgres"')
+    })
+
     it("proves the dump applies and holds rows", () => {
         expect(BACKUP_CODE).toContain("--single-transaction -v ON_ERROR_STOP=1")
         expect(BACKUP_CODE).toContain("Dump restored but holds no users")
