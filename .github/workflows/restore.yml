@@ -277,33 +277,22 @@ jobs:
           # restoring into a new and empty one, and that is the path that has to
           # work.
           #
-          # This asks the target what it holds instead of replaying a list built
-          # against a different database at a different time. On an empty target
-          # the loops do nothing; on a populated one they clear exactly what the
-          # dump is about to recreate. It is deliberately everything in public,
-          # not just what the dump names: a restore means "make this match the
-          # backup", and a table that has since been added is not in the backup.
+          # One statement, and it works the same on an empty target as on a
+          # full one. It is deliberately the whole schema rather than only what
+          # the dump names: a restore means "make this match the backup", and a
+          # table added since is not in the backup.
+          #
+          # Nothing is lost by dropping it. public's only privilege is
+          # postgres's own ({postgres=UC/postgres}) and every table's is the
+          # default, so there are no grants to anon, authenticated or
+          # service_role that recreating the schema would discard. The dump's
+          # own CREATE SCHEMA public brings it back — which backup.yml asserts
+          # is present, because this step depends on it.
           #
           # In the same transaction as the load, so a failure anywhere leaves the
           # target exactly as it was.
           { cat <<'RESET'
-          DO $$
-          DECLARE r record;
-          BEGIN
-            FOR r IN SELECT tablename FROM pg_tables WHERE schemaname = 'public' LOOP
-              EXECUTE format('DROP TABLE IF EXISTS public.%I CASCADE', r.tablename);
-            END LOOP;
-            FOR r IN SELECT p.oid::regprocedure AS sig FROM pg_proc p
-                     JOIN pg_namespace n ON n.oid = p.pronamespace
-                     WHERE n.nspname = 'public' LOOP
-              EXECUTE format('DROP FUNCTION IF EXISTS %s CASCADE', r.sig);
-            END LOOP;
-            FOR r IN SELECT t.typname FROM pg_type t
-                     JOIN pg_namespace n ON n.oid = t.typnamespace
-                     WHERE n.nspname = 'public' AND t.typtype = 'e' LOOP
-              EXECUTE format('DROP TYPE IF EXISTS public.%I CASCADE', r.typname);
-            END LOOP;
-          END $$;
+          DROP SCHEMA IF EXISTS public CASCADE;
           RESET
             gunzip -c db.sql.gz
           } | /usr/lib/postgresql/17/bin/psql "$PGCONN" \

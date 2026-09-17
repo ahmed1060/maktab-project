@@ -178,24 +178,43 @@ jobs:
           # simpler claim than the list of specific ones this replaced, and it
           # is the whole reason the dump no longer carries a DROP section: every
           # one of them asserted something about the target.
-          if zcat db.sql.gz | grep -qE '^(DROP|ALTER TABLE IF EXISTS) '; then
-            echo "Dump contains DROP statements; it is supposed to describe the source only:"
-            zcat db.sql.gz | grep -nE '^(DROP|ALTER TABLE IF EXISTS) ' | head -5
-            exit 1
-          fi
-
-          for pattern in 'EVENT TRIGGER' 'EXTENSION' 'CREATE SCHEMA'; do
-            if zcat db.sql.gz | grep -qE "^(DROP|CREATE|ALTER|COMMENT ON).*${pattern}"; then
-              echo "Dump contains a ${pattern} statement, which the postgres role cannot execute:"
-              zcat db.sql.gz | grep -nE "^(DROP|CREATE|ALTER|COMMENT ON).*${pattern}" | head -5
+          # Anchored on the verb, not on a prefix-plus-anything. The first
+          # version of this check read ^(DROP|CREATE|...).*CREATE SCHEMA, which
+          # cannot match "CREATE SCHEMA public;" at all — it needs a second
+          # "CREATE SCHEMA" later in the same line. It passed on a dump that
+          # contained exactly the statement it was written to forbid, and the
+          # restore found out instead. A guard that cannot fail is worse than no
+          # guard, because it is also a claim.
+          forbid() {
+            if zcat db.sql.gz | grep -qE "$1"; then
+              echo "Dump contains $2:"
+              zcat db.sql.gz | grep -nE "$1" | head -5
               exit 1
             fi
-          done
-          # And that it still contains the application, so "clean" cannot be
-          # achieved by dumping nothing.
+          }
+
+          # No DROP section of any kind. Every statement in one asserts
+          # something about a target the dump has never seen, and that is where
+          # each restore failure has lived. Clearing the target is restore.yml's
+          # job now.
+          forbid '^(DROP|ALTER TABLE IF EXISTS) ' 'DROP statements; it should describe the source only'
+
+          # Platform objects the postgres role does not own and cannot recreate.
+          forbid '^(DROP|CREATE|ALTER|COMMENT ON) EVENT TRIGGER' 'an EVENT TRIGGER statement'
+          forbid '^(DROP|CREATE|ALTER|COMMENT ON) EXTENSION' 'an EXTENSION statement'
+
+          # Required, not forbidden: restore.yml drops the schema before loading
+          # and depends on the dump to bring it back. If pg_dump ever stops
+          # emitting this, the backup fails here rather than the restore failing
+          # later against an empty database.
+          zcat db.sql.gz | grep -qE '^CREATE SCHEMA public;' \
+            || { echo "Dump has no CREATE SCHEMA public; the restore drops the schema and relies on it"; exit 1; }
+
+          # And that it still carries the application, so a dump of nothing
+          # cannot satisfy every check above.
           TABLES=$(zcat db.sql.gz | grep -cE '^CREATE TABLE public\.')
           test "$TABLES" -ge 25 || { echo "Only $TABLES tables in the dump"; exit 1; }
-          echo "Dump carries $TABLES application tables and no platform objects."
+          echo "Dump carries $TABLES application tables, recreates its schema, and holds no platform objects."
 
 
       - name: Mirror the storage bucket
@@ -286,7 +305,12 @@ jobs:
           # --schema=public removed the globals at the source, so the nightly
           # check can now ask the same question the disaster will: does this
           # dump load, all of it, without error?
-          gunzip -c db.sql.gz \
+          # The same reset restore.yml runs, for the same reason: a fresh
+          # database already has a public schema, and the dump recreates its
+          # own. Prepending it here is also what keeps this an honest rehearsal
+          # — the nightly check runs the restore's exact sequence, not a
+          # simplified one.
+          { echo 'DROP SCHEMA IF EXISTS public CASCADE;'; gunzip -c db.sql.gz; } \
             | /usr/lib/postgresql/17/bin/psql -h localhost -U postgres -d verify \
               --single-transaction -v ON_ERROR_STOP=1 -q --echo-errors
 

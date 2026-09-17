@@ -54,15 +54,18 @@ describe("a restore is all-or-nothing", () => {
         }
 
         const restoreStep = RESTORE_CODE.split("- name:").find(s => s.includes("Restore database"))!
-        expect(restoreStep, "the restore no longer clears the target").toContain("DROP TABLE IF EXISTS public.%I CASCADE")
-        expect(restoreStep, "the reset replays a list instead of asking the target").toContain("FROM pg_tables WHERE schemaname = 'public'")
-        // Enums and the one function too, or the dump cannot recreate them.
-        expect(restoreStep).toContain("DROP TYPE IF EXISTS public.%I CASCADE")
-        expect(restoreStep).toContain("DROP FUNCTION IF EXISTS %s CASCADE")
+        expect(restoreStep, "the restore no longer clears the target").toContain("DROP SCHEMA IF EXISTS public CASCADE;")
         // And in the same transaction as the load, so a failure anywhere leaves
         // the target as it was rather than emptied.
-        expect(restoreStep.indexOf("DROP TABLE IF EXISTS"))
+        expect(restoreStep.indexOf("DROP SCHEMA IF EXISTS"))
             .toBeLessThan(restoreStep.indexOf("--single-transaction"))
+
+        // The nightly check runs the restore's exact sequence, not a simpler
+        // one. Its target is a fresh database, which already has a public
+        // schema the dump is about to recreate.
+        const prove = BACKUP_CODE.split("- name:").find(s => s.includes("Prove the dump restores"))!
+        expect(prove, "the nightly check no longer runs the restore's own reset")
+            .toContain("DROP SCHEMA IF EXISTS public CASCADE;")
     })
 
     it("fails a pipe whose left-hand side dies", () => {
@@ -273,12 +276,25 @@ describe("every night's dump is loaded back", () => {
         }
     })
 
-    it("proves the dump carries no DROP statements at all", () => {
-        // A stronger and simpler claim than the list of specific ones it
-        // replaced, and the reason the dump has no DROP section: every one of
-        // them asserted something about a target the dump has never seen.
+    it("proves the dump carries no DROP statements, and does recreate its schema", () => {
         const check = BACKUP_CODE.split("- name:").find(s => s.includes("nothing the restore role cannot own"))!
-        expect(check).toContain("Dump contains DROP statements")
+
+        // No DROP section: a stronger and simpler claim than the list of
+        // specific statements it replaced.
+        expect(check).toContain("^(DROP|ALTER TABLE IF EXISTS) ")
+
+        // CREATE SCHEMA public is required, not forbidden. The restore drops
+        // the schema and depends on the dump to bring it back, so this is the
+        // one statement whose absence has to fail the backup.
+        expect(check).toContain("^CREATE SCHEMA public;")
+
+        // Anchored on the verb. The first version read
+        // ^(DROP|CREATE|...).*CREATE SCHEMA, which cannot match
+        // "CREATE SCHEMA public;" — it needs a second "CREATE SCHEMA" later in
+        // the line. It passed on a dump containing exactly the statement it
+        // forbade, and the restore found out instead.
+        expect(check, "the platform-object checks are prefix-anchored again")
+            .not.toMatch(/\^\(DROP\|CREATE\|ALTER\|COMMENT ON\)\.\*/)
     })
 
     it("proves the dump carries nothing the restore role cannot own", () => {
