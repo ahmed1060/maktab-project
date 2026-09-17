@@ -263,7 +263,7 @@ jobs:
           # dump load, all of it, without error?
           gunzip -c db.sql.gz \
             | /usr/lib/postgresql/17/bin/psql -h localhost -U postgres -d verify \
-              --single-transaction -v ON_ERROR_STOP=1 -q
+              --single-transaction -v ON_ERROR_STOP=1 -q --echo-errors
 
           count() {
             /usr/lib/postgresql/17/bin/psql -h localhost -U postgres -d verify -At -c "$1"

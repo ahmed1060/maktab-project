@@ -262,8 +262,12 @@ jobs:
           # Once it is, there is nothing left for the drill to do differently.
           # A drill that skips statements production runs is not a rehearsal of
           # production; it is a rehearsal of something easier.
+          # --echo-errors, because "ERROR: relation X does not exist" without
+          # the statement that caused it is most of a diagnosis and none of an
+          # answer. A restore fails once, in the worst hour of the year, and the
+          # log it leaves is all anybody gets — it should name the line.
           gunzip -c db.sql.gz | /usr/lib/postgresql/17/bin/psql "$PGCONN" \
-            --single-transaction -v ON_ERROR_STOP=1 -q
+            --single-transaction -v ON_ERROR_STOP=1 -q --echo-errors
 
       - name: Verify the restored database
         env:

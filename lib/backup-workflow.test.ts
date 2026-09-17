@@ -196,6 +196,16 @@ describe("every night's dump is loaded back", () => {
         ).toContain('--health-cmd "pg_isready -U postgres"')
     })
 
+    it("names the statement that failed, not just the error", () => {
+        // "ERROR: relation X does not exist" without the statement that caused
+        // it is most of a diagnosis and none of an answer. A real restore fails
+        // once, in the worst hour of the year, and the log it leaves is all
+        // anybody gets.
+        for (const [name, source] of [["backup", BACKUP_CODE], ["restore", RESTORE_CODE]] as const) {
+            expect(source, `${name}.yml loads without --echo-errors`).toContain("--echo-errors")
+        }
+    })
+
     it("asks the nightly verifier the same question the disaster will", () => {
         // This was deliberately tolerant while the dump carried Supabase's
         // globals, and that was right at the time. It stopped being right the
