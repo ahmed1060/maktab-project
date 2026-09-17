@@ -774,3 +774,41 @@ model Vendor {
   @@unique([name, companyId])
   @@index([companyId])
 }
+
+/// One row per scheduled job, rewritten on every run.
+///
+/// Before this, all six jobs recorded only their failures — each calls
+/// AuditLogService.logSystemError from its catch block and writes nothing on
+/// success. Two things followed from that, and the second is the reason this
+/// table exists.
+///
+/// "When did salary-init last work?" was unanswerable from inside the app:
+/// there was no record that any job had ever succeeded. And worse, a job that
+/// stops firing altogether leaves no trace at all — an error writes a row,
+/// silence writes nothing. That is how the yearly day-off reset has gone its
+/// entire life without running and without anyone noticing, and it is the one
+/// failure no alert built on errors can ever catch.
+///
+/// So this separates the two states that were indistinguishable from outside:
+/// nothing went wrong, and nothing happened.
+///
+/// Deliberately a single row per job rather than a log of runs. The question
+/// being asked is "is this job alive", and a history of runs answers it more
+/// slowly, grows without bound, and needs its own pruning job — which would
+/// then also need watching.
+model JobHeartbeat {
+  /// The cron path's own name, e.g. "salary-init". Stable across deploys, so
+  /// it is the key rather than a generated id.
+  job            String    @id
+  lastRunAt      DateTime
+  lastSuccessAt  DateTime?
+  lastFailureAt  DateTime?
+  /// Truncated: this is shown on a dashboard card, not used for debugging.
+  /// The audit log still holds the full error and its reference.
+  lastError      String?
+  lastDurationMs Int?
+  /// Consecutive failures, reset to zero by a success. One failure is noise;
+  /// three in a row is a broken job.
+  failureStreak  Int       @default(0)
+  updatedAt      DateTime  @updatedAt
+}

@@ -5,6 +5,7 @@ import { authOptions } from "@/lib/auth"
 import { isValidCronRequest } from "@/lib/cron-auth"
 import { AuditLogService } from "@/lib/services/audit-log.service"
 import { isNextInternalError } from "@/lib/next-internal-error"
+import { JobHeartbeatService } from "@/lib/services/job-heartbeat.service"
 
 // GET, not POST: Vercel Cron always dispatches with GET. Admins can still
 // trigger this manually (via session auth) by visiting/fetching the same URL.
@@ -25,7 +26,7 @@ export async function GET(req: Request) {
             return ApiResponse.unauthorized("Unauthorized")
         }
 
-        const result = await NoteService.checkExpiries()
+        const result = await JobHeartbeatService.run("check-expiry", () => NoteService.checkExpiries())
         return ApiResponse.success(result)
     } catch (error: any) {
         if (isNextInternalError(error)) throw error

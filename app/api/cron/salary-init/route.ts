@@ -3,6 +3,7 @@ import { CronService } from "@/lib/services/cron.service"
 import { isValidCronRequest } from "@/lib/cron-auth"
 import { AuditLogService } from "@/lib/services/audit-log.service"
 import { isNextInternalError } from "@/lib/next-internal-error"
+import { JobHeartbeatService } from "@/lib/services/job-heartbeat.service"
 
 // GET, not POST: Vercel Cron always dispatches with GET.
 export async function GET(req: Request) {
@@ -11,7 +12,7 @@ export async function GET(req: Request) {
             return ApiResponse.unauthorized("Unauthorized")
         }
 
-        const result = await CronService.initializeSalaries()
+        const result = await JobHeartbeatService.run("salary-init", () => CronService.initializeSalaries())
         return ApiResponse.success(result)
     } catch (error: any) {
         if (isNextInternalError(error)) throw error

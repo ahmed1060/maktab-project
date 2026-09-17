@@ -7,6 +7,7 @@ import ConfirmModal from '@/components/ConfirmModal'
 import BackupPickerModal, { BackupEntry } from '@/components/BackupPickerModal'
 import NoticeModal, { Notice } from '@/components/NoticeModal'
 import { useHeader } from '@/context/HeaderContext'
+import JobsCard from '@/components/JobsCard'
 
 type HealthMetrics = {
     auditing: {
@@ -349,6 +350,12 @@ export default function SystemHealthPage() {
             )}
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
+
+                {/* Jobs Card — first, because it is the one card here that
+                    reports something nobody would otherwise find out. The rest
+                    describe state you could go and look at; this one says
+                    whether the machinery that maintains that state is alive. */}
+                <JobsCard />
 
                 {/* Storage Card */}
                 <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>

@@ -5,6 +5,7 @@ import { authOptions } from "@/lib/auth"
 import { isValidCronRequest } from "@/lib/cron-auth"
 import { AuditLogService } from "@/lib/services/audit-log.service"
 import { isNextInternalError } from "@/lib/next-internal-error"
+import { JobHeartbeatService } from "@/lib/services/job-heartbeat.service"
 
 // F-18: pruneOldLogs/pruneOldNotifications existed already (used by the
 // manual maintenance-page buttons) but nothing scheduled them, so audit
@@ -26,10 +27,10 @@ export async function GET(req: Request) {
             return ApiResponse.unauthorized("Unauthorized")
         }
 
-        const [logs, notifications] = await Promise.all([
+        const [logs, notifications] = await JobHeartbeatService.run("prune", () => Promise.all([
             MaintenanceService.pruneOldLogs(),
             MaintenanceService.pruneOldNotifications(),
-        ])
+        ]))
 
         return ApiResponse.success({ logs, notifications })
     } catch (error: any) {

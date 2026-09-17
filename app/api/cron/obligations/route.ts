@@ -5,6 +5,7 @@ import { authOptions } from "@/lib/auth"
 import { isValidCronRequest } from "@/lib/cron-auth"
 import { AuditLogService } from "@/lib/services/audit-log.service"
 import { isNextInternalError } from "@/lib/next-internal-error"
+import { JobHeartbeatService } from "@/lib/services/job-heartbeat.service"
 
 /**
  * Advances recurring obligations: closes the one that just came due and opens
@@ -29,7 +30,7 @@ export async function GET(req: Request) {
             return ApiResponse.unauthorized("Unauthorized")
         }
 
-        const result = await ObligationService.processRecurrentObligations()
+        const result = await JobHeartbeatService.run("obligations", () => ObligationService.processRecurrentObligations())
         return ApiResponse.success({ ...result, checkedAt: new Date().toISOString() })
     } catch (error: any) {
         if (isNextInternalError(error)) throw error

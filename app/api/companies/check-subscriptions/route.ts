@@ -5,6 +5,7 @@ import { authOptions } from "@/lib/auth"
 import { isValidCronRequest } from "@/lib/cron-auth"
 import { AuditLogService } from "@/lib/services/audit-log.service"
 import { isNextInternalError } from "@/lib/next-internal-error"
+import { JobHeartbeatService } from "@/lib/services/job-heartbeat.service"
 
 // GET, not POST: Vercel Cron always dispatches with GET.
 export async function GET(req: Request) {
@@ -31,8 +32,13 @@ export async function GET(req: Request) {
         // on the day it was first due. It belongs here, which is what its own
         // comment in that function said: share the daily pass rather than take
         // a cron of its own.
-        const result = await CompanyService.checkSubscriptions()
-        const lifecycle = await CompanyService.checkSubscriptionLifecycle()
+        // Both passes inside one heartbeat: they are one scheduled job, and a
+        // heartbeat that recorded success after the first would call the job
+        // alive while the second was failing every night.
+        const { result, lifecycle } = await JobHeartbeatService.run("check-subscriptions", async () => ({
+            result: await CompanyService.checkSubscriptions(),
+            lifecycle: await CompanyService.checkSubscriptionLifecycle(),
+        }))
         return ApiResponse.success({
             success: true,
             ...result,

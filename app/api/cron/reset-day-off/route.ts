@@ -5,6 +5,7 @@ import { authOptions } from "@/lib/auth"
 import { isValidCronRequest } from "@/lib/cron-auth"
 import { AuditLogService } from "@/lib/services/audit-log.service"
 import { isNextInternalError } from "@/lib/next-internal-error"
+import { JobHeartbeatService } from "@/lib/services/job-heartbeat.service"
 
 export async function GET(req: Request) {
     const session = await getServerSession(authOptions)
@@ -17,7 +18,7 @@ export async function GET(req: Request) {
     }
 
     try {
-        const result = await CronService.resetDayOffCredits()
+        const result = await JobHeartbeatService.run("reset-day-off", () => CronService.resetDayOffCredits())
         return ApiResponse.success(result)
     } catch (error: any) {
         if (isNextInternalError(error)) throw error
