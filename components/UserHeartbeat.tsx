@@ -49,6 +49,7 @@ export default function UserHeartbeat() {
 
     const [isSuspended, setIsSuspended] = useState(false)
     const [isCompanyBanned, setIsCompanyBanned] = useState(false)
+    const [isArchived, setIsArchived] = useState(false)
     const [showMaintenanceOverlay, setShowMaintenanceOverlay] = useState(false)
     const [maintenanceMessage, setMaintenanceMessage] = useState<string | null | undefined>(null)
     // Mirrors whether maintenance was already known active, without the
@@ -148,6 +149,14 @@ export default function UserHeartbeat() {
                     // session before the request that persists the work had
                     // even gone out. See waitForEmergencySave's comment.
                     waitForEmergencySave().then(() => signOut({ callbackUrl: '/login' }))
+                } else if (data.status === 'ARCHIVED') {
+                    // Same exit as a suspension — the emergency save still has
+                    // to run, because a person whose last day this is may have
+                    // unsaved work open — but a different screen. "Suspended"
+                    // would read as a punishment to somebody who simply left.
+                    window.dispatchEvent(new CustomEvent('app:suspend-detected'))
+                    setIsArchived(true)
+                    waitForEmergencySave().then(() => signOut({ callbackUrl: '/login' }))
                 } else if (data.status === 'COMPANY_BANNED') {
                     window.dispatchEvent(new CustomEvent('app:suspend-detected'))
                     setIsCompanyBanned(true)
@@ -181,7 +190,7 @@ export default function UserHeartbeat() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [session])
 
-    if (isSuspended || isCompanyBanned) {
+    if (isSuspended || isCompanyBanned || isArchived) {
         return (
             <div style={{
                 position: 'fixed',
@@ -198,12 +207,14 @@ export default function UserHeartbeat() {
                 padding: '2rem'
             }}>
                 <h1 style={{ color: 'var(--danger-solid)', fontSize: '2rem', margin: 0 }}>
-                    {isSuspended ? t('account_suspended') : t('company_banned')}
+                    {isArchived ? t('account_archived') : isSuspended ? t('account_suspended') : t('company_banned')}
                 </h1>
                 <p style={{ fontSize: '1.1rem', maxWidth: '500px' }}>
-                    {isSuspended
-                        ? t('suspension_msg')
-                        : t('banned_msg')}
+                    {isArchived
+                        ? t('archived_msg')
+                        : isSuspended
+                            ? t('suspension_msg')
+                            : t('banned_msg')}
                 </p>
                 <p style={{ fontSize: '0.9rem', opacity: 0.8 }}>{t('logging_out_msg')}</p>
                 <div style={{

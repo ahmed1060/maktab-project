@@ -185,7 +185,7 @@ export function withStandardHandler(
                 session.user.role
             ) && !isHeartbeat
 
-            const isSuspendedOrBanned = (session.user.userStatus === 'SUSPENDED' || session.user.companyBanned || subscriptionLocked) && !isHeartbeat
+            const isSuspendedOrBanned = (session.user.userStatus === 'SUSPENDED' || session.user.userStatus === 'ARCHIVED' || session.user.companyBanned || subscriptionLocked) && !isHeartbeat
             const isMaintenanceBlocked = !!session.user.maintenanceMode && session.user.role !== 'SUPER_ADMIN' && !isHeartbeat
 
             const isRestricted = isSuspendedOrBanned || isMaintenanceBlocked

@@ -21,6 +21,15 @@ enum UserStatus {
   SUSPENDED
   DELETED
   OFFLINE
+  /// The contract ended. Login is gone and the person is out of every
+  /// ordinary list, but the record stays whole: their name, work history and
+  /// pay records have to remain so past months stay explainable and a payslip
+  /// can be reissued years later.
+  ///
+  /// Distinct from SUSPENDED, which is temporary and reversible and says
+  /// nothing about whether they are still employed, and from DELETED, which
+  /// is an administrative removal rather than the end of a contract.
+  ARCHIVED
 }
 
 enum TaskStatus {
@@ -350,6 +359,7 @@ model User {
   obligations                Obligation[]            @relation("ObligationAssignees")
   createdObligations         Obligation[]            @relation("ObligationCreatedBy")
   SalaryChange               SalaryChange[]
+  EmploymentEvent            EmploymentEvent[]
 
   @@index([email])
   @@index([companyId])
@@ -851,4 +861,54 @@ model SalaryChange {
   /// dated the same day is a correction entered after the fact, and the later
   /// row wins rather than the write failing.
   @@index([userId, effectiveFrom])
+}
+
+/// What happened to somebody's employment, and when.
+///
+/// The companion to SalaryChange: that one answers "what were they paid", this
+/// one answers "were they employed at all, and were they working". A payslip
+/// needs both, and neither can be reconstructed from a mutable status field —
+/// User.status says what is true now, and says nothing about March.
+///
+/// Effective-dated for the same reason as SalaryChange. A contract end entered
+/// on the 3rd for a last working day of the 30th of last month is ordinary, and
+/// the date that matters is the one the event happened on, not the one somebody
+/// typed it on.
+model EmploymentEvent {
+  id               String              @id @default(uuid())
+  userId           String
+  type             EmploymentEventType
+  /// The instant the event takes effect. For CONTRACT_ENDED this is the
+  /// *first* instant they are no longer employed, so the last working day is
+  /// the day before — stored this way because every window in the calculation
+  /// is half-open at the end, and two conventions in one codebase is a day's
+  /// pay lost or gained somewhere.
+  effectiveFrom    DateTime
+  reason           String?
+  /// UNSUSPENDED only: whether the suspension that just ended is deducted from
+  /// pay. Null everywhere else, and null on an UNSUSPENDED means the question
+  /// has not been answered yet rather than "no".
+  ///
+  /// A decision made after the fact, on purpose. Suspension in this system only
+  /// stops somebody logging in; whether it costs them pay is for the admin to
+  /// decide when they know why it happened, which is usually at the end.
+  deductSuspension Boolean?
+  createdById      String?
+  createdAt        DateTime            @default(now())
+  user             User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, effectiveFrom])
+}
+
+enum EmploymentEventType {
+  /// Backfilled at the epoch for everyone who already existed: User has no
+  /// createdAt, so there is no hire date to use and inventing one would put a
+  /// false fact in a column every payslip reads.
+  HIRED
+  SUSPENDED
+  UNSUSPENDED
+  CONTRACT_ENDED
+  /// A contract end undone — the person is employed again, continuously. Not
+  /// the same as a new HIRED, which would start a second period of employment.
+  REINSTATED
 }

@@ -200,6 +200,21 @@ export class UserService {
                 && previousSalary !== null
                 && Number(updateData.salary) !== previousSalary
 
+            // The employment timeline, on the same reasoning as the salary
+            // history above: a suspension entered through this screen has to
+            // leave a trace, or a payslip pays the suspended month in full
+            // because nothing said otherwise. Only real employment transitions
+            // produce an event — ACTIVE to OFFLINE is presence, not a contract.
+            if (updateData.status !== undefined && updateData.status !== regularUser.status) {
+                const { EmploymentService } = await import("./employment.service")
+                await EmploymentService.recordStatusChange({
+                    userId: id,
+                    previousStatus: regularUser.status,
+                    newStatus: updateData.status,
+                    createdById: session?.user?.id ?? null,
+                })
+            }
+
             if (salaryMoved) {
                 const now = new Date()
                 const { SalaryHistoryService } = await import("./salary-history.service")
@@ -291,6 +306,10 @@ export class UserService {
         ])
 
         if (user.status === 'SUSPENDED') return { success: true, status: 'SUSPENDED' }
+        // Reported under its own name, not folded into SUSPENDED. The browser
+        // is signed out either way, but the screen it shows on the way out
+        // names the reason, and this is not a suspension.
+        if (user.status === 'ARCHIVED') return { success: true, status: 'ARCHIVED' }
         if (user.company?.isBanned) return { success: true, status: 'COMPANY_BANNED' }
         if (settings?.maintenanceMode) return { success: true, status: 'MAINTENANCE', maintenanceMessage: settings.maintenanceMessage }
 
@@ -315,6 +334,18 @@ export class UserService {
             where: { id: userId },
             data: { status: status as UserStatus },
             select: { id: true, status: true }
+        })
+
+        // Same bridge as UserService.update's. This is the Super Admin path to
+        // the same field, and a timeline that records one route but not the
+        // other is worse than one that records neither: the gap is invisible,
+        // and which route an admin happened to use is not written down anywhere.
+        const { EmploymentService } = await import("./employment.service")
+        await EmploymentService.recordStatusChange({
+            userId,
+            previousStatus: existingUser.status,
+            newStatus: status,
+            createdById: session?.user?.id ?? null,
         })
 
         // Audit Log (Centralized)

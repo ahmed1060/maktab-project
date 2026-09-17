@@ -153,6 +153,7 @@ export default function AllUsersPage() {
             case 'SUSPENDED':
             case 'BANNED': return 'status_banned'
             case 'DELETED': return 'delete'
+            case 'ARCHIVED': return 'status_archived'
             default: return 'status_pending'
         }
     }

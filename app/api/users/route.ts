@@ -12,7 +12,7 @@ import { parsePaging } from "@/lib/pagination"
 // zero-match a plain String column used to give a garbage filter value.
 // Validate before it reaches Prisma.
 const VALID_ROLES: UserRole[] = ['SUPER_ADMIN', 'ADMIN', 'TEAM_LEADER', 'EMPLOYEE']
-const VALID_STATUSES: UserStatus[] = ['ACTIVE', 'INACTIVE', 'SUSPENDED', 'DELETED', 'OFFLINE']
+const VALID_STATUSES: UserStatus[] = ['ACTIVE', 'INACTIVE', 'SUSPENDED', 'DELETED', 'OFFLINE', 'ARCHIVED']
 
 export const GET = withStandardHandler(async (req, session) => {
     const userRole = session.user.role

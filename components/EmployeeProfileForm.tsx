@@ -8,6 +8,7 @@ import { createPortal } from 'react-dom'
 import ConfirmModal from './ConfirmModal'
 import { useLanguage } from '@/context/LanguageContext'
 import LoadingSpinner from './LoadingSpinner'
+import EndContractModal from './EndContractModal'
 
 type EmployeeProfileFormProps = {
     userId: string
@@ -38,6 +39,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
     const [originalFirstName, setOriginalFirstName] = useState('')
     const [originalLastName, setOriginalLastName] = useState('')
     const [showAvatarModal, setShowAvatarModal] = useState(false)
+    const [showEndContract, setShowEndContract] = useState(false)
     const [showResetConfirm, setShowResetConfirm] = useState(false)
     const router = useRouter()
     const { data: session, update } = useSession()
@@ -878,13 +880,50 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                                 value={status}
                                 onChange={e => setStatus(e.target.value)}
                                 required
-                                disabled={isViewMode}
+                                disabled={isViewMode || status === 'ARCHIVED'}
                                 style={isViewMode ? { background: 'var(--surface-sunk)', cursor: 'not-allowed', textAlign: locale === 'ar' ? 'right' : 'left' } : { textAlign: locale === 'ar' ? 'right' : 'left' }}
                             >
                                 <option value="ACTIVE">{t('status_active' as any) || (locale === 'ar' ? 'نشط' : 'Active')}</option>
                                 <option value="SUSPENDED">{t('status_suspended' as any) || (locale === 'ar' ? 'موقوف' : 'Suspended')}</option>
                                 <option value="OFFLINE">{t('status_offline' as any) || (locale === 'ar' ? 'غير متصل' : 'Offline')}</option>
+                                {/*
+                                  Rendered only when it is already the value,
+                                  and the select is disabled with it. Without
+                                  the option the select would show ACTIVE for
+                                  an archived person — the browser picks the
+                                  first entry when the value matches none — and
+                                  saving the form would quietly reinstate them.
+                                */}
+                                {status === 'ARCHIVED' && (
+                                    <option value="ARCHIVED">{t('status_archived')}</option>
+                                )}
                             </select>
+
+                            {/*
+                              Deliberately not a fourth option in the dropdown.
+                              Ending a contract is not the same kind of act as
+                              marking somebody offline: it has a date, it has a
+                              settlement that falls one way or the other, and it
+                              is the one status change that cannot be undone by
+                              picking the previous value again. A separate
+                              action, with the settlement shown first.
+                            */}
+                            {!isViewMode && (
+                                <button
+                                    type="button"
+                                    className="btn"
+                                    onClick={() => setShowEndContract(true)}
+                                    style={{
+                                        marginTop: '0.75rem',
+                                        background: 'transparent',
+                                        color: status === 'ARCHIVED' ? 'var(--primary)' : 'var(--danger-solid)',
+                                        border: `1px solid ${status === 'ARCHIVED' ? 'var(--primary)' : 'var(--danger-border)'}`,
+                                        fontSize: '0.85rem',
+                                    }}
+                                >
+                                    {status === 'ARCHIVED' ? t('reinstate') : t('end_contract')}
+                                </button>
+                            )}
                         </div>
                     )
                 }
@@ -905,6 +944,18 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                     </button>
                 </div>
             </form >
+
+            {
+                showEndContract && (
+                    <EndContractModal
+                        userId={userId}
+                        name={`${firstName} ${lastName}`.trim() || email}
+                        status={status}
+                        onClose={() => setShowEndContract(false)}
+                        onDone={() => router.refresh()}
+                    />
+                )
+            }
 
             {
                 verificationModalOpen && createPortal(

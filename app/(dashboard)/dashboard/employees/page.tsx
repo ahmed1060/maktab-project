@@ -164,6 +164,10 @@ export default function EmployeesPage() {
     }
 
     const handleStatusToggle = async (id: string, currentStatus: string) => {
+        // An ended contract is not toggled back on by clicking a dot. It is
+        // reinstated from the profile screen, deliberately, and that records
+        // why — the timeline is meant to be readable back as what happened.
+        if (currentStatus === 'ARCHIVED') return
         const newStatus = currentStatus === 'ACTIVE' ? 'SUSPENDED' : 'ACTIVE'
         setTogglingStatus(id)
         try {
@@ -377,6 +381,19 @@ export default function EmployeesPage() {
                                         textTransform: 'uppercase'
                                     }}>
                                         {t('status_suspended')}
+                                    </span>
+                                )}
+                                {emp.status === 'ARCHIVED' && (
+                                    <span style={{
+                                        padding: '0.25rem 0.625rem',
+                                        borderRadius: '0.5rem',
+                                        fontSize: '0.75rem',
+                                        fontWeight: '800',
+                                        background: 'var(--surface-sunk)',
+                                        color: 'var(--text-muted)',
+                                        textTransform: 'uppercase'
+                                    }}>
+                                        {t('status_archived')}
                                     </span>
                                 )}
                             </div>

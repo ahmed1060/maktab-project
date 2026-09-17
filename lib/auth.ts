@@ -252,6 +252,18 @@ export const authOptions: NextAuthOptions = {
                         throw new Error('Your account has been suspended or deleted.')
                     }
 
+                    // ARCHIVED is the end of a contract, and it blocks login on
+                    // its own line rather than joining the one above. The record
+                    // stays whole — payslips have to be reissuable years later —
+                    // so nothing else stops an archived person signing in, and
+                    // the message has to be its own: telling somebody whose
+                    // contract ended that they were "suspended or deleted" sends
+                    // them to an administrator to fix something that is not
+                    // broken.
+                    if (validatedUser.status === 'ARCHIVED') {
+                        throw new Error('This account is closed. Please contact your administrator.')
+                    }
+
                     // F-27: before the login is considered complete, not after — see
                     // the matching comment in the SuperAdmin branch above.
                     await checkMfaChallenge({
