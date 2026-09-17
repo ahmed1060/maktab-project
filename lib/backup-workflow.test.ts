@@ -121,6 +121,27 @@ describe("the safety snapshot is restorable by the tool that made it", () => {
     })
 })
 
+describe("a drill rehearses what production actually does", () => {
+    it("loads the dump the same way on both paths", () => {
+        // The drill used to strip CREATE/COMMENT ON EXTENSION, on the belief
+        // that its target would be a plain Postgres. A drill that skips
+        // statements production runs is not a rehearsal of production, it is a
+        // rehearsal of something easier — and the statements it skipped are
+        // exactly the ones most likely to break a real restore.
+        expect(RESTORE_CODE).not.toContain("COMMENT ON) EXTENSION")
+        expect(RESTORE_CODE.split("--single-transaction -v ON_ERROR_STOP=1").length - 1).toBe(1)
+    })
+
+    it("says the drill target has to be a Supabase project", () => {
+        // Written down where somebody setting the secret will read it. A stock
+        // Postgres fails on the event triggers the dump carries, with an error
+        // that does not name the cause.
+        // Asserted against the raw file, not the comment-stripped copy: this
+        // one *is* prose, and prose in the right place is the deliverable.
+        expect(RESTORE).toMatch(/DRILL_DATABASE_URL must be a\s*\n?\s*#?\s*Supabase project, not a stock Postgres/)
+    })
+})
+
 describe("a drill cannot touch production", () => {
     it("never selects the target with && / ||", () => {
         // `IS_DRILL && secrets.DRILL || secrets.PROD` reads correctly and is a

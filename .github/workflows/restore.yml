@@ -225,21 +225,27 @@ jobs:
             test -n "$PGCONN" || { echo "SUPABASE_DIRECT_URL is not set"; exit 1; }
             echo "Restoring into PRODUCTION."
           fi
-          # A drill database is a plain Postgres, which has none of the
-          # extensions Supabase installs into pg_catalog — and the dump carries
-          # CREATE EXTENSION statements for them, so with ON_ERROR_STOP the
-          # first one would abort the whole rehearsal. A production restore goes
-          # back to Supabase, where they exist and IF NOT EXISTS makes them a
-          # no-op, so it loads the dump exactly as taken.
-          if [ "$IS_DRILL" = "true" ]; then
-            gunzip -c db.sql.gz \
-              | grep -vE '^(CREATE|COMMENT ON) EXTENSION' \
-              | /usr/lib/postgresql/17/bin/psql "$PGCONN" \
-                --single-transaction -v ON_ERROR_STOP=1 -q
-          else
-            gunzip -c db.sql.gz | /usr/lib/postgresql/17/bin/psql "$PGCONN" \
-              --single-transaction -v ON_ERROR_STOP=1 -q
-          fi
+          # Identical on both paths, deliberately. This used to strip
+          # CREATE/COMMENT ON EXTENSION for the drill, on the belief that the
+          # drill target would be a plain Postgres. That belief was wrong, and
+          # the filter made the rehearsal less faithful than the thing it
+          # rehearses.
+          #
+          # The dump carries event triggers that call
+          # extensions.set_graphql_placeholder(). Event triggers belong to no
+          # schema, so no --exclude-schema removes them and pg_dump has no
+          # option that does — which is why the nightly verifier in backup.yml
+          # loads tolerantly and is judged on table and row counts instead.
+          # Here ON_ERROR_STOP stays on, because a half-applied restore is the
+          # failure that matters, and that means the target has to be a
+          # database where those functions exist: DRILL_DATABASE_URL must be a
+          # Supabase project, not a stock Postgres server.
+          #
+          # Once it is, there is nothing left for the drill to do differently.
+          # A drill that skips statements production runs is not a rehearsal of
+          # production; it is a rehearsal of something easier.
+          gunzip -c db.sql.gz | /usr/lib/postgresql/17/bin/psql "$PGCONN" \
+            --single-transaction -v ON_ERROR_STOP=1 -q
 
       - name: Verify the restored database
         env:
