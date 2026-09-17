@@ -411,6 +411,45 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
                                     )}
                                 </Link>
                             ))}
+                            {/* Payroll sits beside the management modules but
+                                is not one of them: the module system gates
+                                features a package can sell, and payroll is not
+                                sold separately. Admin and Super Admin only —
+                                a Team Leader manages people, not pay. */}
+                            {['ADMIN', 'SUPER_ADMIN'].includes(user?.role || '') && (
+                                <Link
+                                    href="/dashboard/payroll"
+                                    onClick={() => isMobile && setIsSidebarOpen(false)}
+                                    title={isCollapsed ? t('payroll') : ''}
+                                    className="nav-link"
+                                    style={{
+                                        color: 'var(--sidebar-fg)',
+                                        textDecoration: 'none',
+                                        padding: '0.85rem 1rem',
+                                        borderRadius: '1rem',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: isCollapsed ? 'center' : 'flex-start',
+                                        gap: isCollapsed ? '0' : '1rem',
+                                        transition: 'all 0.2s',
+                                        fontSize: '0.95rem',
+                                        fontWeight: '500'
+                                    }}
+                                    onMouseOver={(e) => {
+                                        e.currentTarget.style.background = 'var(--veil-10)'
+                                        e.currentTarget.style.color = 'var(--sidebar-fg-strong)'
+                                        e.currentTarget.style.transform = isCollapsed ? 'scale(1.1)' : 'translateX(5px)'
+                                    }}
+                                    onMouseOut={(e) => {
+                                        e.currentTarget.style.background = 'transparent'
+                                        e.currentTarget.style.color = 'var(--sidebar-fg)'
+                                        e.currentTarget.style.transform = 'none'
+                                    }}
+                                >
+                                    <span style={{ fontSize: '1.4rem' }}>🧾</span>
+                                    {!isCollapsed && <span>{t('payroll')}</span>}
+                                </Link>
+                            )}
                         </>
                     )}
 

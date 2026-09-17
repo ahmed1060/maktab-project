@@ -80,3 +80,48 @@ describe("variance has three answers, not two", () => {
         expect(SERVICE).toContain(": null")
     })
 })
+
+describe("the register screen says what it does not know", () => {
+    const PAGE = readFileSync("app/(dashboard)/dashboard/payroll/page.tsx", "utf8")
+
+    it("distinguishes no change from nothing to compare against", () => {
+        // Zero and null are different answers. Showing zeros for "there is no
+        // previous month" would be a lie of the reassuring kind.
+        expect(PAGE).toContain("!view.variance")
+        expect(PAGE).toContain("payroll_no_previous")
+    })
+
+    it("puts what needs a decision above the table, not below it", () => {
+        // A long list of names is where a warning goes to be scrolled past.
+        const pending = PAGE.indexOf("payroll_pending_decisions")
+        const refused = PAGE.indexOf("payroll_refused")
+        const entries = PAGE.indexOf("register.entries.map")
+        expect(pending).toBeGreaterThan(-1)
+        expect(pending, "pending decisions moved below the table").toBeLessThan(entries)
+        expect(refused, "uncomputable people moved below the table").toBeLessThan(entries)
+    })
+
+    it("shows an excluded person rather than hiding them", () => {
+        expect(PAGE).toContain("entry.excluded")
+        expect(PAGE).toContain("entry.exclusionReason")
+    })
+
+    it("offers the save only on a draft", () => {
+        // Anything past DRAFT is a record of what was approved, and the API
+        // refuses to rebuild it; a button that always 400s is worse than none.
+        expect(PAGE).toContain("isDraft &&")
+        expect(PAGE).toContain("payroll_approved_locked")
+    })
+})
+
+describe("the payroll link", () => {
+    const SHELL = readFileSync("components/DashboardShell.tsx", "utf8")
+
+    it("is for the two roles that manage pay", () => {
+        // A Team Leader manages people, not pay.
+        const start = SHELL.indexOf('href="/dashboard/payroll"')
+        expect(start).toBeGreaterThan(-1)
+        const guard = SHELL.slice(Math.max(0, start - 400), start)
+        expect(guard).toContain("['ADMIN', 'SUPER_ADMIN'].includes(user?.role")
+    })
+})
