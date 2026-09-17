@@ -1,5 +1,20 @@
 name: Restore from Backup
 
+# The target, in the run's own title.
+#
+# This is what lets anything outside GitHub tell a drill from a real restore:
+# workflow inputs are not returned by the Actions runs API, but run-name is, as
+# display_title. The payroll clear reads it, because "a restore has been proved
+# against a scratch database" has to be a fact you can check rather than a box
+# somebody ticks.
+#
+# `||` here is a plain default-if-empty, not the fall-through that nearly sent a
+# drill at production (see the note on PGCONN below). It is safe because of
+# which way it fails: an empty or missing input yields 'production', so a drill
+# can be mislabelled as a real restore but a real restore can never be
+# mislabelled as a drill. The gate only ever gets stricter.
+run-name: Restore [${{ github.event.inputs.target || 'production' }}] by @${{ github.actor }}
+
 on:
   workflow_dispatch:              # manual "Run workflow" button, with inputs
     inputs:

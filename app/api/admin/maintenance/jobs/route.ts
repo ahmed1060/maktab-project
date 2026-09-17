@@ -2,10 +2,10 @@ import { withStandardHandler } from "@/lib/api-utils"
 import { ApiResponse } from "@/lib/api-response"
 import { JobHeartbeatService } from "@/lib/services/job-heartbeat.service"
 import { GDriveService } from "@/lib/services/gdrive.service"
-
-/** Older than this and the newest backup is stale. A nightly job plus Vercel's
- *  cron window plus a slow run still lands inside a day and a bit. */
-const BACKUP_STALE_AFTER_HOURS = 30
+// The threshold used to live here as a local constant. It is shared now,
+// because the payroll clear asks the same question before it deletes anything
+// and two copies of a rule are two copies that drift.
+import { BACKUP_STALE_AFTER_HOURS, backupAgeHours } from "@/lib/backup-age"
 
 /**
  * What the System Health page needs to say whether the machinery is alive.
@@ -48,7 +48,7 @@ export const GET = withStandardHandler(async (req, session) => {
         if (!newest) {
             backup = { ...backup, reachable: true, error: 'NO_BACKUPS' }
         } else {
-            const ageHours = (Date.now() - new Date(newest.modifiedTime).getTime()) / 36e5
+            const ageHours = backupAgeHours(newest.modifiedTime)
             backup = {
                 reachable: true,
                 error: null,

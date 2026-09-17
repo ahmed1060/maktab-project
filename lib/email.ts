@@ -1,4 +1,5 @@
 import nodemailer from 'nodemailer'
+import { isUnroutableAddress } from './unroutable-address'
 
 // F-27, Phase 0: the app's first-ever outbound email capability. Sends
 // through a dedicated Gmail account (GMAIL_USER/GMAIL_APP_PASSWORD) rather
@@ -25,6 +26,32 @@ const transporter = (process.env.GMAIL_USER && process.env.GMAIL_APP_PASSWORD)
 // in the Prisma client just to know its own subject lines.
 export type VerificationEmailPurpose = 'EMAIL_VERIFY' | 'EMAIL_CHANGE' | 'MFA_RECOVERY' | 'PASSWORD_RESET'
 
+/**
+ * What happened to a send.
+ *
+ * SKIPPED_UNROUTABLE is not a failure and must not be retried: the address is
+ * one of the IETF's reserved names, so there is no server to deliver it to and
+ * there never will be. Reporting it rather than returning silently matters,
+ * because "sent" and "deliberately not sent" are different facts and a caller
+ * that stamps an emailedAt should be able to tell them apart.
+ */
+export type SendOutcome = 'SENT' | 'SKIPPED_UNROUTABLE'
+
+/**
+ * The one place a demo address is stopped.
+ *
+ * Seeded payroll data carries names, salaries and payslips. Every one of those
+ * is a message somebody would be upset to receive by mistake, and the only
+ * reliable defence is that the address cannot be delivered to at all — checked
+ * here, at the door, rather than at each of the growing number of places that
+ * send something.
+ */
+function refuseUnroutable(to: string, what: string): boolean {
+    if (!isUnroutableAddress(to)) return false
+    console.warn(`✉️  Not sending ${what}: ${to} is a reserved address that cannot reach anybody.`)
+    return true
+}
+
 const SUBJECTS: Record<VerificationEmailPurpose, string> = {
     EMAIL_VERIFY: 'Verify your email — Nizmo',
     EMAIL_CHANGE: 'Confirm your new email — Nizmo',
@@ -44,7 +71,9 @@ const INTROS: Record<VerificationEmailPurpose, string> = {
  * app's translation infrastructure (lib/translations) isn't wired into
  * this yet; worth revisiting if bilingual email content matters later.
  */
-export async function sendVerificationCodeEmail(to: string, code: string, purpose: VerificationEmailPurpose, expiryMinutes: number = 10): Promise<void> {
+export async function sendVerificationCodeEmail(to: string, code: string, purpose: VerificationEmailPurpose, expiryMinutes: number = 10): Promise<SendOutcome> {
+    if (refuseUnroutable(to, `a ${purpose} code`)) return 'SKIPPED_UNROUTABLE'
+
     if (!transporter) {
         throw new Error('EMAIL_NOT_CONFIGURED')
     }
@@ -66,6 +95,8 @@ export async function sendVerificationCodeEmail(to: string, code: string, purpos
         text,
         html,
     })
+
+    return 'SENT'
 }
 
 /**
@@ -79,7 +110,12 @@ export async function sendVerificationCodeEmail(to: string, code: string, purpos
  * for subscription notices it means "do not mark this as sent", so it is
  * retried tomorrow rather than silently lost.
  */
-export async function sendPlainEmail(to: string, subject: string, text: string): Promise<void> {
+export async function sendPlainEmail(to: string, subject: string, text: string): Promise<SendOutcome> {
+    // Before the transporter check, on purpose. A reserved address is a settled
+    // answer — there is nothing to configure that would make it deliverable —
+    // so it should give the same result whether or not Gmail is set up.
+    if (refuseUnroutable(to, `"${subject}"`)) return 'SKIPPED_UNROUTABLE'
+
     if (!transporter) {
         throw new Error('EMAIL_NOT_CONFIGURED')
     }
@@ -101,4 +137,6 @@ export async function sendPlainEmail(to: string, subject: string, text: string):
         text,
         html,
     })
+
+    return 'SENT'
 }

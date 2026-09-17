@@ -13,7 +13,9 @@
     "postinstall": "prisma generate",
     "test": "vitest",
     "test:run": "vitest run",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "payroll:clear": "tsx scripts/clear-payroll.ts",
+    "payroll:demo": "tsx scripts/seed-payroll-demo.ts"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",
