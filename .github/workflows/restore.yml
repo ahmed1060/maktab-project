@@ -210,8 +210,21 @@ jobs:
             test -n "$PGCONN" || { echo "SUPABASE_DIRECT_URL is not set"; exit 1; }
             echo "Restoring into PRODUCTION."
           fi
-          gunzip -c db.sql.gz | /usr/lib/postgresql/17/bin/psql "$PGCONN" \
-            --single-transaction -v ON_ERROR_STOP=1 -q
+          # A drill database is a plain Postgres, which has none of the
+          # extensions Supabase installs into pg_catalog — and the dump carries
+          # CREATE EXTENSION statements for them, so with ON_ERROR_STOP the
+          # first one would abort the whole rehearsal. A production restore goes
+          # back to Supabase, where they exist and IF NOT EXISTS makes them a
+          # no-op, so it loads the dump exactly as taken.
+          if [ "$IS_DRILL" = "true" ]; then
+            gunzip -c db.sql.gz \
+              | grep -vE '^(CREATE|COMMENT ON) EXTENSION' \
+              | /usr/lib/postgresql/17/bin/psql "$PGCONN" \
+                --single-transaction -v ON_ERROR_STOP=1 -q
+          else
+            gunzip -c db.sql.gz | /usr/lib/postgresql/17/bin/psql "$PGCONN" \
+              --single-transaction -v ON_ERROR_STOP=1 -q
+          fi
 
       - name: Verify the restored database
         env:

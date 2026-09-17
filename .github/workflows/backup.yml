@@ -204,8 +204,25 @@ jobs:
         run: |
           set -o pipefail
           /usr/lib/postgresql/17/bin/psql -h localhost -U postgres -c 'CREATE DATABASE verify'
-          gunzip -c db.sql.gz | /usr/lib/postgresql/17/bin/psql -h localhost -U postgres -d verify \
-            --single-transaction -v ON_ERROR_STOP=1 -q
+
+          # Extensions are environment, not data. Supabase installs pg_cron and
+          # friends into pg_catalog, which --exclude-schema does not cover, so
+          # the dump carries CREATE EXTENSION statements for them. A stock
+          # postgres image has none of those extensions available, and with
+          # ON_ERROR_STOP the first one aborts the whole load.
+          #
+          # They stay in the dump, because a real restore goes back to Supabase
+          # where the extensions exist and IF NOT EXISTS makes them harmless.
+          # They are only skipped here, where the question is whether the tables
+          # and rows come back — and skipping them is printed rather than
+          # silent, so the list cannot quietly grow.
+          echo "Extension statements skipped for this check:"
+          zcat db.sql.gz | grep -E '^(CREATE|COMMENT ON) EXTENSION' || echo "  (none)"
+
+          gunzip -c db.sql.gz \
+            | grep -vE '^(CREATE|COMMENT ON) EXTENSION' \
+            | /usr/lib/postgresql/17/bin/psql -h localhost -U postgres -d verify \
+              --single-transaction -v ON_ERROR_STOP=1 -q
 
           # Loading without error is most of the answer; these counts are the
           # rest of it. A dump that applies cleanly and restores an empty

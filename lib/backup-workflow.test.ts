@@ -164,6 +164,31 @@ describe("every night's dump is loaded back", () => {
         ).toContain('--health-cmd "pg_isready -U postgres"')
     })
 
+    it("skips extension DDL only where the extensions cannot exist", () => {
+        // The dump carries CREATE EXTENSION for everything Supabase installs
+        // into pg_catalog — pg_cron among them — which --exclude-schema does
+        // not cover. A stock postgres image has none of them, and ON_ERROR_STOP
+        // turns the first into a failed load.
+        //
+        // They must stay in the dump: a real restore goes back to Supabase,
+        // where they exist and IF NOT EXISTS makes them a no-op. Strip them at
+        // dump time and a restored project silently loses its extensions.
+        const prove = BACKUP_CODE.split("- name:").find(s => s.includes("Prove the dump restores"))!
+        expect(prove, "the verifier no longer skips extension DDL").toContain(
+            "grep -vE '^(CREATE|COMMENT ON) EXTENSION'",
+        )
+        expect(
+            BACKUP_CODE,
+            "extensions are being excluded from the dump itself, not just from the check",
+        ).not.toContain("--exclude-extension")
+
+        // A production restore loads the dump exactly as taken; only the drill,
+        // which is a plain Postgres, filters.
+        const restoreStep = RESTORE_CODE.split("- name:").find(s => s.includes("Restore database"))!
+        expect(restoreStep).toContain('if [ "$IS_DRILL" = "true" ]')
+        expect(restoreStep).toContain("grep -vE '^(CREATE|COMMENT ON) EXTENSION'")
+    })
+
     it("proves the dump applies and holds rows", () => {
         expect(BACKUP_CODE).toContain("--single-transaction -v ON_ERROR_STOP=1")
         expect(BACKUP_CODE).toContain("Dump restored but holds no users")
