@@ -443,64 +443,124 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
         setCapturingLocation(true)
         setLocationStatus(t('capturing_location_button'))
 
-        navigator.geolocation.getCurrentPosition(
-            async (pos) => {
-                const { latitude, longitude } = pos.coords
-                let locationName = ''
+        // Best-of-window rather than first-fix. Accuracy improves as the
+        // receiver locks: getCurrentPosition took one shot, and with a ten
+        // second timeout the satellite fix had usually not arrived, so the
+        // browser handed back the coarse network position instead. The setting
+        // that asked for precision and the setting that denied it time to
+        // arrive were on the same line.
+        //
+        // watchPosition keeps the smallest accuracy seen, stops early once the
+        // reading is good enough to be worth stopping for, and gives up at
+        // WINDOW_MS with whatever it has — which is still better than the
+        // single shot it replaces.
+        const WINDOW_MS = 20000
+        const GOOD_ENOUGH_METERS = 25
 
-                // Reverse Geocoding via HERE API
-                const apiKey = process.env.NEXT_PUBLIC_HERE_API_KEY
-                if (apiKey) {
-                    try {
-                        const res = await fetch(`https://revgeocode.search.hereapi.com/v1/revgeocode?at=${latitude},${longitude}&apiKey=${apiKey}&lang=${locale === 'ar' ? 'ar' : 'en'}`)
-                        if (res.ok) {
-                            const result = await res.json()
-                            const data = result.data
-                            if (data.items && data.items.length > 0) {
-                                locationName = data.items[0].address.label
-                            }
-                        }
-                    } catch (e) { console.error('Reverse geocode failed', e) }
-                }
+        let best: GeolocationPosition | null = null
+        let settled = false
+        let watchId: number | null = null
+        let timer: ReturnType<typeof setTimeout> | null = null
 
-                const locationString = JSON.stringify({ latitude, longitude, address: locationName })
-                setLocation(locationString)
-                setLocationStatus(t('location_captured_saving'))
+        const stop = () => {
+            if (watchId !== null) navigator.geolocation.clearWatch(watchId)
+            if (timer !== null) clearTimeout(timer)
+        }
 
-                try {
-                    const res = await fetch(`/api/tasks/${task.id}/submit`, {
-                        method: 'PUT',
-                        body: JSON.stringify({
-                            note: '',
-                            costEntries: [],
-                            location: locationString,
-                            locationName: locationName,
-                            isDraft: true
-                        }),
-                        headers: { 'Content-Type': 'application/json' }
-                    })
-
-                    if (res.ok) {
-                        setLocationStatus(t('location_saved_success'))
-                        setLocation('')
-                        router.refresh()
-                        setTimeout(() => setLocationStatus(''), 3000)
-                    } else {
-                        throw new Error('Auto-save failed')
-                    }
-                } catch (error) {
-                    console.error('Location save failed:', error)
-                    setLocationStatus(t('failed_save_generic'))
-                }
+        const finish = async () => {
+            if (settled) return
+            settled = true
+            stop()
+            if (!best) {
+                setLocationStatus(t('location_failed_unavailable' as any))
                 setCapturingLocation(false)
+                return
+            }
+            await saveLocation(best)
+        }
+
+        watchId = navigator.geolocation.watchPosition(
+            (pos) => {
+                if (!best || pos.coords.accuracy < best.coords.accuracy) best = pos
+                if (pos.coords.accuracy <= GOOD_ENOUGH_METERS) void finish()
             },
             (err) => {
-                console.error('Geolocation error:', err)
-                setLocationStatus('Failed to get location')
-                setCapturingLocation(false)
+                // Every failure used to render as "Failed to get location".
+                // Someone who blocked the permission needs entirely different
+                // advice from someone standing indoors waiting for a lock, and
+                // err.code is what distinguishes them.
+                if (err.code === err.PERMISSION_DENIED) {
+                    settled = true
+                    stop()
+                    setLocationStatus(t('location_failed_denied' as any))
+                    setCapturingLocation(false)
+                    return
+                }
+                // POSITION_UNAVAILABLE and TIMEOUT are not final while the
+                // window is open: a later reading may still arrive.
+                if (!best && err.code === err.POSITION_UNAVAILABLE) {
+                    setLocationStatus(t('location_searching' as any))
+                }
             },
-            { enableHighAccuracy: true, timeout: 10000 }
+            { enableHighAccuracy: true, timeout: WINDOW_MS, maximumAge: 0 },
         )
+
+        timer = setTimeout(() => { void finish() }, WINDOW_MS)
+    }
+
+    const saveLocation = async (pos: GeolocationPosition) => {
+
+        const { latitude, longitude, accuracy } = pos.coords
+        let locationName = ''
+
+        // Reverse Geocoding via HERE API
+        const apiKey = process.env.NEXT_PUBLIC_HERE_API_KEY
+        if (apiKey) {
+            try {
+                const res = await fetch(`https://revgeocode.search.hereapi.com/v1/revgeocode?at=${latitude},${longitude}&apiKey=${apiKey}&lang=${locale === 'ar' ? 'ar' : 'en'}`)
+                if (res.ok) {
+                    const result = await res.json()
+                    const data = result.data
+                    if (data.items && data.items.length > 0) {
+                        locationName = data.items[0].address.label
+                    }
+                }
+            } catch (e) { console.error('Reverse geocode failed', e) }
+        }
+
+        // accuracy travels with the position and is kept permanently: it is
+        // what lets a verdict be re-examined later rather than re-argued, and
+        // what lets verification decline to guess at all.
+        const locationString = JSON.stringify({ latitude, longitude, accuracy, address: locationName })
+        setLocation(locationString)
+        setLocationStatus(t('location_captured_saving'))
+
+        try {
+            const res = await fetch(`/api/tasks/${task.id}/submit`, {
+                method: 'PUT',
+                body: JSON.stringify({
+                    note: '',
+                    costEntries: [],
+                    location: locationString,
+                    locationName: locationName,
+                    isDraft: true
+                }),
+                headers: { 'Content-Type': 'application/json' }
+            })
+
+            if (res.ok) {
+                setLocationStatus(t('location_saved_success'))
+                setLocation('')
+                router.refresh()
+                setTimeout(() => setLocationStatus(''), 3000)
+            } else {
+                throw new Error('Auto-save failed')
+            }
+        } catch (error) {
+            console.error('Location save failed:', error)
+            setLocationStatus(t('failed_save_generic'))
+        }
+        setCapturingLocation(false)
     }
 
     const handleApprove = () => {

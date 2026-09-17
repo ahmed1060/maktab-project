@@ -241,11 +241,26 @@ export default function TaskLocationHistorySection({ task, setTask, userRole, us
                                         </div>
                                     </div>
                                     <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexDirection: 'row' }}>
-                                        {loc.verificationStatus && (
-                                            <span style={{ fontSize: '0.75rem', fontWeight: '700', color: loc.verificationStatus === 'CORRECT' ? 'var(--ok-solid-hover)' : 'var(--danger-solid-hover)', background: loc.verificationStatus === 'CORRECT' ? 'var(--ok-bg)' : 'var(--danger-bg)', padding: '0.25rem 0.5rem', borderRadius: '0.25rem' }}>
-                                                {loc.verificationStatus === 'CORRECT' ? t('verified_correct_title') : t('verified_wrong_title')}
-                                            </span>
-                                        )}
+                                        {loc.verificationStatus && (() => {
+                                            // Three states, not two. UNVERIFIED must not be coloured
+                                            // as WRONG: it is the system declining to decide, and
+                                            // showing it in the same red as a confirmed mismatch
+                                            // would reintroduce the guess the third state exists to
+                                            // remove — on the screen where a person acts on it.
+                                            const unverified = loc.verificationStatus === 'UNVERIFIED'
+                                            const correct = loc.verificationStatus === 'CORRECT'
+                                            const fg = unverified ? 'var(--warn-fg)' : correct ? 'var(--ok-solid-hover)' : 'var(--danger-solid-hover)'
+                                            const bg = unverified ? 'var(--warn-bg)' : correct ? 'var(--ok-bg)' : 'var(--danger-bg)'
+                                            const label = unverified ? t('verified_unclear_title' as any) : correct ? t('verified_correct_title') : t('verified_wrong_title')
+                                            return (
+                                                <span
+                                                    title={unverified ? t('verified_unclear_hint' as any) : undefined}
+                                                    style={{ fontSize: '0.75rem', fontWeight: '700', color: fg, background: bg, padding: '0.25rem 0.5rem', borderRadius: '0.25rem' }}
+                                                >
+                                                    {label}
+                                                </span>
+                                            )
+                                        })()}
                                         {canVerify && (
                                             <div style={{ display: 'flex', gap: '0.25rem' }}>
                                                 <button

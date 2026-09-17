@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma"
 import { CreateTaskInput, UpdateTaskInput } from "../validations/task.schema"
-import { extractCoords, calculateDistance } from "@/lib/location"
+import { extractCoords, extractAccuracy, locationVerdict } from "@/lib/location"
 import { supabase } from "@/lib/storage"
 import { normalizeJsonInput } from "@/lib/json-input"
 import { SystemSettingsService } from "./system-settings.service"
@@ -170,11 +170,22 @@ export class TaskService {
                 finalComments = finalComments.map((c: any) => {
                     if (c.type === 'LOCATION_ADDED' && c.location && (!c.verificationStatus || c.autoVerified)) {
                         const submittedCoords = extractCoords(c.location)
-                        if (submittedCoords) {
-                            const distance = calculateDistance(targetCoords, submittedCoords)
-                            c.verificationStatus = distance <= locationVerifyRadiusMeters ? 'CORRECT' : 'WRONG'
-                            c.autoVerified = true
-                        }
+                        if (!submittedCoords) return c
+
+                        const accuracy = extractAccuracy(c.location)
+
+                        // A reading taken before accuracy was recorded keeps
+                        // whatever verdict it already has. It was decided under
+                        // the old point-to-point rule and may already have
+                        // justified a penalty; re-opening it would turn every
+                        // historical verdict into review work and put nothing
+                        // in the queue a person could actually resolve.
+                        if (accuracy === null && c.verificationStatus) return c
+
+                        c.verificationStatus = locationVerdict(
+                            targetCoords, submittedCoords, locationVerifyRadiusMeters, accuracy,
+                        )
+                        c.autoVerified = true
                     }
                     return c
                 })
@@ -324,8 +335,12 @@ export class TaskService {
                     const submittedCoords = extractCoords(location)
                     if (targetCoords && submittedCoords) {
                         const { locationVerifyRadiusMeters } = await SystemSettingsService.get()
-                        const distance = calculateDistance(targetCoords, submittedCoords)
-                        locationComment.verificationStatus = distance <= locationVerifyRadiusMeters ? 'CORRECT' : 'WRONG'
+                        locationComment.verificationStatus = locationVerdict(
+                            targetCoords,
+                            submittedCoords,
+                            locationVerifyRadiusMeters,
+                            extractAccuracy(location),
+                        )
                         locationComment.autoVerified = true
                     }
                 }
