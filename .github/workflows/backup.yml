@@ -20,11 +20,34 @@ jobs:
   backup:
     runs-on: ubuntu-latest
     timeout-minutes: 60
+
+    # A throwaway Postgres to load each night's dump back into, so "the backup
+    # ran" and "the backup can be restored" stop being the same claim. It never
+    # sees production: the only thing that reaches it is the file this job just
+    # produced.
+    #
+    # A plain postgres image rather than Supabase's, because nothing
+    # Supabase-specific survives the --exclude-schema list below, the schema
+    # declares no extensions, and every primary key is generated in the
+    # application. What comes out of pg_dump here is ordinary Postgres.
+    services:
+      verifier:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: verify
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     steps:
       - name: Install tools
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y curl ca-certificates gnupg age
+          sudo apt-get install -y curl ca-certificates gnupg age jq
           # ubuntu-latest's default apt repos only carry postgresql-client-16,
           # but Supabase runs Postgres 17 — pg_dump refuses to dump from a
           # server newer than itself ("aborting because of server version
@@ -53,6 +76,11 @@ jobs:
         env:
           PGCONN: ${{ secrets.SUPABASE_DIRECT_URL }}
         run: |
+          # pipefail, because the default shell here is `bash -e` without it:
+          # a pg_dump that dies mid-stream otherwise leaves a truncated .gz and
+          # the step still exits 0 on gzip's success. The verify step below
+          # catches that too, but a failure should fail where it happens.
+          set -o pipefail
           STAMP=$(TZ=Africa/Cairo date +%Y-%m-%d_%H%M)
           KIND="${{ github.event_name == 'schedule' && 'auto' || 'manual' }}"
           echo "NAME=maktab_${STAMP}_${KIND}" >> $GITHUB_ENV
@@ -68,6 +96,7 @@ jobs:
 
       - name: Verify the dump is not empty or truncated
         run: |
+          set -o pipefail
           test "$(stat -c%s db.sql.gz)" -gt 10240 || { echo "Dump suspiciously small"; exit 1; }
           gzip -t db.sql.gz
           zcat db.sql.gz | tail -5 | grep -q "PostgreSQL database dump complete" \
@@ -85,6 +114,7 @@ jobs:
           S3_ACCESS_KEY_ID:     ${{ secrets.SUPABASE_S3_ACCESS_KEY_ID }}
           S3_SECRET_ACCESS_KEY: ${{ secrets.SUPABASE_S3_SECRET_ACCESS_KEY }}
         run: |
+          set -o pipefail
           cat >> ~/.config/rclone/rclone.conf <<EOF
           [supa]
           type = s3
@@ -94,15 +124,38 @@ jobs:
           endpoint = ${SUPABASE_URL}/storage/v1/s3
           region = eu-west-1
           EOF
-          rclone copy supa:app-assets ./assets --transfers 8 --fast-list || true
-          tar -czf assets.tar.gz assets
+
+          # This copy used to end in `|| true`, which made the asset half of
+          # every backup unfailable: broken S3 credentials produced an empty
+          # directory, a valid-looking tarball, and a green run. That mattered
+          # far more than it looked, because restore.yml *syncs* this directory
+          # over the bucket — so a backup that silently captured nothing became
+          # a restore that deliberately deleted everything.
+          mkdir -p ./assets
+          rclone copy supa:app-assets ./assets --transfers 8 --fast-list
+
+          # The manifest is what lets the other end tell "this snapshot is
+          # genuinely empty" from "this snapshot failed to copy". It travels
+          # inside the tarball beside the tree it describes, never inside
+          # ./assets itself — anything under there would be synced into the
+          # bucket on restore.
+          rclone size supa:app-assets --json > manifest.json
+          cat manifest.json
+
+          EXPECTED=$(jq -r '.count' manifest.json)
+          COPIED=$(find ./assets -type f | wc -l)
+          echo "bucket reports $EXPECTED objects; copied $COPIED files"
+          test "$COPIED" -ge "$EXPECTED" \
+            || { echo "Asset mirror incomplete: expected $EXPECTED, copied $COPIED"; exit 1; }
+
+          tar -czf assets.tar.gz assets manifest.json
 
       - name: Encrypt
         run: |
           echo "${{ secrets.AGE_PUBLIC_KEY }}" > key.pub
           age -R key.pub -o "${NAME}_db.sql.gz.age"     db.sql.gz
           age -R key.pub -o "${NAME}_assets.tar.gz.age" assets.tar.gz
-          rm -f db.sql.gz assets.tar.gz key.pub
+          rm -f assets.tar.gz key.pub
 
       - name: Upload to Google Drive
         run: |
@@ -111,6 +164,40 @@ jobs:
           [ "$(date +%d)" = "01" ] && DEST="monthly"
           rclone copy "${NAME}_db.sql.gz.age"     "gdrive:${DEST}/" -P
           rclone copy "${NAME}_assets.tar.gz.age" "gdrive:${DEST}/" -P
+
+      # Deliberately after the upload, not before. A dump that fails to load is
+      # still better than no dump at all, so it gets stored and *then* flagged;
+      # and because this failing stops the job, the prune below never runs, so
+      # a night that cannot prove itself also cannot age out the nights that
+      # could.
+      - name: Prove the dump restores
+        env:
+          PGPASSWORD: verify
+        run: |
+          set -o pipefail
+          /usr/lib/postgresql/17/bin/psql -h localhost -U postgres -c 'CREATE DATABASE verify'
+          gunzip -c db.sql.gz | /usr/lib/postgresql/17/bin/psql -h localhost -U postgres -d verify \
+            --single-transaction -v ON_ERROR_STOP=1 -q
+
+          # Loading without error is most of the answer; these counts are the
+          # rest of it. A dump that applies cleanly and restores an empty
+          # database is the failure this catches.
+          #
+          # One count per query rather than one concatenated line: the table
+          # names need double quotes to survive Postgres folding them to
+          # lowercase, which leaves no quoting left over for string literals
+          # inside the same -c argument.
+          count() {
+            /usr/lib/postgresql/17/bin/psql -h localhost -U postgres -d verify -At -c "SELECT count(*) FROM \"$1\""
+          }
+          USERS=$(count User)
+          COMPANIES=$(count Company)
+          TASKS=$(count Task)
+
+          echo "restored: $USERS users, $COMPANIES companies, $TASKS tasks"
+          echo "RESTORE_ROWS=$USERS users, $COMPANIES companies, $TASKS tasks" >> $GITHUB_ENV
+
+          test "$USERS" -gt 0 || { echo "Dump restored but holds no users"; exit 1; }
 
       - name: Prune old backups
         run: |
@@ -127,4 +214,5 @@ jobs:
         if: always()
         run: |
           echo "### Backup ${{ job.status }} — $NAME" >> $GITHUB_STEP_SUMMARY
+          echo "Restore check: ${RESTORE_ROWS:-did not run}" >> $GITHUB_STEP_SUMMARY
           rclone size gdrive: >> $GITHUB_STEP_SUMMARY

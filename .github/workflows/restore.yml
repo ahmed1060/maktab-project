@@ -3,12 +3,20 @@ name: Restore from Backup
 on:
   workflow_dispatch:              # manual "Run workflow" button, with inputs
     inputs:
+      target:
+        description: 'Where to restore INTO'
+        required: false
+        type: choice
+        default: production
+        options:
+          - production
+          - drill
       mode:
         description: 'latest (newest backup found) or specific'
         required: false
         default: 'latest'
       folder:
-        description: 'daily | weekly | monthly (only used when mode=specific)'
+        description: 'daily | weekly | monthly | prerestore (only used when mode=specific)'
         required: false
       baseName:
         description: 'Backup base name, e.g. maktab_2026-09-05_0807_auto (only used when mode=specific)'
@@ -21,6 +29,18 @@ on:
 concurrency:
   group: maktab-backup
   cancel-in-progress: false
+
+# `drill` restores into DRILL_DATABASE_URL instead of production, so this whole
+# path can be exercised end to end without production being the test subject.
+# That was the reason it had never been run: every mode, on every path, pointed
+# at the live database, which is a good reason not to rehearse and one that was
+# never going to stop being true.
+#
+# The target is a choice between two secrets rather than a connection string
+# typed into the box, because a workflow input is not masked: it appears in the
+# run's own parameter list, in the log, and in the API. A secret is redacted.
+env:
+  IS_DRILL: ${{ github.event.inputs.target == 'drill' }}
 
 jobs:
   restore:
@@ -65,14 +85,19 @@ jobs:
           region = eu-west-1
           EOF
 
-      # Unconditional, every single run: whatever is about to be overwritten
+      # Unconditional on every real restore: whatever is about to be overwritten
       # gets one more snapshot first, in its own folder so it's obviously
       # "the state right before a restore" rather than mixed into the
       # normal daily/weekly/monthly rotation.
+      #
+      # Skipped for a drill, where there is nothing of value to protect and the
+      # only effect would be junk in gdrive:prerestore.
       - name: Pre-restore safety backup
+        if: env.IS_DRILL != 'true'
         env:
           PGCONN: ${{ secrets.SUPABASE_DIRECT_URL }}
         run: |
+          set -o pipefail
           STAMP=$(TZ=Africa/Cairo date +%Y-%m-%d_%H%M)
           echo "PRENAME=maktab_${STAMP}_prerestore" >> $GITHUB_ENV
           /usr/lib/postgresql/17/bin/pg_dump "$PGCONN" \
@@ -80,8 +105,23 @@ jobs:
             --exclude-schema='auth|storage|graphql|realtime|extensions|vault|_realtime|supabase_*' \
             | gzip -9 > pre_db.sql.gz
           test "$(stat -c%s pre_db.sql.gz)" -gt 10240 || { echo "Pre-restore dump suspiciously small"; exit 1; }
-          rclone copy supa:app-assets ./pre_assets --transfers 8 --fast-list || true
-          tar -czf pre_assets.tar.gz pre_assets
+
+          # Staged under a scratch directory whose *contents* are named assets/,
+          # so the tarball's root entry matches what every other snapshot uses
+          # and the restore path below can read it back. It used to tar a
+          # directory called pre_assets/, which meant the safety net's own
+          # output was the one thing in the system that the tool which made it
+          # could not restore.
+          #
+          # The scratch directory is removed immediately: the download step
+          # extracts assets/ into the workspace, and two trees of that name
+          # would merge into one sync.
+          mkdir -p prerestore-stage/assets
+          rclone copy supa:app-assets ./prerestore-stage/assets --transfers 8 --fast-list
+          rclone size supa:app-assets --json > prerestore-stage/manifest.json
+          tar -czf pre_assets.tar.gz -C prerestore-stage assets manifest.json
+          rm -rf prerestore-stage
+
           echo "${{ secrets.AGE_PUBLIC_KEY }}" > key.pub
           age -R key.pub -o "${PRENAME}_db.sql.gz.age"     pre_db.sql.gz
           age -R key.pub -o "${PRENAME}_assets.tar.gz.age" pre_assets.tar.gz
@@ -91,6 +131,11 @@ jobs:
 
       - name: Determine which backup to restore
         run: |
+          # pipefail matters in the two jq reads at the foot of this step: a jq
+          # that fails inside $(...) otherwise yields an empty string, and an
+          # empty TARGET_BASE turns into a download of "gdrive:/_db.sql.gz.age"
+          # several steps later, where the cause is no longer visible.
+          set -o pipefail
           MODE="${{ github.event.client_payload.mode || github.event.inputs.mode || 'latest' }}"
           FOLDER="${{ github.event.client_payload.folder || github.event.inputs.folder || '' }}"
           BASENAME="${{ github.event.client_payload.baseName || github.event.inputs.baseName || '' }}"
@@ -116,6 +161,7 @@ jobs:
 
       - name: Download and decrypt the target backup
         run: |
+          set -o pipefail
           rclone copy "gdrive:${TARGET_FOLDER}/${TARGET_BASE}_db.sql.gz.age"     . -P
           rclone copy "gdrive:${TARGET_FOLDER}/${TARGET_BASE}_assets.tar.gz.age" . -P
           echo "${{ secrets.AGE_PRIVATE_KEY }}" > key.age
@@ -123,26 +169,127 @@ jobs:
           age -d -i key.age -o assets.tar.gz "${TARGET_BASE}_assets.tar.gz.age"
           rm -f key.age
 
+          # Same three checks backup.yml runs on the way out. A backup is worth
+          # nothing until it is read back, and this is the moment it is read.
+          test "$(stat -c%s db.sql.gz)" -gt 10240 || { echo "Restored dump suspiciously small"; exit 1; }
+          gzip -t db.sql.gz
+          zcat db.sql.gz | tail -5 | grep -q "PostgreSQL database dump complete" \
+            || { echo "Restored dump is truncated"; exit 1; }
+
       - name: Restore database
         env:
-          PGCONN: ${{ secrets.SUPABASE_DIRECT_URL }}
+          # Both are passed in and the choice is made in shell, deliberately.
+          # The obvious expression — `IS_DRILL && secrets.DRILL || secrets.PROD`
+          # — is a trap: GitHub's && yields the right-hand value, so an unset
+          # DRILL_DATABASE_URL makes it empty, empty is falsy, and || then hands
+          # back the production connection. Choosing a drill would restore over
+          # production, silently, with the summary still saying "drill".
+          PROD_CONN:  ${{ secrets.SUPABASE_DIRECT_URL }}
+          DRILL_CONN: ${{ secrets.DRILL_DATABASE_URL }}
         run: |
-          gunzip -c db.sql.gz | /usr/lib/postgresql/17/bin/psql "$PGCONN"
+          # Three things were missing here, and together they meant a restore
+          # that destroyed the database and failed to refill it would finish
+          # green:
+          #
+          #   pipefail          — the default shell is `bash -e` without it, so
+          #                       a gunzip dying on a truncated file was invisible
+          #   ON_ERROR_STOP     — psql otherwise prints errors and exits 0
+          #   --single-transaction — the dump runs --clean --if-exists and drops
+          #                       as it goes, so a failure halfway leaves the
+          #                       database half-dropped and half-restored
+          #
+          # All-or-nothing is the only acceptable shape for this: a restore that
+          # fails now leaves the pre-restore state exactly as it was.
+          set -o pipefail
+          if [ "$IS_DRILL" = "true" ]; then
+            PGCONN="$DRILL_CONN"
+            test -n "$PGCONN" || { echo "A drill was selected but DRILL_DATABASE_URL is not set. Refusing to fall back to production."; exit 1; }
+            echo "Restoring into the DRILL database."
+          else
+            PGCONN="$PROD_CONN"
+            test -n "$PGCONN" || { echo "SUPABASE_DIRECT_URL is not set"; exit 1; }
+            echo "Restoring into PRODUCTION."
+          fi
+          gunzip -c db.sql.gz | /usr/lib/postgresql/17/bin/psql "$PGCONN" \
+            --single-transaction -v ON_ERROR_STOP=1 -q
 
+      - name: Verify the restored database
+        env:
+          PROD_CONN:  ${{ secrets.SUPABASE_DIRECT_URL }}
+          DRILL_CONN: ${{ secrets.DRILL_DATABASE_URL }}
+        run: |
+          if [ "$IS_DRILL" = "true" ]; then PGCONN="$DRILL_CONN"; else PGCONN="$PROD_CONN"; fi
+          # Applying without error is most of the answer; these counts are the
+          # rest. A restore that succeeds into an empty database is the failure
+          # this catches, and it is the one nobody would notice until somebody
+          # tried to sign in.
+          count() {
+            /usr/lib/postgresql/17/bin/psql "$PGCONN" -At -c "SELECT count(*) FROM \"$1\""
+          }
+          USERS=$(count User)
+          COMPANIES=$(count Company)
+          TASKS=$(count Task)
+          echo "RESTORE_ROWS=$USERS users, $COMPANIES companies, $TASKS tasks" >> $GITHUB_ENV
+          echo "restored: $USERS users, $COMPANIES companies, $TASKS tasks"
+          test "$USERS" -gt 0 || { echo "Restore completed but the database holds no users"; exit 1; }
+
+      # Skipped for a drill. The drill has its own database but there is only
+      # one storage bucket, so syncing here would overwrite production's files
+      # from a rehearsal — the exact accident this workflow exists to recover
+      # from.
       - name: Restore storage
+        if: env.IS_DRILL != 'true'
         run: |
           tar -xzf assets.tar.gz
+
           # sync, not copy — a real restore should make the bucket match the
           # snapshot exactly, including removing files added after it was taken.
+          #
+          # Which is why it is gated on the manifest. sync deletes whatever is
+          # not in the source, so an empty or half-copied snapshot would empty
+          # the bucket rather than refill it. The manifest is the only thing
+          # that separates "this snapshot is genuinely empty" from "this
+          # snapshot failed to copy", and without it the most destructive step
+          # in the system trusted an input nothing ever checked.
+          if [ ! -f manifest.json ]; then
+            # Every backup taken before the manifest existed lands here, so
+            # refusing outright would make the whole current archive
+            # unrestorable. copy instead: it adds and overwrites but never
+            # deletes, so the files come back and nothing can be lost. The
+            # bucket may end up holding extras the snapshot did not have, which
+            # is a far better failure than an empty one.
+            echo "::warning::This snapshot predates the manifest. Using copy rather than sync —"
+            echo "::warning::files will be restored, but anything added since the snapshot stays."
+            rclone copy ./assets supa:app-assets -P
+            exit 0
+          fi
+
+          EXPECTED=$(jq -r '.count' manifest.json)
+          FOUND=$(find ./assets -type f | wc -l)
+          echo "snapshot manifest says $EXPECTED objects; tarball holds $FOUND files"
+          # Short of the manifest is the dangerous direction and the only one
+          # that fails: that is the half-copied snapshot sync would turn into
+          # deletions. More files than the manifest expected is odd but costs
+          # nothing.
+          test "$FOUND" -ge "$EXPECTED" \
+            || { echo "Asset snapshot is incomplete: manifest says $EXPECTED, tarball holds $FOUND"; exit 1; }
+
           rclone sync ./assets supa:app-assets -P
 
       - name: Prune old pre-restore snapshots
+        if: env.IS_DRILL != 'true'
         run: |
           rclone delete gdrive:prerestore --min-age 30d || true
 
       - name: Report
         if: always()
         run: |
-          echo "### Restore ${{ job.status }}" >> $GITHUB_STEP_SUMMARY
-          echo "Restored: ${TARGET_FOLDER}/${TARGET_BASE}" >> $GITHUB_STEP_SUMMARY
-          echo "Pre-restore safety snapshot: prerestore/${PRENAME}" >> $GITHUB_STEP_SUMMARY
+          if [ "$IS_DRILL" = "true" ]; then
+            echo "### Drill restore ${{ job.status }}" >> $GITHUB_STEP_SUMMARY
+            echo "Restored into the drill database. Production and the storage bucket were not touched." >> $GITHUB_STEP_SUMMARY
+          else
+            echo "### Restore ${{ job.status }}" >> $GITHUB_STEP_SUMMARY
+            echo "Pre-restore safety snapshot: prerestore/${PRENAME:-not taken}" >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "Restored: ${TARGET_FOLDER:-?}/${TARGET_BASE:-?}" >> $GITHUB_STEP_SUMMARY
+          echo "Row check: ${RESTORE_ROWS:-did not run}" >> $GITHUB_STEP_SUMMARY
