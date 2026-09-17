@@ -132,6 +132,17 @@ describe("a drill rehearses what production actually does", () => {
         expect(RESTORE_CODE.split("--single-transaction -v ON_ERROR_STOP=1").length - 1).toBe(1)
     })
 
+    it("says which kind of Supabase connection string, because the obvious one does not work", () => {
+        // db.<ref>.supabase.co is IPv6-only and a GitHub runner has no IPv6
+        // route, so the dashboard's first suggestion fails with "Network is
+        // unreachable" — which reads as the database being down rather than as
+        // the wrong hostname. Cost one drill run to find out; written down so
+        // it cannot cost a second.
+        expect(RESTORE).toMatch(/Session pooler/)
+        expect(RESTORE).toMatch(/IPv6 only/)
+        expect(RESTORE).toMatch(/transaction\* pooler on 6543/)
+    })
+
     it("says the drill target has to be a Supabase project", () => {
         // Written down where somebody setting the secret will read it. A stock
         // Postgres fails on the event triggers the dump carries, with an error

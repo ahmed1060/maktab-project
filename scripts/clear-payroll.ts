@@ -152,7 +152,8 @@ async function checkDrill(): Promise<ClearCheck> {
                 ? `Last successful drill: ${drill.display_title} on ${drill.updated_at}.`
                 : "No successful run of restore.yml with target 'drill' was found.",
             remedy:
-                "Set DRILL_DATABASE_URL to a scratch Supabase project, then run the Restore workflow with target 'drill' and let it finish green.",
+                "Set DRILL_DATABASE_URL to a scratch Supabase project — its Session pooler string, not the IPv6-only direct one — " +
+                "then run the Restore workflow with target 'drill' and let it finish green.",
         }
     } catch (error: any) {
         return {

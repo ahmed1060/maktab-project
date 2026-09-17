@@ -54,6 +54,18 @@ concurrency:
 # The target is a choice between two secrets rather than a connection string
 # typed into the box, because a workflow input is not masked: it appears in the
 # run's own parameter list, in the log, and in the API. A secret is redacted.
+#
+# Both secrets have to hold a *Session pooler* connection string, not the
+# "Direct connection" one the Supabase dashboard offers first. db.<ref>.supabase.co
+# resolves to IPv6 only, and a GitHub Actions runner has no IPv6 route, so a
+# direct URL fails here with "Network is unreachable" — which reads like the
+# database is down rather than like a wrong hostname. The session pooler
+# (aws-N-<region>.pooler.supabase.com:5432, username postgres.<ref>) is IPv4 and
+# holds one connection for the session, so --single-transaction behaves exactly
+# as it does on a direct connection.
+#
+# Not the *transaction* pooler on 6543: it hands a different backend out per
+# statement, so a restore wrapped in one transaction cannot work on it at all.
 env:
   IS_DRILL: ${{ github.event.inputs.target == 'drill' }}
 
