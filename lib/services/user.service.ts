@@ -8,6 +8,7 @@ import { generateTempPassword } from "@/lib/generate-password"
 
 import { CreateUserInput, UpdateUserInput } from "../validations/user.schema"
 import { calendarMonth, calendarYear } from "@/lib/time"
+import { effectiveFromChoice } from "@/lib/salary-history"
 
 export class UserService {
     static async create(input: CreateUserInput, session: any) {
@@ -156,6 +157,13 @@ export class UserService {
             if (username !== undefined && userRole === 'SUPER_ADMIN') updateData.username = username || null
 
             if (['ADMIN', 'SUPER_ADMIN'].includes(userRole || '')) {
+                // Deliberately not written here. A salary change is an
+                // effective-dated fact, not a field edit: it has to land in
+                // SalaryChange as well, and the two have to move together or a
+                // payslip computed from history will disagree with the number
+                // an admin is looking at. SalaryHistoryService.record does both
+                // in one transaction, and is called below once the rest of the
+                // update has succeeded.
                 if (salary !== undefined) updateData.salary = salary
                 if (dayOffCredit !== undefined) updateData.dayOffCredit = dayOffCredit
                 if (baseDayOffCredit !== undefined) {
@@ -180,9 +188,34 @@ export class UserService {
             // string, which would silently change this response field's type.
             const serializedUpdated = { ...updated, salary: Number(updated.salary) }
 
-            // Salary record sync
-            if (updateData.salary !== undefined) {
+            // Salary history and record sync.
+            //
+            // Only when the value actually moved. The old code ran on every
+            // update that mentioned salary, so saving a user's name with the
+            // salary field untouched still wrote a change — which would now
+            // mean a SalaryChange row saying the salary changed to what it
+            // already was, in a history whose whole purpose is to be read back.
+            const previousSalary = regularUser ? Number(regularUser.salary) : null
+            const salaryMoved = updateData.salary !== undefined
+                && previousSalary !== null
+                && Number(updateData.salary) !== previousSalary
+
+            if (salaryMoved) {
                 const now = new Date()
+                const { SalaryHistoryService } = await import("./salary-history.service")
+                await SalaryHistoryService.record({
+                    userId: id,
+                    monthlyAmount: Number(updateData.salary),
+                    // Effective from the start of the current month unless the
+                    // caller says otherwise. P7's screen will offer the
+                    // this-month-or-next choice; until it does, the safe default
+                    // is the behaviour that already existed — the new salary
+                    // applies to the month being worked.
+                    effectiveFrom: effectiveFromChoice(now, input.salaryEffective ?? 'THIS_MONTH'),
+                    reason: input.salaryReason,
+                    createdById: session?.user?.id ?? null,
+                })
+
                 const { month: m, year: y } = calendarMonth(now)
                 const { SalaryService } = await import("./salary.service")
                 await SalaryService.ensureRecordExists(id, m, y, updateData.salary)

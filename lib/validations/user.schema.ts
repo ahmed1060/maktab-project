@@ -26,6 +26,12 @@ export const updateUserSchema = createUserSchema.partial().extend({
     status: z.enum(['ACTIVE', 'INACTIVE', 'SUSPENDED', 'DELETED', 'OFFLINE']).optional(),
     avatar: z.string().nullable().optional(),
     passcode: z.string().optional(),
+    // P4: a salary change is effective-dated, so the answer to "this month or
+    // next?" travels with it. Optional and defaulting to THIS_MONTH, which is
+    // the behaviour that already existed — the new salary applies to the month
+    // being worked. The screen that asks the question arrives in P7.
+    salaryEffective: z.enum(['THIS_MONTH', 'NEXT_MONTH']).optional(),
+    salaryReason: z.string().max(200).optional(),
 })
 
 export type CreateUserInput = z.infer<typeof createUserSchema>

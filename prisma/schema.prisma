@@ -349,6 +349,7 @@ model User {
   tasks                      Task[]                  @relation("MultipleAssignees")
   obligations                Obligation[]            @relation("ObligationAssignees")
   createdObligations         Obligation[]            @relation("ObligationCreatedBy")
+  SalaryChange               SalaryChange[]
 
   @@index([email])
   @@index([companyId])
@@ -811,4 +812,43 @@ model JobHeartbeat {
   /// three in a row is a broken job.
   failureStreak  Int       @default(0)
   updatedAt      DateTime  @updatedAt
+}
+
+/// Every salary a person has been on, and from when.
+///
+/// Before this, salary was one mutable number on User with no history: change
+/// it and the previous value was gone. That is fine for "what do we pay them
+/// now" and useless for "what were they owed in March", which is the question a
+/// payslip answers — and the question a dispute about a payslip turns on.
+///
+/// Effective-dated rather than versioned, because the two are not the same. A
+/// change entered on the 20th that takes effect from the 1st is ordinary, and a
+/// version history keyed on when a row was written cannot express it. The
+/// this-month-or-next prompt the admin answers becomes this date, so the answer
+/// outlives the moment it was given.
+///
+/// User.salary stays as the current rate. It is the value every existing screen
+/// reads and the one a person is on today; this table is what happened, and the
+/// two are kept in step by SalaryHistoryService writing both together.
+model SalaryChange {
+  id            String   @id @default(uuid())
+  userId        String
+  /// The new monthly salary, not a delta. A history of deltas cannot be read
+  /// without replaying all of it, and one bad row poisons everything after.
+  monthlyAmount Decimal  @db.Decimal(12, 2)
+  /// The instant this rate starts applying, stored UTC like every other
+  /// timestamp. Derived from a calendar date in the company's zone, so a
+  /// change effective "1 October" begins when October begins for them.
+  effectiveFrom DateTime
+  reason        String?
+  /// Null for the backfill, and for anything a system job records.
+  createdById   String?
+  createdAt     DateTime @default(now())
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  /// The query is always "this user's changes, in order", and always bounded by
+  /// a month. Deliberately not unique on [userId, effectiveFrom]: two changes
+  /// dated the same day is a correction entered after the fact, and the later
+  /// row wins rather than the write failing.
+  @@index([userId, effectiveFrom])
 }
