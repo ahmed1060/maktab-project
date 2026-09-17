@@ -1,9 +1,10 @@
 import { prisma } from "@/lib/prisma"
+import { calendarMonth, calendarYear } from "@/lib/time"
 
 export class CronService {
     static async resetDayOffCredits() {
         const now = new Date()
-        const currentYear = now.getFullYear()
+        const currentYear = calendarYear(now)
 
         const usersToReset = await prisma.user.findMany({
             where: {
@@ -50,8 +51,12 @@ export class CronService {
 
     static async initializeSalaries() {
         const now = new Date()
-        const month = now.getUTCMonth() + 1
-        const year = now.getUTCFullYear()
+        // The job that *creates* each month's salary record. It read UTC
+        // while every path that later finds that record read the server's
+        // local clock — disagree on the last day of a month and they name
+        // different rows, which is an adjustment written against a month with
+        // no record, or a second record for a month that already had one.
+        const { month, year } = calendarMonth(now)
 
         const employees = await prisma.user.findMany({
             where: {

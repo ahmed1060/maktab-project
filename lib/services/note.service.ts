@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma"
 import { NoteInput } from "../validations/note.schema"
 import { supabase } from "@/lib/storage"
+import { startOfDayIn } from "@/lib/time"
 
 export class NoteService {
     static async getMany(sectionId: string, skip: number, take: number, search?: string) {
@@ -170,7 +171,9 @@ export class NoteService {
 
     static async checkExpiries() {
         const now = new Date()
-        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+        // Local midnight, not the server's. An expiry "today" is today where
+        // the person reading it lives.
+        const today = startOfDayIn(now)
 
         // 1. Expiring Today
         const expiringToday = await prisma.businessClientNote.findMany({

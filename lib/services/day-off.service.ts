@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma"
 import { CreateDayOffInput, AdminUpdateDayOffInput } from "../validations/day-off.schema"
+import { calendarMonth, calendarYear } from "@/lib/time"
 
 export class DayOffService {
     static async getMany(userId: string, skip: number, take: number) {
@@ -130,7 +131,7 @@ export class DayOffService {
 
                 if (deductionType === 'SALARY') {
                     const now = new Date()
-                    const m = now.getMonth() + 1, y = now.getFullYear()
+                    const { month: m, year: y } = calendarMonth(now)
 
                     // USE CONSOLIDATED HELPER
                     const { SalaryService } = await import("./salary.service")
@@ -278,7 +279,7 @@ export class DayOffService {
                     })
                     // Also update the record (diff)
                     const date = new Date(adj.createdAt)
-                    const m = date.getMonth() + 1, y = date.getFullYear()
+                    const { month: m, year: y } = calendarMonth(date)
                     const record = await tx.salaryRecord.findUnique({ where: { userId_month_year: { userId: requestToUpdate.userId, month: m, year: y } } })
                     if (record) {
                         await tx.salaryRecord.update({

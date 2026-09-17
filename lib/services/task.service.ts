@@ -4,6 +4,7 @@ import { extractCoords, extractAccuracy, locationVerdict } from "@/lib/location"
 import { supabase } from "@/lib/storage"
 import { normalizeJsonInput } from "@/lib/json-input"
 import { SystemSettingsService } from "./system-settings.service"
+import { calendarMonth, calendarYear } from "@/lib/time"
 
 /**
  * TaskService
@@ -481,8 +482,7 @@ export class TaskService {
      */
     static async applyPenalty(id: string, targetUserId: string, amount: number, session: any) {
         const now = new Date()
-        const currentMonth = now.getMonth() + 1
-        const currentYear = now.getFullYear()
+        const { month: currentMonth, year: currentYear } = calendarMonth(now)
 
         return await prisma.$transaction(async (tx) => {
             const task = await tx.task.findUnique({ where: { id } })

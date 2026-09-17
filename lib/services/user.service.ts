@@ -5,8 +5,9 @@ import { supabase } from "@/lib/storage"
 import bcrypt from "bcryptjs"
 import { generateUsername } from "@/lib/username"
 import { generateTempPassword } from "@/lib/generate-password"
-import { getEgyptNow } from "@/lib/time"
+
 import { CreateUserInput, UpdateUserInput } from "../validations/user.schema"
+import { calendarMonth, calendarYear } from "@/lib/time"
 
 export class UserService {
     static async create(input: CreateUserInput, session: any) {
@@ -50,7 +51,7 @@ export class UserService {
                 baseDayOffCredit: baseDayOffCredit !== undefined ? baseDayOffCredit : (dayOffCredit !== undefined ? dayOffCredit : 0),
                 // F-14: the year this credit balance was actually granted,
                 // not a hardcoded year that goes stale for accounts created later.
-                lastDayOffResetYear: getEgyptNow().getFullYear()
+                lastDayOffResetYear: calendarYear(new Date())
             },
             select: { id: true, firstName: true, lastName: true, email: true, role: true, status: true, gender: true, username: true }
         })
@@ -159,7 +160,7 @@ export class UserService {
                 if (dayOffCredit !== undefined) updateData.dayOffCredit = dayOffCredit
                 if (baseDayOffCredit !== undefined) {
                     updateData.baseDayOffCredit = baseDayOffCredit
-                    const currentYear = new Date().getFullYear()
+                    const currentYear = calendarYear(new Date())
                     const deductions = await prisma.dayOffRequest.aggregate({
                         where: { userId: id, status: 'APPROVED', deductionType: 'CREDIT', date: { gte: new Date(currentYear, 0, 1), lt: new Date(currentYear + 1, 0, 1) } },
                         _sum: { daysDeducted: true }
@@ -182,7 +183,7 @@ export class UserService {
             // Salary record sync
             if (updateData.salary !== undefined) {
                 const now = new Date()
-                const m = now.getMonth() + 1, y = now.getFullYear()
+                const { month: m, year: y } = calendarMonth(now)
                 const { SalaryService } = await import("./salary.service")
                 await SalaryService.ensureRecordExists(id, m, y, updateData.salary)
             }
@@ -359,15 +360,23 @@ export class UserService {
             })
         ])
 
+        // Grouped on the same clock the snapshots were keyed on.
+        // DayOffCreditSnapshot.year comes from lastDayOffResetYear, which is a
+        // calendar year; reading the request's year off the server's clock
+        // instead would put a request made late on 31 December under the wrong
+        // snapshot — a leave day appearing in a year whose balance never
+        // counted it.
+        const yearOf = (r: { date: Date }) => calendarYear(new Date(r.date))
+
         const years = Array.from(new Set([
-            ...requests.map(r => new Date(r.date).getFullYear()),
+            ...requests.map(yearOf),
             ...snapshots.map(s => s.year)
         ])).sort((a, b) => b - a)
 
         const historyByYear = years.map(year => ({
             year,
             snapshot: snapshots.find(s => s.year === year) || null,
-            requests: requests.filter(r => new Date(r.date).getFullYear() === year)
+            requests: requests.filter(r => yearOf(r) === year)
         }))
 
         return {

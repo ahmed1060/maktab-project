@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma"
 import { Prisma } from "@prisma/client"
+import { calendarMonth, calendarYear } from "@/lib/time"
 
 // Decimal.toJSON() returns a *string*, so a SalaryRecord/SalaryAdjustment
 // passed straight into ApiResponse.success(...) would silently change these
@@ -40,8 +41,7 @@ export class SalaryService {
 
     static async getHistory(userId: string) {
         const now = new Date()
-        const currentMonth = now.getMonth() + 1
-        const currentYear = now.getFullYear()
+        const { month: currentMonth, year: currentYear } = calendarMonth(now)
 
         const user = await prisma.user.findUnique({
             where: { id: userId },
@@ -136,7 +136,7 @@ export class SalaryService {
 
     static async addAdjustment(userId: string, type: 'BONUS' | 'DEDUCTION', amount: number, session: any, reason?: string) {
         const now = new Date()
-        const m = now.getMonth() + 1, y = now.getFullYear()
+        const { month: m, year: y } = calendarMonth(now)
 
         if (amount <= 0 || amount > 1000) {
             throw new Error("INVALID_ADJUSTMENT_AMOUNT")
@@ -203,8 +203,7 @@ export class SalaryService {
         }
 
         const date = new Date(adjustment.createdAt)
-        const month = date.getMonth() + 1
-        const year = date.getFullYear()
+        const { month, year } = calendarMonth(date)
 
         const record = await prisma.salaryRecord.findUnique({
             where: { userId_month_year: { userId, month, year } }

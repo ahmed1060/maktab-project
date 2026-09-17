@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma"
 import { isModule, type Module } from "@/lib/features"
+import { startOfMonthIn } from "@/lib/time"
 
 /**
  * Recording how often a company reaches for a module it does not have.
@@ -8,9 +9,19 @@ import { isModule, type Module } from "@/lib/features"
  * already arrives at the server as a request. Nothing client-side is added.
  */
 export class FeatureAccessService {
-    /** First instant of the month, UTC — the bucket a timestamp falls in. */
+    /**
+     * First instant of the month the timestamp falls in — the bucket it counts
+     * against.
+     *
+     * Local, not UTC. This was the one site already consistent with itself,
+     * which is why the plan first listed it as already right; but "usage this
+     * month" is a calendar question, and answering it in UTC would reset a
+     * company's allowance two or three hours after their month actually turned
+     * over. Leaving one site on a different clock is the condition P0 exists to
+     * remove, not an exception to it.
+     */
     static monthBucket(now: Date = new Date()): Date {
-        return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1))
+        return startOfMonthIn(now)
     }
 
     /**
