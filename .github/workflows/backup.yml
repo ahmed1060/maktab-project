@@ -72,6 +72,34 @@ jobs:
           root_folder_id = ${{ secrets.GDRIVE_FOLDER_ID }}
           EOF
 
+      # Before spending thirty seconds on a dump that has nowhere to go. The
+      # credential is the single most likely thing to be wrong — it expires on
+      # its own, it lives in two places that can drift apart, and when it fails
+      # rclone reports it as a page of URL-encoded Drive query, a hundred
+      # seconds into the run, three times over.
+      - name: Check the Drive credential first
+        run: |
+          if rclone lsd gdrive: >/dev/null 2>/tmp/gdrive-err; then
+            echo "Google Drive reachable."
+            exit 0
+          fi
+
+          if grep -q invalid_grant /tmp/gdrive-err; then
+            echo "::error::invalid_grant — Google rejected the refresh token."
+            echo "::error::RCLONE_CONFIG_GDRIVE_TOKEN is stale, malformed, or was minted"
+            echo "::error::against a different client_id/client_secret than the two secrets"
+            echo "::error::beside it. Re-mint with 'rclone config reconnect gdrive:' and"
+            echo "::error::update BOTH the GitHub secret and the Vercel env var of that name."
+          else
+            echo "::error::Google Drive is unreachable, and not because of the token."
+          fi
+
+          # Redact anything long enough to be a credential before printing the
+          # underlying error: rclone echoes the full request, and the folder id
+          # travels in it.
+          sed -E 's/[A-Za-z0-9_-]{20,}/***/g' /tmp/gdrive-err
+          exit 1
+
       - name: Dump database
         env:
           PGCONN: ${{ secrets.SUPABASE_DIRECT_URL }}
