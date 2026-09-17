@@ -189,6 +189,23 @@ describe("every night's dump is loaded back", () => {
         expect(restoreStep).toContain("grep -vE '^(CREATE|COMMENT ON) EXTENSION'")
     })
 
+    it("excludes every Supabase-managed schema, in both workflows", () => {
+        // The list is "everything Supabase owns"; public is the application.
+        // cron is the one that bit: pg_cron's tables were dumped while the
+        // extension that creates their schema cannot be installed in a plain
+        // Postgres, so the restore check died on a COPY into a schema that did
+        // not exist. Both workflows must agree — restore.yml's copy is the
+        // pre-restore snapshot, and a snapshot taken on different terms from
+        // the backups it sits beside is a trap for whoever restores it.
+        for (const [name, source] of [["backup", BACKUP_CODE], ["restore", RESTORE_CODE]] as const) {
+            for (const schema of ["auth", "storage", "graphql", "graphql_public", "cron", "realtime", "extensions", "vault"]) {
+                expect(source, `${name}.yml no longer excludes the ${schema} schema`).toMatch(
+                    new RegExp(`exclude-schema='[^']*\\b${schema}\\b`),
+                )
+            }
+        }
+    })
+
     it("proves the dump applies and holds rows", () => {
         expect(BACKUP_CODE).toContain("--single-transaction -v ON_ERROR_STOP=1")
         expect(BACKUP_CODE).toContain("Dump restored but holds no users")

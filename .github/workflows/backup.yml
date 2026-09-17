@@ -116,9 +116,17 @@ jobs:
           # `pg_dump` on PATH — installing postgresql-client-17 alongside
           # the runner image's pre-existing postgresql-client-16 doesn't
           # make 17 the one PATH resolves to.
+          #
+          # The exclusion list is every Supabase-managed schema; public is the
+          # app. cron and graphql_public were added after a restore check failed
+          # on "COPY cron.job ... schema cron does not exist" — pg_cron's own
+          # tables were being dumped while the extension that creates their
+          # schema is not something a plain Postgres can install. Both hold no
+          # application data: cron.job was verified empty, graphql_public has no
+          # tables at all.
           /usr/lib/postgresql/17/bin/pg_dump "$PGCONN" \
             --no-owner --no-privileges --clean --if-exists \
-            --exclude-schema='auth|storage|graphql|realtime|extensions|vault|_realtime|supabase_*' \
+            --exclude-schema='auth|storage|graphql|graphql_public|cron|realtime|extensions|vault|_realtime|supabase_*' \
             | gzip -9 > db.sql.gz
           ls -lh db.sql.gz
 

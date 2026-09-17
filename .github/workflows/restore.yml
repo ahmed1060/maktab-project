@@ -102,7 +102,7 @@ jobs:
           echo "PRENAME=maktab_${STAMP}_prerestore" >> $GITHUB_ENV
           /usr/lib/postgresql/17/bin/pg_dump "$PGCONN" \
             --no-owner --no-privileges --clean --if-exists \
-            --exclude-schema='auth|storage|graphql|realtime|extensions|vault|_realtime|supabase_*' \
+            --exclude-schema='auth|storage|graphql|graphql_public|cron|realtime|extensions|vault|_realtime|supabase_*' \
             | gzip -9 > pre_db.sql.gz
           test "$(stat -c%s pre_db.sql.gz)" -gt 10240 || { echo "Pre-restore dump suspiciously small"; exit 1; }
 
