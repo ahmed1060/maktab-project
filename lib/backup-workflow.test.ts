@@ -196,38 +196,58 @@ describe("every night's dump is loaded back", () => {
         ).toContain('--health-cmd "pg_isready -U postgres"')
     })
 
-    it("asks the verifier what landed, not whether psql was happy", () => {
-        // The dump carries Supabase's global objects — extensions registered in
-        // pg_catalog, event triggers belonging to no schema — and a stock image
-        // has nowhere to put them. Excluding them one at a time is unbounded:
-        // pg_dump has no --exclude-event-trigger, and the next Supabase release
-        // can add another. So the verifier tolerates the load and judges the
-        // result. Putting ON_ERROR_STOP back here would restart that chase.
+    it("asks the nightly verifier the same question the disaster will", () => {
+        // This was deliberately tolerant while the dump carried Supabase's
+        // globals, and that was right at the time. It stopped being right the
+        // moment --schema=public removed them: a tolerant load cannot tell "the
+        // dump applies cleanly" from "the dump applies apart from the eight
+        // statements that would abort a real restore", and it was the second of
+        // those for months without anyone being able to see it.
         const prove = BACKUP_CODE.split("- name:").find(s => s.includes("Prove the dump restores"))!
-        expect(prove, "the verifier is strict again about Supabase's own objects").toContain("ON_ERROR_STOP=0")
-        expect(prove, "the verifier no longer counts the tables that landed").toContain("information_schema.tables")
+        expect(prove, "the nightly verifier went back to ignoring errors").toContain("--single-transaction -v ON_ERROR_STOP=1")
+        expect(prove, "the nightly verifier no longer ignores errors, but also no longer counts what landed").toContain("information_schema.tables")
         expect(prove, "the verifier no longer requires rows").toContain("Dump restored but holds no users")
 
-        // A real restore is a different question and keeps the strict answer.
+        // The real restore asks it too, in the same words.
         const restoreStep = RESTORE_CODE.split("- name:").find(s => s.includes("Restore database"))!
         expect(restoreStep).toContain("--single-transaction -v ON_ERROR_STOP=1")
     })
 
-    it("excludes every Supabase-managed schema, in both workflows", () => {
-        // The list is "everything Supabase owns"; public is the application.
-        // cron is the one that bit: pg_cron's tables were dumped while the
-        // extension that creates their schema cannot be installed in a plain
-        // Postgres, so the restore check died on a COPY into a schema that did
-        // not exist. Both workflows must agree — restore.yml's copy is the
-        // pre-restore snapshot, and a snapshot taken on different terms from
-        // the backups it sits beside is a trap for whoever restores it.
+    it("dumps by allowlist, in both workflows", () => {
+        // A denylist has to enumerate everything the platform might ever add,
+        // and this one failed four times doing it: CREATE EXTENSION in
+        // pg_catalog, COPY cron.job, event triggers belonging to no schema, and
+        // finally "must be owner of event trigger pgrst_drop_watch" — the one
+        // that would have failed a production restore identically, because all
+        // eight of those triggers are owned by supabase_admin and the
+        // connection role is postgres.
+        //
+        // An allowlist has to name what we own: one schema. Objects with no
+        // schema are not dumped under -n at all, so the class ends at the
+        // source instead of being filtered downstream.
+        //
+        // Both workflows, because restore.yml's dump is the pre-restore
+        // snapshot — the thing somebody restores after a restore went wrong,
+        // where different terms from the backups beside it are a trap laid for
+        // the worst possible moment.
         for (const [name, source] of [["backup", BACKUP_CODE], ["restore", RESTORE_CODE]] as const) {
-            for (const schema of ["auth", "storage", "graphql", "graphql_public", "cron", "realtime", "extensions", "vault"]) {
-                expect(source, `${name}.yml no longer excludes the ${schema} schema`).toMatch(
-                    new RegExp(`exclude-schema='[^']*\\b${schema}\\b`),
-                )
-            }
+            expect(source, `${name}.yml does not dump by allowlist`).toContain("--schema=public")
+            expect(source, `${name}.yml went back to a denylist`).not.toContain("--exclude-schema")
         }
+    })
+
+    it("proves the dump carries nothing the restore role cannot own", () => {
+        // Asserted on the artifact rather than inferred from the flag. Every
+        // one of these was in a real dump and each broke a real restore, so if
+        // one comes back it should fail on the night it starts, not during the
+        // restore nobody gets to retry.
+        const check = BACKUP_CODE.split("- name:").find(s => s.includes("nothing the restore role cannot own"))!
+        expect(check, "the dump is no longer checked for platform objects").toBeTruthy()
+        for (const pattern of ["EVENT TRIGGER", "EXTENSION", "DROP SCHEMA", "CREATE SCHEMA"]) {
+            expect(check, `the dump is no longer checked for ${pattern}`).toContain(pattern)
+        }
+        // And that "clean" cannot be achieved by dumping nothing at all.
+        expect(check).toContain("CREATE TABLE public")
     })
 
     it("does it after the upload, so a night that cannot prove itself is still stored", () => {

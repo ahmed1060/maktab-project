@@ -127,9 +127,15 @@ jobs:
           set -o pipefail
           STAMP=$(TZ=Africa/Cairo date +%Y-%m-%d_%H%M)
           echo "PRENAME=maktab_${STAMP}_prerestore" >> $GITHUB_ENV
+          # Same flags as backup.yml's, and that matters more here than
+          # anywhere: this is the snapshot somebody restores *after* a restore
+          # went wrong, so a snapshot taken on different terms from the backups
+          # it sits beside is a trap laid for the worst moment. --schema=public
+          # is what keeps Supabase's own event triggers and extensions — which
+          # the postgres role cannot drop or create — out of the file.
           /usr/lib/postgresql/17/bin/pg_dump "$PGCONN" \
             --no-owner --no-privileges --clean --if-exists \
-            --exclude-schema='auth|storage|graphql|graphql_public|cron|realtime|extensions|vault|_realtime|supabase_*' \
+            --schema=public \
             | gzip -9 > pre_db.sql.gz
           test "$(stat -c%s pre_db.sql.gz)" -gt 10240 || { echo "Pre-restore dump suspiciously small"; exit 1; }
 
