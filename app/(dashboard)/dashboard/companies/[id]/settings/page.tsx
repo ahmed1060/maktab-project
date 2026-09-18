@@ -21,6 +21,7 @@ type Company = {
     payrollDay: number
     payslipsVisible: boolean
     timezone: string
+    debtRecoveryPercent: number
 }
 
 export default function CompanySettingsPage() {
@@ -176,6 +177,7 @@ export default function CompanySettingsPage() {
                             payrollDay={company.payrollDay}
                             payslipsVisible={company.payslipsVisible}
                             timezone={company.timezone}
+                            debtRecoveryPercent={company.debtRecoveryPercent}
                             onSaved={next => setCompany({ ...company, ...next })}
                         />
                     )}

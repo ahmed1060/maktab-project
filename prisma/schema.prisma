@@ -212,6 +212,15 @@ model Company {
   /// company makes once, knowingly. A default of "on" would publish pay records
   /// to every employee of every existing company on the deploy that adds them.
   payslipsVisible      Boolean               @default(false)
+  /// The most of one month's net that debt recovery may take, as a percentage.
+  ///
+  /// 100 is the agreed behaviour today: a debt is collected out of the next
+  /// month in full. The column exists so that changing that is a number in a
+  /// form rather than a change to how payroll works — chained across months,
+  /// uncapped recovery can take somebody's pay to zero twice running with
+  /// nobody deciding it should, and most jurisdictions limit it for that
+  /// reason. 0 switches recovery off without deleting anybody's debt.
+  debtRecoveryPercent  Int                   @default(100)
   /// The calendar this company's months are measured in.
   ///
   /// Everything in lib/time.ts already takes a zone as an argument; this is
@@ -1156,6 +1165,11 @@ model Debt {
   userId    String
   companyId String
   amount    Decimal    @db.Decimal(12, 2)
+  /// What payroll has taken back so far. Kept separate from `amount` rather
+  /// than subtracted from it, because the original obligation is the thing
+  /// somebody disputes and a column that shrinks cannot answer "how much was
+  /// this to begin with".
+  recoveredAmount Decimal @default(0) @db.Decimal(12, 2)
   /// PAYSLIP_CARRY or SETTLEMENT, and the row it came from.
   source    String
   sourceId  String?

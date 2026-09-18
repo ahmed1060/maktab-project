@@ -18,6 +18,7 @@ import {
     type Minor, type RateChange, type PayslipLine, type PayslipTotals,
 } from "./payroll"
 import { payableWindows, undecidedDays, employedWholeMonth, type MonthTimeline } from "./employment"
+import { planRecovery, recoveryLabel, DEBT_RECOVERY_SOURCE, FULL_RECOVERY_PERCENT, type RecoverableDebt } from "./debt-recovery"
 
 /** A payslip line, plus where it came from, so a disputed figure is traceable. */
 export interface RegisterLine extends PayslipLine {
@@ -45,6 +46,21 @@ export interface PersonMonth {
     adjustments: AdjustmentInput[]
     /** Present when this person is deliberately left out of the run. */
     exclusion?: { reason: string }
+    /** What this person still owes, for recovery out of this month's net. */
+    debts?: RecoverableDebt[]
+    /** The company's cap, as a percentage of net. Absent means the whole net. */
+    recoveryCapPercent?: number
+    /**
+     * The last instant of this month in the company's calendar; debts due after
+     * it are left alone.
+     *
+     * Carried per person because that is the shape buildEntry receives, though
+     * like the cap it is really a fact about the run. It is passed in rather
+     * than derived here because deriving it needs the company's time zone, and
+     * a UTC month end is two or three hours adrift of a Cairo one — enough to
+     * collect a debt a day before it is owed.
+     */
+    debtsDueOnOrBefore?: Date
 }
 
 export interface RegisterEntry {
@@ -128,6 +144,40 @@ export function buildEntry(person: PersonMonth): RegisterEntry {
         })
     }
 
+    // Recovery runs last, against the net rather than alongside the other
+    // deductions, and that ordering is the whole of its safety. Added to the
+    // list before totalPayslip and it would be floored like anything else — a
+    // recovery big enough to exceed the net would carry, turning one debt into
+    // two and charging interest in the form of a second row. Capped at what is
+    // actually there, it can only ever reduce the net to zero.
+    //
+    // Excluded people are skipped: nothing is being paid, so there is nothing
+    // to take, and a recovery line on a payslip that pays nothing would be a
+    // claim that money moved.
+    const beforeRecovery = totalPayslip(lines)
+    if (!person.exclusion && person.debts?.length) {
+        const plan = planRecovery({
+            netMinor: beforeRecovery.netMinor,
+            debts: person.debts,
+            capPercent: person.recoveryCapPercent ?? FULL_RECOVERY_PERCENT,
+            // Anything due after this month has not come round yet. Taking it
+            // early is the company deciding its own terms were earlier than it
+            // said they were.
+            dueOnOrBefore: person.debtsDueOnOrBefore ?? endOfMonthInstant(year, month),
+        })
+        for (const allocation of plan.allocations) {
+            const debt = person.debts.find(d => d.id === allocation.debtId)!
+            lines.push({
+                kind: "DEDUCTION",
+                label: recoveryLabel(allocation.amountMinor < debt.outstandingMinor),
+                amountMinor: allocation.amountMinor,
+                source: DEBT_RECOVERY_SOURCE,
+                sourceId: allocation.debtId,
+                sortOrder: order++,
+            })
+        }
+    }
+
     return {
         userId: person.userId,
         name: person.name,
@@ -139,6 +189,17 @@ export function buildEntry(person: PersonMonth): RegisterEntry {
         excluded: Boolean(person.exclusion),
         exclusionReason: person.exclusion?.reason,
     }
+}
+
+/**
+ * The last instant of a month in UTC, for deciding which debts have come due.
+ *
+ * Only the fallback: a caller that knows the company's zone passes its own, and
+ * the service always does. Built from the month's own length rather than by
+ * stepping back from the 1st of the next one, so December needs no special case.
+ */
+function endOfMonthInstant(year: number, month: number): Date {
+    return new Date(Date.UTC(year, month - 1, daysInMonth(year, month), 23, 59, 59, 999))
 }
 
 export interface PendingDecision {

@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma"
 import { buildRegister, variance, nextIssueBatch, issueProgress, ISSUE_BATCH_SIZE, type PersonMonth, type AdjustmentInput } from "@/lib/register"
+import { DEBT_RECOVERY_SOURCE, type RecoverableDebt } from "@/lib/debt-recovery"
 import { timelineForMonth } from "@/lib/employment"
 import { ratesForMonth } from "@/lib/salary-history"
 import { toMajor, toMinor } from "@/lib/payroll"
@@ -26,7 +27,7 @@ export class PayrollRunService {
         const [company, settings] = await Promise.all([
             prisma.company.findUnique({
                 where: { id: companyId },
-                select: { payrollDay: true, timezone: true },
+                select: { payrollDay: true, timezone: true, debtRecoveryPercent: true },
             }),
             prisma.systemSettings.findUnique({
                 where: { id: "default" },
@@ -37,6 +38,7 @@ export class PayrollRunService {
 
         return {
             payrollDay: company.payrollDay,
+            debtRecoveryPercent: company.debtRecoveryPercent,
             timeZone: resolveTimeZone(company.timezone, settings?.defaultTimezone),
         }
     }
@@ -69,8 +71,30 @@ export class PayrollRunService {
      * runs, and a person looking at a draft is never the reason a row appears.
      */
     static async compute(companyId: string, year: number, month: number) {
-        const { timeZone, payrollDay } = await this.policy(companyId)
+        const { timeZone, payrollDay, debtRecoveryPercent } = await this.policy(companyId)
         const people = await this.peopleFor(companyId)
+
+        // Everything still owed, and the moment after which a debt has not come
+        // due yet — computed in the company's calendar, because a UTC month end
+        // is hours adrift of a Cairo one and that is enough to take a debt the
+        // day before it is owed.
+        const monthEnd = new Date(startOfMonthIn(
+            new Date(Date.UTC(month === 12 ? year + 1 : year, month === 12 ? 0 : month, 1, 12)),
+            timeZone,
+        ).getTime() - 1)
+
+        const outstanding = await prisma.debt.findMany({
+            where: { companyId, status: "OUTSTANDING" },
+            select: { id: true, userId: true, amount: true, recoveredAmount: true, dueDate: true },
+        })
+        const debtsByUser = new Map<string, RecoverableDebt[]>()
+        for (const debt of outstanding) {
+            const outstandingMinor = toMinor(debt.amount.toString()) - toMinor(debt.recoveredAmount.toString())
+            if (outstandingMinor <= 0) continue
+            const list = debtsByUser.get(debt.userId) ?? []
+            list.push({ id: debt.id, outstandingMinor, dueDate: debt.dueDate })
+            debtsByUser.set(debt.userId, list)
+        }
 
         const entries: PersonMonth[] = []
         const refused: { userId: string; name: string; reason: string }[] = []
@@ -128,6 +152,9 @@ export class PayrollRunService {
                         source: a.source,
                         sourceId: a.sourceId,
                     })),
+                    debts: debtsByUser.get(user.id) ?? [],
+                    recoveryCapPercent: debtRecoveryPercent,
+                    debtsDueOnOrBefore: monthEnd,
                 })
             } catch (error: any) {
                 // One person with no salary history must not stop the other
@@ -342,8 +369,41 @@ export class PayrollRunService {
                     approvedAt: new Date(),
                     approvedById: session?.user?.id ?? null,
                 },
-                include: { payslips: true },
+                include: { payslips: { include: { lines: true } } },
             })
+
+            // Recovery: what this run took back, applied to the debts it took it
+            // from. Driven off the stored payslip lines rather than recomputed,
+            // so the money moved and the record of it moving cannot disagree —
+            // the line on somebody's payslip is the claim, and this is that same
+            // claim being honoured.
+            //
+            // Before the carry loop below, deliberately. A debt raised by this
+            // month is due on this month's payday and could otherwise be read as
+            // already collectable by the very run that created it.
+            for (const payslip of run.payslips) {
+                if (payslip.excluded) continue
+                for (const line of payslip.lines) {
+                    if (line.source !== DEBT_RECOVERY_SOURCE || !line.sourceId) continue
+
+                    const debt = await tx.debt.findUnique({ where: { id: line.sourceId } })
+                    // Gone or already settled between the draft and now. Skipped
+                    // rather than failed: the payslip is already correct about
+                    // what was deducted, and refusing the whole approval over one
+                    // stale row would hold up everybody else's pay.
+                    if (!debt || debt.status !== "OUTSTANDING") continue
+
+                    const recovered = Number(debt.recoveredAmount) + Number(line.amount)
+                    const settled = recovered >= Number(debt.amount)
+                    await tx.debt.update({
+                        where: { id: debt.id },
+                        data: {
+                            recoveredAmount: recovered,
+                            ...(settled && { status: "SETTLED", settledAt: new Date() }),
+                        },
+                    })
+                }
+            }
 
             // A net that floored at zero leaves money the deductions could not
             // take. It becomes a debt here rather than at draft time, because

@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useLanguage } from '@/context/LanguageContext'
 import { useToast } from '@/context/ToastContext'
 import { MAX_PAYROLL_DAY } from '@/lib/payday'
+import { FULL_RECOVERY_PERCENT } from '@/lib/debt-recovery'
 
 /**
  * The three payroll settings a company actually has.
@@ -23,7 +24,8 @@ type Props = {
     payrollDay: number
     payslipsVisible: boolean
     timezone: string
-    onSaved: (next: { payrollDay: number; payslipsVisible: boolean; timezone: string }) => void
+    debtRecoveryPercent: number
+    onSaved: (next: { payrollDay: number; payslipsVisible: boolean; timezone: string; debtRecoveryPercent: number }) => void
 }
 
 // Offered rather than free-typed. Every one of these is east of the bound the
@@ -37,7 +39,7 @@ const ZONES = [
     'Europe/London', 'Europe/Paris', 'Europe/Berlin', 'Europe/Istanbul', 'UTC',
 ]
 
-export default function CompanyPayrollCard({ companyId, payrollDay, payslipsVisible, timezone, onSaved }: Props) {
+export default function CompanyPayrollCard({ companyId, payrollDay, payslipsVisible, timezone, debtRecoveryPercent, onSaved }: Props) {
     const { t, locale } = useLanguage()
     const { showToast } = useToast()
     const isRtl = locale === 'ar'
@@ -45,9 +47,10 @@ export default function CompanyPayrollCard({ companyId, payrollDay, payslipsVisi
     const [day, setDay] = useState(payrollDay)
     const [visible, setVisible] = useState(payslipsVisible)
     const [zone, setZone] = useState(timezone)
+    const [cap, setCap] = useState(debtRecoveryPercent)
     const [saving, setSaving] = useState(false)
 
-    const dirty = day !== payrollDay || visible !== payslipsVisible || zone !== timezone
+    const dirty = day !== payrollDay || visible !== payslipsVisible || zone !== timezone || cap !== debtRecoveryPercent
 
     const save = async () => {
         setSaving(true)
@@ -55,7 +58,7 @@ export default function CompanyPayrollCard({ companyId, payrollDay, payslipsVisi
             const res = await fetch('/api/companies', {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ id: companyId, payrollDay: day, payslipsVisible: visible, timezone: zone }),
+                body: JSON.stringify({ id: companyId, payrollDay: day, payslipsVisible: visible, timezone: zone, debtRecoveryPercent: cap }),
             })
             const body = await res.json().catch(() => ({}))
             if (!res.ok) {
@@ -68,7 +71,7 @@ export default function CompanyPayrollCard({ companyId, payrollDay, payslipsVisi
                 showToast(zoneIssue || dayIssue || body?.error || t('error_generic'), 'error')
                 return
             }
-            onSaved({ payrollDay: day, payslipsVisible: visible, timezone: zone })
+            onSaved({ payrollDay: day, payslipsVisible: visible, timezone: zone, debtRecoveryPercent: cap })
             showToast(t('settings_saved_success') || 'Settings saved', 'success')
         } catch {
             showToast(t('error_generic'), 'error')
@@ -144,6 +147,30 @@ export default function CompanyPayrollCard({ companyId, payrollDay, payslipsVisi
                         <div style={{ fontSize: '0.8rem', color: 'var(--text-soft)', marginTop: '0.15rem' }}>
                             {t('payslips_visible_hint')}
                         </div>
+                    </div>
+                </div>
+
+                <div>
+                    <label htmlFor="company-debt-cap" style={{ display: 'block', fontWeight: 500, marginBottom: '0.3rem' }}>
+                        {t('debt_recovery_label')}
+                    </label>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <input
+                            id="company-debt-cap"
+                            className="input"
+                            type="number"
+                            min={0}
+                            max={100}
+                            value={cap}
+                            onChange={e => setCap(Number(e.target.value))}
+                            style={{ width: '6rem' }}
+                        />
+                        <span style={{ color: 'var(--text-muted)' }}>%</span>
+                    </div>
+                    <div style={{ fontSize: '0.8rem', color: 'var(--text-soft)', marginTop: '0.3rem' }}>
+                        {cap === FULL_RECOVERY_PERCENT ? t('debt_recovery_hint_full')
+                            : cap === 0 ? t('debt_recovery_hint_off')
+                                : t('debt_recovery_hint_capped').replace('{n}', String(cap))}
                     </div>
                 </div>
 

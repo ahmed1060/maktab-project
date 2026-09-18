@@ -214,7 +214,7 @@ export class CompanyService {
     }
 
     static async update(input: UpdateCompanyInput, session: any) {
-        const { id, name, isBanned, autoVerifyLocation, moduleLabels, moduleIcons, payrollDay, payslipsVisible, timezone } = input
+        const { id, name, isBanned, autoVerifyLocation, moduleLabels, moduleIcons, payrollDay, payslipsVisible, timezone, debtRecoveryPercent } = input
         const existing = await prisma.company.findUnique({ where: { id } })
         if (!existing) throw new Error("COMPANY_NOT_FOUND")
 
@@ -241,7 +241,8 @@ export class CompanyService {
                 // carries a reason the form needs to show.
                 ...(payrollDay !== undefined && { payrollDay }),
                 ...(payslipsVisible !== undefined && { payslipsVisible }),
-                ...(timezone !== undefined && { timezone })
+                ...(timezone !== undefined && { timezone }),
+                ...(debtRecoveryPercent !== undefined && { debtRecoveryPercent })
             }
         })
 
@@ -271,6 +272,9 @@ export class CompanyService {
         }
         if (timezone !== undefined && timezone !== existing.timezone) {
             changes.timezone = { old: existing.timezone, new: timezone }
+        }
+        if (debtRecoveryPercent !== undefined && debtRecoveryPercent !== existing.debtRecoveryPercent) {
+            changes.debtRecoveryPercent = { old: existing.debtRecoveryPercent, new: debtRecoveryPercent }
         }
 
         if (Object.keys(changes).length > 0) {

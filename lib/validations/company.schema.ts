@@ -73,6 +73,11 @@ export const updateCompanySchema = z.object({
     // most sensitive thing this app holds about a person, and "we switched it
     // on for you" is not a sentence anybody wants to hear about their pay.
     payslipsVisible: z.boolean().optional(),
+    // 100 means a debt comes out of the next month in full, which is the agreed
+    // behaviour; 0 switches recovery off without deleting anybody's debt.
+    // Bounded at both ends because a percentage outside 0-100 is not a cap, and
+    // a negative one would be an instruction to pay somebody their debt.
+    debtRecoveryPercent: z.number().int().min(0).max(100).optional(),
     // Validated rather than merely stored, and validated *here* so the reason
     // reaches the form. checkTimeZone's refusal explains that the crons are
     // global and what that costs a company far behind UTC — a sentence worth
