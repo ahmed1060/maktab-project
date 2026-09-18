@@ -35,28 +35,26 @@ describe("G2: the payroll settings can actually be set", () => {
         }
     })
 
-    it("accepts a zone the crons can serve", () => {
-        for (const zone of ["Africa/Cairo", "Europe/London", "Asia/Tokyo", "UTC"]) {
+    it("accepts any zone the runtime knows, including the Americas", () => {
+        // These four were refused until G7 made salary initialisation ask each
+        // company what month it is in that company's own calendar.
+        for (const zone of [
+            "Africa/Cairo", "Europe/London", "Asia/Tokyo", "UTC",
+            "America/New_York", "America/Sao_Paulo", "America/Los_Angeles",
+        ]) {
             expect(updateCompanySchema.safeParse({ ...base, timezone: zone }).success, zone).toBe(true)
         }
     })
 
-    it("refuses one they cannot, and says why rather than saying invalid", () => {
-        // The whole reason the validation lives in the schema: the refusal has
+    it("refuses a zone that is not a zone, and says so rather than saying invalid", () => {
+        // Still the reason the validation lives in the schema: the refusal has
         // to reach the person who typed it, and "Validation Error" would throw
         // away the only useful part.
-        const result = updateCompanySchema.safeParse({ ...base, timezone: "America/New_York" })
-        expect(result.success).toBe(false)
-        const message = result.success ? "" : result.error.issues[0].message
-        expect(message).toContain("America/New_York")
-        expect(message).toContain("behind UTC")
-        // It names the actual cause, so nobody goes looking for a typo.
-        expect(message).toMatch(/cron|scheduled jobs/i)
-    })
-
-    it("refuses a zone that is not a zone", () => {
         const result = updateCompanySchema.safeParse({ ...base, timezone: "Middle/Earth" })
         expect(result.success).toBe(false)
+        const message = result.success ? "" : result.error.issues[0].message
+        expect(message).toContain("Middle/Earth")
+        expect(message).toMatch(/not a time zone/i)
     })
 
     it("carries all three all the way to the database", () => {

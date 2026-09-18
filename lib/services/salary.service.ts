@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma"
 import { Prisma } from "@prisma/client"
 import { calendarMonth } from "@/lib/time"
+import { resolveTimeZone } from "@/lib/timezone"
 import { canUndoAdjustment } from "@/lib/approval"
 
 // Decimal.toJSON() returns a *string*, so a SalaryRecord/SalaryAdjustment
@@ -169,6 +170,27 @@ export class SalaryService {
     }
 
     /**
+     * The calendar this person's months are measured in.
+     *
+     * Their company's, falling back to the platform default and then to the
+     * built-in — the same two-level resolution every other caller uses, so the
+     * fallback is never re-improvised here.
+     */
+    private static async zoneFor(userId: string): Promise<string> {
+        const [user, settings] = await Promise.all([
+            prisma.user.findUnique({
+                where: { id: userId },
+                select: { company: { select: { timezone: true } } },
+            }),
+            prisma.systemSettings.findUnique({
+                where: { id: "default" },
+                select: { defaultTimezone: true },
+            }),
+        ])
+        return resolveTimeZone(user?.company?.timezone, settings?.defaultTimezone)
+    }
+
+    /**
      * Every month from the first record to this one, so a history has no holes.
      *
      * Split out of getHistory, which used to do this on a GET. A read that
@@ -178,7 +200,11 @@ export class SalaryService {
      * just named now, and called deliberately.
      */
     static async ensureRecordsThrough(userId: string) {
-        const { month: currentMonth, year: currentYear } = calendarMonth(new Date())
+        // In this person's own company calendar, for the same reason the cron
+        // resolves it per company: "which month is it" has no single answer
+        // across tenants, and filling a history up to the wrong month either
+        // leaves a hole or invents a row a month early.
+        const { month: currentMonth, year: currentYear } = calendarMonth(new Date(), await this.zoneFor(userId))
 
         const existingRecords = await prisma.salaryRecord.findMany({
             where: { userId },

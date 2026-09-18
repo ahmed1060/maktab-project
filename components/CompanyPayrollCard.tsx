@@ -28,15 +28,17 @@ type Props = {
     onSaved: (next: { payrollDay: number; payslipsVisible: boolean; timezone: string; debtRecoveryPercent: number }) => void
 }
 
-// Offered rather than free-typed. Every one of these is east of the bound the
-// global crons impose, so the list cannot produce a refusal — somebody with a
-// zone not on it can still be set through the API, and will get the real
-// explanation rather than "invalid".
+// A shortlist, not a limit. Any zone the runtime recognises is accepted — the
+// offset bound that used to narrow this went with G7, when salary
+// initialisation started asking each company what month it is in that
+// company's own calendar. Somebody whose zone is not here can still be set
+// through the API.
 const ZONES = [
     'Africa/Cairo', 'Africa/Casablanca', 'Africa/Lagos', 'Africa/Nairobi',
     'Asia/Dubai', 'Asia/Riyadh', 'Asia/Amman', 'Asia/Baghdad', 'Asia/Karachi',
     'Asia/Kolkata', 'Asia/Jakarta', 'Asia/Singapore', 'Asia/Tokyo',
     'Europe/London', 'Europe/Paris', 'Europe/Berlin', 'Europe/Istanbul', 'UTC',
+    'America/Sao_Paulo', 'America/New_York', 'America/Chicago', 'America/Los_Angeles',
 ]
 
 export default function CompanyPayrollCard({ companyId, payrollDay, payslipsVisible, timezone, debtRecoveryPercent, onSaved }: Props) {

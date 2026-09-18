@@ -1,7 +1,7 @@
 {
   "crons": [
     { "path": "/api/cron/reset-day-off", "schedule": "0 1 1 1 *" },
-    { "path": "/api/cron/salary-init", "schedule": "0 2 1 * *" },
+    { "path": "/api/cron/salary-init", "schedule": "0 2 * * *" },
     { "path": "/api/notes/check-expiry", "schedule": "0 6 * * *" },
     { "path": "/api/companies/check-subscriptions", "schedule": "0 7 * * *" },
     { "path": "/api/cron/prune", "schedule": "0 8 * * *" },
