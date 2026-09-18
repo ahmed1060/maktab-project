@@ -18,7 +18,8 @@
     "payroll:demo": "tsx scripts/seed-payroll-demo.ts"
   },
   "dependencies": {
-    "@prisma/client": "^5.22.0",
+    "@prisma/adapter-pg": "^7.10.0",
+    "@prisma/client": "^7.10.0",
     "@sentry/nextjs": "^10.75.0",
     "@supabase/supabase-js": "^2.116.0",
     "@vercel/analytics": "^2.0.1",
@@ -45,7 +46,7 @@
     "@vitest/coverage-v8": "^4.1.11",
     "eslint": "^8",
     "eslint-config-next": "14.2.15",
-    "prisma": "^5.22.0",
+    "prisma": "^7.10.0",
     "tsx": "^4.23.13",
     "typescript": "^5",
     "vitest": "^4.1.11"

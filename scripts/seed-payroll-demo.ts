@@ -18,13 +18,13 @@
  *   npx tsx scripts/seed-payroll-demo.ts
  *   npx tsx scripts/seed-payroll-demo.ts --remove
  */
-import { PrismaClient } from "@prisma/client"
+import { createScriptClient } from "../lib/prisma-script"
 import bcrypt from "bcryptjs"
 import { demoAddress, isUnroutableAddress } from "../lib/unroutable-address"
 import { calendarMonth, startOfDayIn, DEFAULT_TIME_ZONE } from "../lib/time"
 import { daysInMonth } from "../lib/payroll"
 
-const prisma = new PrismaClient()
+const prisma = createScriptClient()
 
 const COMPANY_NAME = "Nizmo Demo"
 

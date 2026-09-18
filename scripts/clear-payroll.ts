@@ -13,7 +13,7 @@
  * hatch on a gate like this gets used exactly once, in the moment somebody is in
  * a hurry, which is the moment the gate exists for.
  */
-import { PrismaClient } from "@prisma/client"
+import { createScriptClient } from "../lib/prisma-script"
 import {
     CLEARED,
     KEPT,
@@ -25,7 +25,7 @@ import {
 } from "../lib/payroll-clear"
 import { BACKUP_STALE_AFTER_HOURS, backupAgeHours } from "../lib/backup-age"
 
-const prisma = new PrismaClient()
+const prisma = createScriptClient()
 
 // Same repository the restore route dispatches to. Spelled here rather than
 // inferred, because a wrong guess would check somebody else's Actions history
