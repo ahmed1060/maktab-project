@@ -15,13 +15,21 @@ import { CompanyService } from "@/lib/services/company.service"
 
 export const dynamic = 'force-dynamic'
 
-export default async function DashboardPage({ searchParams }: { searchParams: { company?: string } }) {
+export default async function DashboardPage(props: { searchParams: Promise<{ company?: string }> }) {
+    // Next 15 hands a page its dynamic segments and query string as
+    // promises rather than plain objects, so they are awaited here and
+    // the rest of the function reads them exactly as it did before.
+    const searchParams = await props.searchParams
+
     const session = await getServerSession(authOptions)
     const userRole = (session?.user as any)?.role
     const userId = (session?.user as any)?.id
 
     // Server-side localization
-    const cookieStore = cookies()
+    // Awaited since Next 15: cookies(), headers() and draftMode() are async,
+    // because a request's store is now resolved when it is asked for rather
+    // than assumed to be already there.
+    const cookieStore = await cookies()
     const locale = (cookieStore.get('NEXT_LOCALE')?.value || 'en') as Locale
     const dict = locale === 'ar' ? ar : en
     const t = (key: TranslationKey) => dict[key] || en[key]

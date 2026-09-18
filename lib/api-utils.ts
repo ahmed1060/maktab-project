@@ -257,7 +257,17 @@ export function withStandardHandler(
                 }
             }
 
-            const response = await handler(req, session, body, context)
+            // Next 15 made the dynamic segments a promise: `context.params` is
+            // no longer `{ id }` but a promise of it. Resolved here, once, so
+            // that the fifty-one route handlers underneath keep destructuring
+            // `{ params }` and reading `params.id` the way they always have.
+            // Awaiting a plain object is harmless, so this is also correct if a
+            // caller ever hands over an already-resolved context.
+            const resolvedContext = context
+                ? { ...context, params: await context.params }
+                : context
+
+            const response = await handler(req, session, body, resolvedContext)
 
             // Audit Logging (only if successful and configured)
             if (options.audit && response.ok) {

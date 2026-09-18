@@ -86,7 +86,8 @@ export const authOptions: NextAuthOptions = {
             async authorize(credentials) {
                 try {
                     // Rate Limiting (5 attempts per 15 minutes per IP)
-                    const headerList = headers()
+                    // headers() is async since Next 15.
+                    const headerList = await headers()
                     // F-10: was reading the raw x-forwarded-for header, which is a
                     // client-controllable list an attacker can rotate to reset which
                     // rate-limit bucket they land in.

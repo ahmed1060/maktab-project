@@ -12,12 +12,13 @@ export const metadata = {
   description: 'Operations platform for companies — tasks, workforce, leave, payroll and clients in one system.',
 }
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
-  const cookieStore = cookies()
+  // cookies() is async since Next 15, which makes this layout async too.
+  const cookieStore = await cookies()
   const initialLocale = (cookieStore.get('NEXT_LOCALE')?.value || 'en') as Locale
   const dir = initialLocale === 'ar' ? 'rtl' : 'ltr'
 
