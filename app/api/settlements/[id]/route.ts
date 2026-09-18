@@ -40,6 +40,11 @@ export const GET = withStandardHandler(async (req, session, _json, { params }) =
         earned: Number(settlement.earnedAmount),
         paid: Number(settlement.paidAmount),
         net,
+        debtRecovered: Number(settlement.debtRecoveredAmount),
+        // What actually moves. Kept separate from net so the document's own
+        // arithmetic — earned, less paid, is net — still adds up in front of
+        // the person reading it.
+        payable: net - Number(settlement.debtRecoveredAmount),
         // Derived here, once, rather than in each place that renders it. A
         // statement whose figure and whose wording could disagree is the one
         // thing this document must never be.

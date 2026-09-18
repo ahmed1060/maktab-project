@@ -50,6 +50,8 @@ type View = {
     }
     refused: { userId: string; name: string; reason: string }[]
     variance: { previousTotalMinor: number; currentTotalMinor: number; deltaMinor: number; people: PersonVariance[] } | null
+    sinceDraft: { deltaMinor: number; people: PersonVariance[] } | null
+    draftSavedAt: string | null
     debts: { id: string; userId: string; name: string; amount: number; originalAmount: number; recoveredAmount: number; dueDate: string; source: string }[]
 }
 
@@ -467,6 +469,46 @@ export default function PayrollRegisterPage() {
                     {register.carriedMinor > 0 && stat(t('payroll_carried'), money(register.carriedMinor), 'var(--danger-solid)')}
                 </div>
             )}
+
+            {/* E1: what has moved since the draft on screen was saved.
+                Shown above the month-on-month variance and only when something
+                actually moved, because its job is to interrupt — approval is
+                irreversible, and the gap between reading a register and signing
+                it is exactly where a late adjustment lands unnoticed. */}
+            {(() => {
+                const changed = view?.sinceDraft?.people.filter(p => p.kind !== 'SAME') ?? []
+                if (!isDraft || changed.length === 0) return null
+                return card(
+                    <>
+                        <h2 style={{ margin: '0 0 0.35rem', fontSize: '1.05rem' }}>{t('payroll_since_draft')}</h2>
+                        <p style={{ margin: '0 0 0.75rem', fontSize: '0.85rem' }}>
+                            {t('payroll_since_draft_msg').replace(
+                                '{when}',
+                                view!.draftSavedAt
+                                    ? new Date(view!.draftSavedAt).toLocaleString(isRtl ? 'ar-EG' : 'en-GB')
+                                    : '—',
+                            )}
+                        </p>
+                        <div style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums', marginBottom: '0.5rem' }}>
+                            {signedMoney(view!.sinceDraft!.deltaMinor)}
+                        </div>
+                        {changed.map(p => (
+                            <div key={p.userId} style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', fontSize: '0.9rem' }}>
+                                <span>
+                                    {/* The stored draft has no names, so the
+                                        computed side supplies them; a row that
+                                        appears only in the draft has none and
+                                        says so rather than showing blank. */}
+                                    {p.name || t('payroll_since_draft_gone')}{' '}
+                                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                                        {t(`payroll_variance_${p.kind}` as any)}
+                                    </span>
+                                </span>
+                                <span style={{ fontVariantNumeric: 'tabular-nums' }}>{signedMoney(p.deltaMinor)}</span>
+                            </div>
+                        ))}
+                    </>, 'warn')
+            })()}
 
             {/* What moved. Null and zero are different answers, so they read
                 differently: one says nothing changed, the other says there is

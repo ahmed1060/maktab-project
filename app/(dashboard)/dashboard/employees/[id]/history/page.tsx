@@ -102,6 +102,13 @@ export default function EmployeeHistoryPage() {
     const [reversing, setReversing] = useState<SalaryAdjustment | null>(null)
     const [reverseReason, setReverseReason] = useState('')
     const [settlements, setSettlements] = useState<{ id: string; lastWorkingDay: string; net: number; status: string }[]>([])
+    // E2: raised when, recovered from which months, settled or written off by
+    // whom. Every one of those was recorded and none of them was assembled.
+    const [debts, setDebts] = useState<{
+        id: string; amount: number; recovered: number; outstanding: number; writtenOff: number
+        status: 'OUTSTANDING' | 'SETTLED' | 'WAIVED'; source: string; reason: string | null
+        dueDate: string; settledAt: string | null
+    }[]>([])
     const [alert, setAlert] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
     const [activeTab, setActiveTab] = useState<'SALARY' | 'DAY_OFF' | 'COSTS'>('SALARY')
     const [dayOffHistory, setDayOffHistory] = useState<{ baseCredit: number, remainingCredit: number, history: DayOffHistoryYear[] } | null>(null)
@@ -198,6 +205,18 @@ export default function EmployeeHistoryPage() {
     }, [params.id, isAdmin])
 
     useEffect(() => { fetchSettlements() }, [fetchSettlements])
+
+    const fetchDebts = useCallback(async () => {
+        if (!isAdmin) return
+        try {
+            const res = await fetch(`/api/users/${params.id}/debts`)
+            if (res.ok) setDebts((await res.json()).data || [])
+        } catch {
+            console.error('Error fetching debts')
+        }
+    }, [params.id, isAdmin])
+
+    useEffect(() => { fetchDebts() }, [fetchDebts])
 
     const fetchAdjustments = useCallback(async () => {
         try {
@@ -435,6 +454,38 @@ export default function EmployeeHistoryPage() {
                                             </span>
                                         ))}
                                     </p>
+                                )}
+
+                                {/* Closed debts are listed too. A list of open
+                                    ones answers what is left; this answers what
+                                    happened, and a written-off debt is the entry
+                                    most worth being able to find a year later. */}
+                                {debts.length > 0 && (
+                                    <div style={{ marginTop: '0.75rem' }}>
+                                        <div style={{ fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)', marginBottom: '0.35rem' }}>
+                                            {t('debts_title')}
+                                        </div>
+                                        {debts.map(d => (
+                                            <div key={d.id} style={{ fontSize: '0.9rem', padding: '0.2rem 0' }}>
+                                                <strong style={{ fontVariantNumeric: 'tabular-nums' }}>
+                                                    {d.status === 'OUTSTANDING' ? d.outstanding.toFixed(2) : d.amount.toFixed(2)}
+                                                </strong>{' '}
+                                                <span style={{
+                                                    fontSize: '0.75rem', fontWeight: 600,
+                                                    color: d.status === 'OUTSTANDING' ? 'var(--warn-fg)'
+                                                        : d.status === 'WAIVED' ? 'var(--text-muted)' : 'var(--ok-fg)',
+                                                }}>
+                                                    {t(`debt_status_${d.status}` as any)}
+                                                </span>
+                                                <span style={{ color: 'var(--text-muted)', fontSize: '0.78rem', marginInlineStart: '0.5rem' }}>
+                                                    {d.recovered > 0 && `${t('debt_recovered_so_far').replace('{n}', d.recovered.toFixed(2))} · `}
+                                                    {d.writtenOff > 0 && `${t('debt_written_off').replace('{n}', d.writtenOff.toFixed(2))} · `}
+                                                    <SafeDate date={d.dueDate} locale={locale} />
+                                                    {d.reason ? ` · ${d.reason}` : ''}
+                                                </span>
+                                            </div>
+                                        ))}
+                                    </div>
                                 )}
                             </>
                         ) : activeTab === 'DAY_OFF' ? (

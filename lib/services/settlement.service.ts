@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma"
 import { previewSettlement, endOfContractInstant } from "@/lib/employment"
 import { toMajor, toMinor, valueDaysIn } from "@/lib/payroll"
+import { planFinalRecovery, type RecoverableDebt } from "@/lib/debt-recovery"
 import { calendarParts } from "@/lib/time"
 import { nextPaydayOnOrAfter, daysAlreadyPaid } from "@/lib/payday"
 import { resolveTimeZone } from "@/lib/timezone"
@@ -134,6 +135,19 @@ export class SettlementService {
 
         const preview = previewSettlement({ events, rates, endsAt, paidMinor, timeZone })
 
+        // I1: the settlement is the last moment either side can be made whole,
+        // and it was the one moment the system did not look. A leaver owing
+        // 3,000 and owed 8,000 was paid 8,000, and the 3,000 stayed outstanding
+        // against somebody with no next month for recovery to take it from.
+        //
+        // Capped at what the settlement pays, so this can only ever reduce a
+        // payment — never turn one into a demand. What it cannot reach stays a
+        // debt, which is a thing somebody can chase or write off, rather than a
+        // figure on a final statement telling a departing employee they owe
+        // money.
+        const debts = await this.recoverableDebtsFor(userId)
+        const recovery = planFinalRecovery({ netMinor: Math.max(0, preview.netMinor), debts })
+
         return {
             ...preview,
             endsAt,
@@ -151,7 +165,29 @@ export class SettlementService {
             // should resolve before signing anything.
             paidSource: paid.source,
             dueDate: nextPaydayOnOrAfter(endsAt, payrollDay, timeZone),
+            // The debt picture, reported separately from the employment
+            // arithmetic above so the statement's own sums still add up.
+            debtsOutstandingMinor: debts.reduce((sum, d) => sum + d.outstandingMinor, 0),
+            debtRecoveredMinor: recovery.totalMinor,
+            debtAllocations: recovery.allocations,
+            /** What actually gets paid once the debts are taken. Never below zero. */
+            payableMinor: Math.max(0, preview.netMinor) - recovery.totalMinor,
         }
+    }
+
+    /** Everything this person still owes, as the recovery planner needs it. */
+    private static async recoverableDebtsFor(userId: string): Promise<RecoverableDebt[]> {
+        const debts = await prisma.debt.findMany({
+            where: { userId, status: "OUTSTANDING" },
+            select: { id: true, amount: true, recoveredAmount: true, dueDate: true },
+        })
+        return debts
+            .map(d => ({
+                id: d.id,
+                outstandingMinor: toMinor(d.amount.toString()) - toMinor(d.recoveredAmount.toString()),
+                dueDate: d.dueDate,
+            }))
+            .filter(d => d.outstandingMinor > 0)
     }
 
     /**
@@ -189,11 +225,37 @@ export class SettlementService {
                     earnedAmount: toMajor(preview.earnedMinor),
                     paidAmount: toMajor(preview.paidMinor),
                     netAmount: toMajor(preview.netMinor),
+                    debtRecoveredAmount: toMajor(preview.debtRecoveredMinor),
                     dueDate: preview.dueDate,
                     reason: input.reason ?? null,
                     createdById: input.createdById ?? null,
                 },
             })
+
+            // The debts this settlement paid down, closed here rather than left
+            // for a recovery that will never come — the person has no next
+            // month. Driven off the plan the preview produced, so the figure on
+            // the statement and the figure taken are the same one.
+            for (const allocation of preview.debtAllocations) {
+                const existing = await tx.debt.findUnique({ where: { id: allocation.debtId } })
+                // Vanished or closed since the preview. Skipped rather than
+                // failed: the settlement's own figures are already correct, and
+                // refusing to end somebody's contract over a stale row helps
+                // nobody.
+                if (!existing || existing.status !== "OUTSTANDING") continue
+
+                const recovered = Number(existing.recoveredAmount) + toMajor(allocation.amountMinor)
+                await tx.debt.update({
+                    where: { id: existing.id },
+                    data: {
+                        recoveredAmount: recovered,
+                        ...(recovered >= Number(existing.amount) && {
+                            status: "SETTLED",
+                            settledAt: new Date(),
+                        }),
+                    },
+                })
+            }
 
             // A settlement the person owes is money to collect, and it joins the
             // one queue rather than living only inside a document somebody has

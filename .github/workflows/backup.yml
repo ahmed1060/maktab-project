@@ -125,7 +125,17 @@ jobs:
           # catches that too, but a failure should fail where it happens.
           set -o pipefail
           STAMP=$(TZ=Africa/Cairo date +%Y-%m-%d_%H%M)
+          # E3: the label input existed since this workflow was written and was
+          # read by nothing — every manual run was called "manual", whatever it
+          # was taken for. It matters now that a run can be filed as a monthly:
+          # a long-horizon copy taken for a particular reason should say so from
+          # its own filename, because that is all anybody has a year later.
+          #
+          # Sanitised rather than trusted: this becomes part of a path, so
+          # anything that is not a letter, digit, dash or underscore is dropped.
+          LABEL=$(printf '%s' "${{ github.event.inputs.label }}" | tr -cd '[:alnum:]_-' | cut -c1-32)
           KIND="${{ github.event_name == 'schedule' && 'auto' || 'manual' }}"
+          [ -n "$LABEL" ] && KIND="$LABEL"
           echo "NAME=maktab_${STAMP}_${KIND}" >> $GITHUB_ENV
           # Call the versioned binary directly rather than the unversioned
           # `pg_dump` on PATH — installing postgresql-client-17 alongside

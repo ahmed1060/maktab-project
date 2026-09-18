@@ -199,7 +199,7 @@ export class PayrollRunService {
             this.compute(companyId, year, month),
             prisma.payrollRun.findUnique({
                 where: { companyId_month_year: { companyId, month, year } },
-                include: { payslips: { select: { id: true, userId: true, emailedAt: true, excluded: true } } },
+                include: { payslips: { select: { id: true, userId: true, netAmount: true, emailedAt: true, excluded: true } } },
             }),
             this.previousNets(companyId, year, month),
             prisma.debt.findMany({
@@ -237,6 +237,28 @@ export class PayrollRunService {
             // is nothing to compare against" are different answers, and the
             // first is reassuring while the second is not.
             variance: previous ? variance(register.entries, previous) : null,
+            // E1: what has moved since the draft on screen was saved.
+            //
+            // The variance above answers "why is this different from last
+            // month", which is the question a reviewer can answer. This answers
+            // a narrower and more urgent one — "did anything change since I
+            // read this" — because approval is irreversible and the gap between
+            // reading a register and signing it is exactly where a late
+            // adjustment lands unnoticed.
+            //
+            // Only for a draft. Past that the stored figures are the record and
+            // the computed ones are no longer consulted.
+            sinceDraft: run && run.status === "DRAFT" && run.payslips.length > 0
+                ? variance(
+                    register.entries,
+                    run.payslips.filter(p => !p.excluded).map(p => ({
+                        userId: p.userId,
+                        name: "",
+                        netMinor: toMinor(p.netAmount.toString()),
+                    })),
+                )
+                : null,
+            draftSavedAt: run && run.status === "DRAFT" ? run.updatedAt : null,
             // H2: this printed `amount`, which was the outstanding figure right
             // up until recovery existed. Since then a debt can be part-paid,
             // and `amount` is deliberately the original — so the list was

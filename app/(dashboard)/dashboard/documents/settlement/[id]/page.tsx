@@ -13,6 +13,8 @@ type Doc = {
     earned: number
     paid: number
     net: number
+    debtRecovered: number
+    payable: number
     direction: 'COMPANY_OWES' | 'PERSON_OWES' | 'SETTLED'
     status: string
     dueDate: string
@@ -121,6 +123,26 @@ export default function SettlementDocumentPage() {
                 <span>{t('doc_net')}</span>
                 <span style={{ fontVariantNumeric: 'tabular-nums' }}>{money(doc.net)}</span>
             </div>
+
+            {/* I1: money the person already owed, taken out of what they are
+                owed. Below the net rather than inside it, so "earned less paid
+                is net" still reads correctly, and shown only when there is
+                something to show. */}
+            {doc.debtRecovered > 0 && (
+                <>
+                    <section style={{ marginTop: '0.75rem' }}>
+                        {row(t('doc_debt_recovered'), money(doc.debtRecovered), true)}
+                    </section>
+                    <div style={{
+                        borderTop: '2px solid var(--text-strong)', paddingTop: '0.75rem',
+                        display: 'flex', justifyContent: 'space-between', gap: '1rem',
+                        fontSize: '1.15rem', fontWeight: 700,
+                    }}>
+                        <span>{t('doc_payable')}</span>
+                        <span style={{ fontVariantNumeric: 'tabular-nums' }}>{money(doc.payable)}</span>
+                    </div>
+                </>
+            )}
 
             <p style={{
                 marginTop: '0.75rem', padding: '0.6rem 0.9rem', borderRadius: '0.5rem',

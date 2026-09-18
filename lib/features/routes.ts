@@ -61,6 +61,9 @@ const API_MODULE_PATTERNS: ReadonlyArray<readonly [RegExp, Module]> = [
     [/^\/api\/users\/[^/]+\/(bonus|deduction|adjustments)(\/|$)/, 'SALARY_ADJUSTMENTS'],
     // Salary and cost history: the record of HR money.
     [/^\/api\/users\/[^/]+\/(salary-history|costs-history)$/, 'PAYROLL'],
+    // A person's debts and payslips: payroll money, reached from the
+    // employee directory, which is Core.
+    [/^\/api\/users\/[^/]+\/(debts|payslips)$/, 'PAYROLL'],
     // Leave history belongs with leave.
     [/^\/api\/users\/[^/]+\/day-off-history$/, 'DAY_OFF'],
     // Task costs and payment tracking — Company Management, under /api/tasks

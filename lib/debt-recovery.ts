@@ -110,3 +110,34 @@ export function recoveryLabel(partial: boolean): string {
     // "expect this again next month".
     return partial ? "Debt repayment (part)" : "Debt repayment"
 }
+
+/**
+ * The last chance to collect: recovery out of a final settlement.
+ *
+ * Two rules differ from the monthly kind, and both follow from there being no
+ * next month.
+ *
+ * The percentage cap does not apply. It exists so somebody still earning is not
+ * left with nothing to live on, and at a settlement there is no future income
+ * to protect — leaving a debt uncollected because of a rule written to guard
+ * next month's wages is the rule misfiring on the one occasion it cannot help.
+ *
+ * And nothing is filtered by due date. A debt due next month cannot be
+ * collected next month, because the person will not be there; at a settlement
+ * every outstanding debt has effectively come due.
+ *
+ * What does not change is the ceiling: the settlement itself. A leaver is never
+ * billed on their way out, so what this cannot reach survives as a debt rather
+ * than being turned into a demand.
+ */
+export function planFinalRecovery(input: { netMinor: Minor; debts: RecoverableDebt[] }): RecoveryPlan {
+    return planRecovery({
+        netMinor: input.netMinor,
+        debts: input.debts,
+        capPercent: FULL_RECOVERY_PERCENT,
+        // Far enough ahead that every outstanding debt is included; the filter
+        // is meaningless here and this says so rather than duplicating the
+        // allocation loop to remove it.
+        dueOnOrBefore: new Date(8640000000000000),
+    })
+}

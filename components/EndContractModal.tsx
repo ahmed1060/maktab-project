@@ -27,6 +27,9 @@ type Preview = {
     net: number
     direction: 'COMPANY_OWES' | 'PERSON_OWES' | 'SETTLED'
     paidSource: 'PAYSLIP' | 'RUN_NOT_PAID' | 'NO_RUN'
+    debtsOutstanding: number
+    debtRecovered: number
+    payable: number
 }
 
 type Timeline = {
@@ -197,6 +200,26 @@ export default function EndContractModal({ userId, name, status, onClose, onDone
                                         {row(t('settlement_earned'), money(preview.earned))}
                                         {row(t('settlement_paid'), money(preview.paid))}
                                         {row(t('settlement_net'), money(preview.net), true)}
+                                        {/* Shown before the contract ends, not
+                                            discovered on the statement after.
+                                            What cannot be taken out of the
+                                            settlement stays a debt, and saying
+                                            so here is the difference between a
+                                            decision and a surprise. */}
+                                        {preview.debtsOutstanding > 0 && (
+                                            <>
+                                                {row(t('settlement_debt_recovered'), money(preview.debtRecovered))}
+                                                {row(t('settlement_payable'), money(preview.payable), true)}
+                                                {preview.debtsOutstanding > preview.debtRecovered && (
+                                                    <p style={{ fontSize: '0.75rem', color: 'var(--warn-fg)', margin: '0.4rem 0 0', fontWeight: 600 }}>
+                                                        {t('settlement_debt_remains').replace(
+                                                            '{amount}',
+                                                            money(preview.debtsOutstanding - preview.debtRecovered),
+                                                        )}
+                                                    </p>
+                                                )}
+                                            </>
+                                        )}
                                         <div style={{ color: directionColor, fontSize: '0.85rem', marginTop: '0.5rem', fontWeight: 600 }}>
                                             {directionLabel}
                                         </div>

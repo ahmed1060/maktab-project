@@ -1121,7 +1121,17 @@ model FinalSettlement {
   /// What had already gone out for that month when the contract ended.
   paidAmount     Decimal          @default(0) @db.Decimal(12, 2)
   /// earned − paid. Positive: the company owes. Negative: the person owes.
+  ///
+  /// Deliberately still just that, after debt netting arrived: the document
+  /// shows earned, paid and their difference, and a net that quietly included
+  /// something else would stop adding up in front of the person reading it.
   netAmount      Decimal          @db.Decimal(12, 2)
+  /// What this settlement took back against debts the person already owed.
+  ///
+  /// A separate line rather than folded into netAmount, and capped at netAmount
+  /// so a settlement can never bill somebody on their way out. What it could
+  /// not reach stays an OUTSTANDING debt — see I1.
+  debtRecoveredAmount Decimal     @default(0) @db.Decimal(12, 2)
   status         SettlementStatus @default(PENDING)
   /// Defaults to the settlement date and is editable when something else is
   /// agreed, so the list of what is outstanding is a queue rather than a pile.
