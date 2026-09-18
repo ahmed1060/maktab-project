@@ -10,7 +10,8 @@ interface ConfirmModalProps {
     message: string
     confirmText?: string
     cancelText?: string
-    onConfirm: () => void
+    /** The typed reason, when `reason` is set; undefined otherwise. */
+    onConfirm: (reason?: string) => void
     onCancel: () => void
     variant?: 'danger' | 'warning' | 'info'
     // When set, the confirm button stays disabled until the typed input
@@ -18,6 +19,17 @@ interface ConfirmModalProps {
     // stray click on "Confirm" shouldn't be sufficient (e.g. restoring a
     // backup over current data).
     requireTypedText?: string
+    // When set, the action asks for a free-text reason and hands it back on
+    // confirm. Different in purpose from requireTypedText — that one proves
+    // somebody meant it, this one records why — but the same widget shape, so
+    // it lives here rather than in a second modal that would drift out of step
+    // with this one's geometry, scrim and animation.
+    reason?: {
+        label: string
+        placeholder?: string
+        /** Confirm stays disabled below this. Default 3. */
+        minLength?: number
+    }
 }
 
 export default function ConfirmModal({
@@ -29,11 +41,13 @@ export default function ConfirmModal({
     onConfirm,
     onCancel,
     variant = 'danger',
-    requireTypedText
+    requireTypedText,
+    reason
 }: ConfirmModalProps) {
     const { t, locale } = useLanguage()
     const [mounted, setMounted] = useState(false)
     const [typedValue, setTypedValue] = useState('')
+    const [reasonValue, setReasonValue] = useState('')
 
     useEffect(() => {
         setMounted(true)
@@ -43,11 +57,13 @@ export default function ConfirmModal({
     // previous confirmation doesn't carry over to the next action.
     useEffect(() => {
         setTypedValue('')
+        setReasonValue('')
     }, [isOpen])
 
     if (!isOpen || !mounted) return null
 
-    const confirmDisabled = !!requireTypedText && typedValue !== requireTypedText
+    const reasonTooShort = !!reason && reasonValue.trim().length < (reason.minLength ?? 3)
+    const confirmDisabled = (!!requireTypedText && typedValue !== requireTypedText) || reasonTooShort
 
     const finalConfirmText = confirmText || t('confirm') || 'Confirm'
     const finalCancelText = cancelText || t('cancel') || 'Cancel'
@@ -147,7 +163,43 @@ export default function ConfirmModal({
                                         border: '1px solid var(--border)',
                                         borderRadius: '0.5rem',
                                         fontSize: '0.9rem',
-                                        fontFamily: 'monospace'
+                                        fontFamily: 'monospace',
+                                        // Set explicitly, because an input with
+                                        // neither falls back to the browser's
+                                        // white ground and black text — a white
+                                        // box inside a dark dialog, on the
+                                        // confirmation for the most destructive
+                                        // actions in the product. globals.css
+                                        // records fixing exactly this for
+                                        // .input across 115 elements; this one
+                                        // is styled inline and was missed.
+                                        background: 'var(--panel-85)',
+                                        color: 'var(--text-main)',
+                                    }}
+                                />
+                            </div>
+                        )}
+                        {reason && (
+                            <div style={{ marginTop: '1rem' }}>
+                                <label htmlFor="confirm-reason" style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.4rem' }}>
+                                    {reason.label}
+                                </label>
+                                <textarea
+                                    id="confirm-reason"
+                                    value={reasonValue}
+                                    onChange={(e) => setReasonValue(e.target.value)}
+                                    placeholder={reason.placeholder}
+                                    rows={3}
+                                    style={{
+                                        width: '100%',
+                                        padding: '0.5rem 0.75rem',
+                                        border: '1px solid var(--border)',
+                                        borderRadius: '0.5rem',
+                                        fontSize: '0.9rem',
+                                        background: 'var(--panel-85)',
+                                        color: 'var(--text-main)',
+                                        resize: 'vertical',
+                                        fontFamily: 'inherit',
                                     }}
                                 />
                             </div>
@@ -175,7 +227,7 @@ export default function ConfirmModal({
                         {finalCancelText}
                     </button>
                     <button
-                        onClick={onConfirm}
+                        onClick={() => onConfirm(reason ? reasonValue.trim() : undefined)}
                         disabled={confirmDisabled}
                         style={{
                             padding: '0.625rem 1.25rem',

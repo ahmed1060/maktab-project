@@ -4,6 +4,7 @@ import { useSession } from 'next-auth/react'
 import { useLanguage } from '@/context/LanguageContext'
 import { useToast } from '@/context/ToastContext'
 import LoadingSpinner from '@/components/LoadingSpinner'
+import ConfirmModal from '@/components/ConfirmModal'
 
 /**
  * The register: one month, everybody in it, and what changed.
@@ -79,6 +80,15 @@ export default function PayrollRegisterPage() {
     const [companyId, setCompanyId] = useState<string>('')
     const [paying, setPaying] = useState(false)
     const [waiving, setWaiving] = useState<string | null>(null)
+    // Which confirmation is open, if any. One piece of state rather than three
+    // booleans: only ever one of these is on screen, and three flags is three
+    // chances for two to be true at once.
+    const [confirming, setConfirming] = useState<
+        | { kind: 'approve' }
+        | { kind: 'paid' }
+        | { kind: 'waive'; debt: { id: string; name: string; amount: number } }
+        | null
+    >(null)
     // Defaults to today, and is a date rather than a switch because a transfer
     // made on the 25th is usually recorded on the 27th, and stamping the 27th
     // makes the record disagree with the bank.
@@ -245,20 +255,7 @@ export default function PayrollRegisterPage() {
         }
     }
 
-    const waive = async (debt: { id: string; name: string; amount: number }) => {
-        // The reason is the point, so it is asked for rather than optional —
-        // and the prompt names the person and the figure, because a write-off
-        // confirmed against the wrong row is not something the audit log can
-        // undo.
-        const reason = prompt(
-            `${t('payroll_debt_waive_title').replace('{name}', debt.name)}\n\n${t('payroll_debt_waive_msg')}`,
-        )
-        if (reason === null) return
-        if (reason.trim().length < 3) {
-            showToast(t('payroll_debt_waive_needs_reason'), 'error')
-            return
-        }
-
+    const waive = async (debt: { id: string; name: string; amount: number }, reason: string) => {
         setWaiving(debt.id)
         try {
             const res = await fetch(`/api/debts/${debt.id}/waive`, {
@@ -365,9 +362,7 @@ export default function PayrollRegisterPage() {
                             </button>
                             <button
                                 className="btn btn-primary"
-                                onClick={() => {
-                                    if (confirm(`${t('payroll_approve_title')}\n\n${t('payroll_approve_msg')}`)) approve()
-                                }}
+                                onClick={() => setConfirming({ kind: 'approve' })}
                                 disabled={approving || saving || !register || register.includedCount === 0}
                             >
                                 {approving ? '…' : t('payroll_approve')}
@@ -446,9 +441,7 @@ export default function PayrollRegisterPage() {
                                     <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{t('payroll_paid_date_hint')}</span>
                                     <button
                                         className="btn"
-                                        onClick={() => {
-                                            if (confirm(`${t('payroll_mark_paid_title')}\n\n${t('payroll_mark_paid_msg')}`)) markPaid()
-                                        }}
+                                        onClick={() => setConfirming({ kind: 'paid' })}
                                         disabled={paying}
                                         style={{ alignSelf: 'flex-start' }}
                                     >
@@ -653,6 +646,45 @@ export default function PayrollRegisterPage() {
                 )
             )}
 
+            {/* One modal, told what it is asking by the state above. Approving
+                and marking paid are irreversible; writing off a debt is too, and
+                additionally needs to record why — so it is the same dialog with
+                a reason field rather than a second dialog that would drift out
+                of step with this one. */}
+            <ConfirmModal
+                isOpen={confirming !== null}
+                variant={confirming?.kind === 'waive' ? 'warning' : 'danger'}
+                title={
+                    confirming?.kind === 'approve' ? t('payroll_approve_title')
+                        : confirming?.kind === 'paid' ? t('payroll_mark_paid_title')
+                            : confirming?.kind === 'waive'
+                                ? t('payroll_debt_waive_title').replace('{name}', confirming.debt.name)
+                                : ''
+                }
+                message={
+                    confirming?.kind === 'approve' ? t('payroll_approve_msg')
+                        : confirming?.kind === 'paid' ? t('payroll_mark_paid_msg')
+                            : confirming?.kind === 'waive' ? t('payroll_debt_waive_msg')
+                                : ''
+                }
+                confirmText={
+                    confirming?.kind === 'approve' ? t('payroll_approve')
+                        : confirming?.kind === 'paid' ? t('payroll_mark_paid')
+                            : t('payroll_debt_waive')
+                }
+                reason={confirming?.kind === 'waive'
+                    ? { label: t('payroll_debt_waive_reason_label'), placeholder: t('payroll_debt_waive_reason_hint') }
+                    : undefined}
+                onCancel={() => setConfirming(null)}
+                onConfirm={(reason) => {
+                    const pending = confirming
+                    setConfirming(null)
+                    if (pending?.kind === 'approve') approve()
+                    else if (pending?.kind === 'paid') markPaid()
+                    else if (pending?.kind === 'waive') waive(pending.debt, reason ?? '')
+                }}
+            />
+
             {view && card(
                 <>
                     <h2 style={{ margin: '0 0 0.35rem', fontSize: '1.05rem' }}>{t('payroll_debts')}</h2>
@@ -687,7 +719,7 @@ export default function PayrollRegisterPage() {
                                         className="btn"
                                         style={{ fontSize: '0.75rem', padding: '0.2rem 0.6rem' }}
                                         disabled={waiving === d.id}
-                                        onClick={() => waive(d)}
+                                        onClick={() => setConfirming({ kind: 'waive', debt: d })}
                                     >
                                         {waiving === d.id ? '…' : t('payroll_debt_waive')}
                                     </button>

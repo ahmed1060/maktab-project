@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import Image from 'next/image'
 import Modal from '@/components/Modal'
+import ConfirmModal from '@/components/ConfirmModal'
 import { useLanguage } from '@/context/LanguageContext'
 
 interface ViewRequestModalProps {
@@ -15,6 +16,7 @@ interface ViewRequestModalProps {
 export default function ViewRequestModal({ isOpen, onClose, request, userRole, onDelete, onStatusUpdate }: ViewRequestModalProps) {
     const { t, locale } = useLanguage()
     const [updating, setUpdating] = useState(false)
+    const [confirmingDelete, setConfirmingDelete] = useState(false)
 
     if (!request) return null
 
@@ -44,11 +46,7 @@ export default function ViewRequestModal({ isOpen, onClose, request, userRole, o
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', alignItems: 'flex-end' }}>
                             {(request.status !== 'COMPLETED' || userRole === 'SUPER_ADMIN') && (
                                 <button
-                                    onClick={() => {
-                                        if (confirm(t('confirm_item_delete'))) {
-                                            onDelete(request.id)
-                                        }
-                                    }}
+                                    onClick={() => setConfirmingDelete(true)}
                                     className="btn"
                                     style={{
                                         background: 'var(--danger-bg-subtle)',
@@ -179,6 +177,21 @@ export default function ViewRequestModal({ isOpen, onClose, request, userRole, o
                     {request.details}
                 </div>
             </div>
+
+            {/* Nested inside the request modal on purpose: it asks about the
+                thing that modal is showing, and closing the outer one to ask
+                would take the item being deleted off the screen. */}
+            <ConfirmModal
+                isOpen={confirmingDelete}
+                title={t('confirm_item_delete_title')}
+                message={t('confirm_item_delete')}
+                confirmText={t('delete')}
+                onCancel={() => setConfirmingDelete(false)}
+                onConfirm={() => {
+                    setConfirmingDelete(false)
+                    onDelete(request.id)
+                }}
+            />
         </Modal>
     )
 }

@@ -165,14 +165,26 @@ describe("the register screen asks before it freezes", () => {
         expect(pendingCard, "the acknowledgement is no longer inside the pending list")
             .toContain("payroll_acknowledge_pending")
 
-        const header = PAGE.slice(PAGE.indexOf("payroll_save_draft"), PAGE.indexOf("payroll_approve_title"))
+        // Bounded at the end of the header rather than at the approve title.
+        // That title used to sit in the header's confirm() call and now lives
+        // in the themed modal further down the file, so anchoring on it made
+        // this slice swallow the pending card it is meant to exclude — a slice
+        // that silently widened, which is the third time bounding a slice on
+        // the wrong marker has bitten in this repository.
+        const header = PAGE.slice(PAGE.indexOf("payroll_save_draft"), PAGE.indexOf("{view && !isDraft && card("))
+        expect(header.length, "the header slice no longer terminates").toBeGreaterThan(0)
         expect(header, "the acknowledgement moved into the button group")
             .not.toContain("payroll_acknowledge_pending")
     })
 
     it("says what approving does before it does it", () => {
+        // Still asked before it happens, now in the app's own dialog rather
+        // than the browser's — confirm() ignored the palette, could not be
+        // translated, and rendered Arabic left-to-right.
         expect(PAGE).toContain("payroll_approve_msg")
-        expect(PAGE).toContain("confirm(")
+        expect(PAGE).toMatch(/<ConfirmModal[\s/>]/)
+        expect(PAGE).toContain("setConfirming({ kind: 'approve' })")
+        expect(PAGE).not.toMatch(/(?<![.\w])confirm\s*\(/)
     })
 
     it("relays the names a refusal came back with", () => {
