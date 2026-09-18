@@ -5,6 +5,7 @@ import { useLanguage } from '@/context/LanguageContext'
 import { useSession } from 'next-auth/react'
 import LoadingSpinner from '@/components/LoadingSpinner'
 import SafeDate from '@/components/SafeDate'
+import Link from 'next/link'
 
 
 interface SalaryRecord {
@@ -92,6 +93,7 @@ export default function EmployeeHistoryPage() {
     const [rollbackLoading, setRollbackLoading] = useState<string | null>(null)
     const [reversing, setReversing] = useState<SalaryAdjustment | null>(null)
     const [reverseReason, setReverseReason] = useState('')
+    const [settlements, setSettlements] = useState<{ id: string; lastWorkingDay: string; net: number; status: string }[]>([])
     const [alert, setAlert] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
     const [activeTab, setActiveTab] = useState<'SALARY' | 'DAY_OFF' | 'COSTS'>('SALARY')
     const [dayOffHistory, setDayOffHistory] = useState<{ baseCredit: number, remainingCredit: number, history: DayOffHistoryYear[] } | null>(null)
@@ -173,6 +175,21 @@ export default function EmployeeHistoryPage() {
         // identity) every render, refetching on every render with it.
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [params.id])
+
+    // The only route to an ended contract's statement. The person it is about
+    // cannot sign in, so if it is not reachable from their page it is not
+    // reachable at all.
+    const fetchSettlements = useCallback(async () => {
+        if (!isAdmin) return
+        try {
+            const res = await fetch(`/api/users/${params.id}/settlements`)
+            if (res.ok) setSettlements((await res.json()).data || [])
+        } catch {
+            console.error('Error fetching settlements')
+        }
+    }, [params.id, isAdmin])
+
+    useEffect(() => { fetchSettlements() }, [fetchSettlements])
 
     const fetchAdjustments = useCallback(async () => {
         try {
@@ -390,9 +407,28 @@ export default function EmployeeHistoryPage() {
                     <div style={{ fontSize: '1.2rem', color: 'var(--text-muted)', textAlign: locale === 'ar' ? 'right' : 'left' }}>
                         <p style={{ margin: 0 }}>{t('for_label')}: <strong>{employee.firstName} {employee.lastName}</strong></p>
                         {activeTab === 'SALARY' ? (
-                            employee.salary !== undefined && (
-                                <p style={{ margin: '0.25rem 0 0 0', fontSize: '1rem' }}>{t('current_base_salary')}: <strong>{employee.salary} {t('egp')}</strong></p>
-                            )
+                            <>
+                                {employee.salary !== undefined && (
+                                    <p style={{ margin: '0.25rem 0 0 0', fontSize: '1rem' }}>{t('current_base_salary')}: <strong>{employee.salary} {t('egp')}</strong></p>
+                                )}
+                                {settlements.length > 0 && (
+                                    <p style={{ margin: '0.5rem 0 0 0', fontSize: '0.95rem' }}>
+                                        {t('doc_settlements')}:{' '}
+                                        {settlements.map((s, i) => (
+                                            <span key={s.id}>
+                                                {i > 0 && ', '}
+                                                <Link
+                                                    href={`/dashboard/documents/settlement/${s.id}`}
+                                                    prefetch={false}
+                                                    style={{ color: 'var(--accent-solid)', textDecoration: 'underline' }}
+                                                >
+                                                    <SafeDate date={s.lastWorkingDay} locale={locale} />
+                                                </Link>
+                                            </span>
+                                        ))}
+                                    </p>
+                                )}
+                            </>
                         ) : activeTab === 'DAY_OFF' ? (
                             dayOffHistory && (
                                 <p style={{ margin: '0.25rem 0 0 0', fontSize: '1rem' }}>

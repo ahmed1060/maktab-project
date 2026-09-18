@@ -148,10 +148,18 @@ describe("the two themes are actually different", () => {
         // palette dutifully gave the labels the sidebar's own colour and they
         // disappeared. A dark value here would restore that bug under a name
         // that reads correct.
+        //
+        // --paper and --ink-on-paper are invariant because they are not on a
+        // screen at all. They exist for the print stylesheet, where the ground
+        // is a sheet of paper and the ink is toner, and neither follows what
+        // the reader has their display set to. A dark value would produce a
+        // payslip printed white on black: unreadable, and expensive in a way
+        // whoever pressed Print finds out about afterwards.
         const INVARIANT = new Set([
             "--primary", "--primary-hover", "--secondary", "--accent",
             "--text-on-accent", "--hero-from", "--hero-to",
             "--logo-plate", "--sidebar-fg", "--sidebar-fg-strong",
+            "--paper", "--ink-on-paper",
         ])
 
         const missing = Object.keys(LIGHT).filter(t => !(t in DARK) && !INVARIANT.has(t))

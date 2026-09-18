@@ -262,6 +262,15 @@
   --scrim: rgba(0, 0, 0, 0.5);
   --scrim-deep: rgba(0, 0, 0, 0.85);
 
+  /* Paper, for documents that get printed.
+     Deliberately not theme-aware and deliberately not redefined below: paper is
+     white and toner is black whatever the reader's screen is set to, and a
+     payslip printed from dark mode on a dark ground is both unreadable and
+     expensive. Tokens rather than literals so the rule below stays inside the
+     one place colour is allowed to be named. */
+  --paper: #ffffff;
+  --ink-on-paper: #000000;
+
   --hairline: rgba(0, 0, 0, 0.05);
   --hairline-firm: rgba(0, 0, 0, 0.1);
 
@@ -1128,3 +1137,50 @@ input::-webkit-credentials-auto-fill-button {
 }
 
 .legal .legal-note p:last-child { margin-bottom: 0; }
+
+/* ---------------------------------------------------------------------------
+   Printing a document that lives inside the dashboard.
+
+   A payslip has to be protected, and middleware only requires a session for
+   paths under /dashboard — so the document renders inside the shell rather than
+   at a public URL, and the shell is hidden at print time instead.
+
+   Done with visibility rather than display: it hides everything without this
+   file having to know the shell's markup, and a sidebar that gets restructured
+   later cannot start appearing on payslips. The document is then lifted out of
+   the layout it was sitting in, because a visible child of a hidden flex column
+   still occupies the column's position.
+   --------------------------------------------------------------------------- */
+@media print {
+    body * {
+        visibility: hidden;
+    }
+
+    .print-document,
+    .print-document * {
+        visibility: visible;
+    }
+
+    .print-document {
+        position: absolute;
+        inset: 0;
+        margin: 0;
+        padding: 0;
+        width: 100%;
+        max-width: none;
+        box-shadow: none;
+        border: none;
+        background: var(--paper);
+        color: var(--ink-on-paper);
+    }
+
+    /* Controls belong to the screen. A printed payslip with a "Print" button on
+       it reads as a screenshot rather than as a document. */
+    .no-print {
+        display: none !important;
+    }
+
+    @page {
+        margin: 18mm;
+    }
+}
