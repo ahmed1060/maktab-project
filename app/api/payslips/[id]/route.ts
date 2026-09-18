@@ -1,6 +1,7 @@
 import { withStandardHandler } from "@/lib/api-utils"
 import { ApiResponse } from "@/lib/api-response"
 import { prisma } from "@/lib/prisma"
+import { managesCompany } from "@/lib/payroll-scope"
 
 /**
  * One payslip, as the document needs it.
@@ -31,10 +32,8 @@ export const GET = withStandardHandler(async (req, session, _json, { params }) =
 
     if (!payslip) return ApiResponse.notFound("Payslip not found")
 
-    const role = session.user.role
     const company = payslip.payrollRun.company
-    const isManager = ['ADMIN', 'SUPER_ADMIN'].includes(role || '')
-        && (role === 'SUPER_ADMIN' || session.user.companyId === company.id)
+    const isManager = managesCompany(session.user.role, session.user.companyId, company.id)
     const isOwner = session.user.id === payslip.userId
 
     if (!isManager && !(isOwner && company.payslipsVisible)) {

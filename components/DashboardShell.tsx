@@ -412,10 +412,13 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
                                 </Link>
                             ))}
                             {/* Payroll sits beside the management modules but
-                                is not one of them: the module system gates
-                                features a package can sell, and payroll is not
-                                sold separately. Admin and Super Admin only —
-                                a Team Leader manages people, not pay. */}
+                                is not one of them: lib/modules.ts is the list a
+                                company can rename and reorder, and payroll is
+                                not theirs to rename. It is still gated, by the
+                                same PAYROLL module that already gates salary
+                                history — hand-written here only because its
+                                entry is. Admin and Super Admin only: a Team
+                                Leader manages people, not pay. */}
                             {['ADMIN', 'SUPER_ADMIN'].includes(user?.role || '') && (
                                 <Link
                                     href="/dashboard/payroll"
@@ -447,7 +450,10 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
                                     }}
                                 >
                                     <span style={{ fontSize: '1.4rem' }}>🧾</span>
-                                    {!isCollapsed && <span>{t('payroll')}</span>}
+                                    {!isCollapsed && <span style={{ flex: 1 }}>{t('payroll')}</span>}
+                                    {!isCollapsed && isLockedHref('/dashboard/payroll') && (
+                                        <span style={{ fontSize: '0.75rem' }} title={t('module_locked_title' as any)}>🔒</span>
+                                    )}
                                 </Link>
                             )}
                         </>

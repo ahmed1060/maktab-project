@@ -66,6 +66,29 @@ describe("the endpoints that cross a bundle line", () => {
         }
     })
 
+    it("puts the whole payroll module behind the module", () => {
+        // The gate is one table consulted by one check, and the failure it is
+        // built to prevent is a new route shipping without an entry — which is
+        // silent, because nothing fails. Payroll arrived as five routes at once
+        // under a prefix that had no entry at all, while its own sibling
+        // /api/users/:id/salary-history was already gated.
+        for (const path of [
+            '/api/payroll',
+            '/api/payroll/2026/9',
+            '/api/payroll/2026/9/approve',
+            '/api/payroll/2026/9/issue',
+            '/api/payroll/2026/9/paid',
+            '/api/payroll/2026/9/export',
+            '/api/payslips/abc',
+            '/api/settlements/abc',
+            '/api/settlements/abc/resend',
+        ]) {
+            expect(moduleForApiPath(path), path).toBe('PAYROLL')
+        }
+        expect(moduleForPagePath('/dashboard/payroll')).toBe('PAYROLL')
+        expect(moduleForPagePath('/dashboard/documents/payslip/abc')).toBe('PAYROLL')
+    })
+
     it("salary and leave history resolve to HR while the directory stays Core", () => {
         expect(moduleForApiPath('/api/users/abc/salary-history')).toBe('PAYROLL')
         expect(moduleForApiPath('/api/users/abc/costs-history')).toBe('PAYROLL')

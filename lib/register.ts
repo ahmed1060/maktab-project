@@ -288,3 +288,19 @@ export function nextIssueBatch<T extends { id: string; emailedAt?: Date | null; 
         total: sendable.length,
     }
 }
+
+/**
+ * How far issuing has got.
+ *
+ * Reported as a count rather than a flag because the honest answer to "have the
+ * payslips gone out" is usually a number: batches resume, a reserved address is
+ * never stamped, and a run can sit at 48 of 50 indefinitely. A boolean would
+ * have to round that to yes or no, and both are wrong.
+ */
+export function issueProgress<T extends { emailedAt?: Date | null; excluded?: boolean }>(
+    payslips: T[],
+): { sent: number; sendable: number; unsent: number } {
+    const sendable = payslips.filter(p => !p.excluded)
+    const sent = sendable.filter(p => p.emailedAt).length
+    return { sent, sendable: sendable.length, unsent: sendable.length - sent }
+}

@@ -24,6 +24,15 @@ const API_MODULE_ROUTES: ReadonlyArray<readonly [string, Module]> = [
     // --- HR ---
     ['/api/day-off-requests', 'DAY_OFF'],
     ['/api/admin/day-off-requests', 'DAY_OFF'],
+    // The monthly run and everything that comes out of it. Listed as one
+    // prefix rather than five entries, so the next route under it inherits the
+    // gate instead of being the one that ships without it.
+    ['/api/payroll', 'PAYROLL'],
+    // The documents the run produces. An employee reads their own payslip
+    // here, which is not a manager action — but it is still payroll, and a
+    // company without the module has no payslips to read.
+    ['/api/payslips', 'PAYROLL'],
+    ['/api/settlements', 'PAYROLL'],
 ] as const
 
 /**
@@ -85,6 +94,8 @@ const PAGE_MODULE_ROUTES: ReadonlyArray<readonly [string, Module]> = [
     ['/dashboard/vendors', 'VENDORS'],
     ['/dashboard/costs', 'COSTS'],
     ['/dashboard/day-off-requests', 'DAY_OFF'],
+    ['/dashboard/payroll', 'PAYROLL'],
+    ['/dashboard/documents', 'PAYROLL'],
 ] as const
 
 const PAGES_BY_SPECIFICITY = [...PAGE_MODULE_ROUTES].sort((a, b) => b[0].length - a[0].length)

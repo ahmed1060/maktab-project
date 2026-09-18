@@ -1,7 +1,8 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
 import { useLanguage } from '@/context/LanguageContext'
+import { useToast } from '@/context/ToastContext'
 import LoadingSpinner from '@/components/LoadingSpinner'
 import DocumentFrame from '@/components/DocumentFrame'
 
@@ -16,30 +17,47 @@ type Doc = {
     status: string
     dueDate: string
     reason?: string | null
+    emailedAt?: string | null
 }
 
 export default function SettlementDocumentPage() {
     const { t, locale } = useLanguage()
+    const { showToast } = useToast()
     const params = useParams()
     const isRtl = locale === 'ar'
 
     const [doc, setDoc] = useState<Doc | null>(null)
     const [error, setError] = useState(false)
     const [loading, setLoading] = useState(true)
+    const [sending, setSending] = useState(false)
 
-    useEffect(() => {
-        (async () => {
-            try {
-                const res = await fetch(`/api/settlements/${params.id}`)
-                if (!res.ok) { setError(true); return }
-                setDoc((await res.json()).data)
-            } catch {
-                setError(true)
-            } finally {
-                setLoading(false)
-            }
-        })()
+    const load = useCallback(async () => {
+        try {
+            const res = await fetch(`/api/settlements/${params.id}`)
+            if (!res.ok) { setError(true); return }
+            setDoc((await res.json()).data)
+        } catch {
+            setError(true)
+        } finally {
+            setLoading(false)
+        }
     }, [params.id])
+
+    useEffect(() => { load() }, [load])
+
+    const resend = async () => {
+        setSending(true)
+        try {
+            const res = await fetch(`/api/settlements/${params.id}/resend`, { method: 'POST' })
+            const body = await res.json()
+            showToast(res.ok ? t('doc_sent') : (body?.error || t('doc_send_failed')), res.ok ? 'success' : 'error')
+            if (res.ok) load()
+        } catch {
+            showToast(t('doc_send_failed'), 'error')
+        } finally {
+            setSending(false)
+        }
+    }
 
     const money = (n: number) =>
         new Intl.NumberFormat(isRtl ? 'ar-EG' : 'en-EG', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Math.abs(n))
@@ -71,7 +89,15 @@ export default function SettlementDocumentPage() {
     }[doc.direction]
 
     return (
-        <DocumentFrame title={t('doc_settlement')} company={doc.company}>
+        <DocumentFrame
+            title={t('doc_settlement')}
+            company={doc.company}
+            actions={
+                <button className="btn" onClick={resend} disabled={sending}>
+                    {sending ? '…' : doc.emailedAt ? t('doc_send_again') : t('doc_send')}
+                </button>
+            }
+        >
             <div style={{ display: 'flex', gap: '2.5rem', flexWrap: 'wrap', marginBottom: '1.75rem' }}>
                 {field(t('doc_issued_to'), doc.person.name)}
                 {field(t('doc_last_working_day'), date(doc.lastWorkingDay))}

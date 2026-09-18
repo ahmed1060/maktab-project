@@ -1,6 +1,7 @@
 import { withStandardHandler } from "@/lib/api-utils"
 import { ApiResponse } from "@/lib/api-response"
 import { prisma } from "@/lib/prisma"
+import { managesCompany } from "@/lib/payroll-scope"
 
 /**
  * One final settlement, as the statement needs it.
@@ -22,11 +23,9 @@ export const GET = withStandardHandler(async (req, session, _json, { params }) =
 
     if (!settlement) return ApiResponse.notFound("Settlement not found")
 
-    const role = session.user.role
-    const isManager = ['ADMIN', 'SUPER_ADMIN'].includes(role || '')
-        && (role === 'SUPER_ADMIN' || session.user.companyId === settlement.companyId)
-
-    if (!isManager) return ApiResponse.forbidden("Access denied")
+    if (!managesCompany(session.user.role, session.user.companyId, settlement.companyId)) {
+        return ApiResponse.forbidden("Access denied")
+    }
 
     const net = Number(settlement.netAmount)
 

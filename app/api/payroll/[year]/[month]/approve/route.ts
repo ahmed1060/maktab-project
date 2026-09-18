@@ -1,6 +1,7 @@
 import { withStandardHandler } from "@/lib/api-utils"
 import { ApiResponse } from "@/lib/api-response"
 import { PayrollRunService } from "@/lib/services/payroll-run.service"
+import { resolvePayrollScope, payrollScopeRefusal } from "@/lib/payroll-scope"
 
 /**
  * Freezing a month.
@@ -13,26 +14,14 @@ import { PayrollRunService } from "@/lib/services/payroll-run.service"
  * A refusal comes back as a 400 with its reason and the names it concerns, so
  * the screen can say who rather than just no.
  */
-export const POST = withStandardHandler(async (req, session, json, { params }) => {
-    if (!['ADMIN', 'SUPER_ADMIN'].includes(session.user.role || '')) {
-        return ApiResponse.forbidden("Managers only")
-    }
+export const POST = withStandardHandler(async (_req, session, json, { params }) => {
+    const scope = resolvePayrollScope(
+        session.user.role, session.user.companyId, json?.companyId,
+        params.year, params.month,
+    )
+    if (!scope.ok) return payrollScopeRefusal(scope)
 
-    const companyId = session.user.role === 'SUPER_ADMIN'
-        ? (json?.companyId || session.user.companyId)
-        : session.user.companyId
-    if (!companyId) return ApiResponse.badRequest("No company to run payroll for")
-
-    const year = Number(params.year)
-    const month = Number(params.month)
-    if (!Number.isInteger(year) || year < 2000 || year > 2100) {
-        return ApiResponse.badRequest("Year is out of range")
-    }
-    if (!Number.isInteger(month) || month < 1 || month > 12) {
-        return ApiResponse.badRequest("Month must be 1-12")
-    }
-
-    const result = await PayrollRunService.approve(companyId, year, month, session, {
+    const result = await PayrollRunService.approve(scope.companyId, scope.year, scope.month, session, {
         acknowledgePending: json?.acknowledgePending === true,
     })
 

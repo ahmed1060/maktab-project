@@ -38,6 +38,7 @@ type View = {
     month: number
     payrollDay: number
     status: 'DRAFT' | 'APPROVED' | 'PAID'
+    delivery: { paidAt: string | null; batchSize: number; sent: number; sendable: number; unsent: number } | null
     register: {
         entries: Entry[]
         payableMinor: number
@@ -66,6 +67,12 @@ export default function PayrollRegisterPage() {
     const [open, setOpen] = useState<string | null>(null)
     const [approving, setApproving] = useState(false)
     const [acknowledged, setAcknowledged] = useState(false)
+    const [issuing, setIssuing] = useState(false)
+    const [paying, setPaying] = useState(false)
+    // Defaults to today, and is a date rather than a switch because a transfer
+    // made on the 25th is usually recorded on the 27th, and stamping the 27th
+    // makes the record disagree with the bank.
+    const [paidAt, setPaidAt] = useState(() => new Date().toISOString().slice(0, 10))
 
     const money = useCallback((minor: number) =>
         new Intl.NumberFormat(isRtl ? 'ar-EG' : 'en-EG', {
@@ -142,6 +149,59 @@ export default function PayrollRegisterPage() {
         }
     }
 
+    const issue = async () => {
+        setIssuing(true)
+        try {
+            const res = await fetch(`/api/payroll/${year}/${month}/issue`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({}),
+            })
+            const body = await res.json()
+            if (!res.ok) {
+                showToast(body?.error || t('payroll_issue_failed'), 'error')
+                return
+            }
+            const { sent, remaining, skipped, failed } = body.data
+            showToast(
+                remaining > 0
+                    ? t('payroll_issue_partial').replace('{n}', String(sent)).replace('{left}', String(remaining))
+                    : t('payroll_issue_ok').replace('{n}', String(sent)),
+                'success',
+            )
+            // Reported separately and not folded into the count. A reserved
+            // address is never going to be deliverable and a failure will be
+            // retried, and a screen that showed only "24 sent" would leave
+            // somebody to discover the difference from the person who never
+            // got theirs.
+            if (skipped?.length) showToast(t('payroll_issue_skipped').replace('{names}', skipped.join(', ')), 'error')
+            if (failed?.length) showToast(t('payroll_issue_failed_some').replace('{names}', failed.map((f: any) => f.name).join(', ')), 'error')
+            load()
+        } catch {
+            showToast(t('payroll_issue_failed'), 'error')
+        } finally {
+            setIssuing(false)
+        }
+    }
+
+    const markPaid = async () => {
+        setPaying(true)
+        try {
+            const res = await fetch(`/api/payroll/${year}/${month}/paid`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ paidAt }),
+            })
+            const body = await res.json()
+            showToast(res.ok ? t('payroll_paid_ok') : (body?.error || t('payroll_paid_failed')), res.ok ? 'success' : 'error')
+            if (res.ok) load()
+        } catch {
+            showToast(t('payroll_paid_failed'), 'error')
+        } finally {
+            setPaying(false)
+        }
+    }
+
     const monthName = useMemo(
         () => new Date(2000, month - 1).toLocaleString(isRtl ? 'ar-EG' : 'en-US', { month: 'long' }),
         [month, isRtl])
@@ -150,6 +210,7 @@ export default function PayrollRegisterPage() {
 
     const register = view?.register
     const isDraft = view?.status === 'DRAFT'
+    const isManager = ['ADMIN', 'SUPER_ADMIN'].includes((session?.user as any)?.role || '')
 
     const card = (children: React.ReactNode, tone?: 'warn' | 'danger') => (
         <div className="card" style={{
@@ -200,7 +261,18 @@ export default function PayrollRegisterPage() {
                             {t(`payroll_status_${view.status}` as any)}
                         </span>
                     )}
-                    {isDraft && ['ADMIN', 'SUPER_ADMIN'].includes((session?.user as any)?.role || '') && (
+                    {/* A file of whatever is stored, draft included — the
+                        filename carries the status, so a draft export cannot be
+                        mistaken for an approved one. A plain link rather than a
+                        fetch-and-blob: the browser already sends the session
+                        cookie, and this way the download behaves like a
+                        download. */}
+                    {view?.delivery && (
+                        <a className="btn" href={`/api/payroll/${year}/${month}/export`}>
+                            {t('payroll_export')}
+                        </a>
+                    )}
+                    {isDraft && isManager && (
                         <>
                             <button className="btn" onClick={save} disabled={saving || approving}>
                                 {saving ? '…' : t('payroll_save_draft')}
@@ -221,6 +293,82 @@ export default function PayrollRegisterPage() {
 
             {view && !isDraft && card(
                 <p style={{ margin: 0, fontSize: '0.9rem' }}>{t('payroll_approved_locked')}</p>
+            )}
+
+            {/* Sending and paying. Only after approval, and the two halves are
+                laid out side by side because they are independent: payslips can
+                go out before the transfer clears, or after, and neither waits on
+                the other. */}
+            {view && !isDraft && view.delivery && isManager && card(
+                <>
+                    <h2 style={{ margin: '0 0 0.35rem', fontSize: '1.05rem' }}>{t('payroll_delivery')}</h2>
+                    <p style={{ margin: '0 0 1rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>{t('payroll_delivery_msg')}</p>
+
+                    <div style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap', alignItems: 'flex-start' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', minWidth: '14rem' }}>
+                            <div style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)' }}>
+                                {t('payroll_issue')}
+                            </div>
+                            {view.delivery.sendable === 0 ? (
+                                <span style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>{t('payroll_issue_none')}</span>
+                            ) : (
+                                <>
+                                    <span style={{ fontSize: '0.9rem', fontVariantNumeric: 'tabular-nums' }}>
+                                        {t('payroll_issue_progress')
+                                            .replace('{sent}', String(view.delivery.sent))
+                                            .replace('{total}', String(view.delivery.sendable))}
+                                    </span>
+                                    {view.delivery.unsent === 0 ? (
+                                        <span style={{ fontSize: '0.85rem', color: 'var(--ok-fg)' }}>{t('payroll_issue_all_sent')}</span>
+                                    ) : (
+                                        <button className="btn btn-primary" onClick={issue} disabled={issuing} style={{ alignSelf: 'flex-start' }}>
+                                            {issuing ? '…' : t('payroll_issue_next')
+                                                .replace('{n}', String(Math.min(view.delivery.batchSize, view.delivery.unsent)))}
+                                        </button>
+                                    )}
+                                </>
+                            )}
+                        </div>
+
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', minWidth: '14rem' }}>
+                            <div style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)' }}>
+                                {t('payroll_mark_paid')}
+                            </div>
+                            {view.delivery.paidAt ? (
+                                <span style={{ fontSize: '0.9rem' }}>
+                                    {t('payroll_paid_on')}{' '}
+                                    {new Date(view.delivery.paidAt).toLocaleDateString(isRtl ? 'ar-EG' : 'en-GB')}
+                                </span>
+                            ) : (
+                                <>
+                                    <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }} htmlFor="payroll-paid-at">
+                                        {t('payroll_paid_date')}
+                                    </label>
+                                    <input
+                                        id="payroll-paid-at"
+                                        className="input"
+                                        type="date"
+                                        value={paidAt}
+                                        max={new Date().toISOString().slice(0, 10)}
+                                        onChange={e => setPaidAt(e.target.value)}
+                                        style={{ width: 'auto' }}
+                                    />
+                                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{t('payroll_paid_date_hint')}</span>
+                                    <button
+                                        className="btn"
+                                        onClick={() => {
+                                            if (confirm(`${t('payroll_mark_paid_title')}\n\n${t('payroll_mark_paid_msg')}`)) markPaid()
+                                        }}
+                                        disabled={paying}
+                                        style={{ alignSelf: 'flex-start' }}
+                                    >
+                                        {paying ? '…' : t('payroll_mark_paid')}
+                                    </button>
+                                </>
+                            )}
+                        </div>
+                    </div>
+                </>
             )}
 
             {register && card(

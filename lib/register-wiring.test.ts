@@ -44,10 +44,14 @@ describe("opening the register writes nothing", () => {
 
 describe("who the register is allowed to be about", () => {
     it("lets a Super Admin name a company and an Admin only see their own", () => {
-        // Reading the parameter for both would let an Admin type somebody
-        // else's id and be shown their payroll.
-        expect(ROUTE).toContain("session.user.role === 'SUPER_ADMIN'")
-        expect(ROUTE).toContain("session.user.companyId")
+        // The rule itself is resolvePayrollScope's and is tested there, on
+        // behaviour rather than on text. What is pinned here is that the route
+        // asks it rather than deciding for itself — five routes now answer for
+        // one month, and the one that hand-rolls this check is the one that
+        // shows an Admin somebody else's payroll.
+        expect(ROUTE).toContain("resolvePayrollScope")
+        expect(ROUTE).toContain("payrollScopeRefusal")
+        expect(ROUTE).not.toContain("=== 'SUPER_ADMIN'")
     })
 
     it("includes people who have left", () => {

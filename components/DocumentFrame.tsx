@@ -18,17 +18,25 @@ export default function DocumentFrame({
     title,
     company,
     children,
+    actions,
 }: {
     title: string
     company: { name: string; logoUrl?: string | null }
     children: React.ReactNode
+    /**
+     * Anything else that acts on this document, placed beside Print rather than
+     * inside the sheet. The row is no-print for the same reason: a button that
+     * appeared on the printed page would be a button on a piece of paper.
+     */
+    actions?: React.ReactNode
 }) {
     const { t, locale } = useLanguage()
     const isRtl = locale === 'ar'
 
     return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', direction: isRtl ? 'rtl' : 'ltr' }}>
-            <div className="no-print" style={{ display: 'flex', justifyContent: 'flex-end' }}>
+            <div className="no-print" style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', flexWrap: 'wrap' }}>
+                {actions}
                 <button className="btn btn-primary" onClick={() => window.print()}>
                     {t('doc_print')}
                 </button>

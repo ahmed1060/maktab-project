@@ -9,6 +9,7 @@ import { stripComments } from "./strip-comments"
  */
 const PAYSLIP_API = stripComments(readFileSync("app/api/payslips/[id]/route.ts", "utf8"))
 const SETTLEMENT_API = stripComments(readFileSync("app/api/settlements/[id]/route.ts", "utf8"))
+const RESEND_API = stripComments(readFileSync("app/api/settlements/[id]/resend/route.ts", "utf8"))
 const PAYSLIP_PAGE = readFileSync("app/(dashboard)/dashboard/documents/payslip/[id]/page.tsx", "utf8")
 const SETTLEMENT_PAGE = readFileSync("app/(dashboard)/dashboard/documents/settlement/[id]/page.tsx", "utf8")
 const FRAME = readFileSync("components/DocumentFrame.tsx", "utf8")
@@ -32,9 +33,13 @@ describe("a payslip is not a public URL", () => {
 describe("who may read one", () => {
     it("checks the payslip's own company, not the reader's", () => {
         // A manager at another company must not be able to read it by id, and
-        // trusting the session's companyId alone would let them.
-        expect(PAYSLIP_API).toContain("session.user.companyId === company.id")
+        // trusting the session's companyId alone would let them. The comparison
+        // itself now lives in managesCompany and is tested on its own; what is
+        // pinned here is that the id handed to it comes off the *payslip*.
+        expect(PAYSLIP_API).toContain("managesCompany(session.user.role, session.user.companyId, company.id)")
         expect(PAYSLIP_API).toContain("payslip.payrollRun")
+        // The one way to get this wrong while still calling the helper.
+        expect(PAYSLIP_API).not.toContain("session.user.companyId, session.user.companyId")
     })
 
     it("lets the owner see their own only when the company switched it on", () => {
@@ -50,8 +55,16 @@ describe("who may read one", () => {
     })
 
     it("keeps settlements to managers, because the subject cannot sign in", () => {
-        expect(SETTLEMENT_API).toContain("isManager")
+        expect(SETTLEMENT_API).toContain("managesCompany(session.user.role, session.user.companyId, settlement.companyId)")
         expect(SETTLEMENT_API).not.toContain("isOwner")
+    })
+
+    it("and re-sending one is held to exactly the same test", () => {
+        // A send is a disclosure. An action route that checked less than the
+        // read route would be a way to mail somebody else's settlement to
+        // whatever address is on file, without ever being able to see it.
+        expect(RESEND_API).toContain("managesCompany(session.user.role, session.user.companyId, settlement.companyId)")
+        expect(RESEND_API).toContain("ApiResponse.forbidden")
     })
 })
 

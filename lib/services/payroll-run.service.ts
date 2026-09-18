@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma"
-import { buildRegister, variance, nextIssueBatch, type PersonMonth, type AdjustmentInput } from "@/lib/register"
+import { buildRegister, variance, nextIssueBatch, issueProgress, ISSUE_BATCH_SIZE, type PersonMonth, type AdjustmentInput } from "@/lib/register"
 import { timelineForMonth } from "@/lib/employment"
 import { ratesForMonth } from "@/lib/salary-history"
 import { toMajor, toMinor } from "@/lib/payroll"
@@ -172,6 +172,7 @@ export class PayrollRunService {
             this.compute(companyId, year, month),
             prisma.payrollRun.findUnique({
                 where: { companyId_month_year: { companyId, month, year } },
+                include: { payslips: { select: { emailedAt: true, excluded: true } } },
             }),
             this.previousNets(companyId, year, month),
             prisma.debt.findMany({
@@ -187,6 +188,12 @@ export class PayrollRunService {
             payrollDay,
             status: run?.status ?? "DRAFT",
             runId: run?.id ?? null,
+            // How far delivery has got, from the stored payslips rather than
+            // the computed register: the register is what the month *would*
+            // pay, and what has been emailed is a fact about the run.
+            delivery: run
+                ? { paidAt: run.paidAt, batchSize: ISSUE_BATCH_SIZE, ...issueProgress(run.payslips) }
+                : null,
             register,
             refused,
             // Null rather than an empty variance: "nothing changed" and "there
