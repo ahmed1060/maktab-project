@@ -207,6 +207,8 @@ export class PayrollRunService {
                 orderBy: { dueDate: "asc" },
                 include: { user: { select: { firstName: true, lastName: true } } },
             }),
+            // Note: `amount` and "still owed" stopped being the same number when
+            // recovery arrived — see the mapping below.
         ])
 
         return {
@@ -235,11 +237,20 @@ export class PayrollRunService {
             // is nothing to compare against" are different answers, and the
             // first is reassuring while the second is not.
             variance: previous ? variance(register.entries, previous) : null,
+            // H2: this printed `amount`, which was the outstanding figure right
+            // up until recovery existed. Since then a debt can be part-paid,
+            // and `amount` is deliberately the original — so the list was
+            // showing 5,000 for a debt with 2,000 left on it, correctly and
+            // uselessly. Outstanding is what somebody reconciling against a
+            // bank statement needs; the original is kept beside it, for the
+            // rows where they differ.
             debts: debts.map(d => ({
                 id: d.id,
                 userId: d.userId,
                 name: `${d.user.firstName} ${d.user.lastName}`.trim(),
-                amount: Number(d.amount),
+                amount: Number(d.amount) - Number(d.recoveredAmount),
+                originalAmount: Number(d.amount),
+                recoveredAmount: Number(d.recoveredAmount),
                 dueDate: d.dueDate,
                 source: d.source,
             })),

@@ -17,6 +17,14 @@ interface SalaryRecord {
     baseSalary: number
     bonusDays: number // Bonus in DAYS
     createdAt: string
+    /**
+     * Which number this month's total actually is. PAYSLIP means payroll ran
+     * and this is what it produced; ESTIMATE means it did not, and the figure
+     * is this screen's own approximation of a month it cannot see inside.
+     */
+    figure?:
+    | { source: 'PAYSLIP'; netMinor: number; payslipId: string; status: 'APPROVED' | 'PAID' }
+    | { source: 'ESTIMATE'; netMinor: number }
 }
 
 interface DayOffRequest {
@@ -492,17 +500,17 @@ export default function EmployeeHistoryPage() {
                                     const netDays = record.totalDays - record.deductions
                                     const fractionDisplay = netDays % 1 !== 0 ? netDays.toFixed(2) : netDays
 
-                                    // Calculate Salary: (Base / Total) * (Total - Deductions + BonusDays)
-                                    // Effectively: (Base / Total) * (NetDays + BonusDays)
-
+                                    // H1: this used to be a second payroll calculation, written
+                                    // inline — base ÷ days × payable days — which knew nothing about
+                                    // employment timelines, mid-month rate changes, suspensions or
+                                    // debt recovery, and disagreed with the payslip for every month
+                                    // where any of those happened. The figure now comes from the API,
+                                    // which reads the payslip where payroll produced one and falls
+                                    // back to that same estimate only for months predating it.
+                                    const figure = record.figure
                                     const baseSalaryToUse = record.baseSalary || employee?.salary || 0
-                                    let calculatedSalary = 0
-
-                                    const totalPayableDays = netDays + (record.bonusDays || 0)
-
-                                    if (baseSalaryToUse > 0 && record.totalDays > 0) {
-                                        calculatedSalary = (baseSalaryToUse / record.totalDays) * totalPayableDays
-                                    }
+                                    const calculatedSalary = (figure?.netMinor ?? 0) / 100
+                                    const isEstimate = !figure || figure.source === 'ESTIMATE'
 
                                     const formattedCalculated = new Intl.NumberFormat(locale === 'ar' ? 'ar-EG' : 'en-EG', { style: 'currency', currency: 'EGP' }).format(calculatedSalary)
                                     const formattedBase = new Intl.NumberFormat(locale === 'ar' ? 'ar-EG' : 'en-EG', { style: 'currency', currency: 'EGP' }).format(baseSalaryToUse)
@@ -527,6 +535,22 @@ export default function EmployeeHistoryPage() {
                                             </td>
                                             <td style={{ padding: '1rem', fontWeight: '600', color: 'var(--ok-fg)', textAlign: locale === 'ar' ? 'right' : 'left' }}>
                                                 {formattedCalculated}
+                                                {/* Said, rather than left to be assumed. An estimate
+                                                    that looks identical to a settled figure is the
+                                                    reason this screen and the payslip could disagree
+                                                    for months without anybody noticing. */}
+                                                {isEstimate ? (
+                                                    <div style={{ fontSize: '0.7rem', fontWeight: 400, color: 'var(--text-faint)' }}>
+                                                        {t('salary_figure_estimate')}
+                                                    </div>
+                                                ) : (
+                                                    <a
+                                                        href={`/dashboard/documents/payslip/${figure!.source === 'PAYSLIP' ? figure!.payslipId : ''}`}
+                                                        style={{ display: 'block', fontSize: '0.7rem', fontWeight: 400, color: 'var(--primary)' }}
+                                                    >
+                                                        {t('salary_figure_payslip')}
+                                                    </a>
+                                                )}
                                             </td>
                                             <td style={{ padding: '1rem', color: 'var(--text-soft)', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
                                                 {t('created_label')}: <SafeDate date={record.createdAt} locale={locale} format="dateOnly" />

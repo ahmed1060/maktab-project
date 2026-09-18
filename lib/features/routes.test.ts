@@ -82,6 +82,7 @@ describe("the endpoints that cross a bundle line", () => {
             '/api/payslips/abc',
             '/api/settlements/abc',
             '/api/settlements/abc/resend',
+            '/api/debts/abc/waive',
         ]) {
             expect(moduleForApiPath(path), path).toBe('PAYROLL')
         }

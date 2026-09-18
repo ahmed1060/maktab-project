@@ -2,6 +2,8 @@ import { prisma } from "@/lib/prisma"
 import { Prisma } from "@prisma/client"
 import { calendarMonth } from "@/lib/time"
 import { resolveTimeZone } from "@/lib/timezone"
+import { toMinor } from "@/lib/payroll"
+import { figureFor, byPeriod, periodKey } from "@/lib/salary-figure"
 import { canUndoAdjustment } from "@/lib/approval"
 
 // Decimal.toJSON() returns a *string*, so a SalaryRecord/SalaryAdjustment
@@ -289,6 +291,51 @@ export class SalaryService {
             orderBy: [{ year: "desc" }, { month: "desc" }],
         })
         return records.map(serializeSalaryRecord)
+    }
+
+    /**
+     * The history, with the payslip that settles each month attached.
+     *
+     * H1: the screen used to compute its own net from base ÷ days × payable
+     * days — a second payroll calculation, in a template, blind to employment
+     * timelines, mid-month rates, suspensions and debt recovery. This hands it
+     * the real figure wherever payroll has produced one, so the estimate is
+     * left doing the only job it can still do honestly: months from before
+     * payroll existed.
+     *
+     * Drafts are excluded. A draft is recomputed every time the register is
+     * opened, and a history that moved between two readings would be worse than
+     * one that is frank about being an estimate.
+     */
+    static async historyWithPayslips(userId: string) {
+        const [records, payslips] = await Promise.all([
+            this.getHistory(userId),
+            prisma.payslip.findMany({
+                where: {
+                    userId,
+                    excluded: false,
+                    payrollRun: { status: { in: ["APPROVED", "PAID"] } },
+                },
+                select: {
+                    id: true,
+                    netAmount: true,
+                    payrollRun: { select: { year: true, month: true, status: true } },
+                },
+            }),
+        ])
+
+        const index = byPeriod(payslips.map(p => ({
+            id: p.id,
+            year: p.payrollRun.year,
+            month: p.payrollRun.month,
+            status: p.payrollRun.status as "APPROVED" | "PAID",
+            netMinor: toMinor(p.netAmount.toString()),
+        })))
+
+        return records.map(record => ({
+            ...record,
+            figure: figureFor(record, index.get(periodKey(record))),
+        }))
     }
 
     /** A manual bonus or deduction, entered by an admin. */

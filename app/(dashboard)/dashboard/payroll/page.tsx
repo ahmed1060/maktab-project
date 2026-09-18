@@ -50,7 +50,7 @@ type View = {
     }
     refused: { userId: string; name: string; reason: string }[]
     variance: { previousTotalMinor: number; currentTotalMinor: number; deltaMinor: number; people: PersonVariance[] } | null
-    debts: { id: string; userId: string; name: string; amount: number; dueDate: string; source: string }[]
+    debts: { id: string; userId: string; name: string; amount: number; originalAmount: number; recoveredAmount: number; dueDate: string; source: string }[]
 }
 
 export default function PayrollRegisterPage() {
@@ -76,6 +76,7 @@ export default function PayrollRegisterPage() {
     const [companies, setCompanies] = useState<{ id: string; name: string }[]>([])
     const [companyId, setCompanyId] = useState<string>('')
     const [paying, setPaying] = useState(false)
+    const [waiving, setWaiving] = useState<string | null>(null)
     // Defaults to today, and is a date rather than a switch because a transfer
     // made on the 25th is usually recorded on the 27th, and stamping the 27th
     // makes the record disagree with the bank.
@@ -239,6 +240,37 @@ export default function PayrollRegisterPage() {
             showToast(t('payroll_paid_failed'), 'error')
         } finally {
             setPaying(false)
+        }
+    }
+
+    const waive = async (debt: { id: string; name: string; amount: number }) => {
+        // The reason is the point, so it is asked for rather than optional —
+        // and the prompt names the person and the figure, because a write-off
+        // confirmed against the wrong row is not something the audit log can
+        // undo.
+        const reason = prompt(
+            `${t('payroll_debt_waive_title').replace('{name}', debt.name)}\n\n${t('payroll_debt_waive_msg')}`,
+        )
+        if (reason === null) return
+        if (reason.trim().length < 3) {
+            showToast(t('payroll_debt_waive_needs_reason'), 'error')
+            return
+        }
+
+        setWaiving(debt.id)
+        try {
+            const res = await fetch(`/api/debts/${debt.id}/waive`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ reason }),
+            })
+            const body = await res.json()
+            showToast(res.ok ? t('payroll_debt_waived') : (body?.error || t('error_generic')), res.ok ? 'success' : 'error')
+            if (res.ok) load()
+        } catch {
+            showToast(t('error_generic'), 'error')
+        } finally {
+            setWaiving(null)
         }
     }
 
@@ -586,13 +618,38 @@ export default function PayrollRegisterPage() {
                     {view.debts.length === 0 ? (
                         <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.9rem' }}>{t('payroll_no_debts')}</p>
                     ) : view.debts.map(d => (
-                        <div key={d.id} style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', fontSize: '0.9rem', padding: '0.25rem 0' }}>
-                            <span>{d.name}</span>
-                            <span style={{ fontVariantNumeric: 'tabular-nums' }}>
-                                {new Intl.NumberFormat(isRtl ? 'ar-EG' : 'en-EG', { minimumFractionDigits: 2 }).format(d.amount)}
-                                <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginInlineStart: '0.5rem' }}>
-                                    {new Date(d.dueDate).toLocaleDateString(isRtl ? 'ar-EG' : 'en-GB')}
+                        <div key={d.id} style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', fontSize: '0.9rem', padding: '0.35rem 0', alignItems: 'baseline' }}>
+                            <span>
+                                {d.name}
+                                {/* Only where they differ. On a debt nothing has
+                                    been taken from, the original is the
+                                    outstanding figure and saying it twice is
+                                    noise. */}
+                                {d.recoveredAmount > 0 && (
+                                    <span style={{ color: 'var(--text-muted)', fontSize: '0.78rem', marginInlineStart: '0.5rem' }}>
+                                        {t('payroll_debt_recovered')
+                                            .replace('{paid}', money(Math.round(d.recoveredAmount * 100)))
+                                            .replace('{total}', money(Math.round(d.originalAmount * 100)))}
+                                    </span>
+                                )}
+                            </span>
+                            <span style={{ display: 'flex', gap: '0.5rem', alignItems: 'baseline' }}>
+                                <span style={{ fontVariantNumeric: 'tabular-nums' }}>
+                                    {new Intl.NumberFormat(isRtl ? 'ar-EG' : 'en-EG', { minimumFractionDigits: 2 }).format(d.amount)}
+                                    <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginInlineStart: '0.5rem' }}>
+                                        {new Date(d.dueDate).toLocaleDateString(isRtl ? 'ar-EG' : 'en-GB')}
+                                    </span>
                                 </span>
+                                {isManager && (
+                                    <button
+                                        className="btn"
+                                        style={{ fontSize: '0.75rem', padding: '0.2rem 0.6rem' }}
+                                        disabled={waiving === d.id}
+                                        onClick={() => waive(d)}
+                                    >
+                                        {waiving === d.id ? '…' : t('payroll_debt_waive')}
+                                    </button>
+                                )}
                             </span>
                         </div>
                     ))}

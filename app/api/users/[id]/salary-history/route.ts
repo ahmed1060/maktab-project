@@ -26,6 +26,9 @@ export const GET = withStandardHandler(async (req, session, json, { params }) =>
     // write it did not ask for.
     await SalaryService.ensureRecordsThrough(userId)
 
-    const history = await SalaryService.getHistory(userId)
+    // With each month's payslip attached where payroll has produced one. The
+    // screen used to work the figure out itself; H1 was that it worked out a
+    // different one.
+    const history = await SalaryService.historyWithPayslips(userId)
     return ApiResponse.success(history)
 })

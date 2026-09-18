@@ -33,6 +33,10 @@ const API_MODULE_ROUTES: ReadonlyArray<readonly [string, Module]> = [
     // company without the module has no payslips to read.
     ['/api/payslips', 'PAYROLL'],
     ['/api/settlements', 'PAYROLL'],
+    // Debts are payroll's, raised by a floored payslip or a settlement and
+    // collected out of the next month. Listed the moment the route existed,
+    // rather than discovered by the next audit.
+    ['/api/debts', 'PAYROLL'],
 ] as const
 
 /**
