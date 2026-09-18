@@ -160,10 +160,18 @@ export class PayrollDeliveryService {
 
         const name = `${settlement.user.firstName} ${settlement.user.lastName}`.trim()
         const net = Number(settlement.netAmount)
-        const direction = net > 0
-            ? `The company owes you ${net.toFixed(2)}.`
-            : net < 0
-                ? `${Math.abs(net).toFixed(2)} is owed to the company.`
+        // I1 made the statement deduct debts the person already owed, and this
+        // email was still quoting the figure from before that deduction — so
+        // the document said 5,000 and the email said 8,000 about the same
+        // settlement. Two answers to one question, in the one channel that
+        // reaches the person directly rather than waiting to be opened.
+        const recovered = Number(settlement.debtRecoveredAmount)
+        const payable = net - recovered
+
+        const direction = payable > 0
+            ? `The company owes you ${payable.toFixed(2)}.`
+            : payable < 0
+                ? `${Math.abs(payable).toFixed(2)} is owed to the company.`
                 : `Nothing is outstanding.`
 
         const outcome = await sendPlainEmail(
@@ -176,6 +184,9 @@ export class PayrollDeliveryService {
                 ``,
                 `Earned for the final month: ${Number(settlement.earnedAmount).toFixed(2)}`,
                 `Already paid for that month: ${Number(settlement.paidAmount).toFixed(2)}`,
+                // Named, not silently netted. Somebody whose final payment is
+                // smaller than they expected is owed the line that explains it.
+                ...(recovered > 0 ? [`Less amounts you already owed: ${recovered.toFixed(2)}`] : []),
                 direction,
                 ``,
                 settlement.company.name,

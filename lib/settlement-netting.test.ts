@@ -122,6 +122,28 @@ describe("I1: recorded without breaking the statement's own arithmetic", () => {
     })
 })
 
+describe("I1: the email and the statement say the same thing", () => {
+    const DELIVERY = stripComments(readFileSync("lib/services/payroll-delivery.service.ts", "utf8"))
+
+    it("quotes what will actually be paid, not the figure before the debt", () => {
+        // Introduced by I1 itself and caught by auditing the same commit: the
+        // statement deducted the debt and the email did not, so one settlement
+        // had two figures — in the channel that reaches the person without
+        // waiting to be opened.
+        const resend = DELIVERY.slice(DELIVERY.indexOf("static async resendSettlement"))
+        expect(resend).toContain("const payable = net - recovered")
+        expect(resend).toContain("payable > 0")
+        expect(resend).not.toMatch(/net > 0\s*\n\s*\? `The company owes you \$\{net/)
+    })
+
+    it("names the deduction rather than silently netting it", () => {
+        // Somebody whose final payment is smaller than expected is owed the
+        // line that explains it.
+        expect(DELIVERY).toContain("Less amounts you already owed")
+        expect(DELIVERY).toContain("recovered > 0 ?")
+    })
+})
+
 describe("E1: what changed since the draft you read", () => {
     it("compares the computed register against the stored draft", () => {
         expect(RUN_SERVICE).toContain("sinceDraft:")
