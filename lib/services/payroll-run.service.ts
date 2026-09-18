@@ -172,7 +172,7 @@ export class PayrollRunService {
             this.compute(companyId, year, month),
             prisma.payrollRun.findUnique({
                 where: { companyId_month_year: { companyId, month, year } },
-                include: { payslips: { select: { emailedAt: true, excluded: true } } },
+                include: { payslips: { select: { id: true, userId: true, emailedAt: true, excluded: true } } },
             }),
             this.previousNets(companyId, year, month),
             prisma.debt.findMany({
@@ -194,6 +194,14 @@ export class PayrollRunService {
             delivery: run
                 ? { paidAt: run.paidAt, batchSize: ISSUE_BATCH_SIZE, ...issueProgress(run.payslips) }
                 : null,
+            // userId -> payslip id, so the register can link a row to the
+            // document it produced. Only present once a draft has been saved;
+            // a computed row that has never been stored has no payslip to
+            // point at, and inventing a link to one would be worse than
+            // showing none.
+            payslipIds: run
+                ? Object.fromEntries(run.payslips.map(p => [p.userId, p.id]))
+                : {},
             register,
             refused,
             // Null rather than an empty variance: "nothing changed" and "there

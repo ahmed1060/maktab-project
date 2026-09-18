@@ -9,6 +9,20 @@ on:
         description: 'Optional label for this backup'
         required: false
         default: 'manual'
+      destination:
+        # The folder decides how long the copy survives — 7 days, 28, or 365 —
+        # and until now it was decided entirely by today's date, so a
+        # long-horizon copy could only be taken on the 1st of a month.
+        #
+        # That was the whole of G1. The dump format changed on 17 September and
+        # every monthly older than that is unrestorable, but the earliest a
+        # replacement could be filed was 1 October: a fortnight with no
+        # restorable long-horizon copy and no way to shorten it.
+        description: 'Which retention folder to file this under'
+        required: false
+        default: 'auto'
+        type: choice
+        options: [auto, daily, weekly, monthly]
   repository_dispatch:            # fired from the dashboard maintenance page
     types: [manual-backup]
 
@@ -222,9 +236,23 @@ jobs:
 
       - name: Upload to Google Drive
         run: |
-          DEST="daily"
-          [ "$(date +%u)" = "7" ] && DEST="weekly"
-          [ "$(date +%d)" = "01" ] && DEST="monthly"
+          # A named destination wins; "auto" (and the nightly schedule, which
+          # sends nothing) falls through to the calendar. Deliberately not a
+          # boolean "force monthly": weekly is a real answer too, and a choice
+          # that can only say one thing gets used for the thing it cannot say.
+          CHOICE="${{ github.event.inputs.destination }}"
+          case "$CHOICE" in
+            daily|weekly|monthly)
+              DEST="$CHOICE"
+              echo "Filing under $DEST because this run asked for it."
+              ;;
+            *)
+              DEST="daily"
+              [ "$(date +%u)" = "7" ] && DEST="weekly"
+              [ "$(date +%d)" = "01" ] && DEST="monthly"
+              echo "Filing under $DEST by the calendar."
+              ;;
+          esac
           rclone copy "${NAME}_db.sql.gz.age"     "gdrive:${DEST}/" -P
           rclone copy "${NAME}_assets.tar.gz.age" "gdrive:${DEST}/" -P
 

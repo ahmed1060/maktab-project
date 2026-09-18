@@ -357,6 +357,51 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
                         </Link>
                     ))}
 
+                    {/* G5: the payslip document was reachable only by typing
+                        its URL. This is the way in for the person it is about —
+                        everyone, not just managers, which is why it sits in the
+                        main menu rather than beside Payroll below. Locked with
+                        the rest of the PAYROLL module; the page itself explains
+                        the case where a company has payslips switched off. */}
+                    <Link
+                        href="/dashboard/documents"
+                        onClick={() => isMobile && setIsSidebarOpen(false)}
+                        title={isCollapsed ? t('my_payslips') : ''}
+                        className="nav-link"
+                        style={{
+                            color: 'var(--sidebar-fg)',
+                            textDecoration: 'none',
+                            padding: '0.85rem 1rem',
+                            borderRadius: '1rem',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: isCollapsed ? 'center' : 'flex-start',
+                            gap: isCollapsed ? '0' : '1rem',
+                            transition: 'all 0.2s',
+                            fontSize: '0.95rem',
+                            fontWeight: '500',
+                            border: '1px solid transparent'
+                        }}
+                        onMouseOver={(e) => {
+                            e.currentTarget.style.background = 'var(--veil-10)'
+                            e.currentTarget.style.color = 'var(--sidebar-fg-strong)'
+                            e.currentTarget.style.transform = isCollapsed ? 'scale(1.1)' : 'translateX(5px)'
+                        }}
+                        onMouseOut={(e) => {
+                            e.currentTarget.style.background = 'transparent'
+                            e.currentTarget.style.color = 'var(--sidebar-fg)'
+                            e.currentTarget.style.transform = 'none'
+                        }}
+                    >
+                        <span style={{ fontSize: '1.4rem', opacity: isLockedHref('/dashboard/documents') ? 0.45 : 1 }}>📄</span>
+                        {!isCollapsed && (
+                            <span style={{ opacity: isLockedHref('/dashboard/documents') ? 0.55 : 1, display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                                {t('my_payslips')}
+                                {isLockedHref('/dashboard/documents') && <span style={{ fontSize: '0.75rem' }} title={t('module_locked_title' as any)}>🔒</span>}
+                            </span>
+                        )}
+                    </Link>
+
                     {(['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(user?.role || '')) && (
                         <>
                             {isCollapsed ? (

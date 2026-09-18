@@ -209,6 +209,51 @@ jobs:
           zcat db.sql.gz | tail -5 | grep -q "PostgreSQL database dump complete" \
             || { echo "Restored dump is truncated"; exit 1; }
 
+          # --- Is this a dump this restore can actually load? ---
+          #
+          # G1. The dump changed shape on 17 September 2026: it went from a
+          # --clean denylist dump carrying Supabase's own furniture to
+          # --schema=public, which describes only what we own. Everything taken
+          # before that still contains DROP statements for event triggers owned
+          # by supabase_admin, and the restore role is postgres — so the load
+          # aborts partway with "must be owner of event trigger", which reads
+          # like a permissions problem with the target rather than like an old
+          # file.
+          #
+          # This does NOT load it on the old terms. The commit that chose
+          # --schema=public refused to put a second decider in the load path and
+          # that still holds: a restore that silently changes how it works
+          # depending on the file it was handed is a restore nobody can reason
+          # about at 3am. What this does is fail *before* the database is
+          # touched, and say which file it is and what to do instead — which is
+          # the difference between a confusing thirty minutes and a clear one.
+          #
+          # Decompressed to a file and read from the file. Not `zcat | grep -q`:
+          # grep leaves on the first match, zcat dies of SIGPIPE, and under
+          # pipefail a *successful match* reads as a failure. That inverted every
+          # check in backup.yml once already.
+          gunzip -c db.sql.gz > /tmp/restore-dump.sql
+          if grep -Eq '^(DROP|CREATE) EVENT TRIGGER' /tmp/restore-dump.sql \
+             || grep -Eq '^CREATE EXTENSION' /tmp/restore-dump.sql; then
+            echo "::error::This backup predates the 17 September 2026 dump format and cannot be restored by this workflow."
+            echo ""
+            echo "  File:  ${TARGET_FOLDER}/${TARGET_BASE}"
+            echo ""
+            echo "It carries event triggers and extensions owned by supabase_admin."
+            echo "The restore connects as postgres and cannot drop them, so the load"
+            echo "would abort partway through with an ownership error."
+            echo ""
+            echo "Nothing has been changed — the database was not touched."
+            echo ""
+            echo "What to do: pick a backup taken on or after 18 September 2026."
+            echo "If none is recent enough, the dump can be loaded by hand as"
+            echo "supabase_admin, or filtered of its EVENT TRIGGER and EXTENSION"
+            echo "statements first. Both are deliberate acts for a human, not"
+            echo "something this workflow should decide on its own."
+            exit 1
+          fi
+          rm -f /tmp/restore-dump.sql
+
       - name: Restore database
         env:
           # Both are passed in and the choice is made in shell, deliberately.

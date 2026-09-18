@@ -39,6 +39,7 @@ type View = {
     payrollDay: number
     status: 'DRAFT' | 'APPROVED' | 'PAID'
     delivery: { paidAt: string | null; batchSize: number; sent: number; sendable: number; unsent: number } | null
+    payslipIds: Record<string, string>
     register: {
         entries: Entry[]
         payableMinor: number
@@ -535,7 +536,22 @@ export default function PayrollRegisterPage() {
                                             </div>
                                         )}
                                     </button>
-                                    <span style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>
+                                    <span style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums', display: 'flex', alignItems: 'baseline', gap: '0.6rem' }}>
+                                        {/* G5: the document existed at a URL
+                                            nothing linked to. Shown only once a
+                                            draft has been saved — a computed row
+                                            that was never stored has no payslip,
+                                            and a link to one that does not exist
+                                            is worse than no link. */}
+                                        {view?.payslipIds?.[entry.userId] && !entry.excluded && (
+                                            <a
+                                                href={`/dashboard/documents/payslip/${view.payslipIds[entry.userId]}`}
+                                                style={{ fontSize: '0.78rem', fontWeight: 500, color: 'var(--primary)' }}
+                                                onClick={e => e.stopPropagation()}
+                                            >
+                                                {t('payroll_view_payslip')}
+                                            </a>
+                                        )}
                                         {money(entry.totals.netMinor)}
                                         {entry.totals.carriedMinor > 0 && (
                                             <span style={{ color: 'var(--danger-solid)', fontSize: '0.8rem', marginInlineStart: '0.5rem' }}>
