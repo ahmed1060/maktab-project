@@ -646,13 +646,35 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
                     corner of the screen and still reads out to a screen reader. */}
                 {showPoweredBy && (
                 <div style={{
-                    position: 'fixed',
-                    bottom: '1rem',
-                    [isRtl ? 'left' : 'right']: '1.5rem',
+                    // In the page on a phone, floating in the corner on a
+                    // desktop.
+                    //
+                    // Fixed, it sat in the viewport's bottom corner at z-index
+                    // 100 — above the mobile sidebar (50) and its scrim (49) —
+                    // so opening the drawer painted the signature straight
+                    // across the navigation behind it. A phone has no spare
+                    // corner to float something in, and this is decoration: it
+                    // belongs at the end of the page there, not over whatever
+                    // happens to be underneath.
+                    ...(isMobile
+                        ? {
+                            position: 'static' as const,
+                            width: '100%',
+                            padding: '2rem 1rem 2.5rem',
+                            marginTop: 'auto',
+                        }
+                        : {
+                            position: 'fixed' as const,
+                            bottom: '1rem',
+                            [isRtl ? 'left' : 'right']: '1.5rem',
+                            // Below the scrim and the sidebar, so it can never
+                            // paint over navigation or a dialog again. It was
+                            // 100, which is above both.
+                            zIndex: 30,
+                        }),
                     display: 'flex',
                     flexDirection: 'column',
                     alignItems: 'center', // Centered relative to each other
-                    zIndex: 100,
                     pointerEvents: 'none',
                     opacity: 0.7,
                     transition: 'all 0.3s ease',
