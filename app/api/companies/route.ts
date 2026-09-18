@@ -16,6 +16,7 @@ export const GET = withStandardHandler(async (req, session) => {
             select: {
                 id: true, name: true, isBanned: true, autoVerifyLocation: true,
                 moduleLabels: true, moduleIcons: true, logoUrl: true,
+                payrollDay: true, payslipsVisible: true, timezone: true,
                 packageId: true, trialPreset: true, trialExtensionDays: true, createdAt: true,
                 package: { select: { id: true, name: true, hasCompanyManagement: true, hasHR: true } }
             }

@@ -1,5 +1,7 @@
 import { z } from "zod"
 import { MAX_MODULE_LABEL_LENGTH, isModuleKey, isValidModuleIcon } from "@/lib/modules"
+import { MAX_PAYROLL_DAY } from "@/lib/payday"
+import { checkTimeZone } from "@/lib/timezone"
 
 // Mirrors the TrialPreset database enum. Declared here rather than imported
 // from @prisma/client so this module stays usable anywhere, including the
@@ -51,6 +53,41 @@ export const updateCompanySchema = z.object({
         })
         .optional()
         .nullable(),
+    // --- Payroll policy ---
+    //
+    // These three shipped in P8 as columns with defaults and no way to set
+    // them, which meant every company was on day 25 in Africa/Cairo with
+    // payslips switched off, permanently. A default is not a decision until
+    // somebody can change it.
+    payrollDay: z
+        .number()
+        .int()
+        .min(1)
+        .max(MAX_PAYROLL_DAY, {
+            message:
+                `Payroll day must be between 1 and ${MAX_PAYROLL_DAY}. A day that does not occur in ` +
+                `every month is a day that moves without anybody deciding it should.`,
+        })
+        .optional(),
+    // Off by default and stays off until somebody turns it on: a payslip is the
+    // most sensitive thing this app holds about a person, and "we switched it
+    // on for you" is not a sentence anybody wants to hear about their pay.
+    payslipsVisible: z.boolean().optional(),
+    // Validated rather than merely stored, and validated *here* so the reason
+    // reaches the form. checkTimeZone's refusal explains that the crons are
+    // global and what that costs a company far behind UTC — a sentence worth
+    // showing whoever typed the zone, rather than collapsing to "invalid".
+    timezone: z
+        .string()
+        .min(1)
+        .superRefine((zone, ctx) => {
+            const verdict = checkTimeZone(zone)
+            if (!verdict.ok) {
+                ctx.addIssue({ code: z.ZodIssueCode.custom, message: verdict.reason ?? "Unsupported time zone" })
+            }
+        })
+        .optional(),
+
     // Trial extension, in days, added on top of whichever preset was chosen.
     // A delta rather than a new total: "give them another week" is how the
     // request always arrives, and the column only ever grows.

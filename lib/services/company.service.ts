@@ -214,7 +214,7 @@ export class CompanyService {
     }
 
     static async update(input: UpdateCompanyInput, session: any) {
-        const { id, name, isBanned, autoVerifyLocation, moduleLabels, moduleIcons } = input
+        const { id, name, isBanned, autoVerifyLocation, moduleLabels, moduleIcons, payrollDay, payslipsVisible, timezone } = input
         const existing = await prisma.company.findUnique({ where: { id } })
         if (!existing) throw new Error("COMPANY_NOT_FOUND")
 
@@ -235,7 +235,13 @@ export class CompanyService {
                 ...(isBanned !== undefined && { isBanned }),
                 ...(autoVerifyLocation !== undefined && { autoVerifyLocation }),
                 ...(nextLabels !== undefined && { moduleLabels: nextLabels ?? Prisma.DbNull }),
-                ...(nextIcons !== undefined && { moduleIcons: nextIcons ?? Prisma.DbNull })
+                ...(nextIcons !== undefined && { moduleIcons: nextIcons ?? Prisma.DbNull }),
+                // Payroll policy. The schema validates all three before they
+                // reach here — the zone in particular, because its refusal
+                // carries a reason the form needs to show.
+                ...(payrollDay !== undefined && { payrollDay }),
+                ...(payslipsVisible !== undefined && { payslipsVisible }),
+                ...(timezone !== undefined && { timezone })
             }
         })
 
@@ -254,6 +260,17 @@ export class CompanyService {
         }
         if (nextIcons !== undefined && !sameOverrides(parseModuleIcons(existing.moduleIcons), nextIcons)) {
             changes.moduleIcons = { old: parseModuleIcons(existing.moduleIcons), new: nextIcons }
+        }
+        // Each of these decides what a payslip says or who may read one, so a
+        // change to any of them is worth as much of a trail as a ban is.
+        if (payrollDay !== undefined && payrollDay !== existing.payrollDay) {
+            changes.payrollDay = { old: existing.payrollDay, new: payrollDay }
+        }
+        if (payslipsVisible !== undefined && payslipsVisible !== existing.payslipsVisible) {
+            changes.payslipsVisible = { old: existing.payslipsVisible, new: payslipsVisible }
+        }
+        if (timezone !== undefined && timezone !== existing.timezone) {
+            changes.timezone = { old: existing.timezone, new: timezone }
         }
 
         if (Object.keys(changes).length > 0) {

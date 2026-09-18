@@ -8,6 +8,7 @@ import { useToast } from '@/context/ToastContext'
 import { useLanguage } from '@/context/LanguageContext'
 import CompanyModulesCard from '@/components/CompanyModulesCard'
 import CompanyLogoCard from '@/components/CompanyLogoCard'
+import CompanyPayrollCard from '@/components/CompanyPayrollCard'
 import type { ModuleOverrides } from '@/lib/modules'
 
 type Company = {
@@ -17,6 +18,9 @@ type Company = {
     moduleLabels: unknown
     moduleIcons: unknown
     logoUrl: string | null
+    payrollDay: number
+    payslipsVisible: boolean
+    timezone: string
 }
 
 export default function CompanySettingsPage() {
@@ -163,6 +167,16 @@ export default function CompanySettingsPage() {
                             companyName={company.name}
                             logoUrl={company.logoUrl}
                             onChanged={(logoUrl: string | null) => setCompany({ ...company, logoUrl })}
+                        />
+                    )}
+
+                    {company && (
+                        <CompanyPayrollCard
+                            companyId={companyId}
+                            payrollDay={company.payrollDay}
+                            payslipsVisible={company.payslipsVisible}
+                            timezone={company.timezone}
+                            onSaved={next => setCompany({ ...company, ...next })}
                         />
                     )}
 

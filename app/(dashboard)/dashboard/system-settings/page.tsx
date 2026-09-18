@@ -13,6 +13,7 @@ type SystemSettings = {
     locationVerifyRadiusMeters: number
     showPoweredBy: boolean
     poweredByName: string
+    defaultTimezone: string
     updatedAt: string
 }
 
@@ -26,10 +27,11 @@ export default function SystemSettingsPage() {
     const [radiusInput, setRadiusInput] = useState('')
     const [showPoweredBy, setShowPoweredBy] = useState(true)
     const [poweredByName, setPoweredByName] = useState('')
+    const [defaultTimezone, setDefaultTimezone] = useState('Africa/Cairo')
     const [loading, setLoading] = useState(true)
     // One per card. A single flag would disable both Save buttons whenever
     // either was in flight, which reads as the page having frozen.
-    const [savingSection, setSavingSection] = useState<null | 'location' | 'branding'>(null)
+    const [savingSection, setSavingSection] = useState<null | 'location' | 'calendar' | 'branding'>(null)
 
     useEffect(() => {
         setTitle(t('system_settings') || 'System Settings')
@@ -50,6 +52,7 @@ export default function SystemSettingsPage() {
                 setRadiusInput(String(data.locationVerifyRadiusMeters))
                 setShowPoweredBy(data.showPoweredBy ?? true)
                 setPoweredByName(data.poweredByName ?? '')
+                setDefaultTimezone(data.defaultTimezone ?? 'Africa/Cairo')
             } else {
                 showToast(t('failed_fetch_data'), 'error')
             }
@@ -73,7 +76,7 @@ export default function SystemSettingsPage() {
      * from either would let a stale value in the card you did not touch
      * overwrite a change somebody else just made from the other.
      */
-    const persist = async (section: 'location' | 'branding', patch: Record<string, unknown>) => {
+    const persist = async (section: 'location' | 'calendar' | 'branding', patch: Record<string, unknown>) => {
         setSavingSection(section)
         try {
             const res = await fetch('/api/system-settings', {
@@ -90,6 +93,7 @@ export default function SystemSettingsPage() {
                 setRadiusInput(String(data.locationVerifyRadiusMeters))
                 setShowPoweredBy(data.showPoweredBy ?? true)
                 setPoweredByName(data.poweredByName ?? '')
+                setDefaultTimezone(data.defaultTimezone ?? 'Africa/Cairo')
                 showToast(t('settings_saved_success') || 'Settings saved', 'success')
             } else {
                 const data = await res.json().catch(() => ({}))
@@ -113,6 +117,15 @@ export default function SystemSettingsPage() {
         }
 
         await persist('location', { locationVerifyRadiusMeters: radius })
+    }
+
+    // Its own section rather than a field on the location form: the calendar
+    // decides which month a record belongs to, which has nothing to do with how
+    // far from a target somebody stood.
+    const handleSaveCalendar = async (e: React.FormEvent) => {
+        e.preventDefault()
+        if (!settings) return
+        await persist('calendar', { defaultTimezone })
     }
 
     const handleSaveBranding = async (e: React.FormEvent) => {
@@ -184,6 +197,30 @@ export default function SystemSettingsPage() {
                         <div style={{ marginTop: 'auto', paddingTop: '1.5rem' }}>
                             <button type="submit" className="btn btn-primary" disabled={savingSection !== null}>
                                 {savingSection === 'location' ? t('saving') : t('save_changes_button')}
+                            </button>
+                        </div>
+                    </form>
+
+                    <form
+                        onSubmit={handleSaveCalendar}
+                        className="glass"
+                        style={{ padding: '1.5rem', borderRadius: '1rem', display: 'flex', flexDirection: 'column' }}
+                    >
+                        <h3 style={{ margin: '0 0 0.35rem' }}>{t('default_timezone_label')}</h3>
+                        <p style={{ fontSize: '0.8rem', color: 'var(--text-soft)', margin: '0 0 1.25rem' }}>
+                            {t('default_timezone_hint')}
+                        </p>
+                        <input
+                            id="default-timezone"
+                            className="input"
+                            value={defaultTimezone}
+                            onChange={e => setDefaultTimezone(e.target.value)}
+                            disabled={savingSection === 'calendar'}
+                            style={{ maxWidth: '18rem', marginBottom: '1rem' }}
+                        />
+                        <div>
+                            <button type="submit" className="btn btn-primary" disabled={savingSection !== null}>
+                                {savingSection === 'calendar' ? t('saving') : t('save_changes_button')}
                             </button>
                         </div>
                     </form>

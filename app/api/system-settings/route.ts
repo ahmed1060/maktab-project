@@ -2,6 +2,7 @@ import { z } from "zod"
 import { withStandardHandler } from "@/lib/api-utils"
 import { ApiResponse } from "@/lib/api-response"
 import { SystemSettingsService } from "@/lib/services/system-settings.service"
+import { checkTimeZone } from "@/lib/timezone"
 import { RealtimeBroadcastService } from "@/lib/services/realtime-broadcast.service"
 
 const updateSystemSettingsSchema = z.object({
@@ -10,6 +11,20 @@ const updateSystemSettingsSchema = z.object({
     maintenanceMessage: z.string().max(500).nullable().optional(),
     showPoweredBy: z.boolean().optional(),
     poweredByName: z.string().max(40).optional(),
+    // The calendar zone for anybody with no company — a Super Admin, mostly.
+    // Same validation as a company's own zone, and for the same reason: the
+    // crons are global, so a zone far behind UTC cannot be served correctly and
+    // should be refused where somebody can read why.
+    defaultTimezone: z
+        .string()
+        .min(1)
+        .superRefine((zone, ctx) => {
+            const verdict = checkTimeZone(zone)
+            if (!verdict.ok) {
+                ctx.addIssue({ code: z.ZodIssueCode.custom, message: verdict.reason ?? "Unsupported time zone" })
+            }
+        })
+        .optional(),
 }).refine(data => Object.keys(data).length > 0, { message: "No fields to update" })
 
 export const GET = withStandardHandler(async (req, session) => {
@@ -45,6 +60,9 @@ export const PUT = withStandardHandler(async (req, session, json) => {
     }
     if (before.poweredByName !== updated.poweredByName) {
         changes.poweredByName = { old: before.poweredByName, new: updated.poweredByName }
+    }
+    if (before.defaultTimezone !== updated.defaultTimezone) {
+        changes.defaultTimezone = { old: before.defaultTimezone, new: updated.defaultTimezone }
     }
 
     if (Object.keys(changes).length > 0) {

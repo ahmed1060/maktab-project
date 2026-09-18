@@ -68,11 +68,19 @@ export default function PayrollRegisterPage() {
     const [approving, setApproving] = useState(false)
     const [acknowledged, setAcknowledged] = useState(false)
     const [issuing, setIssuing] = useState(false)
+    // G3: a Super Admin has no companyId of their own — SuperAdmin has no such
+    // column — so without a picker the register resolved to no company and
+    // answered 400. The API always supported naming one; this is the control
+    // that was missing.
+    const [companies, setCompanies] = useState<{ id: string; name: string }[]>([])
+    const [companyId, setCompanyId] = useState<string>('')
     const [paying, setPaying] = useState(false)
     // Defaults to today, and is a date rather than a switch because a transfer
     // made on the 25th is usually recorded on the 27th, and stamping the 27th
     // makes the record disagree with the bank.
     const [paidAt, setPaidAt] = useState(() => new Date().toISOString().slice(0, 10))
+
+    const isSuper = (session?.user as any)?.role === 'SUPER_ADMIN'
 
     const money = useCallback((minor: number) =>
         new Intl.NumberFormat(isRtl ? 'ar-EG' : 'en-EG', {
@@ -82,10 +90,41 @@ export default function PayrollRegisterPage() {
     const signedMoney = useCallback((minor: number) =>
         `${minor > 0 ? '+' : minor < 0 ? '−' : ''}${money(Math.abs(minor))}`, [money])
 
+    useEffect(() => {
+        if (!isSuper) return
+        (async () => {
+            try {
+                const res = await fetch('/api/companies?limit=200')
+                if (!res.ok) return
+                const body = await res.json()
+                // The envelope is { data: { data: [...], total, ... } } — the
+                // list route returns a paginated object, and ApiResponse wraps
+                // it. Reaching for the wrong level yields an empty picker and
+                // no error, which is how this would have shipped looking fine.
+                const rows: any[] = Array.isArray(body?.data?.data) ? body.data.data : []
+                setCompanies(rows.map(c => ({ id: c.id, name: c.name })).filter(c => c.id && c.name))
+                // Nothing is chosen for them. Picking the first company would
+                // mean a Super Admin opens payroll and is shown somebody's
+                // register they did not ask for.
+            } catch {
+                // A failed list leaves the picker empty and the screen says so.
+                // It is not worth a toast on a screen that has not been asked
+                // for anything yet.
+            }
+        })()
+    }, [isSuper])
+
     const load = useCallback(async () => {
+        // A Super Admin with no company chosen has not asked a question yet.
+        // Firing anyway is what produced the 400 this fixes.
+        if (isSuper && !companyId) {
+            setView(null)
+            setLoading(false)
+            return
+        }
         setLoading(true)
         try {
-            const res = await fetch(`/api/payroll/${year}/${month}`)
+            const res = await fetch(`/api/payroll/${year}/${month}${companyId ? `?companyId=${encodeURIComponent(companyId)}` : ''}`)
             const body = await res.json()
             if (!res.ok) {
                 showToast(body?.error || t('error_generic'), 'error')
@@ -98,7 +137,7 @@ export default function PayrollRegisterPage() {
         } finally {
             setLoading(false)
         }
-    }, [year, month, showToast, t])
+    }, [year, month, companyId, isSuper, showToast, t])
 
     useEffect(() => { load() }, [load])
 
@@ -108,7 +147,7 @@ export default function PayrollRegisterPage() {
             const res = await fetch(`/api/payroll/${year}/${month}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({}),
+                body: JSON.stringify({ companyId: companyId || undefined }),
             })
             const body = await res.json()
             showToast(res.ok ? t('payroll_saved') : (body?.error || t('payroll_save_failed')), res.ok ? 'success' : 'error')
@@ -126,7 +165,7 @@ export default function PayrollRegisterPage() {
             const res = await fetch(`/api/payroll/${year}/${month}/approve`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ acknowledgePending: acknowledged }),
+                body: JSON.stringify({ acknowledgePending: acknowledged, companyId: companyId || undefined }),
             })
             const body = await res.json()
             if (res.ok) {
@@ -155,7 +194,7 @@ export default function PayrollRegisterPage() {
             const res = await fetch(`/api/payroll/${year}/${month}/issue`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({}),
+                body: JSON.stringify({ companyId: companyId || undefined }),
             })
             const body = await res.json()
             if (!res.ok) {
@@ -190,7 +229,7 @@ export default function PayrollRegisterPage() {
             const res = await fetch(`/api/payroll/${year}/${month}/paid`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ paidAt }),
+                body: JSON.stringify({ paidAt, companyId: companyId || undefined }),
             })
             const body = await res.json()
             showToast(res.ok ? t('payroll_paid_ok') : (body?.error || t('payroll_paid_failed')), res.ok ? 'success' : 'error')
@@ -240,6 +279,18 @@ export default function PayrollRegisterPage() {
                 </div>
 
                 <div style={{ display: 'flex', gap: '0.5rem', marginInlineStart: 'auto', flexWrap: 'wrap', alignItems: 'center' }}>
+                    {isSuper && (
+                        <select
+                            className="input"
+                            value={companyId}
+                            onChange={e => setCompanyId(e.target.value)}
+                            style={{ width: 'auto', maxWidth: '14rem' }}
+                            aria-label={t('payroll_company')}
+                        >
+                            <option value="">{t('payroll_pick_company')}</option>
+                            {companies.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                        </select>
+                    )}
                     <select className="input" value={month} onChange={e => setMonth(Number(e.target.value))} style={{ width: 'auto' }}>
                         {Array.from({ length: 12 }, (_, i) => (
                             <option key={i + 1} value={i + 1}>
@@ -268,7 +319,7 @@ export default function PayrollRegisterPage() {
                         cookie, and this way the download behaves like a
                         download. */}
                     {view?.delivery && (
-                        <a className="btn" href={`/api/payroll/${year}/${month}/export`}>
+                        <a className="btn" href={`/api/payroll/${year}/${month}/export${companyId ? `?companyId=${encodeURIComponent(companyId)}` : ''}`}>
                             {t('payroll_export')}
                         </a>
                     )}
@@ -290,6 +341,10 @@ export default function PayrollRegisterPage() {
                     )}
                 </div>
             </div>
+
+            {isSuper && !companyId && card(
+                <p style={{ margin: 0, color: 'var(--text-muted)' }}>{t('payroll_pick_company_hint')}</p>
+            )}
 
             {view && !isDraft && card(
                 <p style={{ margin: 0, fontSize: '0.9rem' }}>{t('payroll_approved_locked')}</p>
