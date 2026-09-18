@@ -26,6 +26,7 @@ type Preview = {
     paid: number
     net: number
     direction: 'COMPANY_OWES' | 'PERSON_OWES' | 'SETTLED'
+    paidSource: 'PAYSLIP' | 'RUN_NOT_PAID' | 'NO_RUN'
 }
 
 type Timeline = {
@@ -199,8 +200,26 @@ export default function EndContractModal({ userId, name, status, onClose, onDone
                                         <div style={{ color: directionColor, fontSize: '0.85rem', marginTop: '0.5rem', fontWeight: 600 }}>
                                             {directionLabel}
                                         </div>
-                                        <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', margin: '0.5rem 0 0' }}>
-                                            {t('settlement_provisional')}
+                                        {/* The caveat is shown only when it is
+                                            true. It used to be unconditional,
+                                            because nothing could be read — now
+                                            the usual case is a figure taken
+                                            from the payslip that was actually
+                                            paid, and printing "provisional"
+                                            over a fact teaches people to
+                                            disregard the word when it matters. */}
+                                        <p style={{
+                                            fontSize: '0.7rem', margin: '0.5rem 0 0',
+                                            // The unpaid-run case is the one to
+                                            // act on, so it does not read like
+                                            // the same quiet footnote as the
+                                            // other two.
+                                            color: preview.paidSource === 'RUN_NOT_PAID' ? 'var(--warn-fg)' : 'var(--text-muted)',
+                                            fontWeight: preview.paidSource === 'RUN_NOT_PAID' ? 600 : 400,
+                                        }}>
+                                            {preview.paidSource === 'PAYSLIP' ? t('settlement_paid_from_payslip')
+                                                : preview.paidSource === 'RUN_NOT_PAID' ? t('settlement_run_not_paid')
+                                                    : t('settlement_provisional')}
                                         </p>
                                     </>
                                 )}

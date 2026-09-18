@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma"
 import { previewSettlement, endOfContractInstant } from "@/lib/employment"
-import { toMajor, valueDaysIn } from "@/lib/payroll"
+import { toMajor, toMinor, valueDaysIn } from "@/lib/payroll"
 import { calendarParts } from "@/lib/time"
 import { nextPaydayOnOrAfter, daysAlreadyPaid } from "@/lib/payday"
 import { resolveTimeZone } from "@/lib/timezone"
@@ -42,13 +42,73 @@ export class SettlementService {
     }
 
     /**
-     * What ending on this date would settle at, with the paid figure worked out
-     * rather than supplied.
+     * What has actually gone out to this person for their final month.
+     *
+     * Reads the payslip rather than inferring from the calendar. Only a run
+     * that is PAID counts: APPROVED means the figures are agreed and the money
+     * has not moved, and a settlement that treats an unpaid month as paid bills
+     * somebody for wages they never received.
+     *
+     * The net is the right figure because it is the amount that was actually
+     * transferred — what a deduction took is not money they hold, and what the
+     * run carried as a debt is already owed somewhere else and must not be
+     * counted twice.
+     *
+     * Null rather than zero when there is no payslip at all: "the payroll run
+     * paid them nothing" and "this company is not running payroll yet" are
+     * different facts, and only the second one should fall back to a guess.
+     */
+    private static async paidForMonth(userId: string, year: number, month: number): Promise<
+        | { source: "PAYSLIP"; minor: number }
+        | { source: "RUN_NOT_PAID" }
+        | { source: "NO_RUN" }
+    > {
+        const payslip = await prisma.payslip.findFirst({
+            where: { userId, payrollRun: { year, month } },
+            select: {
+                netAmount: true,
+                excluded: true,
+                payrollRun: { select: { status: true } },
+            },
+        })
+
+        // No run for this month at all. Either the company does not run payroll
+        // through this system yet or the month has not been built, and the
+        // calendar is genuinely the only thing there is to go on.
+        if (!payslip) return { source: "NO_RUN" }
+
+        // A run exists and says the money has not moved. Deliberately not
+        // treated as "paid nothing": if payday has passed, a transfer may well
+        // have gone out and simply not been recorded, and guessing either way
+        // puts a wrong figure on somebody's final statement. It is called out
+        // instead, because "mark the month paid first" is a thing a person can
+        // actually do and takes a few seconds.
+        if (payslip.payrollRun.status !== "PAID") return { source: "RUN_NOT_PAID" }
+
+        // On the register to be seen, not to be paid. An excluded row is a
+        // recorded decision that nothing went out — a fact, not a guess.
+        if (payslip.excluded) return { source: "PAYSLIP", minor: 0 }
+
+        return { source: "PAYSLIP", minor: toMinor(payslip.netAmount.toString()) }
+    }
+
+    /**
+     * What ending on this date would settle at, with the paid figure read where
+     * it can be and inferred only where it cannot.
      *
      * P5's pure preview took `paidMinor` as an argument because nothing knew
-     * the payroll day yet. It does now: if payday has passed by the last
-     * working day, the whole month has gone out, and the days after it that
-     * were paid for and not worked are what the person owes back.
+     * the payroll day yet, and P8's first version worked it out from the
+     * calendar: if payday had passed, assume the whole month went out at the
+     * rate in force. That assumption is wrong in the direction that overstates
+     * what somebody received — it counts a month that was approved and never
+     * paid, a person excluded from the run, a partial month, and a mid-month
+     * rate change all as a full month's salary, and every one of those makes a
+     * leaver owe back more than they should.
+     *
+     * P8 through P12 made it knowable. The inference survives only for a
+     * company with no payroll run for that month, where there is genuinely
+     * nothing to read, and the answer says which of the two it used so the
+     * document can stop carrying a blanket caveat.
      */
     static async preview(userId: string, lastWorkingDay: string) {
         const { payrollDay, timeZone } = await this.policyFor(userId)
@@ -64,9 +124,13 @@ export class SettlementService {
         // comparison — endsAt is already the day after.
         const lastDayInstant = new Date(endsAt.getTime() - 1)
         const paidDays = daysAlreadyPaid(lastDayInstant, payrollDay, timeZone)
-        const paidMinor = paidDays === 0
+
+        const paid = await this.paidForMonth(userId, year, month)
+        // The inference, kept for the two cases where nothing can be read.
+        const assumedMinor = paidDays === 0
             ? 0
             : valueDaysIn(year, month, paidDays, rates[rates.length - 1].monthlyMinor)
+        const paidMinor = paid.source === "PAYSLIP" ? paid.minor : assumedMinor
 
         const preview = previewSettlement({ events, rates, endsAt, paidMinor, timeZone })
 
@@ -75,7 +139,17 @@ export class SettlementService {
             endsAt,
             payrollDay,
             timeZone,
+            // Kept as the calendar fact it always was — whether payday has come
+            // round — rather than being redefined as "was anything paid". Two
+            // different questions, and the screen asks the first one when it
+            // explains why a figure lands the way it does.
             paydayHasPassed: paidDays > 0,
+            // Which of the three this figure is, so the screen can say a true
+            // thing rather than one blanket caveat: read from the payslip that
+            // was paid, inferred because no run exists, or inferred while a run
+            // for that month sits unpaid — the last being the one somebody
+            // should resolve before signing anything.
+            paidSource: paid.source,
             dueDate: nextPaydayOnOrAfter(endsAt, payrollDay, timeZone),
         }
     }
