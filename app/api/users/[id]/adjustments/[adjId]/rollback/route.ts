@@ -22,6 +22,12 @@ export const POST = withStandardHandler(async (req, session, json, { params }) =
         if (error.message === 'INVALID_ADJUSTMENT') {
             return ApiResponse.badRequest("Invalid adjustment, or it has already been rolled back or reversed")
         }
+        if (error.message === 'MONTH_CLOSED') {
+            return ApiResponse.badRequest(
+                "That month has been approved. Record a new adjustment against an open month instead — "
+                + "undoing this one would move figures a payslip has already been issued for."
+            )
+        }
         if (error.message === 'RECORD_NOT_FOUND') {
             return ApiResponse.notFound("Salary record not found for this adjustment's month")
         }

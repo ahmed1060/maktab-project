@@ -64,6 +64,8 @@ export default function PayrollRegisterPage() {
     const [loading, setLoading] = useState(true)
     const [saving, setSaving] = useState(false)
     const [open, setOpen] = useState<string | null>(null)
+    const [approving, setApproving] = useState(false)
+    const [acknowledged, setAcknowledged] = useState(false)
 
     const money = useCallback((minor: number) =>
         new Intl.NumberFormat(isRtl ? 'ar-EG' : 'en-EG', {
@@ -108,6 +110,35 @@ export default function PayrollRegisterPage() {
             showToast(t('payroll_save_failed'), 'error')
         } finally {
             setSaving(false)
+        }
+    }
+
+    const approve = async () => {
+        setApproving(true)
+        try {
+            const res = await fetch(`/api/payroll/${year}/${month}/approve`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ acknowledgePending: acknowledged }),
+            })
+            const body = await res.json()
+            if (res.ok) {
+                showToast(t('payroll_approved_ok'), 'success')
+                load()
+                return
+            }
+            // The refusal names the people it is about, and saying which ones
+            // is the difference between a message somebody can act on and one
+            // that sends them through a list of fifty.
+            const names: string[] = body?.details?.names ?? []
+            showToast(
+                names.length ? `${body.error} (${names.join(', ')})` : (body?.error || t('payroll_approve_failed')),
+                'error',
+            )
+        } catch {
+            showToast(t('payroll_approve_failed'), 'error')
+        } finally {
+            setApproving(false)
         }
     }
 
@@ -170,9 +201,20 @@ export default function PayrollRegisterPage() {
                         </span>
                     )}
                     {isDraft && ['ADMIN', 'SUPER_ADMIN'].includes((session?.user as any)?.role || '') && (
-                        <button className="btn btn-primary" onClick={save} disabled={saving}>
-                            {saving ? '…' : t('payroll_save_draft')}
-                        </button>
+                        <>
+                            <button className="btn" onClick={save} disabled={saving || approving}>
+                                {saving ? '…' : t('payroll_save_draft')}
+                            </button>
+                            <button
+                                className="btn btn-primary"
+                                onClick={() => {
+                                    if (confirm(`${t('payroll_approve_title')}\n\n${t('payroll_approve_msg')}`)) approve()
+                                }}
+                                disabled={approving || saving || !register || register.includedCount === 0}
+                            >
+                                {approving ? '…' : t('payroll_approve')}
+                            </button>
+                        </>
                     )}
                 </div>
             </div>
@@ -235,6 +277,21 @@ export default function PayrollRegisterPage() {
                             {p.name} — {t('payroll_undecided_days').replace('{n}', String(p.undecidedDays))}
                         </div>
                     ))}
+                    {/* The acknowledgement lives here, with the names it is
+                        about, rather than next to the Approve button. A tickbox
+                        beside a button is a step in pressing the button; one
+                        beside the list is a statement about the list. */}
+                    {isDraft && (
+                        <label style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-start', marginTop: '0.75rem', fontSize: '0.85rem', cursor: 'pointer' }}>
+                            <input
+                                type="checkbox"
+                                checked={acknowledged}
+                                onChange={e => setAcknowledged(e.target.checked)}
+                                style={{ marginTop: '0.2rem' }}
+                            />
+                            <span>{t('payroll_acknowledge_pending')}</span>
+                        </label>
+                    )}
                 </>, 'warn')}
 
             {view && view.refused.length > 0 && card(

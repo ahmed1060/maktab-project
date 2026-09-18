@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma"
 import { Prisma } from "@prisma/client"
 import { calendarMonth } from "@/lib/time"
+import { canUndoAdjustment } from "@/lib/approval"
 
 // Decimal.toJSON() returns a *string*, so a SalaryRecord/SalaryAdjustment
 // passed straight into ApiResponse.success(...) would silently change these
@@ -343,6 +344,33 @@ export class SalaryService {
         // adjustment undone twice credits back days that were only ever taken
         // once.
         if (isTerminalAdjustment(adjustment.status)) throw new Error("INVALID_ADJUSTMENT")
+
+        // Approval closes the month.
+        //
+        // Undoing an adjustment decrements the salary record it landed on, and
+        // a payslip frozen at approval does not move with it — so the document
+        // somebody was issued and the figures behind it would disagree, with
+        // nothing to say which is right. A correction to a closed month is a new
+        // adjustment in an open one, which is what a reversal is for.
+        //
+        // Checked on the adjustment's own period, which is why P6 gave it one.
+        const user = await prisma.user.findUnique({
+            where: { id: userId },
+            select: { companyId: true },
+        })
+        if (user?.companyId) {
+            const run = await prisma.payrollRun.findUnique({
+                where: {
+                    companyId_month_year: {
+                        companyId: user.companyId,
+                        month: adjustment.month,
+                        year: adjustment.year,
+                    },
+                },
+                select: { status: true },
+            })
+            if (!canUndoAdjustment(run?.status ?? null)) throw new Error("MONTH_CLOSED")
+        }
 
         const record = await prisma.salaryRecord.findUnique({
             where: { userId_month_year: { userId, month: adjustment.month, year: adjustment.year } }

@@ -3,7 +3,10 @@ import { buildRegister, variance, nextIssueBatch, type PersonMonth, type Adjustm
 import { timelineForMonth } from "@/lib/employment"
 import { ratesForMonth } from "@/lib/salary-history"
 import { toMajor, toMinor } from "@/lib/payroll"
+import { paydayIn } from "@/lib/payday"
+import { startOfMonthIn } from "@/lib/time"
 import { resolveTimeZone } from "@/lib/timezone"
+import { checkApproval, type ApprovalRefusal } from "@/lib/approval"
 
 /**
  * Building a month's payroll, and freezing it once somebody signs it off.
@@ -276,6 +279,111 @@ export class PayrollRunService {
         })
     }
 
+    /**
+     * Freeze the month.
+     *
+     * Recomputed once more from source inside the transaction, so what gets
+     * approved is what was true at the moment of approval rather than whatever
+     * a draft happened to be storing from an hour ago. After this the figures
+     * are a record: the run refuses to be rebuilt, and the adjustments behind it
+     * refuse to be undone.
+     *
+     * Three things happen together or none do. The payslips, the settlements
+     * this run is carrying, and the debts that come out of a net that floored at
+     * zero. Any of them alone is a state somebody has to reconcile by hand.
+     */
+    static async approve(
+        companyId: string,
+        year: number,
+        month: number,
+        session: any,
+        options: { acknowledgePending?: boolean } = {},
+    ): Promise<{ runId: string } | { refusal: ApprovalRefusal }> {
+        const [{ register, refused }, existing] = await Promise.all([
+            this.compute(companyId, year, month),
+            prisma.payrollRun.findUnique({
+                where: { companyId_month_year: { companyId, month, year } },
+            }),
+        ])
+
+        const verdict = checkApproval({
+            status: (existing?.status ?? "DRAFT") as "DRAFT" | "APPROVED" | "PAID",
+            refused,
+            pendingDecisions: register.pendingDecisions,
+            acknowledgePending: options.acknowledgePending === true,
+            includedCount: register.includedCount,
+        })
+        if (!verdict.ok) return { refusal: verdict.refusal }
+
+        // Written first so the transaction below only ever writes.
+        await this.saveDraft(companyId, year, month)
+        const { timeZone } = await this.policy(companyId)
+
+        return prisma.$transaction(async (tx) => {
+            const run = await tx.payrollRun.update({
+                where: { companyId_month_year: { companyId, month, year } },
+                data: {
+                    status: "APPROVED",
+                    approvedAt: new Date(),
+                    approvedById: session?.user?.id ?? null,
+                },
+                include: { payslips: true },
+            })
+
+            // A net that floored at zero leaves money the deductions could not
+            // take. It becomes a debt here rather than at draft time, because
+            // until approval the figure is still moving and a debt that changes
+            // every time somebody opens a screen is not a debt.
+            for (const payslip of run.payslips) {
+                if (payslip.excluded) continue
+                const carried = Number(payslip.carriedAmount)
+                if (carried <= 0) continue
+
+                await tx.debt.create({
+                    data: {
+                        userId: payslip.userId,
+                        companyId,
+                        amount: carried,
+                        source: "PAYSLIP_CARRY",
+                        sourceId: payslip.id,
+                        // Due on the payday this run is for: the month it could
+                        // not be taken from is the month it became owed.
+                        dueDate: paydayIn(year, month, run.payrollDay, timeZone),
+                    },
+                })
+            }
+
+            // Settlements waiting on a run, now carried by this one. Attached by
+            // due date rather than by the month somebody left in: a person who
+            // left in March with an April due date is April's to pay.
+            const carriedSettlements = await tx.finalSettlement.updateMany({
+                where: {
+                    companyId,
+                    status: "PENDING",
+                    payrollRunId: null,
+                    dueDate: { lte: endOfMonthIn(year, month, timeZone) },
+                },
+                data: { payrollRunId: run.id, status: "APPROVED" },
+            })
+
+            const { AuditLogService } = await import("./audit-log.service")
+            await AuditLogService.log("APPROVE_PAYROLL", "PAYROLL", run.id, {
+                tx,
+                userId: session?.user?.role !== "SUPER_ADMIN" ? session?.user?.id : null,
+                superAdminId: session?.user?.role === "SUPER_ADMIN" ? session?.user?.id : null,
+                details: {
+                    companyId, month, year,
+                    payslips: run.payslips.length,
+                    payable: toMajor(register.payableMinor),
+                    settlementsCarried: carriedSettlements.count,
+                    pendingAcknowledged: register.pendingDecisions.map(p => p.name),
+                },
+            })
+
+            return { runId: run.id }
+        })
+    }
+
     /** Which payslips the next issue action would send, and how many remain. */
     static async issueBatch(runId: string, size?: number) {
         const payslips = await prisma.payslip.findMany({
@@ -285,4 +393,12 @@ export class PayrollRunService {
         })
         return nextIssueBatch(payslips, size)
     }
+}
+
+/** The last instant of a calendar month in a given zone. */
+function endOfMonthIn(year: number, month: number, timeZone: string): Date {
+    const nextYear = month === 12 ? year + 1 : year
+    const nextMonth = month === 12 ? 1 : month + 1
+    const nextStart = startOfMonthIn(new Date(Date.UTC(nextYear, nextMonth - 1, 1, 12)), timeZone)
+    return new Date(nextStart.getTime() - 1)
 }
