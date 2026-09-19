@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client'
 import { PrismaPg } from '@prisma/adapter-pg'
+import { poolConfigFrom } from './postgres-ssl'
 
 /**
  * A Prisma client for the command-line scripts — the seeds and the payroll
@@ -27,5 +28,5 @@ export function createScriptClient(): PrismaClient {
         )
     }
 
-    return new PrismaClient({ adapter: new PrismaPg({ connectionString }) })
+    return new PrismaClient({ adapter: new PrismaPg(poolConfigFrom(connectionString)) })
 }

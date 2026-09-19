@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client'
 import { PrismaPg } from '@prisma/adapter-pg'
+import { poolConfigFrom } from './postgres-ssl'
 
 /**
  * The one Prisma client.
@@ -41,7 +42,11 @@ function createClient(): PrismaClient {
         throw new Error('POSTGRES_PRISMA_URL is not set')
     }
 
-    const client = new PrismaClient({ adapter: new PrismaPg({ connectionString, max: 1 }) })
+    // poolConfigFrom rather than the raw string: see lib/postgres-ssl.ts for
+    // why handing the URL straight to node-postgres breaks TLS against Supabase.
+    const client = new PrismaClient({
+        adapter: new PrismaPg(poolConfigFrom(connectionString, { max: 1 })),
+    })
 
     if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = client
     return client
