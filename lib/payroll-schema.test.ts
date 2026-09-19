@@ -12,7 +12,18 @@ import { stripComments } from "./strip-comments"
  * different figures for the same month.
  */
 const SCHEMA = readFileSync("prisma/schema.prisma", "utf8")
-const MIGRATION = readFileSync("prisma/migrations/20260917160000_payroll_schema/migration.sql", "utf8")
+// The forty-eight migrations were squashed into one baseline, so the SQL these
+// assertions read now lives there. What is asserted is unchanged; three of them
+// had to change shape, because a column the old history added with ALTER TABLE
+// is created inline by a baseline that builds the table once.
+const MIGRATION = readFileSync("prisma/migrations/0_init/migration.sql", "utf8")
+
+/** The body of one CREATE TABLE, so a default can be pinned to its own table. */
+function createTable(name: string): string {
+    const start = MIGRATION.indexOf(`CREATE TABLE "${name}" (`)
+    expect(start, `the baseline never creates ${name}`).toBeGreaterThan(-1)
+    return MIGRATION.slice(start, MIGRATION.indexOf("\n);", start))
+}
 
 function model(name: string): string {
     const start = SCHEMA.indexOf(`model ${name} {`)
@@ -137,9 +148,10 @@ describe("debts are one queue, not two lists", () => {
 
 describe("company policy", () => {
     it("adds the three settings with defaults, so nothing needs backfilling", () => {
-        expect(MIGRATION).toContain('ALTER TABLE "Company" ADD COLUMN "payrollDay" INTEGER NOT NULL DEFAULT 25')
-        expect(MIGRATION).toContain('ALTER TABLE "Company" ADD COLUMN "payslipsVisible" BOOLEAN NOT NULL DEFAULT false')
-        expect(MIGRATION).toContain('ALTER TABLE "Company" ADD COLUMN "timezone" TEXT NOT NULL DEFAULT \'Africa/Cairo\'')
+        const company = createTable("Company")
+        expect(company).toContain('"payrollDay" INTEGER NOT NULL DEFAULT 25')
+        expect(company).toContain('"payslipsVisible" BOOLEAN NOT NULL DEFAULT false')
+        expect(company).toContain('"timezone" TEXT NOT NULL DEFAULT \'Africa/Cairo\'')
     })
 
     it("keeps payslips hidden until somebody decides otherwise", () => {
