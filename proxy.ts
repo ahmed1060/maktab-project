@@ -9,8 +9,13 @@ if (!nextAuthSecret) {
     throw new Error("NEXTAUTH_SECRET is not set — refusing to start with an insecure fallback secret")
 }
 
+// Next 16 renamed this file convention from "middleware" to "proxy" and warns
+// on every build while the old name is used. Only the filename and this
+// function's name change — what it does, and the matcher below, are untouched.
+// The next-auth import path is the package's own and is unrelated to the
+// convention.
 export default withAuth(
-    function middleware(req) {
+    function proxy(req) {
         const token = req.nextauth.token
         const { pathname } = req.nextUrl
 

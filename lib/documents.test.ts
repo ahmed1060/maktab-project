@@ -14,7 +14,7 @@ const PAYSLIP_PAGE = readFileSync("app/(dashboard)/dashboard/documents/payslip/[
 const SETTLEMENT_PAGE = readFileSync("app/(dashboard)/dashboard/documents/settlement/[id]/page.tsx", "utf8")
 const FRAME = readFileSync("components/DocumentFrame.tsx", "utf8")
 const CSS = readFileSync("app/globals.css", "utf8")
-const MIDDLEWARE = stripComments(readFileSync("middleware.ts", "utf8"))
+const MIDDLEWARE = stripComments(readFileSync("proxy.ts", "utf8"))
 
 describe("a payslip is not a public URL", () => {
     it("lives under the only prefix the middleware protects", () => {

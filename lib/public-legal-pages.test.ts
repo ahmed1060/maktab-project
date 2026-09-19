@@ -32,7 +32,7 @@ describe("the legal pages exist and sit outside every auth boundary", () => {
     })
 
     it("does not gate them in middleware", () => {
-        const source = stripComments(readFileSync("middleware.ts", "utf8"))
+        const source = stripComments(readFileSync("proxy.ts", "utf8"))
 
         // Isolate the authorized callback before asserting anything about it.
         // Searching the whole file for the dashboard check passes even when the
@@ -42,7 +42,7 @@ describe("the legal pages exist and sit outside every auth boundary", () => {
         // it reports green for the thing it was written to catch.
         const start = source.indexOf("authorized:")
         const end = source.indexOf("secret:", start)
-        expect(start, "middleware.ts has no authorized callback").toBeGreaterThan(-1)
+        expect(start, "proxy.ts has no authorized callback").toBeGreaterThan(-1)
         expect(end, "the callbacks block no longer ends at secret:").toBeGreaterThan(start)
         const authorized = source.slice(start, end)
 

@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest"
 import { readFileSync, existsSync } from "node:fs"
 
 /**
- * The dashboard gates are four redirects in middleware.ts, each holding a user
+ * The dashboard gates are four redirects in proxy.ts, each holding a user
  * on one page until a condition clears. Every one of them has the same failure
  * mode, and it is total: if the page a gate redirects *to* is not also the page
  * that gate lets *through*, the user bounces between the two until the browser
@@ -12,10 +12,10 @@ import { readFileSync, existsSync } from "node:fs"
  * Settings moved the page a gate points at while leaving a redirect behind at
  * the old path, which is exactly the shape that produces the loop.
  *
- * Read as source rather than executed: middleware.ts throws at import without
+ * Read as source rather than executed: proxy.ts throws at import without
  * NEXTAUTH_SECRET, and the thing worth pinning is the pairing, not the routing.
  */
-const SOURCE = readFileSync("middleware.ts", "utf8")
+const SOURCE = readFileSync("proxy.ts", "utf8")
 
 // Each gate: the path it excludes from itself, and the path it sends people to.
 const GATES = [
@@ -25,10 +25,46 @@ const GATES = [
     { name: "subscription lockout", page: "/dashboard/subscription-expired" },
 ]
 
+/**
+ * Each gate as a pair: the condition that decides it, and the page it sends
+ * people to.
+ *
+ * Scoped to one gate rather than searched for across the file, because these
+ * assertions used to be file-wide `toContain` and could not fail. The email
+ * gate deliberately also excludes /dashboard/change-password, so that string
+ * appears twice — which meant the forced-password-change gate could be deleted
+ * outright and this suite stayed green. Found by deleting it.
+ */
+function gatesInSource(source: string): { condition: string; target: string }[] {
+    const out: { condition: string; target: string }[] = []
+    const REDIRECT = /return NextResponse\.redirect\(new URL\('([^']+)', req\.url\)\)/g
+
+    for (const match of source.matchAll(REDIRECT)) {
+        // The condition is the `if (...)` immediately above this redirect.
+        const before = source.slice(0, match.index)
+        const ifStart = before.lastIndexOf("if (")
+        if (ifStart === -1) continue
+        out.push({ condition: before.slice(ifStart), target: match[1] })
+    }
+    return out
+}
+
 describe("every gate lets through the page it redirects to", () => {
+    const gates = gatesInSource(SOURCE)
+
+    it("finds a gate for each redirect target", () => {
+        // Vacuous otherwise: no gates parsed means every check below passes.
+        expect(gates.length).toBeGreaterThanOrEqual(GATES.length)
+    })
+
     it.each(GATES.map(g => [g.name, g.page]))("%s → %s", (_name, page) => {
-        expect(SOURCE, `nothing is excluded for ${page}`).toContain(`pathname !== '${page}'`)
-        expect(SOURCE, `nothing redirects to ${page}`).toContain(`new URL('${page}', req.url)`)
+        const gate = gates.find(g => g.target === page)
+        expect(gate, `nothing redirects to ${page}`).toBeDefined()
+        expect(
+            gate!.condition,
+            `the gate redirecting to ${page} does not exclude ${page} from itself, ` +
+            `so anyone it catches bounces between the two forever`,
+        ).toContain(`pathname !== '${page}'`)
     })
 
     it("has a real page behind each of those paths", () => {
