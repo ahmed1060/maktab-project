@@ -36,6 +36,9 @@ import type { PoolConfig } from "pg"
  *    connectionTimeoutMillis and silently ignores the other, which would leave a
  *    hung connect with no ceiling inside a function that has one.
  *
+ *  - `sslmode` is read here rather than by pg-connection-string, and taken out
+ *    of the string before it is handed over. See the comment at the parse.
+ *
  * An explicit `ssl` cannot simply be passed alongside `connectionString`: pg
  * resolves the URL's sslmode first and the option is ignored. So the URL is
  * parsed here and the fields are handed over individually.
@@ -71,7 +74,27 @@ o/bKiIz+Fq8=
 -----END CERTIFICATE-----`
 
 export function poolConfigFrom(connectionString: string, extra: PoolConfig = {}): PoolConfig {
-    const parsed = parse(connectionString)
+    // pg-connection-string reads `sslmode` itself, and for every mode but
+    // verify-full it prints a process warning saying the mode will change
+    // meaning in its next major version. That warning fires once per process,
+    // so on a serverless platform it fires on every cold start — it was the
+    // single loudest thing in production's error log, with real failures to be
+    // found underneath it.
+    //
+    // Silencing it by writing sslmode=verify-full into DATABASE_URL would work,
+    // but it would leave this file's behaviour depending on a setting nobody
+    // can see from here. The mode is read here instead and removed before the
+    // string is handed over. Nothing is lost: the only thing the library's
+    // reading was ever used for is the yes-or-no below, and the TLS settings
+    // are written out in full either way. It also means the semantics change
+    // the warning announces cannot quietly reach this connection.
+    const queryAt = connectionString.indexOf("?")
+    const params = new URLSearchParams(queryAt === -1 ? "" : connectionString.slice(queryAt + 1))
+    const sslmode = params.get("sslmode")?.trim().toLowerCase() ?? null
+    params.delete("sslmode")
+    const remaining = params.toString()
+    const base = queryAt === -1 ? connectionString : connectionString.slice(0, queryAt)
+    const parsed = parse(remaining ? `${base}?${remaining}` : base)
 
     const config: PoolConfig = {
         host: parsed.host ?? undefined,
@@ -83,13 +106,25 @@ export function poolConfigFrom(connectionString: string, extra: PoolConfig = {})
     }
 
     // Only when the URL asked for TLS. A plain local postgres has no sslmode and
-    // must stay unencrypted, or development and the tests stop working.
-    if (parsed.ssl) {
+    // must stay unencrypted, or development and the tests stop working. Every
+    // mode other than `disable` gets the same treatment — a verified connection
+    // against the pinned root — because the weaker modes exist to tolerate a
+    // certificate this code already knows how to check.
+    // pg-connection-string turns `ssl=1`/`ssl=true` into true and `ssl=0` into
+    // false, but leaves `ssl=false` as the string "false" — which is truthy, and
+    // would have quietly forced TLS onto a URL that asked for the opposite. It
+    // is spelled out here rather than relying on truthiness.
+    const sslParam = parsed.ssl
+    const askedForTls =
+        sslmode !== null ? sslmode !== "disable" : sslParam === true || sslParam === "true"
+
+    if (askedForTls) {
         config.ssl = {
             rejectUnauthorized: true,
             ca: [...rootCertificates, SUPABASE_ROOT_CA],
         }
-    } else if (parsed.ssl === false) {
+    } else if (sslmode !== null || sslParam !== undefined) {
+        // Asked for, and asked against: sslmode=disable, ssl=0, ssl=false.
         config.ssl = false
     }
 

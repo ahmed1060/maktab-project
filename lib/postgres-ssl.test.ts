@@ -1,7 +1,10 @@
-import { describe, it, expect } from "vitest"
+import { describe, it, expect, vi, afterEach } from "vitest"
 import { X509Certificate } from "node:crypto"
 import { rootCertificates } from "node:tls"
+import { createRequire } from "node:module"
 import { poolConfigFrom } from "./postgres-ssl"
+
+const require_ = createRequire(import.meta.url)
 
 /**
  * The TLS change that took the preview deployment down.
@@ -76,5 +79,95 @@ describe("a plain local database is left unencrypted", () => {
 
     it("honours an explicit sslmode=disable", () => {
         expect(poolConfigFrom("postgresql://u@h:5432/d?sslmode=disable").ssl).toBe(false)
+    })
+
+    it("reads ssl=false as no, not as a non-empty string", () => {
+        // pg-connection-string leaves this one as the string "false", which is
+        // truthy. Deciding TLS by truthiness would turn it on for a URL that
+        // said the opposite.
+        expect(poolConfigFrom("postgresql://u@h:5432/d?ssl=false").ssl).toBe(false)
+        expect(poolConfigFrom("postgresql://u@h:5432/d?ssl=0").ssl).toBe(false)
+    })
+
+    it("still honours ssl=true for a host that has no sslmode", () => {
+        const ssl = poolConfigFrom("postgresql://u@h:5432/d?ssl=true").ssl as { rejectUnauthorized: boolean }
+        expect(ssl.rejectUnauthorized).toBe(true)
+    })
+})
+
+describe("the sslmode warning stays out of the production error log", () => {
+    /**
+     * pg-connection-string prints a process warning for every sslmode but
+     * verify-full, announcing that the mode will mean something weaker in its
+     * next major version. It fires once per process, which on a serverless
+     * platform is once per cold start, and it was the loudest thing in the
+     * production error log by an order of magnitude.
+     *
+     * The warning fires once per process, and that latch lives in the library's
+     * module scope — in Node's require cache, where vi.resetModules() does not
+     * reach. So the first test clears that cache itself before asking the
+     * library to warn. The second test does not go near the latch at all, for
+     * the reason written above it.
+     */
+    function freshLibrary() {
+        delete require_.cache[require_.resolve("pg-connection-string")]
+    }
+
+    afterEach(() => {
+        vi.restoreAllMocks()
+        vi.resetModules()
+    })
+
+    it("the library really does warn, so the test below means something", async () => {
+        // The break-test, kept in the suite rather than run once by hand. If a
+        // version bump drops the notice, the guard below has quietly stopped
+        // guarding anything, and this says so instead of staying green.
+        freshLibrary()
+        const warn = vi.spyOn(process, "emitWarning").mockImplementation(() => {})
+        require_("pg-connection-string")(SUPABASE)
+        expect(warn).toHaveBeenCalled()
+        expect(String(warn.mock.calls[0][0])).toContain("sslmode")
+    })
+
+    it("hands the library a connection string with no sslmode in it", async () => {
+        // This is the guard, and it is deliberately not written as "assert no
+        // warning is emitted". That version was tried and could not fail:
+        // re-importing this module after clearing the require cache still gave
+        // it the library instance vitest had already resolved, latch spent, so
+        // the reintroduced bug sailed through green. Asserting on the string
+        // actually handed over needs no latch and no module surgery, and a
+        // failure names what broke rather than only that something did.
+        freshLibrary()
+        vi.resetModules()
+        const seen: string[] = []
+        vi.doMock("pg-connection-string", async importOriginal => {
+            const actual = await importOriginal<typeof import("pg-connection-string")>()
+            return { ...actual, parse: (str: string) => (seen.push(str), actual.parse(str)) }
+        })
+        const { poolConfigFrom: fresh } = await import("./postgres-ssl")
+        fresh(SUPABASE)
+        vi.doUnmock("pg-connection-string")
+        expect(seen).toHaveLength(1)
+        expect(seen[0]).not.toContain("sslmode")
+        // The neighbours have to survive the removal.
+        expect(seen[0]).toContain("connect_timeout=15")
+        expect(seen[0]).toContain("db.abc.supabase.co:6543")
+    })
+
+    it("still reaches the same TLS settings whichever mode asked for TLS", () => {
+        // The mode is read here now, so every mode has to be handled here too.
+        // require, prefer and verify-ca all exist to tolerate a certificate
+        // this code already knows how to verify, so they get the verified
+        // connection rather than a weaker one.
+        for (const mode of ["require", "prefer", "verify-ca", "verify-full"]) {
+            const ssl = poolConfigFrom(`postgres://u:p@db.abc.supabase.co:6543/postgres?sslmode=${mode}`)
+                .ssl as { rejectUnauthorized: boolean }
+            expect(ssl.rejectUnauthorized, mode).toBe(true)
+        }
+    })
+
+    it("leaves the rest of the query string alone", () => {
+        expect(poolConfigFrom(SUPABASE).connectionTimeoutMillis).toBe(15_000)
+        expect(poolConfigFrom("postgres://u:p@h:5432/d?connect_timeout=9").connectionTimeoutMillis).toBe(9_000)
     })
 })
