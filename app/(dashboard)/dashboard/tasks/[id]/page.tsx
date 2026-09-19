@@ -68,9 +68,34 @@ export default async function TaskDetailPage(props: { params: Promise<{ id: stri
 
     const isRestricted = userRole === 'EMPLOYEE' && !isAssigned
 
+    /**
+     * memberCosts maps each assignee to what they are paid for this task.
+     *
+     * TaskCostsSection already shows an employee only their own figure, as "My
+     * Total Cost", beside the task's grand total — a manager gets the
+     * breakdown, an employee does not. But the whole map was serialised into
+     * the page regardless, so on a task with three assignees any one of them
+     * could read the other two's rate out of the source.
+     *
+     * The same narrowing the tasks list does, for the same reason: the screen
+     * being right is not the same as the payload being right, and the next
+     * component handed this object need not be as careful as this one.
+     */
+    const visibleMemberCosts = (() => {
+        const raw = (task as any).memberCosts
+        if (userRole !== 'EMPLOYEE' || !raw) return raw
+        const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw
+        if (!parsed || typeof parsed !== 'object') return raw
+        return userId in parsed ? { [userId]: parsed[userId] } : {}
+    })()
+
     // totalCost is a Prisma.Decimal (F-07) — Server Components can only pass
     // plain serializable values to Client Components.
-    const serializedTask = { ...task, totalCost: Number(task.totalCost) }
+    const serializedTask = {
+        ...task,
+        totalCost: Number(task.totalCost),
+        memberCosts: visibleMemberCosts,
+    }
 
     return <TaskDetailClient
         task={serializedTask}

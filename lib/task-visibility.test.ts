@@ -21,6 +21,7 @@ import { stripComments } from "./strip-comments"
 
 const PAGE = stripComments(readFileSync("app/(dashboard)/dashboard/tasks/page.tsx", "utf8"))
 const CLIENT = stripComments(readFileSync("app/(dashboard)/dashboard/tasks/TasksClient.tsx", "utf8"))
+const DETAIL = stripComments(readFileSync("app/(dashboard)/dashboard/tasks/[id]/page.tsx", "utf8"))
 
 /** The EMPLOYEE arm of the role branch. */
 function employeeBranch(): string {
@@ -72,5 +73,26 @@ describe("an employee's payload carries only their own cost", () => {
         const fn = PAGE.slice(PAGE.indexOf("function visibleMemberCosts"))
         expect(fn).toMatch(/role !== 'EMPLOYEE'/)
         expect(fn, "it must keep the employee's own entry").toMatch(/\[userId\]:\s*parsed\[userId\]/)
+    })
+})
+
+describe("the task detail page narrows it too", () => {
+    it("does not ship the whole memberCosts map to an employee", () => {
+        // Same class as the list. TaskCostsSection already shows an employee
+        // only their own figure, but the map was serialised whole — so on a
+        // three-assignee task any one of them could read the other two's rate
+        // out of the page source.
+        expect(DETAIL).toMatch(/visibleMemberCosts/)
+        expect(DETAIL).toMatch(/memberCosts:\s*visibleMemberCosts/)
+        const fn = DETAIL.slice(DETAIL.indexOf("const visibleMemberCosts"))
+        expect(fn).toMatch(/userRole !== 'EMPLOYEE'/)
+        expect(fn, "the employee's own entry must survive").toMatch(/\[userId\]:\s*parsed\[userId\]/)
+    })
+
+    it("still spreads the row, so a new sensitive column would be caught by review not by luck", () => {
+        // Documenting the residual shape rather than claiming it is solved:
+        // the page uses include + spread, so any column added to Task lands in
+        // the payload by default. Narrowing is per-column and deliberate.
+        expect(DETAIL).toMatch(/\.\.\.task/)
     })
 })
