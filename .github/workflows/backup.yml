@@ -181,14 +181,6 @@ jobs:
             | gzip -9 > db.sql.gz
           ls -lh db.sql.gz
 
-      - name: Verify the dump is not empty or truncated
-        run: |
-          set -o pipefail
-          test "$(stat -c%s db.sql.gz)" -gt 10240 || { echo "Dump suspiciously small"; exit 1; }
-          gzip -t db.sql.gz
-          zcat db.sql.gz | tail -5 | grep -q "PostgreSQL database dump complete" \
-            || { echo "Dump is truncated"; exit 1; }
-
       - name: Mirror the storage bucket
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
@@ -265,6 +257,47 @@ jobs:
           esac
           rclone copy "${NAME}_db.sql.gz.age"     "gdrive:${DEST}/" -P
           rclone copy "${NAME}_assets.tar.gz.age" "gdrive:${DEST}/" -P
+
+      # After the upload, for the reason stated twice below: a dump that fails a
+      # check is still better than no dump at all. This ran before the upload
+      # and on 19 September it stopped a night being stored at all — over a
+      # dump that was completely fine.
+      #
+      # The test was `-gt 10240`, an absolute byte floor calibrated when the
+      # database held months of accumulated test data. The database was rebuilt
+      # from a baseline that morning, so a correct, complete dump of it came to
+      # 8.8K and the floor rejected it. A backup system whose first real
+      # response to a smaller database is to stop taking backups has the failure
+      # exactly backwards.
+      #
+      # Size was always a proxy for "did the dump capture anything". The things
+      # it was standing in for can be asserted directly, and they hold whatever
+      # the row count is: the gzip stream is intact, the file ends with
+      # pg_dump's own completion marker, and the schema is actually in there.
+      # A database with no rows is a legitimate state; a dump with no User table
+      # is not.
+      - name: Verify the dump is intact and carries the schema
+        run: |
+          set -o pipefail
+
+          gzip -t db.sql.gz
+
+          # Decompressed once to a file. Not `zcat | grep -q`: grep leaves on
+          # the first match, zcat dies of SIGPIPE, and under pipefail a
+          # successful match reads as a failure. That inverted every check in
+          # this workflow once already.
+          zcat db.sql.gz > dump.sql
+
+          tail -5 dump.sql | grep -q "PostgreSQL database dump complete" \
+            || { echo "::error::Dump is truncated — no completion marker"; exit 1; }
+
+          for table in User Company SalaryChange EmploymentEvent Payslip _prisma_migrations; do
+            grep -q "CREATE TABLE public.\"\?${table}\"\?" dump.sql \
+              || { echo "::error::Dump has no ${table} table — it captured nothing"; exit 1; }
+          done
+
+          echo "Dump is intact and carries the schema ($(stat -c%s db.sql.gz) bytes compressed)."
+          rm -f dump.sql
 
       # Deliberately after the upload, not before. A dump that fails to load is
       # still better than no dump at all, so it gets stored and *then* flagged;
