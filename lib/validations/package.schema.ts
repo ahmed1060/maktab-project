@@ -7,7 +7,13 @@ import { z } from "zod"
 const priceSchema = z.number()
     .nonnegative("Price cannot be negative")
     .max(9_999_999_999, "Price is too large")
-    .refine(v => Number.isFinite(v) && Math.round(v * 100) === v * 100, {
+    // Deliberately not `Math.round(v * 100) === v * 100`, which was here and is
+    // itself floating-point arithmetic: 2499.99 * 100 is 249998.99999999997 in
+    // IEEE-754, so it failed its own check. So did 8.29, and so did seven cents.
+    // The multiplication is the bug, not the rounding — toFixed formats the
+    // value at two places without one, and parsing it back says whether
+    // anything was lost.
+    .refine(v => Number.isFinite(v) && Number(v.toFixed(2)) === v, {
         message: "Price cannot have more than two decimal places",
     })
 

@@ -1,4 +1,5 @@
 import { z } from "zod"
+import { partialWithoutDefaults } from "./partial-update"
 
 export const createUserSchema = z.object({
     firstName: z.string().min(1).max(15, "First name too long"),
@@ -21,7 +22,7 @@ export const createUserSchema = z.object({
     username: z.string().min(3).max(30).optional(),
 })
 
-export const updateUserSchema = createUserSchema.partial().extend({
+export const updateUserSchema = partialWithoutDefaults(createUserSchema).extend({
     id: z.string().min(1, "User ID is required"),
     status: z.enum(['ACTIVE', 'INACTIVE', 'SUSPENDED', 'DELETED', 'OFFLINE', 'ARCHIVED']).optional(),
     avatar: z.string().nullable().optional(),

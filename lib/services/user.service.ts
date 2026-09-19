@@ -43,18 +43,72 @@ export class UserService {
         }
 
         // 5. Database Transaction
-        const user = await prisma.user.create({
-            data: {
-                firstName, lastName, email, username: finalUsername!, password: hashedPassword,
-                role: newUserRole, status: 'OFFLINE', gender: gender || 'MALE', companyId: targetCompanyId,
-                salary: salary || 0,
-                dayOffCredit: baseDayOffCredit !== undefined ? baseDayOffCredit : (dayOffCredit !== undefined ? dayOffCredit : 0),
-                baseDayOffCredit: baseDayOffCredit !== undefined ? baseDayOffCredit : (dayOffCredit !== undefined ? dayOffCredit : 0),
-                // F-14: the year this credit balance was actually granted,
-                // not a hardcoded year that goes stale for accounts created later.
-                lastDayOffResetYear: calendarYear(new Date())
-            },
-            select: { id: true, firstName: true, lastName: true, email: true, role: true, status: true, gender: true, username: true }
+        //
+        // The user row, the hiring event and the opening salary go in together,
+        // because payroll reads the last two and not the first.
+        //
+        // Writing only the row is what shipped, and it made the intended
+        // onboarding flow — Employees, Add Employee, set a salary — produce
+        // somebody the register could never pay. A person's employed span only
+        // opens on a HIRED or REINSTATED event (lib/employment.ts), and
+        // eventForStatusChange has no transition that yields HIRED: it maps
+        // status changes, and being created is not one. So compute() skipped
+        // them on `timeline.employed.length === 0` forever. The only way
+        // through was to archive the person and reinstate them, which is to say
+        // fire and rehire somebody to hire them.
+        //
+        // User.salary is the same story one level down. It is the current rate,
+        // a cache of the history; SalaryChange is what splitMonth actually
+        // reads. A user row carrying 3000 with no SalaryChange resolves to "No
+        // salary in effect" for every month there is.
+        //
+        // Dated at the moment of creation rather than the start of the month:
+        // the employed span and the rate then begin at the same instant, and
+        // nobody is paid for days before they existed. An employee who really
+        // started earlier needs a back-dated salary change, which the history
+        // screen already does.
+        const hiredAt = new Date()
+
+        // A Super Admin has no company and draws no salary — the payroll
+        // module is about a company's own people.
+        const isCompanyEmployee = Boolean(targetCompanyId) && newUserRole !== 'SUPER_ADMIN'
+
+        const user = await prisma.$transaction(async (tx) => {
+            const created = await tx.user.create({
+                data: {
+                    firstName, lastName, email, username: finalUsername!, password: hashedPassword,
+                    role: newUserRole, status: 'OFFLINE', gender: gender || 'MALE', companyId: targetCompanyId,
+                    salary: salary || 0,
+                    dayOffCredit: baseDayOffCredit !== undefined ? baseDayOffCredit : (dayOffCredit !== undefined ? dayOffCredit : 0),
+                    baseDayOffCredit: baseDayOffCredit !== undefined ? baseDayOffCredit : (dayOffCredit !== undefined ? dayOffCredit : 0),
+                    // F-14: the year this credit balance was actually granted,
+                    // not a hardcoded year that goes stale for accounts created later.
+                    lastDayOffResetYear: calendarYear(new Date())
+                },
+                select: { id: true, firstName: true, lastName: true, email: true, role: true, status: true, gender: true, username: true }
+            })
+
+            if (isCompanyEmployee) {
+                const { EmploymentService } = await import("./employment.service")
+                await EmploymentService.record({
+                    userId: created.id,
+                    type: 'HIRED',
+                    effectiveFrom: hiredAt,
+                    reason: 'Account created',
+                    createdById: session?.user?.id ?? null,
+                }, tx)
+
+                const { SalaryHistoryService } = await import("./salary-history.service")
+                await SalaryHistoryService.record({
+                    userId: created.id,
+                    monthlyAmount: Number(salary || 0),
+                    effectiveFrom: hiredAt,
+                    reason: 'Starting salary',
+                    createdById: session?.user?.id ?? null,
+                }, tx)
+            }
+
+            return created
         })
 
         // Audit Log (Centralized)

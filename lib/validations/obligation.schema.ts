@@ -1,4 +1,5 @@
 import { z } from "zod"
+import { partialWithoutDefaults } from "./partial-update"
 
 export const createObligationSchema = z.object({
     title: z.string().min(3).max(100),
@@ -10,7 +11,7 @@ export const createObligationSchema = z.object({
     attachments: z.any().optional(),
 })
 
-export const updateObligationSchema = createObligationSchema.partial().extend({
+export const updateObligationSchema = partialWithoutDefaults(createObligationSchema).extend({
     id: z.string().min(1, "Obligation ID is required"),
     status: z.enum(['PENDING', 'IN_PROGRESS', 'COMPLETED', 'ARCHIVED']).optional(),
 })

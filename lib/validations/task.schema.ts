@@ -1,4 +1,5 @@
 import { z } from "zod"
+import { partialWithoutDefaults } from "./partial-update"
 
 /**
  * createTaskSchema
@@ -30,7 +31,7 @@ export const createTaskSchema = z.object({
     attachments: z.any().optional(), // Can be stringified JSON or array
 })
 
-export const updateTaskSchema = createTaskSchema.partial().extend({
+export const updateTaskSchema = partialWithoutDefaults(createTaskSchema).extend({
     id: z.string().min(1, "Task ID is required"),
 })
 
