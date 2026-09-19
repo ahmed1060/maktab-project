@@ -1,8 +1,8 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from 'react'
 import SafeDate from "./SafeDate"
-
+import { useTemporaryHighlight } from '@/lib/useTemporaryHighlight'
 
 interface Obligation {
     id: string
@@ -22,19 +22,7 @@ interface Attachment {
 export default function ObligationCard({ obligation, userRole, isHighlighted }: { obligation: Obligation, userRole: string, isHighlighted?: boolean }) {
     const [status, setStatus] = useState(obligation.status)
     const [uploading, setUploading] = useState(false)
-    const [showVisualHighlight, setShowVisualHighlight] = useState(isHighlighted)
-
-    useEffect(() => {
-        if (isHighlighted) {
-            setShowVisualHighlight(true)
-            const timer = setTimeout(() => {
-                setShowVisualHighlight(false)
-            }, 6000)
-            return () => clearTimeout(timer)
-        } else {
-            setShowVisualHighlight(false)
-        }
-    }, [isHighlighted])
+    const showVisualHighlight = useTemporaryHighlight(isHighlighted)
 
     const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         if (!e.target.files?.[0]) return

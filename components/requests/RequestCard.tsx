@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect, useRef } from 'react'
 import { useLanguage } from '@/context/LanguageContext'
+import { useTemporaryHighlight } from '@/lib/useTemporaryHighlight'
 
 interface RequestCardProps {
     request: any
@@ -14,19 +15,15 @@ export default function RequestCard({ request, userRole, onView, onStatusUpdate,
     const { t } = useLanguage()
     const [updating, setUpdating] = useState(false)
     const cardRef = useRef<HTMLDivElement>(null)
-    const [showVisualHighlight, setShowVisualHighlight] = useState(isHighlighted)
 
+    const showVisualHighlight = useTemporaryHighlight(isHighlighted)
+
+    // Scrolling stays an effect of its own: it touches the DOM rather than
+    // state, and it has to happen once when the card becomes the highlighted
+    // one — which is what arriving here from a notification means.
     useEffect(() => {
-        if (isHighlighted) {
-            setShowVisualHighlight(true)
-            cardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-            const timer = setTimeout(() => {
-                setShowVisualHighlight(false)
-            }, 6000) // 3 pulses * 2s
-            return () => clearTimeout(timer)
-        } else {
-            setShowVisualHighlight(false)
-        }
+        if (!isHighlighted) return
+        cardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
     }, [isHighlighted])
 
     const handleUpdate = async (status: string) => {

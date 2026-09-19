@@ -1,7 +1,8 @@
 'use client'
 import Link from 'next/link'
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useLanguage } from '@/context/LanguageContext'
+import { useTemporaryHighlight } from '@/lib/useTemporaryHighlight'
 
 interface CostCardProps {
     task: {
@@ -21,19 +22,7 @@ interface CostCardProps {
 export default function CostCard({ task, isHighlighted }: CostCardProps) {
     const { t, locale } = useLanguage()
     const [isHovered, setIsHovered] = useState(false)
-    const [showVisualHighlight, setShowVisualHighlight] = useState(isHighlighted)
-
-    useEffect(() => {
-        if (isHighlighted) {
-            setShowVisualHighlight(true)
-            const timer = setTimeout(() => {
-                setShowVisualHighlight(false)
-            }, 6000)
-            return () => clearTimeout(timer)
-        } else {
-            setShowVisualHighlight(false)
-        }
-    }, [isHighlighted])
+    const showVisualHighlight = useTemporaryHighlight(isHighlighted)
 
     // Status mapping using translation keys
     const getStatusKey = (status: string) => {

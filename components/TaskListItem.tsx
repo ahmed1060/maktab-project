@@ -1,11 +1,11 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import Link from 'next/link'
 import { useLanguage } from '@/context/LanguageContext'
 import Modal from './Modal'
 import SafeDate from './SafeDate'
 import { useHydrated } from '@/lib/useHydrated'
-
+import { useTemporaryHighlight } from '@/lib/useTemporaryHighlight'
 
 interface TaskListItemProps {
     task: {
@@ -36,21 +36,9 @@ interface TaskListItemProps {
 
 export default function TaskListItem({ task, currentUserId, isHighlighted }: TaskListItemProps) {
     const [isModalOpen, setIsModalOpen] = useState(false)
-    const [showVisualHighlight, setShowVisualHighlight] = useState(isHighlighted)
+    const showVisualHighlight = useTemporaryHighlight(isHighlighted)
     const mounted = useHydrated()
     const { t, locale } = useLanguage()
-
-    useEffect(() => {
-        if (isHighlighted) {
-            setShowVisualHighlight(true)
-            const timer = setTimeout(() => {
-                setShowVisualHighlight(false)
-            }, 6000)
-            return () => clearTimeout(timer)
-        } else {
-            setShowVisualHighlight(false)
-        }
-    }, [isHighlighted])
 
     const getButtonLabel = () => {
         const isSelfAssigned = task.assignees?.some((a: any) => a.id === currentUserId)
