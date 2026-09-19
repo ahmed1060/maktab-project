@@ -4,7 +4,12 @@ import { prisma } from "@/lib/prisma"
 import { isValidTaskStatus } from "@/lib/valid-enums"
 import TasksClient from "./TasksClient"
 
-export default async function TasksPage({ searchParams }: { searchParams: { company?: string, page?: string, status?: string, search?: string, employeeId?: string, view?: string, dateFrom?: string, dateTo?: string } }) {
+export default async function TasksPage(props: { searchParams: Promise<{ company?: string, page?: string, status?: string, search?: string, employeeId?: string, view?: string, dateFrom?: string, dateTo?: string }> }) {
+    // Next 15 hands a page its dynamic segments and query string as
+    // promises rather than plain objects, so they are awaited here and
+    // the rest of the function reads them exactly as it did before.
+    const searchParams = await props.searchParams
+
     const session = await getServerSession(authOptions)
     const role = (session?.user as any)?.role
     const page = parseInt(searchParams.page || '1')

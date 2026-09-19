@@ -4,10 +4,7 @@ import { authOptions } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 import CostsClient from './CostsClient'
 
-export default async function CostsPage({
-    searchParams
-}: {
-    searchParams: {
+export default async function CostsPage(props: { searchParams: Promise<{
         company?: string,
         page?: string,
         limit?: string,
@@ -15,8 +12,12 @@ export default async function CostsPage({
         dateFrom?: string,
         dateTo?: string,
         search?: string
-    }
-}) {
+    }> }) {
+    // Next 15 hands a page its dynamic segments and query string as
+    // promises rather than plain objects, so they are awaited here and
+    // the rest of the function reads them exactly as it did before.
+    const searchParams = await props.searchParams
+
     const session = await getServerSession(authOptions)
     if (!session) {
         redirect('/login')

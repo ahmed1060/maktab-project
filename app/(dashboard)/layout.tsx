@@ -48,7 +48,9 @@ export default async function DashboardLayout({
     // and can say anything, so what stops it mattering is that it is ignored for
     // anyone who is not a Super Admin — and a Super Admin can already see every
     // company, so it grants nothing they did not have.
-    const scopeId = scopedCompanyId(user.role, cookies().get(SCOPED_COMPANY_COOKIE)?.value)
+    // cookies() is async since Next 15.
+    const cookieStore = await cookies()
+    const scopeId = scopedCompanyId(user.role, cookieStore.get(SCOPED_COMPANY_COOKIE)?.value)
     const scopedBranding = scopeId ? await CompanyService.getBranding(scopeId) : null
 
     return (

@@ -13,7 +13,8 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          # Prisma 7 wants ^20.19 || ^22.12 || >=24, Next 16 wants >=20.9.
+          node-version: 22
           cache: 'npm'
 
       # `npm ci`'s postinstall runs `prisma generate`, which only reads
@@ -24,8 +25,9 @@ jobs:
       - name: Typecheck
         run: npx tsc --noEmit
 
+      # `next lint` was removed in Next 16; the ESLint CLI replaces it.
       - name: Lint
-        run: npx next lint
+        run: npm run lint
 
       - name: Unit tests
         run: npm run test:run

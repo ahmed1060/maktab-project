@@ -1,7 +1,7 @@
-import { PrismaClient } from '@prisma/client'
+import { createScriptClient } from "../lib/prisma-script"
 import bcrypt from 'bcryptjs'
 
-const prisma = new PrismaClient()
+const prisma = createScriptClient()
 
 // Seed credentials must come from the environment. This used to hardcode
 // ahmed.hossam1060@gmail.com / mohamedsadek@gmail.com with the password

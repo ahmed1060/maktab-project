@@ -5,7 +5,12 @@ import { verifyResourceAccess } from "@/lib/security"
 import AccessDenied from "@/components/AccessDenied"
 import TaskDetailClient from "./client"
 
-export default async function TaskDetailPage({ params }: { params: { id: string } }) {
+export default async function TaskDetailPage(props: { params: Promise<{ id: string }> }) {
+    // Next 15 hands a page its dynamic segments and query string as
+    // promises rather than plain objects, so they are awaited here and
+    // the rest of the function reads them exactly as it did before.
+    const params = await props.params
+
     const session = await getServerSession(authOptions)
     const task = await prisma.task.findUnique({
         where: { id: params.id },

@@ -6,11 +6,12 @@ import { DEFAULT_TIME_ZONE } from "@/lib/time"
 // "always id: 'default'" convention lives in exactly one spot.
 const SETTINGS_ID = 'default'
 
-// The fallback for the signature's name, used when the column is missing or has
-// been emptied. Never an empty string: "Powered by" followed by nothing reads
-// as a rendering bug, so clearing the field falls back here and switching the
-// mark off entirely is the way to remove it.
-export const DEFAULT_POWERED_BY_NAME = 'SHSD'
+// Re-exported, not defined here. It now lives in lib/branding-defaults, which
+// imports nothing, so a client component can have the constant without having
+// the database client that this file carries. Kept exported from here so the
+// server-side callers that already import it are undisturbed.
+export { DEFAULT_POWERED_BY_NAME } from '../branding-defaults'
+import { DEFAULT_POWERED_BY_NAME } from '../branding-defaults'
 
 export class SystemSettingsService {
     /**

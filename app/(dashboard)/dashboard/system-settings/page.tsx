@@ -6,7 +6,7 @@ import AccessDenied from '@/components/AccessDenied'
 import { useToast } from '@/context/ToastContext'
 import { useLanguage } from '@/context/LanguageContext'
 import { useHeader } from '@/context/HeaderContext'
-import { DEFAULT_POWERED_BY_NAME } from '@/lib/services/system-settings.service'
+import { DEFAULT_POWERED_BY_NAME } from '@/lib/branding-defaults'
 
 type SystemSettings = {
     id: string

@@ -84,13 +84,14 @@ enum VerificationPurpose {
 }
 
 datasource db {
-  provider  = "postgresql"
-  // Read from the vars Vercel's Supabase Storage integration keeps in sync
-  // automatically (POSTGRES_PRISMA_URL = pooled, POSTGRES_URL_NON_POOLING =
-  // direct) instead of the old static DATABASE_URL/DIRECT_URL, which had to
-  // be copied by hand every time the DB password rotated.
-  url       = env("POSTGRES_PRISMA_URL")
-  directUrl = env("POSTGRES_URL_NON_POOLING")
+  provider = "postgresql"
+  // No url here any more. Prisma 7 refuses connection strings in the schema
+  // and takes them from prisma.config.ts (for the CLI) and from the driver
+  // adapter in lib/prisma.ts (for the running app). Both still read the vars
+  // Vercel's Supabase integration keeps in sync — POSTGRES_PRISMA_URL is the
+  // pooled one the app uses, POSTGRES_URL_NON_POOLING the direct one migrate
+  // needs — so nothing about where the URLs come from has changed, only
+  // which file names them.
 }
 
 // A sellable package. Rows are created and edited by a Super Admin in the UI so
