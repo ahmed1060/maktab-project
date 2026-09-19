@@ -1,9 +1,10 @@
 'use client'
 
 import { createPortal } from 'react-dom'
-import { useState, useEffect } from 'react'
+
 import { useLanguage } from '@/context/LanguageContext'
 import LoadingSpinner from '@/components/LoadingSpinner'
+import { useHydrated } from '@/lib/useHydrated'
 
 export type BackupEntry = {
     folder: 'daily' | 'weekly' | 'monthly'
@@ -29,9 +30,8 @@ function formatSize(bytes: number): string {
 
 export default function BackupPickerModal({ isOpen, backups, loading, error, onSelect, onClose }: BackupPickerModalProps) {
     const { t, locale } = useLanguage()
-    const [mounted, setMounted] = useState(false)
+    const mounted = useHydrated()
 
-    useEffect(() => { setMounted(true) }, [])
     if (!isOpen || !mounted) return null
 
     return createPortal(

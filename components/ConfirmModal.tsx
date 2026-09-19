@@ -3,6 +3,7 @@
 import { createPortal } from 'react-dom'
 import { useState, useEffect } from 'react'
 import { useLanguage } from '@/context/LanguageContext'
+import { useHydrated } from '@/lib/useHydrated'
 
 interface ConfirmModalProps {
     isOpen: boolean
@@ -45,13 +46,10 @@ export default function ConfirmModal({
     reason
 }: ConfirmModalProps) {
     const { t, locale } = useLanguage()
-    const [mounted, setMounted] = useState(false)
+    const mounted = useHydrated()
     const [typedValue, setTypedValue] = useState('')
     const [reasonValue, setReasonValue] = useState('')
 
-    useEffect(() => {
-        setMounted(true)
-    }, [])
 
     // Reset the typed value every time the modal opens/closes, so a
     // previous confirmation doesn't carry over to the next action.

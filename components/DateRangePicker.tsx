@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { useLanguage } from '@/context/LanguageContext'
+import { useHydrated } from '@/lib/useHydrated'
 
 interface DateRangePickerProps {
     dateFrom: string
@@ -14,7 +15,7 @@ interface DateRangePickerProps {
 export default function DateRangePicker({ dateFrom, dateTo, onChange, label, minDate, maxDate }: DateRangePickerProps) {
     const { t, locale } = useLanguage()
     const [isOpen, setIsOpen] = useState(false)
-    const [mounted, setMounted] = useState(false)
+    const mounted = useHydrated()
     const [isMobile, setIsMobile] = useState(false)
     const [currentMonth, setCurrentMonth] = useState(new Date())
     const [selectingFrom, setSelectingFrom] = useState(true)
@@ -22,7 +23,6 @@ export default function DateRangePicker({ dateFrom, dateTo, onChange, label, min
     const portalRef = useRef<HTMLDivElement>(null)
 
     useEffect(() => {
-        setMounted(true)
         const checkMobile = () => {
             setIsMobile(window.innerWidth <= 768)
         }

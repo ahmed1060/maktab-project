@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useHydrated } from '@/lib/useHydrated'
 
 interface SafeDateProps {
     date: string | Date | null | undefined
@@ -19,13 +19,11 @@ export default function SafeDate({
     className = '',
     locale = 'en-US'
 }: SafeDateProps) {
-    const [mounted, setMounted] = useState(false)
+    // Dates are formatted in the viewer's locale, which the server cannot know,
+    // so nothing renders until hydration.
+    const hydrated = useHydrated()
 
-    useEffect(() => {
-        setMounted(true)
-    }, [])
-
-    if (!mounted || !date) return null
+    if (!hydrated || !date) return null
 
     const d = new Date(date)
     if (isNaN(d.getTime())) return null

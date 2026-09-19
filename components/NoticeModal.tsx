@@ -1,8 +1,9 @@
 'use client'
 
 import { createPortal } from 'react-dom'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef } from 'react'
 import { useLanguage } from '@/context/LanguageContext'
+import { useHydrated } from '@/lib/useHydrated'
 
 export type NoticeVariant = 'success' | 'error' | 'info'
 
@@ -59,10 +60,8 @@ const VARIANTS: Record<NoticeVariant, { bg: string; fg: string; solid: string; h
 
 export default function NoticeModal({ notice, onClose, closeText }: NoticeModalProps) {
     const { t, locale } = useLanguage()
-    const [mounted, setMounted] = useState(false)
+    const mounted = useHydrated()
     const dismissRef = useRef<HTMLButtonElement>(null)
-
-    useEffect(() => { setMounted(true) }, [])
 
     // Escape closes it, and the dismiss button takes focus when it opens — an
     // alert() could always be cleared with a keystroke and this should not be

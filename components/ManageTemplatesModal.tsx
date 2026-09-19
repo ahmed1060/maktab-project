@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { createPortal } from 'react-dom'
 import useSWR from 'swr'
 import { useLanguage } from '@/context/LanguageContext'
@@ -7,6 +7,7 @@ import { useToast } from '@/context/ToastContext'
 import { useCompany } from '@/context/CompanyContext'
 import { fetcher } from '@/lib/swr-fetcher'
 import SafeDate from '@/components/SafeDate'
+import { useHydrated } from '@/lib/useHydrated'
 
 // F-23: extracted verbatim out of tasks/new/page.tsx, which had grown to
 // 1386 lines. This modal's state (the two selected files and their upload
@@ -42,10 +43,7 @@ export default function ManageTemplatesModal({ isOpen, onClose }: ManageTemplate
     const { showToast } = useToast()
     const { selectedCompanyId } = useCompany()
 
-    const [mounted, setMounted] = useState(false)
-    useEffect(() => {
-        setMounted(true)
-    }, [])
+    const mounted = useHydrated()
 
     const [enTemplateFile, setEnTemplateFile] = useState<File | null>(null)
     const [arTemplateFile, setArTemplateFile] = useState<File | null>(null)

@@ -17,6 +17,7 @@ import Pagination from '@/components/Pagination'
 import SafeDate from '@/components/SafeDate'
 import { fetcher } from '@/lib/swr-fetcher'
 import NoticeModal, { Notice } from '@/components/NoticeModal'
+import { useHydrated } from '@/lib/useHydrated'
 
 
 interface Client {
@@ -51,7 +52,7 @@ export default function ClientsPage() {
     // Replaces alert(): a native dialog ignores the palette entirely, and it
     // blocks the main thread for as long as it is up.
     const [notice, setNotice] = useState<Notice | null>(null)
-    const [mounted, setMounted] = useState(false)
+    const mounted = useHydrated()
     const [deleteConfirm, setDeleteConfirm] = useState<{ isOpen: boolean, client: Client | null }>({ isOpen: false, client: null })
     const [isEditClientModalOpen, setIsEditClientModalOpen] = useState(false)
     const [editClientName, setEditClientName] = useState('')
@@ -68,9 +69,6 @@ export default function ClientsPage() {
         return () => window.removeEventListener('resize', checkMobile)
     }, [])
 
-    useEffect(() => {
-        setMounted(true)
-    }, [])
 
     useEffect(() => {
         setTitle(modules.label('clients'))

@@ -14,6 +14,7 @@ import LoadingSpinner from '@/components/LoadingSpinner'
 import { useToast } from '@/context/ToastContext'
 import { useCompany } from '@/context/CompanyContext'
 import { fetcher } from '@/lib/swr-fetcher'
+import { useHydrated } from '@/lib/useHydrated'
 
 interface Vendor {
     id: string
@@ -45,7 +46,7 @@ export default function VendorsPage() {
     const { selectedCompanyId: contextCompanyId } = useCompany()
 
     const [searchQuery, setSearchQuery] = useState('')
-    const [mounted, setMounted] = useState(false)
+    const mounted = useHydrated()
     const [isMobile, setIsMobile] = useState(false)
 
     const [isAddOpen, setIsAddOpen] = useState(false)
@@ -70,9 +71,6 @@ export default function VendorsPage() {
         return () => window.removeEventListener('resize', checkMobile)
     }, [])
 
-    useEffect(() => {
-        setMounted(true)
-    }, [])
 
     useEffect(() => {
         setTitle(vendorsName)

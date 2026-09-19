@@ -1,7 +1,8 @@
 'use client'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { useLanguage } from '@/context/LanguageContext'
+import { useHydrated } from '@/lib/useHydrated'
 
 interface ModalProps {
     isOpen: boolean
@@ -16,10 +17,9 @@ export default function Modal({ isOpen, onClose, title, children, hideFooter = t
     const { t } = useLanguage()
     const modalRef = useRef<HTMLDivElement>(null)
 
-    const [mounted, setMounted] = useState(false)
+    const mounted = useHydrated()
 
     useEffect(() => {
-        setMounted(true)
         const handleEscape = (e: KeyboardEvent) => {
             if (e.key === 'Escape' && !hideCloseButton) onClose()
         }

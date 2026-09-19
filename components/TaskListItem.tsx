@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useLanguage } from '@/context/LanguageContext'
 import Modal from './Modal'
 import SafeDate from './SafeDate'
+import { useHydrated } from '@/lib/useHydrated'
 
 
 interface TaskListItemProps {
@@ -36,11 +37,10 @@ interface TaskListItemProps {
 export default function TaskListItem({ task, currentUserId, isHighlighted }: TaskListItemProps) {
     const [isModalOpen, setIsModalOpen] = useState(false)
     const [showVisualHighlight, setShowVisualHighlight] = useState(isHighlighted)
-    const [mounted, setMounted] = useState(false)
+    const mounted = useHydrated()
     const { t, locale } = useLanguage()
 
     useEffect(() => {
-        setMounted(true)
         if (isHighlighted) {
             setShowVisualHighlight(true)
             const timer = setTimeout(() => {

@@ -11,6 +11,7 @@ import { useLanguage } from '@/context/LanguageContext'
 import Modal from '@/components/Modal'
 import { useToast } from '@/context/ToastContext'
 import Pagination from '@/components/Pagination'
+import { useHydrated } from '@/lib/useHydrated'
 
 interface Section {
     id: string
@@ -69,7 +70,7 @@ export default function ClientDetailsPage() {
 
     // UI State
     const [searchQuery, setSearchQuery] = useState('')
-    const [mounted, setMounted] = useState(false)
+    const mounted = useHydrated()
     const [deleteConfirm, setDeleteConfirm] = useState<{ isOpen: boolean, section: Section | null }>({ isOpen: false, section: null })
     const { showToast } = useToast()
     const searchParams = useSearchParams()
@@ -91,9 +92,6 @@ export default function ClientDetailsPage() {
     }, [])
 
 
-    useEffect(() => {
-        setMounted(true)
-    }, [])
 
 
     useEffect(() => {

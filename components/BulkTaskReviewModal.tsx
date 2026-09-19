@@ -1,11 +1,12 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
 import { useLanguage } from '@/context/LanguageContext'
 import { useToast } from '@/context/ToastContext'
 import DateTimePicker from '@/components/DateTimePicker'
 import LocationSearchInput from '@/components/LocationSearchInput'
+import { useHydrated } from '@/lib/useHydrated'
 
 // F-23: extracted verbatim out of tasks/new/page.tsx, which had grown to
 // 1386 lines. `bulkTasks`/`setBulkTasks` and `revalidateRow` stay owned by
@@ -33,10 +34,7 @@ export default function BulkTaskReviewModal({
     const { showToast } = useToast()
     const router = useRouter()
 
-    const [mounted, setMounted] = useState(false)
-    useEffect(() => {
-        setMounted(true)
-    }, [])
+    const mounted = useHydrated()
 
     const [activeAssigneeEdit, setActiveAssigneeEdit] = useState<{ index: number, type: 'add' | 'remove' } | null>(null)
     const [activeCellEdit, setActiveCellEdit] = useState<{ index: number, field: 'title' | 'description' | 'deadline' } | null>(null)

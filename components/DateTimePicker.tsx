@@ -2,6 +2,7 @@
 import { useState, useRef, useEffect, useMemo } from 'react'
 import { useLanguage } from '@/context/LanguageContext'
 import { createPortal } from 'react-dom'
+import { useHydrated } from '@/lib/useHydrated'
 
 interface DateTimePickerProps {
     value: string
@@ -15,7 +16,7 @@ export default function DateTimePicker({ value, onChange, label, min, customTrig
 
     const { t, locale } = useLanguage()
     const [isOpen, setIsOpen] = useState(false)
-    const [mounted, setMounted] = useState(false)
+    const mounted = useHydrated()
     const [isMobile, setIsMobile] = useState(false)
     const [currentMonth, setCurrentMonth] = useState(new Date())
     const containerRef = useRef<HTMLDivElement>(null)
@@ -24,7 +25,6 @@ export default function DateTimePicker({ value, onChange, label, min, customTrig
     const selectedDate = useMemo(() => value ? new Date(value) : null, [value])
 
     useEffect(() => {
-        setMounted(true)
         const checkMobile = () => setIsMobile(window.innerWidth <= 768)
         checkMobile()
         window.addEventListener('resize', checkMobile)

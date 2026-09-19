@@ -1,11 +1,11 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import Link from 'next/link'
 import { useLanguage } from '@/context/LanguageContext'
 import Modal from './Modal'
 import SafeDate from './SafeDate'
 import { RECURRENCE_STYLE } from '@/lib/recurrence'
-
+import { useHydrated } from '@/lib/useHydrated'
 
 interface ObligationListItemProps {
     obligation: {
@@ -28,12 +28,8 @@ interface ObligationListItemProps {
 
 export default function ObligationListItem({ obligation, isHighlighted }: ObligationListItemProps) {
     const [isModalOpen, setIsModalOpen] = useState(false)
-    const [mounted, setMounted] = useState(false)
+    const mounted = useHydrated()
     const { t, locale } = useLanguage()
-
-    useEffect(() => {
-        setMounted(true)
-    }, [])
 
     const getButtonLabel = () => {
         if (obligation.status === 'PENDING') return t('start_obligation')
