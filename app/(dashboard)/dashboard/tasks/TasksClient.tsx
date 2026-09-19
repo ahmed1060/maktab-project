@@ -125,7 +125,10 @@ export default function TasksClient({ tasks, total, page, totalPages, role, curr
 
     return (
         <div>
-            {['EMPLOYEE', 'TEAM_LEADER'].includes(role) && (
+            {/* A Team Leader's, not an employee's: the second tab is the
+                company's other open work. The page enforces this regardless of
+                what the query string asks for — this only stops offering it. */}
+            {role === 'TEAM_LEADER' && (
                 <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1.25rem' }}>
                     <button
                         onMouseEnter={() => setIsMyHovered(true)}

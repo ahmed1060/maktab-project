@@ -23,19 +23,26 @@ export default async function TasksPage(props: { searchParams: Promise<{ company
         if (comp) companyId = comp.id
     }
 
-    const view = searchParams.view || (['EMPLOYEE', 'TEAM_LEADER'].includes(role) ? 'my' : 'active')
+    // An employee has one view, so a `view` in the query string is ignored for
+    // them rather than honoured — the tabs below are a Team Leader's.
+    const requestedView = searchParams.view || (['EMPLOYEE', 'TEAM_LEADER'].includes(role) ? 'my' : 'active')
+    const view = role === 'EMPLOYEE' ? 'my' : requestedView
     const whereClause: any = {}
     const userCompanyId = (session?.user as any)?.companyId
 
     if (role === 'EMPLOYEE') {
+        // An employee sees their own tasks and nothing else. The second view —
+        // the company's other work in flight — is a Team Leader's, and it used
+        // to answer here too: `?view=active` returned every colleague's open
+        // task, with the whole row serialised into the page. `memberCosts` is a
+        // per-person money map, so the payload carried what each of their
+        // colleagues is paid per task, whether or not the screen drew it.
+        //
+        // Not gated on `view` at all, deliberately. Hiding the tab is a change
+        // to the UI; this is the rule, and it holds for a typed URL, a
+        // bookmarked one, or anything else that reaches this page.
         whereClause.companyId = userCompanyId
-        if (view === 'my') {
-            whereClause.assignees = { some: { id: userId } }
-        } else {
-            // Active tasks: other users tasks in same company with status PENDING or IN_PROGRESS
-            whereClause.assignees = { none: { id: userId } }
-            whereClause.status = { in: ['PENDING', 'IN_PROGRESS'] }
-        }
+        whereClause.assignees = { some: { id: userId } }
     } else if (role === 'TEAM_LEADER') {
         whereClause.companyId = userCompanyId
         if (view === 'my') {
@@ -94,11 +101,31 @@ export default async function TasksPage(props: { searchParams: Promise<{ company
         (prisma.task as any).count({ where: whereClause })
     ])
 
+    /**
+     * memberCosts is a map of assignee id to what that person is paid for the
+     * task. An employee's own entry is theirs to see — TaskListItem draws it as
+     * "My Cost" — and the rest of the map is not.
+     *
+     * The list renders only `memberCosts[currentUserId]`, so nothing else was
+     * ever on screen. It was in the HTML, though, which is the same disclosure
+     * with an extra step: on a task with three assignees, any one of them could
+     * read the other two's rate out of the page source. Narrowed here, at the
+     * boundary, rather than trusting every present and future component that
+     * receives this object to keep ignoring the rest.
+     */
+    function visibleMemberCosts(raw: any) {
+        if (role !== 'EMPLOYEE' || !raw) return raw
+        const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw
+        if (!parsed || typeof parsed !== 'object') return raw
+        return userId in parsed ? { [userId]: parsed[userId] } : {}
+    }
+
     // totalCost is a Prisma.Decimal (F-07) — Server Components can only pass
     // plain serializable values to Client Components.
     const serializedTasks = tasks.map((task: any) => ({
         ...task,
-        totalCost: Number(task.totalCost)
+        totalCost: Number(task.totalCost),
+        memberCosts: visibleMemberCosts(task.memberCosts),
     }))
 
     return (
