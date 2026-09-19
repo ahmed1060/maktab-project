@@ -14,10 +14,28 @@ import { poolConfigFrom } from './postgres-ssl'
  * POSTGRES_PRISMA_URL is Supabase's pooled endpoint (pgBouncer in transaction
  * mode). Two things follow from that and both are set deliberately:
  *
- *  - max: 1. A serverless function handles one request at a time, so a larger
- *    local pool cannot make it faster; it can only hold open connections that
- *    the shared pooler then refuses to somebody else. The old
- *    `?connection_limit=1` in the URL said the same thing to the engine.
+ *  - max: 5, and emphatically not 1.
+ *
+ *    One is the tempting answer, and it deadlocks. A serverless function
+ *    handles one *request* at a time, but a single request is not the same as
+ *    a single connection: an interactive transaction holds one for its whole
+ *    duration, and if anything inside it queries through this client rather
+ *    than through the transaction's own `tx`, that query needs a second.
+ *
+ *    That is not hypothetical — it is what SalaryService.addAdjustment does.
+ *    It opens a transaction, and applyAdjustment inside it calls
+ *    baseSalaryFor, which goes through the global client. With a pool of one
+ *    the inner query waits for a connection the outer transaction is holding,
+ *    neither can finish, and it dies five seconds later on the interactive
+ *    transaction timeout. Adding a bonus or a deduction failed outright.
+ *
+ *    Prisma 5 hid this: its engine sized its own pool at num_cpus * 2 + 1
+ *    unless the URL said otherwise, and the URL never did. Setting max: 1 here
+ *    reproduced a limit production never had.
+ *
+ *    Five, not fifty: the pooler is shared, and idle connections held by a
+ *    sleeping lambda are connections somebody else is refused. Five leaves
+ *    room for the nesting above without hoarding.
  *
  * The other half of what `?pgbouncer=true` used to buy is free here: it told
  * the Rust engine to stop naming its prepared statements, because a
@@ -45,7 +63,7 @@ function createClient(): PrismaClient {
     // poolConfigFrom rather than the raw string: see lib/postgres-ssl.ts for
     // why handing the URL straight to node-postgres breaks TLS against Supabase.
     const client = new PrismaClient({
-        adapter: new PrismaPg(poolConfigFrom(connectionString, { max: 1 })),
+        adapter: new PrismaPg(poolConfigFrom(connectionString, { max: 5 })),
     })
 
     if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = client

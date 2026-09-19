@@ -52,6 +52,23 @@ describe("importing the client does not need a database", () => {
     })
 })
 
+describe("the connection pool leaves room for a nested query", () => {
+    it("does not cap the pool at one connection", () => {
+        // One deadlocks. An interactive transaction holds a connection for its
+        // whole duration, and SalaryService.addAdjustment queries through the
+        // global client from inside one — applyAdjustment calls baseSalaryFor,
+        // which does not take the transaction's tx. With a pool of one that
+        // inner query waits for the connection the outer transaction is
+        // holding, and both die on the 5s interactive-transaction timeout.
+        // Adding a bonus or a deduction failed outright, and only against a
+        // real database: nothing in this suite connects, so it shipped.
+        const client = stripComments(readFileSync("./lib/prisma.ts", "utf8"))
+        const max = client.match(/max:\s*(\d+)/)
+        expect(max, "the pool size is no longer stated").not.toBeNull()
+        expect(Number(max![1]), "a pool of one cannot serve a nested query").toBeGreaterThan(1)
+    })
+})
+
 describe("prisma generate survives an install with no credentials", () => {
     it("does not use the env() helper, which throws on a missing variable", () => {
         // Comments first. The file explains at length why it avoids env(), and
