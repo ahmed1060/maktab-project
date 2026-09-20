@@ -29,6 +29,11 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
     const [username, setUsername] = useState('')
     const [status, setStatus] = useState('OFFLINE')
     const [companyId, setCompanyId] = useState('')
+    // Empty string is the select's "no team leader" option; it becomes an
+    // explicit null in the payload, because absent means "leave it alone" and
+    // an Admin resolving a hand-off needs to be able to say "unassign".
+    const [teamLeaderId, setTeamLeaderId] = useState('')
+    const [leaders, setLeaders] = useState<{ id: string; firstName: string; lastName: string }[]>([])
     const [companies, setCompanies] = useState<{ id: string, name: string }[]>([])
     const [loading, setLoading] = useState(true)
     const [saving, setSaving] = useState(false)
@@ -105,6 +110,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                 setCompanyId(employee.companyId || '')
                 setUsername(employee.username || '')
                 setStatus(employee.status || 'OFFLINE')
+                setTeamLeaderId(employee.teamLeaderId || '')
                 setAvatarUrl(employee.avatar || null)
 
                 // Check for pending name change requests
@@ -144,8 +150,26 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
             console.warn('EmployeeProfileForm: userId is missing')
             setLoading(false)
         }
+        // Who this employee could be assigned to. Asked for by role rather
+        // than fetched wholesale and filtered here — the browser should not be
+        // handed a list it is going to throw most of away.
+        const fetchLeaders = async () => {
+            try {
+                const res = await fetch('/api/users?role=TEAM_LEADER&limit=1000')
+                if (res.ok) {
+                    const result = await res.json()
+                    setLeaders(result.data?.data || [])
+                }
+            } catch (e) {
+                console.error('Failed to fetch team leaders', e)
+            }
+        }
+
         if (userRole === 'SUPER_ADMIN') {
             fetchCompanies()
+        }
+        if (userRole === 'SUPER_ADMIN' || userRole === 'ADMIN') {
+            fetchLeaders()
         }
     }, [userId, userRole, showToast, session, t])
 
@@ -266,7 +290,12 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                     salary: (userRole === 'ADMIN' || userRole === 'SUPER_ADMIN') && userId !== session?.user?.id ? parseFloat(salary) || 0 : undefined,
                     baseDayOffCredit: (userRole === 'ADMIN' || userRole === 'SUPER_ADMIN') && userId !== session?.user?.id ? parseFloat(baseDayOffCredit) || 0 : undefined,
                     username: userRole === 'SUPER_ADMIN' ? username : undefined,
-                    status: (userRole === 'ADMIN' || userRole === 'SUPER_ADMIN') && userId !== session?.user?.id ? status : undefined
+                    status: (userRole === 'ADMIN' || userRole === 'SUPER_ADMIN') && userId !== session?.user?.id ? status : undefined,
+                    // undefined leaves it alone; null unassigns. The empty
+                    // option means the second, so it cannot be sent as "".
+                    teamLeaderId: (userRole === 'ADMIN' || userRole === 'SUPER_ADMIN') && userId !== session?.user?.id && role === 'EMPLOYEE'
+                        ? (teamLeaderId || null)
+                        : undefined
                 }),
                 headers: { 'Content-Type': 'application/json' }
             })
@@ -867,6 +896,34 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                                 {(userRole === 'SUPER_ADMIN' || role === 'ADMIN') && <option value="ADMIN">{t('role_admin')}</option>}
                                 {role === 'SUPER_ADMIN' && <option value="SUPER_ADMIN">{t('super_admins')}</option>}
                             </select>
+                        </div>
+                    )
+                }
+
+                {
+                    /* Only an employee has a team leader — leaders are not led,
+                       and an Admin is not managed through this screen. The field
+                       disappears rather than greying out when the role above is
+                       changed, because an empty disabled control invites the
+                       question of what it would mean. */
+                    (userRole === 'SUPER_ADMIN' || userRole === 'ADMIN')
+                        && userId !== session?.user?.id
+                        && role === 'EMPLOYEE' && (
+                        <div style={{ marginBottom: '1rem' }}>
+                            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('team_leader_label')}</label>
+                            <select
+                                className="input"
+                                value={teamLeaderId}
+                                onChange={e => setTeamLeaderId(e.target.value)}
+                                disabled={isViewMode}
+                                style={isViewMode ? { background: 'var(--surface-sunk)', cursor: 'not-allowed', color: 'var(--text-soft)', textAlign: locale === 'ar' ? 'right' : 'left' } : { textAlign: locale === 'ar' ? 'right' : 'left' }}
+                            >
+                                <option value="">{t('team_leader_none')}</option>
+                                {leaders.filter(l => l.id !== userId).map(l => (
+                                    <option key={l.id} value={l.id}>{l.firstName} {l.lastName}</option>
+                                ))}
+                            </select>
+                            <p style={{ marginTop: '0.35rem', fontSize: '0.75rem', color: 'var(--text-faint)', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('team_leader_hint')}</p>
                         </div>
                     )
                 }

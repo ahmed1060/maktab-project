@@ -31,7 +31,7 @@ export const GET = withStandardHandler(async (req, session) => {
                 id: true, firstName: true, lastName: true, email: true, status: true,
                 role: true, gender: true, salary: true, companyId: true,
                 totalDifficultyPoints: true, avatar: true, dayOffCredit: true,
-                baseDayOffCredit: true, username: true
+                baseDayOffCredit: true, username: true, teamLeaderId: true
             }
         })
 
@@ -115,6 +115,25 @@ export const GET = withStandardHandler(async (req, session) => {
         }
     }
 
+    // A positive role filter, so a screen that wants only team leaders asks for
+    // them instead of pulling every user and filtering in the browser. It
+    // narrows and never widens: the exclusions above stay in the same field
+    // object, so role=SUPER_ADMIN still matches nothing.
+    // Filter by team. "unassigned" is a real answer here, not the absence of a
+    // filter — it is the bucket an Admin has to clear, and it has to be
+    // reachable or it stays invisible.
+    const teamParam = searchParams.get('teamLeaderId')
+    if (teamParam === 'unassigned') {
+        whereClause.teamLeaderId = null
+    } else if (teamParam) {
+        whereClause.teamLeaderId = teamParam
+    }
+
+    const roleParam = searchParams.get('role')
+    if (roleParam && VALID_ROLES.includes(roleParam as UserRole)) {
+        whereClause.role = { ...(whereClause.role || {}), equals: roleParam }
+    }
+
     if (excludeUserId) whereClause.id = { not: excludeUserId }
 
     const statusParam = searchParams.get('status')
@@ -155,7 +174,12 @@ export const GET = withStandardHandler(async (req, session) => {
                 id: true, firstName: true, lastName: true, email: true, status: true,
                 lastActivity: true, role: true, gender: true, username: true,
                 company: { select: { id: true, name: true } },
-                totalDifficultyPoints: true
+                totalDifficultyPoints: true,
+                teamLeaderId: true,
+                // select, not `teamLeader: true`. A leader is a User, and the
+                // relation would put a colleague's whole row — salary included
+                // — into every line of a list that wants to print a name.
+                teamLeader: { select: { id: true, firstName: true, lastName: true } }
             },
             orderBy: [{ company: { name: 'asc' } }, { firstName: 'asc' }],
             skip,

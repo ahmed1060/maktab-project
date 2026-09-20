@@ -27,6 +27,11 @@ interface Employee {
     gender?: string
     avatar?: string | null
     username?: string
+    teamLeaderId?: string | null
+    // Just the name. The API selects these three fields rather than the
+    // relation, so a colleague's whole row does not ride along in a list that
+    // only prints a name.
+    teamLeader?: { id: string; firstName: string; lastName: string } | null
 }
 
 export default function EmployeesPage() {
@@ -368,6 +373,29 @@ export default function EmployeesPage() {
                                         border: '1px solid var(--border)'
                                     }}>
                                         @{emp.username}
+                                    </span>
+                                )}
+                                {/* Only employees have one, and unassigned is
+                                    shown rather than left blank: it is a state
+                                    an Admin has to clear, and a gap on a card
+                                    reads as "not loaded" instead of "nobody". */}
+                                {emp.role === 'EMPLOYEE' && (
+                                    <span
+                                        title={t('team_leader_label')}
+                                        style={{
+                                            display: 'inline-block',
+                                            padding: '0.25rem 0.625rem',
+                                            borderRadius: '0.5rem',
+                                            fontSize: '0.75rem',
+                                            fontWeight: '700',
+                                            background: emp.teamLeader ? 'var(--surface-subtle)' : 'var(--warn-bg-yellow)',
+                                            color: emp.teamLeader ? 'var(--text-soft)' : 'var(--warn-fg)',
+                                            border: '1px solid var(--border)'
+                                        }}
+                                    >
+                                        {emp.teamLeader
+                                            ? `${emp.teamLeader.firstName} ${emp.teamLeader.lastName}`
+                                            : t('team_unassigned')}
                                     </span>
                                 )}
                                 {emp.status === 'SUSPENDED' && (

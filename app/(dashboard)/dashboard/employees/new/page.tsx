@@ -22,6 +22,8 @@ export default function NewEmployeePage() {
     const [salary, setSalary] = useState('')
     const [dayOffCredit, setDayOffCredit] = useState('0')
     const [companies, setCompanies] = useState<Company[]>([])
+    const [teamLeaderId, setTeamLeaderId] = useState('')
+    const [leaders, setLeaders] = useState<{ id: string; firstName: string; lastName: string }[]>([])
     const [error, setError] = useState('')
     const [fieldErrors, setFieldErrors] = useState<{ [key: string]: string }>({})
     const [loading, setLoading] = useState(false)
@@ -39,6 +41,13 @@ export default function NewEmployeePage() {
                     setCompanies(Array.isArray(companiesData) ? companiesData : [])
                 })
                 .catch(err => console.error('Failed to fetch companies', err))
+        }
+        // Asked for by role rather than fetched wholesale and filtered here.
+        if (userRole === 'SUPER_ADMIN' || userRole === 'ADMIN') {
+            fetch('/api/users?role=TEAM_LEADER&limit=1000')
+                .then(res => res.json())
+                .then(result => setLeaders(result.data?.data || []))
+                .catch(err => console.error('Failed to fetch team leaders', err))
         }
     }, [userRole])
 
@@ -81,6 +90,12 @@ export default function NewEmployeePage() {
             }
             if (salary) {
                 body.salary = parseFloat(salary)
+            }
+            // Only an employee has one. Sending it for any other role would be
+            // refused by the server, which is correct but a pointless round
+            // trip and a confusing message for something the form allowed.
+            if (role === 'EMPLOYEE' && teamLeaderId) {
+                body.teamLeaderId = teamLeaderId
             }
 
             const res = await fetch('/api/users', {
@@ -319,6 +334,23 @@ export default function NewEmployeePage() {
                             <option value="TEAM_LEADER">{t('role_team_leader')}</option>
                             {userRole === 'SUPER_ADMIN' && <option value="ADMIN">{t('role_admin')}</option>}
                         </select>
+                    </div>
+                )}
+                {role === 'EMPLOYEE' && (userRole === 'SUPER_ADMIN' || userRole === 'ADMIN') && (
+                    <div style={{ marginBottom: '1rem' }}>
+                        <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('team_leader_label')}</label>
+                        <select
+                            className="input"
+                            value={teamLeaderId}
+                            onChange={e => setTeamLeaderId(e.target.value)}
+                            style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}
+                        >
+                            <option value="">{t('team_leader_none')}</option>
+                            {leaders.map(l => (
+                                <option key={l.id} value={l.id}>{l.firstName} {l.lastName}</option>
+                            ))}
+                        </select>
+                        <p style={{ marginTop: '0.35rem', fontSize: '0.75rem', color: 'var(--text-faint)', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('team_leader_hint')}</p>
                     </div>
                 )}
                 <div style={{ display: 'flex', gap: '1rem' }}>
