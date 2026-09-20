@@ -5,7 +5,7 @@ import { ApiResponse } from "@/lib/api-response"
 import { createUserSchema, updateUserSchema } from "@/lib/validations/user.schema"
 import { UserService } from "@/lib/services/user.service"
 import { parsePaging } from "@/lib/pagination"
-import { scopesToTeam, teamMemberWhere, and } from "@/lib/team-scope"
+import { buildUserWhereClause } from "@/lib/services/user-query"
 
 // F-13: role/status are now Postgres enums, not free text — a query-param
 // value that isn't a real enum member makes Postgres reject the whole
@@ -81,94 +81,17 @@ export const GET = withStandardHandler(async (req, session) => {
         if (comp) filterCompanyId = comp.id
     }
 
-    const whereClause: any = { role: { not: 'SUPER_ADMIN' } }
+    const built = buildUserWhereClause(session as any, searchParams, filterCompanyId, VALID_ROLES, VALID_STATUSES)
+    if (built.empty) return ApiResponse.success({ data: [], total: 0, page: 1, totalPages: 0 })
+    const whereClause = built.whereClause
 
-    if (userRole === 'SUPER_ADMIN') {
-        if (filterCompanyId) whereClause.companyId = filterCompanyId
-    } else {
-        const userCompanyId = (session.user as any).companyId
-        if (!userCompanyId) return ApiResponse.success({ data: [], total: 0, page: 1, totalPages: 0 })
-        whereClause.companyId = userCompanyId
-    }
-
-    // Special count for deleted users
+    // Stays here rather than moving into the builder: it is a different
+    // response shape, not a different query, and it reuses the clause the
+    // builder just produced.
     const countOnly = searchParams.get('countOnly')
     if (countOnly === 'deleted') {
         const deletedCount = await prisma.user.count({ where: { ...whereClause, status: 'DELETED' } })
         return ApiResponse.success({ total: deletedCount })
-    }
-
-    const includeDeleted = searchParams.get('includeDeleted') === 'true'
-    const excludeRole = searchParams.get('excludeRole')
-    const excludeUserId = searchParams.get('excludeUserId')
-
-    if (excludeRole) {
-        const rolesToExclude = excludeRole.split(',').filter((r): r is UserRole => VALID_ROLES.includes(r as UserRole))
-        if (rolesToExclude.length > 0) {
-            whereClause.role = { ...(whereClause.role || {}), notIn: rolesToExclude }
-        }
-    }
-
-    if (scopesToTeam(userRole)) {
-        const currentExclude = whereClause.role?.notIn || (whereClause.role?.not ? [whereClause.role.not] : [])
-        if (!currentExclude.includes('ADMIN')) {
-            whereClause.role = { ...(whereClause.role || {}), notIn: [...currentExclude, 'ADMIN'] }
-        }
-        // Their team, and themselves. Added with `and` rather than assigned to
-        // whereClause.OR, which the search filter below already uses — two
-        // plain assignments to the same key means whichever runs last wins,
-        // and the one that must always win is the scope.
-        and(whereClause, teamMemberWhere(session.user.id))
-    }
-
-    // A positive role filter, so a screen that wants only team leaders asks for
-    // them instead of pulling every user and filtering in the browser. It
-    // narrows and never widens: the exclusions above stay in the same field
-    // object, so role=SUPER_ADMIN still matches nothing.
-    // Filter by team. "unassigned" is a real answer here, not the absence of a
-    // filter — it is the bucket an Admin has to clear, and it has to be
-    // reachable or it stays invisible.
-    const teamParam = searchParams.get('teamLeaderId')
-    if (teamParam === 'unassigned') {
-        whereClause.teamLeaderId = null
-    } else if (teamParam) {
-        whereClause.teamLeaderId = teamParam
-    }
-
-    const roleParam = searchParams.get('role')
-    if (roleParam && VALID_ROLES.includes(roleParam as UserRole)) {
-        whereClause.role = { ...(whereClause.role || {}), equals: roleParam }
-    }
-
-    if (excludeUserId) whereClause.id = { not: excludeUserId }
-
-    const statusParam = searchParams.get('status')
-    const searchParam = searchParams.get('search')
-
-    if (searchParam) {
-        whereClause.OR = [
-            { id: { contains: searchParam, mode: 'insensitive' } },
-            { firstName: { contains: searchParam, mode: 'insensitive' } },
-            { lastName: { contains: searchParam, mode: 'insensitive' } },
-            { email: { contains: searchParam, mode: 'insensitive' } },
-            { company: { name: { contains: searchParam, mode: 'insensitive' } } }
-        ]
-    }
-
-    if (statusParam) {
-        if (VALID_STATUSES.includes(statusParam as UserStatus)) {
-            whereClause.status = statusParam
-        } else {
-            // Not a real status — preserve the old String-column behavior
-            // (a filter that matches nothing) instead of letting an
-            // invalid enum value reject the whole query, or silently
-            // falling through to "no status filter at all".
-            whereClause.AND = whereClause.AND || []
-            whereClause.AND.push({ id: '__no_match__' })
-        }
-    } else if (!includeDeleted) {
-        whereClause.AND = whereClause.AND || []
-        whereClause.AND.push({ status: { not: 'DELETED' } })
     }
 
     const { page, limit, skip } = parsePaging(searchParams, 10)

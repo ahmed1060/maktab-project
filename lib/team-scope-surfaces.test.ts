@@ -36,7 +36,10 @@ function body(path: string): string {
 const SURFACES: [string, string][] = [
     ["tasks list (page)", "app/(dashboard)/dashboard/tasks/page.tsx"],
     ["tasks list (api)", "lib/services/task-query.ts"],
-    ["employees list", "app/api/users/route.ts"],
+    // The route delegates to this: the clause moved out so the boundary could
+    // be tested by running it rather than by reading it (see
+    // lib/services/user-query.test.ts).
+    ["employees list", "lib/services/user-query.ts"],
     ["requests", "app/api/requests/route.ts"],
     ["obligations", "app/api/obligations/route.ts"],
     ["exports", "app/api/templates/download/route.ts"],
