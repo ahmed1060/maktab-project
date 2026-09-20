@@ -45,10 +45,36 @@ export class RequestService {
             })
 
             if (companyId) {
+                // Who should hear about this: the company's Admins, and this
+                // person's own team leader.
+                //
+                // It used to be every ADMIN and every TEAM_LEADER in the
+                // company, which was right when a leader could act on anybody.
+                // Now they cannot, so most of those notifications were an
+                // invitation to open a request the recipient is refused
+                // access to — and the ones that mattered were buried among
+                // them. A notification nobody can act on is worse than no
+                // notification, because it teaches people to ignore the rest.
+                //
+                // Read inside the transaction: the requester's leader is being
+                // asked for at the same moment the request is written, so it
+                // should be the leader they had when they wrote it.
+                const requester = await tx.user.findUnique({
+                    where: { id: userId },
+                    select: { teamLeaderId: true },
+                })
+
                 const admins = await tx.user.findMany({
                     where: {
                         companyId,
-                        role: { in: ['ADMIN', 'TEAM_LEADER'] }
+                        OR: [
+                            { role: 'ADMIN' },
+                            // `?? ''` rather than omitting the branch: an
+                            // employee with no leader simply matches nothing
+                            // here, instead of the condition collapsing to
+                            // "any id" the way an undefined would.
+                            { id: requester?.teamLeaderId ?? '', role: 'TEAM_LEADER' },
+                        ],
                     },
                     select: { id: true }
                 })

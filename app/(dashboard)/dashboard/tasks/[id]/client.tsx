@@ -236,11 +236,13 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                 .then(result => {
                     const data = result.data
                     const usersList = data.data || []
-                    // TEAM_LEADER Restriction: Hide ADMIN and SUPER_ADMIN from assignee list
-                    const filteredData = userRole === 'TEAM_LEADER'
-                        ? usersList.filter((u: any) => !['ADMIN', 'SUPER_ADMIN'].includes(u.role))
-                        : usersList
-                    setAllUsers(filteredData)
+                    // No filtering here any more — /api/users scopes a Team
+                    // Leader to their own team server-side, so this list
+                    // already matches what the server will accept on submit.
+                    // Filtering in the browser decided what a picker showed,
+                    // never what a request could contain; the rows it hid had
+                    // already crossed the wire.
+                    setAllUsers(usersList)
                 })
                 .catch(() => setUserFetchError(true))
         }

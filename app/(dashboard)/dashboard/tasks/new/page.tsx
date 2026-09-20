@@ -83,11 +83,19 @@ export default function NewTaskPage() {
                     // Secondary sort by name if same role
                     return a.firstName.localeCompare(b.firstName)
                 })
-                // TEAM_LEADER Restriction: Hide ADMIN and SUPER_ADMIN from assignee list
-                const filteredData = userRole === 'TEAM_LEADER'
-                    ? sortedData.filter((u: any) => !['ADMIN', 'SUPER_ADMIN'].includes(u.role))
-                    : sortedData
-                setUsers(filteredData)
+                // No filtering here any more.
+                //
+                // This used to hide Admins from a Team Leader's list, which
+                // meant the request that fetched it had already returned them:
+                // every Admin's row was in the page payload, and the browser
+                // was politely not drawing it. /api/users now scopes a Team
+                // Leader to their own team server-side, so what arrives is
+                // already what they may see — and, more to the point, already
+                // what the server will accept when they submit.
+                //
+                // Filtering in the browser was never a restriction. It decided
+                // what a picker showed, not what a request could contain.
+                setUsers(sortedData)
             })
     }, [session, selectedCompanyId, userRole])
 
