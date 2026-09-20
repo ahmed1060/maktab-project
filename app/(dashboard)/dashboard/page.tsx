@@ -12,6 +12,7 @@ import { getSuperAdminOverviewStats } from "@/lib/services/dashboard-stats.servi
 import { modulesFrom } from "@/lib/modules"
 import { SCOPED_COMPANY_COOKIE, scopedCompanyId } from "@/lib/company-scope"
 import { CompanyService } from "@/lib/services/company.service"
+import { scopesToTeam, assignedToTeamWhere, teamMemberWhere, and } from '@/lib/team-scope'
 
 export const dynamic = 'force-dynamic'
 
@@ -151,7 +152,12 @@ export default async function DashboardPage(props: { searchParams: Promise<{ com
             )
         }
 
-        const baseWhere = finalCompanyId ? { companyId: finalCompanyId } : {}
+        // The counters a Team Leader sees are their team's, not the company's.
+        // The card above them has always been titled "Team Performance" for
+        // this role — the label was a promise the query did not keep, and the
+        // numbers would otherwise disagree with the lists underneath them.
+        const baseWhere: any = finalCompanyId ? { companyId: finalCompanyId } : {}
+        if (scopesToTeam(userRole)) and(baseWhere, assignedToTeamWhere(userId))
 
         // "Needs Your Review" — approval queues this role can act on.
         // Day-off/profile approval is ADMIN-only (see app/api/admin/day-off-requests
@@ -173,7 +179,9 @@ export default async function DashboardPage(props: { searchParams: Promise<{ com
                 where: {
                     month: currentMonth,
                     year: currentYear,
-                    user: finalCompanyId ? { companyId: finalCompanyId } : {}
+                    user: scopesToTeam(userRole)
+                        ? { companyId: finalCompanyId, ...teamMemberWhere(userId) }
+                        : (finalCompanyId ? { companyId: finalCompanyId } : {})
                 },
                 _sum: {
                     bonusDays: true,

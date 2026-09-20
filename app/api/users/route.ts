@@ -5,6 +5,7 @@ import { ApiResponse } from "@/lib/api-response"
 import { createUserSchema, updateUserSchema } from "@/lib/validations/user.schema"
 import { UserService } from "@/lib/services/user.service"
 import { parsePaging } from "@/lib/pagination"
+import { scopesToTeam, teamMemberWhere, and } from "@/lib/team-scope"
 
 // F-13: role/status are now Postgres enums, not free text — a query-param
 // value that isn't a real enum member makes Postgres reject the whole
@@ -108,11 +109,16 @@ export const GET = withStandardHandler(async (req, session) => {
         }
     }
 
-    if (userRole === 'TEAM_LEADER') {
+    if (scopesToTeam(userRole)) {
         const currentExclude = whereClause.role?.notIn || (whereClause.role?.not ? [whereClause.role.not] : [])
         if (!currentExclude.includes('ADMIN')) {
             whereClause.role = { ...(whereClause.role || {}), notIn: [...currentExclude, 'ADMIN'] }
         }
+        // Their team, and themselves. Added with `and` rather than assigned to
+        // whereClause.OR, which the search filter below already uses — two
+        // plain assignments to the same key means whichever runs last wins,
+        // and the one that must always win is the scope.
+        and(whereClause, teamMemberWhere(session.user.id))
     }
 
     // A positive role filter, so a screen that wants only team leaders asks for

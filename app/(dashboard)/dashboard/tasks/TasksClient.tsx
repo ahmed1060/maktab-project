@@ -223,7 +223,18 @@ export default function TasksClient({ tasks, total, page, totalPages, role, curr
                     ))
                 ) : (
                     <div className="card" style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-soft)' }}>
-                        {t('no_tasks_found')}
+                        {/* A team leader with nobody assigned to them sees an
+                            empty screen that is entirely correct, and looks
+                            exactly like a broken one. Saying why is the
+                            difference between a scoped feature and a bug
+                            report — and it names who can fix it, because the
+                            leader cannot assign their own team. */}
+                        {role === 'TEAM_LEADER' && view !== 'my' ? (
+                            <>
+                                <p style={{ margin: 0, fontWeight: 700, color: 'var(--text-strong)' }}>{t('team_empty_title')}</p>
+                                <p style={{ margin: '0.5rem 0 0' }}>{t('team_empty_body')}</p>
+                            </>
+                        ) : t('no_tasks_found')}
                     </div>
                 )}
             </div>

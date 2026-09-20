@@ -96,3 +96,50 @@ describe("buildTaskWhereClause (F-03 tenancy scoping)", () => {
         expect(JSON.stringify(result.whereClause)).not.toContain("NOT_A_REAL_STATUS")
     })
 })
+
+describe("a Team Leader is scoped to their team", () => {
+    /**
+     * Every assertion below is new. This function treated ADMIN and
+     * TEAM_LEADER as the same branch and only ADMIN was ever tested, so the
+     * branch this whole feature turns on had no coverage at all — which is why
+     * each of these was broken on purpose before being trusted.
+     */
+    const leader = { user: { id: "tl-1", role: "TEAM_LEADER", companyId: "co-1" } }
+
+    it("asks for their own team and themselves, inside their company", () => {
+        const r = buildTaskWhereClause(leader, new URLSearchParams(), null)
+        expect(r.empty).toBe(false)
+        const scope = (r as any).whereClause.AND
+        expect(scope).toContainEqual({ companyId: "co-1" })
+        expect(scope).toContainEqual({
+            assignees: { some: { OR: [{ teamLeaderId: "tl-1" }, { id: "tl-1" }] } },
+        })
+    })
+
+    it("cannot reach another team by supplying an employeeId", () => {
+        // The filter is pushed alongside the scope, never over it, so asking
+        // for somebody else's report intersects to nothing rather than
+        // replacing the rule. This is F-03's shape, and the reason `scope` and
+        // `filters` are separate arrays in this function.
+        const r = buildTaskWhereClause(leader, new URLSearchParams("employeeId=other-team-member"), null)
+        const clauses = (r as any).whereClause.AND
+        expect(clauses).toContainEqual({
+            assignees: { some: { OR: [{ teamLeaderId: "tl-1" }, { id: "tl-1" }] } },
+        })
+        expect(clauses).toContainEqual({ assignees: { some: { id: "other-team-member" } } })
+    })
+
+    it("returns empty rather than every company when they have none", () => {
+        const orphan = { user: { id: "tl-1", role: "TEAM_LEADER", companyId: null } }
+        expect(buildTaskWhereClause(orphan, new URLSearchParams(), null).empty).toBe(true)
+    })
+
+    it("still gives an ADMIN the whole company", () => {
+        // The other half: narrowing the wrong role would quietly break the
+        // people who are supposed to see everything.
+        const admin = { user: { id: "a-1", role: "ADMIN", companyId: "co-1" } }
+        const scope = (buildTaskWhereClause(admin, new URLSearchParams(), null) as any).whereClause.AND
+        expect(scope).toContainEqual({ companyId: "co-1" })
+        expect(JSON.stringify(scope)).not.toContain("teamLeaderId")
+    })
+})

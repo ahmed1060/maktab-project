@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma"
 import { ApiResponse } from "@/lib/api-response"
 import { createObligationSchema } from "@/lib/validations/obligation.schema"
 import { ObligationService } from "@/lib/services/obligation.service"
+import { scopesToTeam, assignedToTeamWhere, and } from "@/lib/team-scope"
 
 export const GET = withStandardHandler(async (req, session) => {
     const role = (session.user as any).role
@@ -15,12 +16,21 @@ export const GET = withStandardHandler(async (req, session) => {
     // 1. Authorization & Base Filtering
     if (role === 'SUPER_ADMIN') {
         if (companyId) whereClause.companyId = companyId
-    } else if (['ADMIN', 'TEAM_LEADER'].includes(role)) {
+    } else if (role === 'ADMIN') {
         const userCompanyId = (session.user as any).companyId
         if (!userCompanyId) return ApiResponse.success({ data: [], total: 0, page: 1, totalPages: 0 })
         whereClause.companyId = userCompanyId
+    } else if (scopesToTeam(role)) {
+        const userCompanyId = (session.user as any).companyId
+        if (!userCompanyId) return ApiResponse.success({ data: [], total: 0, page: 1, totalPages: 0 })
+        whereClause.companyId = userCompanyId
+        and(whereClause, assignedToTeamWhere(userId))
     } else {
-        whereClause.assignees = { some: { id: userId } }
+        // `and` here too, though nothing follows it that could overwrite this
+        // one today. The rule is uniform — no branch assigns to .assignees —
+        // because "this particular assignment is safe, the one below is not"
+        // is precisely the reasoning that let F-03 survive a fix.
+        and(whereClause, { assignees: { some: { id: userId } } })
     }
 
     // 2. Extra Filters
@@ -31,7 +41,10 @@ export const GET = withStandardHandler(async (req, session) => {
     const dateTo = searchParams.get('dateTo')
 
     if (employeeIdFilter && role !== 'EMPLOYEE') {
-        whereClause.assignees = { some: { id: employeeIdFilter } }
+        // `and`, not assignment: the scope above sets whereClause.assignees
+        // for a team leader, and replacing it would let them read another
+        // team's obligations by supplying an id.
+        and(whereClause, { assignees: { some: { id: employeeIdFilter } } })
     }
 
     if (statusFilter) whereClause.status = statusFilter

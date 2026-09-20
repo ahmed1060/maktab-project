@@ -34,14 +34,23 @@ describe("an employee only ever sees their own tasks", () => {
     const branch = employeeBranch()
 
     it("scopes to tasks assigned to them", () => {
-        expect(branch).toMatch(/assignees\s*=\s*\{\s*some:\s*\{\s*id:\s*userId\s*\}/)
+        // Composed with `and`, not assigned. The shape changed when the page
+        // stopped assigning to whereClause.assignees — an assignment there was
+        // the bug that let ?employeeId= replace this very scope, so matching on
+        // the assignment would now mean matching on the defect.
+        expect(branch).toMatch(/and\(\s*whereClause\s*,\s*\{\s*assignees:\s*\{\s*some:\s*\{\s*id:\s*userId\s*\}/)
     })
 
     it("never asks for tasks assigned to somebody else", () => {
         // `none: { id: userId }` is the other-people's-work query. For an
         // employee it must not exist at all.
+        //
+        // Matched on the query rather than on an assignment to it. The earlier
+        // version looked for `assignees = { none: ...`, which nothing in this
+        // file assigns any more — so it had quietly become a test that could
+        // not fail, whatever the branch did.
         expect(branch, "the employee branch still builds the colleagues' query")
-            .not.toMatch(/assignees\s*=\s*\{\s*none:\s*\{\s*id:\s*userId\s*\}/)
+            .not.toMatch(/none:\s*\{\s*id:\s*userId\s*\}/)
     })
 
     it("does not branch on the requested view", () => {

@@ -7,6 +7,7 @@ import { downloadTemplateBuffer } from "@/lib/storage"
 import { generateBulkTaskTemplate } from "@/lib/services/template-generator.service"
 import type { Locale } from "@/lib/translations"
 import { NextResponse } from "next/server"
+import { scopesToTeam, teamMemberWhere, and } from "@/lib/team-scope"
 
 export const GET = withStandardHandler(async (req, session) => {
     const { searchParams } = new URL(req.url)
@@ -37,7 +38,13 @@ export const GET = withStandardHandler(async (req, session) => {
     // a Team Leader can't assign an Admin, so listing one in their template
     // dropdown would just set them up to pick someone task creation then
     // rejects.
-    if (userRole === 'TEAM_LEADER') userWhere.role = { notIn: ['ADMIN', 'SUPER_ADMIN'] }
+    if (scopesToTeam(userRole)) {
+        userWhere.role = { notIn: ['ADMIN', 'SUPER_ADMIN'] }
+        // And their own team within that. An export is a read like any other,
+        // and a spreadsheet of every colleague is the easiest of all of these
+        // to walk out of the building with.
+        and(userWhere, teamMemberWhere(session.user.id))
+    }
 
     const [users, vendors] = await Promise.all([
         prisma.user.findMany({

@@ -351,6 +351,8 @@ export const ar = {
         team_column: "الفريق",
         team_unassigned: "غير معيّن",
         team_filter_all: "كل الفرق",
+        team_empty_title: "لم يتم تعيين أحد لك بعد",
+        team_empty_body: "يقوم المسؤول بتعيين الموظفين إلى قائد الفريق. بمجرد أن يفعل ذلك، ستظهر أعمالهم هنا.",
         team_leader_has_reports: "لا يزال هذا الشخص يقود فريقًا. اختر إلى أين ينتقل أعضاء فريقه قبل تغيير ذلك.",
         role_admin: "مسؤول",
         role_super_admin: "مسؤول عام",

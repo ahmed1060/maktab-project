@@ -389,6 +389,8 @@ export const en = {
         team_column: "Team",
         team_unassigned: "Unassigned",
         team_filter_all: "All teams",
+        team_empty_title: "No one is assigned to you yet",
+        team_empty_body: "An administrator assigns employees to a team leader. Once they do, their work appears here.",
         team_leader_has_reports: "This person still leads a team. Choose where their team members go before changing this.",
         role_admin: "Admin",
         role_super_admin: "Super Admin",

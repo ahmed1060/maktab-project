@@ -1,4 +1,5 @@
 import { isValidTaskStatus } from "@/lib/valid-enums"
+import { scopesToTeam, assignedToTeamWhere } from "@/lib/team-scope"
 
 export type TaskQuerySession = {
     user: {
@@ -36,10 +37,19 @@ export function buildTaskWhereClause(
     const scope: any[] = []
     if (userRole === 'SUPER_ADMIN') {
         if (companyId) scope.push({ companyId })
-    } else if (['ADMIN', 'TEAM_LEADER'].includes(userRole)) {
+    } else if (userRole === 'ADMIN') {
         const userCompanyId = session.user.companyId
         if (!userCompanyId) return { empty: true }
         scope.push({ companyId: userCompanyId })
+    } else if (scopesToTeam(userRole)) {
+        // A Team Leader used to share the ADMIN branch, which meant the whole
+        // company. Now it is their team and themselves — and the company stays
+        // on top of it, because a leader with reports somehow in another
+        // company must still not reach across.
+        const userCompanyId = session.user.companyId
+        if (!userCompanyId) return { empty: true }
+        scope.push({ companyId: userCompanyId })
+        scope.push(assignedToTeamWhere(userId))
     } else {
         scope.push({ assignees: { some: { id: userId } } })
     }
@@ -53,7 +63,10 @@ export function buildTaskWhereClause(
     const dateTo = searchParams.get('dateTo')
 
     // Only a privileged role may narrow to an arbitrary employee — a plain
-    // employee is already scoped to their own tasks by `scope` above.
+    // employee is already scoped to their own tasks by `scope` above. For a
+    // Team Leader this narrows within their team and cannot escape it: the
+    // filter is pushed alongside the scope, never over it, so asking for
+    // somebody else's team intersects to nothing.
     if (employeeIdFilter && userRole !== 'EMPLOYEE') {
         filters.push({ assignees: { some: { id: employeeIdFilter } } })
     }

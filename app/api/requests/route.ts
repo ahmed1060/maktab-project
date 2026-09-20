@@ -2,6 +2,7 @@ import { withStandardHandler } from "@/lib/api-utils"
 import { ApiResponse } from "@/lib/api-response"
 import { createRequestSchema } from "@/lib/validations/request.schema"
 import { RequestService } from "@/lib/services/request.service"
+import { scopesToTeam, teamMemberWhere, and } from "@/lib/team-scope"
 
 export const GET = withStandardHandler(async (req, session) => {
     const { searchParams } = new URL(req.url)
@@ -20,8 +21,12 @@ export const GET = withStandardHandler(async (req, session) => {
 
     if (userRole === 'SUPER_ADMIN') {
         if (companyIdParam) where.companyId = companyIdParam
-    } else if (['ADMIN', 'TEAM_LEADER'].includes(userRole)) {
+    } else if (userRole === 'ADMIN') {
         where.companyId = userCompanyId
+    } else if (scopesToTeam(userRole)) {
+        // A leader answers their own team's requests, not the company's.
+        where.companyId = userCompanyId
+        and(where, { user: teamMemberWhere(userId) })
     } else {
         where.userId = userId
     }
@@ -41,8 +46,11 @@ export const GET = withStandardHandler(async (req, session) => {
         where.title = { contains: search, mode: 'insensitive' }
     }
 
-    if (filterUserId && (userRole === 'SUPER_ADMIN' || userRole === 'ADMIN' || userRole === 'TEAM_LEADER')) {
-        where.userId = filterUserId
+    if (filterUserId && ['SUPER_ADMIN', 'ADMIN', 'TEAM_LEADER'].includes(userRole)) {
+        // Narrows within the scope above and cannot escape it: for a leader
+        // this is intersected with their team, so another team's id matches
+        // nothing rather than replacing the scope.
+        and(where, { userId: filterUserId })
     }
 
     const page = parseInt(searchParams.get('page') || '1')

@@ -3,6 +3,7 @@ import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { isValidTaskStatus } from "@/lib/valid-enums"
 import TasksClient from "./TasksClient"
+import { and, assignedToReportsWhere } from '@/lib/team-scope'
 
 export default async function TasksPage(props: { searchParams: Promise<{ company?: string, page?: string, status?: string, search?: string, employeeId?: string, view?: string, dateFrom?: string, dateTo?: string }> }) {
     // Next 15 hands a page its dynamic segments and query string as
@@ -42,14 +43,16 @@ export default async function TasksPage(props: { searchParams: Promise<{ company
         // to the UI; this is the rule, and it holds for a typed URL, a
         // bookmarked one, or anything else that reaches this page.
         whereClause.companyId = userCompanyId
-        whereClause.assignees = { some: { id: userId } }
+        and(whereClause, { assignees: { some: { id: userId } } })
     } else if (role === 'TEAM_LEADER') {
         whereClause.companyId = userCompanyId
         if (view === 'my') {
-            whereClause.assignees = { some: { id: userId } }
+            and(whereClause, { assignees: { some: { id: userId } } })
         } else {
-            // Active tasks: all company tasks except those assigned to current user
-            whereClause.assignees = { none: { id: userId } }
+            // The team's work in flight. This used to read `none: { id: me }`
+            // — everything in the company that was not the leader's own —
+            // which grew with the company and had nothing to do with a team.
+            and(whereClause, assignedToReportsWhere(userId))
         }
     } else if (role === 'ADMIN') {
         // ADMIN still sees all company tasks
@@ -73,7 +76,13 @@ export default async function TasksPage(props: { searchParams: Promise<{ company
         whereClause.title = { contains: searchParams.search, mode: 'insensitive' }
     }
     if (searchParams.employeeId) {
-        whereClause.assignees = { some: { id: searchParams.employeeId } }
+        // `and`, not assignment. This line used to be
+        // `whereClause.assignees = ...`, which replaced the scope set above
+        // rather than narrowing it — so an employee reached any colleague's
+        // tasks with ?employeeId= in the URL, and a team leader would have
+        // reached any other team's. That is F-03 exactly, which was fixed once
+        // in buildTaskWhereClause while this copy of the logic kept the bug.
+        and(whereClause, { assignees: { some: { id: searchParams.employeeId } } })
     }
 
     const { dateFrom, dateTo } = searchParams as any
