@@ -155,7 +155,7 @@ export class UserService {
 
     static async update(input: UpdateUserInput, session: any) {
         const userRole = session.user.role
-        const { id, firstName, lastName, email, password, role, gender, salary, companyId, avatar, dayOffCredit, baseDayOffCredit, username, status, teamLeaderId } = input
+        const { id, firstName, lastName, email, password, role, gender, salary, companyId, avatar, dayOffCredit, baseDayOffCredit, username, status, teamLeaderId, reassignReportsTo } = input
 
         const regularUser = await prisma.user.findUnique({ where: { id } })
         const superAdminUser = !regularUser ? await prisma.superAdmin.findUnique({ where: { id } }) : null
@@ -273,6 +273,11 @@ export class UserService {
             // approve a combination that is invalid the moment it is written —
             // promoting somebody to TEAM_LEADER while handing them a leader,
             // for instance, which the flat structure forbids.
+            // Set when a leader is being stripped and an Admin has said
+            // where their team goes; applied in the same transaction as the
+            // change itself.
+            let rehome: { ids: string[]; to: string | null } | null = null
+
             const nextRole = updateData.role ?? regularUser.role
             const nextCompanyId = updateData.companyId !== undefined ? updateData.companyId : regularUser.companyId
 
@@ -287,9 +292,41 @@ export class UserService {
                     select: { id: true, firstName: true, lastName: true },
                 })
                 if (reports.length > 0) {
-                    const err: any = new Error("LEADER_HAS_REPORTS")
-                    err.reports = reports
-                    throw err
+                    if (reassignReportsTo === undefined) {
+                        // Nobody has answered the question yet. The refusal
+                        // carries the names so the screen can ask about these
+                        // people specifically rather than in the abstract.
+                        const err: any = new Error("LEADER_HAS_REPORTS")
+                        err.reports = reports
+                        throw err
+                    }
+
+                    if (reassignReportsTo !== null) {
+                        // Not the person being stripped. Otherwise the answer
+                        // to "where do they go" is "nowhere", spelled in a way
+                        // that passes every other check.
+                        if (reassignReportsTo === id) throw new Error("REASSIGN_TARGET_IS_LEAVING")
+                        const newLeader = await prisma.user.findUnique({
+                            where: { id: reassignReportsTo },
+                            select: { id: true, role: true, companyId: true, status: true },
+                        })
+                        if (!newLeader) throw new Error("TEAM_LEADER_NOT_FOUND")
+                        // The reports are employees in this company, so one
+                        // check answers for all of them.
+                        const verdict = checkTeamAssignment(
+                            { id: reports[0].id, role: 'EMPLOYEE', companyId: regularUser.companyId },
+                            newLeader,
+                        )
+                        if (!verdict.ok) throw new Error(verdict.refusal.code)
+                    }
+
+                    // Both writes together or neither. A rehoming that lands
+                    // without the demotion leaves a leader who still leads; a
+                    // demotion that lands without the rehoming is the exact
+                    // state this whole refusal exists to prevent, and it would
+                    // have been reached by the Admin who was trying to avoid
+                    // it.
+                    rehome = { ids: reports.map(r => r.id), to: reassignReportsTo }
                 }
             }
 
@@ -327,10 +364,20 @@ export class UserService {
                 }
             }
 
-            const updated = await prisma.user.update({
-                where: { id }, data: updateData,
-                select: { id: true, firstName: true, lastName: true, email: true, role: true, gender: true, salary: true, companyId: true, avatar: true, dayOffCredit: true, baseDayOffCredit: true, username: true }
-            })
+            const writeSelect = { id: true, firstName: true, lastName: true, email: true, role: true, gender: true, salary: true, companyId: true, avatar: true, dayOffCredit: true, baseDayOffCredit: true, username: true }
+            const updated = rehome
+                ? await prisma.$transaction(async (tx) => {
+                    // tx, not prisma. A transaction holds a connection, and
+                    // anything inside it reaching for the global client needs
+                    // a second one from a pool that is deliberately small —
+                    // which is a deadlock, not a slow query.
+                    await tx.user.updateMany({
+                        where: { id: { in: rehome!.ids } },
+                        data: { teamLeaderId: rehome!.to },
+                    })
+                    return tx.user.update({ where: { id }, data: updateData, select: writeSelect })
+                })
+                : await prisma.user.update({ where: { id }, data: updateData, select: writeSelect })
             // salary is a Prisma.Decimal (F-07); Decimal.toJSON() returns a
             // string, which would silently change this response field's type.
             const serializedUpdated = { ...updated, salary: Number(updated.salary) }

@@ -82,3 +82,36 @@ describe("only the people allowed to assign can", () => {
         expect(line).toMatch(/role\s*===\s*'EMPLOYEE'/)
     })
 })
+
+describe("the hand-off modal asks a question rather than reporting an error", () => {
+    it("reads the refused response before treating it as a failure", () => {
+        // The server's refusal carries the people it is about. Falling through
+        // to the generic error path would show an Admin a sentence instead of
+        // the choice that resolves it.
+        const block = FORM.slice(FORM.indexOf("if (!res.ok)"), FORM.indexOf("if (!res.ok)") + 700)
+        expect(block).toMatch(/details\?\.reports|details\.reports/)
+        expect(block).toContain("setHandoff(")
+    })
+
+    it("names the people instead of counting them", () => {
+        // "7 people" is a number to accept; a list is a decision somebody can
+        // actually make.
+        expect(FORM).toMatch(/handoff\.map\(/)
+    })
+
+    it("sends null to unassign, never an empty string", () => {
+        // Same three states as everywhere else: absent means nobody answered
+        // and the change stays refused, null means unassign, an id means move.
+        // An empty string is none of them and would fail validation.
+        expect(FORM).toMatch(/executeSubmit\(handoffTo \|\| null\)/)
+    })
+
+    it("does not offer to hand the team to the person losing it", () => {
+        const block = FORM.slice(FORM.indexOf("handoff && createPortal"))
+        expect(block.slice(0, 2600)).toMatch(/leaders\.filter\(l => l\.id !== userId\)/)
+    })
+
+    it("passes the answer through to the request", () => {
+        expect(FORM).toMatch(/reassignReportsTo:\s*reassignTo/)
+    })
+})

@@ -21,22 +21,38 @@ const db = {
     target: null as any,
     leader: null as any,
     reports: [] as any[],
+    /** What the rehoming wrote, if it ran. */
+    moved: null as { ids: string[]; to: string | null } | null,
+    /** Whether the write happened inside a transaction. */
+    inTransaction: false,
 }
 
 class Written extends Error {
     constructor(public data: any) { super("WRITTEN") }
 }
 
+const userModel = (inTx: boolean) => ({
+    findUnique: async ({ where }: any) =>
+        where.id === db.leader?.id ? db.leader : (where.id === db.target?.id ? db.target : null),
+    findMany: async () => db.reports,
+    updateMany: async ({ where, data }: any) => {
+        db.moved = { ids: where.id.in, to: data.teamLeaderId }
+        return { count: where.id.in.length }
+    },
+    update: async ({ data }: any) => {
+        db.inTransaction = inTx
+        throw new Written(data)
+    },
+})
+
 vi.mock("@/lib/prisma", () => ({
     prisma: {
-        user: {
-            findUnique: async ({ where }: any) =>
-                where.id === db.leader?.id ? db.leader : (where.id === db.target?.id ? db.target : null),
-            findMany: async () => db.reports,
-            update: async ({ data }: any) => { throw new Written(data) },
-        },
+        user: userModel(false),
         superAdmin: { findUnique: async () => null },
         dayOffRequest: { aggregate: async () => ({ _sum: { daysDeducted: 0 } }) },
+        // Runs the callback with a tx whose writes are marked as being inside
+        // one, so a test can tell an atomic hand-off from two loose writes.
+        $transaction: async (fn: any) => fn({ user: userModel(true) }),
     },
 }))
 
@@ -70,6 +86,8 @@ beforeEach(() => {
     db.target = null
     db.leader = null
     db.reports = []
+    db.moved = null
+    db.inTransaction = false
 })
 
 describe("a leader is not stripped out from under their team", () => {
@@ -160,5 +178,59 @@ describe("assignment goes through the rules, not the id it was handed", () => {
         db.target = person({ id: "u-1", teamLeaderId: "tl-1" })
         const data = await written({ firstName: "Renamed" })
         expect(data.teamLeaderId).toBeUndefined()
+    })
+})
+
+describe("the hand-off: where a stripped leader's team goes", () => {
+    beforeEach(() => {
+        db.target = person({ id: "tl-1", role: "TEAM_LEADER" })
+        db.reports = [
+            { id: "e-1", firstName: "Laila", lastName: "Fouad" },
+            { id: "e-2", firstName: "Omar", lastName: "Said" },
+        ]
+    })
+
+    it("still refuses when no answer is given", async () => {
+        await expect(update({ role: "EMPLOYEE" })).rejects.toThrow("LEADER_HAS_REPORTS")
+    })
+
+    it("unassigns them when the answer is null", async () => {
+        const w = await written({ role: "EMPLOYEE", reassignReportsTo: null })
+        expect(w.role).toBe("EMPLOYEE")
+        expect(db.moved).toEqual({ ids: ["e-1", "e-2"], to: null })
+    })
+
+    it("moves them when the answer is another leader", async () => {
+        db.leader = { id: "tl-2", role: "TEAM_LEADER", companyId: "co-1", status: "ACTIVE" }
+        const w = await written({ role: "EMPLOYEE", reassignReportsTo: "tl-2" })
+        expect(w.role).toBe("EMPLOYEE")
+        expect(db.moved).toEqual({ ids: ["e-1", "e-2"], to: "tl-2" })
+    })
+
+    it("refuses handing the team to the person who is leaving it", async () => {
+        // Passes every other check — they are a TEAM_LEADER in the right
+        // company — while meaning the reports go nowhere.
+        await expect(update({ role: "EMPLOYEE", reassignReportsTo: "tl-1" }))
+            .rejects.toThrow("REASSIGN_TARGET_IS_LEAVING")
+    })
+
+    it("refuses a destination who is not a team leader", async () => {
+        db.leader = { id: "x-1", role: "EMPLOYEE", companyId: "co-1", status: "ACTIVE" }
+        await expect(update({ role: "EMPLOYEE", reassignReportsTo: "x-1" })).rejects.toThrow("NOT_A_LEADER")
+    })
+
+    it("refuses a destination in another company", async () => {
+        db.leader = { id: "x-1", role: "TEAM_LEADER", companyId: "co-2", status: "ACTIVE" }
+        await expect(update({ role: "EMPLOYEE", reassignReportsTo: "x-1" })).rejects.toThrow("DIFFERENT_COMPANY")
+    })
+
+    it("writes the rehoming and the change together, not one then the other", async () => {
+        // The half-done states are both bad in their own way: a rehoming
+        // without the demotion leaves a leader who still leads, and a demotion
+        // without the rehoming is exactly the state the refusal exists to
+        // prevent — reached by the Admin who was trying to avoid it.
+        db.leader = { id: "tl-2", role: "TEAM_LEADER", companyId: "co-1", status: "ACTIVE" }
+        await written({ role: "EMPLOYEE", reassignReportsTo: "tl-2" })
+        expect(db.inTransaction).toBe(true)
     })
 })

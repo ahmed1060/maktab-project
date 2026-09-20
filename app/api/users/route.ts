@@ -283,6 +283,7 @@ export const PUT = withStandardHandler(async (req, session, json) => {
             )
         }
         if (error.message === 'TEAM_LEADER_NOT_FOUND') return ApiResponse.badRequest("That team leader no longer exists")
+        if (error.message === 'REASSIGN_TARGET_IS_LEAVING') return ApiResponse.badRequest("Their team cannot be moved to the person who is leaving it")
         if (error.message === 'NOT_A_LEADER') return ApiResponse.badRequest("That person is not a team leader")
         if (error.message === 'ONLY_EMPLOYEES_HAVE_LEADERS') return ApiResponse.badRequest("Only employees are assigned to a team leader")
         if (error.message === 'SELF_LEADERSHIP') return ApiResponse.badRequest("Somebody cannot be their own team leader")

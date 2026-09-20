@@ -39,6 +39,12 @@ export const updateUserSchema = partialWithoutDefaults(createUserSchema).extend(
     // being worked. The screen that asks the question arrives in P7.
     salaryEffective: z.enum(['THIS_MONTH', 'NEXT_MONTH']).optional(),
     salaryReason: z.string().max(200).optional(),
+    // The answer to "where do this leader's team members go?", supplied only
+    // when the change would strip their leadership. Three states again, and
+    // all three are meaningful: absent means nobody has answered yet, so the
+    // change is refused; null means unassign them; an id means move them to
+    // that leader.
+    reassignReportsTo: z.string().min(1).nullable().optional(),
 })
 
 export type CreateUserInput = z.infer<typeof createUserSchema>

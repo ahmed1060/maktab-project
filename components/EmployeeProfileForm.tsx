@@ -34,6 +34,11 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
     // an Admin resolving a hand-off needs to be able to say "unassign".
     const [teamLeaderId, setTeamLeaderId] = useState('')
     const [leaders, setLeaders] = useState<{ id: string; firstName: string; lastName: string }[]>([])
+    // Set when the server refuses a change because this person still leads a
+    // team. It carries the names, so the modal asks about these people rather
+    // than about a count.
+    const [handoff, setHandoff] = useState<{ id: string; firstName: string; lastName: string }[] | null>(null)
+    const [handoffTo, setHandoffTo] = useState<string>('')
     const [companies, setCompanies] = useState<{ id: string, name: string }[]>([])
     const [loading, setLoading] = useState(true)
     const [saving, setSaving] = useState(false)
@@ -230,7 +235,13 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
         setVerificationModalOpen(true)
     }
 
-    const executeSubmit = async () => {
+    /**
+     * `reassignTo` is the answer to "where does their team go", and is only
+     * ever passed on the retry that follows the modal. undefined means nobody
+     * has answered, which is what makes the first attempt get refused — the
+     * three states have to survive all the way to the server.
+     */
+    const executeSubmit = async (reassignTo?: string | null) => {
         setSaving(true)
 
         // Validation — was /^[^@]{1,20}@[^@]{1,10}\.com$/, which rejected most
@@ -295,18 +306,33 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                     // option means the second, so it cannot be sent as "".
                     teamLeaderId: (userRole === 'ADMIN' || userRole === 'SUPER_ADMIN') && userId !== session?.user?.id && role === 'EMPLOYEE'
                         ? (teamLeaderId || null)
-                        : undefined
+                        : undefined,
+                    reassignReportsTo: reassignTo
                 }),
                 headers: { 'Content-Type': 'application/json' }
             })
 
             if (!res.ok) {
                 const text = await res.text()
+                // Read before the generic handling below, because this one is
+                // not an error to report — it is a question to ask.
+                try {
+                    const body = JSON.parse(text)
+                    const reports = body?.details?.reports
+                    if (Array.isArray(reports) && reports.length > 0) {
+                        setHandoff(reports)
+                        setHandoffTo('')
+                        setSaving(false)
+                        return
+                    }
+                } catch { /* not JSON, fall through to the message below */ }
                 if (text.includes("Username already in use")) {
                     throw new Error(locale === 'ar' ? 'اسم المستخدم مستخدم بالفعل' : 'Username already in use')
                 }
                 throw new Error(text || t('error_generic'))
             }
+
+            setHandoff(null)
 
             // Sync Logic
             if (userId === session?.user?.id) {
@@ -1014,6 +1040,71 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                 )
             }
 
+            {
+                handoff && createPortal(
+                    <div className="modal-overlay">
+                        <div className="modal-content" style={{ maxWidth: '460px', width: '90%' }}>
+                            <div className="modal-header">
+                                <h3 className="modal-title">{t('handoff_title')}</h3>
+                                <button className="modal-close" onClick={() => setHandoff(null)}>&times;</button>
+                            </div>
+                            <div className="modal-body" style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>
+                                <p style={{ marginTop: 0 }}>
+                                    {t('handoff_body')
+                                        .replace('{name}', `${firstName} ${lastName}`.trim())
+                                        .replace('{count}', String(handoff.length))}
+                                </p>
+
+                                {/* Named, not counted. "7 people" is a number
+                                    to accept; a list is a decision an Admin can
+                                    actually make. */}
+                                <ul style={{ margin: '0 0 1rem', [locale === 'ar' ? 'paddingRight' : 'paddingLeft']: '1.25rem', color: 'var(--text-soft)' }}>
+                                    {handoff.map(r => <li key={r.id}>{r.firstName} {r.lastName}</li>)}
+                                </ul>
+
+                                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>{t('handoff_move_to')}</label>
+                                <select
+                                    className="input"
+                                    value={handoffTo}
+                                    onChange={e => setHandoffTo(e.target.value)}
+                                    style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}
+                                >
+                                    <option value="">{t('handoff_unassign')}</option>
+                                    {leaders.filter(l => l.id !== userId).map(l => (
+                                        <option key={l.id} value={l.id}>{l.firstName} {l.lastName}</option>
+                                    ))}
+                                </select>
+                                {handoffTo === '' && (
+                                    <p style={{ marginTop: '0.5rem', fontSize: '0.75rem', color: 'var(--warn-fg)' }}>
+                                        {t('handoff_unassign_note')}
+                                    </p>
+                                )}
+                            </div>
+                            <div className="modal-footer" style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
+                                <button type="button" className="btn" onClick={() => setHandoff(null)} disabled={saving}>
+                                    {t('handoff_cancel')}
+                                </button>
+                                <button
+                                    type="button"
+                                    className="btn btn-primary"
+                                    disabled={saving}
+                                    onClick={() => {
+                                        // The empty option means unassign, so
+                                        // it goes as null rather than "". The
+                                        // same three-state distinction the
+                                        // server relies on.
+                                        setHandoff(null)
+                                        executeSubmit(handoffTo || null)
+                                    }}
+                                >
+                                    {saving ? t('saving') : t('handoff_confirm')}
+                                </button>
+                            </div>
+                        </div>
+                    </div>,
+                    document.body
+                )
+            }
             {
                 verificationModalOpen && createPortal(
                     <div className="modal-overlay">
