@@ -16,6 +16,19 @@ export class UserService {
         const { firstName, lastName, email, password, role, gender, companyId, salary, dayOffCredit, baseDayOffCredit, username } = input
 
         // 1. Role Restrictions
+        //
+        // Who may create at all, before which role they may create. This half
+        // was missing: the rule below governs making an ADMIN, and everything
+        // beneath it was open, so an employee could create a TEAM_LEADER and
+        // sign into it. The route now carries allowedRoles too, and this is
+        // deliberately not just a duplicate of it — the route's gate protects
+        // the HTTP entry point, this one protects the operation, so a second
+        // caller (a script, a future endpoint, an import) cannot reopen it by
+        // forgetting an options object.
+        if (!['ADMIN', 'SUPER_ADMIN'].includes(userRole)) {
+            throw new Error("ONLY_ADMIN_CAN_CREATE_USERS")
+        }
+
         const newUserRole = role || 'EMPLOYEE'
         if ((newUserRole === 'ADMIN' || newUserRole === 'SUPER_ADMIN') && userRole !== 'SUPER_ADMIN') {
             throw new Error("ONLY_SUPER_ADMIN_CAN_CREATE_ADMIN")

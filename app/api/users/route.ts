@@ -191,6 +191,7 @@ export const POST = withStandardHandler(async (req, session, json) => {
         return ApiResponse.success(result, 201)
     } catch (error: any) {
         // 3. Error Mapping
+        if (error.message === 'ONLY_ADMIN_CAN_CREATE_USERS') return ApiResponse.forbidden("Only Admins can create accounts")
         if (error.message === 'ONLY_SUPER_ADMIN_CAN_CREATE_ADMIN') return ApiResponse.forbidden("Only Super Admin can create Admin users")
         if (error.message === 'TARGET_COMPANY_NOT_FOUND') return ApiResponse.forbidden("Target company not found or access restricted")
         if (error.message === 'USER_ALREADY_EXISTS') return ApiResponse.badRequest("User already exists")
@@ -198,6 +199,18 @@ export const POST = withStandardHandler(async (req, session, json) => {
 
         throw error
     }
+}, {
+    // Creating an account had no role gate at all. Not here — there was no
+    // options object — and not in UserService.create, whose only role rule
+    // blocks a non-Super-Admin from making an ADMIN. Everything below that was
+    // permitted: any signed-in employee could POST here, create a TEAM_LEADER
+    // in their own company, choose its password, and sign in to an account with
+    // management access to the whole company. The escalation was one request.
+    //
+    // Admins only, matching PUT below, which has always required admin-or-self.
+    // A Team Leader cannot edit an account, so being able to conjure one was
+    // the odd exception rather than a capability anybody relied on.
+    allowedRoles: ['ADMIN', 'SUPER_ADMIN'],
 })
 
 export const PUT = withStandardHandler(async (req, session, json) => {
