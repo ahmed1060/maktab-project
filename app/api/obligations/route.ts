@@ -110,6 +110,7 @@ export const POST = withStandardHandler(async (req, session, json) => {
         if (error.message === 'ASSIGNEE_NOT_FOUND') return ApiResponse.notFound("One or more assignees not found")
         if (error.message === 'CROSS_COMPANY_ASSIGNMENT_FORBIDDEN') return ApiResponse.forbidden("Cannot assign obligations across companies")
         if (error.message === 'TEAM_LEADER_CANNOT_ASSIGN_TO_ADMIN') return ApiResponse.forbidden("Team Leaders cannot assign obligations to Admins")
+        if (error.message === 'TEAM_LEADER_CANNOT_ASSIGN_OUTSIDE_TEAM') return ApiResponse.forbidden("Team Leaders can only assign obligations to their own team")
 
         throw error
     }

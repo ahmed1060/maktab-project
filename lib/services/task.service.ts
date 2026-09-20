@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma"
+import { checkAssignees } from "./assignee-guard"
 import { CreateTaskInput, UpdateTaskInput } from "../validations/task.schema"
 import { extractCoords, extractAccuracy, locationVerdict } from "@/lib/location"
 import { supabase } from "@/lib/storage"
@@ -10,6 +11,14 @@ import { SystemSettingsService } from "./system-settings.service"
  *
  * Handles business logic for Tasks, decoupling it from the API routes.
  */
+/** Each caller keeps the refusal codes its route already promises. */
+const CREATE_CODES = {
+    NOT_FOUND: "ASSIGNEE_NOT_FOUND",
+    CROSS_COMPANY: "CROSS_COMPANY_ASSIGNMENT_FORBIDDEN",
+    ADMIN_TARGET: "TL_CANNOT_ASSIGN_TO_ADMIN",
+    OUTSIDE_TEAM: "TL_CANNOT_ASSIGN_OUTSIDE_TEAM",
+} as const
+
 export class TaskService {
     /**
      * Creates a new task with assignment and company validation.
@@ -26,24 +35,8 @@ export class TaskService {
         if (userRole !== 'SUPER_ADMIN') {
             if (!userCompanyId) throw new Error("USER_NO_COMPANY")
 
-            const assigneeUsers = await prisma.user.findMany({
-                where: { id: { in: assigneeIds } },
-                select: { id: true, companyId: true, role: true }
-            })
-
-            if (assigneeUsers.length !== assigneeIds.length) {
-                throw new Error("ASSIGNEE_NOT_FOUND")
-            }
-
-            // Check if all assignees belong to the same company
-            const externalAssignee = assigneeUsers.find(u => u.companyId !== userCompanyId)
-            if (externalAssignee) throw new Error("CROSS_COMPANY_ASSIGNMENT_FORBIDDEN")
-
-            // Team Leader restriction
-            if (userRole === 'TEAM_LEADER') {
-                const adminAssignee = assigneeUsers.find(u => ['ADMIN', 'SUPER_ADMIN'].includes(u.role))
-                if (adminAssignee) throw new Error("TL_CANNOT_ASSIGN_TO_ADMIN")
-            }
+            const verdict = await checkAssignees(assigneeIds, session)
+            if (!verdict.ok) throw new Error(CREATE_CODES[verdict.reason])
         }
 
         // 1.5 Vendor resolution — authoritative when present: the location
@@ -210,6 +203,12 @@ export class TaskService {
         }
 
         if (assigneeIds) {
+            // This was missing entirely. The task's own company was checked
+            // above and then whatever ids the request carried were written, so
+            // a task could be handed to another company's user, who would see
+            // it in their own list. Same rule as creation, same function.
+            const verdict = await checkAssignees(assigneeIds, session)
+            if (!verdict.ok) throw new Error(CREATE_CODES[verdict.reason])
             updateData.assignees = { set: assigneeIds.map((uid: string) => ({ id: uid })) }
         }
 

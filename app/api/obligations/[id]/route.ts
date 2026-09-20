@@ -22,6 +22,7 @@ export const PUT = withStandardHandler(async (req, session, json, { params }) =>
         if (error.message === 'SELF_APPROVAL_FORBIDDEN') return ApiResponse.forbidden("Admins cannot approve/reject their own obligations")
         if (error.message === 'UNAUTHORIZED_ATTACHMENT_REMOVAL') return ApiResponse.forbidden("Unauthorized to remove these attachments")
         if (error.message === 'TL_CANNOT_REASSIGN_TO_ADMIN') return ApiResponse.forbidden("Team Leaders cannot reassign to Admins")
+        if (error.message === 'TL_CANNOT_REASSIGN_OUTSIDE_TEAM') return ApiResponse.forbidden("Team Leaders can only reassign within their own team")
         throw error
     }
 })

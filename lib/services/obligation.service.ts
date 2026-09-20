@@ -1,7 +1,23 @@
 import { prisma } from "@/lib/prisma"
+import { checkAssignees } from "./assignee-guard"
 import { nextOccurrence } from "@/lib/recurrence"
 import { CreateObligationInput } from "../validations/obligation.schema"
 import { supabase } from "@/lib/storage"
+
+/** The codes this service's routes already map. */
+const CREATE_CODES = {
+    NOT_FOUND: "ASSIGNEE_NOT_FOUND",
+    CROSS_COMPANY: "CROSS_COMPANY_ASSIGNMENT_FORBIDDEN",
+    ADMIN_TARGET: "TEAM_LEADER_CANNOT_ASSIGN_TO_ADMIN",
+    OUTSIDE_TEAM: "TEAM_LEADER_CANNOT_ASSIGN_OUTSIDE_TEAM",
+} as const
+
+const REASSIGN_CODES = {
+    NOT_FOUND: "ASSIGNEE_NOT_FOUND",
+    CROSS_COMPANY: "CROSS_COMPANY_ASSIGNMENT_FORBIDDEN",
+    ADMIN_TARGET: "TL_CANNOT_REASSIGN_TO_ADMIN",
+    OUTSIDE_TEAM: "TL_CANNOT_REASSIGN_OUTSIDE_TEAM",
+} as const
 
 export class ObligationService {
     static async create(input: CreateObligationInput, session: any) {
@@ -15,20 +31,8 @@ export class ObligationService {
         if (userRole !== 'SUPER_ADMIN') {
             if (!creatorCompanyId) throw new Error("USER_NO_COMPANY")
 
-            const assigneeUsers = await prisma.user.findMany({
-                where: { id: { in: assigneeIds } },
-                select: { id: true, companyId: true, role: true }
-            })
-
-            if (assigneeUsers.length !== assigneeIds.length) throw new Error("ASSIGNEE_NOT_FOUND")
-
-            const externalAssignee = assigneeUsers.find(u => u.companyId !== creatorCompanyId)
-            if (externalAssignee) throw new Error("CROSS_COMPANY_ASSIGNMENT_FORBIDDEN")
-
-            if (userRole === 'TEAM_LEADER') {
-                const adminAssignee = assigneeUsers.find(u => ['ADMIN', 'SUPER_ADMIN'].includes(u.role))
-                if (adminAssignee) throw new Error("TEAM_LEADER_CANNOT_ASSIGN_TO_ADMIN")
-            }
+            const verdict = await checkAssignees(assigneeIds, session)
+            if (!verdict.ok) throw new Error(CREATE_CODES[verdict.reason])
         }
 
         // 2. Deadline Safety Check (3-hour buffer)
@@ -136,10 +140,12 @@ export class ObligationService {
 
             // Reassignment
             if (assigneeIds && isManager) {
-                if (userRole === 'TEAM_LEADER') {
-                    const targetUsers = await tx.user.findMany({ where: { id: { in: assigneeIds } }, select: { role: true } })
-                    if (targetUsers.some(u => ['ADMIN', 'SUPER_ADMIN'].includes(u.role))) throw new Error("TL_CANNOT_REASSIGN_TO_ADMIN")
-                }
+                // Reassignment is the same decision as assignment, so it is
+                // the same rule — handing work to another team, or another
+                // company, is not made safe by the obligation already
+                // existing. Validated inside the transaction it writes to.
+                const verdict = await checkAssignees(assigneeIds, session, tx as any)
+                if (!verdict.ok) throw new Error(REASSIGN_CODES[verdict.reason])
                 updateData.assignees = { set: assigneeIds.map((uid: string) => ({ id: uid })) }
             }
 

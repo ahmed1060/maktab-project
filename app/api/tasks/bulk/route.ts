@@ -28,7 +28,7 @@ export const POST = withStandardHandler(async (req, session, json) => {
 
     const assigneeUsers = await prisma.user.findMany({
         where: { id: { in: allAssigneeIds } },
-        select: { id: true, companyId: true, role: true }
+        select: { id: true, companyId: true, role: true, teamLeaderId: true }
     })
 
     const userMap = new Map(assigneeUsers.map(u => [u.id, u]))
@@ -68,7 +68,13 @@ export const POST = withStandardHandler(async (req, session, json) => {
 
             if (userRole !== 'SUPER_ADMIN') {
                 if (user.companyId !== creatorCompanyId) { isTaskValid = false; break }
-                if (userRole === 'TEAM_LEADER' && ['ADMIN', 'SUPER_ADMIN'].includes(user.role)) { isTaskValid = false; break }
+                if (userRole === 'TEAM_LEADER') {
+                    if (['ADMIN', 'SUPER_ADMIN'].includes(user.role)) { isTaskValid = false; break }
+                    // Same rule as the single-task path. An import is the
+                    // easiest way to assign a hundred tasks at once, so it is
+                    // the last place the boundary should be looser.
+                    if (user.id !== session.user.id && user.teamLeaderId !== session.user.id) { isTaskValid = false; break }
+                }
             }
         }
 

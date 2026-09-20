@@ -26,6 +26,12 @@ export const PUT = withStandardHandler(async (req, session, json, { params }) =>
     } catch (error: any) {
         if (error.message === 'TASK_NOT_FOUND') return ApiResponse.notFound("Task not found")
         if (error.message === 'DEADLINE_TOO_SOON') return ApiResponse.badRequest("Deadline must be at least 3 hours from now")
+        // This path validated no assignees at all until now, so none of these
+        // had anywhere to land.
+        if (error.message === 'ASSIGNEE_NOT_FOUND') return ApiResponse.badRequest("One of those people no longer exists")
+        if (error.message === 'CROSS_COMPANY_ASSIGNMENT_FORBIDDEN') return ApiResponse.forbidden("A task cannot be assigned outside its company")
+        if (error.message === 'TL_CANNOT_ASSIGN_TO_ADMIN') return ApiResponse.forbidden("Team Leaders cannot assign tasks to Admins")
+        if (error.message === 'TL_CANNOT_ASSIGN_OUTSIDE_TEAM') return ApiResponse.forbidden("Team Leaders can only assign tasks to their own team")
         throw error
     }
 })
