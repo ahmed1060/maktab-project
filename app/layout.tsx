@@ -2,6 +2,7 @@ import './globals.css'
 import { Providers } from './providers'
 import { cookies } from 'next/headers'
 import { Analytics } from '@vercel/analytics/next'
+import { SpeedInsights } from '@vercel/speed-insights/next'
 import type { Locale } from '@/lib/translations'
 import { en } from '@/lib/translations/en'
 import { ar } from '@/lib/translations/ar'
@@ -45,6 +46,17 @@ export default async function RootLayout({
       <body>
         <Providers initialLocale={initialLocale} initialDict={initialDict} initialTheme={theme}>{children}</Providers>
         <Analytics />
+        {/* Speed Insights reports the route pattern, not the URL: its
+            computeRoute substitutes the dynamic segments back in, so
+            /dashboard/employees/<uuid> is sent as /dashboard/employees/[id]
+            and no employee id leaves the browser. Worth stating, because this
+            app's routes are full of identifiers and a field-metrics tool that
+            reported raw paths would be exporting them to a third party.
+
+            Both scripts are same-origin (/_vercel/...), so the Report-Only CSP
+            in next.config.mjs already covers them under 'self' — no directive
+            change, and nothing new to allow if that policy is ever enforced. */}
+        <SpeedInsights />
       </body>
     </html>
   )
