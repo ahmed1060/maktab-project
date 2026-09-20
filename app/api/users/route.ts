@@ -196,6 +196,11 @@ export const POST = withStandardHandler(async (req, session, json) => {
         if (error.message === 'TARGET_COMPANY_NOT_FOUND') return ApiResponse.forbidden("Target company not found or access restricted")
         if (error.message === 'USER_ALREADY_EXISTS') return ApiResponse.badRequest("User already exists")
         if (error.message === 'USERNAME_IN_USE') return ApiResponse.badRequest("Username in use")
+        if (error.message === 'TEAM_LEADER_NOT_FOUND') return ApiResponse.badRequest("That team leader no longer exists")
+        if (error.message === 'NOT_A_LEADER') return ApiResponse.badRequest("That person is not a team leader")
+        if (error.message === 'ONLY_EMPLOYEES_HAVE_LEADERS') return ApiResponse.badRequest("Only employees are assigned to a team leader")
+        if (error.message === 'DIFFERENT_COMPANY') return ApiResponse.badRequest("A team leader and their team must be in the same company")
+        if (error.message === 'LEADER_UNAVAILABLE') return ApiResponse.badRequest("That team leader's account is archived or deleted")
 
         throw error
     }
@@ -237,6 +242,22 @@ export const PUT = withStandardHandler(async (req, session, json) => {
         if (error.message === 'USER_NOT_FOUND') return ApiResponse.notFound("User not found")
         if (error.message === 'NAME_CHANGE_REQUIRES_ADMIN') return ApiResponse.forbidden("Name changes require admin approval")
         if (error.message === 'FORBIDDEN_ROLE_ASSIGNMENT') return ApiResponse.forbidden("Forbidden role assignment")
+        // The refusal names the people it is about. "Reassign them first"
+        // without saying who sends an Admin hunting through a list, and the
+        // modal that offers to reassign or unassign them is built from exactly
+        // this payload.
+        if (error.message === 'LEADER_HAS_REPORTS') {
+            return ApiResponse.badRequest(
+                "This person still leads a team. Choose where their team members go before changing this.",
+                { reports: error.reports ?? [] },
+            )
+        }
+        if (error.message === 'TEAM_LEADER_NOT_FOUND') return ApiResponse.badRequest("That team leader no longer exists")
+        if (error.message === 'NOT_A_LEADER') return ApiResponse.badRequest("That person is not a team leader")
+        if (error.message === 'ONLY_EMPLOYEES_HAVE_LEADERS') return ApiResponse.badRequest("Only employees are assigned to a team leader")
+        if (error.message === 'SELF_LEADERSHIP') return ApiResponse.badRequest("Somebody cannot be their own team leader")
+        if (error.message === 'DIFFERENT_COMPANY') return ApiResponse.badRequest("A team leader and their team must be in the same company")
+        if (error.message === 'LEADER_UNAVAILABLE') return ApiResponse.badRequest("That team leader's account is archived or deleted")
         if (error.message === 'INVALID_PASSCODE') return ApiResponse.forbidden("Invalid verification passcode")
         if (error.message === 'EMAIL_CHANGE_REQUIRES_VERIFICATION') return ApiResponse.badRequest("Email changes require verification — use Email settings")
         if (error.message === 'TARGET_PROTECTED') return ApiResponse.forbidden("This account's email is protected and cannot be changed")

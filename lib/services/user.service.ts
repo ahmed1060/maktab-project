@@ -9,11 +9,12 @@ import { generateTempPassword } from "@/lib/generate-password"
 import { CreateUserInput, UpdateUserInput } from "../validations/user.schema"
 import { calendarMonth, calendarYear } from "@/lib/time"
 import { effectiveFromChoice } from "@/lib/salary-history"
+import { checkTeamAssignment, clearsOwnLeader, stripsLeadership } from "@/lib/team-assignment"
 
 export class UserService {
     static async create(input: CreateUserInput, session: any) {
         const userRole = session.user.role
-        const { firstName, lastName, email, password, role, gender, companyId, salary, dayOffCredit, baseDayOffCredit, username } = input
+        const { firstName, lastName, email, password, role, gender, companyId, salary, dayOffCredit, baseDayOffCredit, username, teamLeaderId } = input
 
         // 1. Role Restrictions
         //
@@ -39,6 +40,22 @@ export class UserService {
         if (userRole === 'SUPER_ADMIN' && companyId) targetCompanyId = companyId
 
         if (!targetCompanyId && userRole !== 'SUPER_ADMIN') throw new Error("TARGET_COMPANY_NOT_FOUND")
+
+        // Who manages the new hire. Checked against the leader's real row, not
+        // the id the form sent — the id is the only thing a caller controls,
+        // and every rule worth having is about the row behind it.
+        if (teamLeaderId) {
+            const leader = await prisma.user.findUnique({
+                where: { id: teamLeaderId },
+                select: { id: true, role: true, companyId: true, status: true },
+            })
+            if (!leader) throw new Error("TEAM_LEADER_NOT_FOUND")
+            const verdict = checkTeamAssignment(
+                { id: "", role: newUserRole, companyId: targetCompanyId },
+                leader,
+            )
+            if (!verdict.ok) throw new Error(verdict.refusal.code)
+        }
 
         // 3. Security
         const existingUser = await prisma.user.findUnique({ where: { email } })
@@ -91,6 +108,7 @@ export class UserService {
                 data: {
                     firstName, lastName, email, username: finalUsername!, password: hashedPassword,
                     role: newUserRole, status: 'OFFLINE', gender: gender || 'MALE', companyId: targetCompanyId,
+                    teamLeaderId: teamLeaderId || null,
                     salary: salary || 0,
                     dayOffCredit: baseDayOffCredit !== undefined ? baseDayOffCredit : (dayOffCredit !== undefined ? dayOffCredit : 0),
                     baseDayOffCredit: baseDayOffCredit !== undefined ? baseDayOffCredit : (dayOffCredit !== undefined ? dayOffCredit : 0),
@@ -137,7 +155,7 @@ export class UserService {
 
     static async update(input: UpdateUserInput, session: any) {
         const userRole = session.user.role
-        const { id, firstName, lastName, email, password, role, gender, salary, companyId, avatar, dayOffCredit, baseDayOffCredit, username, status } = input
+        const { id, firstName, lastName, email, password, role, gender, salary, companyId, avatar, dayOffCredit, baseDayOffCredit, username, status, teamLeaderId } = input
 
         const regularUser = await prisma.user.findUnique({ where: { id } })
         const superAdminUser = !regularUser ? await prisma.superAdmin.findUnique({ where: { id } }) : null
@@ -246,6 +264,68 @@ export class UserService {
 
             if (companyId !== undefined && userRole === 'SUPER_ADMIN') updateData.companyId = companyId || null
             if (status !== undefined && ['ADMIN', 'SUPER_ADMIN'].includes(userRole || '')) updateData.status = status
+
+            // 5. Team membership.
+            //
+            // Everything below reads the *resulting* person, not the current
+            // one. A single request can change a role and an assignment
+            // together, and validating against the row as it stands would
+            // approve a combination that is invalid the moment it is written —
+            // promoting somebody to TEAM_LEADER while handing them a leader,
+            // for instance, which the flat structure forbids.
+            const nextRole = updateData.role ?? regularUser.role
+            const nextCompanyId = updateData.companyId !== undefined ? updateData.companyId : regularUser.companyId
+
+            // A leader cannot be stripped out from under their team. Four
+            // edits do it and three do not look like demotion — see
+            // stripsLeadership. The refusal names the people it is about,
+            // because "reassign them first" without saying who sends an Admin
+            // hunting through a list.
+            if (stripsLeadership(regularUser, { role: updateData.role, companyId: updateData.companyId, status: updateData.status })) {
+                const reports = await prisma.user.findMany({
+                    where: { teamLeaderId: id, status: { notIn: ['DELETED', 'ARCHIVED'] } },
+                    select: { id: true, firstName: true, lastName: true },
+                })
+                if (reports.length > 0) {
+                    const err: any = new Error("LEADER_HAS_REPORTS")
+                    err.reports = reports
+                    throw err
+                }
+            }
+
+            if (['ADMIN', 'SUPER_ADMIN'].includes(userRole || '')) {
+                if (teamLeaderId !== undefined) {
+                    if (teamLeaderId === null) {
+                        updateData.teamLeaderId = null
+                    } else {
+                        const leader = await prisma.user.findUnique({
+                            where: { id: teamLeaderId },
+                            select: { id: true, role: true, companyId: true, status: true },
+                        })
+                        if (!leader) throw new Error("TEAM_LEADER_NOT_FOUND")
+                        const verdict = checkTeamAssignment(
+                            { id, role: nextRole, companyId: nextCompanyId },
+                            leader,
+                        )
+                        if (!verdict.ok) throw new Error(verdict.refusal.code)
+                        updateData.teamLeaderId = teamLeaderId
+                    }
+                }
+
+                // Gaining a role clears the leader you had. Applied silently,
+                // unlike losing one, because it costs nobody their visibility
+                // — but it has to happen, or a TEAM_LEADER row keeps a
+                // teamLeaderId and becomes a leader who is led.
+                if (updateData.teamLeaderId === undefined && clearsOwnLeader(regularUser, updateData.role)) {
+                    updateData.teamLeaderId = null
+                }
+
+                // Moving somebody to another company strands them under a
+                // leader who can no longer see them.
+                if (updateData.companyId !== undefined && updateData.companyId !== regularUser.companyId) {
+                    updateData.teamLeaderId = null
+                }
+            }
 
             const updated = await prisma.user.update({
                 where: { id }, data: updateData,

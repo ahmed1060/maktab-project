@@ -20,6 +20,12 @@ export const createUserSchema = z.object({
     dayOffCredit: z.coerce.number().min(0).optional(),
     baseDayOffCredit: z.coerce.number().min(0).optional(),
     username: z.string().min(3).max(30).optional(),
+    // Nullable as well as optional, and the difference matters: absent means
+    // "leave it alone", null means "unassign", and an Admin resolving a
+    // hand-off needs to be able to say the second one. partialWithoutDefaults
+    // below would have turned an omitted field into a create-time default if
+    // this had one — it deliberately does not.
+    teamLeaderId: z.string().min(1).nullable().optional(),
 })
 
 export const updateUserSchema = partialWithoutDefaults(createUserSchema).extend({

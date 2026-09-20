@@ -130,3 +130,39 @@ export function clearsOwnLeader(
     if (!current.teamLeaderId) return false
     return nextRole !== "EMPLOYEE"
 }
+
+/**
+ * Whether a change would leave this person unable to lead the team they have.
+ *
+ * Four different edits do it, and three of them do not look like demotion at
+ * all, which is why this is one function rather than a condition repeated at
+ * each site:
+ *
+ *   - the role moves away from TEAM_LEADER;
+ *   - the account is archived or deleted (the app soft-deletes, so the
+ *     foreign key's ON DELETE SET NULL never fires for this);
+ *   - the account moves to another company, which strands the reports across
+ *     a boundary the whole system exists to hold;
+ *
+ * In every case the reports keep pointing at somebody who can no longer see
+ * them, and because unassigned employees are visible to Admins only, they
+ * become invisible to every team leader at once. Nothing errors. Nobody is
+ * told. That is the failure this prevents: the caller must refuse the change
+ * until an Admin says where those people go.
+ *
+ * Note the asymmetry with clearsOwnLeader above. Gaining a role silently
+ * clears the leader you had, because that costs nobody anything. Losing one is
+ * refused, because other people's visibility depends on the answer.
+ */
+export function stripsLeadership(
+    current: { role: string; companyId: string | null; status?: string | null },
+    next: { role?: string; companyId?: string | null; status?: string | null },
+): boolean {
+    if (current.role !== "TEAM_LEADER") return false
+
+    if (next.role !== undefined && next.role !== "TEAM_LEADER") return true
+    if (next.status !== undefined && next.status !== null && UNAVAILABLE.has(next.status)) return true
+    if (next.companyId !== undefined && next.companyId !== current.companyId) return true
+
+    return false
+}

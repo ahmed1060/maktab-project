@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { checkTeamAssignment, clearsOwnLeader, type Person } from "./team-assignment"
+import { checkTeamAssignment, clearsOwnLeader, stripsLeadership, type Person } from "./team-assignment"
 
 const CO = "co-1"
 const employee = (over: Partial<Person> = {}): Person =>
@@ -119,5 +119,44 @@ describe("promoting an employee clears the leader they had", () => {
         // refused until an Admin decides where those reports go. This helper
         // must never be mistaken for that one.
         expect(clearsOwnLeader({ role: "TEAM_LEADER", teamLeaderId: null }, "EMPLOYEE")).toBe(false)
+    })
+})
+
+describe("a leader cannot be stripped out from under their team", () => {
+    const lead = { role: "TEAM_LEADER", companyId: CO, status: "ACTIVE" }
+
+    it("catches the obvious one: demotion to employee", () => {
+        expect(stripsLeadership(lead, { role: "EMPLOYEE" })).toBe(true)
+    })
+
+    it("catches promotion to admin too", () => {
+        // Still leaves the reports pointing at somebody who is not a leader.
+        expect(stripsLeadership(lead, { role: "ADMIN" })).toBe(true)
+    })
+
+    it("catches archiving and deleting, which do not look like demotion", () => {
+        // The app soft-deletes, so the foreign key's ON DELETE SET NULL never
+        // fires for either of these. Without this the reports keep pointing at
+        // a dead account.
+        expect(stripsLeadership(lead, { status: "ARCHIVED" })).toBe(true)
+        expect(stripsLeadership(lead, { status: "DELETED" })).toBe(true)
+    })
+
+    it("catches a move to another company", () => {
+        // Strands the reports across the boundary the system exists to hold.
+        expect(stripsLeadership(lead, { companyId: "co-2" })).toBe(true)
+    })
+
+    it("ignores changes that leave them leading", () => {
+        expect(stripsLeadership(lead, { status: "OFFLINE" })).toBe(false)
+        expect(stripsLeadership(lead, { status: "SUSPENDED" })).toBe(false)
+        expect(stripsLeadership(lead, { role: "TEAM_LEADER" })).toBe(false)
+        expect(stripsLeadership(lead, { companyId: CO })).toBe(false)
+        expect(stripsLeadership(lead, {})).toBe(false)
+    })
+
+    it("says nothing about somebody who was never a leader", () => {
+        expect(stripsLeadership({ role: "EMPLOYEE", companyId: CO }, { role: "ADMIN" })).toBe(false)
+        expect(stripsLeadership({ role: "ADMIN", companyId: CO }, { status: "ARCHIVED" })).toBe(false)
     })
 })
