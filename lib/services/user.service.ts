@@ -375,6 +375,21 @@ export class UserService {
                         where: { id: { in: rehome!.ids } },
                         data: { teamLeaderId: rehome!.to },
                     })
+
+                    // The diff below records this person's own change. It
+                    // cannot see this one: a hand-off rewrites other people's
+                    // rows, and each of them is a change to who can see them.
+                    // Logged inside the transaction so it cannot outlive a
+                    // rollback, and carrying the ids because "a team was
+                    // moved" without saying whose is not an audit trail.
+                    const { AuditLogService } = await import("./audit-log.service")
+                    await AuditLogService.log('REASSIGN_TEAM', 'USER', id, {
+                        tx,
+                        userId: userRole !== 'SUPER_ADMIN' ? session.user.id : null,
+                        superAdminId: userRole === 'SUPER_ADMIN' ? session.user.id : null,
+                        details: { from: id, to: rehome!.to, affected: rehome!.ids },
+                    })
+
                     return tx.user.update({ where: { id }, data: updateData, select: writeSelect })
                 })
                 : await prisma.user.update({ where: { id }, data: updateData, select: writeSelect })

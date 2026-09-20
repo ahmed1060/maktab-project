@@ -25,6 +25,8 @@ const db = {
     moved: null as { ids: string[]; to: string | null } | null,
     /** Whether the write happened inside a transaction. */
     inTransaction: false,
+    /** What was written to the audit log, if anything. */
+    audited: null as any,
 }
 
 class Written extends Error {
@@ -52,7 +54,15 @@ vi.mock("@/lib/prisma", () => ({
         dayOffRequest: { aggregate: async () => ({ _sum: { daysDeducted: 0 } }) },
         // Runs the callback with a tx whose writes are marked as being inside
         // one, so a test can tell an atomic hand-off from two loose writes.
-        $transaction: async (fn: any) => fn({ user: userModel(true) }),
+        // The audit write joins it too — a hand-off rewrites other people's
+        // rows, which the ordinary field diff cannot see, so it is recorded
+        // where it cannot outlive a rollback.
+        $transaction: async (fn: any) => fn({
+            user: userModel(true),
+            auditLog: {
+                create: async ({ data }: any) => { db.audited = data; return { id: "a-1" } },
+            },
+        }),
     },
 }))
 
@@ -88,6 +98,7 @@ beforeEach(() => {
     db.reports = []
     db.moved = null
     db.inTransaction = false
+    db.audited = null
 })
 
 describe("a leader is not stripped out from under their team", () => {
@@ -232,5 +243,37 @@ describe("the hand-off: where a stripped leader's team goes", () => {
         db.leader = { id: "tl-2", role: "TEAM_LEADER", companyId: "co-1", status: "ACTIVE" }
         await written({ role: "EMPLOYEE", reassignReportsTo: "tl-2" })
         expect(db.inTransaction).toBe(true)
+    })
+})
+
+describe("a hand-off leaves a trace", () => {
+    beforeEach(() => {
+        db.target = person({ id: "tl-1", role: "TEAM_LEADER" })
+        db.reports = [
+            { id: "e-1", firstName: "Laila", lastName: "Fouad" },
+            { id: "e-2", firstName: "Omar", lastName: "Said" },
+        ]
+        db.leader = { id: "tl-2", role: "TEAM_LEADER", companyId: "co-1", status: "ACTIVE" }
+    })
+
+    it("records who moved and where they went", async () => {
+        // The ordinary field diff records this person's own change and cannot
+        // see this one: a hand-off rewrites other people's rows, and each is a
+        // change to who can see them. "A team was moved" without saying whose
+        // is not an audit trail.
+        await written({ role: "EMPLOYEE", reassignReportsTo: "tl-2" })
+        expect(db.audited?.action).toBe("REASSIGN_TEAM")
+        expect(db.audited?.details).toMatchObject({ from: "tl-1", to: "tl-2", affected: ["e-1", "e-2"] })
+    })
+
+    it("records an unassignment too, not only a move", async () => {
+        await written({ role: "EMPLOYEE", reassignReportsTo: null })
+        expect(db.audited?.details).toMatchObject({ to: null, affected: ["e-1", "e-2"] })
+    })
+
+    it("writes nothing when there is no hand-off", async () => {
+        db.reports = []
+        await written({ role: "EMPLOYEE" })
+        expect(db.audited).toBeNull()
     })
 })

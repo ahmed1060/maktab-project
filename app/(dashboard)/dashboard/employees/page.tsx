@@ -51,6 +51,12 @@ export default function EmployeesPage() {
     const [roleFilter, setRoleFilter] = useState('')
     const [filters, setFilters] = useState({ search: '', status: '', dateFrom: '', dateTo: '', employeeId: '' })
     const [alert, setAlert] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
+    // Bulk team assignment. A Set rather than an array because the only two
+    // operations are "is this one picked" and "toggle it".
+    const [picked, setPicked] = useState<Set<string>>(new Set())
+    const [bulkLeaderId, setBulkLeaderId] = useState('')
+    const [bulkSaving, setBulkSaving] = useState(false)
+    const [teamLeaders, setTeamLeaders] = useState<{ id: string; firstName: string; lastName: string }[]>([])
     const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; name: string } | null>(null)
     // Replaces alert(): a native dialog ignores the palette entirely, and it
     // blocks the main thread for as long as it is up.
@@ -81,6 +87,54 @@ export default function EmployeesPage() {
     const totalPages: number = result?.data?.totalPages || 0
     const totalEmployees: number = result?.data?.total || 0
     const loading = isLoading || isValidating
+
+    const canAssignTeams = ['ADMIN', 'SUPER_ADMIN'].includes(userRole)
+
+    useEffect(() => {
+        if (!canAssignTeams) return
+        fetch('/api/users?role=TEAM_LEADER&limit=1000')
+            .then(r => r.json())
+            .then(d => setTeamLeaders(d.data?.data || []))
+            .catch(() => { /* the picker simply stays empty */ })
+    }, [canAssignTeams])
+
+    const togglePicked = (id: string) => {
+        setPicked(prev => {
+            const next = new Set(prev)
+            if (next.has(id)) next.delete(id)
+            else next.add(id)
+            return next
+        })
+    }
+
+    const applyBulkTeam = async () => {
+        setBulkSaving(true)
+        try {
+            const res = await fetch('/api/users/team', {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                // Empty option means unassign, so it goes as null — the same
+                // three states the single-employee form and the server use.
+                body: JSON.stringify({ userIds: [...picked], teamLeaderId: bulkLeaderId || null }),
+            })
+            const body = await res.json().catch(() => null)
+            if (!res.ok) {
+                setAlert({ type: 'error', message: body?.error || t('error_generic') })
+                setTimeout(() => setAlert(null), 5000)
+                return
+            }
+            setAlert({ type: 'success', message: t('bulk_assign_done').replace('{count}', String(body?.data?.updated ?? picked.size)) })
+            setTimeout(() => setAlert(null), 3000)
+            setPicked(new Set())
+            setBulkLeaderId('')
+            mutate()
+        } catch {
+            setAlert({ type: 'error', message: t('error_generic') })
+            setTimeout(() => setAlert(null), 5000)
+        } finally {
+            setBulkSaving(false)
+        }
+    }
 
     const filteredEmployees = employees
 
@@ -286,6 +340,34 @@ export default function EmployeesPage() {
                 }
             />
 
+            {canAssignTeams && picked.size > 0 && (
+                <div className="card" style={{
+                    display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.75rem',
+                    padding: '0.75rem 1rem', marginBottom: '1rem',
+                }}>
+                    <strong style={{ whiteSpace: 'nowrap' }}>
+                        {t('bulk_selected').replace('{count}', String(picked.size))}
+                    </strong>
+                    <select
+                        className="input"
+                        value={bulkLeaderId}
+                        onChange={e => setBulkLeaderId(e.target.value)}
+                        style={{ flex: '1 1 12rem', minWidth: 0, textAlign: locale === 'ar' ? 'right' : 'left' }}
+                    >
+                        <option value="">{t('team_leader_none')}</option>
+                        {teamLeaders.map(l => (
+                            <option key={l.id} value={l.id}>{l.firstName} {l.lastName}</option>
+                        ))}
+                    </select>
+                    <button className="btn btn-primary" onClick={applyBulkTeam} disabled={bulkSaving}>
+                        {bulkSaving ? t('saving') : t('bulk_assign_apply')}
+                    </button>
+                    <button className="btn" onClick={() => setPicked(new Set())} disabled={bulkSaving}>
+                        {t('bulk_assign_clear')}
+                    </button>
+                </div>
+            )}
+
             <div style={{
                 display: 'grid',
                 gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))',
@@ -312,6 +394,20 @@ export default function EmployeesPage() {
                         >
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                    {/* Only employees have a team, so only
+                                        employees are selectable. Offering a
+                                        checkbox on a leader's card would
+                                        promise something the server refuses. */}
+                                    {canAssignTeams && emp.role === 'EMPLOYEE' && (
+                                        <input
+                                            type="checkbox"
+                                            id={`pick-${emp.id}`}
+                                            checked={picked.has(emp.id)}
+                                            onChange={() => togglePicked(emp.id)}
+                                            aria-label={`${emp.firstName} ${emp.lastName}`}
+                                            style={{ width: '1rem', height: '1rem', cursor: 'pointer', flexShrink: 0 }}
+                                        />
+                                    )}
                                     <div
                                         onClick={() => userRole === 'SUPER_ADMIN' && handleStatusToggle(emp.id, emp.status || 'OFFLINE')}
                                         title={emp.status === 'SUSPENDED' ? t('status_suspended_msg') : emp.status === 'ACTIVE' ? t('status_online_msg') : t('status_offline_msg')}

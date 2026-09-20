@@ -56,6 +56,13 @@ const API_MODULE_PATTERNS: ReadonlyArray<readonly [RegExp, Module]> = [
     // Company-Management-only company does hold. The automated payroll
     // machinery behind it keeps running; only this manual action is gated.
     [/^\/api\/tasks\/[^/]+\/penalty$/, 'SALARY_ADJUSTMENTS'],
+    // Bulk team assignment. Listed before the /api/users/[id] patterns below
+    // because "team" would otherwise be read as a user id, and gated to
+    // EMPLOYEES rather than sold separately: a company must never be able to
+    // hold Team Leader accounts whose access stays company-wide because they
+    // did not buy the thing that narrows it. The weaker security posture
+    // cannot be the cheaper one.
+    [/^\/api\/users\/team$/, 'EMPLOYEES'],
     // Bonuses, deductions and their rollback: HR money, reached from the
     // employee directory, which is Core.
     [/^\/api\/users\/[^/]+\/(bonus|deduction|adjustments)(\/|$)/, 'SALARY_ADJUSTMENTS'],
