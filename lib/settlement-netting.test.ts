@@ -86,7 +86,10 @@ describe("I1: recorded without breaking the statement's own arithmetic", () => {
     it("keeps netAmount as earned minus paid", () => {
         // A net that quietly included something else would stop adding up in
         // front of the person reading it.
-        expect(SCHEMA).toContain("debtRecoveredAmount Decimal     @default(0) @db.Decimal(12, 2)")
+        expect(
+            declaresField(SCHEMA, "debtRecoveredAmount", "Decimal", "@default(0)", "@db.Decimal(12, 2)"),
+            "FinalSettlement.debtRecoveredAmount must stay a Decimal(12,2) defaulting to 0",
+        ).toBe(true)
         expect(SETTLEMENT).toContain("netAmount: toMajor(preview.netMinor)")
         expect(SETTLEMENT).toContain("debtRecoveredAmount: toMajor(preview.debtRecoveredMinor)")
     })
@@ -209,3 +212,11 @@ describe("the copy exists in both languages", () => {
         expect(missing, `no Arabic translation:\n${missing.join("\n")}`).toEqual([])
     })
 })
+
+/** Matches a schema field regardless of the column alignment `prisma format`
+ *  applies. The spacing is not what any of these assertions are about, and
+ *  baking it in makes the next reformat look like a payroll regression. */
+function declaresField(schema: string, field: string, type: string, ...attrs: string[]) {
+    const parts = [field, type, ...attrs].map(p => p.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
+    return new RegExp(parts.join("\\s+")).test(schema)
+}

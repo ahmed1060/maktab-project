@@ -23,21 +23,53 @@ import { join } from "node:path"
 const DIR = "prisma/migrations"
 const baseline = readFileSync(join(DIR, "0_init", "migration.sql"), "utf8")
 
+/** Every migration directory, in the order Prisma applies them. */
+const migrations = readdirSync(DIR, { withFileTypes: true })
+    .filter(e => e.isDirectory()).map(e => e.name).sort()
+
+/** The whole history concatenated. A table created by a migration added after
+ *  the baseline is still created by the history, and the table check below has
+ *  to see it — reading only the baseline would start failing the day somebody
+ *  legitimately adds one, which teaches people to edit the test. */
+const history = migrations
+    .map(name => readFileSync(join(DIR, name, "migration.sql"), "utf8"))
+    .join("\n")
+
 const modelTables = [...readFileSync("prisma/schema.prisma", "utf8")
     .matchAll(/^model\s+(\w+)\s*\{([\s\S]*?)^\}/gm)]
     .map(m => m[2].match(/@@map\("([^"]+)"\)/)?.[1] ?? m[1])
 
-describe("the migration history is a single baseline", () => {
-    it("holds exactly one migration", () => {
-        const dirs = readdirSync(DIR, { withFileTypes: true })
-            .filter(e => e.isDirectory()).map(e => e.name)
-        expect(dirs).toEqual(["0_init"])
+describe("the history starts from the baseline and only moves forward", () => {
+    it("still begins at 0_init", () => {
+        // This used to assert the history held exactly one migration, which was
+        // the right guard while the squash was the only thing in it and the
+        // failure being prevented was a slide back to forty-eight drifted
+        // files. Migrations added since are legitimate, so the guard now says
+        // what is actually required: the baseline is present, and it is first.
+        // A history that no longer starts here cannot rebuild the database.
+        expect(migrations[0]).toBe("0_init")
+    })
+
+    it("adds nothing that would sort ahead of the baseline", () => {
+        // Prisma applies in lexicographic order. A migration named so that it
+        // sorts before "0_init" would run against an empty database and fail,
+        // and the name is the only thing deciding that.
+        const ahead = migrations.filter(m => m !== "0_init" && m < "0_init")
+        expect(ahead, `these would run before the baseline: ${ahead.join(", ")}`).toEqual([])
     })
 
     it("creates every table the schema declares", () => {
         expect(modelTables.length).toBeGreaterThan(30)
-        const missing = modelTables.filter(t => !baseline.includes(`CREATE TABLE "${t}"`))
-        expect(missing, `tables the baseline never creates: ${missing.join(", ")}`).toEqual([])
+        const missing = modelTables.filter(t => !history.includes(`CREATE TABLE "${t}"`))
+        expect(missing, `tables no migration ever creates: ${missing.join(", ")}`).toEqual([])
+    })
+
+    it("gives every column the schema declares a home in the history", () => {
+        // The failure that caused the squash was a column six migrations never
+        // created, found only when a rebuild was attempted. Spot-checking the
+        // newest column is not a general fix, but it does catch the specific
+        // way this drifts: a schema edit that never became a migration.
+        expect(history).toMatch(/ADD COLUMN "teamLeaderId"|"teamLeaderId" TEXT/)
     })
 })
 

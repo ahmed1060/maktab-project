@@ -221,7 +221,10 @@ describe("the debt is closed when the money is taken", () => {
     it("keeps the original amount rather than shrinking it", () => {
         // A column that shrinks cannot answer what the debt was to begin with,
         // which is the thing somebody disputes.
-        expect(SCHEMA).toContain("recoveredAmount Decimal @default(0) @db.Decimal(12, 2)")
+        expect(
+            declaresField(SCHEMA, "recoveredAmount", "Decimal", "@default(0)", "@db.Decimal(12, 2)"),
+            "Debt.recoveredAmount must stay a separate Decimal(12,2) defaulting to 0",
+        ).toBe(true)
         expect(SERVICE).not.toContain("amount: { decrement:")
     })
 
@@ -270,3 +273,11 @@ describe("the copy exists in both languages", () => {
         expect(missing, `no Arabic translation:\n${missing.join("\n")}`).toEqual([])
     })
 })
+
+/** Matches a schema field regardless of the column alignment `prisma format`
+ *  applies. The spacing is not what any of these assertions are about, and
+ *  baking it in makes the next reformat look like a payroll regression. */
+function declaresField(schema: string, field: string, type: string, ...attrs: string[]) {
+    const parts = [field, type, ...attrs].map(p => p.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
+    return new RegExp(parts.join("\\s+")).test(schema)
+}

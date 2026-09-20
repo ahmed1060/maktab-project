@@ -376,6 +376,25 @@ model User {
   mfaEnabled                 Boolean                 @default(false)
   mfaSecret                  String?
   emailVerifiedAt            DateTime?
+  // Who manages this person. Null means nobody does — the state every account
+  // starts in, and the one an Admin has to clear deliberately.
+  //
+  // A self-relation rather than a Team table because the structure is flat:
+  // leaders are not led. So this is only ever set on an EMPLOYEE row and only
+  // ever points at a TEAM_LEADER in the same company, which makes a reporting
+  // cycle impossible by construction rather than by a check somebody has to
+  // remember. Scope stays one comparison instead of a tree walk.
+  //
+  // Those two rules live in UserService, not here, because a column cannot see
+  // another row. The one invariant Postgres can hold on its own — that nobody
+  // leads themselves — is a CHECK constraint in the migration.
+  //
+  // SetNull is a backstop for a hard DELETE only. The app soft-deletes, and
+  // losing a leader that way is refused until their reports are rehomed. A
+  // leader's reports must never quietly become invisible to everybody.
+  teamLeaderId               String?
+  teamLeader                 User?                   @relation("TeamMembers", fields: [teamLeaderId], references: [id], onDelete: SetNull)
+  teamMembers                User[]                  @relation("TeamMembers")
   auditLogs                  AuditLog[]
   trustedDevices             TrustedDevice[]
   verificationCodes          VerificationCode[]
@@ -408,6 +427,8 @@ model User {
   @@index([companyId])
   @@index([status])
   @@index([role])
+  // Every Team Leader read filters on this, on every page they open.
+  @@index([teamLeaderId])
 }
 
 model Task {
