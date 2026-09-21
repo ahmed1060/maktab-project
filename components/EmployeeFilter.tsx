@@ -38,6 +38,10 @@ interface EmployeeFilterProps {
     showRoleFilter?: boolean,
     selectedRole?: string,
     onRoleChange?: (role: string) => void,
+    /** Team leaders to offer, plus the Unassigned bucket. Empty hides it. */
+    teamOptions?: { id: string; firstName: string; lastName: string }[],
+    selectedTeam?: string,
+    onTeamChange?: (team: string) => void,
     hideFilterButton?: boolean,
     hideSearch?: boolean,
     statusOptions?: SortOption[],
@@ -81,6 +85,9 @@ export default function EmployeeFilter({
     showRoleFilter,
     selectedRole = '',
     onRoleChange,
+    teamOptions,
+    selectedTeam = '',
+    onTeamChange,
     hideFilterButton,
     hideSearch,
     statusOptions,
@@ -105,6 +112,7 @@ export default function EmployeeFilter({
     const [localDateTo, setLocalDateTo] = useState(dateTo)
     const [localStatus, setLocalStatus] = useState(selectedStatus)
     const [localRole, setLocalRole] = useState(selectedRole)
+    const [localTeam, setLocalTeam] = useState(selectedTeam)
     const [localCompanyId, setLocalCompanyId] = useState(selectedCompanyId)
     const [searchTerm, setSearchTerm] = useState(searchQuery)
     const [localSortBy, setLocalSortBy] = useState(sortBy || '')
@@ -122,21 +130,23 @@ export default function EmployeeFilter({
             onSortChange(localSortBy, localSortOrder)
         }
         if (onRoleChange && showRoleFilter) onRoleChange(localRole)
+        if (onTeamChange) onTeamChange(localTeam)
         if (onCompanyChange && showCompanyFilter) onCompanyChange(localCompanyId)
         setIsPopupOpen(false)
-    }, [onFilterChange, localEmployeeId, localDateFrom, localDateTo, localStatus, searchTerm, onSortChange, localSortBy, localSortOrder, onRoleChange, showRoleFilter, localRole, onCompanyChange, showCompanyFilter, localCompanyId])
+    }, [onFilterChange, localEmployeeId, localDateFrom, localDateTo, localStatus, searchTerm, onSortChange, localSortBy, localSortOrder, onRoleChange, showRoleFilter, localRole, onCompanyChange, showCompanyFilter, localCompanyId, onTeamChange, localTeam])
 
     useEffect(() => {
         setLocalEmployeeId(selectedEmployeeId)
         setLocalStatus(selectedStatus)
         setLocalRole(selectedRole)
+        setLocalTeam(selectedTeam)
         setLocalCompanyId(selectedCompanyId)
         setLocalDateFrom(dateFrom)
         setLocalDateTo(dateTo)
         setSearchTerm(searchQuery)
         setLocalSortBy(sortBy || '')
         setLocalSortOrder(sortOrder || 'asc')
-    }, [selectedEmployeeId, selectedStatus, selectedRole, selectedCompanyId, dateFrom, dateTo, searchQuery, sortBy, sortOrder])
+    }, [selectedEmployeeId, selectedStatus, selectedRole, selectedCompanyId, dateFrom, dateTo, searchQuery, sortBy, sortOrder, selectedTeam])
 
     // Auto-apply search with 500ms debounce
     useEffect(() => {
@@ -222,6 +232,8 @@ export default function EmployeeFilter({
             onSortChange(sortOptions[0].value, 'asc')
         }
         if (onRoleChange) onRoleChange('')
+        setLocalTeam('')
+        if (onTeamChange) onTeamChange('')
         if (onCompanyChange) onCompanyChange('')
     }
 
@@ -244,6 +256,7 @@ export default function EmployeeFilter({
         (!hideStatusFilter && selectedStatus) ? 1 : 0,
         (!hideDateFilter && (dateFrom || dateTo)) ? 1 : 0,
         (showRoleFilter && selectedRole) ? 1 : 0,
+        selectedTeam ? 1 : 0,
         (showCompanyFilter && selectedCompanyId) ? 1 : 0
     ].reduce((a, b) => a + b, 0)
 
@@ -535,6 +548,51 @@ export default function EmployeeFilter({
                                                     <option value="EMPLOYEE">{t('role_employee')}</option>
                                                     <option value="TEAM_LEADER">{t('role_team_leader')}</option>
                                                     <option value="ADMIN">{t('role_admin')}</option>
+                                                </select>
+                                                <div style={{ position: 'absolute', [locale === 'ar' ? 'left' : 'right']: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-faint)', pointerEvents: 'none' }}>
+                                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                                        <path d="M6 9l6 6 6-6"></path>
+                                                    </svg>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Only when there are teams to choose
+                                        between. A company with no team leaders
+                                        has no teams, and a filter whose only
+                                        option is "all" is furniture. */}
+                                    {onTeamChange && (teamOptions?.length ?? 0) > 0 && (
+                                        <div>
+                                            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '700', fontSize: '0.875rem' }}>{t('team_column')}</label>
+                                            <div style={{ position: 'relative' }}>
+                                                <select
+                                                    value={localTeam}
+                                                    onChange={(e) => setLocalTeam(e.target.value)}
+                                                    className="input"
+                                                    style={{
+                                                        width: '100%',
+                                                        padding: locale === 'ar' ? '0 0.75rem 0 2.25rem' : '0 2.25rem 0 0.75rem',
+                                                        borderRadius: '1.25rem',
+                                                        background: 'var(--surface)',
+                                                        border: '1px solid var(--border)',
+                                                        height: '48px',
+                                                        appearance: 'none',
+                                                        backgroundImage: 'none',
+                                                        cursor: 'pointer',
+                                                        fontSize: '0.9rem',
+                                                        fontWeight: '500',
+                                                        textAlign: locale === 'ar' ? 'right' : 'left'
+                                                    }}
+                                                >
+                                                    <option value="">{t('team_filter_all')}</option>
+                                                    {/* A real value, not the absence of one: unassigned
+                                                        people are visible to no team leader, so they are
+                                                        exactly who an Admin needs to be able to find. */}
+                                                    <option value="unassigned">{t('team_unassigned')}</option>
+                                                    {teamOptions!.map(l => (
+                                                        <option key={l.id} value={l.id}>{l.firstName} {l.lastName}</option>
+                                                    ))}
                                                 </select>
                                                 <div style={{ position: 'absolute', [locale === 'ar' ? 'left' : 'right']: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-faint)', pointerEvents: 'none' }}>
                                                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">

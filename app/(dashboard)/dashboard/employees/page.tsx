@@ -56,6 +56,7 @@ export default function EmployeesPage() {
     const [picked, setPicked] = useState<Set<string>>(new Set())
     const [bulkLeaderId, setBulkLeaderId] = useState('')
     const [bulkSaving, setBulkSaving] = useState(false)
+    const [teamFilter, setTeamFilter] = useState('')
     const [teamLeaders, setTeamLeaders] = useState<{ id: string; firstName: string; lastName: string }[]>([])
     const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; name: string } | null>(null)
     // Replaces alert(): a native dialog ignores the palette entirely, and it
@@ -79,6 +80,12 @@ export default function EmployeesPage() {
         if ((session.user as any).id) queryParams.set('excludeUserId', (session.user as any).id)
         if (filters.search) queryParams.set('search', filters.search)
         if (filters.status) queryParams.set('status', filters.status)
+        // Filtering rather than grouping, deliberately. This list is paginated,
+        // and a team's members do not fall on one page — a grouped view would
+        // show the same team heading on page one and page three with different
+        // people under it. Filtering asks the server for one team and pages
+        // through that, which is the question an Admin actually has.
+        if (teamFilter) queryParams.set('teamLeaderId', teamFilter)
         return `/api/users?${queryParams.toString()}`
     })()
 
@@ -318,6 +325,9 @@ export default function EmployeesPage() {
                 showRoleFilter={true}
                 selectedRole={roleFilter}
                 onRoleChange={setRoleFilter}
+                teamOptions={canAssignTeams ? teamLeaders : []}
+                selectedTeam={teamFilter}
+                onTeamChange={(v) => { setTeamFilter(v); setPage(1) }}
                 sortBy={sortBy}
                 sortOrder={sortOrder}
                 onSortChange={(field, order) => { setSortBy(field); setSortOrder(order) }}
