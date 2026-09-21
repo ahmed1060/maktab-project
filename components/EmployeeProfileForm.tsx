@@ -33,6 +33,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
     // explicit null in the payload, because absent means "leave it alone" and
     // an Admin resolving a hand-off needs to be able to say "unassign".
     const [teamLeaderId, setTeamLeaderId] = useState('')
+    const [myLeader, setMyLeader] = useState<{ firstName: string; lastName: string } | null>(null)
     const [leaders, setLeaders] = useState<{ id: string; firstName: string; lastName: string }[]>([])
     // Set when the server refuses a change because this person still leads a
     // team. It carries the names, so the modal asks about these people rather
@@ -116,6 +117,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                 setUsername(employee.username || '')
                 setStatus(employee.status || 'OFFLINE')
                 setTeamLeaderId(employee.teamLeaderId || '')
+                setMyLeader(employee.teamLeader || null)
                 setAvatarUrl(employee.avatar || null)
 
                 // Check for pending name change requests
@@ -922,6 +924,28 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                                 {(userRole === 'SUPER_ADMIN' || role === 'ADMIN') && <option value="ADMIN">{t('role_admin')}</option>}
                                 {role === 'SUPER_ADMIN' && <option value="SUPER_ADMIN">{t('super_admins')}</option>}
                             </select>
+                        </div>
+                    )
+                }
+
+                {
+                    /* Read-only, and only on your own profile. Everywhere else
+                       the field above is an Admin's control; here it is simply
+                       information, because knowing who manages you is not
+                       something you should have to ask a colleague for. */
+                    userId === session?.user?.id && role === 'EMPLOYEE' && (
+                        <div style={{ marginBottom: '1rem' }}>
+                            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('team_leader_yours')}</label>
+                            <p style={{
+                                margin: 0,
+                                padding: '0.6rem 0.75rem',
+                                borderRadius: '0.5rem',
+                                background: 'var(--surface-sunk)',
+                                color: myLeader ? 'var(--text-body)' : 'var(--text-faint)',
+                                textAlign: locale === 'ar' ? 'right' : 'left',
+                            }}>
+                                {myLeader ? `${myLeader.firstName} ${myLeader.lastName}` : t('team_leader_yours_none')}
+                            </p>
                         </div>
                     )
                 }

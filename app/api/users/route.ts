@@ -6,6 +6,7 @@ import { createUserSchema, updateUserSchema } from "@/lib/validations/user.schem
 import { UserService } from "@/lib/services/user.service"
 import { parsePaging } from "@/lib/pagination"
 import { buildUserWhereClause } from "@/lib/services/user-query"
+import { verifyResourceAccess } from "@/lib/security"
 
 // F-13: role/status are now Postgres enums, not free text — a query-param
 // value that isn't a real enum member makes Postgres reject the whole
@@ -26,13 +27,33 @@ export const GET = withStandardHandler(async (req, session) => {
             return ApiResponse.forbidden()
         }
 
+        // The role check above says *which kinds of people* may look somebody
+        // up. It never said *which people* — so an Admin or Team Leader could
+        // fetch any user in any company by id and receive their name, email,
+        // username, role, status and leave balance, with salary included for
+        // an Admin because canViewSalary below keys on the role alone. Every
+        // other per-user route in this codebase calls verifyResourceAccess;
+        // this one, the one that returns the whole row, did not.
+        //
+        // It also applies the team rule, so a Team Leader looking up an id
+        // outside their team is refused rather than answered.
+        if (userId !== session.user.id) {
+            const hasAccess = await verifyResourceAccess(session, userId, 'USER')
+            if (!hasAccess) return ApiResponse.forbidden()
+        }
+
         const user = await prisma.user.findUnique({
             where: { id: userId },
             select: {
                 id: true, firstName: true, lastName: true, email: true, status: true,
                 role: true, gender: true, salary: true, companyId: true,
                 totalDifficultyPoints: true, avatar: true, dayOffCredit: true,
-                baseDayOffCredit: true, username: true, teamLeaderId: true
+                baseDayOffCredit: true, username: true, teamLeaderId: true,
+                // The name, so somebody can be told who manages them. Selected
+                // fields rather than the relation, for the same reason the
+                // list does it: a leader is a User, and `teamLeader: true`
+                // would attach their whole row, salary included.
+                teamLeader: { select: { id: true, firstName: true, lastName: true } }
             }
         })
 

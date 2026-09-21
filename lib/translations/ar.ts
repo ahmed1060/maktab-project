@@ -364,6 +364,8 @@ export const ar = {
         bulk_assign_apply: "تعيين",
         bulk_assign_clear: "إلغاء التحديد",
         bulk_assign_done: "تم نقل {count} من الأشخاص",
+        team_leader_yours: "قائد فريقك",
+        team_leader_yours_none: "لم يتم تعيين قائد فريق لك بعد.",
         team_leader_has_reports: "لا يزال هذا الشخص يقود فريقًا. اختر إلى أين ينتقل أعضاء فريقه قبل تغيير ذلك.",
         role_admin: "مسؤول",
         role_super_admin: "مسؤول عام",

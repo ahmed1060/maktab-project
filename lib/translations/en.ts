@@ -402,6 +402,8 @@ export const en = {
         bulk_assign_apply: "Assign",
         bulk_assign_clear: "Clear selection",
         bulk_assign_done: "{count} people moved",
+        team_leader_yours: "Your team leader",
+        team_leader_yours_none: "No team leader has been assigned to you yet.",
         team_leader_has_reports: "This person still leads a team. Choose where their team members go before changing this.",
         role_admin: "Admin",
         role_super_admin: "Super Admin",
