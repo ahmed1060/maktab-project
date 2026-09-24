@@ -1,5 +1,6 @@
 import { withStandardHandler } from "@/lib/api-utils"
 import { ApiResponse } from "@/lib/api-response"
+import { teamRefusalResponse } from "@/lib/team-handoff-response"
 import { EmploymentService } from "@/lib/services/employment.service"
 import { SettlementService } from "@/lib/services/settlement.service"
 import { verifyResourceAccess } from "@/lib/security"
@@ -78,6 +79,13 @@ export const POST = withStandardHandler(async (req, session, json, { params }) =
     if (userId === session.user.id) return ApiResponse.badRequest("You cannot end your own contract")
 
     const { action, lastWorkingDay, reason } = json ?? {}
+    // Three states, as everywhere in team assignment: absent means nobody has
+    // said where a leader's team goes yet, null means leave them unassigned,
+    // an id means move them there.
+    const reassignReportsTo = json && typeof json === 'object' && 'reassignReportsTo' in json ? json.reassignReportsTo : undefined
+    if (reassignReportsTo !== undefined && reassignReportsTo !== null && (typeof reassignReportsTo !== 'string' || !reassignReportsTo)) {
+        return ApiResponse.badRequest("reassignReportsTo must be a team leader's id or null")
+    }
 
     if (action === 'REINSTATE') {
         const event = await EmploymentService.record({
@@ -103,6 +111,8 @@ export const POST = withStandardHandler(async (req, session, json, { params }) =
             lastWorkingDay,
             reason: typeof reason === 'string' ? reason : undefined,
             createdById: session.user.id,
+            actorRole: session.user.role,
+            reassignReportsTo,
         })
 
         return ApiResponse.success({
@@ -117,6 +127,10 @@ export const POST = withStandardHandler(async (req, session, json, { params }) =
         })
     } catch (error: any) {
         const message = error?.message ?? ""
+        // A leader with a team is asked where it goes first — the same
+        // refusal, with the same names, as the edit form gets.
+        const teamRefusal = teamRefusalResponse(error)
+        if (teamRefusal) return teamRefusal
         if (/Not a date/.test(message)) {
             return ApiResponse.badRequest("lastWorkingDay must be YYYY-MM-DD")
         }

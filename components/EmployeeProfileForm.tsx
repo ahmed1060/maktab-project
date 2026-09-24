@@ -9,6 +9,7 @@ import ConfirmModal from './ConfirmModal'
 import { useLanguage } from '@/context/LanguageContext'
 import LoadingSpinner from './LoadingSpinner'
 import EndContractModal from './EndContractModal'
+import TeamHandOffModal from './TeamHandOffModal'
 
 type EmployeeProfileFormProps = {
     userId: string
@@ -39,7 +40,6 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
     // team. It carries the names, so the modal asks about these people rather
     // than about a count.
     const [handoff, setHandoff] = useState<{ id: string; firstName: string; lastName: string }[] | null>(null)
-    const [handoffTo, setHandoffTo] = useState<string>('')
     const [companies, setCompanies] = useState<{ id: string, name: string }[]>([])
     // Nothing to load without a user id; the effect below warns about that
     // case rather than loading anything.
@@ -338,7 +338,6 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                     const reports = body?.details?.reports
                     if (Array.isArray(reports) && reports.length > 0) {
                         setHandoff(reports)
-                        setHandoffTo('')
                         setSaving(false)
                         return
                     }
@@ -1085,68 +1084,19 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
             }
 
             {
-                handoff && createPortal(
-                    <div className="modal-overlay">
-                        <div className="modal-content" style={{ maxWidth: '460px', width: '90%' }}>
-                            <div className="modal-header">
-                                <h3 className="modal-title">{t('handoff_title')}</h3>
-                                <button className="modal-close" onClick={() => setHandoff(null)}>&times;</button>
-                            </div>
-                            <div className="modal-body" style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>
-                                <p style={{ marginTop: 0 }}>
-                                    {t('handoff_body')
-                                        .replace('{name}', `${firstName} ${lastName}`.trim())
-                                        .replace('{count}', String(handoff.length))}
-                                </p>
-
-                                {/* Named, not counted. "7 people" is a number
-                                    to accept; a list is a decision an Admin can
-                                    actually make. */}
-                                <ul style={{ margin: '0 0 1rem', [locale === 'ar' ? 'paddingRight' : 'paddingLeft']: '1.25rem', color: 'var(--text-soft)' }}>
-                                    {handoff.map(r => <li key={r.id}>{r.firstName} {r.lastName}</li>)}
-                                </ul>
-
-                                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>{t('handoff_move_to')}</label>
-                                <select
-                                    className="input"
-                                    value={handoffTo}
-                                    onChange={e => setHandoffTo(e.target.value)}
-                                    style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}
-                                >
-                                    <option value="">{t('handoff_unassign')}</option>
-                                    {leaders.filter(l => l.id !== userId).map(l => (
-                                        <option key={l.id} value={l.id}>{l.firstName} {l.lastName}</option>
-                                    ))}
-                                </select>
-                                {handoffTo === '' && (
-                                    <p style={{ marginTop: '0.5rem', fontSize: '0.75rem', color: 'var(--warn-fg)' }}>
-                                        {t('handoff_unassign_note')}
-                                    </p>
-                                )}
-                            </div>
-                            <div className="modal-footer" style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
-                                <button type="button" className="btn" onClick={() => setHandoff(null)} disabled={saving}>
-                                    {t('handoff_cancel')}
-                                </button>
-                                <button
-                                    type="button"
-                                    className="btn btn-primary"
-                                    disabled={saving}
-                                    onClick={() => {
-                                        // The empty option means unassign, so
-                                        // it goes as null rather than "". The
-                                        // same three-state distinction the
-                                        // server relies on.
-                                        setHandoff(null)
-                                        executeSubmit(handoffTo || null)
-                                    }}
-                                >
-                                    {saving ? t('saving') : t('handoff_confirm')}
-                                </button>
-                            </div>
-                        </div>
-                    </div>,
-                    document.body
+                handoff && (
+                    <TeamHandOffModal
+                        leaderId={userId}
+                        leaderName={`${firstName} ${lastName}`.trim()}
+                        reports={handoff}
+                        leaders={leaders}
+                        busy={saving}
+                        onCancel={() => setHandoff(null)}
+                        onConfirm={reassignTo => {
+                            setHandoff(null)
+                            executeSubmit(reassignTo)
+                        }}
+                    />
                 )
             }
             {

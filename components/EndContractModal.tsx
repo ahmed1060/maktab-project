@@ -3,6 +3,9 @@ import { useCallback, useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useLanguage } from '@/context/LanguageContext'
 import { useToast } from '@/context/ToastContext'
+import useSWR from 'swr'
+import { fetcher } from '@/lib/swr-fetcher'
+import TeamHandOffModal from './TeamHandOffModal'
 
 /**
  * Ending somebody's contract, with the settlement shown before it happens.
@@ -69,6 +72,12 @@ export default function EndContractModal({ userId, name, status, onClose, onDone
     const [previewedFor, setPreviewedFor] = useState<string | null>(null)
     const loading = !isArchived && !!lastWorkingDay && previewedFor !== lastWorkingDay
     const [submitting, setSubmitting] = useState(false)
+    // Set when the server says this person still leads a team: the people it
+    // named, for the hand-off popup to ask about before the contract ends.
+    const [handoff, setHandoff] = useState<{ id: string; firstName: string; lastName: string }[] | null>(null)
+    // Who could take them — asked for only once the question comes up.
+    const { data: leadersResult } = useSWR(handoff ? '/api/users?role=TEAM_LEADER&limit=1000' : null, fetcher)
+    const leaders: { id: string; firstName: string; lastName: string }[] = leadersResult?.data?.data || []
 
     const money = useCallback((amount: number) =>
         new Intl.NumberFormat(locale === 'ar' ? 'ar-EG' : 'en-EG', {
@@ -103,16 +112,33 @@ export default function EndContractModal({ userId, name, status, onClose, onDone
         return () => { cancelled = true; clearTimeout(timer) }
     }, [userId, lastWorkingDay, isArchived, t])
 
-    const submit = async (action: 'END_CONTRACT' | 'REINSTATE') => {
+    /**
+     * `reassignTo` is the hand-off answer: left out on the first attempt, so
+     * the server can ask; then an id to move the team or null to leave them
+     * unassigned. Never an empty string.
+     */
+    const submit = async (action: 'END_CONTRACT' | 'REINSTATE', reassignTo?: string | null) => {
         setSubmitting(true)
         try {
             const res = await fetch(`/api/users/${userId}/employment`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action, lastWorkingDay, reason: reason || undefined }),
+                body: JSON.stringify({
+                    action,
+                    lastWorkingDay,
+                    reason: reason || undefined,
+                    ...(reassignTo !== undefined && { reassignReportsTo: reassignTo }),
+                }),
             })
             const body = await res.json()
             if (!res.ok) {
+                // Not an error to report — a question to ask. The refusal
+                // names who still reports to them.
+                const reports = body?.details?.reports
+                if (Array.isArray(reports) && reports.length > 0) {
+                    setHandoff(reports)
+                    return
+                }
                 showToast(body?.error || t('error_generic'), 'error')
                 return
             }
@@ -154,7 +180,7 @@ export default function EndContractModal({ userId, name, status, onClose, onDone
         </div>
     )
 
-    return createPortal(
+    return <>{createPortal(
         <div className="modal-overlay">
             <div className="modal-content" style={{ maxWidth: '480px', width: '92%' }}>
                 <div className="modal-header">
@@ -300,5 +326,20 @@ export default function EndContractModal({ userId, name, status, onClose, onDone
             </div>
         </div>,
         document.body,
-    )
+    )}
+        {handoff && (
+            <TeamHandOffModal
+                leaderId={userId}
+                leaderName={name}
+                reports={handoff}
+                leaders={leaders}
+                busy={submitting}
+                onCancel={() => setHandoff(null)}
+                onConfirm={reassignTo => {
+                    setHandoff(null)
+                    submit('END_CONTRACT', reassignTo)
+                }}
+            />
+        )}
+    </>
 }

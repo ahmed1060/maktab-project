@@ -2,6 +2,7 @@ import { withStandardHandler } from "@/lib/api-utils"
 import { prisma } from "@/lib/prisma"
 import { UserRole, UserStatus } from "@prisma/client"
 import { ApiResponse } from "@/lib/api-response"
+import { teamRefusalResponse } from "@/lib/team-handoff-response"
 import { createUserSchema, updateUserSchema } from "@/lib/validations/user.schema"
 import { UserService } from "@/lib/services/user.service"
 import { parsePaging } from "@/lib/pagination"
@@ -216,23 +217,10 @@ export const PUT = withStandardHandler(async (req, session, json) => {
         if (error.message === 'USER_NOT_FOUND') return ApiResponse.notFound("User not found")
         if (error.message === 'NAME_CHANGE_REQUIRES_ADMIN') return ApiResponse.forbidden("Name changes require admin approval")
         if (error.message === 'FORBIDDEN_ROLE_ASSIGNMENT') return ApiResponse.forbidden("Forbidden role assignment")
-        // The refusal names the people it is about. "Reassign them first"
-        // without saying who sends an Admin hunting through a list, and the
-        // modal that offers to reassign or unassign them is built from exactly
-        // this payload.
-        if (error.message === 'LEADER_HAS_REPORTS') {
-            return ApiResponse.badRequest(
-                "This person still leads a team. Choose where their team members go before changing this.",
-                { reports: error.reports ?? [] },
-            )
-        }
-        if (error.message === 'TEAM_LEADER_NOT_FOUND') return ApiResponse.badRequest("That team leader no longer exists")
-        if (error.message === 'REASSIGN_TARGET_IS_LEAVING') return ApiResponse.badRequest("Their team cannot be moved to the person who is leaving it")
-        if (error.message === 'NOT_A_LEADER') return ApiResponse.badRequest("That person is not a team leader")
-        if (error.message === 'ONLY_EMPLOYEES_HAVE_LEADERS') return ApiResponse.badRequest("Only employees are assigned to a team leader")
-        if (error.message === 'SELF_LEADERSHIP') return ApiResponse.badRequest("Somebody cannot be their own team leader")
-        if (error.message === 'DIFFERENT_COMPANY') return ApiResponse.badRequest("A team leader and their team must be in the same company")
-        if (error.message === 'LEADER_UNAVAILABLE') return ApiResponse.badRequest("That team leader's account is archived or deleted")
+        // Team refusals, including the hand-off question, in the one shape
+        // every route that can take a leader away answers with.
+        const teamRefusal = teamRefusalResponse(error)
+        if (teamRefusal) return teamRefusal
         if (error.message === 'INVALID_PASSCODE') return ApiResponse.forbidden("Invalid verification passcode")
         if (error.message === 'EMAIL_CHANGE_REQUIRES_VERIFICATION') return ApiResponse.badRequest("Email changes require verification — use Email settings")
         if (error.message === 'TARGET_PROTECTED') return ApiResponse.forbidden("This account's email is protected and cannot be changed")

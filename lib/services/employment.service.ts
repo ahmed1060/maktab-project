@@ -12,6 +12,8 @@ import {
     type SettlementPreview,
 } from "@/lib/employment"
 import { SalaryHistoryService } from "./salary-history.service"
+import { TeamHandOff } from "./team-handoff.service"
+import { notifyTeamMoves } from "./team-notify.service"
 import { calendarParts } from "@/lib/time"
 
 /**
@@ -187,6 +189,7 @@ export class EmploymentService {
             select: {
                 id: true,
                 status: true,
+                role: true,
                 EmploymentEvent: {
                     orderBy: [{ effectiveFrom: "asc" }, { createdAt: "asc" }],
                     select: { type: true, effectiveFrom: true, createdAt: true, deductSuspension: true, reason: true },
@@ -208,7 +211,17 @@ export class EmploymentService {
             const next = reconcileStatus(user.status, impliedStatusAt(events, now))
             if (!next) continue
 
-            await prisma.user.update({ where: { id: user.id }, data: { status: next } })
+            // A leader archived today may have been given somebody after the
+            // contract end was recorded (their team was moved then, but they
+            // kept working). Released together with the archive, or not at all.
+            const released = next === "ARCHIVED" && user.role === "TEAM_LEADER"
+                ? await prisma.$transaction(async (tx) => {
+                    const rehome = await TeamHandOff.unassignRemaining(tx, user.id)
+                    await tx.user.update({ where: { id: user.id }, data: { status: next } })
+                    return rehome
+                })
+                : (await prisma.user.update({ where: { id: user.id }, data: { status: next } }), null)
+            if (released) await notifyTeamMoves(TeamHandOff.moves(user.id, released))
             applied.push({ userId: user.id, from: user.status, to: next })
         }
 
