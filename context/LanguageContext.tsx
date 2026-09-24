@@ -34,14 +34,14 @@ export function LanguageProvider({ children, initialLocale, initialDict }: { chi
     // client-side fetch or shows a loading flash — this is the only
     // dictionary guaranteed present on mount. Every other locale is
     // fetched on demand: once here for a locale switch that bypasses
-    // toggleLanguage (the detection/session-sync effects below), and
+    // toggleLanguage (the session sync below), and
     // pre-fetched in toggleLanguage itself before it flips `locale`.
     const [dicts, setDicts] = useState<Partial<Record<Locale, TranslationDict>>>({ [initialLocale]: initialDict });
 
     // Keeps `dicts[locale]` populated if `locale` ever changes through a
     // path other than toggleLanguage (which pre-loads its target locale
-    // itself) — e.g. the browser-language detection and session-sync
-    // effects below both call setLocale directly.
+    // itself) — i.e. the session sync below, which calls setLocale
+    // directly.
     useEffect(() => {
         if (dicts[locale]) return;
         let cancelled = false;
@@ -51,38 +51,24 @@ export function LanguageProvider({ children, initialLocale, initialDict }: { chi
         return () => { cancelled = true };
     }, [locale, dicts]);
 
-    // Initial language detection
+    // A signed-in account's language wins over the cookie, once, on sign-in or
+    // first load. Adjusted during render rather than in an effect, which
+    // painted the cookie's language first and then switched.
+    const sessionLang = status === 'authenticated' ? (session?.user?.language as Locale | undefined) : undefined;
+    if (sessionLang && !hasSyncedWithSession) {
+        setHasSyncedWithSession(true);
+        if (sessionLang !== locale) setLocale(sessionLang);
+    }
+
+    // The document and the cookie follow whatever the locale ended up being.
+    // On first load this also writes the cookie for a browser that had none:
+    // the server picked the language from Accept-Language (lib/locale.ts), and
+    // the cookie keeps that choice fixed from here on.
     useEffect(() => {
-        const storedLocale = document.cookie.split('; ').find(row => row.startsWith('NEXT_LOCALE='))?.split('=')[1];
-
-        if (!storedLocale) {
-            // No cookie? Check browser language
-            const browserLang = navigator.language.split('-')[0];
-            const detectedLocale = browserLang === 'ar' ? 'ar' : 'en';
-
-            // Apply it only if we haven't already set a locale
-            if (locale !== detectedLocale) {
-                setLocale(detectedLocale as Locale);
-                document.cookie = `NEXT_LOCALE=${detectedLocale};path=/;max-age=31536000`;
-                document.documentElement.dir = detectedLocale === 'ar' ? 'rtl' : 'ltr';
-                document.documentElement.lang = detectedLocale;
-            }
-        }
-    }, []);
-
-    // Sync with session language ONLY ONCE on login or mount
-    useEffect(() => {
-        if (status === 'authenticated' && session?.user?.language && !hasSyncedWithSession) {
-            const sessionLang = session.user.language as Locale;
-            if (sessionLang !== locale) {
-                setLocale(sessionLang);
-                document.cookie = `NEXT_LOCALE=${sessionLang};path=/;max-age=31536000`;
-                document.documentElement.dir = sessionLang === 'ar' ? 'rtl' : 'ltr';
-                document.documentElement.lang = sessionLang;
-            }
-            setHasSyncedWithSession(true);
-        }
-    }, [status, session?.user?.language, hasSyncedWithSession, locale]);
+        document.cookie = `NEXT_LOCALE=${locale};path=/;max-age=31536000`;
+        document.documentElement.dir = locale === 'ar' ? 'rtl' : 'ltr';
+        document.documentElement.lang = locale;
+    }, [locale]);
 
     // Takes the locale to move to rather than flipping, because the control
     // that calls it is a two-option picker: clicking the half you are already
@@ -128,8 +114,6 @@ export function LanguageProvider({ children, initialLocale, initialDict }: { chi
             dictPromise.then(dict => {
                 setDicts(prev => (prev[newLocale] ? prev : { ...prev, [newLocale]: dict }));
                 setLocale(newLocale);
-                document.documentElement.dir = newLocale === 'ar' ? 'rtl' : 'ltr';
-                document.documentElement.lang = newLocale;
             });
 
             // 5. Hide the loading screen after a small buffer to ensure paint completion

@@ -21,9 +21,12 @@ export const useTheme = () => useContext(ThemeContext)
  * Mirrors LanguageContext: cookie for the server to read on the next request,
  * account column so the preference follows the person to another browser.
  */
-export function ThemeProvider({ initialTheme, children }: { initialTheme: Theme; children: React.ReactNode }) {
+export function ThemeProvider({ initialTheme, themeChosen, children }: { initialTheme: Theme; themeChosen: boolean; children: React.ReactNode }) {
     const { data: session } = useSession()
     const [theme, setThemeState] = useState<Theme>(initialTheme)
+    // Whether this browser's theme is settled: it arrived with a theme cookie,
+    // someone picked one here, or the account's was adopted below.
+    const [settled, setSettled] = useState(themeChosen)
 
     const apply = useCallback((next: Theme) => {
         // Always an attribute now. While "system" existed this had to be able
@@ -34,6 +37,7 @@ export function ThemeProvider({ initialTheme, children }: { initialTheme: Theme;
 
     const setTheme = useCallback((next: Theme) => {
         setThemeState(next)
+        setSettled(true)
         apply(next)
 
         // Fire-and-forget: the theme is already applied locally, and failing to
@@ -49,17 +53,22 @@ export function ThemeProvider({ initialTheme, children }: { initialTheme: Theme;
     }, [apply, session])
 
     // A sign-in on a fresh browser has the account's preference but no cookie
-    // yet; adopt it once, without writing back.
+    // yet; adopt it once, without writing back to the account. Decided during
+    // render rather than in an effect, which painted the default theme first.
+    const accountTheme = (session?.user as any)?.theme
+    if (!settled && accountTheme) {
+        setSettled(true)
+        const fromAccount = parseTheme(accountTheme)
+        if (fromAccount !== theme) setThemeState(fromAccount)
+    }
+
+    // Stamp the document and the cookie once the theme differs from the one
+    // the server already stamped. Not on first load: writing the cookie then
+    // would mark this browser as settled before anyone has signed in, and the
+    // account's preference would never be adopted.
     useEffect(() => {
-        const stored = (session?.user as any)?.theme
-        if (!stored) return
-        const fromAccount = parseTheme(stored)
-        const hasCookie = document.cookie.split('; ').some(row => row.startsWith(`${THEME_COOKIE}=`))
-        if (!hasCookie && fromAccount !== theme) {
-            setThemeState(fromAccount)
-            apply(fromAccount)
-        }
-    }, [session, theme, apply])
+        if (theme !== initialTheme) apply(theme)
+    }, [theme, initialTheme, apply])
 
     return (
         <ThemeContext.Provider value={{ theme, setTheme }}>

@@ -4,8 +4,9 @@ import { prisma } from "@/lib/prisma"
 import Link from "next/link"
 import { DonutChart, StatMetric } from "@/components/DashboardCharts"
 import HeaderSetter from "@/components/HeaderSetter"
-import { cookies } from "next/headers"
-import type { Locale, TranslationKey } from "@/lib/translations"
+import { cookies, headers } from "next/headers"
+import type { TranslationKey } from "@/lib/translations"
+import { resolveLocale } from "@/lib/locale"
 import { en } from "@/lib/translations/en"
 import { ar } from "@/lib/translations/ar"
 import { getSuperAdminOverviewStats } from "@/lib/services/dashboard-stats.service"
@@ -31,7 +32,7 @@ export default async function DashboardPage(props: { searchParams: Promise<{ com
     // because a request's store is now resolved when it is asked for rather
     // than assumed to be already there.
     const cookieStore = await cookies()
-    const locale = (cookieStore.get('NEXT_LOCALE')?.value || 'en') as Locale
+    const locale = resolveLocale(cookieStore.get('NEXT_LOCALE')?.value, (await headers()).get('accept-language'))
     const dict = locale === 'ar' ? ar : en
     const t = (key: TranslationKey) => dict[key] || en[key]
 

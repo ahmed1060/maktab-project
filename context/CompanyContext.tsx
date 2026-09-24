@@ -1,7 +1,8 @@
 'use client'
 
-import React, { createContext, useContext, useState, useEffect } from 'react'
+import React, { createContext, useContext, useState, useEffect, useSyncExternalStore } from 'react'
 import { SCOPED_COMPANY_COOKIE } from '@/lib/company-scope'
+import { hasCompanySelection, readCompanySelection, subscribeCompanySelection, writeCompanySelection } from '@/lib/company-selection'
 
 type CompanyContextType = {
     selectedCompanyId: string | null
@@ -18,7 +19,6 @@ const CompanyContext = createContext<CompanyContextType>({
 })
 
 export const CompanyProvider = ({ children }: { children: React.ReactNode }) => {
-    const [selectedCompanyId, setSelectedCompanyIdState] = useState<string | null>(null)
     const [refreshTrigger, setRefreshTrigger] = useState(0)
 
     // Mirrored into a cookie as well as localStorage. The cookie is the only
@@ -32,27 +32,23 @@ export const CompanyProvider = ({ children }: { children: React.ReactNode }) => 
         document.cookie = `${SCOPED_COMPANY_COOKIE}=${encodeURIComponent(value)};path=/;max-age=31536000;samesite=lax`
     }
 
-    // Persist selection? Maybe strict session based is better to avoid confusion.
-    // Let's persist to localStorage for convenience.
+    // Read from storage as an external store rather than copied into state by
+    // an effect. Hydration still renders All Companies first (the server has
+    // no localStorage) and then the stored choice, exactly as before; what
+    // changes is that there is one copy of the value instead of two that an
+    // effect keeps in step, and other tabs are followed.
+    const selectedCompanyId = useSyncExternalStore(subscribeCompanySelection, readCompanySelection, () => null)
+
+    // Seeds the cookie for a session that chose its company before the cookie
+    // existed, so an existing selection starts being honoured server-side
+    // without anyone having to pick it again.
     useEffect(() => {
-        const stored = localStorage.getItem('selectedCompanyId')
-        if (stored) {
-            setSelectedCompanyIdState(stored === 'ALL' ? null : stored)
-            // Seeds the cookie for a session that chose its company before the
-            // cookie existed, so an existing selection starts being honoured
-            // server-side without anyone having to pick it again.
-            writeScopeCookie(stored === 'ALL' ? null : stored)
-        }
+        if (hasCompanySelection()) writeScopeCookie(readCompanySelection())
     }, [])
 
     const setSelectedCompanyId = (id: string | null) => {
-        setSelectedCompanyIdState(id)
         writeScopeCookie(id)
-        if (id) {
-            localStorage.setItem('selectedCompanyId', id)
-        } else {
-            localStorage.setItem('selectedCompanyId', 'ALL')
-        }
+        writeCompanySelection(id)
     }
 
     const triggerRefresh = () => {
