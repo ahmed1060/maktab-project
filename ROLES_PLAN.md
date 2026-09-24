@@ -27,6 +27,11 @@ Settled during the attendance brainstorm (rounds 3–6 of `ATTENDANCE_PLAN.md`):
 | A **"who can do this?"** view for the Super Admin | Round 4 |
 | The Super Admin stays outside the role system | Round 3 |
 
+**Revised after a review of the first draft** against the code. The first draft
+overstated the migration (§2.2), relied on a circular safety net (§8), and missed
+field-level access (§3.7), new-company setup (§7, step 3), and permission
+dependencies (§3.8). All corrected below.
+
 ---
 
 ## 1. Goal
@@ -52,18 +57,23 @@ Super Admins are a separate `SuperAdmin` model; a `User` row can also carry
 
 ### 2.2 How much code reads it
 
-Role checks by string comparison, as of September 2026:
+Role checks by string comparison in `app/`, `lib/` and `components/`, excluding
+tests, as of September 2026:
 
-| Where | Files | Checks |
+| Compares against | Checks | What happens to them |
 |---|---|---|
-| `app/api` (routes) | 41 | 59 |
-| `app/(dashboard)` (pages) | 15 | 33 |
-| `components` | 7 | 21 |
-| `lib` (services, helpers) | 15 | 44 |
-| **Total** | **78** | **~157** |
+| `SUPER_ADMIN` | 117 | **Stay.** The Super Admin is outside the role system (§3.5). Replaced by an `isSuperAdmin(actor)` helper for readability, not by permissions. Many are cosmetic (layout, labels). |
+| `ADMIN` | 14 | Migrate to permissions, except structural uses (§2.3). |
+| `TEAM_LEADER` | 14 | Mostly structural (team scope, team membership) — stay on the base role. The rest migrate. |
+| `EMPLOYEE` | 21 | Mostly "is this person acting on themselves" — become OWN scope. |
+| Role lists, e.g. `['ADMIN','SUPER_ADMIN'].includes(role)` | ~24 | Migrate — these are the classic "who may do this" checks. |
 
 Plus 5 routes using `withStandardHandler`'s `allowedRoles` option
 (`lib/api-utils.ts`).
+
+**So the real migration is roughly 60–70 checks, not 157.** The first draft of this
+plan counted every role comparison as work; three quarters of them are Super Admin
+checks that do not change.
 
 ### 2.3 The role does more than grant permissions
 
@@ -111,6 +121,19 @@ Examples:
 
 `User.role` is **derived**: whenever a role is assigned, the user's enum is set to
 that role's base role in the same transaction. Nobody edits it directly any more.
+
+Two copies of one fact can drift, so this is enforced rather than hoped for:
+
+- All writes go through one `RoleAssignmentService`; a test fails if any other code
+  writes `role` on a user.
+- A database trigger rejects an update where `User.role` differs from its role's
+  `baseRole` — the same belt-and-braces approach the codebase already uses to
+  protect founder Super Admin accounts.
+
+**Accepted debt.** Keeping the enum is a deliberate stepping stone. Once every
+permission check has migrated, the structural behaviours in §2.3 could become
+capabilities (`team.lead`, `billing.exempt_from_block`) and the enum could go. That
+is a later decision, not part of this project.
 
 **Why this shape.** It makes the migration gradual instead of big-bang. Structural
 code does not change at all. Permission checks move over module by module, each
@@ -208,6 +231,42 @@ do nothing until the module returns. No role is silently rewritten.
 
 ---
 
+### 3.7 Field-level access — permissions shape responses, not just routes
+
+A route check answers *may you call this?* It does not answer *which fields may you
+see?* The product already needs the second: `app/api/users/route.ts` returns an
+employee list to several roles and strips `salary` unless `canViewSalary`. That
+logic is a role check today and would silently stay one if the migration only
+looked at route guards.
+
+Rule: **every response containing a protected field goes through a serializer that
+takes the actor.**
+
+- `shapeUser(actor, user)` → removes `salary` unless the actor holds `salary.view`
+  at a scope covering that user; the same for any other protected field.
+- One serializer per model with protected fields, in `lib/permissions/shape/`.
+  Routes never pick fields by role themselves.
+- The protected fields are listed next to the catalogue, so adding a sensitive
+  column means adding it to one list — and a test fails if a model's protected
+  field appears in any route response for an actor without the permission.
+
+Salaries are the obvious case; payslips, debts, settlements, day-off credit and,
+later, attendance deductions are the same.
+
+### 3.8 Permission dependencies
+
+Some permissions are useless alone: approving payroll without seeing it, editing a
+salary without viewing it. The catalogue records **implies** relationships
+(`payroll.approve` implies `payroll.view`; `salary.edit` implies `salary.view`).
+The role editor ticks implied permissions automatically and will not let them be
+removed while the permission that needs them is granted, so a Super Admin cannot
+build a role that half-works.
+
+It also enforces **scope/base-role compatibility**: TEAM scope is offered only on
+TEAM_LEADER-based roles, where a team exists to scope to.
+
+---
+
 ## 4. Rules
 
 ### 4.1 Who does what
@@ -259,7 +318,12 @@ if the role's version changed, it **reloads the permissions into the token witho
 logging the person out**.
 
 So a permission change reaches everyone within about a minute, at no extra
-database cost. For a removal that must be instant — someone is dismissed, a role
+database cost.
+
+**Token size.** The session is a cookie, and cookies are limited to about 4 KB.
+Permissions are stored in the token as short numeric codes with a scope digit, not
+as full key strings, so even a role holding every permission stays well under the
+limit. The catalogue assigns each permission a stable code that is never reused. For a removal that must be instant — someone is dismissed, a role
 is found to be too wide — the Super Admin can choose *"apply now"*, which uses the
 existing `sessionVersion` bump and signs the affected people out.
 
@@ -346,6 +410,17 @@ Super Admin only. Pick a company and a permission → every person holding it, a
 which scope, through which role. And the reverse: pick a person → everything they
 can do and why. The first question anyone asks after a surprising approval.
 
+
+### 6.6 Preview a role — proposed
+
+When building a role for a contract, the Super Admin can open **"Preview as this
+role"**: the dashboard rendered as a holder of that role in that company would see
+it — which sidebar items, which buttons, which fields. **Read-only**: every write is
+refused while previewing, so it cannot be used to act as someone. It previews a
+role, not a person, so no one's private data is shown beyond what the Super Admin
+can already see. Audited. The fastest way to catch "HR Officer can't open the
+leave queue" before a company does.
+
 ---
 
 ## 7. Migration
@@ -356,8 +431,11 @@ The one hard requirement: **nobody's access changes on the day it ships.**
 
 Write the permission catalogue and `can()`, but make `can()` answer from a fixed
 table that maps each of today's four roles to exactly the permissions they have now.
-No schema change yet. Build the parity tests (§8) against this table — they are the
-safety net for everything after.
+No schema change yet.
+
+**Before writing that table, record what the product does today** — the
+characterization tests in §8. The table is written by hand from reading code; the
+tests are what prove it was read correctly.
 
 ### Step 2 — Migrate checks, module by module
 
@@ -378,8 +456,15 @@ Add `Role`, `RoleGrant`, `RoleTemplate`, `User.roleId`. A migration creates, for
 every company, four built-in roles — Admin, Team Leader, Employee, and a
 Super-Admin-only placeholder if any `User` row carries `SUPER_ADMIN` — with grants
 equal to the fixed table, and points every user at the one matching their enum.
-Switch `can()` from the fixed table to the user's grants. Parity tests must still
-pass unchanged.
+Switch `can()` from the fixed table to the user's grants. The characterization tests
+(§8) must still pass unchanged.
+
+Two creation paths change in the same step, or new data arrives without roles:
+
+- **`CompanyService.create`** seeds the built-in roles for every new company, in the
+  same transaction that creates it.
+- **`UserService.create`** takes a `roleId` instead of a role name, and the
+  employee creation form lists that company's roles.
 
 ### Step 4 — Open the UI
 
@@ -390,16 +475,23 @@ project is invisible to users.
 
 A lint rule or test that fails on a new `role === 'ADMIN'`-style comparison outside
 an allowlist of structural files (§2.3). Without it, the next feature quietly adds
-the 158th check.
+another hardcoded check.
 
 ---
 
 ## 8. Testing
 
-- **Parity tests** — for every permission in the catalogue and each of the four
-  built-in roles, `can()` gives the same answer as the code did before migration.
-  Written in Step 1, run on every step after. This is what makes "nobody's access
-  changes" a checked fact rather than a hope.
+- **Characterization tests — the safety net.** Before any code changes, call every
+  API route as each of the four roles (plus a user of another company) against a
+  seeded test database, and record the outcome: allowed or refused, and for list
+  routes which records and which protected fields came back. That recording is the
+  truth about today's access. Every migration step re-runs it and must match
+  exactly.
+
+  The first draft proposed "parity tests" comparing `can()` with a hand-written
+  table of today's permissions. That only proves the table agrees with itself —
+  if the table was misread from the code, both sides are wrong together. Recording
+  real route behaviour is the only test that catches a misreading.
 - **Route coverage** — every API route declares a permission or is on an explicit
   public/core list. Same idea as the existing `lib/features/routes.test.ts`.
 - **Escalation tests** — one per rule in §4.2.
@@ -407,6 +499,10 @@ the 158th check.
   cannot widen it (the `and` rule).
 - **Tenant isolation** — a role, template or grant from company A is never visible
   or assignable in company B.
+- **Field shaping** — for each protected field, every route that returns the model
+  omits it for an actor without the permission (§3.7).
+- **No stray role writes** — a test fails if code outside `RoleAssignmentService`
+  sets `User.role` (§3.1).
 
 ---
 
@@ -418,7 +514,8 @@ the 158th check.
 2. **Should the built-in Admin role be editable per company?** Recommendation: no —
    it is the one role guaranteed to be able to fix the rest. A reduced admin is made
    as a separate ADMIN-based role (e.g. "Deputy Admin").
-3. **Final permission list.** §3.2 is a first draft; each module's owner should
+3. **Preview as role (§6.6)** — adopt or not.
+4. **Final permission list.** §3.2 is a first draft; each module's owner should
    confirm the split between view and change, especially around salaries.
 
 ---
