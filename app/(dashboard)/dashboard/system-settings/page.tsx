@@ -42,34 +42,33 @@ export default function SystemSettingsPage() {
         }
     }, [setTitle, setSubtitle, t])
 
-    const fetchSettings = useCallback(async () => {
-        try {
-            const res = await fetch('/api/system-settings')
-            if (res.ok) {
-                const result = await res.json()
-                const data = result.data || result
-                setSettings(data)
-                setRadiusInput(String(data.locationVerifyRadiusMeters))
-                setShowPoweredBy(data.showPoweredBy ?? true)
-                setPoweredByName(data.poweredByName ?? '')
-                setDefaultTimezone(data.defaultTimezone ?? 'Africa/Cairo')
-            } else {
-                showToast(t('failed_fetch_data'), 'error')
-            }
-        } catch {
-            showToast(t('failed_fetch_data'), 'error')
-        } finally {
-            setLoading(false)
-        }
-        // t isn't memoized by LanguageContext — listing it here would
-        // recreate this callback (and the effect below that depends on its
-        // identity) on every render, refetching on every render with it.
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [showToast])
+    // The server's copy, into every card. Only setters inside, so it is
+    // stable and safe to list as an effect dependency.
+    const applySettings = useCallback((data: SystemSettings) => {
+        setSettings(data)
+        setRadiusInput(String(data.locationVerifyRadiusMeters))
+        setShowPoweredBy(data.showPoweredBy ?? true)
+        setPoweredByName(data.poweredByName ?? '')
+        setDefaultTimezone(data.defaultTimezone ?? 'Africa/Cairo')
+    }, [])
 
     useEffect(() => {
-        fetchSettings()
-    }, [fetchSettings])
+        // Ignored once the page has gone, so a slow answer does not write into
+        // a component that is no longer there.
+        let ignore = false
+        fetch('/api/system-settings')
+            .then(async res => {
+                if (!res.ok) throw new Error(String(res.status))
+                const result = await res.json()
+                if (!ignore) applySettings(result.data || result)
+            })
+            .catch(() => { if (!ignore) showToast(t('failed_fetch_data'), 'error') })
+            .finally(() => { if (!ignore) setLoading(false) })
+        return () => { ignore = true }
+        // t isn't memoized by LanguageContext — listing it here would re-run
+        // this on every render, refetching on every render with it.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [applySettings, showToast])
 
     /**
      * Each card sends only its own fields. Sending the whole settings object
@@ -89,11 +88,7 @@ export default function SystemSettingsPage() {
                 const data = result.data || result
                 // The server's copy wins on every field, not just the ones this
                 // card sent, so the other card reflects reality after a save.
-                setSettings(data)
-                setRadiusInput(String(data.locationVerifyRadiusMeters))
-                setShowPoweredBy(data.showPoweredBy ?? true)
-                setPoweredByName(data.poweredByName ?? '')
-                setDefaultTimezone(data.defaultTimezone ?? 'Africa/Cairo')
+                applySettings(data)
                 showToast(t('settings_saved_success') || 'Settings saved', 'success')
             } else {
                 const data = await res.json().catch(() => ({}))

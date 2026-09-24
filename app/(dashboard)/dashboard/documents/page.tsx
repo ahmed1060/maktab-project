@@ -1,5 +1,6 @@
 'use client'
-import { useCallback, useEffect, useState } from 'react'
+import useSWR from 'swr'
+import { fetcher, SWRError } from '@/lib/swr-fetcher'
 import { useSession } from 'next-auth/react'
 import { useLanguage } from '@/context/LanguageContext'
 import LoadingSpinner from '@/components/LoadingSpinner'
@@ -32,30 +33,16 @@ export default function MyPayslipsPage() {
     const { data: session } = useSession()
     const isRtl = locale === 'ar'
 
-    const [rows, setRows] = useState<Row[] | null>(null)
-    const [loading, setLoading] = useState(true)
+    const userId = (session?.user as any)?.id
+
+    const { data, error, isLoading } = useSWR(userId ? `/api/users/${userId}/payslips` : null, fetcher)
     // Not an error: a company that has not switched payslips on is a policy,
     // and telling somebody "access denied" for a setting their employer chose
     // reads like a fault in the app.
-    const [unavailable, setUnavailable] = useState(false)
-
-    const userId = (session?.user as any)?.id
-
-    const load = useCallback(async () => {
-        if (!userId) return
-        try {
-            const res = await fetch(`/api/users/${userId}/payslips`)
-            if (res.status === 403) { setUnavailable(true); return }
-            if (!res.ok) { setRows([]); return }
-            setRows((await res.json()).data ?? [])
-        } catch {
-            setRows([])
-        } finally {
-            setLoading(false)
-        }
-    }, [userId])
-
-    useEffect(() => { load() }, [load])
+    const unavailable = (error as SWRError | undefined)?.status === 403
+    const rows: Row[] | null = data ? (data.data ?? []) : error ? [] : null
+    // No user id yet means the session is still arriving, not an empty list.
+    const loading = !userId || isLoading
 
     const monthName = (m: number) =>
         new Date(2000, m - 1).toLocaleString(isRtl ? 'ar-EG' : 'en-US', { month: 'long' })

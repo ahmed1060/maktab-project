@@ -1,6 +1,8 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState } from 'react'
+import useSWR from 'swr'
+import { fetcher } from '@/lib/swr-fetcher'
 import { useParams, useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import AccessDenied from '@/components/AccessDenied'
@@ -32,34 +34,16 @@ export default function CompanySettingsPage() {
     const { showToast } = useToast()
     const { t, locale } = useLanguage()
 
-    const [company, setCompany] = useState<Company | null>(null)
-    const [loading, setLoading] = useState(true)
+    const { data: companyResult, isLoading: loading, mutate } = useSWR(
+        companyId ? `/api/companies?id=${companyId}` : null,
+        fetcher,
+        { onError: () => showToast(t('failed_fetch_data'), 'error') },
+    )
+    const company: Company | null = companyResult ? (companyResult.data || companyResult) : null
+    // The cards report what they saved; that becomes the cached copy without
+    // asking the server again for what it just said.
+    const setCompany = (next: Company) => { mutate({ data: next }, { revalidate: false }) }
     const [savingSettings, setSavingSettings] = useState(false)
-
-    const fetchCompanyData = useCallback(async () => {
-        try {
-            const res = await fetch(`/api/companies?id=${companyId}`)
-            if (res.ok) {
-                const result = await res.json()
-                setCompany(result.data || result)
-            } else {
-                showToast(t('failed_fetch_data'), 'error')
-            }
-        } catch {
-            console.error('Failed to fetch company')
-            showToast(t('failed_fetch_data'), 'error')
-        } finally {
-            setLoading(false)
-        }
-        // t isn't memoized by LanguageContext — listing it here would
-        // recreate this callback (and the effect below that depends on its
-        // identity) on every render, refetching on every render with it.
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [companyId, showToast])
-
-    useEffect(() => {
-        if (companyId) fetchCompanyData()
-    }, [companyId, fetchCompanyData])
 
     const handleToggleAutoVerify = async () => {
         if (!company) return

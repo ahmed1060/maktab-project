@@ -1,5 +1,7 @@
 'use client'
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import useSWR from 'swr'
+import { fetcher, SWRError } from '@/lib/swr-fetcher'
 import { useSession } from 'next-auth/react'
 import { useLanguage } from '@/context/LanguageContext'
 import { useToast } from '@/context/ToastContext'
@@ -65,8 +67,6 @@ export default function PayrollRegisterPage() {
     const now = new Date()
     const [year, setYear] = useState(now.getFullYear())
     const [month, setMonth] = useState(now.getMonth() + 1)
-    const [view, setView] = useState<View | null>(null)
-    const [loading, setLoading] = useState(true)
     const [saving, setSaving] = useState(false)
     const [open, setOpen] = useState<string | null>(null)
     const [approving, setApproving] = useState(false)
@@ -128,32 +128,20 @@ export default function PayrollRegisterPage() {
         })()
     }, [isSuper])
 
-    const load = useCallback(async () => {
-        // A Super Admin with no company chosen has not asked a question yet.
-        // Firing anyway is what produced the 400 this fixes.
-        if (isSuper && !companyId) {
-            setView(null)
-            setLoading(false)
-            return
-        }
-        setLoading(true)
-        try {
-            const res = await fetch(`/api/payroll/${year}/${month}${companyId ? `?companyId=${encodeURIComponent(companyId)}` : ''}`)
-            const body = await res.json()
-            if (!res.ok) {
-                showToast(body?.error || t('error_generic'), 'error')
-                setView(null)
-                return
-            }
-            setView(body.data)
-        } catch {
-            showToast(t('error_generic'), 'error')
-        } finally {
-            setLoading(false)
-        }
-    }, [year, month, companyId, isSuper, showToast, t])
-
-    useEffect(() => { load() }, [load])
+    // A Super Admin with no company chosen has not asked a question yet, and
+    // nobody has until the session says who they are. Firing anyway is what
+    // produced the 400 G3 fixed.
+    const registerKey = !session || (isSuper && !companyId)
+        ? null
+        : `/api/payroll/${year}/${month}${companyId ? `?companyId=${encodeURIComponent(companyId)}` : ''}`
+    const { data, error, isLoading, mutate: load } = useSWR(registerKey, fetcher, {
+        // The last month's register stays up while the next one loads, rather
+        // than the screen dropping to a spinner at every step of the picker.
+        keepPreviousData: true,
+        onError: (err: SWRError) => showToast(err.info?.error || t('error_generic'), 'error'),
+    })
+    const view: View | null = registerKey && !error ? (data?.data ?? null) : null
+    const loading = !session || isLoading
 
     const save = async () => {
         setSaving(true)

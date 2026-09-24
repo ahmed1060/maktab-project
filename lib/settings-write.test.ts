@@ -127,7 +127,8 @@ describe("G3: a Super Admin can reach a register", () => {
 
     it("asks for nothing until a company is chosen", () => {
         // Firing anyway is exactly what produced the 400 this fixes.
-        expect(REGISTER).toContain("if (isSuper && !companyId)")
+        // A null SWR key is a request that is never sent.
+        expect(REGISTER).toMatch(/\(isSuper && !companyId\)\s*\?\s*null/)
     })
 
     it("chooses no company on their behalf", () => {
@@ -147,7 +148,10 @@ describe("G3: a Super Admin can reach a register", () => {
     })
 
     it("reloads when the company changes", () => {
-        expect(REGISTER).toContain("[year, month, companyId, isSuper, showToast, t]")
+        // The company is part of the SWR key, so choosing another one is a
+        // different request rather than a cached answer for the last.
+        expect(REGISTER).toMatch(/useSWR\(registerKey,/)
+        expect(REGISTER).toContain("`/api/payroll/${year}/${month}${companyId ? `?companyId=${encodeURIComponent(companyId)}` : ''}`")
     })
 
     it("reads the company list at the level the envelope actually puts it", () => {
