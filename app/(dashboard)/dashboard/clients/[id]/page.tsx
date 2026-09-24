@@ -1,6 +1,8 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
+import useSWR from 'swr'
+import { fetcher } from '@/lib/swr-fetcher'
 import Link from 'next/link'
 import { useParams, useSearchParams } from 'next/navigation'
 import { useHeader } from '@/context/HeaderContext'
@@ -50,22 +52,18 @@ interface ClientData {
     }
 }
 
+const NO_SECTIONS: Section[] = []
+
 export default function ClientDetailsPage() {
     const { t, locale } = useLanguage()
     const params = useParams()
     const clientId = params.id as string
 
-    const [client, setClient] = useState<ClientData | null>(null)
-    const [sections, setSections] = useState<Section[]>([])
-    const [isLoading, setIsLoading] = useState(true)
     const [isModalOpen, setIsModalOpen] = useState(false)
     const [newSectionTitle, setNewSectionTitle] = useState('')
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [page, setPage] = useState(1)
-    const [total, setTotal] = useState(0)
-    const [totalPages, setTotalPages] = useState(0)
     const limit = 10
-    const [error, setError] = useState<string | null>(null)
     const { setTitle } = useHeader()
 
     // UI State
@@ -94,6 +92,26 @@ export default function ClientDetailsPage() {
 
 
 
+    // The client and one page of its sections, as two SWR keys. The sections
+    // key carries the page and the search, so an answer for a search that has
+    // since changed cannot overwrite the current one; the previous page stays
+    // up while the next loads.
+    const { data: clientResult, error: clientError, isLoading: clientLoading, mutate: mutateClient } = useSWR(
+        clientId ? `/api/clients?id=${clientId}` : null, fetcher,
+    )
+    const { data: sectionsResult, error: sectionsError, isLoading: sectionsLoading, mutate: mutateSections } = useSWR(
+        clientId ? `/api/clients/${clientId}/sections?page=${page}&limit=${limit}&search=${encodeURIComponent(searchQuery)}` : null,
+        fetcher,
+        { keepPreviousData: true },
+    )
+    const client: ClientData | null = clientResult ? (clientResult.data || clientResult) : null
+    const sections: Section[] = sectionsResult?.data?.data || NO_SECTIONS
+    const total: number = sectionsResult?.data?.total || 0
+    const totalPages: number = sectionsResult?.data?.totalPages || 1
+    const isLoading = clientLoading || sectionsLoading
+    const error = clientError || sectionsError ? t('failed_fetch_client_details' as any) : null
+    const fetchData = () => { mutateClient(); mutateSections() }
+
     useEffect(() => {
         if (urlName) {
             setTitle(urlName)
@@ -102,45 +120,6 @@ export default function ClientDetailsPage() {
         }
         return () => setTitle(null) // Reset on unmount
     }, [client, urlName, setTitle])
-
-    const fetchData = useCallback(async () => {
-        try {
-            setError(null)
-            const [clientRes, sectionsRes] = await Promise.all([
-                fetch(`/api/clients?id=${clientId}`),
-                fetch(`/api/clients/${clientId}/sections?page=${page}&limit=${limit}&search=${encodeURIComponent(searchQuery)}`)
-            ])
-
-            if (clientRes.ok && sectionsRes.ok) {
-                const clientResult = await clientRes.json()
-                const sectionsResult = await sectionsRes.json()
-
-                setClient(clientResult.data || clientResult)
-
-                const data = sectionsResult.data
-                setSections(data.data || [])
-                setTotal(data.total || 0)
-                setTotalPages(data.totalPages || 1)
-            } else {
-                if (clientRes.status === 404 || sectionsRes.status === 404) {
-                    setError(t('failed_fetch_client_details' as any))
-                } else {
-                    setError(t('failed_fetch_client_details' as any)) // Fetch failure is more accurate than 'save generic'
-                }
-            }
-        } catch (error) {
-            console.error('Failed to fetch data', error)
-            setError(t('failed_fetch_client_details' as any))
-        } finally {
-            setIsLoading(false)
-        }
-    }, [clientId, page, searchQuery, limit, t])
-
-    useEffect(() => {
-        if (clientId) {
-            fetchData()
-        }
-    }, [fetchData, clientId])
 
     const handleEditClient = async (_e: React.FormEvent) => {
         _e.preventDefault()
@@ -156,7 +135,7 @@ export default function ClientDetailsPage() {
 
             if (res.ok) {
                 const result = await res.json()
-                setClient(result.data || result)
+                mutateClient({ data: result.data || result }, { revalidate: false })
                 setIsEditClientModalOpen(false)
                 showToast(t('client_updated_success' as any) || 'Client updated successfully', 'success')
             } else {
@@ -184,7 +163,14 @@ export default function ClientDetailsPage() {
 
             if (res.ok) {
                 const updated = await res.json()
-                setSections(prev => prev.map(s => s.id === editingSectionId ? { ...s, title: updated.data.title || updated.title } : s))
+                const title = updated.data.title || updated.title
+                mutateSections(
+                    (current: any) => current && {
+                        ...current,
+                        data: { ...current.data, data: (current.data?.data || []).map((s: Section) => s.id === editingSectionId ? { ...s, title } : s) },
+                    },
+                    { revalidate: false },
+                )
                 setIsEditSectionModalOpen(false)
                 setEditingSectionId(null)
                 showToast(t('section_updated_success' as any) || 'Section updated successfully', 'success')

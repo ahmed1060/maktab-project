@@ -35,17 +35,19 @@ const config = [
             // component renders, and doing sixty-one of those at once, untested
             // against a browser, is how an upgrade turns into an outage.
             //
-            // Worked through deliberately since. Three of the four are at zero
-            // and are errors now, so a new instance fails CI rather than
-            // joining a pile of warnings nobody reads:
-            //   error-boundaries — try/catch around JSX became SectionBoundary
-            //   purity           — the clock read in render became useNow(),
-            //                      and eleven copies of the deadline rule one
-            //   immutability     — the donut's running total became precomputed
-            //
-            // set-state-in-effect stays a warning until it is at zero too:
-            //   42  set-state-in-effect  — cascading renders
-            "react-hooks/set-state-in-effect": "warn",
+            // Worked through deliberately since, and all four are at zero and
+            // errors now, so a new instance fails CI rather than joining a pile
+            // of warnings nobody reads:
+            //   error-boundaries    — try/catch around JSX became SectionBoundary
+            //   purity              — the clock read in render became useNow(),
+            //                         and eleven copies of the deadline rule one
+            //   immutability        — the donut's running total became precomputed
+            //   set-state-in-effect — prop-to-state copies adjust during render
+            //                         (useAdjustOnChange, useFadingHighlight),
+            //                         fetches are SWR keys or ignore-flag effects,
+            //                         storage is useSyncExternalStore, and the
+            //                         locale is decided on the server
+            "react-hooks/set-state-in-effect": "error",
             "react-hooks/error-boundaries": "error",
             "react-hooks/purity": "error",
             "react-hooks/immutability": "error",

@@ -128,7 +128,7 @@ describe("a settlement is reachable from the person it is about", () => {
         // They cannot sign in. If HR cannot open it from that person's page, the
         // document exists and nobody can get to it.
         const history = readFileSync("app/(dashboard)/dashboard/employees/[id]/history/page.tsx", "utf8")
-        expect(history).toContain("/api/users/${params.id}/settlements")
+        expect(history).toMatch(/\/api\/users\/\$\{(params\.)?id\}\/settlements/)
         expect(history).toContain("/dashboard/documents/settlement/")
     })
 })

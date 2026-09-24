@@ -1,5 +1,8 @@
 'use client'
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
+import useSWR from 'swr'
+import { fetcher, SWRError } from '@/lib/swr-fetcher'
+import { useAdjustOnChange } from '@/lib/useAdjustOnChange'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { useLanguage } from '@/context/LanguageContext'
 import { useSession } from 'next-auth/react'
@@ -87,6 +90,13 @@ interface UserCost {
     date: string
 }
 
+// One empty list per kind, so an effect depending on a list does not re-run
+// just because a fresh [] was made on a render with no data yet.
+const NO_RECORDS: SalaryRecord[] = []
+const NO_COSTS: UserCost[] = []
+const NO_ADJUSTMENTS: SalaryAdjustment[] = []
+const NO_ROWS: never[] = []
+
 export default function EmployeeHistoryPage() {
     const { t, locale } = useLanguage()
     const params = useParams()
@@ -94,26 +104,12 @@ export default function EmployeeHistoryPage() {
     const { data: session } = useSession()
     const isAdmin = ['ADMIN', 'SUPER_ADMIN'].includes((session?.user as any)?.role || '')
 
-    const [records, setRecords] = useState<SalaryRecord[]>([])
-    const [employee, setEmployee] = useState<Employee | null>(null)
-    const [loading, setLoading] = useState(true)
-    const [isAdjustmentsModalOpen, setIsAdjustmentsModalOpen] = useState(false)
-    const [adjustments, setAdjustments] = useState<SalaryAdjustment[]>([])
+    const [reevaluating, setReevaluating] = useState(false)
     const [rollbackLoading, setRollbackLoading] = useState<string | null>(null)
     const [reversing, setReversing] = useState<SalaryAdjustment | null>(null)
     const [reverseReason, setReverseReason] = useState('')
-    const [settlements, setSettlements] = useState<{ id: string; lastWorkingDay: string; net: number; status: string }[]>([])
-    // E2: raised when, recovered from which months, settled or written off by
-    // whom. Every one of those was recorded and none of them was assembled.
-    const [debts, setDebts] = useState<{
-        id: string; amount: number; recovered: number; outstanding: number; writtenOff: number
-        status: 'OUTSTANDING' | 'SETTLED' | 'WAIVED'; source: string; reason: string | null
-        dueDate: string; settledAt: string | null
-    }[]>([])
     const [alert, setAlert] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
     const [activeTab, setActiveTab] = useState<'SALARY' | 'DAY_OFF' | 'COSTS'>('SALARY')
-    const [dayOffHistory, setDayOffHistory] = useState<{ baseCredit: number, remainingCredit: number, history: DayOffHistoryYear[] } | null>(null)
-    const [userCosts, setUserCosts] = useState<UserCost[]>([])
     const [isReevaluateModalOpen, setIsReevaluateModalOpen] = useState(false)
     const [selectedRequest, setSelectedRequest] = useState<DayOffRequest | null>(null)
     const [reevaluateValue, setReevaluateValue] = useState('')
@@ -124,118 +120,53 @@ export default function EmployeeHistoryPage() {
     // lib/useFadingHighlight.ts for why this is not an effect any more.
     const visualHighlightId = useFadingHighlight(highlightId, 6000)
 
-    const fetchData = useCallback(async () => {
-        try {
-            setLoading(true)
-
-            // All 4 are independent — previously fired as sequential awaits,
-            // paying for 4 separate browser-to-server round trips one after
-            // another (visible in a live request trace as ~1-2s gaps between
-            // each). Running them together costs one round trip's worth of
-            // latency instead of four. Each stays wrapped in its own
-            // if (res.ok) check exactly as before, so one endpoint failing
-            // doesn't prevent the others' state from being set.
-            await Promise.all([
-                // Employee Details (Use query param for ID)
-                (async () => {
-                    const userRes = await fetch(`/api/users?id=${params.id}`)
-                    if (userRes.ok) {
-                        const result = await userRes.json()
-                        setEmployee(result.data || result)
-                    }
-                })(),
-                // Salary History
-                (async () => {
-                    const historyRes = await fetch(`/api/users/${params.id}/salary-history`)
-                    if (historyRes.ok) {
-                        const result = await historyRes.json()
-                        setRecords(result.data || result)
-                    }
-                })(),
-                // Day Off History
-                (async () => {
-                    const dayOffRes = await fetch(`/api/users/${params.id}/day-off-history`)
-                    if (dayOffRes.ok) {
-                        const result = await dayOffRes.json()
-                        setDayOffHistory(result.data || result)
-                    }
-                })(),
-                // User Costs
-                (async () => {
-                    const costsRes = await fetch(`/api/users/${params.id}/costs-history`)
-                    if (costsRes.ok) {
-                        const result = await costsRes.json()
-                        setUserCosts(result.data || result)
-                    }
-                })()
-            ])
-        } catch {
-            console.error('Error fetching data')
-            setAlert({ type: 'error', message: t('failed_fetch_data') })
-            setTimeout(() => setAlert(null), 3000)
-        } finally {
-            setLoading(false)
-        }
-        // t isn't memoized by LanguageContext — listing it here would
-        // recreate this callback (and the effect that depends on its
-        // identity) every render, refetching on every render with it.
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [params.id])
+    // Each part of the page is its own SWR key: they load together, one
+    // failing does not stop the others, and refreshing one after an action
+    // is mutate() on that key rather than a hand-written re-fetch.
+    const id = params.id as string | undefined
+    // Only a network failure raises the banner, as before; a refused endpoint
+    // just leaves its section empty.
+    const onNetworkError = (err: unknown) => {
+        if (err instanceof SWRError) return
+        console.error('Error fetching data')
+        setAlert({ type: 'error', message: t('failed_fetch_data') })
+        setTimeout(() => setAlert(null), 3000)
+    }
+    const quiet = { onError: onNetworkError }
+    const employeeQuery = useSWR(id ? `/api/users?id=${id}` : null, fetcher, quiet)
+    const recordsQuery = useSWR(id ? `/api/users/${id}/salary-history` : null, fetcher, quiet)
+    const dayOffQuery = useSWR(id ? `/api/users/${id}/day-off-history` : null, fetcher, quiet)
+    const costsQuery = useSWR(id ? `/api/users/${id}/costs-history` : null, fetcher, quiet)
+    const unwrap = (r: any) => r ? (r.data || r) : undefined
+    const employee: Employee | null = unwrap(employeeQuery.data) ?? null
+    const records: SalaryRecord[] = unwrap(recordsQuery.data) ?? NO_RECORDS
+    const dayOffHistory: { baseCredit: number, remainingCredit: number, history: DayOffHistoryYear[] } | null = unwrap(dayOffQuery.data) ?? null
+    const userCosts: UserCost[] = unwrap(costsQuery.data) ?? NO_COSTS
+    const loading = employeeQuery.isLoading || recordsQuery.isLoading || dayOffQuery.isLoading || costsQuery.isLoading || reevaluating
+    const fetchData = () => Promise.all([employeeQuery.mutate(), recordsQuery.mutate(), dayOffQuery.mutate(), costsQuery.mutate()])
 
     // The only route to an ended contract's statement. The person it is about
     // cannot sign in, so if it is not reachable from their page it is not
     // reachable at all.
-    const fetchSettlements = useCallback(async () => {
-        if (!isAdmin) return
-        try {
-            const res = await fetch(`/api/users/${params.id}/settlements`)
-            if (res.ok) setSettlements((await res.json()).data || [])
-        } catch {
-            console.error('Error fetching settlements')
-        }
-    }, [params.id, isAdmin])
+    const { data: settlementsResult } = useSWR(isAdmin && id ? `/api/users/${id}/settlements` : null, fetcher)
+    const settlements: { id: string; lastWorkingDay: string; net: number; status: string }[] = settlementsResult?.data || NO_ROWS
+    // E2: raised when, recovered from which months, settled or written off by
+    // whom. Every one of those was recorded and none of them was assembled.
+    const { data: debtsResult } = useSWR(isAdmin && id ? `/api/users/${id}/debts` : null, fetcher)
+    const debts: {
+        id: string; amount: number; recovered: number; outstanding: number; writtenOff: number
+        status: 'OUTSTANDING' | 'SETTLED' | 'WAIVED'; source: string; reason: string | null
+        dueDate: string; settledAt: string | null
+    }[] = debtsResult?.data || NO_ROWS
 
-    useEffect(() => { fetchSettlements() }, [fetchSettlements])
-
-    const fetchDebts = useCallback(async () => {
-        if (!isAdmin) return
-        try {
-            const res = await fetch(`/api/users/${params.id}/debts`)
-            if (res.ok) setDebts((await res.json()).data || [])
-        } catch {
-            console.error('Error fetching debts')
-        }
-    }, [params.id, isAdmin])
-
-    useEffect(() => { fetchDebts() }, [fetchDebts])
-
-    const fetchAdjustments = useCallback(async () => {
-        try {
-            const res = await fetch(`/api/users/${params.id}/adjustments`)
-            if (res.ok) {
-                const result = await res.json()
-                setAdjustments(result.data || result)
-            }
-        } catch {
-            console.error('Error fetching adjustments')
-        }
-    }, [params.id])
-
-    useEffect(() => {
-        if (params.id) {
-            fetchData()
-        }
-    }, [params.id, fetchData])
-
-    useEffect(() => {
-        if (highlightId && params.id) {
-            // Check if highlightId might be an adjustment
-            // We can fetch adjustments and see if it's there
-            fetchAdjustments().then(() => {
-                setIsAdjustmentsModalOpen(true)
-            })
-        }
-    }, [highlightId, params.id, fetchAdjustments])
+    // Arriving with ?highlight= opens the adjustments, which may be what it
+    // points at; the list itself is only asked for while they are open.
+    const [isAdjustmentsModalOpen, setIsAdjustmentsModalOpen] = useState(Boolean(highlightId))
+    useAdjustOnChange([highlightId], () => { if (highlightId) setIsAdjustmentsModalOpen(true) })
+    const { data: adjustmentsResult, mutate: fetchAdjustments } = useSWR(
+        isAdjustmentsModalOpen && id ? `/api/users/${id}/adjustments` : null, fetcher,
+    )
+    const adjustments: SalaryAdjustment[] = unwrap(adjustmentsResult) ?? NO_ADJUSTMENTS
 
     // Scroll to highlighted adjustment inside modal
     useEffect(() => {
@@ -265,12 +196,10 @@ export default function EmployeeHistoryPage() {
                     message: action === 'reverse' ? t('reverse_success' as any) : t('rollback_success' as any),
                 })
                 fetchAdjustments()
-                // Refresh records too
-                const historyRes = await fetch(`/api/users/${params.id}/salary-history`)
-                if (historyRes.ok) {
-                    const historyData = await historyRes.json()
-                    setRecords(historyData)
-                }
+                // Refresh records too. Through the same key as the first load,
+                // so it is unwrapped the same way; the hand-written re-fetch
+                // this replaces stored the whole { success, data } envelope.
+                recordsQuery.mutate()
             } else {
                 setAlert({
                     type: 'error',
@@ -295,7 +224,7 @@ export default function EmployeeHistoryPage() {
         if (!selectedRequest || !reevaluateValue) return
 
         try {
-            setLoading(true)
+            setReevaluating(true)
             const res = await fetch(`/api/admin/day-off-requests/${selectedRequest.id}/reevaluate`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -313,7 +242,7 @@ export default function EmployeeHistoryPage() {
         } catch {
             setAlert({ type: 'error', message: t('update_failed' as any) })
         } finally {
-            setLoading(false)
+            setReevaluating(false)
             setTimeout(() => setAlert(null), 3000)
         }
     }
@@ -406,7 +335,7 @@ export default function EmployeeHistoryPage() {
                     </div>
                     {isAdmin && activeTab === 'SALARY' && (
                         <button
-                            onClick={() => { setIsAdjustmentsModalOpen(true); fetchAdjustments(); }}
+                            onClick={() => setIsAdjustmentsModalOpen(true)}
                             className="btn btn-primary"
                         >
                             {t('manage_adjustments' as any)}

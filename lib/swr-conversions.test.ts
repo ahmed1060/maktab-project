@@ -41,3 +41,20 @@ describe("lists read from SWR are sorted on a copy", () => {
         expect(src).not.toMatch(/\busersList\s*\.sort\(/)
     })
 })
+
+describe("the salary table after an undo", () => {
+    // The hand-written re-fetch after a rollback or reverse stored the whole
+    // { success, data } envelope as the records, where the first load stored
+    // its data array. Refreshing through the same SWR key unwraps both the
+    // same way.
+    const HISTORY = code("app/(dashboard)/dashboard/employees/[id]/history/page.tsx")
+
+    it("is refreshed through the key the page first loaded it with", () => {
+        expect(HISTORY).toContain("recordsQuery.mutate()")
+        expect(HISTORY.match(/\/salary-history/g) ?? []).toHaveLength(1)
+    })
+
+    it("is never written by hand", () => {
+        expect(HISTORY).not.toContain("setRecords(")
+    })
+})

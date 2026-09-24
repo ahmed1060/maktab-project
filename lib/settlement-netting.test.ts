@@ -184,7 +184,7 @@ describe("E2: what happened to a debt", () => {
     })
 
     it("and something assembles it on the person's page", () => {
-        expect(EMPLOYEE).toContain("/api/users/${params.id}/debts")
+        expect(EMPLOYEE).toMatch(/\/api\/users\/\$\{(params\.)?id\}\/debts/)
         expect(EMPLOYEE).toContain("debts_title")
         expect(EMPLOYEE).toContain("debt_status_")
     })

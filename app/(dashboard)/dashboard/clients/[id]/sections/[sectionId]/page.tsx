@@ -1,8 +1,10 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
+import useSWR from 'swr'
+import { fetcher, SWRError } from '@/lib/swr-fetcher'
 import Link from 'next/link'
-import { useParams, useSearchParams } from 'next/navigation'
+import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { useHeader } from '@/context/HeaderContext'
 import { createPortal } from 'react-dom'
 import ConfirmModal from '@/components/ConfirmModal'
@@ -44,6 +46,8 @@ interface SectionData {
     title: string
 }
 
+const NO_NOTES: Note[] = []
+
 export default function SectionNotesPage() {
     const { t, locale } = useLanguage()
     const params = useParams()
@@ -53,9 +57,6 @@ export default function SectionNotesPage() {
     const clientId = params.id as string
     const sectionId = params.sectionId as string
 
-    const [section, setSection] = useState<SectionData | null>(null)
-    const [notes, setNotes] = useState<Note[]>([])
-    const [isLoading, setIsLoading] = useState(true)
     const [isModalOpen, setIsModalOpen] = useState(false)
     const [newNoteContent, setNewNoteContent] = useState('')
     const [isSubmitting, setIsSubmitting] = useState(false)
@@ -89,13 +90,49 @@ export default function SectionNotesPage() {
     const [uploading, setUploading] = useState(false)
     const [searchQuery, setSearchQuery] = useState('')
     const [page, setPage] = useState(1)
-    const [total, setTotal] = useState(0)
-    const [totalPages, setTotalPages] = useState(0)
     const limit = 10
     const highlightId = searchParams.get('highlight')
     // Shown for six seconds after arriving via ?highlight=. See
     // lib/useFadingHighlight.ts for why this is not an effect any more.
     const visualHighlightId = useFadingHighlight(highlightId, 6000)
+
+    // The section's own record (for its title), and one page of its notes.
+    // The notes key carries the page and the search, so an answer for a
+    // search that has since changed cannot overwrite the current one; the
+    // previous page stays up while the next loads.
+    const router = useRouter()
+    const { data: sectionsResult, isLoading: sectionLoading, mutate: mutateSections } = useSWR(
+        clientId ? `/api/clients/${clientId}/sections?limit=999` : null, fetcher, // all sections, for the title
+    )
+    const { data: notesResult, isLoading: notesLoading, mutate: mutateNotes } = useSWR(
+        clientId && sectionId ? `/api/clients/${clientId}/sections/${sectionId}/notes?page=${page}&limit=${limit}&search=${encodeURIComponent(searchQuery)}` : null,
+        fetcher,
+        {
+            keepPreviousData: true,
+            // The section is gone (or was never this client's): back to the client.
+            onError: (err: SWRError) => { if (err.status === 404) router.replace(`/dashboard/clients/${clientId}`) },
+        },
+    )
+    // sections API is paginated too, so unwrap whichever shape arrives
+    const sectionsList: SectionData[] | undefined = sectionsResult ? (sectionsResult.data?.data || sectionsResult.data || sectionsResult) : undefined
+    const section: SectionData | null = sectionsList?.find((s: any) => s.id === sectionId) ?? null
+    const notes: Note[] = notesResult?.data?.data || NO_NOTES
+    const total: number = notesResult?.data?.total || 0
+    const totalPages: number = notesResult?.data?.totalPages || 1
+    const isLoading = sectionLoading || notesLoading
+    const fetchData = () => { mutateSections(); mutateNotes() }
+    // A renamed section goes into the cached list, so the title follows
+    // without asking for every section again.
+    const setSection = (updated: SectionData) => mutateSections(
+        (current: any) => {
+            if (!current) return current
+            const rename = (list: any[]) => list.map(s => s.id === updated.id ? { ...s, ...updated } : s)
+            if (Array.isArray(current.data?.data)) return { ...current, data: { ...current.data, data: rename(current.data.data) } }
+            if (Array.isArray(current.data)) return { ...current, data: rename(current.data) }
+            return current
+        },
+        { revalidate: false },
+    )
 
     // Server-side filtering is now implemented
     const filteredNotes = notes
@@ -139,45 +176,6 @@ export default function SectionNotesPage() {
             setIsEditingSection(false)
         }
     }
-
-    const fetchData = useCallback(async () => {
-        try {
-            const [sectionsRes, notesRes] = await Promise.all([
-                fetch(`/api/clients/${clientId}/sections?limit=999`), // Fetch all sections for the title list
-                fetch(`/api/clients/${clientId}/sections/${sectionId}/notes?page=${page}&limit=${limit}&search=${encodeURIComponent(searchQuery)}`)
-            ])
-
-            if (sectionsRes.ok && notesRes.ok) {
-                const sectionsData = await sectionsRes.json()
-                const notesData = await notesRes.json()
-
-                // sections API is now paginated too, so we need to handle that if it's used for the title
-                const sectionsList = sectionsData.data.data || sectionsData.data || sectionsData
-                const foundSection = sectionsList.find((s: any) => s.id === sectionId)
-                if (foundSection) setSection(foundSection)
-
-                const data = notesData.data
-                setNotes(data.data || [])
-                setTotal(data.total || 0)
-                setTotalPages(data.totalPages || 1)
-            } else {
-                if (notesRes.status === 404) {
-                    // Using window.location instead of router since it's unused elsewhere and we removed it
-                    window.location.href = `/dashboard/clients/${clientId}`
-                }
-            }
-        } catch (error) {
-            console.error('Failed to fetch data', error)
-        } finally {
-            setIsLoading(false)
-        }
-    }, [clientId, sectionId, page, searchQuery, limit])
-
-    useEffect(() => {
-        if (clientId && sectionId) {
-            fetchData()
-        }
-    }, [fetchData, clientId, sectionId])
 
     // Scroll to highlighted note
     useEffect(() => {
