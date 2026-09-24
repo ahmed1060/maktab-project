@@ -1,6 +1,8 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
+import useSWR from "swr"
+import { fetcher } from "@/lib/swr-fetcher"
 import { useRouter } from "next/navigation"
 import { useLanguage } from "@/context/LanguageContext"
 
@@ -18,46 +20,34 @@ interface Notification {
     createdAt: string
 }
 
+const NO_NOTIFICATIONS: Notification[] = []
+
 export default function NotificationBell({ initialUnreadCount = 0 }: { initialUnreadCount?: number }) {
-    const [notifications, setNotifications] = useState<Notification[]>([])
     const [isOpen, setIsOpen] = useState(false)
-    const [unreadCount, setUnreadCount] = useState(initialUnreadCount)
     const dropdownRef = useRef<HTMLDivElement>(null)
     const router = useRouter()
     const { t, locale } = useLanguage()
 
-    const fetchNotifications = async () => {
-        try {
-            const res = await fetch('/api/notifications')
-            if (res.ok) {
-                const result = await res.json()
-                const notificationsList = result.data || []
-                setNotifications(notificationsList)
-                setUnreadCount(notificationsList.filter((n: Notification) => !n.read).length)
-            }
-        } catch (error) {
-            console.error("Failed to fetch notifications", error)
-        }
-    }
+    // Polled every five minutes while the tab is visible (SWR skips hidden
+    // tabs by default, which is what the visibility check here used to do).
+    const { data, mutate } = useSWR('/api/notifications', fetcher, { refreshInterval: 300_000 })
+    const notifications: Notification[] = data?.data || NO_NOTIFICATIONS
+    // The server-rendered count stands in until the first answer arrives.
+    const unreadCount = data ? notifications.filter(n => !n.read).length : initialUnreadCount
 
     const markAsRead = async () => {
         try {
             await fetch('/api/notifications', { method: 'PATCH' })
-            setNotifications(notifications.map(n => ({ ...n, read: true })))
-            setUnreadCount(0)
+            // Mark the list we have as read without asking again; with no list
+            // yet, ask — the answer now comes back all read.
+            mutate(
+                (current: any) => current ? { ...current, data: (current.data || []).map((n: Notification) => ({ ...n, read: true })) } : current,
+                { revalidate: !data },
+            )
         } catch (error) {
             console.error("Failed to mark notifications as read", error)
         }
     }
-
-    useEffect(() => {
-        fetchNotifications()
-        const interval = setInterval(() => {
-            if (document.visibilityState === 'hidden') return
-            fetchNotifications()
-        }, 300000) // Poll every 5 minutes
-        return () => clearInterval(interval)
-    }, [])
 
     // Close dropdown when clicking outside
     useEffect(() => {

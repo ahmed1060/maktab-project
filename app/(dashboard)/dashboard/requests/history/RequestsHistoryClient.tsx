@@ -1,5 +1,7 @@
 'use client'
-import { useState, useEffect, useCallback } from 'react'
+import { useState } from 'react'
+import useSWR from 'swr'
+import { fetcher } from '@/lib/swr-fetcher'
 import { useLanguage } from '@/context/LanguageContext'
 import RequestCard from '@/components/requests/RequestCard'
 import ViewRequestModal from '@/components/requests/ViewRequestModal'
@@ -12,12 +14,12 @@ import Pagination from '@/components/Pagination'
 import { useFadingHighlight } from '@/lib/useFadingHighlight'
 import { useAdjustOnChange } from '@/lib/useAdjustOnChange'
 
+const NO_REQUESTS: any[] = []
+
 export default function RequestsHistoryClient({ userRole }: { userRole: string }) {
     const { t, locale } = useLanguage()
     const { showToast } = useToast()
     const { selectedCompanyId } = useCompany()
-    const [requests, setRequests] = useState<any[]>([])
-    const [loading, setLoading] = useState(true)
     const [selectedRequest, setSelectedRequest] = useState<any>(null)
     const [isViewModalOpen, setIsViewModalOpen] = useState(false)
     const [sortBy, setSortBy] = useState('updatedAt')
@@ -31,39 +33,23 @@ export default function RequestsHistoryClient({ userRole }: { userRole: string }
         dateTo: ''
     })
     const [page, setPage] = useState(1)
-    const [total, setTotal] = useState(0)
-    const [totalPages, setTotalPages] = useState(0)
     const searchParams = useSearchParams()
     // Held for ten seconds after arriving via ?highlight=, then released
     // so a card that remounts later does not scroll and pulse again. See
     // lib/useFadingHighlight.ts.
     const highlightId = useFadingHighlight(searchParams.get('highlight'), 10_000)
 
-    const fetchHistory = useCallback(async () => {
-        try {
-            let url = `/api/requests?history=true&sortBy=${sortBy}&order=${order}&page=${page}&limit=10`
-            if (filters.search) url += `&search=${encodeURIComponent(filters.search)}`
-            if (filters.employeeId) url += `&userId=${filters.employeeId}`
-            if (selectedCompanyId) url += `&companyId=${selectedCompanyId}`
-
-            const res = await fetch(url)
-            if (res.ok) {
-                const result = await res.json()
-                const data = result.data
-                setRequests(data.data || [])
-                setTotal(data.total || 0)
-                setTotalPages(data.totalPages || 0)
-            }
-        } catch {
-            console.error("Error fetching history")
-        } finally {
-            setLoading(false)
-        }
-    }, [sortBy, order, page, filters, selectedCompanyId])
-
-    useEffect(() => {
-        fetchHistory()
-    }, [fetchHistory, filters, selectedCompanyId, sortBy, order, page])
+    let historyUrl = `/api/requests?history=true&sortBy=${sortBy}&order=${order}&page=${page}&limit=10`
+    if (filters.search) historyUrl += `&search=${encodeURIComponent(filters.search)}`
+    if (filters.employeeId) historyUrl += `&userId=${filters.employeeId}`
+    if (selectedCompanyId) historyUrl += `&companyId=${selectedCompanyId}`
+    // Keyed by the whole query, so an answer for filters that have since
+    // changed can never land on top of the current ones. The previous page
+    // stays up while the next loads, as it did before.
+    const { data: result, isLoading: loading, mutate: fetchHistory } = useSWR(historyUrl, fetcher, { keepPreviousData: true })
+    const requests: any[] = result?.data?.data || NO_REQUESTS
+    const total: number = result?.data?.total || 0
+    const totalPages: number = result?.data?.totalPages || 0
 
     // Back to page 1 in the same render the filters change, so the first
     // fetch for the new filters already asks for page 1. As an effect this

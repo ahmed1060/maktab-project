@@ -1,10 +1,11 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
+import useSWR from 'swr'
+import { fetcher } from '@/lib/swr-fetcher'
 import RequestCard from './RequestCard'
 import CreateRequestModal from './CreateRequestModal'
 import ViewRequestModal from './ViewRequestModal'
 import { useLanguage } from '@/context/LanguageContext'
-import { useCallback } from 'react'
 import { useToast } from '@/context/ToastContext'
 import { useCompany } from '@/context/CompanyContext'
 import { useSearchParams } from 'next/navigation'
@@ -14,14 +15,13 @@ import Pagination from '@/components/Pagination'
 import { useFadingHighlight } from '@/lib/useFadingHighlight'
 import { useAdjustOnChange } from '@/lib/useAdjustOnChange'
 
+const NO_REQUESTS: any[] = []
 
 export default function RequestsSection({ userRole }: { userRole: string }) {
     const { t, locale } = useLanguage()
     const { showToast } = useToast()
     const { selectedCompanyId } = useCompany()
     const searchParams = useSearchParams()
-    const [requests, setRequests] = useState<any[]>([])
-    const [loading, setLoading] = useState(true)
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
     const [selectedRequest, setSelectedRequest] = useState<any>(null)
     const [isViewModalOpen, setIsViewModalOpen] = useState(false)
@@ -35,40 +35,25 @@ export default function RequestsSection({ userRole }: { userRole: string }) {
         dateTo: ''
     })
     const [page, setPage] = useState(1)
-    const [total, setTotal] = useState(0)
-    const [totalPages, setTotalPages] = useState(0)
     // Held for ten seconds after arriving via ?highlight=, then released
     // so a card that remounts later does not scroll and pulse again. See
     // lib/useFadingHighlight.ts.
     const highlightId = useFadingHighlight(searchParams.get('highlight'), 10_000)
 
 
-    const fetchRequests = useCallback(async () => {
-        try {
-            let url = `/api/requests?sortBy=${sortBy}&order=${order}&page=${page}&limit=10`
-            if (selectedCompanyId) url += `&companyId=${selectedCompanyId}`
-            if (filters.search) url += `&search=${encodeURIComponent(filters.search)}`
-            if (filters.status) url += `&status=${filters.status}`
-            if (filters.employeeId) url += `&userId=${filters.employeeId}`
-
-            const res = await fetch(url)
-            const result = await res.json()
-            if (res.ok && result.success) {
-                const data = result.data
-                setRequests(data.data || [])
-                setTotal(data.total || 0)
-                setTotalPages(data.totalPages || 0)
-            }
-        } catch (error) {
-            console.error("Error fetching requests:", error)
-        } finally {
-            setLoading(false)
-        }
-    }, [sortBy, order, page, selectedCompanyId, filters])
-
-    useEffect(() => {
-        fetchRequests()
-    }, [fetchRequests])
+    let requestsUrl = `/api/requests?sortBy=${sortBy}&order=${order}&page=${page}&limit=10`
+    if (selectedCompanyId) requestsUrl += `&companyId=${selectedCompanyId}`
+    if (filters.search) requestsUrl += `&search=${encodeURIComponent(filters.search)}`
+    if (filters.status) requestsUrl += `&status=${filters.status}`
+    if (filters.employeeId) requestsUrl += `&userId=${filters.employeeId}`
+    // Keyed by the whole query, so an answer for filters that have since
+    // changed can never land on top of the current ones. The previous page
+    // stays up while the next loads, as it did before.
+    const { data: result, isLoading: loading, mutate: fetchRequests } = useSWR(requestsUrl, fetcher, { keepPreviousData: true })
+    const listed = result?.success ? result.data : undefined
+    const requests: any[] = listed?.data || NO_REQUESTS
+    const total: number = listed?.total || 0
+    const totalPages: number = listed?.totalPages || 0
 
     // Back to page 1 in the same render the filters change, so the first
     // fetch for the new filters already asks for page 1. As an effect this
