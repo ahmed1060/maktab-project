@@ -1,13 +1,19 @@
 # Attendance & Time Tracking — Implementation Plan
 
-Status: **proposal, not scheduled.** Nothing here is built. This document
-records what we would build, in what order, and which decisions are already
-settled so that the person who picks it up is not re-arguing them.
+Status: **approved plan, deferred.** Nothing here is built. Implementation
+starts only once the current website is complete and stable. Until then this
+document is the agreed design: what we will build, in what order, and which
+decisions are already settled so that the person who picks it up is not
+re-arguing them.
 
 It started as a response to an earlier draft (`zkteco_integration_guide.md`)
-that described a universal hardware webhook, and has since absorbed three
-rounds of product decisions. [§0](#0-decision-log) is the record of what was
-decided; everything after it is the plan as it now stands.
+that described a universal hardware webhook, and absorbed four rounds of
+product decisions. [§0](#0-decision-log) is the record of what was decided;
+everything after it is the plan as it now stands.
+
+**Before starting implementation, work through
+[§21 — Before we start](#21-before-we-start).** The codebase will have moved on
+by then, and this plan names real models and files that may have changed.
 
 ---
 
@@ -18,21 +24,21 @@ decided; everything after it is the plan as it now stands.
 - Devices push, we never pull. The Local Sync Agent is the primary hardware
   path; direct device push (ADMS/`/iclock`) is last.
 - The attendance *domain* is built before any hardware integration.
-- An attendance day freezes when its payroll run is approved (§11).
+- An attendance day freezes when its payroll run is approved (§12).
 
 ### Round 2 — product
 
 | # | Question | Decision |
 |---|---|---|
 | 1 | Mobile check-in | Yes, from one registered device only. |
-| 2 | Exception-first admin screen | Yes (§12.1). |
+| 2 | Exception-first admin screen | Yes (§13.1). |
 | 3 | Ramadan / seasonal hours | Yes, as dated overrides (§7.1). |
-| 4 | Device health | Yes, on System Health (§12.2). |
+| 4 | Device health | Yes, on System Health (§13.2). |
 | 5 | Lateness | Deducts pay, by per-company rules in a tabbed Company Options page (§5, §6). |
 | 6 | Overtime | Per company, alongside lateness (§6.4). |
-| 7 | Who corrects attendance | Admin plus a non-admin grant (§13). |
+| 7 | Who corrects attendance | Admin plus a non-admin grant (§14). |
 | 8 | Working week | Sunday–Thursday default, overridable (§6.2). |
-| 10 | Packaging | Paid add-on (§15). |
+| 10 | Packaging | Paid add-on (§16). |
 
 ### Round 3 — refinements
 
@@ -40,21 +46,37 @@ decided; everything after it is the plan as it now stands.
 |---|---|---|
 | 1 | Where can a user check in from? | **Log in from any device; check in only from the one registered device.** No "phone vs laptop" detection — the binding is the rule (§9.2). |
 | 2 | Changing device | After an approved change, **only the new device** can check in; the old one is revoked in the same step (§9.3). |
-| 3 | Fake GPS and buddy punching | **Neither is acceptable.** This makes a native app required for mobile check-in and adds identity verification at check-in. Approach proposed in §9.4–9.5; **needs a decision** (§18.1). |
+| 3 | Fake GPS and buddy punching | **Neither is acceptable.** This makes a native app required for mobile check-in and adds identity verification at check-in. Resolved in round 4 (§9.4–9.5). |
 | 4 | Effective-dated rules | Agreed (§6.1). |
 | 5 | Roles | Agreed on permissions over a hardcoded role — **and generalised: roles are created in the UI, each with any set of permissions across the system.** A prerequisite project (§4). |
 | 6 | Working week | Agreed. |
-| 7 | Raw punch retention | Agreed: current year + one, then prune punches of locked days (§14). |
-| 8 | Add-on dependency | **Attendance requires HR** (§15). |
+| 7 | Raw punch retention | Agreed: current year + one, then prune punches of locked days (§15). |
+| 8 | Add-on dependency | **Attendance requires HR** (§16). |
 | 9 | Who edits rules | **Super Admin toggle per company exposes a Settings entry in the company Admin's sidebar, showing only the tabs the Super Admin allows** (§5.2). |
 | 10 | Device registration | **Requires admin approval** (§9.3). |
 | 11 | Permission hours (إذن) | **Adopted** (§6.6). |
 | 12 | Overtime approval | **Adopted** (§6.4). |
 | 13 | Rule simulator | **Adopted** (§6.7). |
-| 14 | Employees see their own days | **Adopted** (§12.3). |
-| 15 | Same-day alerts | **Adopted, in-app notification only, no email** (§12.4). |
+| 14 | Employees see their own days | **Adopted** (§13.3). |
+| 15 | Same-day alerts | **Adopted, in-app notification only, no email** (§13.4). |
 | 16 | Policy templates | **Adopted: choose a template or build a custom policy; custom policies are not saved as templates** (§6.8). |
 | 17 | Holiday calendar | **Adopted: one central calendar, each company adds or removes days** (§7.2). |
+
+### Round 4 — final
+
+| # | Topic | Decision |
+|---|---|---|
+| 1 | Timing | **Plan only. Implementation starts after the website is complete and stable.** |
+| 2 | Check-in device | Confirmed: **log in and work from any device; check in only from one verified phone** (§9.2). |
+| 3 | Office IP | **Adopted as an optional extra check**, configured per work location (§9.4). |
+| 4 | Buddy punching | **Option C — automatic face matching with liveness — chosen, as an optional feature.** Enrolled from a few photos on the phone, verified on the phone, **nothing biometric stored on or sent to the server** (§9.5). Legal position in §10. |
+| 5 | Roles | Agreed (§4). Built-in role templates from the Super Admin plus company-created roles (§4.4). |
+| 6 | Settings tab for company Admin | Agreed (§5.2). |
+| 7 | Held punches from pending devices | Agreed (§9.3). |
+| 8 | Policy templates, holidays | Agreed (§6.8, §7.2). |
+| 9 | Round 3 enhancements | **All adopted**: push notifications, no-check-in reminder, permission hours from the check-in screen, role templates, "who can do this?" view, Super Admin integrity view (§13, §4). |
+| 10 | Field or office staff | **Both.** Terminals for fixed sites and the app for field staff are both in scope (§20). |
+| 11 | Grandfathered companies | **Receive attendance on release**, like every other module (§16). |
 
 ---
 
@@ -100,13 +122,13 @@ no way to define a role other than the four in the enum.
 | Raw punches are append-only | They are evidence; corrections live in the derived layer. |
 | At-least-once delivery, deduped by index | Makes naïve retry safe for every source. |
 | Every policy is effective-dated | The only way "changeable any time" and "payroll can be trusted" coexist (§6.1). |
-| Attendance freezes when its payroll run is APPROVED | §11. |
+| Attendance freezes when its payroll run is APPROVED | §12. |
 | Check-in only from the one registered, approved device | Round 3, decisions 1, 2, 10. |
 | Mobile check-in runs in a native app, not the browser | Required by round 3, decision 3 — the browser cannot detect a faked location (§9.1). |
 | Deductions land as `SalaryAdjustment` rows, source `ATTENDANCE` | Already in days, already explains itself on a payslip. |
 | Access is checked by permission, never by role name | Round 3, decision 5 (§4). |
 | Attendance requires HR | Round 3, decision 8. |
-| Hardware biometric templates never leave the terminal | We receive IDs and timestamps only. Mobile identity checks are a separate decision (§9.5). |
+| No biometric data ever reaches our servers | Terminals keep fingerprint templates; the app keeps face templates on the phone. We receive IDs, timestamps and match results only (§9.5, §10). |
 
 ---
 
@@ -156,14 +178,26 @@ explicit.
 - The check lives on the server in `withStandardHandler`, next to the existing
   feature gate. Hiding a button is a courtesy, not a control.
 
-### 4.4 Open design questions for the roles project
+### 4.4 Where roles come from
 
-- Roles per company (each company builds its own), global (Super Admin defines,
-  companies pick), or both — built-in globals that a company can copy and adjust.
-  Recommendation: both, with the same copy-not-link rule as policy templates
-  (§6.8).
-- Can a user hold more than one role? Recommendation: one role per user to start;
-  multiple roles make "why can this person do this?" much harder to answer.
+**Both global and per company** (decided in round 4 by adopting role
+templates):
+
+- **Global role templates** — HR Officer, Branch Manager, Accountant — are
+  maintained by the Super Admin. A company **copies** one and adjusts it; editing
+  the template later does not change any company's copy. Same copy-not-link rule
+  as policy templates (§6.8).
+- **Company roles** are created by that company, from a template or from
+  scratch, and exist only inside it. One company's roles are invisible to every
+  other company.
+
+**One role per user or several — still open (§18.1).** "Several" means a person
+can hold, say, both *HR Officer* and *Branch Manager* at once and gets the
+permissions of both added together. "One" means that person needs a single
+combined role created for them. Recommendation: one role per user to start,
+because with several roles the question "why can this person do this?" has to be
+answered by searching every role they hold. The "who can do this?" view
+(§13.5) softens that if several is chosen.
 
 This deserves its own plan document. Everything below assumes it exists and
 refers to permissions by name.
@@ -331,7 +365,7 @@ confirmed late.
   are sometimes moved by decree — companies that did not opt out get the moved
   date automatically, and companies that opted out stay opted out.
 - A central change that lands inside a locked payroll period does not re-price
-  it (§11).
+  it (§12).
 
 ---
 
@@ -406,8 +440,7 @@ model MissingPunchRequest
 ```
 model WorkLocation
   companyId, name, lat, lng, radiusMeters
-  officeIpRanges  String[]    // optional, §9.4
-  wifiBssids      String[]    // optional, §9.4
+  officeIpRanges  String[]    // optional; empty = no IP check (§9.4)
 
 model UserWorkLocation        // who may check in where
   userId, locationId
@@ -418,13 +451,29 @@ model CheckInDevice           // the one device a user may check in from
   platform, model, appVersion
   status                      // PENDING | ACTIVE | REVOKED
   requestedAt, approvedAt?, approvedById?, revokedAt?, revokedById?
+  faceEnrolledAt?, faceModelVersion?   // a fact that enrolment happened —
+                                        // the templates themselves stay on the phone
+  faceEnrolmentApprovedById?            // the in-person approval, §9.5
   // Partial unique: at most one ACTIVE and one PENDING per user.
+
+// On AttendancePolicy: faceVerificationAvailable Boolean (company switch).
+// On User: faceVerificationRequired Boolean (per employee, §9.5).
+
+model BiometricConsent        // the legal record; not biometric data itself
+  id, userId
+  consentTextVersion
+  acceptedAt, withdrawnAt?
+  // Current consent = latest row with withdrawnAt null and the current
+  // text version. A new text version requires a new acceptance.
+
+// On Company: faceVerificationLegalConfirmedAt?, …ById? — the company has
+// confirmed it holds whatever licence counsel says it needs (§10.4).
 ```
 
 ### 8.6 Hardware, raw and derived
 
 ```
-model AttendanceDevice, DeviceCredential, UserDeviceMapping   // terminals, §16
+model AttendanceDevice, DeviceCredential, UserDeviceMapping   // terminals, §17
 
 model AttendancePunch
   companyId, userId?, source  // IMPORT | MOBILE | AGENT | DEVICE_PUSH | MANUAL
@@ -432,7 +481,7 @@ model AttendancePunch
   punchAtLocal, punchAt, resolvedWithTimeZone
   lat?, lng?, accuracyMeters?, locationId?
   integrity  Json?            // attestation verdict, mock flag, network match
-  identityCheck  Json?        // §9.5 outcome, if any
+  identityCheck  Json?        // face result only: verified, scores, model version
   status                      // ACCEPTED | PENDING_DEVICE | FLAGGED | REJECTED
   rawPayload Json?, receivedAt
 
@@ -453,118 +502,268 @@ model AttendanceDay
 
 ### 9.1 Why it must be a native app
 
-Round 3, decision 3 makes fake GPS unacceptable. A web page cannot meet that: the
-browser reports whatever location the operating system gives it, and on Android
-a mock-location app makes that anything. There is no web API to detect it.
+Fake GPS is not acceptable (round 3). A web page cannot meet that: the browser
+reports whatever location the operating system gives it, and on Android a
+mock-location app makes that anything, with no web API to detect it. Face
+matching on the phone (§9.5) also needs the camera, secure storage and on-device
+machine learning at a level only a native app gets.
 
-A native app can. So **mobile check-in lives in a native app**. The rest of the
-product stays on the web, and the user logs in anywhere as today (decision 1).
+So **check-in lives in a native mobile app**. Everything else stays on the web,
+and the user logs in and works from any device as today.
 
 Recommended build: **Capacitor wrapping the existing Next.js UI**, with native
-plugins only for the check-in screen — location, device integrity, key storage,
-biometric prompt, push. One codebase for the UI, native code only where the
-platform demands it. Two things to know going in:
+plugins for the check-in screen only — location, device integrity, hardware key
+storage, camera and face matching, push notifications. Two things to know going
+in:
 
 - **App store review.** Apple rejects apps that are only a website in a frame
-  (guideline 4.2). The native check-in, biometrics and push are what make this
+  (guideline 4.2). The native check-in, face matching and push are what make it
   more than a wrapper, and they should be visible in the first submission.
-- **A second release process.** App updates go through store review, so anything
-  on the check-in path should be driven by server responses rather than baked
-  into the app, to avoid waiting days to change a message or a threshold.
+- **A second release process.** App updates go through store review, so
+  thresholds, messages and rules on the check-in path come from the server, not
+  from the app build.
 
-### 9.2 One device
+### 9.2 One verified phone
 
-A key pair is generated **inside the phone's secure hardware** (Android
-Keystore / iOS Secure Enclave) at registration. The private key cannot be
-exported — not by the user, not by a backup, not by us. We store the public key.
-Every check-in signs a fresh one-time challenge from the server, so a captured
-request cannot be replayed.
+Round 4, decision 2: **log in and work from any device; check in only from one
+verified phone.**
 
-The user may be logged in on a laptop, a tablet and two phones at once. Only the
-one device holding the registered key can check in. That is the whole rule;
-there is no "is this a phone?" guess.
+A key pair is generated **inside the phone's secure hardware** (Android Keystore
+/ iOS Secure Enclave) at registration. The private key cannot be exported — not
+by the user, not by a backup, not by us. We store the public key. Every check-in
+signs a fresh one-time challenge from the server, so a captured request cannot
+be replayed.
 
-### 9.3 Registering and changing a device (decisions 2 and 10)
+The user may be logged in on a laptop, a tablet and a second phone at once. Only
+the one approved phone holding the registered key can check in. That is the
+whole rule.
 
-- **First registration:** the app requests registration → `CheckInDevice` in
-  `PENDING` → someone with `attendance.approve_devices` approves → `ACTIVE`.
-- **Changing device:** the new device requests registration → approval
-  **revokes the old device and activates the new one in one transaction**. There
-  is never a moment with two active devices, and the old one stops working the
-  instant the new one starts.
-- **Rejection** leaves the old device active.
-- **Lost phone:** an admin can revoke directly; the user registers a new one.
+### 9.3 Registering and changing the phone
 
-**Proposed: check-in from a pending device is held, not lost.** An employee whose
-device is awaiting approval on their first morning still taps Check in. The
-punch is recorded as `PENDING_DEVICE`, and counts only if the device is
-approved; if rejected, it is discarded. Otherwise a slow approval costs an
-employee a day of attendance they did nothing to lose, and admins will approve
-without looking to avoid that.
+- **First registration:** the app requests registration → `PENDING` → someone
+  with `attendance.approve_devices` approves → `ACTIVE`.
+- **Changing phone:** the new phone requests registration → approval **revokes
+  the old phone and activates the new one in one transaction**. There is never a
+  moment with two active phones.
+- **Rejection** leaves the old phone active.
+- **Lost phone:** an admin revokes directly; the user registers a new one.
+- **Held punches:** check-ins from a phone awaiting approval are recorded as
+  `PENDING_DEVICE` and count only once it is approved, so a slow approval does not
+  cost the employee a day.
+- **Face enrolment is per phone** (§9.5). A new phone means enrolling again,
+  because the face data never left the old one.
 
 ### 9.4 Location that can be trusted
 
 Layered — each layer catches what the previous one misses:
 
-1. **Mock-location detection.** Android flags a location as coming from a mock
-   provider; iOS 15+ reports whether it was simulated by software. Flagged → the
-   check-in is refused.
+1. **Mock-location detection.** Android flags a location from a mock provider;
+   iOS 15+ reports whether it was simulated by software. Flagged → refused.
 2. **Device integrity attestation.** Play Integrity (Android) and App Attest
-   (iOS) let our server verify that the request came from *our* app, unmodified,
-   on a genuine, non-rooted device. This is what stops a rooted phone from hiding
-   the mock flag in step 1. Failed attestation → refused.
+   (iOS) let the server verify the request came from our real, unmodified app on
+   a genuine, non-rooted phone. This is what stops a rooted phone hiding the flag
+   in step 1, and — just as important — what makes the on-device face result in
+   §9.5 trustworthy at all. Failed → refused.
 3. **Geofence** against the employee's `WorkLocation`, with a maximum accuracy
-   radius — a fix accurate only to 500 m is not evidence of being in a 70 m
-   circle.
-4. **Network match (optional per location).** If the office has a fixed public
-   IP, or known Wi-Fi access points, a check-in on that network is strong
-   independent evidence. Both are cheap to check and very hard to fake together
-   with GPS. Configured per `WorkLocation`; if configured, required.
+   radius — a fix accurate to 500 m is not evidence of being in a 70 m circle.
+4. **Office IP — optional (round 4, decision 3).** If a `WorkLocation` has one or
+   more fixed public IPs configured, a check-in must also arrive from one of them.
+   Configured per location, off by default. Useful for offices; meaningless for
+   field staff, which is why it is per location and not per company.
 
-**The honest limit.** No phone-based approach is absolute. A determined attacker
-with a rooted phone and tools built to defeat attestation can sometimes get
-through. What these layers achieve is raising the cost from "install a free app"
-to "specialist effort", and making every failed attempt visible. For a site
-where even that is unacceptable, the answer is a fixed fingerprint terminal
-(§16), which has no GPS to fake.
+**The honest limit.** No phone approach is absolute. A determined attacker with a
+rooted phone and tools built to defeat attestation can sometimes get through.
+These layers raise the cost from "install a free app" to specialist effort, and
+make every failed attempt visible on the Flagged tab and in the Super Admin's
+integrity view.
 
-### 9.5 Buddy punching — confirming *who* is checking in
+### 9.5 Face matching with liveness — on the phone only
 
-Device binding proves *which phone*. Round 3 requires proving *which person*.
-Three options, not mutually exclusive — **this needs a decision (§18.1).**
+Round 4, decision 4: option C, **optional**, with **nothing biometric stored on
+or sent to the server**.
 
-**A. Phone biometric unlock at check-in.** The app requires the phone's own
-fingerprint or face unlock to use the check-in key (the key is created as
-biometric-bound, so the secure hardware itself refuses to sign without it).
-Cheap, no biometric data reaches us. **Weakness:** a phone accepts several
-enrolled fingerprints, and its owner can enrol a colleague's. It proves "someone
-the owner allowed", not "the owner".
+#### Turning it on
 
-**B. Selfie at check-in, reviewed by people.** The app takes a front-camera photo
-at check-in (camera only, no gallery). Stored with the punch; admins spot-check,
-and the exception screen samples a few a day. No automated matching, so no
-biometric template exists — but the photos are personal data and need consent,
-a retention period, and restricted access. A strong deterrent: sending a
-colleague with your phone now leaves a photo of the colleague.
+- **Company level:** the attendance policy has a switch, *face verification
+  available*. Off by default.
+- **Employee level:** with the company switch on, face verification is enabled per
+  employee. Not everyone at a company needs it — an office with a fingerprint
+  terminal may use it only for field staff.
+- **Consent first:** before enrolment the app shows a clear explanation of what is
+  captured, that it stays on the phone, and how to withdraw — and records the
+  employee's explicit acceptance (who, when, which text version) on the server.
+  The consent record is not biometric data; the face data is. See §10 for why
+  this step is legally required, not a courtesy.
 
-**C. Automated face verification with liveness.** Each selfie is matched against
-the employee's reference photo, with a liveness check so a photo of a photo
-fails. Strongest option. Costs: a vendor per check-in, a reference photo per
-employee, false rejections that need a fallback, and it **is** biometric
-processing — which Egypt's Personal Data Protection Law (151/2020) treats as
-sensitive data, requiring explicit consent and stricter handling. It would
-reverse the round 1 rule that we never hold biometrics, and that reversal should
-be a deliberate decision with legal input, not a side effect.
+#### Enrolment
 
-**Recommendation:** A always, plus B — and C only if a customer requires it and
-is willing to carry the consent process. And separately: for staff who work at a
-fixed site, a fingerprint terminal solves buddy punching and fake GPS together,
-better than any phone approach. The strongest version of this product uses
-terminals for fixed-site staff and the app for field staff (§18.2).
+1. The employee takes **3–5 photos** in the app, guided — straight on, slight
+   turns, with a liveness check on each so a photo of a photo is refused.
+2. A face-recognition model **bundled in the app** turns each photo into a
+   numeric *face template* (an embedding — a list of numbers describing the face).
+   Nothing is "trained": the model is pre-trained and ships with the app; enrolment
+   only records what this person's face looks like to it.
+3. The templates are encrypted with a key held in the phone's secure hardware
+   and stored on the phone. **The photos themselves are deleted** as soon as the
+   templates exist.
+4. The phone tells the server only: *enrolled, on this device, at this time,
+   with model version X*.
+
+**Who does the enrolment matters.** Since the server never sees the face, it
+cannot tell whether the face enrolled is the employee's. If an employee enrols a
+colleague's face on day one, the colleague can check in for them forever.
+Therefore: **enrolment requires an in-person approval** — done at the office,
+with an admin present, who approves on their own screen (e.g. by scanning a QR
+code the employee's app shows). This combines with device approval (§9.3), so
+approving a new phone and approving its face enrolment are one visit.
+
+#### Check-in
+
+1. Employee taps Check in → the app opens the front camera.
+2. **Liveness check** — the app confirms a live person is in front of the camera
+   and not a photo, a screen or a mask (passive detection, or a short prompt such
+   as a blink or a head turn).
+3. The app computes a template from the live frame and compares it with the
+   enrolled ones. Match above threshold → verified.
+4. The frame is discarded immediately.
+5. The signed check-in carries the **result only**: verified yes/no, match score,
+   liveness score, model version. Signed by the hardware key and covered by the
+   attestation, so a modified app cannot simply claim "verified".
+
+#### When it fails
+
+Faces change — lighting, glasses, a beard, an injury. A strict "refuse" would
+lock people out of attendance. So: up to N attempts (suggest 3), then the
+check-in is **recorded as `FLAGGED`** with the reason, not refused. It appears on
+the Flagged tab for a person to decide. Repeated failures prompt a re-enrolment,
+in person.
+
+#### What "nothing on the server" costs — accepted trade-offs
+
+- **No evidence in a dispute.** If an employee says "that was me", there is no
+  photo to look at — only the recorded score. This is the price of the privacy
+  guarantee, and it is accepted.
+- **Trust rests on the app's integrity.** The server believes a "verified" result
+  only because attestation (§9.4) proves it came from the genuine app on a
+  genuine phone. Face matching must never be offered on a phone that fails
+  attestation.
+- **Re-enrolment on every phone change**, and after reinstalling the app.
+- **Model quality varies across devices.** Low-end phones are slower and less
+  accurate. The threshold and the model come from the server config per
+  platform, so they can be tuned without an app release.
+
+#### Build or buy
+
+On-device face matching with **reliable liveness** is the hard part. Recognition
+models are widely available; liveness that resists a video replayed on another
+screen is not, and a weak liveness check makes the whole feature decorative.
+Recommendation: use a commercial SDK that does both on-device, and check before
+choosing that its on-device mode sends nothing to the vendor's servers — several
+do by default for "quality" purposes, which would silently break the
+nothing-leaves-the-phone promise.
 
 ---
 
-## 10. The derivation engine
+## 10. Legal: biometric data in Egypt
+
+> **Not legal advice.** This is a technical team's summary of public sources, to
+> know which questions to put to an Egyptian lawyer before this feature ships.
+> It must be reviewed by counsel before implementation starts.
+
+### 10.1 The law
+
+- **Personal Data Protection Law No. 151 of 2020** is Egypt's data protection
+  law. Its **Executive Regulations were issued by Prime Ministerial Decree No. 816
+  on 1 November 2025**, which brought the law fully into operation, with a
+  one-year grace period: **compliance is expected from 1 November 2026.**
+- **Biometric data is "sensitive personal data"** under Article 1, alongside
+  health, genetic, financial, religious, political and criminal-record data.
+
+### 10.2 What sensitive data requires
+
+As reported in the public sources below:
+
+- **A licence from the Personal Data Protection Center (PDPC)** to collect, store,
+  process or transfer sensitive data. There is no route to processing biometric
+  data without it.
+- **Explicit, written consent** from each person, on top of the licence.
+- **A Data Protection Officer** registered with and approved by the PDPC, for
+  every controller and processor.
+- **Breach notification to the PDPC within 72 hours**, and to affected people
+  within three working days after that.
+- **Rights for the person** — to know, to withdraw consent, to correct, to
+  restrict, and to be told of a breach.
+- **Penalties** reported at up to EGP 5,000,000 in fines, with imprisonment
+  possible for sensitive-data violations; failures in licensing, security or
+  breach reporting are reported at EGP 300,000–3,000,000.
+
+### 10.3 What on-device processing does and does not change
+
+Keeping the face data on the phone is the strongest privacy design available, and
+it should make a regulator's and an employee's view of the feature far more
+favourable. **But it does not obviously take the feature outside the law.** Our
+app still captures faces and computes biometric templates; that is processing,
+wherever it happens. Whether on-device processing that never reaches our servers
+still requires the PDPC sensitive-data licence — and whether the licence falls on
+us, on the employing company, or both — is **the first question for counsel**.
+
+Questions to put to a lawyer:
+
+1. Does on-device-only processing of face templates require the sensitive-data
+   licence, and for whom — the software provider, the employer, or both?
+2. Who is the *controller* (likely the employing company, which decides to use
+   it) and who is the *processor* (likely us)? That decides who holds which
+   licence and who signs the consent.
+3. Can consent be "freely given" by an employee to their employer? Does keeping
+   the feature optional per employee, with a non-biometric alternative, satisfy
+   that?
+4. What must the written consent contain, and does in-app acceptance with a
+   stored record count as written?
+5. Does the non-sensitive part of attendance — punches, locations, IPs — need its
+   own licence tier?
+
+### 10.4 Consequences for the design
+
+Already reflected above, and not negotiable once counsel confirms:
+
+- **Optional per employee, with a non-biometric alternative** (the phone check-in
+  without face, or a terminal). Consent that cannot be refused is weak consent.
+- **Withdrawal is one tap in the app**, deletes the templates on the phone
+  immediately, and the server records the withdrawal. The employee falls back to
+  the alternative; nothing about their employment record changes.
+- **Consent is versioned.** If the explanation text changes, employees re-accept.
+- **Deletion on offboarding:** archiving an employee revokes their phone, and the
+  app deletes the templates the next time it runs.
+- **The feature is gated on the company's legal readiness** — a company cannot
+  switch face verification on until it has confirmed (and we have recorded) that
+  it holds whatever licence counsel says it needs.
+
+### 10.5 Beyond this feature — flagged, not in scope
+
+Two things the research surfaced that concern more than attendance:
+
+- **Fingerprint terminals are biometric processing too.** Our round-1 rule — we
+  never receive templates from terminals — keeps *us* out of it, but the employer
+  operating a fingerprint terminal is processing biometric data. Customers using
+  terminals should be told this.
+- **Financial data is also sensitive data under Article 1**, and the existing
+  product already processes salaries, payslips and debts. With compliance expected
+  from **1 November 2026**, the current website's own position under the law is
+  worth a lawyer's review regardless of attendance.
+
+### 10.6 Sources
+
+- [Baker McKenzie — Egypt: Important Data Protection Update (Jan 2026)](https://www.bakermckenzie.com/en/insight/publications/2026/01/egypt-important-data-protection-update)
+- [CMS — Egypt's PDPL: Executive regulations issued, one-year compliance countdown begins](https://cms.law/en/int/legal-updates/egypt-s-pdpl-executive-regulations-issued-one-year-compliance-countdown-begins)
+- [Kennedys — Egypt's Personal Data Protection Law: the compliance countdown has begun (2026)](https://www.kennedyslaw.com/en/thought-leadership/article/2026/egypt-s-personal-data-protection-law-the-compliance-countdown-has-begun/)
+- [Clyde & Co — Egypt regulatory update on data privacy (Jan 2026)](https://www.clydeco.com/en/insights/2026/01/egypt-regulatory-update-on-data-privacy)
+- [Consortio — Sensitive personal data in Egypt: PDPL licence & consent for biometric attendance](https://consortiolawfirm.com/pdpl-sensitive-data-biometric-attendance-egypt/)
+- [Andersen — Translation of Law No. 151 of 2020](https://eg.andersen.com/translation-law-151-2020/)
+- [MCIT — Law No. 151 of 2020 (official document)](https://mcit.gov.eg/Upcont/Documents/Reports%20and%20Documents_1232021000_Law_No_151_2020_Personal_Data_Protection.pdf)
+
+---
+
+## 11. The derivation engine
 
 **Grouping** by shift instance (override first, then base schedule), with a
 margin either side for early arrivals and overruns. **Debounce** repeats within
@@ -572,8 +771,7 @@ margin either side for early arrivals and overruns. **Debounce** repeats within
 `INCOMPLETE`; a missing punch is never guessed.
 
 **Excusing** — approved permission hours are subtracted from late and
-early-leave minutes before pricing, and recorded as `excusedMinutes` so both
-facts stay visible.
+early-leave minutes before pricing, and recorded as `excusedMinutes`.
 
 **Pricing** — measured facts and priced outcomes are stored separately. Monthly
 rules (allowance, escalation, cap, permission balance) depend on the order of
@@ -588,24 +786,28 @@ comparing `inputsHash`. A locked day is never rewritten. Punches in
 
 ---
 
-## 11. The payroll boundary
+## 12. The payroll boundary
 
 Once the `PayrollRun` covering a date is `APPROVED`, every `AttendanceDay` in it
-is locked and immutable, no policy version may take effect inside it, and any
-still-pending overtime approval in it is treated as rejected.
+is locked, no policy version may take effect inside it, and any still-pending
+overtime approval in it is treated as rejected.
 
 Before approval, the month's outcome is written as `SalaryAdjustment` rows with
-`source = ATTENDANCE` — one per employee per category, so the payslip reads as a
-few lines, not twenty-two. Anything arriving after the lock becomes a
-discrepancy for an admin to turn into an adjustment in the current period.
+`source = ATTENDANCE` — one per employee per category. Anything arriving after
+the lock becomes a discrepancy for an admin to turn into an adjustment in the
+current period.
+
+A system that silently edits a paid payslip is worse than one with no attendance
+at all.
 
 ---
 
-## 12. Screens
+## 13. Screens and notifications
 
-### 12.1 Daily exceptions
+### 13.1 Daily exceptions
 
-Only what needs a decision, with counts per tab:
+Only what needs a decision, with counts per tab, filtered by the viewer's
+permission scope:
 
 | Tab | Shows | Actions |
 |---|---|---|
@@ -613,149 +815,153 @@ Only what needs a decision, with counts per tab:
 | Absent | Expected, no punches, no leave | Mark leave, mark present with reason, accept |
 | Incomplete | Odd punch count | Add punch, link a missing-punch request |
 | Overtime | Unapproved overtime | Approve, approve partially, reject |
-| Requests | Pending permission-hour, missing-punch and device requests | Approve, reject |
+| Requests | Pending permission-hour, missing-punch, device and face-enrolment requests | Approve, reject |
 | Unmatched | Terminal punches with no mapped employee | Map (backfills) |
-| Flagged | Check-ins that failed integrity, network or identity checks | Accept, reject |
+| Flagged | Check-ins that failed integrity, IP, or face checks | Accept, reject |
 
-Each tab is filtered by the viewer's permission scope — a team leader sees their
-team. Every action is audited.
+Every action is audited.
 
-### 12.2 Device health on System Health
+### 13.2 Device health on System Health
 
 Terminals and agents join the `JobHeartbeat` cards: last seen, last sync, clock
-drift, queue depth, agent version, stale during working hours turns red. The same
-data filtered to one company appears on that company's Devices tab. Mobile
-check-in devices are not listed here — they are per-person, and belong on the
-employee's profile and in the device-request queue.
+drift, queue depth, agent version; stale during working hours turns red. The same
+data, filtered to one company, appears on that company's Devices tab.
 
-### 12.3 The employee's own attendance (round 3, decision 14)
+### 13.3 The employee's own attendance
 
 Each day: status, punches, late minutes, excused minutes, deduction, overtime,
-and **the rule that produced the deduction, in the same words the payslip will
-use**. Plus the month so far: permission hours remaining, lateness count against
-the free allowance, deduction total to date. Buttons to request permission hours
-or report a missing punch from the day itself.
+and the rule that produced the deduction in the same words the payslip will use.
+The month so far: permission hours remaining, lates against the free allowance,
+deductions to date. Request permission hours or report a missing punch from the
+day itself.
 
-### 12.4 Same-day alerts (round 3, decision 15)
+### 13.4 Notifications — in-app and push, never email
 
-In-app notifications only, through the existing `Notification` model — no email.
-Sent when a day becomes `INCOMPLETE` or `ABSENT`, when a check-in is flagged, and
-when a request is approved or rejected.
+- **In-app** through the existing `Notification` model.
+- **Push** to the check-in app — adopted in round 4. Not email; reaches the
+  employee without them opening anything.
+- Sent when: a day becomes `INCOMPLETE` or `ABSENT`; a check-in is flagged; a
+  request is approved or rejected; **no check-in has arrived N minutes after the
+  shift starts** (reminder, adopted in round 4 — N configurable in the policy,
+  suggest 15).
 
-In-app notifications are only seen when the app is opened. Since mobile check-in
-now requires a native app, **push notifications** to that app cost almost
-nothing extra and are not email. Proposed as an enhancement (§17.1).
+### 13.5 "Who can do this?" (roles)
+
+Pick a permission; see every person in the company holding it, at which scope,
+and through which role. The first question anyone asks after a surprising
+approval. Lives in the roles screens (§4).
+
+### 13.6 Check-in screen extras
+
+When a check-in is late, the confirmation offers **"Request permission hours
+(إذن)"** right there, with the remaining monthly balance shown — adopted in
+round 4. One tap from the moment it matters, rather than remembered later.
+
+### 13.7 Super Admin integrity view
+
+Across all companies: failed attestations, mock-location detections, office-IP
+mismatches, face-check failures and flagged check-ins, over time. A company with a
+sudden spike is either under attack or has a broken app release — we want to
+know either way. Adopted in round 4.
 
 ---
 
-## 13. Who corrects attendance
+## 14. Who corrects attendance
 
-Anyone whose role holds `attendance.correct`, at their scope. Built-in Admin has
-it at company scope. A company can create an "HR Officer" role with it — and that
-person keeps everything an employee has, because the role is a set of
-permissions, not a replacement for being an employee. Nobody can correct their
-own attendance.
+Anyone whose role holds `attendance.correct`, at their scope. The built-in Admin
+has it at company scope. A company can create an "HR Officer" role with it, and
+that person keeps everything an employee has. Nobody can correct their own
+attendance.
 
 ---
 
-## 14. Retention
+## 15. Retention
 
-`AttendanceDay` is kept as long as payslips are — it is what a payslip's
-deductions are explained by. Raw `AttendancePunch` rows are kept for the current
-year plus one, then punches belonging to locked days are pruned by the existing
-`/api/cron/prune` job. Check-in selfies (if option B or C in §9.5 is adopted)
-need their own, shorter, period — they are personal data with no use once the
-day is locked. The exact periods should be confirmed against labour
+`AttendanceDay` is kept as long as payslips are. Raw `AttendancePunch` rows are
+kept for the current year plus one, then punches belonging to locked days are
+pruned by the existing `/api/cron/prune` job. No face data exists on the server
+to retain. Face-consent records are kept for as long as the consent is relevant
+plus whatever counsel advises (§10). Exact periods confirmed against labour
 record-keeping requirements before they are set.
 
 ---
 
-## 15. Packaging
+## 16. Packaging
 
 A paid add-on that **requires HR**:
 
 - `Bundle` gains `'ATTENDANCE'`; `Package` gains `hasAttendance`.
-- The package form refuses `hasAttendance` without `hasHR`, and removing HR from
-  a package removes attendance with it, with a warning.
-- The gate checks both, so a company with a stale inconsistent package still
-  cannot reach attendance without HR.
+- The package form refuses `hasAttendance` without `hasHR`; removing HR from a
+  package removes attendance with it, with a warning.
+- The gate checks both.
 - The Attendance tab declares `requires: 'ATTENDANCE'`.
-- Grandfathered companies (`packageId` null) are unrestricted and would receive
-  attendance free on release. Decide deliberately (§18.4).
+- **Grandfathered companies (`packageId` null) receive attendance on release**
+  (round 4), consistent with how they receive every other module.
 
 ---
 
-## 16. Hardware terminals and the Local Sync Agent
+## 17. Hardware terminals and the Local Sync Agent
 
-Unchanged from round 1. A signed Windows service on an always-on PC on the
-tenant's LAN pulls from fingerprint terminals over TCP, queues locally, pushes
-over outbound HTTPS, advances its cursor only on success, and heartbeats.
-Enrolment by a one-time code exchanged for a rotatable, hashed token. Company
-from the token, never the body. Clock drift detected on every heartbeat. Device
-memory cleared only near capacity.
+A signed Windows service on an always-on PC on the tenant's LAN pulls from
+fingerprint terminals over TCP, queues locally, pushes over outbound HTTPS,
+advances its cursor only on success, and heartbeats. Enrolment by a one-time code
+exchanged for a rotatable, hashed token. Company from the token, never the body.
+Clock drift detected on every heartbeat. Device memory cleared only near
+capacity. We never receive fingerprint templates — only IDs and timestamps
+(and see §10.5 on the employer's own obligations).
 
-With round 3's decision on buddy punching, terminals matter more than they did:
-for fixed-site staff they are the strongest answer to both fraud problems.
-
----
-
-## 17. Enhancements proposed in round 3
-
-Not decided — each needs a yes or no.
-
-1. **Push notifications** to the check-in app for the same-day alerts. Not email;
-   reaches the employee without them opening the app. The native app makes this
-   nearly free.
-2. **Check-in reminders.** A push at shift start plus N minutes if no check-in
-   has arrived — most "absences" in the first month are people who forgot.
-3. **Permission-hours balance on the check-in screen**, so an employee arriving
-   late can request the إذن in the same moment rather than later.
-4. **Role templates** for the roles project — HR Officer, Branch Manager,
-   Accountant — using the same copy-not-link rule as policy templates.
-5. **"Who can do this?" view** for the roles project: pick a permission, see
-   every person holding it and through which role. The first question anyone
-   asks after a surprising approval.
-6. **Integrity dashboard for the Super Admin**: failed attestations, mock
-   locations and flagged check-ins across companies. A company with a sudden spike
-   is either under attack or has a broken app release, and we want to know either
-   way.
+Since the product serves both office and field staff (round 4), terminals are the
+answer for fixed sites and the app for field staff; a company may use both, and
+the engine treats their punches identically.
 
 ---
 
 ## 18. Open questions
 
-1. **Buddy punching approach (§9.5):** A + B as recommended, or C? If C, it needs
-   legal review under Law 151/2020 and reverses the no-biometrics rule.
-2. **Are the check-in app's users mainly field staff or office staff?** If office
-   staff, fingerprint terminals should move ahead of the mobile app in the
-   phasing — they solve both fraud problems more cheaply.
-3. **Roles project scope (§4.4):** per company, global, or both; one role per user
-   or several.
-4. **Grandfathered companies** — do they receive attendance free on release?
-5. **Multiple terminals per site with roles** (entry vs exit), or all readers
+Few left.
+
+1. **One role per user, or several?** (§4.4) Recommendation: one.
+2. **Legal questions in §10.3** — for counsel, before face verification is built.
+3. **Multiple terminals per site with roles** (entry vs exit), or all readers
    equivalent?
-6. **Which UI exposes the work week first** — per company, per schedule, or both
-   at once?
+4. **Which UI exposes the work week first** — per company, per schedule, or both?
+5. **Face SDK choice** (§9.5) — decided at implementation time, against the
+   rule that nothing leaves the phone.
 
 ---
 
-## 19. Phasing
+## 19. Non-goals
 
-Each phase is independently shippable.
+- Door access control.
+- Real-time streaming attendance.
+- Storing fingerprint templates from terminals.
+- Storing or transmitting face photos or face templates.
+- Polling a tenant's device over the internet.
+- Shift planning and rota building.
+- Check-in from a browser. Check-in is native-app only; the web product stays as
+  it is for everything else.
 
-### Foundation — before attendance
+---
 
-- **Roles and permissions** (§4). Migrates the four built-in roles with no change
-  in anyone's access, then replaces role checks with permission checks module by
-  module.
+## 20. Phasing
+
+Starts after the current website is complete and stable. Each phase is
+independently shippable.
+
+### Foundation
+
+- **Roles and permissions** (§4), including role templates and the "who can do
+  this?" view. Migrates the four built-in roles with no change in anyone's access.
 - **Company Options tabs** (§5.1) and **Admin settings exposure** (§5.2).
+
+Both are useful to the website on their own and are the natural first step.
 
 ### Phase 0 — Engine, settings, import
 
-Schedules, overrides, the holiday calendar with add/remove, work week; policy
-with effective dating, templates and the simulator; permission hours; overtime
-approval; the engine; XLSX/CSV import and manual entry; missing-punch requests;
-the exception screen; the employee's own view; in-app alerts; the add-on bundle.
+Schedules, overrides, holidays with add/remove, work week; policy with effective
+dating, templates and the simulator; permission hours; overtime approval; the
+engine; XLSX/CSV import and manual entry; missing-punch requests; the exception
+screen; the employee's own view; in-app notifications; the add-on bundle.
 
 *Exit: one real tenant runs a full month on imported data and agrees the numbers
 are right.*
@@ -765,20 +971,23 @@ are right.*
 Outcomes into `SalaryAdjustment`, the lock, discrepancies after lock. Simulator
 dry run for the first month before anything is deducted.
 
-Moved ahead of mobile check-in: mobile is now a native app with store review, the
-largest single item in the plan, and attendance is sellable with import or
-terminals before it exists.
-
 ### Phase 2 — Terminals and the Local Sync Agent
 
-Or Phase 3, swapped with mobile, depending on the answer to §18.2.
+For office and fixed-site staff. Device registry, enrolment, ingest, heartbeat,
+device health.
 
 ### Phase 3 — Native check-in app
 
-Capacitor app; hardware-bound device key; registration and change with approval;
-held punches from pending devices; mock detection, attestation, geofence, network
-match; the chosen identity check (§9.5); flagged-check-in review; push
-notifications if adopted.
+For field staff. Capacitor app; hardware-bound key; phone registration and change
+with approval; held punches; mock detection, attestation, geofence, optional
+office IP; push notifications and the no-check-in reminder; permission hours from
+the check-in screen; flagged review; Super Admin integrity view.
+
+### Phase 3b — Face verification
+
+Separate from Phase 3 on purpose: it is gated on the legal review in §10 and must
+not hold the rest of the app back. Consent flow, in-person enrolment, on-device
+matching with liveness, fallback to flagged.
 
 ### Phase 4 — Direct device push
 
@@ -786,12 +995,21 @@ Only on demand. Needs a plain-HTTP ingress outside Vercel.
 
 ---
 
-## 20. Non-goals
+## 21. Before we start
 
-- Door access control.
-- Real-time streaming attendance.
-- Storing fingerprint templates from terminals.
-- Polling a tenant's device over the internet.
-- Shift planning and rota building.
-- Check-in from a browser. Mobile check-in is native only; the web product stays
-  as it is for everything else.
+This plan was written against the codebase as of September 2026 and will be
+picked up later. Before the first line of implementation:
+
+1. **Re-read §1 against the code.** Confirm the models and files it names still
+   exist and still mean what it says — `PayrollRun`, `SalaryAdjustment` and its
+   `source` values, `DayOffRequest`, `JobHeartbeat`, `lib/features/bundles.ts`,
+   `lib/features/routes.ts`, `lib/modules.ts`, `lib/time.ts`, the company
+   settings page. Update this document where they changed.
+2. **Get counsel's answers to §10.3** — at minimum before Phase 3b, ideally before
+   Phase 3, because the non-biometric parts of attendance (locations, IPs) are
+   personal data too.
+3. **Settle §18.1** (one role or several) before the roles project starts.
+4. **Write the roles project up as its own plan**, from §4, since it lands first
+   and touches the whole product.
+5. **Pick one pilot tenant** for the Phase 0 exit criterion before building
+   Phase 0, so the month of real data is ready when the engine is.
