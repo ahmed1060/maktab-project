@@ -241,8 +241,8 @@ Decided in round 5:
 - The **"who can do this?" view** (§13.5) is a Super Admin screen: pick a
   company and a permission, see every person who holds it.
 
-This deserves its own plan document. Everything below assumes it exists and
-refers to permissions by name.
+The full design is in [`ROLES_PLAN.md`](ROLES_PLAN.md). Everything below assumes it
+exists and refers to permissions by name.
 
 ---
 
@@ -1240,7 +1240,7 @@ picked up later. Before the first line of implementation:
    settings page. Update this document where they changed.
 2. **Nothing legal blocks the build.** Face verification ships switched off; the
    protected Super Admin enables it after their consultation (§10).
-3. **Write the roles project up as its own plan**, from §4, since it lands first
-   and touches the whole product.
+3. **The roles project has its own plan** in [`ROLES_PLAN.md`](ROLES_PLAN.md). It
+   lands first and touches the whole product.
 4. **Pick one pilot tenant** for the Phase 0 exit criterion before building
    Phase 0, so the month of real data is ready when the engine is.
