@@ -53,6 +53,10 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
     const [originalLastName, setOriginalLastName] = useState('')
     const [showAvatarModal, setShowAvatarModal] = useState(false)
     const [showEndContract, setShowEndContract] = useState(false)
+    // Bumped after ending or reinstating a contract, so the profile reloads and
+    // shows the new status (and the button its opposite action). The view has
+    // no save that would otherwise bring it up to date.
+    const [reloadKey, setReloadKey] = useState(0)
     const [showResetConfirm, setShowResetConfirm] = useState(false)
     const router = useRouter()
     const { data: session, update } = useSession()
@@ -189,7 +193,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
         if (userRole === 'SUPER_ADMIN' || userRole === 'ADMIN') {
             fetchLeaders()
         }
-    }, [userId, userRole, sessionUserId])
+    }, [userId, userRole, sessionUserId, reloadKey])
 
     const handleResetPassword = async (adminPasswordInput: string) => {
         setIsVerifying(true)
@@ -1025,8 +1029,13 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                               is the one status change that cannot be undone by
                               picking the previous value again. A separate
                               action, with the settlement shown first.
+
+                              On the profile view, not the edit form: it saves
+                              on its own through its own confirmation, so it
+                              never needed the form, and next to Update it read
+                              as though Update would apply it.
                             */}
-                            {!isViewMode && (
+                            {isViewMode && (
                                 <button
                                     type="button"
                                     className="btn"
@@ -1070,7 +1079,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                         name={`${firstName} ${lastName}`.trim() || email}
                         status={status}
                         onClose={() => setShowEndContract(false)}
-                        onDone={() => router.refresh()}
+                        onDone={() => { setReloadKey(k => k + 1); router.refresh() }}
                     />
                 )
             }
