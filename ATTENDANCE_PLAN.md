@@ -87,6 +87,19 @@ by then, and this plan names real models and files that may have changed.
 | 3 | Roles | **Roles and role templates are managed by the Super Admin only**, per company, according to that company's contract and policy. **One role per user** (§4). |
 | 4 | "Terminals" | Clarified: the physical fingerprint devices mounted at a site's entrance (§17). |
 
+### Round 6 — photo lifetime, packaging, who decides
+
+| # | Topic | Decision |
+|---|---|---|
+| 1 | Verification photo lifetime | **Deleted as soon as it is approved** (and on rejection). It exists only while waiting for a decision (§9.5). |
+| 2 | Where the photo is shown | **Not on the profile.** It lives only in the face-verification approval queue, separate from the profile (§9.5). |
+| 3 | Pause / Pause and purge | Adopted (§10.4). |
+| 4 | Role assignment | **The company Admin may assign** roles the Super Admin created for that company; only the Super Admin creates them (§4). |
+| 5 | Packaging | **Two separate add-ons on top of HR — Terminals and Mobile App — sold one or both per contract** (§16). |
+| 6 | Photo on flagged check-ins | Adopted (§13.8). |
+| 7 | Legal decision | **The protected Super Admin decides** whether and when to turn face verification on, after their own consultation. The feature is built ready and left off (§10). |
+| 8 | Entry/exit terminals, work-week screen | Explained; proposed defaults recorded in §17 and §6.2. |
+
 ---
 
 ## 1. Where this system actually stands
@@ -184,9 +197,8 @@ explicit.
 
 - Role creation and editing are Super Admin only (§4.1), so a company user can
   never widen their own access.
-- If role *assignment* is delegated to the company Admin (open question §18.1),
-  an Admin may assign only roles the Super Admin created for that company, and
-  may never change their own role.
+- The company Admin may **assign** roles (round 6) — but only roles the Super
+  Admin created for that company, and never to themselves.
 - Nobody can act on their own record where the permission is an approval — a
   person with `attendance.correct` cannot correct their own attendance; a person
   with `dayoff.approve` cannot approve their own leave.
@@ -204,6 +216,9 @@ Decided in round 5:
   template or from scratch, according to that company's contract and policy. A
   company role is a **copy** of its template: editing the template later changes
   no company. One company's roles are invisible to every other.
+- **The company Admin assigns roles to their own people** (round 6) — for a new
+  hire, say — choosing from the roles the Super Admin built for that company.
+  They cannot create or edit a role.
 - **One role per user.** Someone who needs HR Officer *and* Branch Manager
   permissions gets one role built for exactly that. "Why can this person do
   this?" always has a one-line answer: their role.
@@ -277,6 +292,11 @@ version cannot take effect inside a period whose payroll is APPROVED.
 ### 6.2 Work week
 
 Sunday–Thursday working by default. Overridable per company and per schedule.
+
+Proposed screen layout: the **company's work week** is one setting at the top of
+the Attendance tab (Sunday–Thursday preselected). Each **schedule** — "Office",
+"Warehouse" — inherits it and has an optional *different work week* field for the
+exceptions, such as a six-day warehouse. Both are built in Phase 0.
 
 ### 6.3 Lateness and early leave
 
@@ -464,7 +484,8 @@ model CheckInDevice           // the one device a user may check in from
   requestedAt, approvedAt?, approvedById?, revokedAt?, revokedById?
   faceEnrolledAt?, faceModelVersion?   // a fact that enrolment happened —
                                         // the templates themselves stay on the phone
-  faceReferencePhotoPath?               // private storage; one per enrolment
+  faceVerificationPhotoPath?            // private storage; exists only while
+                                        // PENDING, deleted on approve/reject
   faceEnrolmentStatus?                  // PENDING | APPROVED | REJECTED
   faceEnrolmentReviewedById?, faceEnrolmentReviewedAt?   // §9.5
   // Partial unique: at most one ACTIVE and one PENDING per user.
@@ -481,7 +502,7 @@ model BiometricConsent        // the legal record; not biometric data itself
   // text version. A new text version requires a new acceptance.
 
 // On Company: faceVerificationLegalConfirmedAt?, …ById? — the company has
-// confirmed it holds whatever licence counsel says it needs (§10.4).
+// confirmed it holds whatever licence the consultation says it needs (§10.4).
 ```
 
 ### 8.6 Hardware, raw and derived
@@ -645,9 +666,10 @@ is chosen by the employee and approved by no one.
 
 **Who sees it and who is told.**
 
-- The photo is visible on the employee's profile to the **Super Admin**, the
-  company **Admin**, and anyone whose role holds `attendance.approve_face`
-  (typically **HR**). Nobody else — not team leaders, not colleagues.
+- The photo is **not part of the employee's profile** (round 6). It appears only in
+  the **face-verification approval queue**, to the **Super Admin**, the company
+  **Admin**, and anyone whose role holds `attendance.approve_face` (typically
+  **HR**). Nobody else — not team leaders, not colleagues, not the profile page.
 - On upload, those people receive a **critical notification** — shown in red,
   pinned at the top of the notification list until someone acts on it (§13.4).
 - Any one of them can **approve** (face verification becomes active) or
@@ -657,16 +679,22 @@ is chosen by the employee and approved by no one.
 
 **What this changes about "nothing on the server".** The face *templates* —
 the biometric data used for matching — still never leave the phone. **One photo
-per enrolment now does.** That is a real change to the privacy promise, it must
-be stated in the consent text, and it is a question for counsel (§10.3). Rules
+per enrolment now does — briefly.** It must be stated in the consent text. Rules
 for the photo:
 
-- One per employee — a new enrolment replaces the old photo, and the old one is
-  deleted, not archived.
-- Deleted when the employee withdraws consent, when the enrolment is rejected,
-  and when the employee is archived.
+- **It exists only while a decision is pending.** Deleted the moment the
+  enrolment is **approved or rejected** (round 6). What remains is the record:
+  who approved, when, for which phone — never the image.
+- Also deleted if the employee withdraws consent or is archived while it is still
+  pending, and by *Pause and purge* (§10.4).
 - Stored in private storage, served only through an access-checked endpoint,
   never through a public URL.
+
+**Consequence of deleting on approval.** After approval there is no reference
+image anywhere on the server. A reviewer looking at a flagged check-in's photo
+(§13.8) compares it with the person they know, not with a stored picture. That is
+the intended trade: less stored, more reliance on the reviewer knowing the
+employee — which HR normally does.
 
 This combines with phone approval (§9.3): a new phone means a new enrolment, a new
 verification photo and a new approval.
@@ -695,9 +723,8 @@ with a new verification photo and approval.
 #### What keeping matching on the phone costs — accepted trade-offs
 
 - **Little evidence in a dispute.** No photo is taken at ordinary check-ins —
-  only the score is recorded. The approved reference photo shows who *enrolled*,
-  not who checked in on a given morning. Accepted as the price of privacy; see
-  enhancement §13.8 for flagged check-ins.
+  only the score is recorded, and the verification photo is gone once approved.
+  Accepted as the price of privacy; flagged check-ins are the exception (§13.8).
 - **Trust rests on the app's integrity.** The server believes a "verified" result
   only because attestation (§9.4) proves it came from the genuine app on a
   genuine phone. Face matching must never be offered on a phone that fails
@@ -719,11 +746,34 @@ nothing-leaves-the-phone promise.
 
 ---
 
+### 9.6 Refused vs flagged check-ins
+
+Every check-in attempt ends in one of three outcomes:
+
+| Outcome | Meaning | Counts as attendance? | Examples |
+|---|---|---|---|
+| **Accepted** | Every check passed. | Yes, immediately. | The normal case. |
+| **Refused** | Clear evidence of cheating or a wrong setup. Nothing for a person to judge. | No. Logged, and visible in the Super Admin integrity view. The employee sees why. | Mock location detected; app or phone failed attestation; not the employee's registered phone. |
+| **Flagged** | Something did not check out, but it could be innocent. A person decides. | Only if a reviewer accepts it. | Face check failed 3 times (bad light, new glasses); location fix too imprecise; outside the geofence by a small margin; office IP configured but the phone was on mobile data. |
+
+A **flagged check-in** is therefore *"the system is not sure — a human, please
+look"*. It is saved with the reason, appears on the **Flagged** tab of the daily
+exceptions screen (§13.1) for Admin/HR, and the employee is told it is awaiting
+review. If accepted, it counts as a normal check-in; if rejected, it does not, and
+the day is treated as if there were no check-in. Where the reason was the face
+check, the reviewer also sees the one captured frame (§13.8).
+
+The line between refused and flagged is deliberate: refusing innocent failures
+locks honest people out, and flagging clear fraud wastes reviewers' time.
+
+---
+
 ## 10. Legal: biometric data in Egypt
 
-> **Not legal advice.** This is a technical team's summary of public sources, to
-> know which questions to put to an Egyptian lawyer before this feature ships.
-> It must be reviewed by counsel before implementation starts.
+> **Not legal advice.** A technical summary of public sources. The decision to
+> turn face verification on belongs to the **protected Super Admin**, after their
+> own consultation (round 6). The feature is built ready and ships switched off;
+> this section is the briefing for that decision.
 
 ### 10.1 The law
 
@@ -760,9 +810,9 @@ favourable. **But it does not obviously take the feature outside the law.** Our
 app still captures faces and computes biometric templates; that is processing,
 wherever it happens. Whether on-device processing that never reaches our servers
 still requires the PDPC sensitive-data licence — and whether the licence falls on
-us, on the employing company, or both — is **the first question for counsel**.
+us, on the employing company, or both — is the first thing to establish.
 
-Questions to put to a lawyer:
+Questions for the protected Super Admin's consultation:
 
 1. Does on-device-only processing of face templates require the sensitive-data
    licence, and for whom — the software provider, the employer, or both?
@@ -782,7 +832,7 @@ Questions to put to a lawyer:
 
 ### 10.4 Consequences for the design
 
-Already reflected above, and not negotiable once counsel confirms:
+Built into the design regardless of the answers:
 
 - **Optional per employee, with a non-biometric alternative** (the phone check-in
   without face, or a terminal). Consent that cannot be refused is weak consent.
@@ -794,17 +844,17 @@ Already reflected above, and not negotiable once counsel confirms:
   app deletes the templates the next time it runs.
 - **A system-wide switch that only the protected Super Admin can turn on**
   (round 5). The code can be built and shipped; the law governs *processing*, and
-  no processing happens while the switch is off. It should stay off until counsel
-  has answered §10.3. It reuses the existing `SuperAdmin.isProtected` flag, which
+  no processing happens while the switch is off. It stays off until the protected
+  Super Admin decides to enable it. It reuses the existing `SuperAdmin.isProtected` flag, which
   the database itself already enforces with a trigger.
 - **Two ways to turn it off.** *Pause* stops the feature everywhere and keeps
   enrolments, for a temporary stop. *Pause and purge* also instructs every app to
   delete its face templates, deletes every stored verification photo, and records
-  that it did — for when the answer from counsel or a regulator is no. Purge asks
+  that it did — for when the answer is no. Purge asks
   for confirmation and MFA.
 - **The feature is gated on the company's legal readiness** — a company cannot
   switch face verification on until it has confirmed (and we have recorded) that
-  it holds whatever licence counsel says it needs.
+  it holds whatever licence the consultation says it needs.
 
 ### 10.5 Beyond this feature — flagged, not in scope
 
@@ -939,14 +989,14 @@ sudden spike is either under attack or has a broken app release — we want to
 know either way. Adopted in round 4.
 
 
-### 13.8 Photo on flagged check-ins — proposed (round 5)
+### 13.8 Photo on flagged check-ins — adopted (round 6)
 
-When a check-in is flagged because the face check failed three times, the person
-reviewing it currently has nothing to look at but a score. Proposal: in that case
-only, the app uploads the last captured frame with the flagged check-in, shown
-next to the approved reference photo. Ordinary successful check-ins still send
-no photo. Deleted once the flag is resolved. Covered by the same consent text and
-the same counsel question as the reference photo.
+When a check-in is flagged because the face check failed three times, the app
+uploads the last captured frame with it. The reviewer sees that frame and decides
+whether it is the employee — from knowing them, since the verification photo was
+deleted on approval (§9.5). Ordinary successful check-ins send no photo. The frame
+is deleted the moment the flag is accepted or rejected, visible only to the same
+people as the verification photo, and every view is audited. Covered by the same consent text as the verification photo.
 
 ---
 
@@ -967,24 +1017,44 @@ pruned by the existing `/api/cron/prune` job. Face templates never reach the
 server. The one face reference photo per employee is deleted on re-enrolment,
 rejection, consent withdrawal or archiving (§9.5); flagged-check-in frames, if
 adopted, on resolution of the flag. Face-consent records are kept for as long as the consent is relevant
-plus whatever counsel advises (§10). Exact periods confirmed against labour
+plus whatever the consultation advises (§10). Exact periods confirmed against labour
 record-keeping requirements before they are set.
 
 ---
 
 ## 16. Packaging
 
-A paid add-on that **requires HR**:
+Round 6: **two separate add-ons on top of HR, sold one or both according to the
+contract.**
 
-- `Bundle` gains `'ATTENDANCE'`; `Package` gains `hasAttendance`.
-- The package form refuses `hasAttendance` without `hasHR`; removing HR from a
-  package removes attendance with it, with a warning.
-- The gate checks both.
-- The Attendance tab declares `requires: 'ATTENDANCE'`.
-- **Grandfathered companies (`packageId` null) receive attendance on release**
-  (round 4), consistent with how they receive every other module.
+| Add-on | Gives the company |
+|---|---|
+| **Attendance — Terminals** | Fingerprint terminals through the Local Sync Agent (§17). |
+| **Attendance — Mobile App** | The native check-in app (§9), including face verification when the system switch is on. |
 
----
+**The attendance core comes with either.** Schedules, policies, permission hours,
+overtime approval, the engine, the exceptions screen, the employee's own view,
+Excel import, manual entry and payroll integration are needed whichever way punches
+arrive. A company holding either add-on gets all of them; one holding both gets
+one core, with punches from both sources feeding the same days.
+
+Implementation:
+
+- `Bundle` gains `'ATTENDANCE_TERMINALS'` and `'ATTENDANCE_MOBILE'`; `Package`
+  gains `hasAttendanceTerminals` and `hasAttendanceMobile`.
+- **Both require HR.** The package form refuses either without `hasHR`; removing
+  HR removes both, with a warning.
+- **The core module is unlocked by either add-on.** Today `MODULE_BUNDLE` maps each
+  module to exactly one bundle; the core attendance module needs "any of these
+  bundles". A small, deliberate extension to `lib/features/bundles.ts`, with a
+  test that a company holding only one add-on reaches the core.
+- Terminal-only screens (devices, the agent, mappings) require
+  `ATTENDANCE_TERMINALS`; app-only screens (phones, work locations, face) require
+  `ATTENDANCE_MOBILE`. The Attendance settings tab shows only the sub-sections the
+  company bought.
+- Removing one add-on from a contract keeps all attendance history; it stops new
+  punches from that source.
+- **Grandfathered companies (`packageId` null) receive both** on release (round 4).
 
 ## 17. Hardware terminals and the Local Sync Agent
 
@@ -1006,21 +1076,25 @@ Since the product serves both office and field staff (round 4), terminals are th
 answer for fixed sites and the app for field staff; a company may use both, and
 the engine treats their punches identically.
 
+**Entry and exit terminals — proposed default.** Some sites mount two devices, one
+at the entrance and one at the exit. The question is whether a scan on the
+"entrance" device should always mean *arriving* and a scan on the "exit" device
+always mean *leaving*. Proposed: **by default every terminal is equal** and the
+engine works out arriving/leaving from the order of scans (first scan of the shift
+= arrived, next = left, and so on). A terminal can optionally be marked
+*entrance only* or *exit only* in its settings, for sites that want it.
+
 ---
 
 ## 18. Open questions
 
-1. **Who assigns roles to users** — the Super Admin only, or may the company
-   Admin assign one of the roles the Super Admin created for that company (for a
-   new hire, say)? Recommendation: the Admin may assign, not create. Otherwise
-   every new hire needs a message to us.
-2. **Legal questions in §10.3** — for counsel, before the face switch is ever
-   turned on.
-3. **Photo on flagged check-ins** (§13.8) — adopt or not.
-4. **Multiple terminals per site with roles** (entry vs exit), or all readers
-   equivalent?
-5. **Which UI exposes the work week first** — per company, per schedule, or both?
-6. **Face SDK choice** (§9.5) — decided at implementation time, against the rule
+1. **Can a company use attendance with only Excel import** — no terminals, no app?
+   Under round 6 the core comes with either add-on, so such a company would have to
+   buy one it does not use. Recommendation: no import-only option; import is a
+   feature of both add-ons, not a product on its own.
+2. **Entry/exit terminals** (§17) and the **work-week screen** (§6.2) — confirm the
+   proposed defaults.
+3. **Face SDK choice** (§9.5) — decided at implementation time, against the rule
    that face templates never leave the phone.
 
 ---
@@ -1081,8 +1155,9 @@ the check-in screen; flagged review; Super Admin integrity view.
 
 ### Phase 3b — Face verification
 
-Separate from Phase 3 on purpose: it is gated on the legal review in §10 and must
-not hold the rest of the app back. Consent flow, enrolment with verification photo and approval, on-device
+Separate from Phase 3 on purpose, so it cannot hold the rest of the app back. Built
+complete and shipped **switched off**; the protected Super Admin enables it when
+they decide to (§10). Consent flow, enrolment with verification photo and approval, on-device
 matching with liveness, fallback to flagged.
 
 ### Phase 4 — Direct device push
@@ -1101,10 +1176,9 @@ picked up later. Before the first line of implementation:
    `source` values, `DayOffRequest`, `JobHeartbeat`, `lib/features/bundles.ts`,
    `lib/features/routes.ts`, `lib/modules.ts`, `lib/time.ts`, the company
    settings page. Update this document where they changed.
-2. **Get counsel's answers to §10.3** — at minimum before Phase 3b, ideally before
-   Phase 3, because the non-biometric parts of attendance (locations, IPs) are
-   personal data too.
-3. **Settle §18.1** (who assigns roles) before the roles project starts.
+2. **Nothing legal blocks the build.** Face verification ships switched off; the
+   protected Super Admin enables it after their consultation (§10).
+3. **Settle §18.1** (import-only customers) before packaging is built.
 4. **Write the roles project up as its own plan**, from §4, since it lands first
    and touches the whole product.
 5. **Pick one pilot tenant** for the Phase 0 exit criterion before building
