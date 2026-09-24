@@ -2,7 +2,13 @@ name: Backup to Google Drive
 
 on:
   schedule:
-    - cron: '0 1 * * *'          # 01:00 UTC = 03:00 Africa/Cairo (UTC+2 winter)
+    # 01:17 UTC: 03:17 Cairo in winter (UTC+2), 04:17 in summer (UTC+3 —
+    # Egypt has kept daylight saving since 2023). Not on the hour on purpose.
+    # GitHub delays scheduled jobs under load, worst at the top of the hour,
+    # and at '0 1' this ran between 05:17 and 05:42 UTC every night in
+    # September — mid-morning in Cairo, not overnight. An odd minute is
+    # GitHub's own advice for exactly this.
+    - cron: '17 1 * * *'
   workflow_dispatch:              # manual "Run workflow" button
     inputs:
       label:
