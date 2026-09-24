@@ -5,9 +5,9 @@ records what we would build, in what order, and which decisions are already
 settled so that the person who picks it up is not re-arguing them.
 
 It started as a response to an earlier draft (`zkteco_integration_guide.md`)
-that described a universal hardware webhook, and has since absorbed a second
-round of product decisions. [§0](#0-decision-log) lists what was decided and
-when; everything after it is the plan as it now stands.
+that described a universal hardware webhook, and has since absorbed three
+rounds of product decisions. [§0](#0-decision-log) is the record of what was
+decided; everything after it is the plan as it now stands.
 
 ---
 
@@ -16,71 +16,80 @@ when; everything after it is the plan as it now stands.
 ### Round 1 — architecture
 
 - Devices push, we never pull. The Local Sync Agent is the primary hardware
-  path; direct device push (ADMS/`/iclock`) is last. See §2.
-- The attendance *domain* — schedules, a derived day, a missing-punch flow — is
-  built before any hardware integration.
-- An attendance day freezes when its payroll run is approved. See §10.
+  path; direct device push (ADMS/`/iclock`) is last.
+- The attendance *domain* is built before any hardware integration.
+- An attendance day freezes when its payroll run is approved (§11).
 
 ### Round 2 — product
 
 | # | Question | Decision |
 |---|---|---|
-| 1 | Mobile check-in? | **Yes.** An employee may check in from **one registered phone only**, and only from a phone. See §8.2 for what that can and cannot guarantee. |
-| 2 | Exception-first admin screen | **Yes.** A daily screen showing only late, absent, incomplete and unmatched. §11.1. |
-| 3 | Ramadan / seasonal hours | **Yes**, as dated overrides on a schedule, never edits to it. §6.1. |
-| 4 | Device health | **Yes**, on the existing System Health screen. §11.2. |
-| 5 | Does lateness cut pay? | **Yes**, by rules that differ per company and can be changed at any time. Configured in a new tabbed **Company Options** page. §4, §5. |
-| 6 | Is overtime paid? | **Depends on the company**; configured alongside lateness. §5. |
-| 7 | Who corrects attendance? | **Admin**, plus a new grant for people who are not admins. §12. |
-| 8 | Working week | **Sunday–Thursday by default** (Egypt), overridable per company. §5. |
-| 9 | Raw punch retention | Still open. Explained in §17. |
-| 10 | Packaging | **A paid add-on.** §14. |
+| 1 | Mobile check-in | Yes, from one registered device only. |
+| 2 | Exception-first admin screen | Yes (§12.1). |
+| 3 | Ramadan / seasonal hours | Yes, as dated overrides (§7.1). |
+| 4 | Device health | Yes, on System Health (§12.2). |
+| 5 | Lateness | Deducts pay, by per-company rules in a tabbed Company Options page (§5, §6). |
+| 6 | Overtime | Per company, alongside lateness (§6.4). |
+| 7 | Who corrects attendance | Admin plus a non-admin grant (§13). |
+| 8 | Working week | Sunday–Thursday default, overridable (§6.2). |
+| 10 | Packaging | Paid add-on (§15). |
+
+### Round 3 — refinements
+
+| # | Topic | Decision |
+|---|---|---|
+| 1 | Where can a user check in from? | **Log in from any device; check in only from the one registered device.** No "phone vs laptop" detection — the binding is the rule (§9.2). |
+| 2 | Changing device | After an approved change, **only the new device** can check in; the old one is revoked in the same step (§9.3). |
+| 3 | Fake GPS and buddy punching | **Neither is acceptable.** This makes a native app required for mobile check-in and adds identity verification at check-in. Approach proposed in §9.4–9.5; **needs a decision** (§18.1). |
+| 4 | Effective-dated rules | Agreed (§6.1). |
+| 5 | Roles | Agreed on permissions over a hardcoded role — **and generalised: roles are created in the UI, each with any set of permissions across the system.** A prerequisite project (§4). |
+| 6 | Working week | Agreed. |
+| 7 | Raw punch retention | Agreed: current year + one, then prune punches of locked days (§14). |
+| 8 | Add-on dependency | **Attendance requires HR** (§15). |
+| 9 | Who edits rules | **Super Admin toggle per company exposes a Settings entry in the company Admin's sidebar, showing only the tabs the Super Admin allows** (§5.2). |
+| 10 | Device registration | **Requires admin approval** (§9.3). |
+| 11 | Permission hours (إذن) | **Adopted** (§6.6). |
+| 12 | Overtime approval | **Adopted** (§6.4). |
+| 13 | Rule simulator | **Adopted** (§6.7). |
+| 14 | Employees see their own days | **Adopted** (§12.3). |
+| 15 | Same-day alerts | **Adopted, in-app notification only, no email** (§12.4). |
+| 16 | Policy templates | **Adopted: choose a template or build a custom policy; custom policies are not saved as templates** (§6.8). |
+| 17 | Holiday calendar | **Adopted: one central calendar, each company adds or removes days** (§7.2). |
 
 ---
 
 ## 1. Where this system actually stands
 
-**What exists.** `Company` is the tenant boundary and already carries its own
-`timezone` (default `Africa/Cairo`, resolved company → `SystemSettings` →
-constant). `User` is the employee, with roles `SUPER_ADMIN`, `ADMIN`,
-`TEAM_LEADER`, `EMPLOYEE`. Payroll is real and finished: `PayrollRun` (DRAFT →
-APPROVED → PAID, unique per company/month/year), `Payslip`, `PayslipLine`,
-`SalaryChange` (effective-dated), `SalaryAdjustment` (in days, with a
-`source`/`sourceId` pair), `FinalSettlement`, `Debt`. Leave is real:
-`DayOffRequest` with an approval queue. There is a cron runner with a
-fail-closed secret (`lib/cron-auth.ts`), a health table (`JobHeartbeat`) shown on
-`/dashboard/health`, an audit trail, a rate limiter, a package-based feature
-gate (`lib/features/`), a trusted-device mechanism for MFA (`TrustedDevice`), and
-task location verification against a system-wide radius
-(`SystemSettings.locationVerifyRadiusMeters`).
+**What exists.** `Company` is the tenant boundary and carries its own
+`timezone`. `User` has a hardcoded role — `SUPER_ADMIN`, `ADMIN`,
+`TEAM_LEADER`, `EMPLOYEE` — checked by string comparison in roughly fifty files.
+Payroll is finished: `PayrollRun` (DRAFT → APPROVED → PAID), `Payslip`,
+`PayslipLine`, `SalaryChange` (effective-dated), `SalaryAdjustment` (in days,
+with `source`/`sourceId`), `FinalSettlement`, `Debt`. Leave is finished:
+`DayOffRequest` with approval. There is a cron runner with a fail-closed secret,
+a health table (`JobHeartbeat`) on `/dashboard/health`, an audit log, a rate
+limiter, a package-based feature gate (`lib/features/`), a trusted-device
+mechanism for MFA (`TrustedDevice`), file storage behind `/api/upload`, and task
+location verification against one system-wide radius.
 
-The company settings page (`/dashboard/companies/[id]/settings`) exists, is
-Super Admin only, and is a single page of stacked cards — Modules, Logo,
-Payroll.
+The company settings page (`/dashboard/companies/[id]/settings`) is Super Admin
+only and is a single page of stacked cards.
 
-**What does not exist.** Any notion of *when someone was supposed to be at
-work*. No attendance model, no shift, no schedule, no working week, no holiday
-calendar, no work location, no timesheet. The schema goes straight from
-`DayOffRequest` to `Payslip`.
-
-That gap is the whole project. The hardware integration is the easy half.
+**What does not exist.** Any notion of when someone was supposed to be at work —
+no schedule, working week, holiday calendar, work location or timesheet — and
+no way to define a role other than the four in the enum.
 
 ---
 
 ## 2. What changed from the original draft
 
-Kept brief; the argument was had in round 1.
-
-1. **Domain before pipe.** Ingesting punches nothing can interpret is not
-   progress. Phase 0 is the engine, fed by spreadsheet import.
+1. **Domain before pipe.** Phase 0 is the engine, fed by spreadsheet import.
 2. **The Local Sync Agent is the product, not the fallback.** ZKTeco ADMS is a
-   vendor-specific plaintext protocol that many units speak only over plain
-   HTTP on port 80, which Vercel redirects and the device will not follow.
-3. **The payload never carries `tenant_id` or our employee ID.** The company is
-   derived from the device credential; the device's own user ID is mapped here.
-   The device's in/out flag is recorded as a hint and decides nothing.
-4. **No `ProcessedStatus` boolean.** The derived day is a pure function of its
-   inputs and can be rebuilt.
+   vendor-specific plaintext protocol that many units speak only over plain HTTP
+   on port 80, which Vercel redirects and the device will not follow.
+3. **The payload never carries `tenant_id` or our employee ID.** Company comes
+   from the device credential; the device's own user ID is mapped here.
+4. **No `ProcessedStatus` boolean.** The derived day is rebuildable.
 
 ---
 
@@ -88,689 +97,701 @@ Kept brief; the argument was had in round 1.
 
 | Decision | Why |
 |---|---|
-| Raw punches are append-only | They are evidence. Corrections live in the derived layer, with an author and a reason. |
-| At-least-once delivery, deduped by unique index | Agents re-pull overlapping windows and retry. The index is what makes naïve retry safe. |
-| Ingest endpoints only authenticate, insert, return | A slow ingest makes clients retry, amplifying load exactly when we are struggling. |
-| **Every policy is effective-dated** | "Changeable at any time" and "payroll can be trusted" are only compatible if a change applies *from a date* and never silently rewrites a month already measured. §5.1. |
-| Attendance freezes when its payroll run is APPROVED | §10. |
-| Biometric templates never leave the device | We receive IDs and timestamps only. |
-| Mobile check-in is bound to one registered phone | Decision 1. §8.2. |
-| Deductions land as `SalaryAdjustment` rows | That model is already in days, already has `source`/`sourceId`, and already explains itself on a payslip. New source: `ATTENDANCE`. |
-| Attendance is a paid add-on bundle | Decision 10. §14. |
-| Correcting attendance is a grant, not a new role | §12. |
+| Raw punches are append-only | They are evidence; corrections live in the derived layer. |
+| At-least-once delivery, deduped by index | Makes naïve retry safe for every source. |
+| Every policy is effective-dated | The only way "changeable any time" and "payroll can be trusted" coexist (§6.1). |
+| Attendance freezes when its payroll run is APPROVED | §11. |
+| Check-in only from the one registered, approved device | Round 3, decisions 1, 2, 10. |
+| Mobile check-in runs in a native app, not the browser | Required by round 3, decision 3 — the browser cannot detect a faked location (§9.1). |
+| Deductions land as `SalaryAdjustment` rows, source `ATTENDANCE` | Already in days, already explains itself on a payslip. |
+| Access is checked by permission, never by role name | Round 3, decision 5 (§4). |
+| Attendance requires HR | Round 3, decision 8. |
+| Hardware biometric templates never leave the terminal | We receive IDs and timestamps only. Mobile identity checks are a separate decision (§9.5). |
 
 ---
 
-## 4. Company Options page
+## 4. Prerequisite: roles and permissions
 
-Decision 5 asked for per-company rules reached from the company's options
-button, as a page with tabs across the top, each tab its own category, built so
-new categories can be added later. That is the right shape, and it is worth
-doing as a refactor of the existing settings page rather than a second page
-beside it.
+Round 3, decision 5: roles are created in the UI, and each role can be given any
+permission in the system. This is the right generalisation — and it is a project
+in its own right that should land **before** attendance, because attendance
+would otherwise add a dozen more hardcoded role checks that then have to be
+migrated.
 
-### 4.1 Structure
+### 4.1 Shape
+
+- **Permissions are defined in code.** A permission only means something if code
+  checks it, so the catalogue is a typed list in the codebase, grouped by
+  module: `attendance.view_team`, `attendance.correct`, `attendance.edit_rules`,
+  `attendance.approve_devices`, `attendance.approve_overtime`,
+  `payroll.approve`, `dayoff.approve`, `settings.view` … Adding a feature means
+  adding its permissions to the list. Same pattern as `MODULE_BUNDLE`: one table,
+  every caller asking the same question of it.
+- **Roles are data.** A `Role` is a name plus a set of permissions, created and
+  edited in the UI.
+- **The four existing roles become built-in roles** with exactly today's
+  permissions, so the migration changes no one's access. Built-ins cannot be
+  deleted, and the built-in Admin cannot lose the permission to manage roles —
+  otherwise one careless edit locks a company out of its own settings.
+- **Super Admin stays outside this system.** It is not a company role, it is us.
+  Keeping it hardcoded is what guarantees a company cannot build a role that
+  reaches across tenants.
+
+### 4.2 Scope is separate from permission
+
+"Can approve day off" is not the whole question — *whose* day off matters. A
+team leader approves their team's; an admin approves anyone's. So each grant
+carries a scope: **own**, **team**, or **company**. The existing team-leader
+logic already is this, expressed as special cases; the migration makes it
+explicit.
+
+### 4.3 Rules that prevent privilege escalation
+
+- Nobody can grant a permission they do not hold themselves.
+- Nobody can edit their own role, or assign themselves a different one.
+- Nobody can act on their own record where the permission is an approval — a
+  person with `attendance.correct` cannot correct their own attendance; a person
+  with `dayoff.approve` cannot approve their own leave.
+- Every role change and assignment is audited.
+- The check lives on the server in `withStandardHandler`, next to the existing
+  feature gate. Hiding a button is a courtesy, not a control.
+
+### 4.4 Open design questions for the roles project
+
+- Roles per company (each company builds its own), global (Super Admin defines,
+  companies pick), or both — built-in globals that a company can copy and adjust.
+  Recommendation: both, with the same copy-not-link rule as policy templates
+  (§6.8).
+- Can a user hold more than one role? Recommendation: one role per user to start;
+  multiple roles make "why can this person do this?" much harder to answer.
+
+This deserves its own plan document. Everything below assumes it exists and
+refers to permissions by name.
+
+---
+
+## 5. Company Options page
+
+### 5.1 Structure
+
+A refactor of the existing settings page into tabs, shippable before attendance:
 
 ```
-/dashboard/companies/[id]/settings?tab=attendance
-
 ┌──────────────────────────────────────────────────────────────┐
 │ General │ Branding │ Payroll │ Attendance │ …                │
 ├──────────────────────────────────────────────────────────────┤
-│  Attendance sub-sections:                                    │
-│   Work week · Schedules · Seasonal hours · Lateness ·        │
-│   Overtime · Absence · Permissions · Locations · Devices     │
+│ Attendance: Work week · Schedules · Seasonal hours ·          │
+│   Holidays · Lateness · Overtime · Absence · Permission hours │
+│   · Locations · Devices                                      │
 └──────────────────────────────────────────────────────────────┘
 ```
 
-- **Tabs are a registry, not hand-written JSX.** One array of
-  `{ key, labelKey, component, requires?: Bundle }`, the same pattern as
-  `lib/modules.ts`. Adding a category is one entry. A tab whose bundle the
-  company does not hold is hidden, so a company without the add-on never sees
-  an Attendance tab.
-- **The active tab lives in the URL** (`?tab=`), so a link can point straight at
-  a tab and the back button behaves.
-- **Each tab fetches and saves its own data.** Today the page loads the whole
-  company once; five tabs of rules would make that one request carry everything.
-  Each tab owns its API call and its unsaved-changes state, and switching tabs
-  with unsaved edits asks first.
-- **Existing cards move, not change.** Modules and Logo go to Branding, Payroll
-  stays Payroll, the rest goes to General. No behaviour change in the refactor.
-  That refactor is worth shipping on its own, before attendance exists.
+- **Tabs are a registry**: `{ key, labelKey, component, requires?: Bundle,
+  adminEligible: boolean }`. Adding a category is one entry.
+- **Active tab in the URL** (`?tab=attendance`).
+- **Each tab fetches and saves its own data**, with an unsaved-changes guard.
+- **Existing cards move without behaviour change.**
 
-### 4.2 Who may edit what
+### 5.2 Letting a company's Admin see settings (round 3, decision 9)
 
-Today the page is Super Admin only, and the codebase has a stated split: the
-Super Admin owns *policy* (naming, packages), the company's own Admin owns
-*day-to-day data*. Attendance rules sit awkwardly across that line — they are
-policy, but they are the customer's own HR policy, not ours. See open question
-§17.1.
+A Super Admin toggle on each company — *"Company admin can manage settings"* —
+adds a **Settings** entry to that company's sidebar. Under the toggle, a
+checkbox per tab chooses which tabs the Admin sees.
 
----
+Rules:
 
-## 5. Attendance policy
+- **Some tabs can never be exposed.** Each tab declares `adminEligible`. Package
+  and billing, module names and icons (already documented in the schema as
+  Super Admin policy), and anything that crosses tenants are not eligible, so no
+  checkbox appears for them. The Attendance tab is eligible; Payroll probably
+  partially — payroll day and payslip visibility yes, debt recovery percent is a
+  question for the Super Admin.
+- **One set of tab components, two entry points.** The Super Admin reaches them
+  from the company list; the Admin reaches them at `/dashboard/settings`. Same
+  components, filtered by what is allowed.
+- **Enforced on the server.** Each settings API checks the company toggle, that
+  tab's checkbox, and the caller's `settings.view` / `settings.edit` permission.
+  A hidden tab whose API still answers is not hidden.
+- **Changes the Admin makes are audited with their name**, so a Super Admin can
+  see who changed the lateness rule.
 
-All of this is configured in the Attendance tab, per company, and every one of
-it is effective-dated.
-
-### 5.1 Effective dating — the rule that makes "change any time" safe
-
-A policy is a series of versions, each with an `effectiveFrom` date. Editing a
-rule never mutates the current version; it creates a new one. When saving, the
-admin is asked **"from when?"** — defaulting to the start of the next payroll
-period, with "from today" and a custom date as the alternatives. This is the
-same this-month-or-next question `SalaryChange` already asks.
-
-Each `AttendanceDay` records the policy version it was measured against. So:
-
-- a rule changed on the 20th does not silently re-price the 1st–19th;
-- a rule backdated into a period whose payroll is APPROVED is refused, because
-  that period is frozen (§10);
-- "why was I deducted half a day on the 3rd?" is always answerable with the
-  rule that was actually in force on the 3rd.
-
-Without this, a company admin tightening the lateness rule on the 28th changes
-everyone's pay for the whole month, and nobody can reconstruct why.
-
-### 5.2 Work week
-
-Company default: **Sunday–Thursday working, Friday–Saturday rest.** Overridable
-per company (common outliers: a six-day Saturday–Thursday week in factories and
-retail) and per schedule, since one company can run an office on five days and
-a warehouse on six.
-
-### 5.3 Lateness
-
-Structured rule types rather than free-form formulas — a form an HR person can
-fill in and a payslip line can explain.
-
-- **Grace period** — minutes after shift start that count as on time.
-- **Deduction bands** — e.g. 16–30 min → ¼ day, 31–60 → ½ day, over 60 → 1 day.
-  Bands are the common Egyptian practice and map directly onto
-  `SalaryAdjustment`, which is already in days.
-- **Or per-minute** — deduct the exact late minutes at the daily rate, for
-  companies that prefer it. One mode or the other per policy version.
-- **Monthly free allowance** — the first N lates in a month are not deducted.
-- **Escalation** — repeat lateness in a month multiplies the band (e.g. from the
-  4th late, double).
-- **Monthly cap** — a ceiling on total lateness deduction.
-- **Early leave** — the same shape, measured against shift end.
-
-### 5.4 Overtime
-
-- **Enabled / disabled.** Disabled means overtime is recorded and shown, never
-  paid.
-- **Multiplier by day type** — working day, rest day, public holiday.
-- **Minimum threshold** — overtime under N minutes is not credited.
-- **Requires approval** — see enhancement §16.2. When on, unapproved overtime
-  is recorded but not paid.
-- **Compensation** — paid, or banked as time off. Banking is a later phase; the
-  field exists from the start so the data does not need migrating.
-
-### 5.5 Absence
-
-- Deduction per unexcused absent day, as a multiplier (1 day, or the stricter
-  1.5 or 2 some companies use).
-- Whether a day with no punches and an approved `DayOffRequest` counts as leave
-  (it always should — this is the join point with the day-off module, and the
-  two must agree without either guessing).
-
-### 5.6 Permissions (إذن)
-
-See enhancement §16.1 — proposed, not yet decided.
+The toggle decides whether the company can see settings at all; the permission
+decides which of its people can.
 
 ---
 
-## 6. Data model (sketch)
+## 6. Attendance policy
 
-Names and shapes for discussion, not final. Every model is company-scoped.
+### 6.1 Effective dating
 
-### 6.1 Schedule layer
+A policy is a series of versions. Editing creates a new version; saving asks
+**"from when?"** — defaulting to the next payroll period, with "from today" and a
+custom date. Each `AttendanceDay` records the version it was measured against. A
+version cannot take effect inside a period whose payroll is APPROVED.
+
+### 6.2 Work week
+
+Sunday–Thursday working by default. Overridable per company and per schedule.
+
+### 6.3 Lateness and early leave
+
+Structured rule types: grace period; **deduction bands** (e.g. 16–30 min → ¼ day,
+31–60 → ½ day, over 60 → 1 day) **or** per-minute at the daily rate; a monthly
+free allowance; escalation for repeats; a monthly cap. Early leave has the same
+shape.
+
+### 6.4 Overtime
+
+Enabled or disabled; multiplier by day type (working day, rest day, holiday);
+minimum threshold; compensation as pay or banked time (banking later, field
+from the start).
+
+**Approval (round 3, decision 12).** When the policy requires it, overtime is
+recorded and shown but priced at zero until someone with
+`attendance.approve_overtime` approves it. Two routes, both supported:
+
+- **Pre-approval** — a manager approves overtime for a date and an employee
+  before it happens; matching overtime is priced automatically.
+- **After the fact** — unapproved overtime appears on the exception screen for
+  approval or rejection.
+
+Unapproved overtime still in that state when the payroll run is approved is
+treated as rejected for that period, so a forgotten queue cannot leave pay
+undecided.
+
+### 6.5 Absence
+
+Deduction per unexcused day as a multiplier (1, 1.5, 2). A day covered by an
+approved `DayOffRequest` is leave, never absence.
+
+### 6.6 Permission hours — إذن (round 3, decision 11)
+
+Policy fields:
+
+- **Monthly allowance** in hours (e.g. 4).
+- **Minimum and maximum per request** (e.g. 30 min to 2 h).
+- **Maximum requests per month**, optional.
+- **When it can be requested** — in advance only, or also within N hours after
+  the fact.
+- **Carry-over** — unused hours lapse at month end (default) or carry once.
+- **Types** — late arrival, early leave, mid-day absence.
+
+Flow: employee requests → someone with `attendance.approve_permissions` (scope
+team or company) approves → the covered minutes are excused from lateness or
+early-leave calculation, and the hours are drawn from the month's allowance.
+A request that would exceed the allowance is refused with the remaining balance
+shown, rather than approved and then silently partially applied.
+
+The employee sees their remaining allowance on their own attendance page.
+
+### 6.7 Rule simulator (round 3, decision 13)
+
+When an admin edits any rule, before saving: *"Under this rule, last month
+would have been…"* — per employee, old deduction vs new, and the total
+difference. Pure computation over last month's already-measured days using the
+draft policy; nothing is written. The same mechanism provides the first-month
+dry run before attendance ever touches payroll.
+
+### 6.8 Policy templates (round 3, decision 16)
+
+When a company first sets up attendance, or at any later point, the admin can
+**choose a template** ("Standard Egyptian office", "Six-day factory") **or build
+a custom policy** from scratch.
+
+- Applying a template **copies** its values into the company's policy. The
+  company's policy is not linked to it — editing the template later does not
+  change any company, which would otherwise re-price other companies' payroll
+  without their knowledge.
+- A company's custom policy is **never** added to the template list.
+- Templates are maintained by the Super Admin only.
+- Applying a template creates a new policy version and goes through the same
+  "from when?" question as any other edit.
+
+---
+
+## 7. Calendar
+
+### 7.1 Schedules and seasonal overrides
+
+Base schedules per weekday, with shifts crossing midnight expressed as
+`endMinutes > 1440`. Ramadan and seasonal hours are **dated overrides** on a
+schedule, never edits to it: the base is never touched, the override ends by
+itself, and next year's Ramadan is a copy with new dates. Override dates stay
+editable until their first day has been measured, because Ramadan dates are
+confirmed late.
+
+### 7.2 Holidays (round 3, decision 17)
+
+- **One central calendar** of Egyptian public holidays, maintained by the Super
+  Admin.
+- **Each company inherits it** and can **add** its own days (company anniversary,
+  a local holiday) and **remove** inherited ones it does not observe.
+- A removal is stored as an exclusion against the central day, not as a
+  deletion, so when the Super Admin moves a holiday's date — Egyptian holidays
+  are sometimes moved by decree — companies that did not opt out get the moved
+  date automatically, and companies that opted out stay opted out.
+- A central change that lands inside a locked payroll period does not re-price
+  it (§11).
+
+---
+
+## 8. Data model (sketch)
+
+Names and shapes for discussion, not final. All company-scoped.
+
+### 8.1 Roles (§4)
 
 ```
-model WorkSchedule            // "Office 9–5", "Warehouse 6-day", "Night shift"
-  id, companyId, name, isDefault
-  graceInMinutes, graceOutMinutes
-  breakMinutes                // unpaid, deducted from worked time
-  roundingMinutes?
+model Role
+  id, companyId?              // null = global built-in or Super Admin template
+  name, isBuiltIn
+  grants  RoleGrant[]
 
-model ScheduleDay             // one row per weekday per schedule
-  scheduleId, weekday (0-6)
-  isRestDay
-  startMinutes, endMinutes    // minutes from local midnight; end may exceed
-                              // 1440 to express a shift crossing midnight
-  isHalfDay
+model RoleGrant
+  roleId, permission          // a key from the code catalogue
+  scope                       // OWN | TEAM | COMPANY
 
-model ScheduleOverride        // Ramadan, summer hours, stocktake week
-  id, scheduleId, name
-  startDate, endDate          // inclusive, local dates
-  // Its own ScheduleOverrideDay rows, same shape as ScheduleDay.
-  // Weekdays with no override row fall through to the base schedule.
+// User.role (enum) is replaced by User.roleId, migrated so each user lands on
+// the built-in role matching their current enum value.
+```
 
-model UserSchedule            // effective-dated assignment, like SalaryChange
-  userId, scheduleId, effectiveFrom, effectiveTo?
+### 8.2 Settings exposure (§5.2)
 
-model Holiday
+```
+// On Company:
+  adminSettingsEnabled  Boolean  @default(false)
+  adminSettingsTabs     String[] @default([])   // tab keys the Admin may see
+```
+
+### 8.3 Calendar and policy
+
+```
+model WorkSchedule, ScheduleDay, ScheduleOverride, ScheduleOverrideDay,
+      UserSchedule            // as in §7.1; UserSchedule effective-dated
+
+model PublicHoliday           // the central calendar
+  id, country, date, name
+model CompanyHoliday          // a company's own additions
   companyId, date, name, isPaid
-```
+model CompanyHolidayExclusion // a central day this company does not observe
+  companyId, publicHolidayId
 
-**Why overrides, not edits (decision 3).** If Ramadan is entered by editing the
-base schedule, then on the day after Eid someone has to remember to put it back,
-and last year's Ramadan attendance is now measured against this year's normal
-hours if it is ever recomputed. An override is a dated layer on top: the base
-schedule is never touched, the override ends by itself, and next year's Ramadan
-is a copy of this year's with new dates. Resolution for a given day is
-*override for that date if one exists, else the base schedule*.
+model PolicyTemplate          // Super Admin maintained
+  id, name, description, body Json
 
-Ramadan dates move by about eleven days a year and are confirmed late, so the
-override's dates must be editable up to the day it starts — until its first day
-has been measured, after which ordinary effective-dating applies.
-
-### 6.2 Policy layer
-
-```
 model AttendancePolicy        // one row per version, per company
-  id, companyId
-  effectiveFrom               // local date; see §5.1
-  createdById, createdAt
-  workWeek         Int[]      // working weekdays, default [0,1,2,3,4]
-  lateness         Json       // mode, grace, bands | perMinute, allowance,
-                              // escalation, cap — narrowed by a zod schema
-  earlyLeave       Json
-  overtime         Json
-  absence          Json
-  permissions      Json?      // §16.1, if adopted
+  companyId, effectiveFrom, createdById
+  appliedTemplateId?          // informational only — never a live link
+  workWeek Int[]
+  lateness, earlyLeave, overtime, absence, permissionHours   Json
   @@unique([companyId, effectiveFrom])
 ```
 
-Json per category, validated by a zod schema on the way in and narrowed on the
-way out, for the same reason `Company.moduleLabels` is Json: these shapes will
-grow, gate nothing structurally, and a migration per new rule field is pure
-ceremony. The effective-dating column is real because queries depend on it.
-
-### 6.3 Locations and mobile devices
+### 8.4 Requests
 
 ```
-model WorkLocation            // a branch, a site, a warehouse
-  id, companyId, name
-  lat, lng, radiusMeters      // per location — see §8.2
-  isActive
+model PermissionRequest       // إذن
+  userId, date, type, startAt, endAt, minutes
+  reason, status, reviewedById?, reviewedAt?, rejectionReason?
+
+model OvertimeApproval
+  userId, date, approvedMinutes?, status, requestedById?, reviewedById?
+
+model MissingPunchRequest
+  userId, date, claimedInAt?, claimedOutAt?, reason, status, …
+```
+
+### 8.5 Locations and registered devices
+
+```
+model WorkLocation
+  companyId, name, lat, lng, radiusMeters
+  officeIpRanges  String[]    // optional, §9.4
+  wifiBssids      String[]    // optional, §9.4
 
 model UserWorkLocation        // who may check in where
   userId, locationId
 
-model AttendanceMobileDevice  // the one phone an employee may check in from
+model CheckInDevice           // the one device a user may check in from
   id, userId
-  publicKey                   // the device's key; see §8.2
-  label                       // "Samsung A54", from the browser at enrolment
-  enrolledAt, lastUsedAt
-  revokedAt?, revokedById?
-  // Partial unique: one active (revokedAt IS NULL) device per user.
-
-model DeviceChangeRequest     // "I have a new phone" — approved like DayOffRequest
-  id, userId, reason, status, reviewedById?, reviewedAt?
+  publicKey                   // hardware-backed key, §9.2
+  platform, model, appVersion
+  status                      // PENDING | ACTIVE | REVOKED
+  requestedAt, approvedAt?, approvedById?, revokedAt?, revokedById?
+  // Partial unique: at most one ACTIVE and one PENDING per user.
 ```
 
-### 6.4 Hardware layer
+### 8.6 Hardware, raw and derived
 
 ```
-model AttendanceDevice        // a fingerprint terminal
-  id, companyId, locationId?
-  name, serialNumber, vendor, timeZone?
-  lastSeenAt, lastSyncAt, clockDriftSeconds?, isActive
+model AttendanceDevice, DeviceCredential, UserDeviceMapping   // terminals, §16
 
-model DeviceCredential
-  id, deviceId, tokenHash, createdAt, lastUsedAt, revokedAt?
-
-model UserDeviceMapping       // terminal's user ID → our User
-  companyId, deviceId?, hardwareUserId, userId
-  @@unique([companyId, deviceId, hardwareUserId])
-```
-
-### 6.5 Raw layer
-
-```
 model AttendancePunch
-  id, companyId
-  userId?                     // null = unmatched (§9.2)
-  source                      // IMPORT | MOBILE | AGENT | DEVICE_PUSH | MANUAL
-  deviceId?                   // terminal, for AGENT / DEVICE_PUSH
-  mobileDeviceId?             // phone, for MOBILE
-  hardwareUserId?
-  punchAtLocal                // what the source said, naive, as text
-  punchAt                     // resolved UTC instant
-  resolvedWithTimeZone
-  lat?, lng?, accuracyMeters? // MOBILE only
-  locationId?                 // which WorkLocation it matched
-  deviceDirection?            // a hint only
-  rawPayload      Json?
-  receivedAt
-  // Dedupe: unique on (source, device or mobileDevice, subject, punchAt).
-```
+  companyId, userId?, source  // IMPORT | MOBILE | AGENT | DEVICE_PUSH | MANUAL
+  deviceId?, checkInDeviceId?, hardwareUserId?
+  punchAtLocal, punchAt, resolvedWithTimeZone
+  lat?, lng?, accuracyMeters?, locationId?
+  integrity  Json?            // attestation verdict, mock flag, network match
+  identityCheck  Json?        // §9.5 outcome, if any
+  status                      // ACCEPTED | PENDING_DEVICE | FLAGGED | REJECTED
+  rawPayload Json?, receivedAt
 
-### 6.6 Derived layer
-
-```
 model AttendanceDay
-  id, companyId, userId, date
-  scheduleDayId?, overrideId?, policyId   // exactly what it was measured against
+  companyId, userId, date
+  scheduleDayId?, overrideId?, policyId
   firstInAt?, lastOutAt?
   workedMinutes, lateMinutes, earlyLeaveMinutes, overtimeMinutes
-  status                      // PRESENT | ABSENT | REST | HOLIDAY | ON_LEAVE
-                              // | INCOMPLETE | MANUAL
-  deductionDays   Decimal     // what the policy made of it
-  overtimeAmount  Decimal
-  isManuallyAdjusted
-  derivedAt, inputsHash
-  lockedByPayrollRunId?
+  excusedMinutes              // covered by approved permission hours
+  status, deductionDays, overtimeAmount
+  isManuallyAdjusted, derivedAt, inputsHash, lockedByPayrollRunId?
   @@unique([companyId, userId, date])
-
-model MissingPunchRequest     // mirrors DayOffRequest
-  id, userId, date, claimedInAt?, claimedOutAt?
-  reason, status, rejectionReason?, reviewedById?, reviewedAt?
 ```
 
 ---
 
-## 7. Punch sources
+## 9. Mobile check-in
 
-All sources write the same `AttendancePunch` row and feed the same engine. Only
-`source` differs, which is the point: the engine is built once.
+### 9.1 Why it must be a native app
 
-| Source | Phase | Notes |
-|---|---|---|
-| `IMPORT` | 0 | XLSX/CSV from a terminal's export. Column mapping, dry-run preview, dedupe. |
-| `MANUAL` | 0 | Admin or attendance officer, always with a reason, always audited. |
-| `MOBILE` | 1 | Decision 1. §8. |
-| `AGENT` | 2 | Local Sync Agent. §13. |
-| `DEVICE_PUSH` | 4 | ADMS/ISAPI, only on demand. |
+Round 3, decision 3 makes fake GPS unacceptable. A web page cannot meet that: the
+browser reports whatever location the operating system gives it, and on Android
+a mock-location app makes that anything. There is no web API to detect it.
 
----
+A native app can. So **mobile check-in lives in a native app**. The rest of the
+product stays on the web, and the user logs in anywhere as today (decision 1).
 
-## 8. Mobile check-in
+Recommended build: **Capacitor wrapping the existing Next.js UI**, with native
+plugins only for the check-in screen — location, device integrity, key storage,
+biometric prompt, push. One codebase for the UI, native code only where the
+platform demands it. Two things to know going in:
 
-### 8.1 Flow
+- **App store review.** Apple rejects apps that are only a website in a frame
+  (guideline 4.2). The native check-in, biometrics and push are what make this
+  more than a wrapper, and they should be visible in the first submission.
+- **A second release process.** App updates go through store review, so anything
+  on the check-in path should be driven by server responses rather than baked
+  into the app, to avoid waiting days to change a message or a threshold.
 
-Employee opens the app on their phone → taps Check in → the browser supplies a
-location fix → the phone signs a fresh server challenge with its enrolled key →
-the server checks: signature valid, device is the user's one active device,
-fix is inside one of the user's `WorkLocation`s, accuracy is acceptable → punch
-recorded with `source = MOBILE`.
+### 9.2 One device
 
-Location is per `WorkLocation` with its own radius, not the system-wide task
-radius. A factory yard and a city-centre office need different circles, and a
-company with three branches needs three.
+A key pair is generated **inside the phone's secure hardware** (Android
+Keystore / iOS Secure Enclave) at registration. The private key cannot be
+exported — not by the user, not by a backup, not by us. We store the public key.
+Every check-in signs a fresh one-time challenge from the server, so a captured
+request cannot be replayed.
 
-### 8.2 One phone, and only a phone — what is achievable
+The user may be logged in on a laptop, a tablet and two phones at once. Only the
+one device holding the registered key can check in. That is the whole rule;
+there is no "is this a phone?" guess.
 
-Decision 1: an employee may check in from one mobile device only, and not from
-any other type of device. **This is achievable, with one important limit that
-depends on whether we stay a web app.**
+### 9.3 Registering and changing a device (decisions 2 and 10)
 
-**Binding to one device — yes, reliably.** A browser cannot read a phone's
-hardware identity (IMEI, serial) — that is deliberate on the platform's part and
-cannot be worked around. What it *can* do is generate a key pair inside the
-browser with WebCrypto, marked non-extractable, stored in that browser on that
-phone. The private key cannot be read out or copied to another device. We store
-the public key at enrolment; every check-in must be signed by it.
+- **First registration:** the app requests registration → `CheckInDevice` in
+  `PENDING` → someone with `attendance.approve_devices` approves → `ACTIVE`.
+- **Changing device:** the new device requests registration → approval
+  **revokes the old device and activates the new one in one transaction**. There
+  is never a moment with two active devices, and the old one stops working the
+  instant the new one starts.
+- **Rejection** leaves the old device active.
+- **Lost phone:** an admin can revoke directly; the user registers a new one.
 
-Consequences, all of them acceptable and some of them the point:
+**Proposed: check-in from a pending device is held, not lost.** An employee whose
+device is awaiting approval on their first morning still taps Check in. The
+punch is recorded as `PENDING_DEVICE`, and counts only if the device is
+approved; if rejected, it is discarded. Otherwise a slow approval costs an
+employee a day of attendance they did nothing to lose, and admins will approve
+without looking to avoid that.
 
-- A different phone, a different browser on the same phone, or the same browser
-  after its site data is cleared has no key → check-in refused → the employee
-  files a `DeviceChangeRequest`, an admin approves, the old key is revoked. That
-  approval step *is* the control; without it "one device" means nothing.
-- The same pattern as `TrustedDevice`, which already does this for MFA with a
-  hashed token — except a signed challenge is stronger than a bearer token,
-  because nothing that crosses the network can be replayed.
-- Enrolment happens once, on first check-in, and should itself need an admin's
-  approval (or at minimum a notification), so an employee cannot enrol a
-  colleague's phone on day one.
+### 9.4 Location that can be trusted
 
-**Phone only, not a laptop — a deterrent, not a guarantee.** We can check the
-browser's own mobile signal (`navigator.userAgentData.mobile`, the user agent,
-touch capability) at enrolment and refuse desktops. All of those are reported
-by the browser and can be faked by someone who knows how. In practice the
-binding above does most of the work: whatever device is enrolled is the only
-one that works, and enrolment is approved by a person.
+Layered — each layer catches what the previous one misses:
 
-**Location — the real weakness on the web.** A browser trusts whatever location
-the operating system reports, and on Android a "mock location" app will report
-anything. The web platform gives us no way to detect it. What we can do on the
-web: reject fixes with poor accuracy, flag fixes that are suspiciously perfect
-or identical across days, and show admins the pattern. What we cannot do on the
-web is prevent it.
+1. **Mock-location detection.** Android flags a location as coming from a mock
+   provider; iOS 15+ reports whether it was simulated by software. Flagged → the
+   check-in is refused.
+2. **Device integrity attestation.** Play Integrity (Android) and App Attest
+   (iOS) let our server verify that the request came from *our* app, unmodified,
+   on a genuine, non-rooted device. This is what stops a rooted phone from hiding
+   the mock flag in step 1. Failed attestation → refused.
+3. **Geofence** against the employee's `WorkLocation`, with a maximum accuracy
+   radius — a fix accurate only to 500 m is not evidence of being in a 70 m
+   circle.
+4. **Network match (optional per location).** If the office has a fixed public
+   IP, or known Wi-Fi access points, a check-in on that network is strong
+   independent evidence. Both are cheap to check and very hard to fake together
+   with GPS. Configured per `WorkLocation`; if configured, required.
 
-**If this must be strong, it needs a thin native app.** A native wrapper
-(Capacitor around the existing Next.js UI) gets three things the web cannot:
-mock-location detection, platform attestation (Play Integrity / App Attest —
-proof the request came from our real app on a real, unmodified phone), and a
-key held in the phone's secure hardware. Recommendation: **ship the web version
-first**, designed so the native wrapper slots in later with no server change
-beyond accepting the attestation. Whether tenants need the native version is
-something the web version will tell us.
+**The honest limit.** No phone-based approach is absolute. A determined attacker
+with a rooted phone and tools built to defeat attestation can sometimes get
+through. What these layers achieve is raising the cost from "install a free app"
+to "specialist effort", and making every failed attempt visible. For a site
+where even that is unacceptable, the answer is a fixed fingerprint terminal
+(§16), which has no GPS to fake.
 
-### 8.3 What one-device binding does not solve
+### 9.5 Buddy punching — confirming *who* is checking in
 
-An employee can hand their phone to a colleague who is at the office. Device
-binding proves *which phone*, not *whose hand*. The fix, if it is ever needed,
-is WebAuthn user verification — the phone's own fingerprint or face unlock
-required at check-in — layered on top of the device key. Noted as a later
-enhancement, not planned.
+Device binding proves *which phone*. Round 3 requires proving *which person*.
+Three options, not mutually exclusive — **this needs a decision (§18.1).**
 
----
+**A. Phone biometric unlock at check-in.** The app requires the phone's own
+fingerprint or face unlock to use the check-in key (the key is created as
+biometric-bound, so the secure hardware itself refuses to sign without it).
+Cheap, no biometric data reaches us. **Weakness:** a phone accepts several
+enrolled fingerprints, and its owner can enrol a colleague's. It proves "someone
+the owner allowed", not "the owner".
 
-## 9. The derivation engine
+**B. Selfie at check-in, reviewed by people.** The app takes a front-camera photo
+at check-in (camera only, no gallery). Stored with the punch; admins spot-check,
+and the exception screen samples a few a day. No automated matching, so no
+biometric template exists — but the photos are personal data and need consent,
+a retention period, and restricted access. A strong deterrent: sending a
+colleague with your phone now leaves a photo of the colleague.
 
-### 9.1 Grouping and pairing
+**C. Automated face verification with liveness.** Each selfie is matched against
+the employee's reference photo, with a liveness check so a photo of a photo
+fails. Strongest option. Costs: a vendor per check-in, a reference photo per
+employee, false rejections that need a fallback, and it **is** biometric
+processing — which Egypt's Personal Data Protection Law (151/2020) treats as
+sensitive data, requiring explicit consent and stricter handling. It would
+reverse the round 1 rule that we never hold biometrics, and that reversal should
+be a deliberate decision with legal input, not a side effect.
 
-Group by **shift instance**, not calendar date. For each employee and local
-date, resolve the schedule day (override first, then base), build its interval —
-`endMinutes > 1440` spills into the next morning — and take every punch in that
-window plus a margin (suggest 4 hours). Collapse repeats within a debounce
-window (suggest 60 seconds). Pair in/out by sequence.
-
-Never "earliest = in, latest = out" — it absorbs lunch as worked time and breaks
-on multi-door sites. An odd punch count is `INCOMPLETE`; never guess a missing
-punch-out, because guessing here is guessing at someone's pay.
-
-### 9.2 Unmatched punches
-
-A terminal punch with no `UserDeviceMapping` is stored with `userId` null and
-shown on the exception screen. Creating the mapping backfills and re-derives.
-Dropping them means an employee's first week silently never happened.
-
-### 9.3 Applying policy
-
-Measured facts (worked, late, early, overtime minutes) and priced outcomes
-(`deductionDays`, `overtimeAmount`) are computed together but stored separately.
-A policy change re-prices days in its effective range without re-measuring them,
-and the exception screen can show both "12 minutes late" and "¼ day deducted".
-
-Monthly rules — the free allowance, escalation, the cap — depend on the order of
-days in the month, so pricing runs over the employee's month, not one day in
-isolation.
-
-### 9.4 Recomputation
-
-Pure and idempotent. Triggered on ingest (affected employee-days only), on any
-schedule/override/mapping/holiday/policy change (affected range), on approval of
-a missing-punch or day-off request, and nightly by a reconciliation cron that
-compares `inputsHash` and reports drift. A locked day is never rewritten.
+**Recommendation:** A always, plus B — and C only if a customer requires it and
+is willing to carry the consent process. And separately: for staff who work at a
+fixed site, a fingerprint terminal solves buddy punching and fake GPS together,
+better than any phone approach. The strongest version of this product uses
+terminals for fixed-site staff and the app for field staff (§18.2).
 
 ---
 
-## 10. The payroll boundary
+## 10. The derivation engine
 
-Once the `PayrollRun` covering a date is `APPROVED`, every `AttendanceDay` in
-that period is stamped with `lockedByPayrollRunId` and becomes immutable, and no
-policy version may take effect inside it.
+**Grouping** by shift instance (override first, then base schedule), with a
+margin either side for early arrivals and overruns. **Debounce** repeats within
+60 seconds. **Pair** in/out by sequence — never earliest/latest. An odd count is
+`INCOMPLETE`; a missing punch is never guessed.
 
-Before approval, the month's attendance outcome is written as `SalaryAdjustment`
-rows with `source = ATTENDANCE` — one per employee per category (lateness,
-absence, overtime), not one per day, so the payslip reads as three lines rather
-than twenty-two.
+**Excusing** — approved permission hours are subtracted from late and
+early-leave minutes before pricing, and recorded as `excusedMinutes` so both
+facts stay visible.
 
-A punch or approval that arrives after the lock surfaces as a discrepancy for an
-admin to convert into an adjustment in the current period.
+**Pricing** — measured facts and priced outcomes are stored separately. Monthly
+rules (allowance, escalation, cap, permission balance) depend on the order of
+days, so pricing runs over the employee's month.
 
-The single most important rule in the document: a system that silently edits a
-paid payslip is worse than one with no attendance at all.
+**Recomputation** is pure and idempotent: on ingest, on any change to schedule,
+override, holiday, policy, mapping or approval, and nightly as a reconciliation
+comparing `inputsHash`. A locked day is never rewritten. Punches in
+`PENDING_DEVICE` or `FLAGGED` state are excluded until resolved.
+
+**Unmatched terminal punches** are stored with no user and resolved when mapped.
 
 ---
 
-## 11. Admin screens
+## 11. The payroll boundary
 
-### 11.1 Daily exceptions (decision 2)
+Once the `PayrollRun` covering a date is `APPROVED`, every `AttendanceDay` in it
+is locked and immutable, no policy version may take effect inside it, and any
+still-pending overtime approval in it is treated as rejected.
 
-The default attendance screen shows **only what needs a decision**, today and
-any unresolved days before it:
+Before approval, the month's outcome is written as `SalaryAdjustment` rows with
+`source = ATTENDANCE` — one per employee per category, so the payslip reads as a
+few lines, not twenty-two. Anything arriving after the lock becomes a
+discrepancy for an admin to turn into an adjustment in the current period.
+
+---
+
+## 12. Screens
+
+### 12.1 Daily exceptions
+
+Only what needs a decision, with counts per tab:
 
 | Tab | Shows | Actions |
 |---|---|---|
-| Late | Late in or early out, with minutes and the resulting deduction | Excuse (with reason), accept |
-| Absent | Expected, no punches, no leave | Mark as leave, mark present with reason, accept |
-| Incomplete | Odd punch count | Add missing punch, link a pending missing-punch request |
-| Unmatched | Terminal punches with no mapped employee | Map to employee (backfills) |
-| Suspicious | Mobile punches with poor accuracy or repeating identical fixes | Accept, reject |
+| Late / early | Minutes, excused minutes, resulting deduction | Excuse with reason, accept |
+| Absent | Expected, no punches, no leave | Mark leave, mark present with reason, accept |
+| Incomplete | Odd punch count | Add punch, link a missing-punch request |
+| Overtime | Unapproved overtime | Approve, approve partially, reject |
+| Requests | Pending permission-hour, missing-punch and device requests | Approve, reject |
+| Unmatched | Terminal punches with no mapped employee | Map (backfills) |
+| Flagged | Check-ins that failed integrity, network or identity checks | Accept, reject |
 
-Counts on each tab, so an empty screen is visibly "nothing to do" rather than
-"did it load?". An exception, once acted on, leaves the screen; it does not need
-to be hidden by hand. The full register — everyone, every day — is a separate
-view and an XLSX export.
+Each tab is filtered by the viewer's permission scope — a team leader sees their
+team. Every action is audited.
 
-Every action here writes to `AuditLog` with the actor and reason.
+### 12.2 Device health on System Health
 
-### 11.2 Device health on System Health (decision 4)
+Terminals and agents join the `JobHeartbeat` cards: last seen, last sync, clock
+drift, queue depth, agent version, stale during working hours turns red. The same
+data filtered to one company appears on that company's Devices tab. Mobile
+check-in devices are not listed here — they are per-person, and belong on the
+employee's profile and in the device-request queue.
 
-`/dashboard/health` already shows `JobHeartbeat` rows: last run, last success,
-failure streak. Terminals and agents fit the same card shape:
+### 12.3 The employee's own attendance (round 3, decision 14)
 
-- **Last seen** and **last sync**, with a stale threshold (suggest 30 minutes
-  during working hours) that turns the row red.
-- **Clock drift** from the last heartbeat, red above a threshold (suggest 120
-  seconds).
-- **Queue depth** reported by the agent — punches buffered but not yet
-  delivered.
-- **Agent version**, so an outdated install is visible.
+Each day: status, punches, late minutes, excused minutes, deduction, overtime,
+and **the rule that produced the deduction, in the same words the payslip will
+use**. Plus the month so far: permission hours remaining, lateness count against
+the free allowance, deduction total to date. Buttons to request permission hours
+or report a missing punch from the day itself.
 
-That screen is Super Admin only and cross-company, which suits us (support). The
-same data, filtered to one company, belongs on that company's Devices tab, so
-the customer's own admin sees their terminal went offline without calling us.
-An alert — notification plus email — when a device goes stale during working
-hours, because a PC that was switched off on Thursday must not be discovered at
-payroll.
+### 12.4 Same-day alerts (round 3, decision 15)
 
----
+In-app notifications only, through the existing `Notification` model — no email.
+Sent when a day becomes `INCOMPLETE` or `ABSENT`, when a check-in is flagged, and
+when a request is approved or rejected.
 
-## 12. Who corrects attendance (decision 7)
-
-Admin, plus someone who is not an admin — typically an HR officer.
-
-**Proposal: a grant, not a new role.** `UserRole` is referenced in over fifty
-files. A new enum value touches every one of those checks, and it also forces a
-choice: is the HR officer an `EMPLOYEE` who can correct attendance, or not an
-employee? They are an employee — they check in themselves, have leave, get a
-payslip. A role would take that away.
-
-A grant is a flag on the user — `canManageAttendance`, or a small permission set
-if more grants follow — that adds one capability on top of whatever role they
-have. It is checked in exactly the places attendance is corrected, and nowhere
-else.
-
-Two rules that apply whichever way it is built:
-
-- **Nobody corrects their own attendance.** The officer's own exceptions go to
-  an admin. Otherwise the person best placed to fix attendance records is also
-  the one person with a motive to fix their own.
-- **Team leaders get read-only by default** — their team's exception screen,
-  no corrections — with correction for their own team as a policy switch if a
-  company wants it.
+In-app notifications are only seen when the app is opened. Since mobile check-in
+now requires a native app, **push notifications** to that app cost almost
+nothing extra and are not email. Proposed as an enhancement (§17.1).
 
 ---
 
-## 13. The Local Sync Agent
+## 13. Who corrects attendance
 
-Unchanged from round 1. A signed Windows service (and a Linux binary) on an
-always-on PC on the tenant's LAN: pulls from terminals over TCP via the vendor
-SDK → durable local queue (SQLite) → pushes batches over outbound HTTPS →
-advances its cursor only on 2xx → heartbeats. Enrolment by one-time code
-exchanged for a rotatable, revocable token stored hashed. Clock drift detected
-on every heartbeat. Device memory cleared only near 80% capacity, and the
-clearing logged.
-
-### 13.1 Ingest contract
-
-```
-POST /api/attendance/ingest
-Authorization: Bearer <device token>
-Idempotency-Key: <batch uuid>
-
-{ "device_serial": "...", "agent_version": "...",
-  "punches": [ { "hardware_user_id": "137",
-                 "punched_at_local": "2026-09-20T08:30:00",
-                 "device_direction": "IN", "raw": { } } ] }
-
-POST /api/attendance/heartbeat
-{ "device_time": "...", "agent_version": "...", "queue_depth": 0 }
-```
-
-Company from token, never body. Per-punch outcome in the response
-(`accepted` / `duplicate` / `unmatched_user`). Rate-limited per device. Batch
-cap around 1000.
+Anyone whose role holds `attendance.correct`, at their scope. Built-in Admin has
+it at company scope. A company can create an "HR Officer" role with it — and that
+person keeps everything an employee has, because the role is a set of
+permissions, not a replacement for being an employee. Nobody can correct their
+own attendance.
 
 ---
 
-## 14. Packaging — a paid add-on (decision 10)
+## 14. Retention
 
-Today `Bundle` is `'COMPANY_MANAGEMENT' | 'HR'`, backed by `Package.hasHR` and
-`Package.hasCompanyManagement`. An add-on means a third bundle:
+`AttendanceDay` is kept as long as payslips are — it is what a payslip's
+deductions are explained by. Raw `AttendancePunch` rows are kept for the current
+year plus one, then punches belonging to locked days are pruned by the existing
+`/api/cron/prune` job. Check-in selfies (if option B or C in §9.5 is adopted)
+need their own, shorter, period — they are personal data with no use once the
+day is locked. The exact periods should be confirmed against labour
+record-keeping requirements before they are set.
+
+---
+
+## 15. Packaging
+
+A paid add-on that **requires HR**:
 
 - `Bundle` gains `'ATTENDANCE'`; `Package` gains `hasAttendance`.
-- `MODULE_BUNDLE` gains `ATTENDANCE: 'ATTENDANCE'`.
-- `API_MODULE_ROUTES` gains `/api/attendance`.
-- `lib/modules.ts` gains the sidebar entry.
-- The Attendance tab in Company Options declares `requires: 'ATTENDANCE'`.
-
-**The dependency on HR is the real decision.** Deductions and overtime write into
-payroll, which is in the HR bundle. See open question §17.2.
-
-Existing grandfathered companies (`packageId` null) are unrestricted today and
-would receive attendance for free the day it ships. That is how the gate is
-designed and it is probably fine, but it should be a decision, not a surprise.
+- The package form refuses `hasAttendance` without `hasHR`, and removing HR from
+  a package removes attendance with it, with a warning.
+- The gate checks both, so a company with a stale inconsistent package still
+  cannot reach attendance without HR.
+- The Attendance tab declares `requires: 'ATTENDANCE'`.
+- Grandfathered companies (`packageId` null) are unrestricted and would receive
+  attendance free on release. Decide deliberately (§18.4).
 
 ---
 
-## 15. Phasing
+## 16. Hardware terminals and the Local Sync Agent
+
+Unchanged from round 1. A signed Windows service on an always-on PC on the
+tenant's LAN pulls from fingerprint terminals over TCP, queues locally, pushes
+over outbound HTTPS, advances its cursor only on success, and heartbeats.
+Enrolment by a one-time code exchanged for a rotatable, hashed token. Company
+from the token, never the body. Clock drift detected on every heartbeat. Device
+memory cleared only near capacity.
+
+With round 3's decision on buddy punching, terminals matter more than they did:
+for fixed-site staff they are the strongest answer to both fraud problems.
+
+---
+
+## 17. Enhancements proposed in round 3
+
+Not decided — each needs a yes or no.
+
+1. **Push notifications** to the check-in app for the same-day alerts. Not email;
+   reaches the employee without them opening the app. The native app makes this
+   nearly free.
+2. **Check-in reminders.** A push at shift start plus N minutes if no check-in
+   has arrived — most "absences" in the first month are people who forgot.
+3. **Permission-hours balance on the check-in screen**, so an employee arriving
+   late can request the إذن in the same moment rather than later.
+4. **Role templates** for the roles project — HR Officer, Branch Manager,
+   Accountant — using the same copy-not-link rule as policy templates.
+5. **"Who can do this?" view** for the roles project: pick a permission, see
+   every person holding it and through which role. The first question anyone
+   asks after a surprising approval.
+6. **Integrity dashboard for the Super Admin**: failed attestations, mock
+   locations and flagged check-ins across companies. A company with a sudden spike
+   is either under attack or has a broken app release, and we want to know either
+   way.
+
+---
+
+## 18. Open questions
+
+1. **Buddy punching approach (§9.5):** A + B as recommended, or C? If C, it needs
+   legal review under Law 151/2020 and reverses the no-biometrics rule.
+2. **Are the check-in app's users mainly field staff or office staff?** If office
+   staff, fingerprint terminals should move ahead of the mobile app in the
+   phasing — they solve both fraud problems more cheaply.
+3. **Roles project scope (§4.4):** per company, global, or both; one role per user
+   or several.
+4. **Grandfathered companies** — do they receive attendance free on release?
+5. **Multiple terminals per site with roles** (entry vs exit), or all readers
+   equivalent?
+6. **Which UI exposes the work week first** — per company, per schedule, or both
+   at once?
+
+---
+
+## 19. Phasing
 
 Each phase is independently shippable.
 
+### Foundation — before attendance
+
+- **Roles and permissions** (§4). Migrates the four built-in roles with no change
+  in anyone's access, then replaces role checks with permission checks module by
+  module.
+- **Company Options tabs** (§5.1) and **Admin settings exposure** (§5.2).
+
 ### Phase 0 — Engine, settings, import
 
-- Company Options refactor into tabs (§4.1). Ships on its own first.
-- Schedules, seasonal overrides, holidays, work week.
-- Attendance policy with effective dating (§5).
-- `AttendancePunch`, `AttendanceDay`, the engine (§9).
-- XLSX/CSV import, manual entry.
-- Missing-punch requests.
-- Exception screen (§11.1) and full register.
-- `canManageAttendance` grant (§12).
-- The add-on bundle (§14).
+Schedules, overrides, the holiday calendar with add/remove, work week; policy
+with effective dating, templates and the simulator; permission hours; overtime
+approval; the engine; XLSX/CSV import and manual entry; missing-punch requests;
+the exception screen; the employee's own view; in-app alerts; the add-on bundle.
 
 *Exit: one real tenant runs a full month on imported data and agrees the numbers
 are right.*
 
-### Phase 1 — Mobile check-in
+### Phase 1 — Payroll integration
 
-Work locations, device enrolment and binding, signed check-in, device change
-requests, the Suspicious tab. Moved ahead of the agent because it needs no
-hardware at the customer and reuses all of Phase 0.
+Outcomes into `SalaryAdjustment`, the lock, discrepancies after lock. Simulator
+dry run for the first month before anything is deducted.
 
-### Phase 2 — Payroll integration
+Moved ahead of mobile check-in: mobile is now a native app with store review, the
+largest single item in the plan, and attendance is sellable with import or
+terminals before it exists.
 
-Attendance outcomes into `SalaryAdjustment`, the freeze in §10, discrepancies
-after lock. Could be pulled into Phase 0 for a tenant who asks, with the freeze
-rule unchanged. **Dry-run first** (§16.3).
+### Phase 2 — Terminals and the Local Sync Agent
 
-### Phase 3 — Local Sync Agent
+Or Phase 3, swapped with mobile, depending on the answer to §18.2.
 
-Device registry, enrolment, ingest, heartbeat, device health on System Health
-and on the company's Devices tab.
+### Phase 3 — Native check-in app
 
-### Phase 4 — Direct device push, and the native wrapper
+Capacitor app; hardware-bound device key; registration and change with approval;
+held punches from pending devices; mock detection, attestation, geofence, network
+match; the chosen identity check (§9.5); flagged-check-in review; push
+notifications if adopted.
 
-Only on demand. ADMS needs a plain-HTTP ingress outside Vercel. The native
-wrapper (§8.2) needs app-store publishing and is a product decision of its own.
+### Phase 4 — Direct device push
 
----
-
-## 16. Enhancements proposed in round 2
-
-Not decided — each needs a yes or no.
-
-1. **Permissions (إذن) allowance.** Common Egyptian practice: an employee may
-   take a set number of hours a month (often 2–4) to arrive late or leave early,
-   requested in advance. A late arrival covered by an approved permission is not
-   lateness. Without this, companies that already work this way will either
-   excuse every such day by hand or not buy the module. Fits cleanly as a
-   request type next to missing-punch, with the allowance in the policy.
-
-2. **Overtime pre-approval.** Many companies pay overtime only when it was asked
-   for. Without approval, staying late becomes a way to raise one's own pay.
-   A policy switch: when on, overtime is recorded but priced at zero until a
-   manager approves it.
-
-3. **Policy simulator before saving.** When an admin edits a rule, show what last
-   month's deductions *would have been* under the new rule, per employee, next
-   to what they were. Catches the misplaced decimal before it reaches a payslip,
-   and is the first-month dry run from round 1 generalised.
-
-4. **Employee transparency.** The employee's own view shows each day's status,
-   the deduction it earned, and the rule that produced it — in the same words
-   the payslip will use. Most attendance disputes are "nobody told me"; this
-   removes the premise.
-
-5. **Same-day nudges.** When a day becomes `INCOMPLETE` or `ABSENT`, notify the
-   employee that day, through the existing `Notification` model, so the
-   missing-punch request is filed while they still remember — not three weeks
-   later at payroll.
-
-6. **Policy templates.** A Super Admin-maintained starting point ("Standard
-   Egyptian office", "Six-day factory") that a company copies and adjusts, so
-   no new tenant faces nine empty forms.
-
-7. **Holiday calendar seeded per country**, maintained once by a Super Admin and
-   inherited by every company, with per-company additions. Egyptian public
-   holidays are announced late and sometimes moved, so a central copy corrected
-   once beats every company correcting its own.
+Only on demand. Needs a plain-HTTP ingress outside Vercel.
 
 ---
 
-## 17. Open questions
-
-1. **Who edits attendance rules — Super Admin, the company's Admin, or both?**
-   The settings page is Super Admin only today. If rules stay there, every
-   customer policy change is a support ticket to us. If the company Admin edits
-   them, the Attendance tab needs to be reachable from the company's own
-   dashboard, not only from the Super Admin's company list.
-
-2. **Does the attendance add-on require HR?** Deductions and overtime go through
-   payroll. Either the add-on requires HR (simplest, and the gate enforces it),
-   or it can be bought alone and the payroll-touching parts are hidden — which
-   makes it a reporting module for those customers.
-
-3. **Raw punch retention (question 9).** Every check-in is a row in
-   `AttendancePunch` forever unless something deletes it. A 200-person company
-   makes roughly 100,000 a year, more with mobile check-ins and double-taps. The
-   existing `/api/cron/prune` already deletes old audit logs and notifications
-   on a schedule; the question is whether punches get the same treatment, and
-   after how long.
-
-   The derived `AttendanceDay` is small (one row per person per day) and should
-   be kept as long as payslips are, because it is what a payslip's deductions
-   are explained by. The raw punches are only needed to *recompute* a day — and
-   once its payroll is approved and locked, it will never be recomputed. So a
-   reasonable default is: keep raw punches for the current year plus one, then
-   prune punches belonging to locked days. The exact period is a legal question
-   (labour record-keeping and dispute limitation periods) rather than a
-   technical one, and should be confirmed before it is set.
-
-4. **Enrolment approval for mobile devices** — required, or a notification only?
-
-5. **Multiple terminals per site with roles** (entry vs exit), or all readers
-   equivalent? Pairing assumes equivalent.
-
-6. **Per-company or per-schedule work week** — both are supported in the model;
-   which does the UI expose first?
-
----
-
-## 18. Non-goals
+## 20. Non-goals
 
 - Door access control.
 - Real-time streaming attendance.
-- Storing or matching biometrics.
+- Storing fingerprint templates from terminals.
 - Polling a tenant's device over the internet.
 - Shift planning and rota building.
-- Hardware identity (IMEI, serial) from a browser — not available to web pages,
-  by design.
+- Check-in from a browser. Mobile check-in is native only; the web product stays
+  as it is for everything else.
