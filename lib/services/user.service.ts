@@ -10,6 +10,7 @@ import { CreateUserInput, UpdateUserInput } from "../validations/user.schema"
 import { calendarMonth, calendarYear } from "@/lib/time"
 import { effectiveFromChoice } from "@/lib/salary-history"
 import { checkTeamAssignment, clearsOwnLeader, stripsLeadership } from "@/lib/team-assignment"
+import { notifyTeamMoves } from "./team-notify.service"
 
 export class UserService {
     static async create(input: CreateUserInput, session: any) {
@@ -396,6 +397,17 @@ export class UserService {
             // salary is a Prisma.Decimal (F-07); Decimal.toJSON() returns a
             // string, which would silently change this response field's type.
             const serializedUpdated = { ...updated, salary: Number(updated.salary) }
+
+            // News of any team change, after it has committed. This person's
+            // own move if their leader changed, plus everybody a hand-off
+            // moved — in one call, so a leader who receives both hears once.
+            const teamMoves = [
+                ...(updateData.teamLeaderId !== undefined && updateData.teamLeaderId !== regularUser.teamLeaderId
+                    ? [{ userId: id, from: regularUser.teamLeaderId, to: updateData.teamLeaderId }]
+                    : []),
+                ...(rehome ? rehome.ids.map(r => ({ userId: r, from: id, to: rehome!.to })) : []),
+            ]
+            if (teamMoves.length > 0) await notifyTeamMoves(teamMoves)
 
             // Salary history and record sync.
             //

@@ -129,6 +129,11 @@ export default function NotificationBell({ initialUnreadCount = 0 }: { initialUn
                     }
                     router.push(path)
                 }
+            } else if (type.includes('TEAM')) {
+                // relatedId is a dashboard path, the NOTE convention: the
+                // employee's own profile, which shows their leader, or the
+                // leader's team list.
+                if (notification.relatedId.startsWith('/')) router.push(notification.relatedId)
             } else if (type.includes('REQUEST')) {
                 // Fetch the current status of the request to determine redirection
                 fetch(`/api/requests/${notification.relatedId}`)
