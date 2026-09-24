@@ -32,6 +32,9 @@ export async function POST(req: NextRequest) {
         const stack = typeof json?.stack === 'string' ? json.stack.slice(0, 2000) : undefined
         const componentStack = typeof json?.componentStack === 'string' ? json.componentStack.slice(0, 2000) : undefined
         const route = typeof json?.route === 'string' ? json.route.slice(0, 300) : undefined
+        // The Sentry event for the same failure, when Sentry is on — a
+        // 32-character hex id, so the audit entry can point at it.
+        const sentryId = typeof json?.sentryId === 'string' && /^[0-9a-f]{32}$/.test(json.sentryId) ? json.sentryId : undefined
 
         const session = await getServerSession(authOptions).catch((e) => {
             if (isNextInternalError(e)) throw e
@@ -47,7 +50,7 @@ export async function POST(req: NextRequest) {
             method: 'CLIENT',
             userId,
             superAdminId,
-            extra: { stack, componentStack, source: 'client' }
+            extra: { stack, componentStack, source: 'client', ...(sentryId && { sentryId }) }
         })
 
         return ApiResponse.success({ ref })
