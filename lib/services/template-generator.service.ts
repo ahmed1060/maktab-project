@@ -82,13 +82,20 @@ export async function generateBulkTaskTemplate(baseBuffer: Buffer, locale: Local
     const usersLastRow = Math.max(users.length + 1, 2)
     const vendorsLastRow = Math.max(vendors.length + 1, 2)
 
+    // By the sheets' actual names, not "Users"/"Vendors" written out: an
+    // Arabic download names them المستخدمين and الموردين, and a formula
+    // pointing at a sheet that does not exist leaves every dropdown in the
+    // file empty. Quoted, as a name that is not plain ASCII must be.
+    const vendorsRange = `${sheetRef(vendorsSheet.name)}!$A$2:$A$${vendorsLastRow}`
+    const usersRange = `${sheetRef(usersSheet.name)}!$A$2:$A$${usersLastRow}`
+
     for (let row = FIRST_DATA_ROW; row <= LAST_DATA_ROW; row++) {
         // Column C: Vendor Name dropdown, sourced from Vendors!A. Optional —
         // an empty cell just means no vendor for that row.
         mainSheet.getCell(`C${row}`).dataValidation = {
             type: 'list',
             allowBlank: true,
-            formulae: [`Vendors!$A$2:$A$${vendorsLastRow}`]
+            formulae: [vendorsRange]
         }
         // Column D: Employee Name — one merged column for both cases, not
         // two. A dropdown (sourced from Users!A, "FirstName LastName
@@ -104,10 +111,15 @@ export async function generateBulkTaskTemplate(baseBuffer: Buffer, locale: Local
         mainSheet.getCell(`D${row}`).dataValidation = {
             type: 'list',
             allowBlank: true,
-            formulae: [`Users!$A$2:$A$${usersLastRow}`]
+            formulae: [usersRange]
         }
     }
 
     const buffer = await workbook.xlsx.writeBuffer()
     return Buffer.from(buffer)
+}
+
+/** A sheet name as a formula reference: quoted, with any quote inside doubled. */
+function sheetRef(name: string): string {
+    return `'${name.replace(/'/g, "''")}'`
 }
