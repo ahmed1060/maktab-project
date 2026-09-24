@@ -100,6 +100,16 @@ by then, and this plan names real models and files that may have changed.
 | 7 | Legal decision | **The protected Super Admin decides** whether and when to turn face verification on, after their own consultation. The feature is built ready and left off (§10). |
 | 8 | Entry/exit terminals, work-week screen | Explained; proposed defaults recorded in §17 and §6.2. |
 
+### Round 7 — closing the open items
+
+| # | Topic | Decision |
+|---|---|---|
+| 1 | Photo on flagged check-ins | Confirmed (§13.8). |
+| 2 | Entrance/exit terminals | **All terminals equal by default; optionally marked entrance-only or exit-only** (§17). |
+| 3 | Work week | **Company setting at the top, optional override per schedule** (§6.2). |
+| 4 | Import-only customers | **No import-only option.** Excel import is a feature of both add-ons (§16). |
+| 5 | Re-verification | **Adopted: on request by Admin/HR at any time, plus an optional automatic interval per company** (§9.5). |
+
 ---
 
 ## 1. Where this system actually stands
@@ -293,7 +303,7 @@ version cannot take effect inside a period whose payroll is APPROVED.
 
 Sunday–Thursday working by default. Overridable per company and per schedule.
 
-Proposed screen layout: the **company's work week** is one setting at the top of
+Decided (round 7): the **company's work week** is one setting at the top of
 the Attendance tab (Sunday–Thursday preselected). Each **schedule** — "Office",
 "Warehouse" — inherits it and has an optional *different work week* field for the
 exceptions, such as a six-day warehouse. Both are built in Phase 0.
@@ -488,10 +498,12 @@ model CheckInDevice           // the one device a user may check in from
                                         // PENDING, deleted on approve/reject
   faceEnrolmentStatus?                  // PENDING | APPROVED | REJECTED
   faceEnrolmentReviewedById?, faceEnrolmentReviewedAt?   // §9.5
+  reverifyRequestedAt?, reverifyRequestedById?          // §9.5 re-verification
   // Partial unique: at most one ACTIVE and one PENDING per user.
 
 // On SystemSettings: faceVerificationEnabled Boolean — protected Super Admin only.
 // On AttendancePolicy: faceVerificationAvailable Boolean (company switch).
+// On AttendancePolicy: faceReverifyMonths Int? (null = no automatic re-verification).
 // On User: faceVerificationRequired Boolean (per employee, §9.5).
 
 model BiometricConsent        // the legal record; not biometric data itself
@@ -698,6 +710,26 @@ employee — which HR normally does.
 
 This combines with phone approval (§9.3): a new phone means a new enrolment, a new
 verification photo and a new approval.
+
+#### Re-verification (round 7)
+
+Because the verification photo is deleted on approval, nothing on the server can
+later confirm that the face enrolled on a phone still belongs to the right person.
+Re-verification closes that gap without keeping a photo:
+
+- **On request.** Anyone with `attendance.approve_face` can press **Re-verify** on
+  an employee at any time — typically when something looks wrong. The employee's
+  next check-in opens the verification capture first.
+- **On a schedule — optional.** A company policy setting, *re-verify every N
+  months*, off by default (6 months suggested when on).
+- **Same path as enrolment.** One live capture that must match the phone's
+  templates → uploaded → critical notification → approve or reject → photo
+  deleted either way.
+- **Check-ins keep working while it is pending,** so a slow reviewer never costs
+  the employee attendance. A **rejection** deactivates face verification for that
+  employee until they enrol again, and is audited.
+- A request that is not completed within a set time (suggest 3 working days)
+  appears on the exceptions screen, so it cannot quietly be ignored.
 
 #### Check-in
 
@@ -1035,7 +1067,8 @@ contract.**
 **The attendance core comes with either.** Schedules, policies, permission hours,
 overtime approval, the engine, the exceptions screen, the employee's own view,
 Excel import, manual entry and payroll integration are needed whichever way punches
-arrive. A company holding either add-on gets all of them; one holding both gets
+arrive. There is **no import-only option** (round 7): import is a feature of both
+add-ons, not a product on its own. A company holding either add-on gets all of them; one holding both gets
 one core, with punches from both sources feeding the same days.
 
 Implementation:
@@ -1076,10 +1109,10 @@ Since the product serves both office and field staff (round 4), terminals are th
 answer for fixed sites and the app for field staff; a company may use both, and
 the engine treats their punches identically.
 
-**Entry and exit terminals — proposed default.** Some sites mount two devices, one
+**Entry and exit terminals — decided (round 7).** Some sites mount two devices, one
 at the entrance and one at the exit. The question is whether a scan on the
 "entrance" device should always mean *arriving* and a scan on the "exit" device
-always mean *leaving*. Proposed: **by default every terminal is equal** and the
+always mean *leaving*. **By default every terminal is equal** and the
 engine works out arriving/leaving from the order of scans (first scan of the shift
 = arrived, next = left, and so on). A terminal can optionally be marked
 *entrance only* or *exit only* in its settings, for sites that want it.
@@ -1088,14 +1121,11 @@ engine works out arriving/leaving from the order of scans (first scan of the shi
 
 ## 18. Open questions
 
-1. **Can a company use attendance with only Excel import** — no terminals, no app?
-   Under round 6 the core comes with either add-on, so such a company would have to
-   buy one it does not use. Recommendation: no import-only option; import is a
-   feature of both add-ons, not a product on its own.
-2. **Entry/exit terminals** (§17) and the **work-week screen** (§6.2) — confirm the
-   proposed defaults.
-3. **Face SDK choice** (§9.5) — decided at implementation time, against the rule
-   that face templates never leave the phone.
+One left, deliberately deferred to implementation:
+
+1. **Face SDK choice** (§9.5) — chosen when Phase 3b starts, against the rule that
+   face templates never leave the phone. Verify the vendor's on-device mode sends
+   nothing to their servers.
 
 ---
 
@@ -1178,8 +1208,7 @@ picked up later. Before the first line of implementation:
    settings page. Update this document where they changed.
 2. **Nothing legal blocks the build.** Face verification ships switched off; the
    protected Super Admin enables it after their consultation (§10).
-3. **Settle §18.1** (import-only customers) before packaging is built.
-4. **Write the roles project up as its own plan**, from §4, since it lands first
+3. **Write the roles project up as its own plan**, from §4, since it lands first
    and touches the whole product.
-5. **Pick one pilot tenant** for the Phase 0 exit criterion before building
+4. **Pick one pilot tenant** for the Phase 0 exit criterion before building
    Phase 0, so the month of real data is ready when the engine is.
