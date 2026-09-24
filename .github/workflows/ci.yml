@@ -13,8 +13,11 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          # Prisma 7 wants ^20.19 || ^22.12 || >=24, Next 16 wants >=20.9.
-          node-version: 22
+          # The version production runs: Vercel's project setting is 24.x,
+          # and package.json's engines field and .nvmrc say the same, so CI,
+          # local development and production are one Node. (Prisma 7 wants
+          # ^20.19 || ^22.12 || >=24, Next 16 wants >=20.9.)
+          node-version: 24
           cache: 'npm'
 
       # `npm ci`'s postinstall runs `prisma generate`, which only reads

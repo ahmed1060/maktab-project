@@ -2,6 +2,11 @@ import coreWebVitals from "eslint-config-next/core-web-vitals"
 import typescript from "eslint-config-next/typescript"
 
 /**
+ * ESLint 9, not 10, on purpose. eslint-config-next pulls in eslint-plugin-react,
+ * -jsx-a11y and -import, whose newest releases still declare ESLint 9 as their
+ * ceiling — and under 10, eslint-plugin-react crashes on the first file
+ * (context.getFilename was removed). Move to 10 once those three list it.
+ *
  * Flat config, because ESLint 9 dropped .eslintrc and eslint-config-next 16
  * ships nothing else. `ignores` replaces the .eslintignore that flat config
  * also dropped; without it ESLint walks the build output and reports thousands
