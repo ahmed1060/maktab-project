@@ -5,9 +5,14 @@ import { useSession } from 'next-auth/react'
 import DateTimePicker from '@/components/DateTimePicker'
 import { useLanguage } from '@/context/LanguageContext'
 import { useCompany } from '@/context/CompanyContext'
+import { useNow } from '@/lib/useNow'
+import { earliestDeadline } from '@/lib/deadline'
 
 export default function NewObligationPage() {
     const { t, locale } = useLanguage()
+    // The deadline floor offered to the picker, kept current while the form
+    // stays open. See lib/useNow.ts.
+    const now = useNow()
     const [title, setTitle] = useState('')
     const [description, setDescription] = useState('')
     const [assigneeIds, setAssigneeIds] = useState<string[]>([])
@@ -250,7 +255,7 @@ export default function NewObligationPage() {
                         label={t('deadline_label')}
                         value={deadline}
                         onChange={setDeadline}
-                        min={new Date(Date.now() + 3 * 60 * 60 * 1000).toISOString()}
+                        min={earliestDeadline(now).toISOString()}
                     />
                 </div>
                 <div style={{ marginBottom: '1.5rem' }}>

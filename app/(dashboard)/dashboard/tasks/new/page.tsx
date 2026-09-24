@@ -17,9 +17,14 @@ import ManageTemplatesModal from '@/components/ManageTemplatesModal'
 // handleBulkUpload below so it only loads when a file is actually chosen,
 // not on every visit to this page.
 import { cellToPrimitive } from '@/lib/xlsx-cell'
+import { useNow } from '@/lib/useNow'
+import { earliestDeadline } from '@/lib/deadline'
 
 export default function NewTaskPage() {
     const { t, locale } = useLanguage()
+    // The deadline floor offered to the picker, kept current while the form
+    // stays open. See lib/useNow.ts.
+    const now = useNow()
     const [title, setTitle] = useState('')
     const [description, setDescription] = useState('')
     const [assigneeIds, setAssigneeIds] = useState<string[]>([])
@@ -337,7 +342,7 @@ export default function NewTaskPage() {
                         baseDate.setHours(hours, minutes, 0, 0)
                         finalDeadline = baseDate.toISOString()
 
-                        const minDeadline = new Date(Date.now() + 3 * 60 * 60 * 1000)
+                        const minDeadline = earliestDeadline()
                         if (baseDate < minDeadline) addError('deadline', t('deadline_too_soon' as any) || 'Deadline must be at least 3h from now')
                     } else {
                         addError('deadline', t('invalid_date' as any) || 'Invalid date')
@@ -403,7 +408,7 @@ export default function NewTaskPage() {
 
         if (task.deadline) {
             const date = new Date(task.deadline)
-            const min = new Date(Date.now() + 3 * 60 * 60 * 1000)
+            const min = earliestDeadline()
             if (isNaN(date.getTime())) addError('deadline', t('invalid_date'))
             else if (date < min) addError('deadline', t('deadline_too_soon'))
         } else {
@@ -713,7 +718,7 @@ export default function NewTaskPage() {
                         label={t('deadline_label')}
                         value={deadline}
                         onChange={v => { setDeadline(v); if (fieldErrors.deadline) setFieldErrors({ ...fieldErrors, deadline: '' }) }}
-                        min={new Date(Date.now() + 3 * 60 * 60 * 1000).toISOString()}
+                        min={earliestDeadline(now).toISOString()}
                     />
                     {fieldErrors.deadline && (
                         <div style={{ color: 'var(--danger-solid)', fontSize: '0.85rem', marginTop: '0.25rem' }}>

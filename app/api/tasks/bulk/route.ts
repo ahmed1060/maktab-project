@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma"
 import { TaskService } from "@/lib/services/task.service"
 import { AuditLogService } from "@/lib/services/audit-log.service"
 import { isNextInternalError } from "@/lib/next-internal-error"
+import { earliestDeadline } from "@/lib/deadline"
 
 export const POST = withStandardHandler(async (req, session, json) => {
     const userRole = session.user.role
@@ -57,7 +58,7 @@ export const POST = withStandardHandler(async (req, session, json) => {
         if (diffInt < 0 || diffInt > 10) { validationSummary.invalidDifficulty++; continue }
 
         const deadlineDate = new Date(deadline)
-        const minDeadline = new Date(Date.now() + 3 * 60 * 60 * 1000)
+        const minDeadline = earliestDeadline()
         if (!deadline || isNaN(deadlineDate.getTime()) || deadlineDate < minDeadline) { validationSummary.deadlineTooSoon++; continue }
         if (!assigneeIds || assigneeIds.length === 0) { validationSummary.noAssignees++; continue }
 

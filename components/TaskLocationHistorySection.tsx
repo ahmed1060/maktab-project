@@ -6,6 +6,7 @@ import { useToast } from '@/context/ToastContext'
 import SafeDate from '@/components/SafeDate'
 import TrashIcon from '@/components/TrashIcon'
 import { useFeatures } from '@/lib/features/useFeatures'
+import SectionBoundary from './SectionBoundary'
 
 // F-23: extracted verbatim out of tasks/[id]/client.tsx. The lateness-
 // penalty UI state (showPenaltyUI/selectedPenalty/applyingPenalty) and the
@@ -24,7 +25,7 @@ interface TaskLocationHistorySectionProps {
     setLocationToDelete: (v: { index?: number, date?: string } | null) => void
 }
 
-export default function TaskLocationHistorySection({ task, setTask, userRole, userId, setLocationToDelete }: TaskLocationHistorySectionProps) {
+function TaskLocationHistorySectionBody({ task, setTask, userRole, userId, setLocationToDelete }: TaskLocationHistorySectionProps) {
     const { t, locale } = useLanguage()
     const { showToast } = useToast()
     const router = useRouter()
@@ -36,7 +37,6 @@ export default function TaskLocationHistorySection({ task, setTask, userRole, us
     const [verifyingLocation, setVerifyingLocation] = useState<string | null>(null)
 
     if (!task.comments) return null
-    try {
         const logs = Array.isArray(task.comments) ? task.comments : []
         if (!Array.isArray(logs)) return null
         const locations = logs.filter((l: any) => l.type === 'LOCATION_ADDED')
@@ -316,5 +316,19 @@ export default function TaskLocationHistorySection({ task, setTask, userRole, us
                 </div>
             </div>
         )
-    } catch { return null }
+}
+
+/**
+ * The section, inside a boundary. It used to wrap its own body in try/catch,
+ * which caught errors in the JSX expressions but not in child components, and
+ * reported nothing it caught — see SectionBoundary for the whole story. Same
+ * behaviour for the reader: a malformed task log loses this section, not the
+ * page.
+ */
+export default function TaskLocationHistorySection(props: TaskLocationHistorySectionProps) {
+    return (
+        <SectionBoundary name="TaskLocationHistorySection">
+            <TaskLocationHistorySectionBody {...props} />
+        </SectionBoundary>
+    )
 }

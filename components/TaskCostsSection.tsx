@@ -2,6 +2,7 @@
 import { useLanguage } from '@/context/LanguageContext'
 import { useModules } from '@/lib/useModules'
 import TrashIcon from '@/components/TrashIcon'
+import SectionBoundary from './SectionBoundary'
 
 // F-23: extracted verbatim out of tasks/[id]/client.tsx (1834 lines before
 // this split). Purely presentational — no state of its own, just reads
@@ -17,14 +18,13 @@ interface TaskCostsSectionProps {
     getMemberPaymentStatus: (taskObj: any) => Record<string, string>
 }
 
-export default function TaskCostsSection({
+function TaskCostsSectionBody({
     task, userId, userRole, onDeleteItem, onPaymentStatusChange, getMemberCosts, getMemberPaymentStatus
 }: TaskCostsSectionProps) {
     const { t, locale } = useLanguage()
     const modules = useModules()
 
     if (!task.comments) return null
-    try {
         const logs = Array.isArray(task.comments) ? task.comments : []
         if (!Array.isArray(logs)) return null
         const costs = logs.filter((l: any) => l.type === 'COST_ADDITION')
@@ -193,5 +193,19 @@ export default function TaskCostsSection({
                 </div>
             </div>
         )
-    } catch { return null }
+}
+
+/**
+ * The section, inside a boundary. It used to wrap its own body in try/catch,
+ * which caught errors in the JSX expressions but not in child components, and
+ * reported nothing it caught — see SectionBoundary for the whole story. Same
+ * behaviour for the reader: a malformed task log loses this section, not the
+ * page.
+ */
+export default function TaskCostsSection(props: TaskCostsSectionProps) {
+    return (
+        <SectionBoundary name="TaskCostsSection">
+            <TaskCostsSectionBody {...props} />
+        </SectionBoundary>
+    )
 }

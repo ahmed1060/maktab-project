@@ -70,6 +70,12 @@ export default async function DashboardPage(props: { searchParams: Promise<{ com
             // (not read from the cached stats below) only for the audit-log
             // link's date boundary — a few seconds' difference from the
             // cached query's own internal snapshot doesn't matter for that.
+            // A Server Component: this renders once per request and never
+            // again, so there is no later render for the clock to disagree
+            // with — which is what the purity rule guards against, and why it
+            // is a client-component rule that has no way to know this file
+            // runs on the server.
+            // eslint-disable-next-line react-hooks/purity -- server-rendered once per request
             const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000)
 
             // Cached 30s — this is the same read for every super admin

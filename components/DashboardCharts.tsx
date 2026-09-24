@@ -11,7 +11,6 @@ interface DonutChartProps {
 export function DonutChart({ data, title }: DonutChartProps) {
     const { t } = useLanguage()
     const total = data.reduce((acc, item) => acc + item.value, 0)
-    let currentAngle = 0
     const radius = 35
     const strokeWidth = 10
     const center = 50
@@ -24,16 +23,23 @@ export function DonutChart({ data, title }: DonutChartProps) {
         )
     }
 
+    // Where each segment starts, worked out before rendering rather than
+    // accumulated inside the .map that draws them. A running total mutated
+    // during render only works while the whole map re-runs, in order, every
+    // time; the React Compiler is free to cache pieces of a render, and then
+    // the sum drifts and the segments land at the wrong angles.
+    const percentages = data.map(item => (item.value / total) * 100)
+    const startsAt = percentages.map((_, i) => percentages.slice(0, i).reduce((a, b) => a + b, 0))
+
     return (
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
             <h4 style={{ margin: '0 0 1rem 0', fontSize: '1rem', color: 'var(--text-main)' }}>{title}</h4>
             <div style={{ position: 'relative', width: '160px', height: '160px' }}>
                 <svg viewBox="0 0 100 100" style={{ transform: 'rotate(-90deg)', filter: 'drop-shadow(0 4px 6px var(--shadow-weak))' }}>
                     {data.map((item, idx) => {
-                        const percentage = (item.value / total) * 100
+                        const percentage = percentages[idx]
                         const dashArray = (percentage * 2 * Math.PI * radius) / 100
-                        const dashOffset = -(currentAngle * 2 * Math.PI * radius) / 100
-                        currentAngle += percentage
+                        const dashOffset = -(startsAt[idx] * 2 * Math.PI * radius) / 100
 
                         return (
                             <circle
