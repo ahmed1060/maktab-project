@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useEffectEvent } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { useToast } from '@/context/ToastContext'
@@ -41,7 +41,9 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
     const [handoff, setHandoff] = useState<{ id: string; firstName: string; lastName: string }[] | null>(null)
     const [handoffTo, setHandoffTo] = useState<string>('')
     const [companies, setCompanies] = useState<{ id: string, name: string }[]>([])
-    const [loading, setLoading] = useState(true)
+    // Nothing to load without a user id; the effect below warns about that
+    // case rather than loading anything.
+    const [loading, setLoading] = useState(Boolean(userId))
     const [saving, setSaving] = useState(false)
     const [uploadingAvatar, setUploadingAvatar] = useState(false)
     const [isResetting, setIsResetting] = useState(false)
@@ -86,9 +88,19 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
         }
     }, [])
 
+    // Read at the moment it fires, not a reason to fetch again: a language
+    // switch should not reload the form under somebody's edits.
+    const reportLoadFailure = useEffectEvent(() => showToast(t('error_generic'), 'error'))
+
+    // Keyed on who is signed in, not on the session object. The session is
+    // refetched every five minutes and comes back as a new object each time;
+    // depending on it re-ran this load and re-seeded every field from the
+    // server, throwing away whatever an Admin was halfway through editing.
+    const sessionUserId = session?.user?.id
+
     useEffect(() => {
         const fetchEmployee = async () => {
-            if (!session) return // Don't fetch if no session (avoids errors on signout)
+            if (!sessionUserId) return // Don't fetch if no session (avoids errors on signout)
             try {
                 const res = await fetch(`/api/users?id=${userId}`, { cache: 'no-store' })
                 const result = await res.json()
@@ -121,7 +133,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                 setAvatarUrl(employee.avatar || null)
 
                 // Check for pending name change requests
-                if (userId === session?.user?.id && (employee.role === 'EMPLOYEE' || employee.role === 'TEAM_LEADER')) {
+                if (userId === sessionUserId && (employee.role === 'EMPLOYEE' || employee.role === 'TEAM_LEADER')) {
                     const reqRes = await fetch(`/api/profile-requests?status=PENDING`)
                     if (reqRes.ok) {
                         const result = await reqRes.json()
@@ -132,7 +144,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                     }
                 }
             } catch {
-                showToast(t('error_generic'), 'error')
+                reportLoadFailure()
             } finally {
                 setLoading(false)
             }
@@ -155,7 +167,6 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
             fetchEmployee()
         } else {
             console.warn('EmployeeProfileForm: userId is missing')
-            setLoading(false)
         }
         // Who this employee could be assigned to. Asked for by role rather
         // than fetched wholesale and filtered here — the browser should not be
@@ -178,7 +189,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
         if (userRole === 'SUPER_ADMIN' || userRole === 'ADMIN') {
             fetchLeaders()
         }
-    }, [userId, userRole, showToast, session, t])
+    }, [userId, userRole, sessionUserId])
 
     const handleResetPassword = async (adminPasswordInput: string) => {
         setIsVerifying(true)

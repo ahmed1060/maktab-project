@@ -62,7 +62,12 @@ export default function EndContractModal({ userId, name, status, onClose, onDone
     const [preview, setPreview] = useState<Preview | null>(null)
     const [timeline, setTimeline] = useState<Timeline | null>(null)
     const [previewError, setPreviewError] = useState<string | null>(null)
-    const [loading, setLoading] = useState(false)
+    // The leaving date the preview on screen was worked out for. Loading is
+    // derived from it rather than switched on inside the effect: whenever the
+    // date on the form is not the one the preview answers, a new one is on
+    // its way.
+    const [previewedFor, setPreviewedFor] = useState<string | null>(null)
+    const loading = !isArchived && !!lastWorkingDay && previewedFor !== lastWorkingDay
     const [submitting, setSubmitting] = useState(false)
 
     const money = useCallback((amount: number) =>
@@ -74,7 +79,6 @@ export default function EndContractModal({ userId, name, status, onClose, onDone
     useEffect(() => {
         if (isArchived || !lastWorkingDay) return
         let cancelled = false
-        setLoading(true)
         // Debounced: a date input fires on every keystroke while somebody types
         // a year, and each one would be a settlement calculation.
         const timer = setTimeout(async () => {
@@ -93,7 +97,7 @@ export default function EndContractModal({ userId, name, status, onClose, onDone
             } catch {
                 if (!cancelled) setPreviewError(t('error_generic'))
             } finally {
-                if (!cancelled) setLoading(false)
+                if (!cancelled) setPreviewedFor(lastWorkingDay)
             }
         }, 350)
         return () => { cancelled = true; clearTimeout(timer) }

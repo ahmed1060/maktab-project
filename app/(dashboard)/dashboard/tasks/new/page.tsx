@@ -1,5 +1,7 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useMemo } from 'react'
+import useSWR from 'swr'
+import { fetcher } from '@/lib/swr-fetcher'
 import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import DateTimePicker from '@/components/DateTimePicker'
@@ -20,6 +22,8 @@ import { cellToPrimitive } from '@/lib/xlsx-cell'
 import { useNow } from '@/lib/useNow'
 import { earliestDeadline } from '@/lib/deadline'
 
+const NO_VENDORS: any[] = []
+
 export default function NewTaskPage() {
     const { t, locale } = useLanguage()
     // The deadline floor offered to the picker, kept current while the form
@@ -37,11 +41,9 @@ export default function NewTaskPage() {
     // real guarantee) server-side in TaskService.create.
     const [useVendor, setUseVendor] = useState(false)
     const [vendorId, setVendorId] = useState('')
-    const [vendors, setVendors] = useState<any[]>([])
     const [isBulkModalOpen, setIsBulkModalOpen] = useState(false)
     const [isManageTemplatesOpen, setIsManageTemplatesOpen] = useState(false)
     const [bulkTasks, setBulkTasks] = useState<any[]>([])
-    const [users, setUsers] = useState<any[]>([])
     const router = useRouter()
 
     const { showToast } = useToast()
@@ -51,76 +53,60 @@ export default function NewTaskPage() {
     const userRole = (session?.user as any)?.role
     const modules = useModules()
     const vendorsName = modules.label('vendors')
-    // Same role check as the vendors-fetch effect below — a role that was
+    // Same role check as the vendors request below — a role that was
     // never going to see vendors either way (e.g. Employee, if this page
     // is ever reached with that role) gets the plain location field only,
     // same as always.
     const canUseVendors = ['ADMIN', 'TEAM_LEADER', 'SUPER_ADMIN'].includes(userRole)
 
-    useEffect(() => {
-        const queryParams = new URLSearchParams()
-        queryParams.set('limit', '1000')
-        if (selectedCompanyId) queryParams.set('companyId', selectedCompanyId)
+    // Who can be assigned. SWR, keyed by the company a Super Admin is looking
+    // at, so switching company cannot leave the previous company's people in
+    // the picker if that answer arrives last.
+    const usersKey = session
+        ? `/api/users?${new URLSearchParams({ limit: '1000', ...(selectedCompanyId ? { companyId: selectedCompanyId } : {}) })}`
+        : null
+    const { data: usersResult } = useSWR(usersKey, fetcher)
+    const users: any[] = useMemo(() => {
+        const usersList = usersResult?.data?.data || usersResult?.data || []
+        if (!Array.isArray(usersList)) {
+            console.error('Invalid users data received:', usersResult)
+            return []
+        }
+        const rolePriority: { [key: string]: number } = {
+            'EMPLOYEE': 1,
+            'TEAM_LEADER': 2,
+            'ADMIN': 3,
+            'SUPER_ADMIN': 4
+        }
+        // Sort by role: EMPLOYEE -> TEAM_LEADER -> ADMIN -> SUPER_ADMIN, then
+        // by name. On a copy: the array belongs to SWR's cache.
+        return [...usersList].sort((a: any, b: any) => {
+            const priorityA = rolePriority[a.role] || 99
+            const priorityB = rolePriority[b.role] || 99
+            if (priorityA !== priorityB) return priorityA - priorityB
+            return a.firstName.localeCompare(b.firstName)
+        })
+        // No filtering here any more.
+        //
+        // This used to hide Admins from a Team Leader's list, which
+        // meant the request that fetched it had already returned them:
+        // every Admin's row was in the page payload, and the browser
+        // was politely not drawing it. /api/users now scopes a Team
+        // Leader to their own team server-side, so what arrives is
+        // already what they may see — and, more to the point, already
+        // what the server will accept when they submit.
+        //
+        // Filtering in the browser was never a restriction. It decided
+        // what a picker showed, not what a request could contain.
+    }, [usersResult])
 
-        fetch(`/api/users?${queryParams.toString()}`)
-            .then(res => res.json())
-            .then(data => {
-                const usersList = data.data?.data || data.data || []
-                if (!Array.isArray(usersList)) {
-                    console.error('Invalid users data received:', data)
-                    setUsers([])
-                    return
-                }
-                // Sort by role: EMPLOYEE -> TEAM_LEADER -> ADMIN -> SUPER_ADMIN
-                const sortedData = usersList.sort((a: any, b: any) => {
-                    const rolePriority: { [key: string]: number } = {
-                        'EMPLOYEE': 1,
-                        'TEAM_LEADER': 2,
-                        'ADMIN': 3,
-                        'SUPER_ADMIN': 4
-                    }
-                    const priorityA = rolePriority[a.role] || 99
-                    const priorityB = rolePriority[b.role] || 99
-
-                    if (priorityA !== priorityB) {
-                        return priorityA - priorityB
-                    }
-                    // Secondary sort by name if same role
-                    return a.firstName.localeCompare(b.firstName)
-                })
-                // No filtering here any more.
-                //
-                // This used to hide Admins from a Team Leader's list, which
-                // meant the request that fetched it had already returned them:
-                // every Admin's row was in the page payload, and the browser
-                // was politely not drawing it. /api/users now scopes a Team
-                // Leader to their own team server-side, so what arrives is
-                // already what they may see — and, more to the point, already
-                // what the server will accept when they submit.
-                //
-                // Filtering in the browser was never a restriction. It decided
-                // what a picker showed, not what a request could contain.
-                setUsers(sortedData)
-            })
-    }, [session, selectedCompanyId, userRole])
-
-    useEffect(() => {
-        if (!['ADMIN', 'TEAM_LEADER', 'SUPER_ADMIN'].includes(userRole)) return
-        // Super Admin needs a company selected — same as the vendors page
-        // itself, no fetch at all until then rather than a 400.
-        if (userRole === 'SUPER_ADMIN' && !selectedCompanyId) { setVendors([]); return }
-
-        const queryParams = new URLSearchParams()
-        if (userRole === 'SUPER_ADMIN') queryParams.set('companyId', selectedCompanyId!)
-
-        fetch(`/api/vendors?${queryParams.toString()}`)
-            .then(res => res.json())
-            .then(data => {
-                const vendorsList = Array.isArray(data.data) ? data.data : []
-                setVendors(vendorsList)
-            })
-            .catch(() => setVendors([]))
-    }, [selectedCompanyId, userRole])
+    // Super Admin needs a company selected — same as the vendors page itself,
+    // no fetch at all until then rather than a 400.
+    const vendorsKey = !canUseVendors || (userRole === 'SUPER_ADMIN' && !selectedCompanyId)
+        ? null
+        : `/api/vendors${userRole === 'SUPER_ADMIN' ? `?companyId=${encodeURIComponent(selectedCompanyId!)}` : ''}`
+    const { data: vendorsResult } = useSWR(vendorsKey, fetcher)
+    const vendors: any[] = vendorsKey && Array.isArray(vendorsResult?.data) ? vendorsResult.data : NO_VENDORS
 
     const [error, setError] = useState('')
     const [fieldErrors, setFieldErrors] = useState<{ [key: string]: string }>({})

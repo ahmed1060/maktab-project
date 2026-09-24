@@ -1,5 +1,7 @@
 'use client'
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useMemo, useState, useCallback } from 'react'
+import useSWR from 'swr'
+import { fetcher } from '@/lib/swr-fetcher'
 import { useLanguage } from '@/context/LanguageContext'
 import { useSession } from 'next-auth/react'
 import { useCompany } from '@/context/CompanyContext'
@@ -99,9 +101,6 @@ export default function EmployeeFilter({
     secondaryAction,
     toolkitAction
 }: EmployeeFilterProps) {
-    const [employees, setEmployees] = useState<EmployeeType[]>([])
-    const [loading, setLoading] = useState(!isEmployee && !hideEmployeeFilter)
-    const [error, setError] = useState<string | null>(null)
     const [isPopupOpen, setIsPopupOpen] = useState(false)
     const [isMobile, setIsMobile] = useState(false)
     const { t, locale } = useLanguage()
@@ -171,53 +170,41 @@ export default function EmployeeFilter({
         return () => window.removeEventListener('resize', checkMobile)
     }, []) // handleApplyFilters and searchQuery were not needed here, they were unused in this effect.
 
-    useEffect(() => {
-        if (!isEmployee && !hideEmployeeFilter) {
-            setLoading(true)
-            setError(null)
-            const role = session?.user?.role as string
-            let url = '/api/users?limit=1000'
-
-            // For Super Admins, respect the global company selection
-            if (role === 'SUPER_ADMIN' && globalCompanyId) {
-                url += `&companyId=${globalCompanyId}`
-            }
-
-            fetch(url)
-                .then(res => res.json())
-                .then(responseData => {
-                    // /api/users actually returns the double-nested envelope
-                    // { success, data: { data: [...], total, page } } — this
-                    // used to only unwrap one level, so `data` was that
-                    // pagination object (not an array), and .filter() below
-                    // threw on every call. Unwrap however deep it goes.
-                    const payload = responseData?.data ?? responseData
-                    const data = Array.isArray(payload) ? payload : (payload?.data || [])
-
-                    const filteredData = data.filter((emp: EmployeeType) => emp.role !== 'ADMIN' && emp.role !== 'SUPER_ADMIN')
-                    const sortedData = filteredData.sort((a: EmployeeType, b: EmployeeType) => {
-                        const rolePriority: { [key: string]: number } = {
-                            'EMPLOYEE': 1,
-                            'TEAM_LEADER': 2,
-                            'ADMIN': 3,
-                            'SUPER_ADMIN': 4
-                        }
-                        const priorityA = rolePriority[a.role] || 99
-                        const priorityB = rolePriority[b.role] || 99
-                        return priorityA !== priorityB ? priorityA - priorityB : a.firstName.localeCompare(b.firstName)
-                    })
-                    setEmployees(sortedData)
-                    setLoading(false)
-                })
-                .catch(err => {
-                    console.error('Failed to load employees:', err)
-                    setError(t('failed_load_employees'))
-                    setLoading(false)
-                })
-        } else {
-            setLoading(false)
+    // The people the employee picker offers. Keyed by the company a Super
+    // Admin is looking at, so switching company cannot leave the previous
+    // company's answer on screen if it arrives last. Waits for the session,
+    // which decides whether that company applies.
+    const wantsEmployees = !isEmployee && !hideEmployeeFilter
+    const role = session?.user?.role as string | undefined
+    const employeesKey = wantsEmployees && session
+        ? `/api/users?limit=1000${role === 'SUPER_ADMIN' && globalCompanyId ? `&companyId=${globalCompanyId}` : ''}`
+        : null
+    const { data: employeesResult, error: employeesError, isLoading: employeesLoading } = useSWR(employeesKey, fetcher)
+    const loading = wantsEmployees && (!session || employeesLoading)
+    const error = employeesError ? t('failed_load_employees') : null
+    const employees: EmployeeType[] = useMemo(() => {
+        if (!employeesResult) return []
+        // /api/users actually returns the double-nested envelope
+        // { success, data: { data: [...], total, page } } — this
+        // used to only unwrap one level, so `data` was that
+        // pagination object (not an array), and .filter() below
+        // threw on every call. Unwrap however deep it goes.
+        const payload = employeesResult?.data ?? employeesResult
+        const data: EmployeeType[] = Array.isArray(payload) ? payload : (payload?.data || [])
+        const rolePriority: { [key: string]: number } = {
+            'EMPLOYEE': 1,
+            'TEAM_LEADER': 2,
+            'ADMIN': 3,
+            'SUPER_ADMIN': 4
         }
-    }, [isEmployee, hideEmployeeFilter, session?.user?.role, globalCompanyId, t])
+        return data
+            .filter(emp => emp.role !== 'ADMIN' && emp.role !== 'SUPER_ADMIN')
+            .sort((a, b) => {
+                const priorityA = rolePriority[a.role] || 99
+                const priorityB = rolePriority[b.role] || 99
+                return priorityA !== priorityB ? priorityA - priorityB : a.firstName.localeCompare(b.firstName)
+            })
+    }, [employeesResult])
 
     // Removed auto-apply search effect to wait for "Show Results"
 
