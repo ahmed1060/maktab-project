@@ -78,6 +78,15 @@ by then, and this plan names real models and files that may have changed.
 | 10 | Field or office staff | **Both.** Terminals for fixed sites and the app for field staff are both in scope (§20). |
 | 11 | Grandfathered companies | **Receive attendance on release**, like every other module (§16). |
 
+### Round 5 — face enrolment, legal switch, roles
+
+| # | Topic | Decision |
+|---|---|---|
+| 1 | Verifying a face setup | **After each setup the employee takes one verification photo. It is stored on their profile, visible to the Super Admin, Admin and HR, and sent to them as a critical (red) notification.** Replaces the in-person approval (§9.5). |
+| 2 | Legal risk | **Build the feature, mobile app only, behind a system-wide switch that only the protected Super Admin can turn on** (§10.4). |
+| 3 | Roles | **Roles and role templates are managed by the Super Admin only**, per company, according to that company's contract and policy. **One role per user** (§4). |
+| 4 | "Terminals" | Clarified: the physical fingerprint devices mounted at a site's entrance (§17). |
+
 ---
 
 ## 1. Where this system actually stands
@@ -128,7 +137,7 @@ no way to define a role other than the four in the enum.
 | Deductions land as `SalaryAdjustment` rows, source `ATTENDANCE` | Already in days, already explains itself on a payslip. |
 | Access is checked by permission, never by role name | Round 3, decision 5 (§4). |
 | Attendance requires HR | Round 3, decision 8. |
-| No biometric data ever reaches our servers | Terminals keep fingerprint templates; the app keeps face templates on the phone. We receive IDs, timestamps and match results only (§9.5, §10). |
+| No biometric templates ever reach our servers | Terminals keep fingerprint templates; the app keeps face templates on the phone. We receive IDs, timestamps and match results — plus one human-reviewed verification photo per face enrolment (§9.5, §10). |
 
 ---
 
@@ -149,12 +158,16 @@ migrated.
   `payroll.approve`, `dayoff.approve`, `settings.view` … Adding a feature means
   adding its permissions to the list. Same pattern as `MODULE_BUNDLE`: one table,
   every caller asking the same question of it.
-- **Roles are data.** A `Role` is a name plus a set of permissions, created and
-  edited in the UI.
+- **Roles are data**, created and edited in the UI — **by the Super Admin only**
+  (round 5). A `Role` is a name plus a set of permissions, belonging to one
+  company, built to match that company's contract and HR policy.
 - **The four existing roles become built-in roles** with exactly today's
   permissions, so the migration changes no one's access. Built-ins cannot be
-  deleted, and the built-in Admin cannot lose the permission to manage roles —
-  otherwise one careless edit locks a company out of its own settings.
+  deleted.
+- **No company user can manage roles.** There is no `roles.manage` permission in
+  the company catalogue at all. That removes most privilege-escalation risk by
+  construction: nobody inside a company can create a role more powerful than the
+  one they hold.
 - **Super Admin stays outside this system.** It is not a company role, it is us.
   Keeping it hardcoded is what guarantees a company cannot build a role that
   reaches across tenants.
@@ -169,8 +182,11 @@ explicit.
 
 ### 4.3 Rules that prevent privilege escalation
 
-- Nobody can grant a permission they do not hold themselves.
-- Nobody can edit their own role, or assign themselves a different one.
+- Role creation and editing are Super Admin only (§4.1), so a company user can
+  never widen their own access.
+- If role *assignment* is delegated to the company Admin (open question §18.1),
+  an Admin may assign only roles the Super Admin created for that company, and
+  may never change their own role.
 - Nobody can act on their own record where the permission is an approval — a
   person with `attendance.correct` cannot correct their own attendance; a person
   with `dayoff.approve` cannot approve their own leave.
@@ -180,24 +196,19 @@ explicit.
 
 ### 4.4 Where roles come from
 
-**Both global and per company** (decided in round 4 by adopting role
-templates):
+Decided in round 5:
 
-- **Global role templates** — HR Officer, Branch Manager, Accountant — are
-  maintained by the Super Admin. A company **copies** one and adjusts it; editing
-  the template later does not change any company's copy. Same copy-not-link rule
-  as policy templates (§6.8).
-- **Company roles** are created by that company, from a template or from
-  scratch, and exist only inside it. One company's roles are invisible to every
-  other company.
-
-**One role per user or several — still open (§18.1).** "Several" means a person
-can hold, say, both *HR Officer* and *Branch Manager* at once and gets the
-permissions of both added together. "One" means that person needs a single
-combined role created for them. Recommendation: one role per user to start,
-because with several roles the question "why can this person do this?" has to be
-answered by searching every role they hold. The "who can do this?" view
-(§13.5) softens that if several is chosen.
+- **Role templates** — HR Officer, Branch Manager, Accountant — are created and
+  maintained by the Super Admin.
+- **Company roles** are created by the Super Admin for a specific company, from a
+  template or from scratch, according to that company's contract and policy. A
+  company role is a **copy** of its template: editing the template later changes
+  no company. One company's roles are invisible to every other.
+- **One role per user.** Someone who needs HR Officer *and* Branch Manager
+  permissions gets one role built for exactly that. "Why can this person do
+  this?" always has a one-line answer: their role.
+- The **"who can do this?" view** (§13.5) is a Super Admin screen: pick a
+  company and a permission, see every person who holds it.
 
 This deserves its own plan document. Everything below assumes it exists and
 refers to permissions by name.
@@ -453,9 +464,12 @@ model CheckInDevice           // the one device a user may check in from
   requestedAt, approvedAt?, approvedById?, revokedAt?, revokedById?
   faceEnrolledAt?, faceModelVersion?   // a fact that enrolment happened —
                                         // the templates themselves stay on the phone
-  faceEnrolmentApprovedById?            // the in-person approval, §9.5
+  faceReferencePhotoPath?               // private storage; one per enrolment
+  faceEnrolmentStatus?                  // PENDING | APPROVED | REJECTED
+  faceEnrolmentReviewedById?, faceEnrolmentReviewedAt?   // §9.5
   // Partial unique: at most one ACTIVE and one PENDING per user.
 
+// On SystemSettings: faceVerificationEnabled Boolean — protected Super Admin only.
 // On AttendancePolicy: faceVerificationAvailable Boolean (company switch).
 // On User: faceVerificationRequired Boolean (per employee, §9.5).
 
@@ -584,13 +598,17 @@ or sent to the server**.
 
 #### Turning it on
 
+- **System level:** a switch in System Settings that **only the protected Super
+  Admin** can change (round 5; §10.4). Off by default. While off, the feature does
+  not exist for any company.
 - **Company level:** the attendance policy has a switch, *face verification
-  available*. Off by default.
+  available*. Off by default, and only available while the system switch is on.
 - **Employee level:** with the company switch on, face verification is enabled per
   employee. Not everyone at a company needs it — an office with a fingerprint
   terminal may use it only for field staff.
 - **Consent first:** before enrolment the app shows a clear explanation of what is
-  captured, that it stays on the phone, and how to withdraw — and records the
+  captured, that the matching data stays on the phone, that **one verification
+  photo is stored on the server and who can see it**, and how to withdraw — and records the
   employee's explicit acceptance (who, when, which text version) on the server.
   The consent record is not biometric data; the face data is. See §10 for why
   this step is legally required, not a courtesy.
@@ -609,13 +627,49 @@ or sent to the server**.
 4. The phone tells the server only: *enrolled, on this device, at this time,
    with model version X*.
 
-**Who does the enrolment matters.** Since the server never sees the face, it
-cannot tell whether the face enrolled is the employee's. If an employee enrols a
-colleague's face on day one, the colleague can check in for them forever.
-Therefore: **enrolment requires an in-person approval** — done at the office,
-with an admin present, who approves on their own screen (e.g. by scanning a QR
-code the employee's app shows). This combines with device approval (§9.3), so
-approving a new phone and approving its face enrolment are one visit.
+5. **Verification photo (round 5).** Immediately after setup, the app asks the
+   employee to verify it: one live capture, with liveness, which must match the
+   templates just created. **This one photo is uploaded** and stored on the
+   employee's profile as their *face reference photo*.
+6. Face verification for this employee stays **inactive until approved**.
+
+**Why the photo, and why approval.** Since the templates never leave the phone,
+the server cannot tell whose face was enrolled. An employee could enrol a
+colleague's face on day one, and the colleague would check in for them forever.
+The verification photo closes that: a person who knows the employee looks at it
+and confirms it is them. This replaces the in-person approval proposed in
+round 4 — it needs no office visit, which matters for field staff.
+
+Note that the employee's existing profile `avatar` cannot serve this purpose: it
+is chosen by the employee and approved by no one.
+
+**Who sees it and who is told.**
+
+- The photo is visible on the employee's profile to the **Super Admin**, the
+  company **Admin**, and anyone whose role holds `attendance.approve_face`
+  (typically **HR**). Nobody else — not team leaders, not colleagues.
+- On upload, those people receive a **critical notification** — shown in red,
+  pinned at the top of the notification list until someone acts on it (§13.4).
+- Any one of them can **approve** (face verification becomes active) or
+  **reject** (the employee must set up again). Both are audited.
+- Every *view* of a face reference photo is audited too. It is the most sensitive
+  thing we store, and "who looked at it" should always be answerable.
+
+**What this changes about "nothing on the server".** The face *templates* —
+the biometric data used for matching — still never leave the phone. **One photo
+per enrolment now does.** That is a real change to the privacy promise, it must
+be stated in the consent text, and it is a question for counsel (§10.3). Rules
+for the photo:
+
+- One per employee — a new enrolment replaces the old photo, and the old one is
+  deleted, not archived.
+- Deleted when the employee withdraws consent, when the enrolment is rejected,
+  and when the employee is archived.
+- Stored in private storage, served only through an access-checked endpoint,
+  never through a public URL.
+
+This combines with phone approval (§9.3): a new phone means a new enrolment, a new
+verification photo and a new approval.
 
 #### Check-in
 
@@ -636,13 +690,14 @@ Faces change — lighting, glasses, a beard, an injury. A strict "refuse" would
 lock people out of attendance. So: up to N attempts (suggest 3), then the
 check-in is **recorded as `FLAGGED`** with the reason, not refused. It appears on
 the Flagged tab for a person to decide. Repeated failures prompt a re-enrolment,
-in person.
+with a new verification photo and approval.
 
-#### What "nothing on the server" costs — accepted trade-offs
+#### What keeping matching on the phone costs — accepted trade-offs
 
-- **No evidence in a dispute.** If an employee says "that was me", there is no
-  photo to look at — only the recorded score. This is the price of the privacy
-  guarantee, and it is accepted.
+- **Little evidence in a dispute.** No photo is taken at ordinary check-ins —
+  only the score is recorded. The approved reference photo shows who *enrolled*,
+  not who checked in on a given morning. Accepted as the price of privacy; see
+  enhancement §13.8 for flagged check-ins.
 - **Trust rests on the app's integrity.** The server believes a "verified" result
   only because attestation (§9.4) proves it came from the genuine app on a
   genuine phone. Face matching must never be offered on a phone that fails
@@ -719,7 +774,10 @@ Questions to put to a lawyer:
    that?
 4. What must the written consent contain, and does in-app acceptance with a
    stored record count as written?
-5. Does the non-sensitive part of attendance — punches, locations, IPs — need its
+5. Is a face photo stored on the server for **human** review (the verification
+   photo, §9.5) itself biometric data under the law, given it belongs to a
+   biometric system — or ordinary personal data like an ID photo in an HR file?
+6. Does the non-sensitive part of attendance — punches, locations, IPs — need its
    own licence tier?
 
 ### 10.4 Consequences for the design
@@ -734,6 +792,16 @@ Already reflected above, and not negotiable once counsel confirms:
 - **Consent is versioned.** If the explanation text changes, employees re-accept.
 - **Deletion on offboarding:** archiving an employee revokes their phone, and the
   app deletes the templates the next time it runs.
+- **A system-wide switch that only the protected Super Admin can turn on**
+  (round 5). The code can be built and shipped; the law governs *processing*, and
+  no processing happens while the switch is off. It should stay off until counsel
+  has answered §10.3. It reuses the existing `SuperAdmin.isProtected` flag, which
+  the database itself already enforces with a trigger.
+- **Two ways to turn it off.** *Pause* stops the feature everywhere and keeps
+  enrolments, for a temporary stop. *Pause and purge* also instructs every app to
+  delete its face templates, deletes every stored verification photo, and records
+  that it did — for when the answer from counsel or a regulator is no. Purge asks
+  for confirmation and MFA.
 - **The feature is gated on the company's legal readiness** — a company cannot
   switch face verification on until it has confirmed (and we have recorded) that
   it holds whatever licence counsel says it needs.
@@ -840,6 +908,12 @@ day itself.
 - **In-app** through the existing `Notification` model.
 - **Push** to the check-in app — adopted in round 4. Not email; reaches the
   employee without them opening anything.
+- **Priority.** `Notification` gains a `priority`: `NORMAL`, `HIGH`, `CRITICAL`.
+  `CRITICAL` is red and stays pinned at the top until acted on. It is reserved for
+  things that **need a decision from a person** — a face reference photo awaiting
+  approval, a terminal offline during working hours, an integrity spike. If
+  ordinary events are critical too, people learn to ignore red, and the one that
+  matters is missed.
 - Sent when: a day becomes `INCOMPLETE` or `ABSENT`; a check-in is flagged; a
   request is approved or rejected; **no check-in has arrived N minutes after the
   shift starts** (reminder, adopted in round 4 — N configurable in the policy,
@@ -847,9 +921,9 @@ day itself.
 
 ### 13.5 "Who can do this?" (roles)
 
-Pick a permission; see every person in the company holding it, at which scope,
-and through which role. The first question anyone asks after a surprising
-approval. Lives in the roles screens (§4).
+A Super Admin screen: pick a company and a permission; see every person holding
+it, at which scope, through which role. The first question anyone asks after a
+surprising approval.
 
 ### 13.6 Check-in screen extras
 
@@ -864,12 +938,22 @@ mismatches, face-check failures and flagged check-ins, over time. A company with
 sudden spike is either under attack or has a broken app release — we want to
 know either way. Adopted in round 4.
 
+
+### 13.8 Photo on flagged check-ins — proposed (round 5)
+
+When a check-in is flagged because the face check failed three times, the person
+reviewing it currently has nothing to look at but a score. Proposal: in that case
+only, the app uploads the last captured frame with the flagged check-in, shown
+next to the approved reference photo. Ordinary successful check-ins still send
+no photo. Deleted once the flag is resolved. Covered by the same consent text and
+the same counsel question as the reference photo.
+
 ---
 
 ## 14. Who corrects attendance
 
 Anyone whose role holds `attendance.correct`, at their scope. The built-in Admin
-has it at company scope. A company can create an "HR Officer" role with it, and
+has it at company scope. The Super Admin can create an "HR Officer" role with it for a company, and
 that person keeps everything an employee has. Nobody can correct their own
 attendance.
 
@@ -879,8 +963,10 @@ attendance.
 
 `AttendanceDay` is kept as long as payslips are. Raw `AttendancePunch` rows are
 kept for the current year plus one, then punches belonging to locked days are
-pruned by the existing `/api/cron/prune` job. No face data exists on the server
-to retain. Face-consent records are kept for as long as the consent is relevant
+pruned by the existing `/api/cron/prune` job. Face templates never reach the
+server. The one face reference photo per employee is deleted on re-enrolment,
+rejection, consent withdrawal or archiving (§9.5); flagged-check-in frames, if
+adopted, on resolution of the flag. Face-consent records are kept for as long as the consent is relevant
 plus whatever counsel advises (§10). Exact periods confirmed against labour
 record-keeping requirements before they are set.
 
@@ -902,6 +988,12 @@ A paid add-on that **requires HR**:
 
 ## 17. Hardware terminals and the Local Sync Agent
 
+*Terminal* in this plan means a **physical fingerprint attendance device** —
+the ZKTeco or Hikvision unit mounted at a site's entrance, which employees scan
+their finger on when arriving and leaving. It is what the original draft was
+about. Terminals suit staff who arrive at a fixed place every day; the app suits
+staff who do not.
+
 A signed Windows service on an always-on PC on the tenant's LAN pulls from
 fingerprint terminals over TCP, queues locally, pushes over outbound HTTPS,
 advances its cursor only on success, and heartbeats. Enrolment by a one-time code
@@ -918,15 +1010,18 @@ the engine treats their punches identically.
 
 ## 18. Open questions
 
-Few left.
-
-1. **One role per user, or several?** (§4.4) Recommendation: one.
-2. **Legal questions in §10.3** — for counsel, before face verification is built.
-3. **Multiple terminals per site with roles** (entry vs exit), or all readers
+1. **Who assigns roles to users** — the Super Admin only, or may the company
+   Admin assign one of the roles the Super Admin created for that company (for a
+   new hire, say)? Recommendation: the Admin may assign, not create. Otherwise
+   every new hire needs a message to us.
+2. **Legal questions in §10.3** — for counsel, before the face switch is ever
+   turned on.
+3. **Photo on flagged check-ins** (§13.8) — adopt or not.
+4. **Multiple terminals per site with roles** (entry vs exit), or all readers
    equivalent?
-4. **Which UI exposes the work week first** — per company, per schedule, or both?
-5. **Face SDK choice** (§9.5) — decided at implementation time, against the
-   rule that nothing leaves the phone.
+5. **Which UI exposes the work week first** — per company, per schedule, or both?
+6. **Face SDK choice** (§9.5) — decided at implementation time, against the rule
+   that face templates never leave the phone.
 
 ---
 
@@ -935,7 +1030,8 @@ Few left.
 - Door access control.
 - Real-time streaming attendance.
 - Storing fingerprint templates from terminals.
-- Storing or transmitting face photos or face templates.
+- Storing or transmitting face templates. (One verification photo per enrolment
+  is stored, §9.5; ordinary check-ins send none.)
 - Polling a tenant's device over the internet.
 - Shift planning and rota building.
 - Check-in from a browser. Check-in is native-app only; the web product stays as
@@ -986,7 +1082,7 @@ the check-in screen; flagged review; Super Admin integrity view.
 ### Phase 3b — Face verification
 
 Separate from Phase 3 on purpose: it is gated on the legal review in §10 and must
-not hold the rest of the app back. Consent flow, in-person enrolment, on-device
+not hold the rest of the app back. Consent flow, enrolment with verification photo and approval, on-device
 matching with liveness, fallback to flagged.
 
 ### Phase 4 — Direct device push
@@ -1008,7 +1104,7 @@ picked up later. Before the first line of implementation:
 2. **Get counsel's answers to §10.3** — at minimum before Phase 3b, ideally before
    Phase 3, because the non-biometric parts of attendance (locations, IPs) are
    personal data too.
-3. **Settle §18.1** (one role or several) before the roles project starts.
+3. **Settle §18.1** (who assigns roles) before the roles project starts.
 4. **Write the roles project up as its own plan**, from §4, since it lands first
    and touches the whole product.
 5. **Pick one pilot tenant** for the Phase 0 exit criterion before building
