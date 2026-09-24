@@ -6,6 +6,7 @@ import { useSession } from 'next-auth/react'
 import LoadingSpinner from '@/components/LoadingSpinner'
 import SafeDate from '@/components/SafeDate'
 import Link from 'next/link'
+import { useFadingHighlight } from '@/lib/useFadingHighlight'
 
 
 interface SalaryRecord {
@@ -119,19 +120,9 @@ export default function EmployeeHistoryPage() {
     const [isManageDeductionsOpen, setIsManageDeductionsOpen] = useState(false)
     const searchParams = useSearchParams()
     const highlightId = searchParams.get('highlight')
-    const [visualHighlightId, setVisualHighlightId] = useState<string | null>(highlightId)
-
-    useEffect(() => {
-        if (highlightId) {
-            setVisualHighlightId(highlightId)
-            const timer = setTimeout(() => {
-                setVisualHighlightId(null)
-            }, 6000)
-            return () => clearTimeout(timer)
-        } else {
-            setVisualHighlightId(null)
-        }
-    }, [highlightId])
+    // Shown for six seconds after arriving via ?highlight=. See
+    // lib/useFadingHighlight.ts for why this is not an effect any more.
+    const visualHighlightId = useFadingHighlight(highlightId, 6000)
 
     const fetchData = useCallback(async () => {
         try {

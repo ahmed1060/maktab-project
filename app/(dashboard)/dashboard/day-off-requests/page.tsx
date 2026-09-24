@@ -15,6 +15,7 @@ import EmployeeFilter from '@/components/EmployeeFilter'
 import { useCompany } from '@/context/CompanyContext'
 import Pagination from '@/components/Pagination'
 import { fetcher } from '@/lib/swr-fetcher'
+import { useFadingHighlight } from '@/lib/useFadingHighlight'
 
 // Badge color + translation key per type, keyed once here rather than as a
 // chained ternary — REGULAR/CASUAL/SICK are reachable from the request
@@ -62,7 +63,7 @@ export default function DayOffRequestsPage() {
     const [isRejectModalOpen, setIsRejectModalOpen] = useState(false)
     const [isRequestModalOpen, setIsRequestModalOpen] = useState(false)
     const [daysToDeduct, setDaysToDeduct] = useState('')
-    const [deductionType, setDeductionType] = useState<'CREDIT' | 'SALARY'>('CREDIT')
+    const [chosenDeduction, setDeductionType] = useState<'CREDIT' | 'SALARY'>('CREDIT')
     const [rejectionReason, setRejectionReason] = useState('')
 
     // New Request Form State
@@ -86,19 +87,9 @@ export default function DayOffRequestsPage() {
     const limit = 10
     const searchParams = useSearchParams()
     const highlightId = searchParams.get('highlight')
-    const [visualHighlightId, setVisualHighlightId] = useState<string | null>(highlightId)
-
-    useEffect(() => {
-        if (highlightId) {
-            setVisualHighlightId(highlightId)
-            const timer = setTimeout(() => {
-                setVisualHighlightId(null)
-            }, 6000)
-            return () => clearTimeout(timer)
-        } else {
-            setVisualHighlightId(null)
-        }
-    }, [highlightId])
+    // Shown for six seconds after arriving via ?highlight=. See
+    // lib/useFadingHighlight.ts for why this is not an effect any more.
+    const visualHighlightId = useFadingHighlight(highlightId, 6000)
 
     // F-25: was two useCallback+useEffect fetch cycles gated on
     // status === 'authenticated'. SWR's key itself is the gate — null
@@ -155,16 +146,12 @@ export default function DayOffRequestsPage() {
         }
     }, [highlightId, loading, requests.length]);
 
-    // SECURE: Automatically switch deduction type if credit is insufficient
-    useEffect(() => {
-        if (isApprovalModalOpen && selectedRequest && deductionType === 'CREDIT') {
-            const deduction = parseFloat(daysToDeduct) || 0;
-            const credit = selectedRequest.user?.dayOffCredit || 0;
-            if (deduction > credit) {
-                setDeductionType('SALARY');
-            }
-        }
-    }, [daysToDeduct, selectedRequest, isApprovalModalOpen, deductionType]);
+    // When the credit can't cover the days being deducted, the deduction comes
+    // out of salary whatever was picked. Derived on every render rather than
+    // written back into state by an effect: the effect version rendered (and
+    // could submit) CREDIT for one pass before correcting itself.
+    const creditShort = !!selectedRequest && (parseFloat(daysToDeduct) || 0) > (selectedRequest.user?.dayOffCredit || 0)
+    const deductionType: 'CREDIT' | 'SALARY' = creditShort ? 'SALARY' : chosenDeduction
 
     const showAlert = (type: 'success' | 'error', message: string) => {
         setAlert({ type, message })

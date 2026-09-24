@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLanguage } from '@/context/LanguageContext'
 import { useToast } from '@/context/ToastContext'
+import { useAdjustOnChange } from '@/lib/useAdjustOnChange'
 import {
     MANAGEMENT_MODULES,
     MAX_MODULE_LABEL_LENGTH,
@@ -63,10 +64,10 @@ export default function CompanyModulesCard({ companyId, moduleLabels, moduleIcon
     // Re-seeds the form when the fetch resolves, and only then — keyed on the
     // saved values rather than running every render, so it cannot stomp on what
     // the admin is in the middle of typing.
-    useEffect(() => {
+    useAdjustOnChange([savedLabels, savedIcons], () => {
         setLabels(savedLabels)
         setIcons(savedIcons)
-    }, [savedLabels, savedIcons])
+    })
 
     const pickerRef = useRef<HTMLDivElement | null>(null)
     useEffect(() => {

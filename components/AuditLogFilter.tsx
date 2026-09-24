@@ -3,6 +3,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { useLanguage } from '@/context/LanguageContext'
 import SearchableSelect from './SearchableSelect'
 import DateRangePicker from './DateRangePicker'
+import { useAdjustOnChange } from '@/lib/useAdjustOnChange'
 
 interface AuditLogFilterProps {
     onFilterChange: (filters: {
@@ -44,9 +45,7 @@ export default function AuditLogFilter({
     // Local states for the popup to implement "Show Results" behavior
     const [localFilters, setLocalFilters] = useState(filters)
 
-    useEffect(() => {
-        setLocalFilters(filters)
-    }, [filters])
+    useAdjustOnChange([filters], () => setLocalFilters(filters))
 
     useEffect(() => {
         const checkMobile = () => setIsMobile(window.innerWidth < 768)

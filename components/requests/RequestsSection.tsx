@@ -11,6 +11,8 @@ import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import EmployeeFilter from '@/components/EmployeeFilter'
 import Pagination from '@/components/Pagination'
+import { useFadingHighlight } from '@/lib/useFadingHighlight'
+import { useAdjustOnChange } from '@/lib/useAdjustOnChange'
 
 
 export default function RequestsSection({ userRole }: { userRole: string }) {
@@ -35,7 +37,10 @@ export default function RequestsSection({ userRole }: { userRole: string }) {
     const [page, setPage] = useState(1)
     const [total, setTotal] = useState(0)
     const [totalPages, setTotalPages] = useState(0)
-    const [highlightId, setHighlightId] = useState<string | null>(null)
+    // Held for ten seconds after arriving via ?highlight=, then released
+    // so a card that remounts later does not scroll and pulse again. See
+    // lib/useFadingHighlight.ts.
+    const highlightId = useFadingHighlight(searchParams.get('highlight'), 10_000)
 
 
     const fetchRequests = useCallback(async () => {
@@ -65,30 +70,12 @@ export default function RequestsSection({ userRole }: { userRole: string }) {
         fetchRequests()
     }, [fetchRequests])
 
-    useEffect(() => {
-        setPage(1)
-    }, [selectedCompanyId, filters, sortBy, order])
-
-    useEffect(() => {
-        const highlight = searchParams.get('highlight')
-        if (highlight) {
-            setHighlightId(highlight)
-        }
-    }, [searchParams])
-
-    useEffect(() => {
-        if (highlightId && requests.length > 0) {
-            const req = requests.find(r => r.id === highlightId)
-            if (req) {
-                // We no longer auto-open the modal
-                // Instead, we let the RequestCard show the highlight
-
-                // Clear highlight after 10 seconds to stop the pulse
-                const timer = setTimeout(() => setHighlightId(null), 10000)
-                return () => clearTimeout(timer)
-            }
-        }
-    }, [highlightId, requests])
+    // Back to page 1 in the same render the filters change, so the first
+    // fetch for the new filters already asks for page 1. As an effect this
+    // fetched the old page of the new results first, then page 1 — two
+    // requests, and a list and pager that disagreed if they came back out of
+    // order. See lib/useAdjustOnChange.ts.
+    useAdjustOnChange([selectedCompanyId, filters, sortBy, order], () => setPage(1))
 
     const handleCreateRequest = async (title: string, details: string) => {
         try {

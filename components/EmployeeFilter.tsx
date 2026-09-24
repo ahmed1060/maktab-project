@@ -5,6 +5,7 @@ import { useSession } from 'next-auth/react'
 import { useCompany } from '@/context/CompanyContext'
 import SearchableSelect from './SearchableSelect'
 import DateRangePicker from './DateRangePicker'
+import { useAdjustOnChange } from '@/lib/useAdjustOnChange'
 
 interface SortOption {
     label: string
@@ -135,7 +136,9 @@ export default function EmployeeFilter({
         setIsPopupOpen(false)
     }, [onFilterChange, localEmployeeId, localDateFrom, localDateTo, localStatus, searchTerm, onSortChange, localSortBy, localSortOrder, onRoleChange, showRoleFilter, localRole, onCompanyChange, showCompanyFilter, localCompanyId, onTeamChange, localTeam])
 
-    useEffect(() => {
+    // Follow the parent when it changes the applied filters (a reset, a URL
+    // change), in the same render rather than one render late.
+    useAdjustOnChange([selectedEmployeeId, selectedStatus, selectedRole, selectedCompanyId, dateFrom, dateTo, searchQuery, sortBy, sortOrder, selectedTeam], () => {
         setLocalEmployeeId(selectedEmployeeId)
         setLocalStatus(selectedStatus)
         setLocalRole(selectedRole)
@@ -146,7 +149,7 @@ export default function EmployeeFilter({
         setSearchTerm(searchQuery)
         setLocalSortBy(sortBy || '')
         setLocalSortOrder(sortOrder || 'asc')
-    }, [selectedEmployeeId, selectedStatus, selectedRole, selectedCompanyId, dateFrom, dateTo, searchQuery, sortBy, sortOrder, selectedTeam])
+    })
 
     // Auto-apply search with 500ms debounce
     useEffect(() => {

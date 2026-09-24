@@ -9,6 +9,8 @@ import { useCompany } from '@/context/CompanyContext'
 import { useSearchParams } from 'next/navigation'
 import EmployeeFilter from '@/components/EmployeeFilter'
 import Pagination from '@/components/Pagination'
+import { useFadingHighlight } from '@/lib/useFadingHighlight'
+import { useAdjustOnChange } from '@/lib/useAdjustOnChange'
 
 export default function RequestsHistoryClient({ userRole }: { userRole: string }) {
     const { t, locale } = useLanguage()
@@ -31,8 +33,11 @@ export default function RequestsHistoryClient({ userRole }: { userRole: string }
     const [page, setPage] = useState(1)
     const [total, setTotal] = useState(0)
     const [totalPages, setTotalPages] = useState(0)
-    const [highlightId, setHighlightId] = useState<string | null>(null)
     const searchParams = useSearchParams()
+    // Held for ten seconds after arriving via ?highlight=, then released
+    // so a card that remounts later does not scroll and pulse again. See
+    // lib/useFadingHighlight.ts.
+    const highlightId = useFadingHighlight(searchParams.get('highlight'), 10_000)
 
     const fetchHistory = useCallback(async () => {
         try {
@@ -60,27 +65,12 @@ export default function RequestsHistoryClient({ userRole }: { userRole: string }
         fetchHistory()
     }, [fetchHistory, filters, selectedCompanyId, sortBy, order, page])
 
-    useEffect(() => {
-        setPage(1)
-    }, [filters, selectedCompanyId, sortBy, order])
-
-    useEffect(() => {
-        const highlight = searchParams.get('highlight')
-        if (highlight) {
-            setHighlightId(highlight)
-        }
-    }, [searchParams])
-
-    useEffect(() => {
-        if (highlightId && requests.length > 0) {
-            const req = requests.find(r => r.id === highlightId)
-            if (req) {
-                // Clear highlight after 10 seconds to stop the pulse
-                const timer = setTimeout(() => setHighlightId(null), 10000)
-                return () => clearTimeout(timer)
-            }
-        }
-    }, [highlightId, requests])
+    // Back to page 1 in the same render the filters change, so the first
+    // fetch for the new filters already asks for page 1. As an effect this
+    // fetched the old page of the new results first, then page 1 — two
+    // requests, and a list and pager that disagreed if they came back out of
+    // order. See lib/useAdjustOnChange.ts.
+    useAdjustOnChange([filters, selectedCompanyId, sortBy, order], () => setPage(1))
 
     const handleDeleteRequest = async (id: string) => {
         try {

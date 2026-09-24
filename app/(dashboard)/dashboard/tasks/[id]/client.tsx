@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 'use client'
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Modal from '@/components/Modal'
 import DiffViewer from '@/components/DiffViewer'
@@ -15,6 +15,7 @@ import TaskTransferModal from '@/components/TaskTransferModal'
 import TaskConfirmModals from '@/components/TaskConfirmModals'
 import { SESSION_EXPIRED_MESSAGE, redirectAfterSessionExpiry } from '@/lib/session-expired'
 import SectionBoundary from '@/components/SectionBoundary'
+import { useAdjustOnChange } from '@/lib/useAdjustOnChange'
 
 export default function TaskDetailClient({ task: initialTask, userRole, userId, creatorName, isRestricted }: { task: any, userRole: string, userId: string, creatorName: string | null, currentUserName: string, isRestricted: boolean }) {
     const { t, locale } = useLanguage()
@@ -42,12 +43,19 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
         } catch (e) { console.error('[LOCATION_PARSE_FAIL]', e) }
         return { name: locStr, link: '' }
     }
-    const [task, setTask] = useState(initialTask)
-    const [existingAttachments, setExistingAttachments] = useState<any[]>(() => {
-        try {
-            return Array.isArray(initialTask.attachments) ? initialTask.attachments : []
-        } catch (e) { console.error('[ATTACHMENTS_PARSE_FAIL]', e); return [] }
+    const attachmentsOf = (src: any): any[] => Array.isArray(src.attachments) ? src.attachments : []
+    const editFormFrom = (src: any) => ({
+        title: src.title,
+        description: src.description,
+        assigneeIds: src.assignees?.map((a: any) => a.id) || [],
+        deadline: src.deadline,
+        difficulty: src.difficulty,
+        location: parseLocation(src.location || '').name,
+        locationLink: parseLocation(src.location || '').link,
+        attachments: attachmentsOf(src),
     })
+    const [task, setTask] = useState(initialTask)
+    const [existingAttachments, setExistingAttachments] = useState<any[]>(() => attachmentsOf(initialTask))
     const [note, setNote] = useState('')
     const [cost, setCost] = useState('')
     const [costDescription, setCostDescription] = useState('')
@@ -66,20 +74,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
     const [showRevertConfirm, setShowRevertConfirm] = useState(false)
     const [isEditing, setIsEditing] = useState(false)
-    const [editForm, setEditForm] = useState({
-        title: initialTask.title,
-        description: initialTask.description,
-        assigneeIds: initialTask.assignees?.map((a: any) => a.id) || [],
-        deadline: initialTask.deadline,
-        difficulty: initialTask.difficulty,
-        location: parseLocation(initialTask.location || '').name,
-        locationLink: parseLocation(initialTask.location || '').link,
-        attachments: (() => {
-            try {
-                return Array.isArray(initialTask.attachments) ? initialTask.attachments : []
-            } catch (e) { console.error('[ATTACHMENTS_PARSE_FAIL]', e); return [] }
-        })()
-    })
+    const [editForm, setEditForm] = useState(() => editFormFrom(initialTask))
     const [editFieldErrors, setEditFieldErrors] = useState({ title: '', description: '' })
     const [isReviewModalOpen, setIsReviewModalOpen] = useState(false)
     const [reviewAction, setReviewAction] = useState<'APPROVED' | 'REJECTED' | null>(null)
@@ -89,7 +84,6 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
     const [viewedDescriptionChange, setViewedDescriptionChange] = useState(false)
     const [diffField, setDiffField] = useState<'title' | 'description' | null>(null)
     const [isEditedPersistent, setIsEditedPersistent] = useState(initialTask.isEdited)
-    const [latestChanges, setLatestChanges] = useState<{ title?: any, description?: any } | null>(null)
     const [showSubmitConfirm, setShowSubmitConfirm] = useState(false)
     const [itemToDelete, setItemToDelete] = useState<{ type: 'ATTACHMENT' | 'COST_ADDITION' | 'SUBMISSION_NOTE', itemId: string } | null>(null)
     const [locationToDelete, setLocationToDelete] = useState<{ index?: number, date?: string } | null>(null)
@@ -105,38 +99,22 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
     // The userRole prop is already passed to the component, so no need to derive it from session here.
     // const userRole = (session?.user as any)?.role // Removed this line as userRole is a prop
 
-    // Sync state when props change (after router.refresh)
-    useEffect(() => {
+    // Re-seed local state when the server sends a fresh task (after
+    // router.refresh), in the same render rather than one render late.
+    useAdjustOnChange([initialTask], () => {
         setTask(initialTask)
-        try {
-            setExistingAttachments(Array.isArray(initialTask.attachments) ? initialTask.attachments : [])
-        } catch { setExistingAttachments([]) }
-        setEditForm({
-            title: initialTask.title,
-            description: initialTask.description,
-            assigneeIds: initialTask.assignees?.map((a: any) => a.id) || [],
-            deadline: initialTask.deadline,
-            difficulty: initialTask.difficulty,
-            location: parseLocation(initialTask.location || '').name,
-            locationLink: parseLocation(initialTask.location || '').link,
-            attachments: (() => {
-                try {
-                    return Array.isArray(initialTask.attachments) ? initialTask.attachments : []
-                } catch { return [] }
-            })()
-        })
+        setExistingAttachments(attachmentsOf(initialTask))
+        setEditForm(editFormFrom(initialTask))
         setReviewDifficulty(initialTask.difficulty)
-    }, [initialTask])
+    })
 
-    useEffect(() => {
-        // task.comments arrives already parsed (F-12: Json, not a
-        // JSON-in-string column) — no JSON.parse needed anymore.
-        if (Array.isArray(task.comments)) {
-            const lastEdit = [...task.comments].reverse().find((l: any) => l.type === 'TASK_EDITED')
-            if (lastEdit && lastEdit.changes) {
-                setLatestChanges(lastEdit.changes)
-            }
-        }
+    // What the most recent edit changed, for the "edited" badges and the diff
+    // viewer. task.comments arrives already parsed (F-12: Json, not a
+    // JSON-in-string column) — no JSON.parse needed anymore.
+    const latestChanges: { title?: any, description?: any } | null = useMemo(() => {
+        if (!Array.isArray(task.comments)) return null
+        const lastEdit = [...task.comments].reverse().find((l: any) => l.type === 'TASK_EDITED')
+        return lastEdit?.changes ?? null
     }, [task.comments])
 
     useEffect(() => {

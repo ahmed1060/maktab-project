@@ -15,6 +15,7 @@ import EmployeeFilter from '@/components/EmployeeFilter'
 import DatePickerSingle from '@/components/DatePickerSingle'
 import Pagination from '@/components/Pagination'
 import NoticeModal, { Notice } from '@/components/NoticeModal'
+import { useFadingHighlight } from '@/lib/useFadingHighlight'
 
 interface Note {
     id: string
@@ -92,19 +93,9 @@ export default function SectionNotesPage() {
     const [totalPages, setTotalPages] = useState(0)
     const limit = 10
     const highlightId = searchParams.get('highlight')
-    const [visualHighlightId, setVisualHighlightId] = useState<string | null>(highlightId)
-
-    useEffect(() => {
-        if (highlightId) {
-            setVisualHighlightId(highlightId)
-            const timer = setTimeout(() => {
-                setVisualHighlightId(null)
-            }, 6000)
-            return () => clearTimeout(timer)
-        } else {
-            setVisualHighlightId(null)
-        }
-    }, [highlightId])
+    // Shown for six seconds after arriving via ?highlight=. See
+    // lib/useFadingHighlight.ts for why this is not an effect any more.
+    const visualHighlightId = useFadingHighlight(highlightId, 6000)
 
     // Server-side filtering is now implemented
     const filteredNotes = notes
