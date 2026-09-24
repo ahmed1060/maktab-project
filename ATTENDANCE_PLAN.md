@@ -91,7 +91,7 @@ by then, and this plan names real models and files that may have changed.
 
 | # | Topic | Decision |
 |---|---|---|
-| 1 | Verification photo lifetime | **Deleted as soon as it is approved** (and on rejection). It exists only while waiting for a decision (§9.5). |
+| 1 | Verification photo lifetime | ~~Deleted as soon as it is approved~~ — **superseded by round 8**: kept after approval as the reference photo. Still deleted on rejection (§9.5). |
 | 2 | Where the photo is shown | **Not on the profile.** It lives only in the face-verification approval queue, separate from the profile (§9.5). |
 | 3 | Pause / Pause and purge | Adopted (§10.4). |
 | 4 | Role assignment | **The company Admin may assign** roles the Super Admin created for that company; only the Super Admin creates them (§4). |
@@ -109,6 +109,12 @@ by then, and this plan names real models and files that may have changed.
 | 3 | Work week | **Company setting at the top, optional override per schedule** (§6.2). |
 | 4 | Import-only customers | **No import-only option.** Excel import is a feature of both add-ons (§16). |
 | 5 | Re-verification | **Adopted: on request by Admin/HR at any time, plus an optional automatic interval per company** (§9.5). |
+
+### Round 8 — the approved photo stays
+
+| # | Topic | Decision |
+|---|---|---|
+| 1 | Approved verification photo | **Kept after approval** (reverses round 6, decision 1), as the employee's *reference photo*. **Shown only when reviewing a flagged face check-in or a re-verification**, under the protections in §9.5. **Replaced by each approved re-verification.** |
 
 ---
 
@@ -160,7 +166,7 @@ no way to define a role other than the four in the enum.
 | Deductions land as `SalaryAdjustment` rows, source `ATTENDANCE` | Already in days, already explains itself on a payslip. |
 | Access is checked by permission, never by role name | Round 3, decision 5 (§4). |
 | Attendance requires HR | Round 3, decision 8. |
-| No biometric templates ever reach our servers | Terminals keep fingerprint templates; the app keeps face templates on the phone. We receive IDs, timestamps and match results — plus one human-reviewed verification photo per face enrolment (§9.5, §10). |
+| No biometric templates ever reach our servers | Terminals keep fingerprint templates; the app keeps face templates on the phone. We receive IDs, timestamps and match results — plus one approved reference photo per face-enrolled employee, shown only in reviews (§9.5, §10). |
 
 ---
 
@@ -494,8 +500,9 @@ model CheckInDevice           // the one device a user may check in from
   requestedAt, approvedAt?, approvedById?, revokedAt?, revokedById?
   faceEnrolledAt?, faceModelVersion?   // a fact that enrolment happened —
                                         // the templates themselves stay on the phone
-  faceVerificationPhotoPath?            // private storage; exists only while
-                                        // PENDING, deleted on approve/reject
+  faceReferencePhotoPath?               // the APPROVED photo; encrypted, private (§9.5)
+  facePendingPhotoPath?                 // awaiting a decision; becomes the
+                                        // reference on approval, deleted on rejection
   faceEnrolmentStatus?                  // PENDING | APPROVED | REJECTED
   faceEnrolmentReviewedById?, faceEnrolmentReviewedAt?   // §9.5
   reverifyRequestedAt?, reverifyRequestedById?          // §9.5 re-verification
@@ -691,31 +698,52 @@ is chosen by the employee and approved by no one.
 
 **What this changes about "nothing on the server".** The face *templates* —
 the biometric data used for matching — still never leave the phone. **One photo
-per enrolment now does — briefly.** It must be stated in the consent text. Rules
-for the photo:
+per face-enrolled employee does, and is kept** (round 8). The consent text must
+say so plainly: that the photo is stored, why, who can see it, and when.
 
-- **It exists only while a decision is pending.** Deleted the moment the
-  enrolment is **approved or rejected** (round 6). What remains is the record:
-  who approved, when, for which phone — never the image.
-- Also deleted if the employee withdraws consent or is archived while it is still
-  pending, and by *Pause and purge* (§10.4).
-- Stored in private storage, served only through an access-checked endpoint,
-  never through a public URL.
+**Lifetime.**
 
-**Consequence of deleting on approval.** After approval there is no reference
-image anywhere on the server. A reviewer looking at a flagged check-in's photo
-(§13.8) compares it with the person they know, not with a stored picture. That is
-the intended trade: less stored, more reliance on the reviewer knowing the
-employee — which HR normally does.
+- **Pending** — uploaded, awaiting a decision.
+- **Approved → becomes the reference photo.** Exactly one per employee.
+- **Rejected → deleted.** If there was an earlier reference photo, it stays.
+- **Replaced** by the next approved re-verification or re-enrolment; the old one
+  is deleted, not archived.
+- **Deleted** when the employee withdraws consent, is archived, or when face
+  verification is purged (§10.4).
+
+**When it can be seen — only two cases.** The reference photo is not on the
+profile, not in any list, and has no page of its own. It is shown only:
+
+1. **Reviewing a flagged face check-in** — beside the frame that failed (§13.8).
+2. **Reviewing a re-verification** — beside the new photo, so the reviewer compares
+   old with new rather than working from memory.
+
+**How that is enforced.**
+
+- **No "show me this person's photo" endpoint exists.** The only endpoints that
+  return it take the ID of an *open* flagged check-in or an *open*
+  re-verification, and refuse once that item is resolved. There is no way to
+  browse reference photos, because nothing addresses them by employee.
+- **Permission and company checked on every request** — `attendance.approve_face`
+  in that employee's company, or the Super Admin.
+- **Encrypted at rest** with an application key of its own, separate from every
+  other secret — the same pattern the codebase already uses for MFA secrets —
+  so a leaked storage bucket alone reveals nothing.
+- **Served by streaming through the checked endpoint**, never a public or
+  long-lived URL, with `no-store` so it is not cached in the browser.
+- **Viewer watermark.** Displayed with the viewer's name and the time overlaid, so
+  a screenshot identifies who took it. Screenshots cannot be prevented on the web;
+  this makes them traceable.
+- **Every view audited** — who, when, for which review.
 
 This combines with phone approval (§9.3): a new phone means a new enrolment, a new
 verification photo and a new approval.
 
 #### Re-verification (round 7)
 
-Because the verification photo is deleted on approval, nothing on the server can
-later confirm that the face enrolled on a phone still belongs to the right person.
-Re-verification closes that gap without keeping a photo:
+The reference photo shows who was approved *at enrolment*. Re-verification checks
+that the face enrolled on the phone still belongs to that person, and refreshes the
+reference:
 
 - **On request.** Anyone with `attendance.approve_face` can press **Re-verify** on
   an employee at any time — typically when something looks wrong. The employee's
@@ -723,8 +751,9 @@ Re-verification closes that gap without keeping a photo:
 - **On a schedule — optional.** A company policy setting, *re-verify every N
   months*, off by default (6 months suggested when on).
 - **Same path as enrolment.** One live capture that must match the phone's
-  templates → uploaded → critical notification → approve or reject → photo
-  deleted either way.
+  templates → uploaded → critical notification → the reviewer sees **new photo
+  beside the current reference photo** → approve (new photo **replaces** the
+  reference) or reject (new photo deleted, reference kept).
 - **Check-ins keep working while it is pending,** so a slow reviewer never costs
   the employee attendance. A **rejection** deactivates face verification for that
   employee until they enrol again, and is audited.
@@ -755,8 +784,8 @@ with a new verification photo and approval.
 #### What keeping matching on the phone costs — accepted trade-offs
 
 - **Little evidence in a dispute.** No photo is taken at ordinary check-ins —
-  only the score is recorded, and the verification photo is gone once approved.
-  Accepted as the price of privacy; flagged check-ins are the exception (§13.8).
+  only the score is recorded. Accepted as the price of privacy; flagged check-ins
+  are the exception (§13.8).
 - **Trust rests on the app's integrity.** The server believes a "verified" result
   only because attestation (§9.4) proves it came from the genuine app on a
   genuine phone. Face matching must never be offered on a phone that fails
@@ -881,7 +910,8 @@ Built into the design regardless of the answers:
   the database itself already enforces with a trigger.
 - **Two ways to turn it off.** *Pause* stops the feature everywhere and keeps
   enrolments, for a temporary stop. *Pause and purge* also instructs every app to
-  delete its face templates, deletes every stored verification photo, and records
+  delete its face templates, deletes every stored reference photo, pending photo
+  and flagged frame, and records
   that it did — for when the answer is no. Purge asks
   for confirmation and MFA.
 - **The feature is gated on the company's legal readiness** — a company cannot
@@ -1024,11 +1054,12 @@ know either way. Adopted in round 4.
 ### 13.8 Photo on flagged check-ins — adopted (round 6)
 
 When a check-in is flagged because the face check failed three times, the app
-uploads the last captured frame with it. The reviewer sees that frame and decides
-whether it is the employee — from knowing them, since the verification photo was
-deleted on approval (§9.5). Ordinary successful check-ins send no photo. The frame
-is deleted the moment the flag is accepted or rejected, visible only to the same
-people as the verification photo, and every view is audited. Covered by the same consent text as the verification photo.
+uploads the last captured frame with it. The reviewer sees that frame **beside the
+employee's reference photo** (§9.5) and decides whether it is the same person.
+Ordinary successful check-ins send no photo. The frame is deleted the moment the
+flag is accepted or rejected; while it exists it has the same protections as the
+reference photo — encrypted, reachable only through the open flag, watermarked,
+every view audited. Covered by the same consent text as the verification photo.
 
 ---
 
@@ -1046,9 +1077,10 @@ attendance.
 `AttendanceDay` is kept as long as payslips are. Raw `AttendancePunch` rows are
 kept for the current year plus one, then punches belonging to locked days are
 pruned by the existing `/api/cron/prune` job. Face templates never reach the
-server. The one face reference photo per employee is deleted on re-enrolment,
-rejection, consent withdrawal or archiving (§9.5); flagged-check-in frames, if
-adopted, on resolution of the flag. Face-consent records are kept for as long as the consent is relevant
+server. The one face reference photo per employee is kept while face verification is
+active for them, replaced on each approved re-verification or re-enrolment, and
+deleted on consent withdrawal, archiving or purge (§9.5). Flagged-check-in frames
+are deleted when the flag is resolved. Face-consent records are kept for as long as the consent is relevant
 plus whatever the consultation advises (§10). Exact periods confirmed against labour
 record-keeping requirements before they are set.
 
@@ -1134,8 +1166,8 @@ One left, deliberately deferred to implementation:
 - Door access control.
 - Real-time streaming attendance.
 - Storing fingerprint templates from terminals.
-- Storing or transmitting face templates. (One verification photo per enrolment
-  is stored, §9.5; ordinary check-ins send none.)
+- Storing or transmitting face templates. (One approved reference photo per
+  face-enrolled employee is stored, §9.5; ordinary check-ins send none.)
 - Polling a tenant's device over the internet.
 - Shift planning and rota building.
 - Check-in from a browser. Check-in is native-app only; the web product stays as
