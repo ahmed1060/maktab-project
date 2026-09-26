@@ -1,5 +1,6 @@
 import { withStandardHandler } from "@/lib/api-utils"
 import { ApiResponse } from "@/lib/api-response"
+import { can } from "@/lib/permissions/can"
 import { TaskService } from "@/lib/services/task.service"
 import { verifyResourceAccess } from "@/lib/security"
 
@@ -10,7 +11,7 @@ export const PUT = withStandardHandler(async (req, session, json, { params }) =>
     // it is a manager's. The route asked only for the company, and
     // TaskService.verifyLocation asks nothing, so anyone in the company —
     // including the person who added the location — could mark it verified.
-    if (!['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(session.user.role)) {
+    if (!can(session.user, "tasks.review")) {
         return ApiResponse.forbidden("Only managers can verify locations")
     }
 

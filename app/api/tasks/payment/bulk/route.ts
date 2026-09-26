@@ -1,5 +1,6 @@
 import { withStandardHandler } from "@/lib/api-utils"
 import { ApiResponse } from "@/lib/api-response"
+import { can } from "@/lib/permissions/can"
 import { prisma } from "@/lib/prisma"
 import { TaskService } from "@/lib/services/task.service"
 
@@ -7,7 +8,7 @@ export const POST = withStandardHandler(async (req, session, json) => {
     const userRole = session.user.role
     const userCompanyId = session.user.companyId
 
-    if (!['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole)) {
+    if (!can(session.user, "tasks.pay")) {
         return ApiResponse.forbidden()
     }
 

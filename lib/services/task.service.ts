@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma"
+import { can } from "@/lib/permissions/can"
 import { checkAssignees } from "./assignee-guard"
 import { CreateTaskInput, UpdateTaskInput } from "../validations/task.schema"
 import { extractCoords, extractAccuracy, locationVerdict } from "@/lib/location"
@@ -268,7 +269,9 @@ export class TaskService {
 
             // Also check if submitting for self unless Admin
             const isAssignee = currentTask.assignees.some((a: any) => a.id === userId)
-            if (userRole === 'EMPLOYEE' && !isAssignee) throw new Error("ACCESS_DENIED")
+            // Your own task, or one you may edit — a manager submitting on
+            // someone's behalf.
+            if (!isAssignee && !can(session.user, "tasks.edit")) throw new Error("ACCESS_DENIED")
 
             // Handle Attachments
             let finalAttachments: any[] = []
@@ -549,7 +552,7 @@ export class TaskService {
             // Permission check
             const currentAssigneeIds = (originalTask as any).assignees.map((a: any) => a.id)
             const isAssignee = currentAssigneeIds.includes(userId)
-            if (!isAssignee && !['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole)) {
+            if (!isAssignee && !can(session.user, "tasks.transfer")) {
                 throw new Error("UNAUTHORIZED_TRANSFER")
             }
 
@@ -897,7 +900,7 @@ export class TaskService {
                 if (!att) throw new Error("ITEM_NOT_FOUND")
 
                 const isAuthor = att.uploadedById === userId
-                const isAdmin = ['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole)
+                const isAdmin = can(session.user, "tasks.edit")
                 if (!isAuthor && !isAdmin) throw new Error("UNAUTHORIZED_ITEM_DELETE")
 
                 // Physical Deletion
@@ -915,7 +918,7 @@ export class TaskService {
                 if (!item) throw new Error("ITEM_NOT_FOUND")
 
                 const isAuthor = item.authorId === userId
-                const isAdmin = ['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole)
+                const isAdmin = can(session.user, "tasks.edit")
                 if (!isAuthor && !isAdmin) throw new Error("UNAUTHORIZED_ITEM_DELETE")
 
                 updateData.comments = comments.filter((c: any) => !(c.type === type && (c.date === itemId || c.timestamp === itemId)))

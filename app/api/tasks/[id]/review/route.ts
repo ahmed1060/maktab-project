@@ -1,5 +1,6 @@
 import { withStandardHandler } from "@/lib/api-utils"
 import { ApiResponse } from "@/lib/api-response"
+import { can } from "@/lib/permissions/can"
 import { TaskService } from "@/lib/services/task.service"
 import { verifyResourceAccess } from "@/lib/security"
 
@@ -10,7 +11,7 @@ export const POST = withStandardHandler(async (req, session, json, { params }) =
     // performance points and payment. Only managers may: the screen offered
     // review to nobody else, but the route asked only for the company, so an
     // Employee could approve a task — their own included.
-    if (!['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(session.user.role)) {
+    if (!can(session.user, "tasks.review")) {
         return ApiResponse.forbidden("Only managers can review tasks")
     }
 

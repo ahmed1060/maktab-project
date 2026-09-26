@@ -71,7 +71,7 @@ export const PERMISSIONS = {
     "tasks.transfer":           { module: "TASKS", scopes: TEAM_OR_COMPANY, implies: ["tasks.view"] },
     "tasks.review":             { module: "TASKS", scopes: TEAM_OR_COMPANY, implies: ["tasks.view"] },
     "tasks.delete":             { module: "TASKS", scopes: TEAM_OR_COMPANY, implies: ["tasks.view"], highRisk: CANNOT_BE_UNDONE },
-    "tasks.pay":                { module: "TASKS", scopes: COMPANY, implies: ["tasks.view"], highRisk: MOVES_MONEY },
+    "tasks.pay":                { module: "TASKS", scopes: TEAM_OR_COMPANY, implies: ["tasks.view"], highRisk: MOVES_MONEY },
     "tasks.penalize":           { module: "TASKS", scopes: TEAM_OR_COMPANY, implies: ["tasks.view"], highRisk: "Affects pay" },
 
     // --- Obligations, clients, vendors, costs ------------------------------

@@ -26,6 +26,7 @@ import type { Permission, Scope } from "./catalogue"
  * - Employees, including salary.edit and dayoff.adjust_credit, which are fields
  *   of an employee edit — lib/permissions/employee-access.characterization.test.ts
  *   and lib/user-lookup-scope.test.ts
+ * - Tasks — lib/permissions/task-access.characterization.test.ts
  *   (not yet dayoff.adjust_credit: changing a balance goes through
  *   PUT /api/users, and moves with the Employees module)
  */
@@ -73,6 +74,18 @@ export const BUILT_IN_GRANTS: Record<BuiltInRole, Grants> = {
         "employees.assign_team": "COMPANY",
         "employees.assign_role": "COMPANY",
         "salary.edit": "COMPANY",
+
+        // Tasks: an Admin creates, edits, transfers, reviews, deletes, pays
+        // and penalises their company's tasks. Reverting a reviewed task stays
+        // the Super Admin's.
+        "tasks.view": "COMPANY",
+        "tasks.create": "COMPANY",
+        "tasks.edit": "COMPANY",
+        "tasks.transfer": "COMPANY",
+        "tasks.review": "COMPANY",
+        "tasks.delete": "COMPANY",
+        "tasks.pay": "COMPANY",
+        "tasks.penalize": "COMPANY",
     },
     // A Team Leader sees their team in the employee list and can look each of
     // them up — TEAM scope, enforced by buildUserWhereClause and
@@ -83,6 +96,19 @@ export const BUILT_IN_GRANTS: Record<BuiltInRole, Grants> = {
     // them through owner rules on those routes, which are not permissions.
     TEAM_LEADER: {
         "employees.view": "TEAM",
+
+        // The same task rights as an Admin, for their team's tasks — the team
+        // rule itself is verifyResourceAccess('TASK') and checkAssignees.
+        // (Recorded as it is: bulk "mark paid" filters by company only, so it
+        // can reach tasks outside their team. Part B narrows it.)
+        "tasks.view": "TEAM",
+        "tasks.create": "TEAM",
+        "tasks.edit": "TEAM",
+        "tasks.transfer": "TEAM",
+        "tasks.review": "TEAM",
+        "tasks.delete": "TEAM",
+        "tasks.pay": "TEAM",
+        "tasks.penalize": "TEAM",
     },
     EMPLOYEE: {},
 }

@@ -76,7 +76,7 @@ export const POST = withStandardHandler(async (req, session, json) => {
     // Employee could still POST here and create a task for anyone in their
     // company, an Admin included — checkAssignees only checks company, and
     // team only for a Team Leader. Bulk creation was already gated this way.
-    allowedRoles: ['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'],
+    permission: "tasks.create",
     audit: {
         action: 'CREATE_TASK',
         entityType: 'TASK',
