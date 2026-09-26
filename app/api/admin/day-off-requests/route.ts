@@ -3,13 +3,14 @@ export const dynamic = 'force-dynamic'
 import { withStandardHandler } from "@/lib/api-utils"
 import { ApiResponse } from "@/lib/api-response"
 import { prisma } from "@/lib/prisma"
+import { can } from "@/lib/permissions/can"
 
 export const GET = withStandardHandler(async (req, session) => {
     const { searchParams } = new URL(req.url)
     const companyId = searchParams.get('companyId')
     const userRole = session.user.role
 
-    if (!['ADMIN', 'SUPER_ADMIN'].includes(userRole)) {
+    if (!can(session.user, "dayoff.view")) {
         return ApiResponse.forbidden("Unauthorized")
     }
 

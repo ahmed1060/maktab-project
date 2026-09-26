@@ -21,6 +21,9 @@ import type { Permission, Scope } from "./catalogue"
  *
  * Migrated so far:
  * - Payroll — lib/permissions/payroll-access.characterization.test.ts
+ * - Day off — lib/permissions/dayoff-access.characterization.test.ts
+ *   (not yet dayoff.adjust_credit: changing a balance goes through
+ *   PUT /api/users, and moves with the Employees module)
  */
 
 export type BuiltInRole = "ADMIN" | "TEAM_LEADER" | "EMPLOYEE"
@@ -42,13 +45,30 @@ export const BUILT_IN_GRANTS: Record<BuiltInRole, Grants> = {
         // Implied by payroll.view. An Admin already sees every salary in their
         // company — the canViewSalary rule in app/api/users/route.ts.
         "salary.view": "COMPANY",
+
+        // Day off: an Admin sees their company's requests and decides them.
+        "dayoff.view": "COMPANY",
+        "dayoff.approve": "COMPANY",
     },
-    // Neither holds any payroll permission. A person's own payslips reach them
-    // through the owner rule on the payslip routes, which is not a permission.
+    // Neither holds any payroll or day-off permission. A person's own
+    // payslips, leave requests and leave history reach them through owner
+    // rules on those routes, which are not permissions. A Team Leader does not
+    // see or decide their team's leave today.
     TEAM_LEADER: {},
     EMPLOYEE: {},
 }
 
 export function isBuiltInRole(role: string | null | undefined): role is BuiltInRole {
     return role === "ADMIN" || role === "TEAM_LEADER" || role === "EMPLOYEE"
+}
+
+/**
+ * The built-in roles that hold a permission — for "who should be told", which
+ * is a query over people rather than a check on one. Until roles are data this
+ * is how a notification finds the people who can act on it, instead of naming
+ * a role. Super Admins are not included; callers add them as they always have.
+ */
+export function builtInRolesHolding(permission: Permission): BuiltInRole[] {
+    return (Object.keys(BUILT_IN_GRANTS) as BuiltInRole[])
+        .filter(role => BUILT_IN_GRANTS[role][permission] !== undefined)
 }

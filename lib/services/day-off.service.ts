@@ -1,4 +1,6 @@
 import { prisma } from "@/lib/prisma"
+import { can, type Target } from "@/lib/permissions/can"
+import { builtInRolesHolding } from "@/lib/permissions/built-in"
 import { CreateDayOffInput, AdminUpdateDayOffInput } from "../validations/day-off.schema"
 
 export class DayOffService {
@@ -67,8 +69,10 @@ export class DayOffService {
             // Notify Admins
             const admins = await tx.user.findMany({
                 where: {
+                    // Whoever can decide it: the roles holding dayoff.approve in
+                    // this company, and every Super Admin.
                     OR: [
-                        { role: 'ADMIN', companyId: userCompanyId },
+                        ...builtInRolesHolding("dayoff.approve").map(role => ({ role, companyId: userCompanyId })),
                         { role: 'SUPER_ADMIN' }
                     ]
                 },
@@ -102,6 +106,7 @@ export class DayOffService {
     }
 
     static async approve(id: string, input: AdminUpdateDayOffInput, session: any) {
+        // Only for attributing the audit entry — who may act is can()'s.
         const userRole = session.user.role
         const { daysToDeduct, deductionType } = input
 
@@ -114,7 +119,7 @@ export class DayOffService {
         if (requestToUpdate.status !== 'PENDING') throw new Error("INVALID_STATUS")
 
         // Authorization & Isolation
-        if (userRole !== 'SUPER_ADMIN' && requestToUpdate.user.companyId !== session.user.companyId) {
+        if (!can(session.user, "dayoff.approve", personOf(requestToUpdate.user))) {
             throw new Error("ACCESS_DENIED")
         }
 
@@ -189,6 +194,7 @@ export class DayOffService {
     }
 
     static async reject(id: string, session: any, rejectionReason?: string) {
+        // Only for attributing the audit entry — who may act is can()'s.
         const userRole = session.user.role
         const requestToUpdate = await prisma.dayOffRequest.findUnique({
             where: { id },
@@ -198,7 +204,7 @@ export class DayOffService {
         if (!requestToUpdate) throw new Error("REQUEST_NOT_FOUND")
         if (requestToUpdate.status !== 'PENDING') throw new Error("INVALID_STATUS")
 
-        if (userRole !== 'SUPER_ADMIN' && requestToUpdate.user.companyId !== session.user.companyId) {
+        if (!can(session.user, "dayoff.approve", personOf(requestToUpdate.user))) {
             throw new Error("ACCESS_DENIED")
         }
 
@@ -235,8 +241,9 @@ export class DayOffService {
     }
 
     static async reevaluate(id: string, newDays: number, session: any) {
+        // Only for attributing the audit entry — who may act is can()'s.
         const userRole = session.user.role
-        if (!['ADMIN', 'SUPER_ADMIN'].includes(userRole)) throw new Error("ACCESS_DENIED")
+        if (!can(session.user, "dayoff.approve")) throw new Error("ACCESS_DENIED")
 
         const requestToUpdate = await prisma.dayOffRequest.findUnique({
             where: { id },
@@ -246,7 +253,7 @@ export class DayOffService {
         if (!requestToUpdate) throw new Error("REQUEST_NOT_FOUND")
         if (requestToUpdate.status !== 'APPROVED') throw new Error("INVALID_STATE")
 
-        if (userRole !== 'SUPER_ADMIN' && requestToUpdate.user.companyId !== session.user.companyId) {
+        if (!can(session.user, "dayoff.approve", personOf(requestToUpdate.user))) {
             throw new Error("ACCESS_DENIED")
         }
 
@@ -337,4 +344,9 @@ export class DayOffService {
             return { success: true }
         })
     }
+}
+
+/** The request's owner as a can() target: their company, and who leads them. */
+function personOf(user: { id: string; companyId: string | null; teamLeaderId: string | null }): Target {
+    return { companyId: user.companyId, userId: user.id, teamLeaderId: user.teamLeaderId }
 }
