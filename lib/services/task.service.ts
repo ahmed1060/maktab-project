@@ -655,7 +655,21 @@ export class TaskService {
     /**
      * Acknowledges a task edit.
      */
-    static async acknowledge(id: string) {
+    /**
+     * Clears the "this task was edited" notice. It is the assignee telling us
+     * they have seen the change, so only an assignee may clear it — anyone
+     * else doing so hides the change from the person it was for. The Super
+     * Admin may, as everywhere.
+     */
+    static async acknowledge(id: string, session: any) {
+        const task = await prisma.task.findUnique({
+            where: { id },
+            select: { assignees: { select: { id: true } } },
+        })
+        if (!task) throw new Error("TASK_NOT_FOUND")
+        const isAssignee = task.assignees.some(a => a.id === session.user.id)
+        if (!isAssignee && session.user.role !== 'SUPER_ADMIN') throw new Error("ACCESS_DENIED")
+
         return await prisma.task.update({
             where: { id },
             data: { isEdited: false }

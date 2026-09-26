@@ -21,7 +21,8 @@ vi.setConfig({ testTimeout: 120_000 })
  * - (Fixed since recording: an Employee could review — approve — a task,
  *   their own included, and anyone in the company could mark a location
  *   verified. Both are now managers only.)
- * - An Employee may acknowledge someone else's task.
+ * - (Fixed since recording: anyone in the company could acknowledge — clear
+ *   the "edited" notice on — someone else's task. Only its assignees may now.)
  * - An Employee submitting someone else's task is refused, but with an
  *   unmapped 500.
  *
@@ -76,7 +77,7 @@ const EXPECTED: Record<string, Record<string, Row>> = {
         "review":              [200, 200, 403, 200, 403],
         "submit":              [200, 200, 403, 200, 200],
         "transfer":            [200, 200, 403, 200, 200],
-        "acknowledge":         [200, 200, 403, 200, 200],
+        "acknowledge":         [200, 403, 403, 403, 200],   // only the assignee
         "record payment":      [200, 200, 403, 200, 403],
         "apply a penalty":     [200, 200, 403, 200, 403],
         "revert":              [200, 403, 403, 403, 403],   // Super Admin only
@@ -89,7 +90,7 @@ const EXPECTED: Record<string, Record<string, Row>> = {
         "review":              [200, 200, 403, 403, 403],
         "submit":              [200, 200, 403, 403, 500],   // refused, unmapped
         "transfer":            [200, 200, 403, 403, 403],
-        "acknowledge":         [200, 200, 403, 403, 200],
+        "acknowledge":         [200, 403, 403, 403, 403],
         "record payment":      [200, 200, 403, 403, 403],
         "apply a penalty":     [200, 200, 403, 403, 403],
         "revert":              [200, 403, 403, 403, 403],
@@ -102,7 +103,7 @@ const EXPECTED: Record<string, Record<string, Row>> = {
         "review":              [200, 403, 403, 403, 403],   // nor review it
         "submit":              [200, 200, 403, 403, 500],
         "transfer":            [200, 200, 403, 403, 403],
-        "acknowledge":         [200, 200, 403, 403, 200],
+        "acknowledge":         [200, 200, 403, 403, 403],   // the Admin is the assignee
         "record payment":      [200, 200, 403, 403, 403],
         "apply a penalty":     [200, 200, 403, 403, 403],
         "revert":              [200, 403, 403, 403, 403],
@@ -115,7 +116,7 @@ const EXPECTED: Record<string, Record<string, Row>> = {
         "review":              [200, 403, 200, 403, 403],
         "submit":              [200, 403, 200, 403, 403],
         "transfer":            [200, 403, 500, 403, 403],   // 'loner' is not in c2: refused, unmapped
-        "acknowledge":         [200, 403, 200, 403, 403],
+        "acknowledge":         [200, 403, 403, 403, 403],
         "record payment":      [200, 403, 200, 403, 403],
         "apply a penalty":     [200, 403, 200, 403, 403],
         "revert":              [200, 403, 403, 403, 403],
