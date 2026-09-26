@@ -6,6 +6,7 @@ import { TaskService } from "@/lib/services/task.service"
 import { AuditLogService } from "@/lib/services/audit-log.service"
 import { isNextInternalError } from "@/lib/next-internal-error"
 import { earliestDeadline } from "@/lib/deadline"
+import { scopesToTeam } from "@/lib/team-scope"
 
 export const POST = withStandardHandler(async (req, session, json) => {
     const userRole = session.user.role
@@ -70,7 +71,7 @@ export const POST = withStandardHandler(async (req, session, json) => {
 
             if (userRole !== 'SUPER_ADMIN') {
                 if (user.companyId !== creatorCompanyId) { isTaskValid = false; break }
-                if (userRole === 'TEAM_LEADER') {
+                if (scopesToTeam(session.user, "tasks.create")) {
                     if (['ADMIN', 'SUPER_ADMIN'].includes(user.role)) { isTaskValid = false; break }
                     // Same rule as the single-task path. An import is the
                     // easiest way to assign a hundred tasks at once, so it is

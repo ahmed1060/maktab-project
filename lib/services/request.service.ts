@@ -226,6 +226,6 @@ export class RequestService {
  * person who raised it is the team rule every other per-person check uses.
  */
 async function requireTeamReach(session: any, requesterId: string) {
-    if (!scopesToTeam(session.user.role)) return
+    if (!scopesToTeam(session.user, "requests.view")) return
     if (!(await verifyResourceAccess(session, requesterId, 'USER'))) throw new Error("ACCESS_DENIED")
 }

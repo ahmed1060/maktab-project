@@ -3,7 +3,8 @@ import { can } from "@/lib/permissions/can"
 import { ApiResponse } from "@/lib/api-response"
 import { createRequestSchema } from "@/lib/validations/request.schema"
 import { RequestService } from "@/lib/services/request.service"
-import { scopesToTeam, teamMemberWhere, and } from "@/lib/team-scope"
+import { teamMemberWhere, and } from "@/lib/team-scope"
+import { grantFor } from "@/lib/permissions/can"
 
 export const GET = withStandardHandler(async (req, session) => {
     const { searchParams } = new URL(req.url)
@@ -14,17 +15,19 @@ export const GET = withStandardHandler(async (req, session) => {
     const sortBy = searchParams.get('sortBy') || 'createdAt'
     const order = searchParams.get('order') || 'desc'
 
-    const userRole = session.user.role
     const userId = session.user.id
     const userCompanyId = session.user.companyId
 
     const where: any = {}
 
-    if (userRole === 'SUPER_ADMIN') {
+    // How far requests.view reaches decides the base: everywhere (Super Admin),
+    // the company, the team, or — without it — one's own requests.
+    const reach = grantFor(session.user, "requests.view")
+    if (reach === 'ALL') {
         if (companyIdParam) where.companyId = companyIdParam
-    } else if (userRole === 'ADMIN') {
+    } else if (reach === 'COMPANY') {
         where.companyId = userCompanyId
-    } else if (scopesToTeam(userRole)) {
+    } else if (reach === 'TEAM') {
         // A leader answers their own team's requests, not the company's.
         where.companyId = userCompanyId
         and(where, { user: teamMemberWhere(userId) })

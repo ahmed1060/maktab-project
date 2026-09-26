@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma"
-import { can } from "@/lib/permissions/can"
+import { can, canCompanyWide } from "@/lib/permissions/can"
+import { scopesToTeam } from "@/lib/team-scope"
 import { checkAssignees } from "./assignee-guard"
 import { CreateTaskInput, UpdateTaskInput } from "../validations/task.schema"
 import { extractCoords, extractAccuracy, locationVerdict } from "@/lib/location"
@@ -37,7 +38,7 @@ export class TaskService {
         if (userRole !== 'SUPER_ADMIN') {
             if (!userCompanyId) throw new Error("USER_NO_COMPANY")
 
-            const verdict = await checkAssignees(assigneeIds, session)
+            const verdict = await checkAssignees(assigneeIds, session, "tasks.create")
             if (!verdict.ok) throw new Error(CREATE_CODES[verdict.reason])
         }
 
@@ -209,7 +210,7 @@ export class TaskService {
             // above and then whatever ids the request carried were written, so
             // a task could be handed to another company's user, who would see
             // it in their own list. Same rule as creation, same function.
-            const verdict = await checkAssignees(assigneeIds, session)
+            const verdict = await checkAssignees(assigneeIds, session, "tasks.create")
             if (!verdict.ok) throw new Error(CREATE_CODES[verdict.reason])
             updateData.assignees = { set: assigneeIds.map((uid: string) => ({ id: uid })) }
         }
@@ -405,7 +406,9 @@ export class TaskService {
                 }
             }
 
-            if (['ADMIN', 'SUPER_ADMIN'].includes(userRole) && oldTask.assignees.some(a => a.id === userId)) {
+            // Someone who reviews company-wide may not review their own work;
+            // a team-scoped reviewer (a Team Leader) reviews their team's, their own among it.
+            if (canCompanyWide(session.user, "tasks.review") && oldTask.assignees.some(a => a.id === userId)) {
                 throw new Error("SELF_REVIEW_FORBIDDEN")
             }
 
@@ -571,7 +574,7 @@ export class TaskService {
                     throw new Error("CROSS_COMPANY_TRANSFER_FORBIDDEN")
                 }
                 // TEAM_LEADER Restriction check for ADDED users
-                if (userRole === 'TEAM_LEADER') {
+                if (scopesToTeam(session.user, "tasks.transfer")) {
                     if (targetUsers.some(u => ['ADMIN', 'SUPER_ADMIN'].includes(u.role))) {
                         throw new Error("TL_RESTRICTION")
                     }
@@ -702,7 +705,7 @@ export class TaskService {
             }
 
             const isSelfAssigned = task.assignees.some((a: any) => a.id === userId)
-            if (['ADMIN', 'SUPER_ADMIN'].includes(userRole) && isSelfAssigned) {
+            if (canCompanyWide(session.user, "tasks.delete") && isSelfAssigned) {
                 throw new Error("SELF_DELETION_FORBIDDEN")
             }
 

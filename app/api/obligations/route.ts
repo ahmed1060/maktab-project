@@ -3,24 +3,26 @@ import { prisma } from "@/lib/prisma"
 import { ApiResponse } from "@/lib/api-response"
 import { createObligationSchema } from "@/lib/validations/obligation.schema"
 import { ObligationService } from "@/lib/services/obligation.service"
-import { scopesToTeam, assignedToTeamWhere, and } from "@/lib/team-scope"
+import { assignedToTeamWhere, and } from "@/lib/team-scope"
+import { grantFor } from "@/lib/permissions/can"
 
 export const GET = withStandardHandler(async (req, session) => {
-    const role = (session.user as any).role
     const userId = (session.user as any).id
     const { searchParams } = new URL(req.url)
     const companyId = searchParams.get('companyId')
 
     const whereClause: any = {}
 
-    // 1. Authorization & Base Filtering
-    if (role === 'SUPER_ADMIN') {
+    // 1. Authorization & Base Filtering — by how far obligations.view reaches:
+    // everywhere (Super Admin), the company, the team, or one's own.
+    const reach = grantFor(session.user, "obligations.view")
+    if (reach === 'ALL') {
         if (companyId) whereClause.companyId = companyId
-    } else if (role === 'ADMIN') {
+    } else if (reach === 'COMPANY') {
         const userCompanyId = (session.user as any).companyId
         if (!userCompanyId) return ApiResponse.success({ data: [], total: 0, page: 1, totalPages: 0 })
         whereClause.companyId = userCompanyId
-    } else if (scopesToTeam(role)) {
+    } else if (reach === 'TEAM') {
         const userCompanyId = (session.user as any).companyId
         if (!userCompanyId) return ApiResponse.success({ data: [], total: 0, page: 1, totalPages: 0 })
         whereClause.companyId = userCompanyId
@@ -40,7 +42,7 @@ export const GET = withStandardHandler(async (req, session) => {
     const dateFrom = searchParams.get('dateFrom')
     const dateTo = searchParams.get('dateTo')
 
-    if (employeeIdFilter && role !== 'EMPLOYEE') {
+    if (employeeIdFilter && reach !== null) {
         // `and`, not assignment: the scope above sets whereClause.assignees
         // for a team leader, and replacing it would let them read another
         // team's obligations by supplying an id.

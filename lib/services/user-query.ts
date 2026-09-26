@@ -64,7 +64,7 @@ export function buildUserWhereClause(
     }
 
     // 2. The team boundary.
-    if (scopesToTeam(userRole)) {
+    if (scopesToTeam(session.user, "employees.view")) {
         const currentExclude = whereClause.role?.notIn || (whereClause.role?.not ? [whereClause.role.not] : [])
         if (!currentExclude.includes('ADMIN')) {
             whereClause.role = { ...(whereClause.role || {}), notIn: [...currentExclude, 'ADMIN'] }

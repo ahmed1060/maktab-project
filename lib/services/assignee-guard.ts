@@ -32,6 +32,9 @@ type Client = { user: { findMany: (args: any) => Promise<any[]> } }
 export async function checkAssignees(
     assigneeIds: string[],
     session: any,
+    // What is being assigned: its permission's scope decides whether the
+    // assigner is held to their team.
+    permission: "tasks.create" | "obligations.manage",
     client: Client = prisma as any,
 ): Promise<AssigneeVerdict> {
     if (!assigneeIds || assigneeIds.length === 0) return { ok: true }
@@ -56,7 +59,7 @@ export async function checkAssignees(
         return { ok: false, reason: "CROSS_COMPANY" }
     }
 
-    if (scopesToTeam(userRole)) {
+    if (scopesToTeam(session.user, permission)) {
         if (assignees.some(a => ["ADMIN", "SUPER_ADMIN"].includes(a.role))) {
             return { ok: false, reason: "ADMIN_TARGET" }
         }

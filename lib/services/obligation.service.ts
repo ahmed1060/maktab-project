@@ -33,7 +33,7 @@ export class ObligationService {
         if (userRole !== 'SUPER_ADMIN') {
             if (!creatorCompanyId) throw new Error("USER_NO_COMPANY")
 
-            const verdict = await checkAssignees(assigneeIds, session)
+            const verdict = await checkAssignees(assigneeIds, session, "obligations.manage")
             if (!verdict.ok) throw new Error(CREATE_CODES[verdict.reason])
         }
 
@@ -113,7 +113,9 @@ export class ObligationService {
             }
 
             // 3. Self-approval restriction
-            if (status && ['APPROVED', 'REJECTED'].includes(status) && ['ADMIN', 'SUPER_ADMIN'].includes(userRole) && isAssignee) {
+            // A company-wide manager may not decide their own obligation; a
+            // team-scoped one (a Team Leader) decides their team's, their own among it.
+            if (status && ['APPROVED', 'REJECTED'].includes(status) && canCompanyWide(session.user, "obligations.manage") && isAssignee) {
                 throw new Error("SELF_APPROVAL_FORBIDDEN")
             }
 
@@ -156,7 +158,7 @@ export class ObligationService {
                 // the same rule — handing work to another team, or another
                 // company, is not made safe by the obligation already
                 // existing. Validated inside the transaction it writes to.
-                const verdict = await checkAssignees(assigneeIds, session, tx as any)
+                const verdict = await checkAssignees(assigneeIds, session, "obligations.manage", tx as any)
                 if (!verdict.ok) throw new Error(REASSIGN_CODES[verdict.reason])
                 updateData.assignees = { set: assigneeIds.map((uid: string) => ({ id: uid })) }
             }
@@ -235,7 +237,7 @@ export class ObligationService {
 
             // Self-delete rule
             const isSelfAssigned = obligation.assignees.some((a: any) => a.id === userId)
-            if (['ADMIN', 'SUPER_ADMIN'].includes(userRole) && isSelfAssigned) throw new Error("ADMIN_CANNOT_DELETE_SELF_OBLIGATION")
+            if (canCompanyWide(session.user, "obligations.manage") && isSelfAssigned) throw new Error("ADMIN_CANNOT_DELETE_SELF_OBLIGATION")
 
             // Point deduction
             if (['APPROVED', 'COMPLETED'].includes(obligation.status)) {

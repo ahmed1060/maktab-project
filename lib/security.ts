@@ -43,7 +43,7 @@ export async function verifyResourceAccess(
                 select: { id: true, companyId: true, teamLeaderId: true }
             });
             if (!user || user.companyId !== userCompanyId) return false;
-            if (scopesToTeam(userRole)) {
+            if (scopesToTeam(session.user, "employees.view")) {
                 // Themselves, or somebody who reports to them. An employee with
                 // no leader belongs to the Admins, so a leader cannot reach
                 // them here either.
@@ -64,7 +64,7 @@ export async function verifyResourceAccess(
                 }
             });
             if (!task || task.companyId !== userCompanyId) return false;
-            if (scopesToTeam(userRole)) return isTeamWork(task.assignees, session.user.id);
+            if (scopesToTeam(session.user, "tasks.view")) return isTeamWork(task.assignees, session.user.id);
             return true;
         }
         case 'OBLIGATION': {
@@ -76,7 +76,7 @@ export async function verifyResourceAccess(
                 }
             });
             if (!obligation || obligation.companyId !== userCompanyId) return false;
-            if (scopesToTeam(userRole)) return isTeamWork(obligation.assignees, session.user.id);
+            if (scopesToTeam(session.user, "obligations.view")) return isTeamWork(obligation.assignees, session.user.id);
             return true;
         }
         case 'CLIENT': {

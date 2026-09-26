@@ -169,7 +169,7 @@ export default async function DashboardPage(props: { searchParams: Promise<{ com
         // this role — the label was a promise the query did not keep, and the
         // numbers would otherwise disagree with the lists underneath them.
         const baseWhere: any = finalCompanyId ? { companyId: finalCompanyId } : {}
-        if (scopesToTeam(userRole)) and(baseWhere, assignedToTeamWhere(userId))
+        if (scopesToTeam(viewer, 'tasks.view')) and(baseWhere, assignedToTeamWhere(userId))
 
         // "Needs Your Review" — approval queues this person can act on: each
         // count is asked of the permission its approval route checks. A Team
@@ -193,7 +193,7 @@ export default async function DashboardPage(props: { searchParams: Promise<{ com
                 where: {
                     month: currentMonth,
                     year: currentYear,
-                    user: scopesToTeam(userRole)
+                    user: scopesToTeam(viewer, 'tasks.view')
                         ? { companyId: finalCompanyId, ...teamMemberWhere(userId) }
                         : (finalCompanyId ? { companyId: finalCompanyId } : {})
                 },

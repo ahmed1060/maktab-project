@@ -1,3 +1,6 @@
+import { grantFor, type Actor } from "@/lib/permissions/can"
+import type { Permission } from "@/lib/permissions/catalogue"
+
 /**
  * What a Team Leader is allowed to see.
  *
@@ -16,14 +19,16 @@
  */
 
 /**
- * Whether this role is narrowed to a team at all.
+ * Whether this person's reach over one kind of thing stops at their team.
  *
- * Admins and Super Admins are not: they manage the company, and a team is a
- * subdivision of it. Employees are narrowed to themselves by their own rule,
- * which is tighter than this one and applied separately.
+ * Asked of a permission, not a role: it is true when they hold it at TEAM scope
+ * — a Team Leader today, and in Part B any role granted it that way. Someone
+ * holding it company-wide manages the company, of which a team is a
+ * subdivision; someone not holding it at all is narrowed to themselves by a
+ * tighter rule, applied separately.
  */
-export function scopesToTeam(role: string | null | undefined): boolean {
-    return role === "TEAM_LEADER"
+export function scopesToTeam(actor: Actor, permission: Permission): boolean {
+    return grantFor(actor, permission) === "TEAM"
 }
 
 /**
