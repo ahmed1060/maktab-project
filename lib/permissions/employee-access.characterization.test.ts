@@ -202,6 +202,48 @@ const OTHERS: Case[] = [
     },
 ]
 
+/**
+ * Added in Part B: a company always keeps someone at work on its Admin role
+ * (ROLES_PLAN.md §4.2, rule 8). c2 has one Admin, admin2; c1 has two. Before
+ * the rule, every one of the refusals below was allowed — the Super Admin, or
+ * admin2 acting on themselves, could leave c2 with no Admin at all.
+ */
+const LAST_ADMIN: Case[] = [
+    {
+        name: "suspending a company's only Admin",
+        run: put({ id: "admin2", status: "SUSPENDED" }),
+        expected: { superAdmin: [400, ""], admin: [403, ""], otherAdmin: [400, ""], leader: [403, ""], employee: [403, ""] },
+    },
+    {
+        name: "making a company's only Admin an employee",
+        run: put({ id: "admin2", role: "EMPLOYEE" }),
+        expected: { superAdmin: [400, ""], admin: [403, ""], otherAdmin: [400, ""], leader: [403, ""], employee: [403, ""] },
+    },
+    {
+        name: "moving a company's only Admin to another company",
+        run: put({ id: "admin2", companyId: "c1" }),
+        // For an Admin the field is ignored, so nothing moves.
+        expected: { superAdmin: [400, ""], admin: [403, ""], otherAdmin: [200, ""], leader: [403, ""], employee: [403, ""] },
+    },
+    {
+        name: "deleting a company's only Admin",
+        run: async () => (await users()).DELETE(new Request(url("/api/users?id=admin2"), { method: "DELETE" })),
+        // admin2 deleting themselves was already refused (400).
+        expected: { superAdmin: [400, ""], admin: [403, ""], otherAdmin: [400, ""], leader: [403, ""], employee: [403, ""] },
+    },
+    {
+        name: "suspending a company's only Admin through the status route",
+        run: async () => (await import("@/app/api/users/[id]/status/route")).POST(withBody("POST", "/api/users/admin2/status", { status: "SUSPENDED" }), { params: { id: "admin2" } }),
+        expected: { superAdmin: [400, ""], admin: [403, ""], otherAdmin: [403, ""], leader: [403, ""], employee: [403, ""] },
+    },
+    {
+        name: "suspending one of a company's two Admins",
+        run: put({ id: "admin1b", status: "SUSPENDED" }),
+        // Another stays at work, so this is allowed.
+        expected: c1Managers("status"),
+    },
+]
+
 function record(cases: Case[], title: string) {
     describe(title, () => {
         for (const c of cases) {
@@ -220,3 +262,4 @@ function record(cases: Case[], title: string) {
 
 record(EDITS, "editing an employee — recorded access, per field")
 record(OTHERS, "the other employee routes — recorded access")
+record(LAST_ADMIN, "a company keeps an Admin — recorded access")

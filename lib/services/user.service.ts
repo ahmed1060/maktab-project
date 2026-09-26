@@ -353,6 +353,11 @@ export class UserService {
                 ))
             }
 
+            // Never the company's last Admin at work (ROLES_PLAN.md §4.2, rule 8).
+            await RoleAssignmentService.keepsAnAdmin(prisma, id, {
+                roleId: updateData.roleId, status: updateData.status, companyId: updateData.companyId,
+            })
+
             const writeSelect = { id: true, firstName: true, lastName: true, email: true, role: true, gender: true, salary: true, companyId: true, avatar: true, dayOffCredit: true, baseDayOffCredit: true, username: true }
             const updated = rehome
                 ? await prisma.$transaction(async (tx) => {
@@ -516,6 +521,7 @@ export class UserService {
 
         const existingUser = await prisma.user.findUnique({ where: { id: userId }, select: { status: true } })
         if (!existingUser) throw new Error("USER_NOT_FOUND")
+        await RoleAssignmentService.keepsAnAdmin(prisma, userId, { status })
 
         const updated = await prisma.user.update({
             where: { id: userId },
@@ -752,6 +758,8 @@ export class UserService {
 
         if (user.role === 'ADMIN' && requesterRole !== 'SUPER_ADMIN') throw new Error("FORBIDDEN")
         if (user.role === 'SUPER_ADMIN') throw new Error("FORBIDDEN")
+        // Never the company's last Admin at work (ROLES_PLAN.md §4.2, rule 8).
+        if (!isPermanent) await RoleAssignmentService.keepsAnAdmin(prisma, id, { status: 'DELETED' })
 
         let result: any
         if (isPermanent) {

@@ -4,6 +4,10 @@ import { RoleService } from "./role.service"
 import type { UserRole } from "@prisma/client"
 
 type Client = Pick<typeof prisma, "role">
+type UserClient = Pick<typeof prisma, "user">
+
+/** Statuses in which somebody is at work. The rest take them out of it. */
+const AT_WORK = ["ACTIVE", "OFFLINE"] as const
 
 /**
  * The only writer of a person's role (ROLES_PLAN.md §3.1).
@@ -46,5 +50,38 @@ export class RoleAssignmentService {
         }
         if (!found) throw new Error("BUILT_IN_ROLE_MISSING")
         return { role, roleId: found.id }
+    }
+
+    /**
+     * Refuses a change that would leave a company with nobody at work on its
+     * built-in Admin role (ROLES_PLAN.md §4.2, rule 8) — the one role
+     * guaranteed to be able to fix every other, so a company without one
+     * could lock itself out of its own roles.
+     *
+     * `next` is what the change does to the person: a new role, a new status,
+     * a new company. Anything left undefined stays as it is. Throws LAST_ADMIN.
+     */
+    static async keepsAnAdmin(
+        client: UserClient,
+        userId: string,
+        next: { roleId?: string | null; status?: string; companyId?: string | null },
+    ): Promise<void> {
+        const user = await client.user.findUnique({
+            where: { id: userId },
+            select: { roleId: true, status: true, companyId: true, assignedRole: { select: { builtIn: true } } },
+        })
+        if (!user?.roleId || user.assignedRole?.builtIn !== "ADMIN") return
+        if (!(AT_WORK as readonly string[]).includes(user.status)) return
+
+        const staysAdmin =
+            (next.roleId === undefined || next.roleId === user.roleId) &&
+            (next.status === undefined || (AT_WORK as readonly string[]).includes(next.status)) &&
+            (next.companyId === undefined || next.companyId === user.companyId)
+        if (staysAdmin) return
+
+        const others = await client.user.count({
+            where: { roleId: user.roleId, status: { in: [...AT_WORK] }, id: { not: userId } },
+        })
+        if (others === 0) throw new Error("LAST_ADMIN")
     }
 }

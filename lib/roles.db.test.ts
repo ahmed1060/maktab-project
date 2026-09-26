@@ -170,6 +170,24 @@ describe.skipIf(!ADMIN_URL)("roles as data, in Postgres", () => {
             expect(await who({ companyId: "c1", ...holdersOf("clients.view") })).toEqual(["a1", "e1", "n1", "t1"])
         })
 
+        it("keep a company's last Admin at work (rule 8)", async () => {
+            // In c1, a1 is the only Admin.
+            for (const next of [{ status: "SUSPENDED" }, { status: "ARCHIVED" }, { status: "DELETED" }, { companyId: "c3" }, { roleId: "someone-else" }]) {
+                await expect(RoleAssignmentService.keepsAnAdmin(prisma, "a1", next), JSON.stringify(next)).rejects.toThrow("LAST_ADMIN")
+            }
+            // Presence is not leaving: OFFLINE keeps them at work.
+            await expect(RoleAssignmentService.keepsAnAdmin(prisma, "a1", { status: "OFFLINE" })).resolves.toBeUndefined()
+            // Somebody who is not an Admin is not this rule's business.
+            await expect(RoleAssignmentService.keepsAnAdmin(prisma, "e1", { status: "SUSPENDED" })).resolves.toBeUndefined()
+            // A second Admin at work, and the first may go.
+            const assignment = await RoleAssignmentService.builtIn(prisma, "ADMIN", "c1")
+            await prisma.user.create({ data: { id: "a1b", email: "a1b@x", password: "p", firstName: "A", lastName: "B", username: "a1b", lastDayOffResetYear: 2026, companyId: "c1", status: "ACTIVE", ...assignment } })
+            await expect(RoleAssignmentService.keepsAnAdmin(prisma, "a1", { status: "SUSPENDED" })).resolves.toBeUndefined()
+            // …unless that second one is not at work.
+            await prisma.user.update({ where: { id: "a1b" }, data: { status: "SUSPENDED" } })
+            await expect(RoleAssignmentService.keepsAnAdmin(prisma, "a1", { status: "SUSPENDED" })).rejects.toThrow("LAST_ADMIN")
+        })
+
         it("give a company with no roles at all its built-in ones — one made while the migration ran", async () => {
             await db.query(`INSERT INTO "Company"(id, name, "updatedAt") VALUES ('c4', 'Made mid-deploy', now())`)
             const assignment = await RoleAssignmentService.builtIn(prisma, "EMPLOYEE", "c4")

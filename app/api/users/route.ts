@@ -212,6 +212,7 @@ export const PUT = withStandardHandler(async (req, session, json) => {
     } catch (error: any) {
         // 4. Error Mapping
         if (error.message === 'USER_NOT_FOUND') return ApiResponse.notFound("User not found")
+        if (error.message === 'LAST_ADMIN') return ApiResponse.badRequest("A company must keep at least one Admin at work. Give its Admin role to someone else first.")
         // Somebody in another company. Refused inside UserService, and until
         // this was mapped the refusal escaped as a 500 — logged as a system
         // error, and shown to the Admin as the app failing rather than as no.
@@ -247,6 +248,7 @@ export const DELETE = withStandardHandler(async (req, session) => {
         if (error.message === 'INVALID_PASSCODE') return ApiResponse.forbidden("Invalid verification passcode")
         if (error.message === 'INVALID_ID') return ApiResponse.badRequest("Invalid ID or cannot delete self")
         if (error.message === 'USER_NOT_FOUND') return ApiResponse.notFound("User not found")
+        if (error.message === 'LAST_ADMIN') return ApiResponse.badRequest("A company must keep at least one Admin at work. Give its Admin role to someone else first.")
         if (error.message === 'CROSS_COMPANY_ACCESS_FORBIDDEN') return ApiResponse.forbidden("Access denied")
         if (error.message === 'FORBIDDEN') return ApiResponse.forbidden("Insufficient permissions to delete this user")
         if (error.message === 'MUST_SOFT_DELETE_FIRST') return ApiResponse.badRequest("Must soft-delete the user first")

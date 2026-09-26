@@ -19,6 +19,7 @@ export const POST = withStandardHandler(async (req, session, json, { params }) =
     } catch (error: any) {
         if (error.message === 'FORBIDDEN') return ApiResponse.forbidden("Super Admin only")
         if (error.message === 'INVALID_STATUS') return ApiResponse.badRequest("Invalid status")
+        if (error.message === 'LAST_ADMIN') return ApiResponse.badRequest("A company must keep at least one Admin at work. Give its Admin role to someone else first.")
         throw error
     }
 })

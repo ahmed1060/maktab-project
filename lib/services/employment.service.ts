@@ -15,6 +15,7 @@ import { SalaryHistoryService } from "./salary-history.service"
 import { TeamHandOff } from "./team-handoff.service"
 import { notifyTeamMoves } from "./team-notify.service"
 import { calendarParts } from "@/lib/time"
+import { RoleAssignmentService } from "./role-assignment.service"
 
 /**
  * The one writer for what happened to somebody's employment.
@@ -69,6 +70,10 @@ export class EmploymentService {
         }
 
         const run = async (client: Prisma.TransactionClient) => {
+            // Never the company's last Admin at work (ROLES_PLAN.md §4.2, rule
+            // 8) — refused when recorded, dated today or not, so a scheduled
+            // end of contract cannot leave the company without one later.
+            await RoleAssignmentService.keepsAnAdmin(client, input.userId, { status: STATUS_AFTER[input.type] })
             const event = await client.employmentEvent.create({
                 data: {
                     userId: input.userId,
@@ -210,6 +215,18 @@ export class EmploymentService {
 
             const next = reconcileStatus(user.status, impliedStatusAt(events, now))
             if (!next) continue
+
+            // Checked when the event was recorded; checked again now, since
+            // another Admin may have left in between. Held rather than failed:
+            // the job goes on for everyone else, and the event applies on the
+            // first run after the company has another Admin.
+            try {
+                await RoleAssignmentService.keepsAnAdmin(prisma, user.id, { status: next })
+            } catch (e: any) {
+                if (e?.message !== "LAST_ADMIN") throw e
+                console.warn(`[EMPLOYMENT] Holding ${next} for ${user.id}: the company's last Admin at work`)
+                continue
+            }
 
             // A leader archived today may have been given somebody after the
             // contract end was recorded (their team was moved then, but they

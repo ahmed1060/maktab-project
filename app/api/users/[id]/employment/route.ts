@@ -134,6 +134,7 @@ export const POST = withStandardHandler(async (req, session, json, { params }) =
         // refusal, with the same names, as the edit form gets.
         const teamRefusal = teamRefusalResponse(error)
         if (teamRefusal) return teamRefusal
+        if (message === 'LAST_ADMIN') return ApiResponse.badRequest("A company must keep at least one Admin at work. Give its Admin role to someone else first.")
         if (/Not a date/.test(message)) {
             return ApiResponse.badRequest("lastWorkingDay must be YYYY-MM-DD")
         }

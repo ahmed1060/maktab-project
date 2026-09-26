@@ -46,7 +46,17 @@ const models: Record<string, any> = {
     rateLimit: model({ upsert: async () => ({ count: 1 }) }),
     company: model({ findUnique: async ({ where }: any) => ({ id: where.id, name: where.id, isBanned: false }) }),
     user: model({
-        findUnique: async ({ where }: any) => PEOPLE[where.id] ?? null,
+        // Each person on their company's built-in role, as the roles migration
+        // put them — what the last-Admin rule reads.
+        findUnique: async ({ where }: any) => {
+            const p = PEOPLE[where.id]
+            return p ? { ...p, roleId: `${p.companyId}:${p.role}`, assignedRole: { builtIn: p.role } } : null
+        },
+        count: async ({ where }: any) => Object.values(PEOPLE).filter(p =>
+            (!where?.roleId || `${p.companyId}:${p.role}` === where.roleId) &&
+            (!where?.status?.in || where.status.in.includes(p.status)) &&
+            (!where?.id?.not || p.id !== where.id.not)
+        ).length,
         findFirst: async () => null,
         findMany: async ({ where }: any) => {
             const ids: string[] | undefined = where?.id?.in
