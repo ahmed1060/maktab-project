@@ -8,6 +8,7 @@ import { decodeGrants, encodeGrants } from "@/lib/permissions/grants"
 import { RoleService } from "@/lib/services/role.service"
 import { RoleAssignmentService } from "@/lib/services/role-assignment.service"
 import { holdersOf } from "@/lib/permissions/holders"
+import { AccessReportService } from "@/lib/services/access-report.service"
 import { RoleTemplateService } from "@/lib/services/role-template.service"
 
 /**
@@ -369,6 +370,28 @@ describe.skipIf(!ADMIN_URL)("roles as data, in Postgres", () => {
             expect(await names(superAdmin)).toEqual(["Admin", "Clients desk", "Deputy Admin", "Employee", "HR Officer", "Team Leader"])
             expect(await names(admin)).toEqual(["Clients desk", "Employee", "HR Officer", "Team Leader"])
             expect(await names(deputy)).toEqual(["Clients desk"])
+        })
+
+        it("answers who can do something, and what somebody can do (§6.5)", async () => {
+            await prisma.user.update({ where: { id: "e1" }, data: await RoleAssignmentService.chosen(prisma, admin, hr, { companyId: "c1", userId: "e1" }) })
+            const who = await AccessReportService.whoCan("c1", "dayoff.approve")
+            expect(who.holders.map(h => [h.user.id, h.role.name, h.scope]).sort()).toEqual([
+                ["a1", "Admin", "COMPANY"], ["a1b", "Admin", "COMPANY"], ["e1", "HR Officer", "COMPANY"],
+            ])
+            // At the scope their role holds it.
+            expect((await AccessReportService.whoCan("c1", "tasks.review")).holders.find(h => h.user.id === "t1"))
+                .toMatchObject({ role: { name: "Team Leader" }, scope: "TEAM" })
+            // Only that company's people.
+            expect((await AccessReportService.whoCan("c2", "dayoff.approve")).holders.map(h => h.user.id)).not.toContain("e1")
+            await expect(AccessReportService.whoCan("c1", "no.such")).rejects.toThrow("UNKNOWN_PERMISSION")
+
+            const what = await AccessReportService.whatCan("e1")
+            expect(what.role).toEqual({ id: hr, name: "HR Officer", baseRole: "EMPLOYEE" })
+            expect(what.grants).toEqual([
+                { permission: "dayoff.view", module: expect.any(String), scope: "COMPANY" },
+                { permission: "dayoff.approve", module: expect.any(String), scope: "COMPANY" },
+            ])
+            await prisma.user.update({ where: { id: "e1" }, data: await RoleAssignmentService.builtIn(prisma, "EMPLOYEE", "c1") })
         })
 
         it("starts a new account on the company's default role, or the built-in Employee", async () => {
