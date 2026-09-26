@@ -34,6 +34,14 @@ import type { Module } from "@/lib/features/bundles"
 export type Scope = "OWN" | "TEAM" | "COMPANY"
 
 type PermissionDefinition = {
+    /**
+     * A stable number for the session token, which carries grants as codes
+     * rather than key strings to stay far under the cookie limit (§4.4). Never
+     * changed and never reused: a token issued before a release must not come
+     * to mean something else after it. A removed permission's code goes into
+     * RETIRED_CODES.
+     */
+    code: number
     module: Module | null
     scopes: readonly Scope[]
     highRisk?: string
@@ -47,78 +55,90 @@ const CANNOT_BE_UNDONE = "Cannot be undone"
 
 export const PERMISSIONS = {
     // --- Employees --------------------------------------------------------
-    "employees.view":           { module: "EMPLOYEES", scopes: TEAM_OR_COMPANY },
-    "employees.create":         { module: "EMPLOYEES", scopes: COMPANY, implies: ["employees.view"] },
-    "employees.edit":           { module: "EMPLOYEES", scopes: TEAM_OR_COMPANY, implies: ["employees.view"] },
-    "employees.change_status":  { module: "EMPLOYEES", scopes: COMPANY, implies: ["employees.view"] },
-    "employees.end_contract":   { module: "EMPLOYEES", scopes: COMPANY, implies: ["employees.view"], highRisk: CANNOT_BE_UNDONE },
-    "employees.delete":         { module: "EMPLOYEES", scopes: COMPANY, implies: ["employees.view"], highRisk: CANNOT_BE_UNDONE },
-    "employees.reset_password": { module: "EMPLOYEES", scopes: COMPANY, implies: ["employees.view"] },
-    "employees.assign_team":    { module: "EMPLOYEES", scopes: COMPANY, implies: ["employees.view"] },
-    "employees.assign_role":    { module: "EMPLOYEES", scopes: COMPANY, implies: ["employees.view"] },
-    "employees.request_role":   { module: "EMPLOYEES", scopes: COMPANY, implies: ["employees.view"] },
+    "employees.view":           { code: 1, module: "EMPLOYEES", scopes: TEAM_OR_COMPANY },
+    "employees.create":         { code: 2, module: "EMPLOYEES", scopes: COMPANY, implies: ["employees.view"] },
+    "employees.edit":           { code: 3, module: "EMPLOYEES", scopes: TEAM_OR_COMPANY, implies: ["employees.view"] },
+    "employees.change_status":  { code: 4, module: "EMPLOYEES", scopes: COMPANY, implies: ["employees.view"] },
+    "employees.end_contract":   { code: 5, module: "EMPLOYEES", scopes: COMPANY, implies: ["employees.view"], highRisk: CANNOT_BE_UNDONE },
+    "employees.delete":         { code: 6, module: "EMPLOYEES", scopes: COMPANY, implies: ["employees.view"], highRisk: CANNOT_BE_UNDONE },
+    "employees.reset_password": { code: 7, module: "EMPLOYEES", scopes: COMPANY, implies: ["employees.view"] },
+    "employees.assign_team":    { code: 8, module: "EMPLOYEES", scopes: COMPANY, implies: ["employees.view"] },
+    "employees.assign_role":    { code: 9, module: "EMPLOYEES", scopes: COMPANY, implies: ["employees.view"] },
+    "employees.request_role":   { code: 10, module: "EMPLOYEES", scopes: COMPANY, implies: ["employees.view"] },
 
     // --- Profile requests and internal requests ---------------------------
-    "profile_requests.review":  { module: "PROFILE_REQUESTS", scopes: COMPANY },
-    "requests.view":            { module: "REQUESTS", scopes: TEAM_OR_COMPANY },
-    "requests.review":          { module: "REQUESTS", scopes: TEAM_OR_COMPANY, implies: ["requests.view"] },
-    "requests.reset_points":    { module: "REQUESTS", scopes: COMPANY, implies: ["requests.view"] },
+    "profile_requests.review":  { code: 11, module: "PROFILE_REQUESTS", scopes: COMPANY },
+    "requests.view":            { code: 12, module: "REQUESTS", scopes: TEAM_OR_COMPANY },
+    "requests.review":          { code: 13, module: "REQUESTS", scopes: TEAM_OR_COMPANY, implies: ["requests.view"] },
+    "requests.reset_points":    { code: 14, module: "REQUESTS", scopes: COMPANY, implies: ["requests.view"] },
 
     // --- Tasks -------------------------------------------------------------
-    "tasks.view":               { module: "TASKS", scopes: TEAM_OR_COMPANY },
-    "tasks.create":             { module: "TASKS", scopes: TEAM_OR_COMPANY, implies: ["tasks.view"] },
-    "tasks.edit":               { module: "TASKS", scopes: TEAM_OR_COMPANY, implies: ["tasks.view"] },
-    "tasks.transfer":           { module: "TASKS", scopes: TEAM_OR_COMPANY, implies: ["tasks.view"] },
-    "tasks.review":             { module: "TASKS", scopes: TEAM_OR_COMPANY, implies: ["tasks.view"] },
-    "tasks.delete":             { module: "TASKS", scopes: TEAM_OR_COMPANY, implies: ["tasks.view"], highRisk: CANNOT_BE_UNDONE },
-    "tasks.pay":                { module: "TASKS", scopes: TEAM_OR_COMPANY, implies: ["tasks.view"], highRisk: MOVES_MONEY },
-    "tasks.penalize":           { module: "TASKS", scopes: TEAM_OR_COMPANY, implies: ["tasks.view"], highRisk: "Affects pay" },
+    "tasks.view":               { code: 15, module: "TASKS", scopes: TEAM_OR_COMPANY },
+    "tasks.create":             { code: 16, module: "TASKS", scopes: TEAM_OR_COMPANY, implies: ["tasks.view"] },
+    "tasks.edit":               { code: 17, module: "TASKS", scopes: TEAM_OR_COMPANY, implies: ["tasks.view"] },
+    "tasks.transfer":           { code: 18, module: "TASKS", scopes: TEAM_OR_COMPANY, implies: ["tasks.view"] },
+    "tasks.review":             { code: 19, module: "TASKS", scopes: TEAM_OR_COMPANY, implies: ["tasks.view"] },
+    "tasks.delete":             { code: 20, module: "TASKS", scopes: TEAM_OR_COMPANY, implies: ["tasks.view"], highRisk: CANNOT_BE_UNDONE },
+    "tasks.pay":                { code: 21, module: "TASKS", scopes: TEAM_OR_COMPANY, implies: ["tasks.view"], highRisk: MOVES_MONEY },
+    "tasks.penalize":           { code: 22, module: "TASKS", scopes: TEAM_OR_COMPANY, implies: ["tasks.view"], highRisk: "Affects pay" },
 
     // --- Obligations, clients, vendors, costs ------------------------------
-    "obligations.view":         { module: "OBLIGATIONS", scopes: TEAM_OR_COMPANY },
-    "obligations.manage":       { module: "OBLIGATIONS", scopes: TEAM_OR_COMPANY, implies: ["obligations.view"] },
+    "obligations.view":         { code: 23, module: "OBLIGATIONS", scopes: TEAM_OR_COMPANY },
+    "obligations.manage":       { code: 24, module: "OBLIGATIONS", scopes: TEAM_OR_COMPANY, implies: ["obligations.view"] },
     // Clients are a shared notebook as much as a register, so adding to it is
     // its own right, apart from renaming and deleting what is there.
     // contribute: add a client, a section or a note, and edit any note.
     // edit: rename a client or a section.
-    "clients.view":             { module: "CLIENTS", scopes: COMPANY },
-    "clients.contribute":       { module: "CLIENTS", scopes: COMPANY, implies: ["clients.view"] },
-    "clients.edit":             { module: "CLIENTS", scopes: COMPANY, implies: ["clients.view"] },
-    "clients.delete":           { module: "CLIENTS", scopes: COMPANY, implies: ["clients.view"], highRisk: CANNOT_BE_UNDONE },
-    "vendors.view":             { module: "VENDORS", scopes: COMPANY },
-    "vendors.manage":           { module: "VENDORS", scopes: COMPANY, implies: ["vendors.view"] },
-    "costs.view":               { module: "COSTS", scopes: COMPANY },
+    "clients.view":             { code: 25, module: "CLIENTS", scopes: COMPANY },
+    "clients.contribute":       { code: 26, module: "CLIENTS", scopes: COMPANY, implies: ["clients.view"] },
+    "clients.edit":             { code: 27, module: "CLIENTS", scopes: COMPANY, implies: ["clients.view"] },
+    "clients.delete":           { code: 28, module: "CLIENTS", scopes: COMPANY, implies: ["clients.view"], highRisk: CANNOT_BE_UNDONE },
+    "vendors.view":             { code: 29, module: "VENDORS", scopes: COMPANY },
+    "vendors.manage":           { code: 30, module: "VENDORS", scopes: COMPANY, implies: ["vendors.view"] },
+    "costs.view":               { code: 31, module: "COSTS", scopes: COMPANY },
 
     // --- Day off -----------------------------------------------------------
-    "dayoff.view":              { module: "DAY_OFF", scopes: TEAM_OR_COMPANY },
-    "dayoff.approve":           { module: "DAY_OFF", scopes: TEAM_OR_COMPANY, implies: ["dayoff.view"] },
-    "dayoff.adjust_credit":     { module: "DAY_OFF", scopes: COMPANY, implies: ["dayoff.view"] },
+    "dayoff.view":              { code: 32, module: "DAY_OFF", scopes: TEAM_OR_COMPANY },
+    "dayoff.approve":           { code: 33, module: "DAY_OFF", scopes: TEAM_OR_COMPANY, implies: ["dayoff.view"] },
+    "dayoff.adjust_credit":     { code: 34, module: "DAY_OFF", scopes: COMPANY, implies: ["dayoff.view"] },
 
     // --- Salaries ----------------------------------------------------------
     // One permission for seeing a salary anywhere — profile, history, payroll,
     // payslips (decided, ROLES_PLAN.md §3.2). Its module is settled when the
     // Employees screens migrate, since a salary is shown there too.
-    "salary.view":              { module: null, scopes: TEAM_OR_COMPANY },
-    "salary.edit":              { module: null, scopes: COMPANY, implies: ["salary.view"], highRisk: MOVES_MONEY },
-    "salary_adjustments.manage": { module: "SALARY_ADJUSTMENTS", scopes: COMPANY, implies: ["salary.view"], highRisk: MOVES_MONEY },
+    "salary.view":              { code: 35, module: null, scopes: TEAM_OR_COMPANY },
+    "salary.edit":              { code: 36, module: null, scopes: COMPANY, implies: ["salary.view"], highRisk: MOVES_MONEY },
+    "salary_adjustments.manage": { code: 37, module: "SALARY_ADJUSTMENTS", scopes: COMPANY, implies: ["salary.view"], highRisk: MOVES_MONEY },
 
     // --- Payroll -----------------------------------------------------------
-    "payroll.view":             { module: "PAYROLL", scopes: COMPANY, implies: ["salary.view"] },
-    "payroll.prepare":          { module: "PAYROLL", scopes: COMPANY, implies: ["payroll.view"] },
-    "payroll.approve":          { module: "PAYROLL", scopes: COMPANY, implies: ["payroll.view"], highRisk: MOVES_MONEY },
-    "payroll.issue_payslips":   { module: "PAYROLL", scopes: COMPANY, implies: ["payroll.view"] },
-    "payroll.mark_paid":        { module: "PAYROLL", scopes: COMPANY, implies: ["payroll.view"], highRisk: MOVES_MONEY },
-    "settlements.manage":       { module: "PAYROLL", scopes: COMPANY, implies: ["salary.view"] },
-    "debts.view":               { module: "PAYROLL", scopes: COMPANY },
-    "debts.waive":              { module: "PAYROLL", scopes: COMPANY, implies: ["debts.view"], highRisk: MOVES_MONEY },
+    "payroll.view":             { code: 38, module: "PAYROLL", scopes: COMPANY, implies: ["salary.view"] },
+    "payroll.prepare":          { code: 39, module: "PAYROLL", scopes: COMPANY, implies: ["payroll.view"] },
+    "payroll.approve":          { code: 40, module: "PAYROLL", scopes: COMPANY, implies: ["payroll.view"], highRisk: MOVES_MONEY },
+    "payroll.issue_payslips":   { code: 41, module: "PAYROLL", scopes: COMPANY, implies: ["payroll.view"] },
+    "payroll.mark_paid":        { code: 42, module: "PAYROLL", scopes: COMPANY, implies: ["payroll.view"], highRisk: MOVES_MONEY },
+    "settlements.manage":       { code: 43, module: "PAYROLL", scopes: COMPANY, implies: ["salary.view"] },
+    "debts.view":               { code: 44, module: "PAYROLL", scopes: COMPANY },
+    "debts.waive":              { code: 45, module: "PAYROLL", scopes: COMPANY, implies: ["debts.view"], highRisk: MOVES_MONEY },
 
     // --- Settings and audit --------------------------------------------------
-    "settings.view":            { module: null, scopes: COMPANY },
-    "settings.edit":            { module: null, scopes: COMPANY, implies: ["settings.view"] },
-    "audit.view":               { module: null, scopes: COMPANY },
+    "settings.view":            { code: 46, module: null, scopes: COMPANY },
+    "settings.edit":            { code: 47, module: null, scopes: COMPANY, implies: ["settings.view"] },
+    "audit.view":               { code: 48, module: null, scopes: COMPANY },
 } as const satisfies Record<string, PermissionDefinition>
 
 export type Permission = keyof typeof PERMISSIONS
+
+/** Codes of permissions that no longer exist. Never handed out again. */
+export const RETIRED_CODES: readonly number[] = []
+
+const BY_CODE = new Map<number, Permission>(
+    (Object.keys(PERMISSIONS) as Permission[]).map(p => [PERMISSIONS[p].code, p])
+)
+
+/** The permission a token code stands for, or undefined for an unknown code. */
+export function permissionForCode(code: number): Permission | undefined {
+    return BY_CODE.get(code)
+}
 
 export const ALL_PERMISSIONS = Object.keys(PERMISSIONS) as Permission[]
 
