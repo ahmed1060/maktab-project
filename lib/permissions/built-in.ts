@@ -22,6 +22,9 @@ import type { Permission, Scope } from "./catalogue"
  * Migrated so far:
  * - Payroll — lib/permissions/payroll-access.characterization.test.ts
  * - Day off — lib/permissions/dayoff-access.characterization.test.ts
+ * - Salaries and adjustments — lib/permissions/salary-access.characterization.test.ts
+ *   (not yet salary.edit: changing a salary goes through PUT /api/users, and
+ *   moves with the Employees module)
  *   (not yet dayoff.adjust_credit: changing a balance goes through
  *   PUT /api/users, and moves with the Employees module)
  */
@@ -45,6 +48,10 @@ export const BUILT_IN_GRANTS: Record<BuiltInRole, Grants> = {
         // Implied by payroll.view. An Admin already sees every salary in their
         // company — the canViewSalary rule in app/api/users/route.ts.
         "salary.view": "COMPANY",
+
+        // Adjustments: an Admin records, reverses and rolls back bonuses and
+        // deductions for their company's people.
+        "salary_adjustments.manage": "COMPANY",
 
         // Day off: an Admin sees their company's requests and decides them.
         "dayoff.view": "COMPANY",

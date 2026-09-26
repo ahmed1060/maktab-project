@@ -2,6 +2,7 @@ import { withStandardHandler } from "@/lib/api-utils"
 import { ApiResponse } from "@/lib/api-response"
 import { SalaryService } from "@/lib/services/salary.service"
 import { verifyResourceAccess } from "@/lib/security"
+import { can } from "@/lib/permissions/can"
 
 export const POST = withStandardHandler(async (req, session, json, { params }) => {
     const { id: userId, adjId } = params
@@ -10,8 +11,7 @@ export const POST = withStandardHandler(async (req, session, json, { params }) =
     const hasAccess = await verifyResourceAccess(session, userId, 'USER')
     if (!hasAccess) return ApiResponse.forbidden("Access denied")
 
-    const userRole = session.user.role
-    if (!['ADMIN', 'SUPER_ADMIN'].includes(userRole)) {
+    if (!can(session.user, "salary_adjustments.manage")) {
         return ApiResponse.forbidden()
     }
 
