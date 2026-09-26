@@ -321,6 +321,16 @@ Structured rule types: grace period; **deduction bands** (e.g. 16–30 min → �
 free allowance; escalation for repeats; a monthly cap. Early leave has the same
 shape.
 
+**Pricing is done in money, per day, at that day's rate.** Two limits of the
+existing adjustment path make this necessary: `SalaryAdjustment.amount` is a count
+of days to two decimals — one minute of an eight-hour day is about 0.0021 days and
+rounds away — and payroll values a day count at a single monthly rate
+(`valueDayQuantity` in `lib/payroll.ts`), so a deduction from before a mid-month
+salary change would be priced at the later salary. So each `AttendanceDay` stores
+its deduction and overtime **as an amount in minor units**, computed from the
+salary in force *on that date* (`SalaryChange` is already effective-dated). How it
+reaches the payslip is in §12.
+
 ### 6.4 Overtime
 
 Enabled or disabled; multiplier by day type (working day, rest day, holiday);
@@ -422,19 +432,12 @@ Names and shapes for discussion, not final. All company-scoped.
 
 ### 8.1 Roles (§4)
 
-```
-model Role
-  id, companyId?              // null = global built-in or Super Admin template
-  name, isBuiltIn
-  grants  RoleGrant[]
-
-model RoleGrant
-  roleId, permission          // a key from the code catalogue
-  scope                       // OWN | TEAM | COMPANY
-
-// User.role (enum) is replaced by User.roleId, migrated so each user lands on
-// the built-in role matching their current enum value.
-```
+**Defined in [`ROLES_PLAN.md` §5](ROLES_PLAN.md#5-data-model), not here.** In short:
+every `Role` belongs to one company and has a base role; `User.role` (the enum) is
+**kept** as a derived base role, because team structure and subscription
+behaviour depend on it; permissions come from `RoleGrant`. An earlier sketch in
+this section replaced the enum and allowed company-less roles — that was
+superseded by the roles plan and must not be followed.
 
 ### 8.2 Settings exposure (§5.2)
 
@@ -447,8 +450,21 @@ model RoleGrant
 ### 8.3 Calendar and policy
 
 ```
-model WorkSchedule, ScheduleDay, ScheduleOverride, ScheduleOverrideDay,
-      UserSchedule            // as in §7.1; UserSchedule effective-dated
+model WorkSchedule            // the named schedule: "Office", "Warehouse"
+  id, companyId, name, isDefault
+
+model ScheduleVersion         // the hours themselves, effective-dated
+  id, scheduleId, effectiveFrom, createdById
+  graceInMinutes, graceOutMinutes, breakMinutes, roundingMinutes?, workWeek?
+  days  ScheduleDay[]         // one per weekday, belonging to this version
+  @@unique([scheduleId, effectiveFrom])
+  // Immutable once any AttendanceDay references it. Editing "Office" creates
+  // a new version with an effectiveFrom, asked "from when?" like the policy
+  // (§6.1) — so earlier days keep being measured against the hours that
+  // actually applied, even while the month is still a draft.
+
+model ScheduleOverride, ScheduleOverrideDay   // dated by nature, §7.1
+model UserSchedule            // effective-dated assignment of a schedule
 
 model PublicHoliday           // the central calendar
   id, country, date, name
@@ -532,7 +548,22 @@ model AttendanceDevice, DeviceCredential, UserDeviceMapping   // terminals, §17
 model AttendancePunch
   companyId, userId?, source  // IMPORT | MOBILE | AGENT | DEVICE_PUSH | MANUAL
   deviceId?, checkInDeviceId?, hardwareUserId?
+  sourceKey                   // durable idempotency key, stable across retries:
+                              //  AGENT / DEVICE_PUSH: "<deviceId>:<hardwareUserId>:<punchAtLocal>"
+                              //    — the terminal's own record identity
+                              //  MOBILE: a UUID the app generates once per check-in
+                              //    and resends unchanged on every retry
+                              //  IMPORT: "<file sha256>:<row number>"
+                              //  MANUAL: the punch's own id
+  @@unique([companyId, source, sourceKey])
+  // A retried delivery hits this constraint and is reported "duplicate" — it is
+  // never appended. The 60-second debounce in §11 is a separate thing: it
+  // collapses two *real* scans, and is not a retry key.
   punchAtLocal, punchAt, resolvedWithTimeZone
+  direction?                  // IN | OUT | null — decided AT INGESTION from the
+                              // terminal's mode at that moment (§17) and never
+                              // re-derived, so changing a terminal's mode later
+                              // cannot reinterpret historical scans
   lat?, lng?, accuracyMeters?, locationId?
   integrity  Json?            // attestation verdict, mock flag, network match
   identityCheck  Json?        // face result only: verified, scores, model version
@@ -541,7 +572,8 @@ model AttendancePunch
 
 model AttendanceDay
   companyId, userId, date
-  scheduleDayId?, overrideId?, policyId
+  scheduleVersionId?, overrideId?, policyId   // the exact, immutable inputs
+  deductionMinor, overtimeMinor              // money, at that day's rate (§6.3)
   firstInAt?, lastOutAt?
   workedMinutes, lateMinutes, earlyLeaveMinutes, overtimeMinutes
   excusedMinutes              // covered by approved permission hours
@@ -596,10 +628,15 @@ whole rule.
 
 - **First registration:** the app requests registration → `PENDING` → someone
   with `attendance.approve_devices` approves → `ACTIVE`.
-- **Changing phone:** the new phone requests registration → approval **revokes
-  the old phone and activates the new one in one transaction**. There is never a
-  moment with two active phones.
-- **Rejection** leaves the old phone active.
+- **Changing phone:** the new phone requests registration. **The moment of that
+  request is the cutover**: from then on the old phone is *suspended* and cannot
+  check in, and only the new phone's punches are recorded (held, below).
+  Approval revokes the old phone and activates the new one in one transaction.
+  So two phones' punches can never cover the same period — there is exactly one
+  stream before the cutover and one after.
+- **Rejection** discards the new phone's held punches, reactivates the old phone,
+  and tells the employee to check in with it. The days affected surface on the
+  exceptions screen as incomplete, for the usual missing-punch flow.
 - **Lost phone:** an admin revokes directly; the user registers a new one.
 - **Held punches:** check-ins from a phone awaiting approval are recorded as
   `PENDING_DEVICE` and count only once it is approved, so a slow approval does not
@@ -669,8 +706,9 @@ or sent to the server**.
 
 5. **Verification photo (round 5).** Immediately after setup, the app asks the
    employee to verify it: one live capture, with liveness, which must match the
-   templates just created. **This one photo is uploaded** and stored on the
-   employee's profile as their *face reference photo*.
+   templates just created. **This one photo is uploaded** and stored as a
+   private review asset — **never on the profile** (round 6) — becoming the
+   employee's *face reference photo* once approved.
 6. Face verification for this employee stays **inactive until approved**.
 
 **Why the photo, and why approval.** Since the templates never leave the phone,
@@ -909,11 +947,23 @@ Built into the design regardless of the answers:
   Super Admin decides to enable it. It reuses the existing `SuperAdmin.isProtected` flag, which
   the database itself already enforces with a trigger.
 - **Two ways to turn it off.** *Pause* stops the feature everywhere and keeps
-  enrolments, for a temporary stop. *Pause and purge* also instructs every app to
-  delete its face templates, deletes every stored reference photo, pending photo
-  and flagged frame, and records
-  that it did — for when the answer is no. Purge asks
-  for confirmation and MFA.
+  enrolments, for a temporary stop. *Pause and purge* is for when the answer is
+  no; it asks for confirmation and MFA.
+
+  **Purge must not claim more than it can do.** A server cannot delete data on a
+  phone that is off, lost, or never opens the app again. So the templates are
+  protected by **crypto-shredding**: on the phone they are encrypted with a key
+  made from two parts — one held in the phone's secure hardware, one per-device
+  *wrapping key* held on our server and fetched at each check-in. Neither part is
+  biometric data. Purge **destroys every server-held wrapping key**, which makes
+  every template on every phone permanently unreadable at that instant, whether
+  or not the phone is ever seen again. It then deletes every stored reference
+  photo, pending photo and flagged frame, and asks each app to delete its
+  (now unreadable) ciphertext. The purge record states both facts separately:
+  *"keys destroyed — all templates unusable"* (immediate and complete) and
+  *"deletion acknowledged by N of M devices"* (tracked as phones check in).
+  The same mechanism applies to one employee on consent withdrawal or
+  archiving.
 - **The feature is gated on the company's legal readiness** — a company cannot
   switch face verification on until it has confirmed (and we have recorded) that
   it holds whatever licence the consultation says it needs.
@@ -968,14 +1018,57 @@ comparing `inputsHash`. A locked day is never rewritten. Punches in
 
 ## 12. The payroll boundary
 
-Once the `PayrollRun` covering a date is `APPROVED`, every `AttendanceDay` in it
-is locked, no policy version may take effect inside it, and any still-pending
-overtime approval in it is treated as rejected.
+### 12.1 Locking is one transaction with approval
 
-Before approval, the month's outcome is written as `SalaryAdjustment` rows with
-`source = ATTENDANCE` — one per employee per category. Anything arriving after
-the lock becomes a discrepancy for an admin to turn into an adjustment in the
-current period.
+Today `PayrollRunService.approve` saves the draft (`saveDraft`) and *then* opens
+the transaction that sets the run to `APPROVED`. If attendance simply "locks when
+the run is approved", a punch or a nightly recompute landing between those two
+steps would change attendance after the payslip figures were computed — approved
+payslips that disagree with the final attendance.
+
+So approval and locking are serialized:
+
+- **One lock per company-month.** Approval, punch ingestion, recomputation and any
+  request approval that touches a date take the same Postgres advisory lock for
+  that company and month (`pg_advisory_xact_lock`) before writing. They cannot
+  interleave.
+- **Inside approval's transaction, in order:** take the lock → resolve pending
+  overtime in the month as rejected → run the final recompute of the month's
+  attendance → write the attendance payroll entries (§12.2) → compute and save the
+  payslips → stamp every `AttendanceDay` with `lockedByPayrollRunId` → set the run
+  `APPROVED`. One commit; either all of it happened or none of it did.
+- **After it:** anything that takes the lock and finds the month locked records a
+  discrepancy instead of writing (below).
+
+This changes the existing approve flow — computing inside the transaction rather
+than before it — and needs its own tests for the race, not only for the result.
+
+### 12.2 Attendance entries are reconciled, never appended
+
+Attendance is recomputed many times before approval; the existing adjustment path
+increments `SalaryRecord` and appends a row on every call, which would duplicate
+deductions. So attendance does **not** write adjustments as it goes. Instead:
+
+- Each entry has a **stable identity**: `(userId, year, month, source = ATTENDANCE,
+  category)`, where category is lateness, early leave, absence or overtime —
+  enforced by a unique index.
+- Entries are written **only inside the approval transaction** (§12.1), from the
+  final recompute, as **money in minor units** (the sum of each day's priced
+  amount, §6.3) — not as a day count revalued at a month-end rate.
+- Writing is **reconcile, not add**: if an entry with that identity exists and
+  differs, it is replaced atomically within the same transaction; if it matches,
+  nothing is written. Rerunning approval preparation can therefore never
+  double-count.
+- The payslip shows them as their own lines, which needs a money-denominated
+  attendance line kind alongside the existing day-based adjustment — a small
+  extension to `PayslipLine`, planned with Phase 1.
+- Before approval, the attendance screens show the **computed** figures live; they
+  are simply not yet payroll entries.
+
+### 12.3 After the lock
+
+Anything arriving for a locked month becomes a discrepancy for an admin to turn
+into an adjustment in the current period.
 
 A system that silently edits a paid payslip is worse than one with no attendance
 at all.
@@ -1148,6 +1241,9 @@ always mean *leaving*. **By default every terminal is equal** and the
 engine works out arriving/leaving from the order of scans (first scan of the shift
 = arrived, next = left, and so on). A terminal can optionally be marked
 *entrance only* or *exit only* in its settings, for sites that want it.
+The mode is applied **when each punch arrives** and stored on the punch as its
+direction (§8.6). Changing a terminal's mode later affects only new scans; it
+never reinterprets past ones, even in a month still being recomputed.
 
 ---
 
@@ -1222,9 +1318,18 @@ complete and shipped **switched off**; the protected Super Admin enables it when
 they decide to (§10). Consent flow, enrolment with verification photo and approval, on-device
 matching with liveness, fallback to flagged.
 
-### Phase 4 — Direct device push
+### Phase 4 — Direct device push, through the agent
 
-Only on demand. Needs a plain-HTTP ingress outside Vercel.
+Only on demand. Terminals that push (ZKTeco ADMS) often speak **plain HTTP only**,
+so a public ingress would expose device credentials, employee IDs and punch times
+on the internet and let an intercepted credential forge punches. **A public
+plain-HTTP endpoint is therefore not supported, anywhere.**
+
+Instead, the Local Sync Agent (§17) gains an **ADMS listener on the LAN**: the
+terminal pushes to the agent's local address over the office network, and the
+agent forwards over authenticated HTTPS exactly as it does for pulled punches.
+Plaintext never leaves the building. A site that cannot run an agent uses pull
+mode or Excel import, not direct push.
 
 ---
 

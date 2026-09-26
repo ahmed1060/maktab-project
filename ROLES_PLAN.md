@@ -179,7 +179,14 @@ constant in `lib/permissions/catalogue.ts`, grouped by module — the same patte
 same question of it.
 
 Each entry has a key, a label key for both languages, the **module** it belongs to
-(for package gating, §3.6), and whether it supports **scope** (§3.3).
+(for package gating, §3.6), and **which scopes it allows** (§3.3) — not merely
+whether it is scopable. Examples: `dayoff.approve` allows TEAM and COMPANY but
+never OWN (approving your own leave is always refused, §4.2, so an OWN grant would
+look configured and do nothing); `dayoff.view` allows all three. On every save of
+a template or company role, each grant is validated against the permission's
+allowed scopes **and** the role's base role (TEAM only on TEAM_LEADER-based roles).
+A grant that would silently give no usable access is rejected with the reason,
+rather than stored.
 
 A first draft, derived from what the product does today:
 
@@ -351,19 +358,27 @@ a role (§4.1). The remaining rules:
    assign HR Officer or Branch Manager, not make another Admin.
 3. **Assigning is limited to that company's roles.** An Admin never sees another
    company's roles or templates.
-4. **Nobody approves their own request**, whatever their permission — leave,
+4. **You can only hand out access you have.** Assigning — or requesting (§6.12) —
+   a role is allowed only if every grant of that role is contained in the
+   actor's own grants, at an equal or narrower scope. The built-in Admin holds
+   everything in their company, so this never limits them; it stops a narrower
+   role that can assign (a "Deputy Admin", or HR requesting) from provisioning
+   payroll, salary or audit access it does not itself hold, and stops two such
+   people from escalating each other. Checked on the server at assignment and
+   again at approval of a request.
+5. **Nobody approves their own request**, whatever their permission — leave,
    overtime, a missing punch, a salary change. Enforced in `can` for every
    approval-type permission, not in each route.
-5. **A request cannot be approved by the person who made it**, and nobody can
+6. **A request cannot be approved by the person who made it**, and nobody can
    request a role for themselves (§6.12).
-6. **The built-in Admin role is locked.** Its permissions cannot be edited for any
+7. **The built-in Admin role is locked.** Its permissions cannot be edited for any
    company. It is the one role guaranteed to be able to fix all the others; a
    client wanting a narrower admin gets a separate ADMIN-based role such as
    "Deputy Admin".
-7. **The last Admin cannot be removed.** A company always keeps at least one
+8. **The last Admin cannot be removed.** A company always keeps at least one
    active user on the built-in Admin role, or it could lock itself out of
    assigning roles at all.
-8. **Every role creation, edit, deletion, assignment and assignment request is
+9. **Every role creation, edit, deletion, assignment and assignment request is
    audited** with before and after.
 
 ### 4.3 Changing a role that people hold
@@ -372,18 +387,27 @@ a role (§4.1). The remaining rules:
   *"This affects 14 people."*
 - **Deleting** a role that anyone holds is refused until they are reassigned. A
   person must never be left without a role.
-- **Changing a role's base role** is refused if it would break the team structure
-  — e.g. turning a TEAM_LEADER-based role into an EMPLOYEE-based one while its
-  holders still lead teams. Same rule `UserService` already applies when demoting
-  a leader.
+- **A role's base role cannot change once anyone holds it.** `User.role` is
+  derived from the base role at assignment (§3.1); changing the base role of a
+  held role would leave every holder's enum disagreeing with the role they hold,
+  and team scoping, subscription exemption and the rest of §2.3 would follow the
+  stale value. So the base role is editable only while a role has no holders. To
+  change it for people who hold it, create a new role and reassign them — each
+  reassignment goes through `RoleAssignmentService`, which re-derives `User.role`
+  and applies the team checks `UserService` already applies when demoting a
+  leader.
 
 ### 4.4 When changes take effect
 
 Permissions travel in the session token. The JWT callback in `lib/auth.ts` already
 re-checks the database every 60 seconds (`sessionVersion`, status, maintenance
-mode). It gains two fields — `roleId` and `roleVersion` — and on that same check,
-if the role's version changed, it **reloads the permissions into the token without
-logging the person out**.
+mode). It gains two fields — `roleId` and `roleVersion` — and on that same check it
+compares **both** with the database: if the user's `roleId` differs from the
+token's (they were reassigned) **or** the role's `version` differs (the role was
+edited), it **reloads the permissions into the token without logging the person
+out**. Comparing only the version would miss a reassignment between two roles
+that happen to share a version number — every role starts at version 1 — and
+leave the old permissions in place.
 
 So a permission change reaches everyone within about a minute, at no extra
 database cost.
@@ -430,6 +454,7 @@ model RoleGrant {
   permission  String      // a catalogue key; unknown keys rejected on write
   scope       PermissionScope?   // null for permissions that are not scopable
   @@id([roleId, permission])
+  @@index([permission, roleId])   // "who can do this?" looks up by permission
 }
 
 enum PermissionScope { OWN TEAM COMPANY }
@@ -452,7 +477,9 @@ model RoleAssignmentRequest {
   defaultRoleId  String   // the role every new account starts on (§6.4)
 
 // On User:
-  roleId   String       // required after the migration
+  roleId   String?      // required for every user except a User row whose
+                        // role is SUPER_ADMIN (see §7 step 3) — enforced by
+                        // CHECK ("roleId" IS NOT NULL OR "role" = 'SUPER_ADMIN')
   actingUntil      DateTime?   // §6.13, if adopted
   previousRoleId   String?     // restored when actingUntil passes
   role     UserRole     // kept, now derived from Role.baseRole (§3.1)
@@ -577,7 +604,9 @@ so an Admin confirms it.
   assignment, with the same checks) or **rejects** with a reason. The requester is
   notified either way.
 - **Limits.** Only roles of that company; never an ADMIN-based role (Super Admin
-  only, §4.2); never for oneself; never approved by the requester.
+  only, §4.2); never for oneself; never approved by the requester; and only roles
+  whose grants the requester — and the approving Admin — themselves hold (§4.2,
+  rule 4).
 - A request left undecided for 3 working days is surfaced again to the Admins, so a
   new hire is not left on the default role indefinitely by oversight.
 - Works for existing employees too — a promotion is a request in the same way.
@@ -639,9 +668,18 @@ base role.
 ### Step 3 — Roles become data
 
 Add `Role`, `RoleGrant`, `RoleTemplate`, `User.roleId`. A migration creates, for
-every company, four built-in roles — Admin, Team Leader, Employee, and a
-Super-Admin-only placeholder if any `User` row carries `SUPER_ADMIN` — with grants
+every company, three built-in roles — Admin, Team Leader, Employee — with grants
 equal to the fixed table, and points every user at the one matching their enum.
+
+**`User` rows carrying `SUPER_ADMIN`.** The codebase allows these, usually with no
+company, and a company-scoped role cannot be given to a company-less account. They
+are the Super Admin, who is outside the role system (§3.5), so they get **no
+role**: `roleId` is nullable, and a database `CHECK` allows null *only* when the
+row's `role` is `SUPER_ADMIN`. Every other user must have a role. `can()` already
+treats a Super Admin as holding everything, so nothing needs a role for them.
+Before the migration runs, list these rows; if any turn out to be ordinary users
+given the wrong role, fix them first — the constraint would otherwise hide the
+mistake.
 Switch `can()` from the fixed table to the user's grants. The characterization tests
 (§8) must still pass unchanged.
 
