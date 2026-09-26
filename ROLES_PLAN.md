@@ -27,6 +27,9 @@ Settled during the attendance brainstorm (rounds 3–6 of `ATTENDANCE_PLAN.md`):
 | A **"who can do this?"** view for the Super Admin | Round 4 |
 | The Super Admin stays outside the role system | Round 3 |
 | **Custom roles are a real, current need** — several client companies already ask for them. Both parts of this plan (§1.1) are justified, not speculative. | Roles review |
+| **All Super Admin tools adopted**: preview as role, copy roles from another company, push a template change, in-app role change requests, role matrix export, separation-of-duties warnings (§6.6–6.11) | Roles review |
+| **HR may assign roles through a request that an Admin approves**; Admins assign directly (§6.12) | Roles review |
+| **The built-in Admin role is locked** — not editable per company; a reduced admin is a separate ADMIN-based role (§4.3) | Roles review |
 
 **Revised after a review of the first draft** against the code. The first draft
 overstated the migration (§2.2), relied on a circular safety net (§8), and missed
@@ -179,7 +182,7 @@ A first draft, derived from what the product does today:
 
 | Module | Permissions |
 |---|---|
-| Employees | `employees.view`, `employees.create`, `employees.edit`, `employees.archive`, `employees.assign_role`, `employees.assign_team` |
+| Employees | `employees.view`, `employees.create`, `employees.edit`, `employees.archive`, `employees.assign_role`, `employees.request_role`, `employees.assign_team` |
 | Profile requests | `profile_requests.review` |
 | Requests | `requests.view`, `requests.review` |
 | Tasks | `tasks.view`, `tasks.create`, `tasks.assign`, `tasks.review`, `tasks.delete` |
@@ -300,7 +303,8 @@ TEAM_LEADER-based roles, where a team exists to scope to.
 |---|---|---|---|
 | Create / edit / delete role templates | ✅ | ❌ | ❌ |
 | Create / edit / delete a company's roles | ✅ | ❌ | ❌ |
-| Assign a role to a user | ✅ | ✅ within own company, see 4.2 | ❌ unless their role holds `employees.assign_role` |
+| Assign a role to a user directly | ✅ | ✅ within own company, see 4.2 | ❌ |
+| Request a role assignment (approved by an Admin) | — | — | ✅ if their role holds `employees.request_role` — typically HR (§6.12) |
 | See the "who can do this?" view | ✅ | ❌ | ❌ |
 
 ### 4.2 Guards against privilege escalation
@@ -317,11 +321,17 @@ a role (§4.1). The remaining rules:
 4. **Nobody approves their own request**, whatever their permission — leave,
    overtime, a missing punch, a salary change. Enforced in `can` for every
    approval-type permission, not in each route.
-5. **The last Admin cannot be removed.** A company always keeps at least one
+5. **A request cannot be approved by the person who made it**, and nobody can
+   request a role for themselves (§6.12).
+6. **The built-in Admin role is locked.** Its permissions cannot be edited for any
+   company. It is the one role guaranteed to be able to fix all the others; a
+   client wanting a narrower admin gets a separate ADMIN-based role such as
+   "Deputy Admin".
+7. **The last Admin cannot be removed.** A company always keeps at least one
    active user on the built-in Admin role, or it could lock itself out of
    assigning roles at all.
-6. **Every role creation, edit, deletion and assignment is audited** with before
-   and after.
+8. **Every role creation, edit, deletion, assignment and assignment request is
+   audited** with before and after.
 
 ### 4.3 Changing a role that people hold
 
@@ -391,8 +401,27 @@ model RoleGrant {
 
 enum PermissionScope { OWN TEAM COMPANY }
 
+model RoleAssignmentRequest {
+  id            String   @id @default(uuid())
+  companyId     String
+  userId        String            // who would receive the role
+  requestedRoleId String
+  requestedById String
+  status        String   @default("PENDING")   // PENDING | APPROVED | REJECTED
+  reviewedById  String?
+  reviewedAt    DateTime?
+  rejectionReason String?
+  createdAt     DateTime @default(now())
+  @@index([companyId, status])
+}
+
+// On Company:
+  defaultRoleId  String   // the role every new account starts on (§6.4)
+
 // On User:
   roleId   String       // required after the migration
+  actingUntil      DateTime?   // §6.13, if adopted
+  previousRoleId   String?     // restored when actingUntil passes
   role     UserRole     // kept, now derived from Role.baseRole (§3.1)
 ```
 
@@ -429,6 +458,14 @@ On the employee's page, a **Role** dropdown listing only that company's roles,
 filtered by §4.2 (no ADMIN-based roles for a company Admin). Replaces today's role
 selector. For a TEAM_LEADER-based role, the existing team rules apply as today.
 
+For an Admin the change applies immediately. For someone who may only *request*
+(§6.12), the same dropdown submits a request instead, and the page shows it as
+pending.
+
+**Every company has a default role** — normally the built-in Employee — set by the
+Super Admin. A new account always starts on it, so nobody ever exists without a
+role, even while a request for a different one is waiting.
+
 ### 6.5 "Who can do this?"
 
 Super Admin only. Pick a company and a permission → every person holding it, at
@@ -436,7 +473,7 @@ which scope, through which role. And the reverse: pick a person → everything t
 can do and why. The first question anyone asks after a surprising approval.
 
 
-### 6.6 Preview a role — proposed
+### 6.6 Preview a role — adopted
 
 When building a role for a contract, the Super Admin can open **"Preview as this
 role"**: the dashboard rendered as a holder of that role in that company would see
@@ -448,14 +485,14 @@ leave queue" before a company does.
 
 ---
 
-### 6.7 Copy roles from another company — proposed
+### 6.7 Copy roles from another company — adopted
 
 When a new client's structure resembles an existing one's, **"Copy roles from…"**
 another company brings over its whole role set in one step, as independent copies.
 Faster than rebuilding from templates when you already built exactly this last
 month.
 
-### 6.8 Push a template change deliberately — proposed
+### 6.8 Push a template change deliberately — adopted
 
 Company roles are copies, so improving a template changes nobody (§0) — correct,
 but with many companies it means fixing the same thing many times. **"Offer this
@@ -464,7 +501,7 @@ copied from it, shows each one's difference, and lets the Super Admin apply the
 change to the ones chosen. Nothing changes unless the Super Admin picks it; every
 application is audited and bumps the role's version (§4.4).
 
-### 6.9 Role change requests from the company — proposed
+### 6.9 Role change requests from the company — adopted
 
 Only the Super Admin edits roles, so today a company asks by phone or WhatsApp and
 the request lives in nobody's system. A company Admin gets **"Request a role
@@ -472,7 +509,7 @@ change"**: pick a role, describe what is needed. It lands in a Super Admin queue
 linked to that company, with a status the Admin can see. The decision stays with
 the Super Admin; only the channel changes.
 
-### 6.10 Role matrix export for the contract — proposed
+### 6.10 Role matrix export for the contract — adopted
 
 Custom roles are agreed in contracts. **Export the company's roles** as an Excel
 sheet (`exceljs` is already a dependency): one column per role, one row per
@@ -480,7 +517,7 @@ permission, scope in the cell. The client signs it off as a contract annex, and
 when a dispute comes up — *"our HR Officer should have been able to…"* — both sides
 are looking at the same document.
 
-### 6.11 Separation-of-duties warnings — proposed
+### 6.11 Separation-of-duties warnings — adopted
 
 Some combinations are risky in one person's hands even when both are legitimate:
 preparing **and** approving payroll, editing salaries **and** approving payroll,
@@ -488,6 +525,46 @@ creating employees **and** changing their salary. The catalogue lists these
 pairs; the role editor **warns** (does not block) when a role holds both, and the
 warning is recorded with the Super Admin's decision. Clients with an auditor will
 ask about exactly this.
+
+---
+
+### 6.12 Role assignment requests (HR) — adopted
+
+HR assigns roles to new hires in practice, but assigning a role is granting access,
+so an Admin confirms it.
+
+- A role holding `employees.request_role` — typically HR Officer — can pick a role
+  for an employee. That creates a **request**, not a change.
+- The employee keeps their current role (for a new hire, the company default) until
+  the request is decided.
+- Everyone holding `employees.assign_role` in the company — the Admins — gets a
+  **high-priority** notification (not critical: a pending role is not an emergency,
+  and red is reserved for things that are).
+- An Admin **approves** (the role is applied through the same service as a direct
+  assignment, with the same checks) or **rejects** with a reason. The requester is
+  notified either way.
+- **Limits.** Only roles of that company; never an ADMIN-based role (Super Admin
+  only, §4.2); never for oneself; never approved by the requester.
+- A request left undecided for 3 working days is surfaced again to the Admins, so a
+  new hire is not left on the default role indefinitely by oversight.
+- Works for existing employees too — a promotion is a request in the same way.
+
+### 6.13 Acting roles — proposed
+
+A Branch Manager goes on leave and someone covers for two weeks. Today that means
+changing the cover's role and remembering to change it back. Proposal: a role
+assignment can carry an **end date**. Until then the person holds the acting role;
+on that date they return automatically to their previous role, and both changes are
+audited. It keeps one role per user — the acting role *replaces* theirs for the
+period rather than adding to it. Assigned through the same direct or request path.
+
+### 6.14 Periodic access review — proposed
+
+Access that was right a year ago often is not now. Every quarter (interval chosen
+by the Super Admin), each company's Admins receive a short in-app review: who holds
+each sensitive permission — salaries, payroll approval, role assignment — with a
+**confirm** or **request change** button per line. Unanswered reviews are visible to
+the Super Admin. Clients with an auditor will be asked for exactly this record.
 
 ---
 
@@ -576,19 +653,11 @@ another hardcoded check.
 
 ## 9. Open questions
 
-1. **Can a company Admin delegate role assignment?** §4.1 lets a role hold
-   `employees.assign_role` — e.g. an HR Officer assigning roles to new hires. Keep
-   it, or restrict assignment to Admins only?
-2. **Should the built-in Admin role be editable per company?** Recommendation: no —
-   it is the one role guaranteed to be able to fix the rest. A reduced admin is made
-   as a separate ADMIN-based role (e.g. "Deputy Admin").
-3. **Proposed Super Admin tools** — preview as role (§6.6), copy from another
-   company (§6.7), push a template change (§6.8), change requests (§6.9), role
-   matrix export (§6.10), separation-of-duties warnings (§6.11): adopt which?
-4. **When to build Part A** (§1.1) — as part of stabilising the website, or with
+1. **When to build Part A** (§1.1) — as part of stabilising the website, or with
    Part B later.
-5. **Final permission list.** §3.2 is a first draft; each module's owner should
-   confirm the split between view and change, especially around salaries.
+2. **Acting roles (§6.13) and periodic access review (§6.14)** — adopt or not.
+3. **Final permission list.** §3.2 is a first draft; confirm the split between view
+   and change, especially who may see salaries.
 
 ---
 
