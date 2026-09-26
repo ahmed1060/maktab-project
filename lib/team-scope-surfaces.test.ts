@@ -44,6 +44,7 @@ const SURFACES: [string, string][] = [
     ["obligations", "app/api/obligations/route.ts"],
     ["exports", "app/api/templates/download/route.ts"],
     ["dashboard counters", "app/(dashboard)/dashboard/page.tsx"],
+    ["costs page", "app/(dashboard)/dashboard/costs/page.tsx"],
 ]
 
 describe("no surface still treats a Team Leader as an Admin", () => {

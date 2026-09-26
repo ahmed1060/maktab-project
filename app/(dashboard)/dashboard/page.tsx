@@ -14,6 +14,7 @@ import { modulesFrom } from "@/lib/modules"
 import { SCOPED_COMPANY_COOKIE, scopedCompanyId } from "@/lib/company-scope"
 import { CompanyService } from "@/lib/services/company.service"
 import { scopesToTeam, assignedToTeamWhere, teamMemberWhere, and } from '@/lib/team-scope'
+import { can } from '@/lib/permissions/can'
 
 export const dynamic = 'force-dynamic'
 
@@ -166,12 +167,14 @@ export default async function DashboardPage(props: { searchParams: Promise<{ com
         const baseWhere: any = finalCompanyId ? { companyId: finalCompanyId } : {}
         if (scopesToTeam(userRole)) and(baseWhere, assignedToTeamWhere(userId))
 
-        // "Needs Your Review" — approval queues this role can act on.
-        // Day-off/profile approval is ADMIN-only (see app/api/admin/day-off-requests
-        // and app/api/profile-requests), so a TEAM_LEADER only sees task reviews.
+        // "Needs Your Review" — approval queues this person can act on: each
+        // count is asked of the permission its approval route checks. A Team
+        // Leader holds neither, so sees only task reviews. A Super Admin
+        // looking at one company holds both, and now sees that company's
+        // queues too — they used to be left out by a check that named ADMIN.
         // Below runs everything together instead of as 4-5 sequential
         // round trips: taskStats/salaryStats/overdueTasks never depended on
-        // each other, and the two ADMIN-only counts just resolve to 0
+        // each other, and the two counts it may not act on just resolve to 0
         // instead of skipping the query entirely when the role doesn't
         // apply, so the whole page can still await one Promise.all.
         const [taskStats, salaryStats, overdueTasks, pendingDayOffRequests, pendingProfileRequests] = await Promise.all([
@@ -203,10 +206,10 @@ export default async function DashboardPage(props: { searchParams: Promise<{ com
                 take: 5,
                 select: { id: true, title: true, deadline: true, status: true }
             }),
-            userRole === 'ADMIN'
+            can(session!.user as any, 'dayoff.approve')
                 ? prisma.dayOffRequest.count({ where: { status: 'PENDING', user: { companyId: finalCompanyId } } })
                 : Promise.resolve(0),
-            userRole === 'ADMIN'
+            can(session!.user as any, 'profile_requests.review')
                 ? prisma.profileUpdateRequest.count({ where: { status: 'PENDING', user: { companyId: finalCompanyId } } })
                 : Promise.resolve(0)
         ])
@@ -269,15 +272,15 @@ export default async function DashboardPage(props: { searchParams: Promise<{ com
                         <Link href="/dashboard/tasks" style={{ textDecoration: 'none', color: 'inherit' }}>
                             <StatMetric label={t('pending_task_reviews')} value={reviewTasks} icon="🔎" color="var(--warn-solid)" />
                         </Link>
-                        {userRole === 'ADMIN' && (
-                            <>
-                                <Link href="/dashboard/day-off-requests" style={{ textDecoration: 'none', color: 'inherit' }}>
-                                    <StatMetric label={t('pending_day_off_requests')} value={pendingDayOffRequests} icon={modules.icon('dayOff')} color="var(--info-solid-sky)" />
-                                </Link>
-                                <Link href="/dashboard/profile-requests" style={{ textDecoration: 'none', color: 'inherit' }}>
-                                    <StatMetric label={t('pending_profile_requests')} value={pendingProfileRequests} icon="🪪" color="var(--brand-accent)" />
-                                </Link>
-                            </>
+                        {can(session!.user as any, 'dayoff.approve') && (
+                            <Link href="/dashboard/day-off-requests" style={{ textDecoration: 'none', color: 'inherit' }}>
+                                <StatMetric label={t('pending_day_off_requests')} value={pendingDayOffRequests} icon={modules.icon('dayOff')} color="var(--info-solid-sky)" />
+                            </Link>
+                        )}
+                        {can(session!.user as any, 'profile_requests.review') && (
+                            <Link href="/dashboard/profile-requests" style={{ textDecoration: 'none', color: 'inherit' }}>
+                                <StatMetric label={t('pending_profile_requests')} value={pendingProfileRequests} icon="🪪" color="var(--brand-accent)" />
+                            </Link>
                         )}
                     </div>
                 </section>

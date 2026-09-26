@@ -3,6 +3,8 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 import CostsClient from './CostsClient'
+import { grantFor } from '@/lib/permissions/can'
+import { assignedToTeamWhere } from '@/lib/team-scope'
 
 export default async function CostsPage(props: { searchParams: Promise<{
         company?: string,
@@ -74,6 +76,15 @@ export default async function CostsPage(props: { searchParams: Promise<{
         where.AND.push({
             assignees: { some: { companyId: finalCompanyId } }
         })
+    }
+
+    // A Team Leader pays their team's tasks — tasks.pay at TEAM scope, the rule
+    // every task route applies through verifyResourceAccess — so this page
+    // lists those, not every pending payment in the company. It listed the
+    // company's, which put what colleagues outside the team are owed in front
+    // of a leader who could not act on most of it.
+    if (grantFor(session.user as any, 'tasks.pay') === 'TEAM') {
+        where.AND.push(assignedToTeamWhere((session.user as any).id))
     }
 
     if (searchParams.employeeId) {
