@@ -28,6 +28,8 @@ import type { Permission, Scope } from "./catalogue"
  *   and lib/user-lookup-scope.test.ts
  * - Tasks — lib/permissions/task-access.characterization.test.ts
  * - Obligations — lib/permissions/obligation-access.characterization.test.ts
+ * - Requests, name-change requests and performance points —
+ *   lib/permissions/request-access.characterization.test.ts
  *   (not yet dayoff.adjust_credit: changing a balance goes through
  *   PUT /api/users, and moves with the Employees module)
  */
@@ -92,6 +94,14 @@ export const BUILT_IN_GRANTS: Record<BuiltInRole, Grants> = {
         // company's. Reverting a decided one stays the Super Admin's.
         "obligations.view": "COMPANY",
         "obligations.manage": "COMPANY",
+
+        // Requests: an Admin sees and decides their company's, decides
+        // name changes, and resets performance points. Deleting a completed
+        // request and resetting everyone's points stay the Super Admin's.
+        "requests.view": "COMPANY",
+        "requests.review": "COMPANY",
+        "requests.reset_points": "COMPANY",
+        "profile_requests.review": "COMPANY",
     },
     // A Team Leader sees their team in the employee list and can look each of
     // them up — TEAM scope, enforced by buildUserWhereClause and
@@ -120,6 +130,10 @@ export const BUILT_IN_GRANTS: Record<BuiltInRole, Grants> = {
         // people's attachments, the Admin delete path — follow from TEAM scope.
         "obligations.view": "TEAM",
         "obligations.manage": "TEAM",
+
+        // Requests raised by their team.
+        "requests.view": "TEAM",
+        "requests.review": "TEAM",
     },
     EMPLOYEE: {},
 }
@@ -134,7 +148,8 @@ export function isBuiltInRole(role: string | null | undefined): role is BuiltInR
  * is how a notification finds the people who can act on it, instead of naming
  * a role. Super Admins are not included; callers add them as they always have.
  */
-export function builtInRolesHolding(permission: Permission): BuiltInRole[] {
+export function builtInRolesHolding(permission: Permission, scope?: Scope): BuiltInRole[] {
     return (Object.keys(BUILT_IN_GRANTS) as BuiltInRole[])
         .filter(role => BUILT_IN_GRANTS[role][permission] !== undefined)
+        .filter(role => scope === undefined || BUILT_IN_GRANTS[role][permission] === scope)
 }

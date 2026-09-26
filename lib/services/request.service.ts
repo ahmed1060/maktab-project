@@ -1,4 +1,6 @@
 import { prisma } from "@/lib/prisma"
+import { can } from "@/lib/permissions/can"
+import { builtInRolesHolding } from "@/lib/permissions/built-in"
 import { scopesToTeam } from "@/lib/team-scope"
 import { verifyResourceAccess } from "@/lib/security"
 import { CreateRequestInput } from "../validations/request.schema"
@@ -70,7 +72,8 @@ export class RequestService {
                     where: {
                         companyId,
                         OR: [
-                            { role: 'ADMIN' },
+                            // Whoever decides requests company-wide.
+                            ...builtInRolesHolding("requests.review", "COMPANY").map(role => ({ role })),
                             // `?? ''` rather than omitting the branch: an
                             // employee with no leader simply matches nothing
                             // here, instead of the condition collapsing to
@@ -120,7 +123,7 @@ export class RequestService {
 
         // Authorization
         if (userRole === 'SUPER_ADMIN') { /* OK */ }
-        else if (['ADMIN', 'TEAM_LEADER'].includes(userRole)) {
+        else if (can(session.user, "requests.view")) {
             if (request.companyId !== userCompanyId) throw new Error("ACCESS_DENIED")
             await requireTeamReach(session, request.userId)
         } else {
@@ -135,7 +138,7 @@ export class RequestService {
         const userCompanyId = session.user.companyId
         const updaterName = `${session.user.firstName || ''} ${session.user.lastName || ''}`.trim() || session.user?.name || 'Someone'
 
-        if (!['SUPER_ADMIN', 'ADMIN', 'TEAM_LEADER'].includes(userRole)) throw new Error("ACCESS_DENIED")
+        if (!can(session.user, "requests.review")) throw new Error("ACCESS_DENIED")
         if (!['PENDING', 'IN_PROGRESS', 'COMPLETED'].includes(status)) throw new Error("INVALID_STATUS")
 
         return await prisma.$transaction(async (tx) => {
@@ -194,7 +197,7 @@ export class RequestService {
 
         // Authorization
         if (userRole === 'SUPER_ADMIN') { /* OK */ }
-        else if (['ADMIN', 'TEAM_LEADER'].includes(userRole)) {
+        else if (can(session.user, "requests.review")) {
             if (request.companyId !== userCompanyId) throw new Error("ACCESS_DENIED")
             await requireTeamReach(session, request.userId)
         } else {

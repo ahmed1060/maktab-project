@@ -532,7 +532,7 @@ export class UserService {
 
     static async resetPoints(userId: string, session: any) {
         const requesterRole = session.user.role
-        if (!['ADMIN', 'SUPER_ADMIN'].includes(requesterRole)) {
+        if (!can(session.user, "requests.reset_points")) {
             throw new Error("FORBIDDEN")
         }
 

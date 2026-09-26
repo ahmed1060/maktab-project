@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma"
+import { can } from "@/lib/permissions/can"
 import { CreateProfileRequestInput } from "../validations/profile.schema"
 
 export class ProfileService {
@@ -56,8 +57,7 @@ export class ProfileService {
     }
 
     static async approveRequest(id: string, adminNote: string, session: any) {
-        const userRole = session.user.role
-        if (!['ADMIN', 'SUPER_ADMIN'].includes(userRole)) throw new Error("ACCESS_DENIED")
+        if (!can(session.user, "profile_requests.review")) throw new Error("ACCESS_DENIED")
 
         const request = await prisma.profileUpdateRequest.findUnique({ where: { id } })
         if (!request) throw new Error("REQUEST_NOT_FOUND")
@@ -99,8 +99,7 @@ export class ProfileService {
     }
 
     static async rejectRequest(id: string, adminNote: string, session: any) {
-        const userRole = session.user.role
-        if (!['ADMIN', 'SUPER_ADMIN'].includes(userRole)) throw new Error("ACCESS_DENIED")
+        if (!can(session.user, "profile_requests.review")) throw new Error("ACCESS_DENIED")
 
         const request = await prisma.profileUpdateRequest.findUnique({ where: { id } })
         if (!request) throw new Error("REQUEST_NOT_FOUND")

@@ -1,4 +1,5 @@
 import { withStandardHandler } from "@/lib/api-utils"
+import { can } from "@/lib/permissions/can"
 import { ApiResponse } from "@/lib/api-response"
 import { createProfileRequestSchema } from "@/lib/validations/profile.schema"
 import { ProfileService } from "@/lib/services/profile.service"
@@ -8,7 +9,7 @@ export const GET = withStandardHandler(async (req, session) => {
     const status = searchParams.get('status') || 'PENDING'
     const targetUserId = searchParams.get('userId')
     const userRole = session.user.role
-    const isAdmin = ['ADMIN', 'SUPER_ADMIN'].includes(userRole || '')
+    const isAdmin = can(session.user, "profile_requests.review")
 
     const where: any = { status }
 

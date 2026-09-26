@@ -1,4 +1,5 @@
 import { withStandardHandler } from "@/lib/api-utils"
+import { can } from "@/lib/permissions/can"
 import { ApiResponse } from "@/lib/api-response"
 import { createRequestSchema } from "@/lib/validations/request.schema"
 import { RequestService } from "@/lib/services/request.service"
@@ -46,7 +47,7 @@ export const GET = withStandardHandler(async (req, session) => {
         where.title = { contains: search, mode: 'insensitive' }
     }
 
-    if (filterUserId && ['SUPER_ADMIN', 'ADMIN', 'TEAM_LEADER'].includes(userRole)) {
+    if (filterUserId && can(session.user, "requests.view")) {
         // Narrows within the scope above and cannot escape it: for a leader
         // this is intersected with their team, so another team's id matches
         // nothing rather than replacing the scope.
