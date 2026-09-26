@@ -122,8 +122,8 @@ export const BUILT_IN_GRANTS: Record<BuiltInRole, Grants> = {
 
         // The same task rights as an Admin, for their team's tasks — the team
         // rule itself is verifyResourceAccess('TASK') and checkAssignees.
-        // (Recorded as it is: bulk "mark paid" filters by company only, so it
-        // can reach tasks outside their team. Part B narrows it.)
+        // (Bulk "mark paid" filtered by company only; Part B holds it to the
+        // team too — lib/permissions/bulk-pay-scope.test.ts.)
         "tasks.view": "TEAM",
         "tasks.create": "TEAM",
         "tasks.edit": "TEAM",

@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma"
 import { can, canCompanyWide } from "@/lib/permissions/can"
-import { scopesToTeam } from "@/lib/team-scope"
+import { scopesToTeam, assignedToTeamWhere, and } from "@/lib/team-scope"
 import { checkAssignees } from "./assignee-guard"
 import { CreateTaskInput, UpdateTaskInput } from "../validations/task.schema"
 import { extractCoords, extractAccuracy, locationVerdict } from "@/lib/location"
@@ -1113,6 +1113,8 @@ export class TaskService {
             if (userRole !== 'SUPER_ADMIN') {
                 whereClause.companyId = (session.user as any).companyId
             }
+            // And a team-scoped payer's team, whatever ids they were handed.
+            if (scopesToTeam(session.user, "tasks.pay")) and(whereClause, assignedToTeamWhere(userId))
 
             const tasks = await tx.task.findMany({
                 where: whereClause,
