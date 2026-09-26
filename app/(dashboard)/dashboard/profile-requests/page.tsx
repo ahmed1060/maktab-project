@@ -11,6 +11,7 @@ import { useLanguage } from '@/context/LanguageContext'
 import LoadingSpinner from '@/components/LoadingSpinner'
 import Pagination from '@/components/Pagination'
 import { useHeader } from '@/context/HeaderContext'
+import { useCan } from '@/lib/useCan'
 
 type Request = {
     id: string
@@ -47,8 +48,7 @@ export default function ProfileRequestsPage() {
     const searchParams = useSearchParams()
     const highlightId = searchParams.get('highlight')
 
-    const role = session?.user?.role
-    const canReview = role === 'ADMIN' || role === 'SUPER_ADMIN'
+    const canReview = useCan().can('profile_requests.review')
     const { data: result, isLoading, mutate: fetchRequests } = useSWR(
         canReview ? `/api/profile-requests?${new URLSearchParams({ status: 'PENDING', page: String(page), limit: String(limit) })}` : null,
         fetcher,
@@ -112,7 +112,7 @@ export default function ProfileRequestsPage() {
         }
     }
 
-    if (!session || !['ADMIN', 'SUPER_ADMIN'].includes(session.user.role)) {
+    if (!session || !canReview) {
         return <AccessDenied />
     }
 

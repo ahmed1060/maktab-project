@@ -3,6 +3,7 @@ import Image from 'next/image'
 import Modal from '@/components/Modal'
 import ConfirmModal from '@/components/ConfirmModal'
 import { useLanguage } from '@/context/LanguageContext'
+import { permissionsOf } from '@/lib/useCan'
 
 interface ViewRequestModalProps {
     isOpen: boolean
@@ -30,7 +31,7 @@ export default function ViewRequestModal({ isOpen, onClose, request, userRole, o
         }
     }
 
-    const isAdmin = ['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole)
+    const canReview = permissionsOf({ role: userRole }).can('requests.review')
 
     return (
         <Modal
@@ -66,7 +67,7 @@ export default function ViewRequestModal({ isOpen, onClose, request, userRole, o
                                 </button>
                             )}
 
-                            {isAdmin && request.status !== 'COMPLETED' && (
+                            {canReview && request.status !== 'COMPLETED' && (
                                 <button
                                     onClick={() => handleUpdate(request.status === 'PENDING' ? 'IN_PROGRESS' : 'COMPLETED')}
                                     disabled={updating}

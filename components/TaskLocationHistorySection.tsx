@@ -7,6 +7,7 @@ import SafeDate from '@/components/SafeDate'
 import TrashIcon from '@/components/TrashIcon'
 import { useFeatures } from '@/lib/features/useFeatures'
 import SectionBoundary from './SectionBoundary'
+import { permissionsOf } from '@/lib/useCan'
 
 // F-23: extracted verbatim out of tasks/[id]/client.tsx. The lateness-
 // penalty UI state (showPenaltyUI/selectedPenalty/applyingPenalty) and the
@@ -62,7 +63,7 @@ function TaskLocationHistorySectionBody({ task, setTask, userRole, userId, setLo
                         The endpoint refuses it either way — see
                         lib/features/routes.ts, which routes this one child of
                         /api/tasks to SALARY_ADJUSTMENTS. */}
-                    {features.has('SALARY_ADJUSTMENTS') && ['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole) && !['PENDING', 'IN_PROGRESS'].includes(task.status) && (
+                    {features.has('SALARY_ADJUSTMENTS') && permissionsOf({ role: userRole }).can('tasks.penalize') && !['PENDING', 'IN_PROGRESS'].includes(task.status) && (
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
                             {showPenaltyUI && (
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'var(--surface-subtle)', padding: '0.25rem 0.5rem', borderRadius: '2rem', border: '1px solid var(--border)' }}>
@@ -176,8 +177,8 @@ function TaskLocationHistorySectionBody({ task, setTask, userRole, userId, setLo
                             }
                         } catch { }
 
-                        const canVerify = ['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole) && task.status === 'PENDING_CONFIRMATION'
-                        const canDelete = (userRole === 'EMPLOYEE' || task.assignees?.some((a: any) => a.id === userId)) && ['PENDING', 'IN_PROGRESS', 'REJECTED'].includes(task.status)
+                        const canVerify = permissionsOf({ role: userRole }).can('tasks.review') && task.status === 'PENDING_CONFIRMATION'
+                        const canDelete = (!permissionsOf({ role: userRole }).can('tasks.view') || task.assignees?.some((a: any) => a.id === userId)) && ['PENDING', 'IN_PROGRESS', 'REJECTED'].includes(task.status)
 
                         const handleVerify = async (status: 'CORRECT' | 'WRONG') => {
                             const timestamp = loc.date
@@ -303,7 +304,7 @@ function TaskLocationHistorySectionBody({ task, setTask, userRole, userId, setLo
                                                 </button>
                                             </div>
                                         )}
-                                        {canDelete && task.status === 'IN_PROGRESS' && (loc.authorId === userId || ['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole)) && (
+                                        {canDelete && task.status === 'IN_PROGRESS' && (loc.authorId === userId || permissionsOf({ role: userRole }).can('tasks.edit')) && (
                                             <button onClick={() => setLocationToDelete({ date: loc.date })} style={{ background: 'var(--danger-bg)', color: 'var(--danger-solid-hover)', border: 'none', borderRadius: '0.25rem', padding: '0.4rem', cursor: 'pointer', display: 'flex' }} title={t('delete_location_title')}>
                                                 <TrashIcon size={16} />
                                             </button>

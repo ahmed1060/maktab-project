@@ -14,7 +14,7 @@ import { modulesFrom } from "@/lib/modules"
 import { SCOPED_COMPANY_COOKIE, scopedCompanyId } from "@/lib/company-scope"
 import { CompanyService } from "@/lib/services/company.service"
 import { scopesToTeam, assignedToTeamWhere, teamMemberWhere, and } from '@/lib/team-scope'
-import { can } from '@/lib/permissions/can'
+import { can, grantFor } from '@/lib/permissions/can'
 
 export const dynamic = 'force-dynamic'
 
@@ -26,6 +26,8 @@ export default async function DashboardPage(props: { searchParams: Promise<{ com
 
     const session = await getServerSession(authOptions)
     const userRole = (session?.user as any)?.role
+    // Who is asking, for can(): nobody signed in holds nothing.
+    const viewer = (session?.user ?? { role: null }) as any
     const userId = (session?.user as any)?.id
 
     // Server-side localization
@@ -64,7 +66,9 @@ export default async function DashboardPage(props: { searchParams: Promise<{ com
     const currentMonth = new Date().getMonth() + 1
     const currentYear = new Date().getFullYear()
 
-    if (['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole)) {
+    // The overview is for whoever sees others' tasks — company-wide or, for a
+    // Team Leader, their team's. Everyone else gets their own dashboard below.
+    if (can(viewer, 'tasks.view')) {
         // Super Admin System Overview (when no specific company is selected)
         if (userRole === 'SUPER_ADMIN' && !companyId) {
             // "Needs Attention" — the things a super admin would otherwise
@@ -206,10 +210,10 @@ export default async function DashboardPage(props: { searchParams: Promise<{ com
                 take: 5,
                 select: { id: true, title: true, deadline: true, status: true }
             }),
-            can(session!.user as any, 'dayoff.approve')
+            can(viewer, 'dayoff.approve')
                 ? prisma.dayOffRequest.count({ where: { status: 'PENDING', user: { companyId: finalCompanyId } } })
                 : Promise.resolve(0),
-            can(session!.user as any, 'profile_requests.review')
+            can(viewer, 'profile_requests.review')
                 ? prisma.profileUpdateRequest.count({ where: { status: 'PENDING', user: { companyId: finalCompanyId } } })
                 : Promise.resolve(0)
         ])
@@ -232,7 +236,7 @@ export default async function DashboardPage(props: { searchParams: Promise<{ com
         return (
             <div className="animate-fade-in" style={{ direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
                 <HeaderSetter
-                    title={userRole === 'TEAM_LEADER' ? t('team_performance') : t('admin_overview')}
+                    title={grantFor(viewer, 'tasks.view') === 'TEAM' ? t('team_performance') : t('admin_overview')}
                     subtitle={t('dashboard_subtitle' as any)}
                 />
 
@@ -256,7 +260,7 @@ export default async function DashboardPage(props: { searchParams: Promise<{ com
                             <Link href="/dashboard/tasks/new" className="btn btn-primary" style={{ flex: 1, justifyContent: 'center', height: '3rem' }}>
                                 + {t('create_new_task')}
                             </Link>
-                            {userRole !== 'TEAM_LEADER' && (
+                            {can(viewer, 'employees.create') && (
                                 <Link href="/dashboard/employees/new" className="btn" style={{ flex: 1, justifyContent: 'center', background: 'var(--veil-40)', color: 'var(--text-body)', height: '3rem', border: '1px solid var(--veil-50)' }}>
                                     + {t('add_employee')}
                                 </Link>
@@ -272,12 +276,12 @@ export default async function DashboardPage(props: { searchParams: Promise<{ com
                         <Link href="/dashboard/tasks" style={{ textDecoration: 'none', color: 'inherit' }}>
                             <StatMetric label={t('pending_task_reviews')} value={reviewTasks} icon="🔎" color="var(--warn-solid)" />
                         </Link>
-                        {can(session!.user as any, 'dayoff.approve') && (
+                        {can(viewer, 'dayoff.approve') && (
                             <Link href="/dashboard/day-off-requests" style={{ textDecoration: 'none', color: 'inherit' }}>
                                 <StatMetric label={t('pending_day_off_requests')} value={pendingDayOffRequests} icon={modules.icon('dayOff')} color="var(--info-solid-sky)" />
                             </Link>
                         )}
-                        {can(session!.user as any, 'profile_requests.review') && (
+                        {can(viewer, 'profile_requests.review') && (
                             <Link href="/dashboard/profile-requests" style={{ textDecoration: 'none', color: 'inherit' }}>
                                 <StatMetric label={t('pending_profile_requests')} value={pendingProfileRequests} icon="🪪" color="var(--brand-accent)" />
                             </Link>

@@ -10,6 +10,7 @@ import { useLanguage } from '@/context/LanguageContext'
 import LoadingSpinner from './LoadingSpinner'
 import EndContractModal from './EndContractModal'
 import TeamHandOffModal from './TeamHandOffModal'
+import { useCan } from '@/lib/useCan'
 
 type EmployeeProfileFormProps = {
     userId: string
@@ -64,6 +65,10 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
     const searchParams = useSearchParams()
     const highlightId = searchParams.get('highlight')
     const userRole = session?.user?.role || ''
+    // Each field is offered, and sent, with the permission PUT /api/users
+    // checks for it.
+    const { can } = useCan()
+    const canAssignTeam = can('employees.assign_team')
 
     // Password & Verification States
     const [showNewPassword, setShowNewPassword] = useState(false)
@@ -190,10 +195,10 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
         if (userRole === 'SUPER_ADMIN') {
             fetchCompanies()
         }
-        if (userRole === 'SUPER_ADMIN' || userRole === 'ADMIN') {
+        if (canAssignTeam) {
             fetchLeaders()
         }
-    }, [userId, userRole, sessionUserId, reloadKey])
+    }, [userId, userRole, sessionUserId, reloadKey, canAssignTeam])
 
     const handleResetPassword = async (adminPasswordInput: string) => {
         setIsVerifying(true)
@@ -315,13 +320,13 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                     gender,
                     avatar: avatarUrl,
                     companyId: userRole === 'SUPER_ADMIN' ? companyId : undefined,
-                    salary: (userRole === 'ADMIN' || userRole === 'SUPER_ADMIN') && userId !== session?.user?.id ? parseFloat(salary) || 0 : undefined,
-                    baseDayOffCredit: (userRole === 'ADMIN' || userRole === 'SUPER_ADMIN') && userId !== session?.user?.id ? parseFloat(baseDayOffCredit) || 0 : undefined,
+                    salary: can('salary.edit') && userId !== session?.user?.id ? parseFloat(salary) || 0 : undefined,
+                    baseDayOffCredit: can('dayoff.adjust_credit') && userId !== session?.user?.id ? parseFloat(baseDayOffCredit) || 0 : undefined,
                     username: userRole === 'SUPER_ADMIN' ? username : undefined,
-                    status: (userRole === 'ADMIN' || userRole === 'SUPER_ADMIN') && userId !== session?.user?.id ? status : undefined,
+                    status: can('employees.change_status') && userId !== session?.user?.id ? status : undefined,
                     // undefined leaves it alone; null unassigns. The empty
                     // option means the second, so it cannot be sent as "".
-                    teamLeaderId: (userRole === 'ADMIN' || userRole === 'SUPER_ADMIN') && userId !== session?.user?.id && role === 'EMPLOYEE'
+                    teamLeaderId: canAssignTeam && userId !== session?.user?.id && role === 'EMPLOYEE'
                         ? (teamLeaderId || null)
                         : undefined,
                     reassignReportsTo: reassignTo
@@ -797,7 +802,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
 
                 {/* Salary Field - Visible to Admins and Self, Editable only by Admins (not self). Hidden for Admins and Super Admins. */}
                 {
-                    (['ADMIN', 'SUPER_ADMIN'].includes(userRole) || userId === session?.user?.id) && !['ADMIN', 'SUPER_ADMIN'].includes(role) && role !== '' && (
+                    (can('salary.view') || userId === session?.user?.id) && !['ADMIN', 'SUPER_ADMIN'].includes(role) && role !== '' && (
                         <div style={{ marginBottom: '1rem' }}>
                             <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('monthly_base_salary_label')}</label>
                             <input
@@ -805,9 +810,9 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                                 className="input"
                                 value={salary}
                                 onChange={e => setSalary(e.target.value)}
-                                disabled={isViewMode || userId === session?.user?.id || !['ADMIN', 'SUPER_ADMIN'].includes(userRole)}
+                                disabled={isViewMode || userId === session?.user?.id || !can('salary.edit')}
                                 max={1000000000}
-                                style={(isViewMode || userId === session?.user?.id || !['ADMIN', 'SUPER_ADMIN'].includes(userRole)) ? { background: 'var(--surface-sunk)', cursor: 'not-allowed', textAlign: locale === 'ar' ? 'right' : 'left' } : { textAlign: locale === 'ar' ? 'right' : 'left' }}
+                                style={(isViewMode || userId === session?.user?.id || !can('salary.edit')) ? { background: 'var(--surface-sunk)', cursor: 'not-allowed', textAlign: locale === 'ar' ? 'right' : 'left' } : { textAlign: locale === 'ar' ? 'right' : 'left' }}
                                 placeholder={userId === session?.user?.id && !salary ? t('no_data_available') : (locale === 'ar' ? 'أدخل الراتب' : 'Enter salary')}
                             />
                         </div>
@@ -816,7 +821,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
 
                 {/* Day Off Credit Fields - Visible to Admins and Self, Editable only by Admins (not self). Hidden for Admins and Super Admins. */}
                 {
-                    (['ADMIN', 'SUPER_ADMIN'].includes(userRole) || userId === session?.user?.id) && !['ADMIN', 'SUPER_ADMIN'].includes(role) && role !== '' && (
+                    (can('dayoff.view') || userId === session?.user?.id) && !['ADMIN', 'SUPER_ADMIN'].includes(role) && role !== '' && (
                         <>
                             <div style={{ marginBottom: '1rem' }}>
                                 <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('day_off_credit_assigned')}</label>
@@ -825,9 +830,9 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                                     className="input"
                                     value={baseDayOffCredit}
                                     onChange={e => setBaseDayOffCredit(e.target.value)}
-                                    disabled={isViewMode || userId === session?.user?.id || !['ADMIN', 'SUPER_ADMIN'].includes(userRole)}
+                                    disabled={isViewMode || userId === session?.user?.id || !can('dayoff.adjust_credit')}
                                     step="0.5"
-                                    style={(isViewMode || userId === session?.user?.id || !['ADMIN', 'SUPER_ADMIN'].includes(userRole)) ? { background: 'var(--surface-sunk)', cursor: 'not-allowed', textAlign: locale === 'ar' ? 'right' : 'left' } : { textAlign: locale === 'ar' ? 'right' : 'left' }}
+                                    style={(isViewMode || userId === session?.user?.id || !can('dayoff.adjust_credit')) ? { background: 'var(--surface-sunk)', cursor: 'not-allowed', textAlign: locale === 'ar' ? 'right' : 'left' } : { textAlign: locale === 'ar' ? 'right' : 'left' }}
                                 />
                             </div>
                         </>
@@ -890,7 +895,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                     replaces the old password-reveal feature — admins can no longer
                     see a user's actual password, only issue a new temporary one) */}
                 {
-                    ['ADMIN', 'SUPER_ADMIN'].includes(userRole) && isViewMode && userId !== session?.user?.id && (
+                    can('employees.reset_password') && isViewMode && userId !== session?.user?.id && (
                         <div style={{ marginBottom: '1rem' }}>
                             <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('password')}</label>
                             {issuedTempPassword ? (
@@ -922,7 +927,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                     )
                 }
                 {
-                    (userRole === 'SUPER_ADMIN' || userRole === 'ADMIN') && userId !== session?.user?.id && (
+                    can('employees.assign_role') && userId !== session?.user?.id && (
                         <div style={{ marginBottom: '1rem' }}>
                             <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('role_label')}</label>
                             <select
@@ -970,7 +975,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                        disappears rather than greying out when the role above is
                        changed, because an empty disabled control invites the
                        question of what it would mean. */
-                    (userRole === 'SUPER_ADMIN' || userRole === 'ADMIN')
+                    canAssignTeam
                         && userId !== session?.user?.id
                         && role === 'EMPLOYEE' && (
                         <div style={{ marginBottom: '1rem' }}>
@@ -993,7 +998,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                 }
 
                 {
-                    (userRole === 'SUPER_ADMIN' || userRole === 'ADMIN') && userId !== session?.user?.id && (
+                    can('employees.change_status') && userId !== session?.user?.id && (
                         <div style={{ marginBottom: '1rem' }}>
                             <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('status_label' as any) || (locale === 'ar' ? 'الحالة' : 'Status')}</label>
                             <select

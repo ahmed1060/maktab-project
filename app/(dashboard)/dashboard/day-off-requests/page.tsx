@@ -16,6 +16,7 @@ import { useCompany } from '@/context/CompanyContext'
 import Pagination from '@/components/Pagination'
 import { fetcher } from '@/lib/swr-fetcher'
 import { useFadingHighlight } from '@/lib/useFadingHighlight'
+import { useCan } from '@/lib/useCan'
 
 // Badge color + translation key per type, keyed once here rather than as a
 // chained ternary — REGULAR/CASUAL/SICK are reachable from the request
@@ -55,7 +56,11 @@ export default function DayOffRequestsPage() {
     const modules = useModules()
     const { data: session, status } = useSession()
     const user = session?.user
-    const isAdmin = ['ADMIN', 'SUPER_ADMIN'].includes(user?.role || '')
+    // The manager's view — the company's requests, not one's own — is for
+    // those who may see them; deciding one is narrower still.
+    const { can } = useCan()
+    const managesRequests = can('dayoff.view')
+    const canDecide = can('dayoff.approve')
     const { selectedCompanyId: contextCompanyId } = useCompany()
 
     const [selectedRequest, setSelectedRequest] = useState<any | null>(null)
@@ -97,9 +102,9 @@ export default function DayOffRequestsPage() {
     // original guard exactly.
     const requestsQuery = (() => {
         if (status !== 'authenticated') return null
-        const endpoint = isAdmin ? '/api/admin/day-off-requests' : '/api/day-off-requests'
+        const endpoint = managesRequests ? '/api/admin/day-off-requests' : '/api/day-off-requests'
         const queryParams = new URLSearchParams()
-        if (isAdmin && contextCompanyId) {
+        if (managesRequests && contextCompanyId) {
             queryParams.set('companyId', contextCompanyId)
         }
         queryParams.set('page', page.toString())
@@ -113,7 +118,7 @@ export default function DayOffRequestsPage() {
 
     // User Credit Info — only ever needed for non-admins viewing their own
     // request history.
-    const userCreditQuery = status === 'authenticated' && !isAdmin && user?.id ? `/api/users?id=${user.id}` : null
+    const userCreditQuery = status === 'authenticated' && !managesRequests && user?.id ? `/api/users?id=${user.id}` : null
     const { data: userCreditResult } = useSWR(userCreditQuery, fetcher)
     const foundUser = (() => {
         const data = userCreditResult?.data
@@ -338,13 +343,13 @@ export default function DayOffRequestsPage() {
                 dateTo={filters.dateTo}
                 selectedStatus={filters.status}
                 searchQuery={filters.search}
-                isEmployee={!isAdmin}
+                isEmployee={!managesRequests}
                 hideSearch={false}
                 placeholder={locale === 'ar' ? 'بحث في السبب' : 'Search Reason'}
                 totalCount={total}
                 allowedStatuses={['PENDING', 'APPROVED', 'REJECTED']}
                 primaryAction={
-                    !isAdmin ? (
+                    !managesRequests ? (
                         <button onClick={() => setIsRequestModalOpen(true)} className="btn btn-primary" style={{ height: '48px', display: 'flex', alignItems: 'center', borderRadius: '1.25rem' }}>
                             {t('request_day_off' as any)}
                         </button>
@@ -352,10 +357,10 @@ export default function DayOffRequestsPage() {
                 }
             />
 
-            <div className={isAdmin ? "" : "responsive-sidebar-grid"} style={{ display: isAdmin ? 'grid' : undefined, gridTemplateColumns: isAdmin ? '1fr' : undefined, gap: '1.5rem', marginBottom: '2rem' }}>
+            <div className={managesRequests ? "" : "responsive-sidebar-grid"} style={{ display: managesRequests ? 'grid' : undefined, gridTemplateColumns: managesRequests ? '1fr' : undefined, gap: '1.5rem', marginBottom: '2rem' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                     {/* User Credit Stats - Mobile only */}
-                    {!isAdmin && (
+                    {!managesRequests && (
                         <div className="show-on-mobile" style={{ display: 'none', width: '100%', marginBottom: '0.5rem', marginTop: '-0.75rem' }}>
                             <div style={{ display: 'flex', justifyContent: locale === 'ar' ? 'flex-start' : 'flex-end', width: '100%' }}>
                                 {(() => {
@@ -428,7 +433,7 @@ export default function DayOffRequestsPage() {
                                     {/* Card Header */}
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                                            {isAdmin && (
+                                            {managesRequests && (
                                                 <h3 className="text-lg font-bold text-slate-800 leading-tight">
                                                     {req.user?.firstName} {req.user?.lastName}
                                                 </h3>
@@ -559,7 +564,7 @@ export default function DayOffRequestsPage() {
                                     </div>
 
                                     {/* Card Actions (Admin only) */}
-                                    {isAdmin && req.status === 'PENDING' && (
+                                    {canDecide && req.status === 'PENDING' && (
                                         <div style={{ display: 'flex', gap: '0.75rem', marginTop: 'auto', paddingTop: '1rem', borderTop: '1px dashed var(--border)' }}>
                                             <button
                                                 onClick={() => handleAction(req.id, 'APPROVED')}
@@ -605,7 +610,7 @@ export default function DayOffRequestsPage() {
                     />
                 </div>
 
-                {!isAdmin && (
+                {!managesRequests && (
                     <div className="hide-on-mobile" style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
                         <div className="card" style={{ height: 'fit-content' }}>
                             <h2 className="text-xl font-semibold mb-4">{t('credit_overview' as any)}</h2>

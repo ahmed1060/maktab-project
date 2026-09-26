@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { useLanguage } from '@/context/LanguageContext'
+import { useCan } from '@/lib/useCan'
 
 type Company = {
     id: string
@@ -31,6 +32,9 @@ export default function NewEmployeePage() {
     const router = useRouter()
     const { data: session } = useSession()
     const userRole = session?.user?.role || ''
+    const { can } = useCan()
+    const canAssignTeam = can('employees.assign_team')
+    const canAssignRole = can('employees.assign_role')
 
     useEffect(() => {
         if (userRole === 'SUPER_ADMIN') {
@@ -43,13 +47,13 @@ export default function NewEmployeePage() {
                 .catch(err => console.error('Failed to fetch companies', err))
         }
         // Asked for by role rather than fetched wholesale and filtered here.
-        if (userRole === 'SUPER_ADMIN' || userRole === 'ADMIN') {
+        if (canAssignTeam) {
             fetch('/api/users?role=TEAM_LEADER&limit=1000')
                 .then(res => res.json())
                 .then(result => setLeaders(result.data?.data || []))
                 .catch(err => console.error('Failed to fetch team leaders', err))
         }
-    }, [userRole])
+    }, [userRole, canAssignTeam])
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -320,7 +324,7 @@ export default function NewEmployeePage() {
                     </div>
                 )}
 
-                {(userRole === 'SUPER_ADMIN' || userRole === 'ADMIN') && (
+                {canAssignRole && (
                     <div style={{ marginBottom: '1rem' }}>
                         <label style={{ display: 'block', marginBottom: '0.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('role_label')}</label>
                         <select
@@ -336,7 +340,7 @@ export default function NewEmployeePage() {
                         </select>
                     </div>
                 )}
-                {role === 'EMPLOYEE' && (userRole === 'SUPER_ADMIN' || userRole === 'ADMIN') && (
+                {role === 'EMPLOYEE' && canAssignTeam && (
                     <div style={{ marginBottom: '1rem' }}>
                         <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('team_leader_label')}</label>
                         <select

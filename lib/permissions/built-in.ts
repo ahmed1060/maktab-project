@@ -32,6 +32,9 @@ import type { Permission, Scope } from "./catalogue"
  *   lib/permissions/request-access.characterization.test.ts
  * - Clients, vendors and cost history —
  *   lib/permissions/client-access.characterization.test.ts
+ *
+ * Screens ask the same table, through lib/useCan.ts. What each one showed to
+ * which role before it did is recorded in lib/permissions/screen-gates.test.ts.
  *   (not yet dayoff.adjust_credit: changing a balance goes through
  *   PUT /api/users, and moves with the Employees module)
  */

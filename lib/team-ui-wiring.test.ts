@@ -74,11 +74,11 @@ describe("the edit form loads what it is about to save", () => {
 })
 
 describe("only the people allowed to assign can", () => {
-    it("the form offers the field to admins only, and never for self", () => {
+    it("the form offers the field only with employees.assign_team, and never for self", () => {
         const payload = FORM.slice(FORM.indexOf("method: 'PUT'"))
         const line = payload.slice(payload.indexOf("teamLeaderId:"), payload.indexOf("teamLeaderId:") + 260)
-        expect(line).toContain("ADMIN")
-        expect(line).toContain("SUPER_ADMIN")
+        expect(line).toContain("canAssignTeam")
+        expect(FORM).toContain("const canAssignTeam = can('employees.assign_team')")
         expect(line).toMatch(/userId\s*!==\s*session\?\.user\?\.id/)
         // Leaders are not led, so the field is not sent for any other role.
         expect(line).toMatch(/role\s*===\s*'EMPLOYEE'/)

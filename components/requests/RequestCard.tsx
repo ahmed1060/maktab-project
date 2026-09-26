@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useLanguage } from '@/context/LanguageContext'
 import { useTemporaryHighlight } from '@/lib/useTemporaryHighlight'
+import { permissionsOf } from '@/lib/useCan'
 
 interface RequestCardProps {
     request: any
@@ -36,7 +37,9 @@ export default function RequestCard({ request, userRole, onView, onStatusUpdate,
         }
     }
 
-    const isAdmin = ['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole)
+    const { can } = permissionsOf({ role: userRole })
+    const canSeeWho = can('requests.view')
+    const canReview = can('requests.review')
 
     return (
         <div
@@ -64,7 +67,7 @@ export default function RequestCard({ request, userRole, onView, onStatusUpdate,
                         {t(`status_${request.status.toLowerCase()}` as any)}
                     </span>
                 </div>
-                {isAdmin && request.user && (
+                {canSeeWho && request.user && (
                     <div style={{ fontSize: '0.85rem', color: 'var(--text-soft)' }}>
                         {t('by' as any) || 'By'}: {request.user.firstName} {request.user.lastName}
                     </div>
@@ -87,7 +90,7 @@ export default function RequestCard({ request, userRole, onView, onStatusUpdate,
                     {t('view_request' as any) || 'View Request'}
                 </button>
 
-                {isAdmin && request.status !== 'COMPLETED' && (
+                {canReview && request.status !== 'COMPLETED' && (
                     <button
                         onClick={() => handleUpdate(request.status === 'PENDING' ? 'IN_PROGRESS' : 'COMPLETED')}
                         disabled={updating}

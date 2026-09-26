@@ -23,11 +23,11 @@ const PAGE = stripComments(readFileSync("app/(dashboard)/dashboard/tasks/page.ts
 const CLIENT = stripComments(readFileSync("app/(dashboard)/dashboard/tasks/TasksClient.tsx", "utf8"))
 const DETAIL = stripComments(readFileSync("app/(dashboard)/dashboard/tasks/[id]/page.tsx", "utf8"))
 
-/** The EMPLOYEE arm of the role branch. */
+/** The arm for someone who does not see others' tasks — an employee. */
 function employeeBranch(): string {
-    const start = PAGE.indexOf("if (role === 'EMPLOYEE')")
-    expect(start, "the EMPLOYEE branch is missing").toBeGreaterThan(-1)
-    return PAGE.slice(start, PAGE.indexOf("role === 'TEAM_LEADER'", start))
+    const start = PAGE.indexOf("if (scope === null)")
+    expect(start, "the no-reach (employee) branch is missing").toBeGreaterThan(-1)
+    return PAGE.slice(start, PAGE.indexOf("scope === 'TEAM'", start))
 }
 
 describe("an employee only ever sees their own tasks", () => {
@@ -60,13 +60,13 @@ describe("an employee only ever sees their own tasks", () => {
     })
 
     it("pins the view to 'my' regardless of the query string", () => {
-        expect(PAGE).toMatch(/role === 'EMPLOYEE' \? 'my' :/)
+        expect(PAGE).toMatch(/scope === null \? 'my' :/)
     })
 })
 
 describe("the two tabs belong to a Team Leader", () => {
     it("is not offered to an employee", () => {
-        expect(CLIENT).toMatch(/role === 'TEAM_LEADER' && \(/)
+        expect(CLIENT).toMatch(/reach === 'TEAM' && \(/)
         expect(CLIENT, "the tab switcher is still rendered for EMPLOYEE")
             .not.toMatch(/\['EMPLOYEE', 'TEAM_LEADER'\]\.includes\(role\)/)
     })
@@ -80,7 +80,7 @@ describe("an employee's payload carries only their own cost", () => {
         expect(PAGE).toMatch(/function visibleMemberCosts/)
         expect(PAGE).toMatch(/memberCosts:\s*visibleMemberCosts\(task\.memberCosts\)/)
         const fn = PAGE.slice(PAGE.indexOf("function visibleMemberCosts"))
-        expect(fn).toMatch(/role !== 'EMPLOYEE'/)
+        expect(fn).toMatch(/scope !== null \|\| !raw/)
         expect(fn, "it must keep the employee's own entry").toMatch(/\[userId\]:\s*parsed\[userId\]/)
     })
 })
@@ -94,7 +94,7 @@ describe("the task detail page narrows it too", () => {
         expect(DETAIL).toMatch(/visibleMemberCosts/)
         expect(DETAIL).toMatch(/memberCosts:\s*visibleMemberCosts/)
         const fn = DETAIL.slice(DETAIL.indexOf("const visibleMemberCosts"))
-        expect(fn).toMatch(/userRole !== 'EMPLOYEE'/)
+        expect(fn).toMatch(/seesOthersTasks \|\| !raw/)
         expect(fn, "the employee's own entry must survive").toMatch(/\[userId\]:\s*parsed\[userId\]/)
     })
 

@@ -10,7 +10,6 @@ import { createPortal } from 'react-dom'
 import ConfirmModal from '@/components/ConfirmModal'
 import { useLanguage } from '@/context/LanguageContext'
 import LoadingSpinner from '@/components/LoadingSpinner'
-import { useSession } from 'next-auth/react'
 import { useToast } from '@/context/ToastContext'
 import Modal from '@/components/Modal'
 import EmployeeFilter from '@/components/EmployeeFilter'
@@ -18,6 +17,7 @@ import DatePickerSingle from '@/components/DatePickerSingle'
 import Pagination from '@/components/Pagination'
 import NoticeModal, { Notice } from '@/components/NoticeModal'
 import { useFadingHighlight } from '@/lib/useFadingHighlight'
+import { useCan } from '@/lib/useCan'
 
 interface Note {
     id: string
@@ -65,15 +65,16 @@ export default function SectionNotesPage() {
     const [notice, setNotice] = useState<Notice | null>(null)
     const [deleteConfirm, setDeleteConfirm] = useState<{ isOpen: boolean, note: Note | null }>({ isOpen: false, note: null })
     const { setTitle } = useHeader()
-    const { data: session } = useSession()
     const { showToast } = useToast()
     const [isEditSectionModalOpen, setIsEditSectionModalOpen] = useState(false)
     const [editSectionTitle, setEditSectionTitle] = useState('')
     const [isEditingSection, setIsEditingSection] = useState(false)
 
 
-    const canEdit = !!session?.user
-    const canDelete = session?.user?.role === 'SUPER_ADMIN' || session?.user?.role === 'ADMIN'
+    // Everyone may add and edit notes; deleting one is narrower.
+    const { can } = useCan()
+    const canEdit = can('clients.contribute')
+    const canDelete = can('clients.delete')
 
     const [isEditModalOpen, setIsEditModalOpen] = useState(false)
     const [editingNote, setEditingNote] = useState<Note | null>(null)

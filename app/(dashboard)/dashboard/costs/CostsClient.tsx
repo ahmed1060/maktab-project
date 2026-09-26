@@ -8,6 +8,7 @@ import { useModules } from '@/lib/useModules'
 import { useHeader } from '@/context/HeaderContext'
 import { useEffect } from 'react'
 import Pagination from '@/components/Pagination'
+import { permissionsOf } from '@/lib/useCan'
 
 interface CostsClientProps {
     tasksWithCosts: any[]
@@ -31,7 +32,8 @@ export default function CostsClient({ tasksWithCosts, userRole, total, page, tot
         search: searchParams.get('search') || ''
     }
 
-    const isEmployee = userRole === 'EMPLOYEE'
+    const { can, companyWide } = permissionsOf({ role: userRole })
+    const isEmployee = !can('tasks.pay')
     const [isUpdating, setIsUpdating] = useState(false)
     const [showFeedback, setShowFeedback] = useState(false)
     const [feedbackMessage, setFeedbackMessage] = useState('')
@@ -194,7 +196,9 @@ export default function CostsClient({ tasksWithCosts, userRole, total, page, tot
                     { label: t('amount_label'), value: 'amount' },
                 ]}
                 primaryAction={
-                    ['ADMIN', 'SUPER_ADMIN'].includes(userRole) && total > 0 && (
+                    // Paying everything at once is for those who pay across the
+                    // company; a Team Leader pays their team's one at a time.
+                    companyWide('tasks.pay') && total > 0 && (
                         <button
                             onClick={handleMarkAllAsPaid}
                             disabled={isUpdating}

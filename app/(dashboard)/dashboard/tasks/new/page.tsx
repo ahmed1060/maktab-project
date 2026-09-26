@@ -21,6 +21,7 @@ import ManageTemplatesModal from '@/components/ManageTemplatesModal'
 import { cellToPrimitive } from '@/lib/xlsx-cell'
 import { useNow } from '@/lib/useNow'
 import { earliestDeadline } from '@/lib/deadline'
+import { useCan } from '@/lib/useCan'
 
 const NO_VENDORS: any[] = []
 
@@ -53,11 +54,9 @@ export default function NewTaskPage() {
     const userRole = (session?.user as any)?.role
     const modules = useModules()
     const vendorsName = modules.label('vendors')
-    // Same role check as the vendors request below — a role that was
-    // never going to see vendors either way (e.g. Employee, if this page
-    // is ever reached with that role) gets the plain location field only,
-    // same as always.
-    const canUseVendors = ['ADMIN', 'TEAM_LEADER', 'SUPER_ADMIN'].includes(userRole)
+    // The permission GET /api/vendors checks — someone who may not read the
+    // vendor list gets the plain location field only, same as always.
+    const canUseVendors = useCan().can('vendors.view')
 
     // Who can be assigned. SWR, keyed by the company a Super Admin is looking
     // at, so switching company cannot leave the previous company's people in

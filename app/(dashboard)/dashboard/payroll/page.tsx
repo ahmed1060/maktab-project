@@ -7,6 +7,7 @@ import { useLanguage } from '@/context/LanguageContext'
 import { useToast } from '@/context/ToastContext'
 import LoadingSpinner from '@/components/LoadingSpinner'
 import ConfirmModal from '@/components/ConfirmModal'
+import { useCan } from '@/lib/useCan'
 
 /**
  * The register: one month, everybody in it, and what changed.
@@ -95,6 +96,7 @@ export default function PayrollRegisterPage() {
     const [paidAt, setPaidAt] = useState(() => new Date().toISOString().slice(0, 10))
 
     const isSuper = (session?.user as any)?.role === 'SUPER_ADMIN'
+    const { can } = useCan()
 
     const money = useCallback((minor: number) =>
         new Intl.NumberFormat(isRtl ? 'ar-EG' : 'en-EG', {
@@ -269,7 +271,10 @@ export default function PayrollRegisterPage() {
 
     const register = view?.register
     const isDraft = view?.status === 'DRAFT'
-    const isManager = ['ADMIN', 'SUPER_ADMIN'].includes((session?.user as any)?.role || '')
+    const canPrepare = can('payroll.prepare')
+    const canApprove = can('payroll.approve')
+    const canDeliver = can('payroll.issue_payslips') || can('payroll.mark_paid')
+    const canWaive = can('debts.waive')
 
     const card = (children: React.ReactNode, tone?: 'warn' | 'danger') => (
         <div className="card" style={{
@@ -343,19 +348,19 @@ export default function PayrollRegisterPage() {
                             {t('payroll_export')}
                         </a>
                     )}
-                    {isDraft && isManager && (
-                        <>
-                            <button className="btn" onClick={save} disabled={saving || approving}>
-                                {saving ? '…' : t('payroll_save_draft')}
-                            </button>
-                            <button
-                                className="btn btn-primary"
-                                onClick={() => setConfirming({ kind: 'approve' })}
-                                disabled={approving || saving || !register || register.includedCount === 0}
-                            >
-                                {approving ? '…' : t('payroll_approve')}
-                            </button>
-                        </>
+                    {isDraft && canPrepare && (
+                        <button className="btn" onClick={save} disabled={saving || approving}>
+                            {saving ? '…' : t('payroll_save_draft')}
+                        </button>
+                    )}
+                    {isDraft && canApprove && (
+                        <button
+                            className="btn btn-primary"
+                            onClick={() => setConfirming({ kind: 'approve' })}
+                            disabled={approving || saving || !register || register.includedCount === 0}
+                        >
+                            {approving ? '…' : t('payroll_approve')}
+                        </button>
                     )}
                 </div>
             </div>
@@ -372,7 +377,7 @@ export default function PayrollRegisterPage() {
                 laid out side by side because they are independent: payslips can
                 go out before the transfer clears, or after, and neither waits on
                 the other. */}
-            {view && !isDraft && view.delivery && isManager && card(
+            {view && !isDraft && view.delivery && canDeliver && card(
                 <>
                     <h2 style={{ margin: '0 0 0.35rem', fontSize: '1.05rem' }}>{t('payroll_delivery')}</h2>
                     <p style={{ margin: '0 0 1rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>{t('payroll_delivery_msg')}</p>
@@ -702,7 +707,7 @@ export default function PayrollRegisterPage() {
                                         {new Date(d.dueDate).toLocaleDateString(isRtl ? 'ar-EG' : 'en-GB')}
                                     </span>
                                 </span>
-                                {isManager && (
+                                {canWaive && (
                                     <button
                                         className="btn"
                                         style={{ fontSize: '0.75rem', padding: '0.2rem 0.6rem' }}

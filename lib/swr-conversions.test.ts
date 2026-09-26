@@ -12,7 +12,7 @@ describe("the employee form loads once per person, not once per session refetch"
     const FORM = code("components/EmployeeProfileForm.tsx")
 
     it("keys the load on the signed-in user's id", () => {
-        expect(FORM).toContain("}, [userId, userRole, sessionUserId, reloadKey])")
+        expect(FORM).toContain("}, [userId, userRole, sessionUserId, reloadKey, canAssignTeam])")
     })
 
     it("does not list the session object or t as a dependency anywhere", () => {

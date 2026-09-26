@@ -8,6 +8,7 @@ import Pagination from '@/components/Pagination'
 import { useLanguage } from '@/context/LanguageContext'
 import { useModules } from '@/lib/useModules'
 import { useHeader } from '@/context/HeaderContext'
+import { permissionsOf } from '@/lib/useCan'
 
 interface TasksClientProps {
     tasks: any[]
@@ -21,6 +22,10 @@ interface TasksClientProps {
 
 export default function TasksClient({ tasks, total, page, totalPages, role, currentUserId, view }: TasksClientProps) {
     const { t, locale } = useLanguage()
+    // From the role the page passed down, so the first paint is complete. A
+    // team-wide reach is a Team Leader's two tabs; none is an employee's one.
+    const { can, scope } = permissionsOf({ role, id: currentUserId })
+    const reach = scope('tasks.view')
     const { setTitle, setSubtitle } = useHeader()
     const modules = useModules()
     const router = useRouter()
@@ -128,7 +133,7 @@ export default function TasksClient({ tasks, total, page, totalPages, role, curr
             {/* A Team Leader's, not an employee's: the second tab is the
                 company's other open work. The page enforces this regardless of
                 what the query string asks for — this only stops offering it. */}
-            {role === 'TEAM_LEADER' && (
+            {reach === 'TEAM' && (
                 <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1.25rem' }}>
                     <button
                         onMouseEnter={() => setIsMyHovered(true)}
@@ -192,7 +197,7 @@ export default function TasksClient({ tasks, total, page, totalPages, role, curr
                 selectedStatus={filters.status}
                 searchQuery={filters.search}
                 placeholder={locale === 'ar' ? 'بحث في عنوان المهمة أو الوصف' : 'Search Task Title or Description'}
-                isEmployee={role === 'EMPLOYEE'}
+                isEmployee={reach === null}
                 sortBy={sortBy}
                 sortOrder={sortOrder}
                 onSortChange={(field, order) => { setSortBy(field); setSortOrder(order) }}
@@ -203,7 +208,7 @@ export default function TasksClient({ tasks, total, page, totalPages, role, curr
                     { label: t('date_created'), value: 'createdAt' },
                 ]}
                 primaryAction={
-                    ['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(role) && (
+                    can('tasks.create') && (
                         <Link href="/dashboard/tasks/new" className="btn btn-primary" style={{ textDecoration: 'none', height: '48px', display: 'flex', alignItems: 'center', borderRadius: '1.25rem' }}>
                             {t('create_new_task')}
                         </Link>
@@ -229,7 +234,7 @@ export default function TasksClient({ tasks, total, page, totalPages, role, curr
                             difference between a scoped feature and a bug
                             report — and it names who can fix it, because the
                             leader cannot assign their own team. */}
-                        {role === 'TEAM_LEADER' && view !== 'my' ? (
+                        {reach === 'TEAM' && view !== 'my' ? (
                             <>
                                 <p style={{ margin: 0, fontWeight: 700, color: 'var(--text-strong)' }}>{t('team_empty_title')}</p>
                                 <p style={{ margin: '0.5rem 0 0' }}>{t('team_empty_body')}</p>

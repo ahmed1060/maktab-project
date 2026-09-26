@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma"
 import { verifyResourceAccess } from "@/lib/security"
 import AccessDenied from "@/components/AccessDenied"
 import TaskDetailClient from "./client"
+import { can } from '@/lib/permissions/can'
 
 export default async function TaskDetailPage(props: { params: Promise<{ id: string }> }) {
     // Next 15 hands a page its dynamic segments and query string as
@@ -66,7 +67,9 @@ export default async function TaskDetailPage(props: { params: Promise<{ id: stri
         }
     }
 
-    const isRestricted = userRole === 'EMPLOYEE' && !isAssigned
+    // Someone who does not see others' tasks, looking at one they are not on.
+    const seesOthersTasks = can((session?.user ?? { role: null }) as any, 'tasks.view')
+    const isRestricted = !seesOthersTasks && !isAssigned
 
     /**
      * memberCosts maps each assignee to what they are paid for this task.
@@ -83,7 +86,7 @@ export default async function TaskDetailPage(props: { params: Promise<{ id: stri
      */
     const visibleMemberCosts = (() => {
         const raw = (task as any).memberCosts
-        if (userRole !== 'EMPLOYEE' || !raw) return raw
+        if (seesOthersTasks || !raw) return raw
         const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw
         if (!parsed || typeof parsed !== 'object') return raw
         return userId in parsed ? { [userId]: parsed[userId] } : {}

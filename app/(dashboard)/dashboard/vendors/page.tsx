@@ -15,6 +15,7 @@ import { useToast } from '@/context/ToastContext'
 import { useCompany } from '@/context/CompanyContext'
 import { fetcher } from '@/lib/swr-fetcher'
 import { useHydrated } from '@/lib/useHydrated'
+import { useCan } from '@/lib/useCan'
 
 interface Vendor {
     id: string
@@ -106,7 +107,7 @@ export default function VendorsPage() {
         return Array.isArray(raw) ? raw : []
     })()
 
-    const canManage = ['ADMIN', 'SUPER_ADMIN'].includes(userRole)
+    const canManage = useCan().can('vendors.manage')
 
     const handleCreate = async (e: React.FormEvent) => {
         e.preventDefault()

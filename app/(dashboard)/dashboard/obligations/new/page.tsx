@@ -7,6 +7,7 @@ import { useLanguage } from '@/context/LanguageContext'
 import { useCompany } from '@/context/CompanyContext'
 import { useNow } from '@/lib/useNow'
 import { earliestDeadline } from '@/lib/deadline'
+import { permissionsOf } from '@/lib/useCan'
 
 export default function NewObligationPage() {
     const { t, locale } = useLanguage()
@@ -53,9 +54,10 @@ export default function NewObligationPage() {
                     // Secondary sort by name if same role
                     return a.firstName.localeCompare(b.firstName)
                 })
-                // TEAM_LEADER Restriction: Hide ADMIN and SUPER_ADMIN from assignee list
-                const userRole = (session?.user as any)?.role
-                const filteredData = userRole === 'TEAM_LEADER'
+                // A team-scoped manager is not offered the company's Admins.
+                const permissions = permissionsOf(session?.user as any)
+                const teamOnly = permissions.can('obligations.manage') && !permissions.companyWide('obligations.manage')
+                const filteredData = teamOnly
                     ? sortedData.filter((u: any) => !['ADMIN', 'SUPER_ADMIN'].includes(u.role))
                     : sortedData
                 setUsers(filteredData)

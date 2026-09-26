@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma"
 import { isValidTaskStatus } from "@/lib/valid-enums"
 import TasksClient from "./TasksClient"
 import { and, assignedToReportsWhere } from '@/lib/team-scope'
+import { grantFor } from '@/lib/permissions/can'
 
 export default async function TasksPage(props: { searchParams: Promise<{ company?: string, page?: string, status?: string, search?: string, employeeId?: string, teamLeaderId?: string, view?: string, dateFrom?: string, dateTo?: string }> }) {
     // Next 15 hands a page its dynamic segments and query string as
@@ -26,12 +27,17 @@ export default async function TasksPage(props: { searchParams: Promise<{ company
 
     // An employee has one view, so a `view` in the query string is ignored for
     // them rather than honoured — the tabs below are a Team Leader's.
-    const requestedView = searchParams.view || (['EMPLOYEE', 'TEAM_LEADER'].includes(role) ? 'my' : 'active')
-    const view = role === 'EMPLOYEE' ? 'my' : requestedView
+    //
+    // How far this person sees others' tasks decides everything below: not at
+    // all (their own only), their team's, their company's, or — for a Super
+    // Admin — every company's.
+    const scope = grantFor((session?.user ?? { role: null }) as any, 'tasks.view')
+    const requestedView = searchParams.view || (scope === null || scope === 'TEAM' ? 'my' : 'active')
+    const view = scope === null ? 'my' : requestedView
     const whereClause: any = {}
     const userCompanyId = (session?.user as any)?.companyId
 
-    if (role === 'EMPLOYEE') {
+    if (scope === null) {
         // An employee sees their own tasks and nothing else. The second view —
         // the company's other work in flight — is a Team Leader's, and it used
         // to answer here too: `?view=active` returned every colleague's open
@@ -44,7 +50,7 @@ export default async function TasksPage(props: { searchParams: Promise<{ company
         // bookmarked one, or anything else that reaches this page.
         whereClause.companyId = userCompanyId
         and(whereClause, { assignees: { some: { id: userId } } })
-    } else if (role === 'TEAM_LEADER') {
+    } else if (scope === 'TEAM') {
         whereClause.companyId = userCompanyId
         if (view === 'my') {
             and(whereClause, { assignees: { some: { id: userId } } })
@@ -54,11 +60,11 @@ export default async function TasksPage(props: { searchParams: Promise<{ company
             // which grew with the company and had nothing to do with a team.
             and(whereClause, assignedToReportsWhere(userId))
         }
-    } else if (role === 'ADMIN') {
-        // ADMIN still sees all company tasks
+    } else if (scope === 'COMPANY') {
+        // An Admin still sees all company tasks
         if (!userCompanyId) return <TasksClient tasks={[]} total={0} page={page} totalPages={0} role={role} currentUserId={userId} view={view} />
         whereClause.companyId = userCompanyId
-    } else if (role === 'SUPER_ADMIN') {
+    } else {
         // Super Admin can filter by company or see everything
         if (companyId) {
             whereClause.companyId = companyId
@@ -131,7 +137,7 @@ export default async function TasksPage(props: { searchParams: Promise<{ company
      * receives this object to keep ignoring the rest.
      */
     function visibleMemberCosts(raw: any) {
-        if (role !== 'EMPLOYEE' || !raw) return raw
+        if (scope !== null || !raw) return raw
         const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw
         if (!parsed || typeof parsed !== 'object') return raw
         return userId in parsed ? { [userId]: parsed[userId] } : {}

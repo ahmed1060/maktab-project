@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import SafeDate from "./SafeDate"
 import { useTemporaryHighlight } from '@/lib/useTemporaryHighlight'
+import { permissionsOf } from '@/lib/useCan'
 
 interface Obligation {
     id: string
@@ -94,7 +95,7 @@ export default function ObligationCard({ obligation, userRole, isHighlighted }: 
                 Assignee: {obligation.assignee.firstName} {obligation.assignee.lastName} | Deadline: <SafeDate date={obligation.deadline} locale="en" format="dateOnly" />
             </div>
 
-            {userRole === 'EMPLOYEE' && status === 'PENDING' && (
+            {!permissionsOf({ role: userRole }).can('obligations.view') && status === 'PENDING' && (
                 <div style={{ marginTop: '1rem' }}>
                     <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>Upload Evidence to Complete:</label>
                     <input

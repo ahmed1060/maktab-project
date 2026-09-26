@@ -5,11 +5,11 @@ import { fetcher, SWRError } from '@/lib/swr-fetcher'
 import { useAdjustOnChange } from '@/lib/useAdjustOnChange'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { useLanguage } from '@/context/LanguageContext'
-import { useSession } from 'next-auth/react'
 import LoadingSpinner from '@/components/LoadingSpinner'
 import SafeDate from '@/components/SafeDate'
 import Link from 'next/link'
 import { useFadingHighlight } from '@/lib/useFadingHighlight'
+import { useCan } from '@/lib/useCan'
 
 
 interface SalaryRecord {
@@ -101,8 +101,11 @@ export default function EmployeeHistoryPage() {
     const { t, locale } = useLanguage()
     const params = useParams()
     const router = useRouter()
-    const { data: session } = useSession()
-    const isAdmin = ['ADMIN', 'SUPER_ADMIN'].includes((session?.user as any)?.role || '')
+    const { can } = useCan()
+    // Each part of the page asks for the permission its route checks.
+    const canSeeSalary = can('salary.view')
+    const canAdjust = can('salary_adjustments.manage')
+    const canReevaluateDayOff = can('dayoff.approve')
 
     const [reevaluating, setReevaluating] = useState(false)
     const [rollbackLoading, setRollbackLoading] = useState<string | null>(null)
@@ -148,11 +151,11 @@ export default function EmployeeHistoryPage() {
     // The only route to an ended contract's statement. The person it is about
     // cannot sign in, so if it is not reachable from their page it is not
     // reachable at all.
-    const { data: settlementsResult } = useSWR(isAdmin && id ? `/api/users/${id}/settlements` : null, fetcher)
+    const { data: settlementsResult } = useSWR(can('settlements.manage') && id ? `/api/users/${id}/settlements` : null, fetcher)
     const settlements: { id: string; lastWorkingDay: string; net: number; status: string }[] = settlementsResult?.data || NO_ROWS
     // E2: raised when, recovered from which months, settled or written off by
     // whom. Every one of those was recorded and none of them was assembled.
-    const { data: debtsResult } = useSWR(isAdmin && id ? `/api/users/${id}/debts` : null, fetcher)
+    const { data: debtsResult } = useSWR(can('debts.view') && id ? `/api/users/${id}/debts` : null, fetcher)
     const debts: {
         id: string; amount: number; recovered: number; outstanding: number; writtenOff: number
         status: 'OUTSTANDING' | 'SETTLED' | 'WAIVED'; source: string; reason: string | null
@@ -316,7 +319,7 @@ export default function EmployeeHistoryPage() {
                             className={`btn ${activeTab === 'SALARY' ? 'btn-primary' : 'glass'}`}
                             style={{ borderRadius: '1rem', padding: '0.5rem 1.5rem', height: '42px' }}
                         >
-                            {isAdmin ? t('salary_label' as any) : t('history')}
+                            {canSeeSalary ? t('salary_label' as any) : t('history')}
                         </button>
                         <button
                             onClick={() => setActiveTab('DAY_OFF')}
@@ -333,7 +336,7 @@ export default function EmployeeHistoryPage() {
                             {t('costs_tab' as any) || 'Costs'}
                         </button>
                     </div>
-                    {isAdmin && activeTab === 'SALARY' && (
+                    {canAdjust && activeTab === 'SALARY' && (
                         <button
                             onClick={() => setIsAdjustmentsModalOpen(true)}
                             className="btn btn-primary"
@@ -341,7 +344,7 @@ export default function EmployeeHistoryPage() {
                             {t('manage_adjustments' as any)}
                         </button>
                     )}
-                    {isAdmin && activeTab === 'DAY_OFF' && (
+                    {canReevaluateDayOff && activeTab === 'DAY_OFF' && (
                         <button
                             onClick={() => setIsManageDeductionsOpen(true)}
                             className="btn btn-primary"
@@ -755,7 +758,7 @@ export default function EmployeeHistoryPage() {
                                             </div>
                                         </div>
 
-                                        {adj.status === 'ACTIVE' && isAdmin && (
+                                        {adj.status === 'ACTIVE' && canAdjust && (
                                             <div style={{ display: 'flex', gap: '0.5rem', flexShrink: 0 }}>
                                                 <button
                                                     onClick={() => { setReversing(adj); setReverseReason('') }}

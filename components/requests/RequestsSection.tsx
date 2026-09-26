@@ -14,6 +14,7 @@ import EmployeeFilter from '@/components/EmployeeFilter'
 import Pagination from '@/components/Pagination'
 import { useFadingHighlight } from '@/lib/useFadingHighlight'
 import { useAdjustOnChange } from '@/lib/useAdjustOnChange'
+import { permissionsOf } from '@/lib/useCan'
 
 const NO_REQUESTS: any[] = []
 
@@ -181,7 +182,7 @@ export default function RequestsSection({ userRole }: { userRole: string }) {
                 selectedStatus={filters.status}
                 searchQuery={filters.search}
                 placeholder={t('search_by_title')}
-                isEmployee={userRole === 'EMPLOYEE'}
+                isEmployee={!permissionsOf({ role: userRole }).can('requests.view')}
                 sortBy={sortBy}
                 sortOrder={order as any}
                 onSortChange={(field, ord) => {

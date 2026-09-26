@@ -3,7 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 import CostsClient from './CostsClient'
-import { grantFor } from '@/lib/permissions/can'
+import { can, grantFor } from '@/lib/permissions/can'
 import { assignedToTeamWhere } from '@/lib/team-scope'
 
 export default async function CostsPage(props: { searchParams: Promise<{
@@ -27,8 +27,8 @@ export default async function CostsPage(props: { searchParams: Promise<{
 
     const userRole = (session.user as any)?.role
 
-    // Only allow ADMIN, SUPER_ADMIN, TEAM_LEADER
-    if (!['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole)) {
+    // The page is for paying task costs: those who hold tasks.pay.
+    if (!can(session.user as any, 'tasks.pay')) {
         redirect('/dashboard')
     }
 

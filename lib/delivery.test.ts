@@ -272,7 +272,7 @@ describe("the screen tells the truth about what has gone out", () => {
 
     it("offers no send button before the month is approved", () => {
         const card = PAGE.slice(PAGE.indexOf("payroll_delivery"), PAGE.indexOf("{register && card("))
-        expect(PAGE).toContain("{view && !isDraft && view.delivery && isManager && card(")
+        expect(PAGE).toContain("{view && !isDraft && view.delivery && canDeliver && card(")
         expect(card).toContain("payroll_issue")
     })
 })

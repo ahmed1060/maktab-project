@@ -16,6 +16,7 @@ import TaskConfirmModals from '@/components/TaskConfirmModals'
 import { SESSION_EXPIRED_MESSAGE, redirectAfterSessionExpiry } from '@/lib/session-expired'
 import SectionBoundary from '@/components/SectionBoundary'
 import { useAdjustOnChange } from '@/lib/useAdjustOnChange'
+import { permissionsOf } from '@/lib/useCan'
 
 export default function TaskDetailClient({ task: initialTask, userRole, userId, creatorName, isRestricted }: { task: any, userRole: string, userId: string, creatorName: string | null, currentUserName: string, isRestricted: boolean }) {
     const { t, locale } = useLanguage()
@@ -55,6 +56,20 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
         attachments: attachmentsOf(src),
     })
     const [task, setTask] = useState(initialTask)
+
+    // From the role the page passed down, so the first paint is complete.
+    // Someone without tasks.view acts on a task only as one of its assignees.
+    const { can, companyWide, scope } = permissionsOf({ role: userRole, id: userId })
+    const seesOthersTasks = can('tasks.view')
+    const teamReach = scope('tasks.view') === 'TEAM'
+    const canTransfer = can('tasks.transfer')
+    const isOnTask = task.assignees?.some((a: any) => a.id === userId)
+    // Editing, deleting and reviewing a task you are assigned to is refused to
+    // a company-wide manager — that would be judging your own work (the
+    // self-review and self-deletion rules in TaskService). A Team Leader
+    // manages their team's tasks, their own among them.
+    const mayManage = (permission: 'tasks.edit' | 'tasks.delete' | 'tasks.review') =>
+        can(permission) && (scope(permission) === 'TEAM' || !isOnTask)
     const [existingAttachments, setExistingAttachments] = useState<any[]>(() => attachmentsOf(initialTask))
     const [note, setNote] = useState('')
     const [cost, setCost] = useState('')
@@ -129,7 +144,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
 
     useEffect(() => {
         const isUserAssignee = task.assignees?.some((a: any) => a.id === userId)
-        const isRestrictedRole = userRole === 'EMPLOYEE' || (userRole === 'TEAM_LEADER' && isUserAssignee)
+        const isRestrictedRole = !seesOthersTasks || (teamReach && isUserAssignee)
 
         if (!isRestrictedRole || !isOverdue) return
 
@@ -199,10 +214,10 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
 
         document.addEventListener('click', handleLocalClick, true)
         return () => document.removeEventListener('click', handleLocalClick, true)
-    }, [userRole, isOverdue, t, userId, task.assignees])
+    }, [userRole, isOverdue, t, userId, task.assignees, seesOthersTasks, teamReach])
 
     useEffect(() => {
-        if (['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole)) {
+        if (canTransfer) {
             const queryParams = new URLSearchParams()
             queryParams.set('limit', '1000')
             if (task.companyId) queryParams.set('companyId', task.companyId)
@@ -225,7 +240,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                 })
                 .catch(() => setUserFetchError(true))
         }
-    }, [userRole, task.companyId])
+    }, [userRole, task.companyId, canTransfer])
 
     const handleDismiss = async () => {
         try {
@@ -386,7 +401,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
             try {
                 // Only auto-save if employee interaction is active and not already submitted or finalized
                 const isUserAssignee = task.assignees?.some((a: any) => a.id === userId)
-                if ((userRole === 'EMPLOYEE' || isUserAssignee) && !['PENDING_CONFIRMATION', 'APPROVED', 'COMPLETED', 'REJECTED'].includes(task.status)) {
+                if ((!seesOthersTasks || isUserAssignee) && !['PENDING_CONFIRMATION', 'APPROVED', 'COMPLETED', 'REJECTED'].includes(task.status)) {
                     await handleUpload(true, true)
                 }
             } finally {
@@ -399,7 +414,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
         }
         window.addEventListener('app:suspend-detected', handleSuspendSave)
         return () => window.removeEventListener('app:suspend-detected', handleSuspendSave)
-    }, [task.status, userRole, userId, note, costEntries, location, task.assignees, handleUpload])
+    }, [task.status, userRole, userId, note, costEntries, location, task.assignees, handleUpload, seesOthersTasks])
 
     const handleCaptureLocation = async () => {
         if (['PENDING_CONFIRMATION', 'APPROVED', 'COMPLETED', 'REJECTED'].includes(task.status)) {
@@ -816,7 +831,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
             borderColor: isOverdue ? 'var(--danger-border)' : undefined
         }}>
             {/* Deleted Assignee Alert - Check            {/* Deleted Assignee Alert */}
-            {task.assignees?.some((a: any) => a.status === 'DELETED') && ['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole) && !['COMPLETED', 'APPROVED', 'REJECTED'].includes(task.status) && (
+            {task.assignees?.some((a: any) => a.status === 'DELETED') && canTransfer && !['COMPLETED', 'APPROVED', 'REJECTED'].includes(task.status) && (
                 <div style={{ ...alertStyle, background: 'var(--danger-bg)', border: '1px solid var(--danger-solid)', color: 'var(--danger-fg)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexDirection: 'row' }}>
                         <span style={{ fontSize: '1.5rem' }}>🚫</span>
@@ -831,7 +846,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
             )}
 
             {/* Task Edited Alert */}
-            {task.isEdited && (userRole === 'EMPLOYEE' || task.assignees?.some((a: any) => a.id === userId)) && (
+            {task.isEdited && (!seesOthersTasks || isOnTask) && (
                 <div style={{ ...alertStyle, background: 'var(--warn-bg-warm-subtle)', border: '1px solid var(--warn-border-warm-firm)', color: 'var(--warn-fg-warm)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexDirection: 'row' }}>
                         <span style={{ fontSize: '1.5rem' }}>⚠️</span>
@@ -897,7 +912,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                     )}
                 </div>
                 <div style={{ display: 'flex', gap: '0.5rem', flexDirection: 'row' }}>
-                    {task.totalCost !== undefined && task.totalCost > 0 && (task.status === 'APPROVED' || task.status === 'COMPLETED') && ['ADMIN', 'SUPER_ADMIN'].includes(userRole) && (
+                    {task.totalCost !== undefined && task.totalCost > 0 && (task.status === 'APPROVED' || task.status === 'COMPLETED') && companyWide('tasks.pay') && (
                         <button onClick={() => handlePaymentStatusChange(task.paymentStatus === 'PAID' ? 'PENDING_PAYMENT' : 'PAID')} style={{ background: task.paymentStatus === 'PAID' ? 'var(--warn-border-warm)' : 'var(--ok-bg-faint)', color: task.paymentStatus === 'PAID' ? 'var(--warn-fg-warm)' : 'var(--ok-fg-deep)', border: 'none', borderRadius: '0.25rem', padding: '0.5rem 1rem', cursor: 'pointer', fontSize: '0.875rem', fontWeight: '600' }}>
                             {task.paymentStatus === 'PAID' ? t('mark_as_pending_button') : t('mark_as_paid')}
                         </button>
@@ -919,8 +934,8 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                         </button>
                     )}
                     <button onClick={() => router.back()} style={{ background: 'none', border: '1px solid var(--border-firm)', borderRadius: '0.25rem', padding: '0.5rem 1rem', cursor: 'pointer', color: 'var(--text-soft)' }}>{t('close_button')}</button>
-                    {!isRestricted && ['PENDING', 'IN_PROGRESS'].includes(task.status) && (['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole) && (userRole === 'TEAM_LEADER' || !task.assignees?.some((a: any) => a.id === userId))) && (<button onClick={handleEditClick} style={{ background: 'var(--info-bg)', color: 'var(--info-fg)', border: 'none', borderRadius: '0.25rem', padding: '0.5rem 1rem', cursor: 'pointer' }}>{t('edit_task_button')}</button>)}
-                    {!isRestricted && (['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole) && (userRole === 'TEAM_LEADER' || !task.assignees?.some((a: any) => a.id === userId))) && (<button onClick={() => setShowDeleteConfirm(true)} style={{ background: 'var(--danger-bg)', color: 'var(--danger-fg)', border: 'none', borderRadius: '0.25rem', padding: '0.5rem 1rem', cursor: 'pointer' }}>{t('delete_task_button')}</button>)}
+                    {!isRestricted && ['PENDING', 'IN_PROGRESS'].includes(task.status) && mayManage('tasks.edit') && (<button onClick={handleEditClick} style={{ background: 'var(--info-bg)', color: 'var(--info-fg)', border: 'none', borderRadius: '0.25rem', padding: '0.5rem 1rem', cursor: 'pointer' }}>{t('edit_task_button')}</button>)}
+                    {!isRestricted && mayManage('tasks.delete') && (<button onClick={() => setShowDeleteConfirm(true)} style={{ background: 'var(--danger-bg)', color: 'var(--danger-fg)', border: 'none', borderRadius: '0.25rem', padding: '0.5rem 1rem', cursor: 'pointer' }}>{t('delete_task_button')}</button>)}
                 </div>
             </div>
 
@@ -1001,7 +1016,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                                         </div>
                                     </div>
                                 </a>
-                                {task.status === 'IN_PROGRESS' && (att.uploadedById === userId || ['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole)) && (
+                                {task.status === 'IN_PROGRESS' && (att.uploadedById === userId || can('tasks.edit')) && (
                                     <button
                                         onClick={(e) => { e.preventDefault(); handleDeleteItem('ATTACHMENT', att.url); }}
                                         style={{ position: 'absolute', top: '5px', right: locale === 'ar' ? 'auto' : '5px', left: locale === 'ar' ? '5px' : 'auto', background: 'var(--surface)', border: '1px solid var(--danger-bg)', borderRadius: '50%', padding: '4px', cursor: 'pointer', display: 'flex' }}
@@ -1042,7 +1057,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                         />
 
                         {/* Submission Section (Employee only) */}
-                        {(userRole === 'EMPLOYEE' || task.assignees?.some((a: any) => a.id === userId)) && !['APPROVED', 'COMPLETED', 'PENDING_CONFIRMATION', 'REJECTED'].includes(task.status) && (
+                        {(!seesOthersTasks || isOnTask) && !['APPROVED', 'COMPLETED', 'PENDING_CONFIRMATION', 'REJECTED'].includes(task.status) && (
                             <TaskSubmissionForm
                                 pendingFiles={pendingFiles}
                                 onAddFiles={handleFiles}
@@ -1067,7 +1082,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                         )}
 
                         {/* Finalized/Pending Message for Employees */}
-                        {(userRole === 'EMPLOYEE' || task.assignees?.some((a: any) => a.id === userId)) && ['PENDING_CONFIRMATION', 'APPROVED', 'COMPLETED', 'REJECTED'].includes(task.status) && (
+                        {(!seesOthersTasks || isOnTask) && ['PENDING_CONFIRMATION', 'APPROVED', 'COMPLETED', 'REJECTED'].includes(task.status) && (
                             <div style={{ marginTop: '2rem', padding: '1.5rem', background: 'var(--surface-subtle)', border: '1px solid var(--border)', borderRadius: '0.5rem', textAlign: 'center' }}>
                                 <p style={{ margin: 0, color: 'var(--text-muted)', fontWeight: '500' }}>
                                     {task.status === 'PENDING_CONFIRMATION'
@@ -1078,7 +1093,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                         )}
 
                         {/* Transfer Button (Admins only) */}
-                        {['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole) && ['IN_PROGRESS', 'PENDING'].includes(task.status) && (
+                        {canTransfer && ['IN_PROGRESS', 'PENDING'].includes(task.status) && (
                             <div style={{ marginTop: '2rem', textAlign: locale === 'ar' ? 'left' : 'right' }}>
                                 <button
                                     onClick={() => {
@@ -1109,7 +1124,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                         )}
 
                         {/* Approve/Reject Buttons (Admins only) */}
-                        {['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole) && task.status === 'PENDING_CONFIRMATION' && (userRole === 'TEAM_LEADER' || !task.assignees?.some((a: any) => a.id === userId)) && (
+                        {mayManage('tasks.review') && task.status === 'PENDING_CONFIRMATION' && (
                             <div style={{ marginTop: '2.5rem', display: 'flex', gap: '1.25rem', borderTop: '2px solid var(--border)', paddingTop: '2rem', flexDirection: 'row' }}>
                                 <button onClick={handleApprove} className="btn btn-primary" style={{ flex: 1, padding: '1rem', fontSize: '1.1rem', fontWeight: '700' }}>{t('approve_button')}</button>
                                 <button onClick={handleReject} className="btn" style={{ flex: 1, padding: '1rem', fontSize: '1.1rem', fontWeight: '700', background: 'var(--danger-solid)', color: 'var(--text-on-accent)' }}>{t('reject_button')}</button>
@@ -1218,7 +1233,7 @@ function TaskCommentsLog({ task, userId, userRole, onDeleteNote }: {
                                             </span>
                                         )}
                                         {!((task.assignees?.length > 1)) && <span style={{ fontWeight: 'bold', color: 'var(--text-main)' }}>{log.author}</span>}
-                                        {log.type === 'SUBMISSION_NOTE' && task.status === 'IN_PROGRESS' && (log.authorId === userId || ['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole)) && (
+                                        {log.type === 'SUBMISSION_NOTE' && task.status === 'IN_PROGRESS' && (log.authorId === userId || permissionsOf({ role: userRole }).can('tasks.edit')) && (
                                             <button onClick={() => onDeleteNote(log.date)} className="btn-icon" style={{ padding: '2px', border: 'none', background: 'none', cursor: 'pointer', display: 'flex' }} title={t('delete_note_title')}>
                                                 <TrashIcon size={14} />
                                             </button>

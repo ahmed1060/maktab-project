@@ -121,11 +121,12 @@ describe("the register screen says what it does not know", () => {
 describe("the payroll link", () => {
     const SHELL = readFileSync("components/DashboardShell.tsx", "utf8")
 
-    it("is for the two roles that manage pay", () => {
+    it("is for those who hold payroll.view", () => {
         // A Team Leader manages people, not pay.
         const start = SHELL.indexOf('href="/dashboard/payroll"')
         expect(start).toBeGreaterThan(-1)
         const guard = SHELL.slice(Math.max(0, start - 400), start)
-        expect(guard).toContain("['ADMIN', 'SUPER_ADMIN'].includes(user?.role")
+        expect(guard).toContain("{canSeePayroll && (")
+        expect(SHELL).toContain("const canSeePayroll = permissions.can('payroll.view')")
     })
 })

@@ -2,8 +2,8 @@
 
 import { useMemo } from "react"
 import { useSession } from "next-auth/react"
-import { can, canCompanyWide, type Actor, type Target } from "@/lib/permissions/can"
-import type { Permission } from "@/lib/permissions/catalogue"
+import { can, canCompanyWide, grantFor, type Actor, type Target } from "@/lib/permissions/can"
+import type { Permission, Scope } from "@/lib/permissions/catalogue"
 
 /**
  * The signed-in person's permissions, for a screen deciding what to show.
@@ -20,6 +20,26 @@ export type Can = {
     can: (permission: Permission, target?: Target) => boolean
     /** Whether they hold it across their whole company, not only a team. */
     companyWide: (permission: Permission) => boolean
+    /**
+     * How far it reaches: TEAM, COMPANY, "ALL" for a Super Admin, or null. For
+     * a screen that shows a team view where others see the company's.
+     */
+    scope: (permission: Permission) => Scope | "ALL" | null
+}
+
+/**
+ * The same answers for an actor already in hand — for a Client Component whose
+ * Server Component parent passed the viewer's role down. Those render with it
+ * on the first paint, where the session hook has not loaded yet, so asking the
+ * hook instead would hide their buttons for a moment on every visit.
+ */
+export function permissionsOf(actor: Actor | null | undefined): Can {
+    const who = actor?.role ? actor : null
+    return {
+        can: (permission, target) => !!who && can(who, permission, target),
+        companyWide: permission => !!who && canCompanyWide(who, permission),
+        scope: permission => who ? grantFor(who, permission) : null,
+    }
 }
 
 export function useCan(): Can {
@@ -32,11 +52,5 @@ export function useCan(): Can {
     // Keyed on the fields can() reads rather than the session object, which
     // next-auth replaces on every refresh: callers put this in dependency
     // arrays, and a fresh object each time would refire their effects.
-    return useMemo(() => {
-        const actor: Actor | null = role ? { role, id, companyId } : null
-        return {
-            can: (permission, target) => !!actor && can(actor, permission, target),
-            companyWide: permission => !!actor && canCompanyWide(actor, permission),
-        }
-    }, [role, id, companyId])
+    return useMemo(() => permissionsOf(role ? { role, id, companyId } : null), [role, id, companyId])
 }

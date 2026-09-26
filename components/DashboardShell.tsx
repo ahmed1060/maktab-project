@@ -5,7 +5,7 @@ import PageTitle from './PageTitle'
 import SubscriptionBanner from './SubscriptionBanner'
 import { moduleForPagePath } from '@/lib/features'
 import { useFeatures } from '@/lib/features/useFeatures'
-import { MANAGEMENT_MODULES, MENU_MODULES } from '@/lib/modules'
+import { MANAGEMENT_MODULES, MENU_MODULES, type ModuleKey } from '@/lib/modules'
 import { useModules } from '@/lib/useModules'
 import { useCompanyBranding } from '@/context/CompanyBrandingContext'
 import { DEFAULT_POWERED_BY_NAME } from '@/lib/branding-defaults'
@@ -13,6 +13,8 @@ import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import DashboardHeader from './DashboardHeader'
 import { useLanguage } from '@/context/LanguageContext'
+import { permissionsOf } from '@/lib/useCan'
+import type { Permission } from '@/lib/permissions/catalogue'
 
 interface DashboardShellProps {
     children: React.ReactNode
@@ -26,6 +28,17 @@ interface DashboardShellProps {
     poweredByName?: string
 }
 
+/**
+ * Who is offered each management screen: the permission its page needs. A
+ * management module with no entry here is offered to nobody, so adding one
+ * means deciding who sees it.
+ */
+const MANAGEMENT_PERMISSION: Partial<Record<ModuleKey, Permission>> = {
+    costs: 'tasks.pay',
+    employees: 'employees.view',
+    vendors: 'vendors.view',
+}
+
 export default function DashboardShell({ children, user, showPoweredBy = true, poweredByName }: DashboardShellProps) {
     const [isSidebarOpen, setIsSidebarOpen] = useState(false)
     const [isMobile, setIsMobile] = useState(false)
@@ -33,6 +46,16 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
     const { t, locale } = useLanguage()
     const features = useFeatures()
     const modules = useModules()
+    // From the user the layout passed down, not the session hook, so the
+    // sidebar is complete on the first paint.
+    const permissions = permissionsOf(user)
+    const managementLinks = MANAGEMENT_MODULES
+        .filter(key => {
+            const permission = MANAGEMENT_PERMISSION[key]
+            return !!permission && permissions.can(permission)
+        })
+        .map(key => modules.entry(key))
+    const canSeePayroll = permissions.can('payroll.view')
     // The mark follows the same scope as the names beside it — a Super Admin
     // looking at one company sees that company's logo, not a default mark over
     // that company's module names.
@@ -402,7 +425,7 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
                         )}
                     </Link>
 
-                    {(['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(user?.role || '')) && (
+                    {(managementLinks.length > 0 || canSeePayroll) && (
                         <>
                             {isCollapsed ? (
                                 <hr style={{ border: 'none', borderTop: '1px solid var(--veil-30)', margin: '1rem auto', width: '50%' }} />
@@ -416,7 +439,7 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
                                 override, and the other eight can be renamed too.
                                 A Super Admin, who belongs to no one company, sees
                                 the defaults — see lib/auth.ts. */}
-                            {MANAGEMENT_MODULES.map(key => modules.entry(key)).map(link => (
+                            {managementLinks.map(link => (
                                 <Link
                                     key={link.href}
                                     href={link.href}
@@ -462,9 +485,9 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
                                 not theirs to rename. It is still gated, by the
                                 same PAYROLL module that already gates salary
                                 history — hand-written here only because its
-                                entry is. Admin and Super Admin only: a Team
+                                entry is. Offered with payroll.view: a Team
                                 Leader manages people, not pay. */}
-                            {['ADMIN', 'SUPER_ADMIN'].includes(user?.role || '') && (
+                            {canSeePayroll && (
                                 <Link
                                     href="/dashboard/payroll"
                                     onClick={() => isMobile && setIsSidebarOpen(false)}

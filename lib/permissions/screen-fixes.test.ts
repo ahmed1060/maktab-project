@@ -97,10 +97,10 @@ describe("the dashboard's approval queues follow the approval permissions", () =
     const page = source("app/(dashboard)/dashboard/page.tsx")
 
     it("counts and links leave by dayoff.approve", () => {
-        expect(page.match(/can\(session!\.user as any, 'dayoff\.approve'\)/g)).toHaveLength(2)
+        expect(page.match(/can\(viewer, 'dayoff\.approve'\)/g)).toHaveLength(2)
     })
     it("counts and links name changes by profile_requests.review", () => {
-        expect(page.match(/can\(session!\.user as any, 'profile_requests\.review'\)/g)).toHaveLength(2)
+        expect(page.match(/can\(viewer, 'profile_requests\.review'\)/g)).toHaveLength(2)
     })
     it("no longer names ADMIN for them", () => {
         expect(page).not.toMatch(/userRole === 'ADMIN'/)

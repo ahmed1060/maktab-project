@@ -8,6 +8,7 @@ import Pagination from '@/components/Pagination'
 import { useLanguage } from '@/context/LanguageContext'
 import { useModules } from '@/lib/useModules'
 import { useHeader } from '@/context/HeaderContext'
+import { permissionsOf } from '@/lib/useCan'
 
 interface ObligationsClientProps {
     obligations: any[]
@@ -119,7 +120,7 @@ export default function ObligationsClient({ obligations, total, page, totalPages
                 selectedStatus={filters.status}
                 searchQuery={filters.search}
                 placeholder={locale === 'ar' ? 'بحث في العنوان أو الوصف' : 'Search Title or Description'}
-                isEmployee={role === 'EMPLOYEE'}
+                isEmployee={!permissionsOf({ role }).can('obligations.view')}
                 sortBy={sortBy}
                 sortOrder={sortOrder}
                 onSortChange={(field, order) => { setSortBy(field); setSortOrder(order) }}
@@ -129,7 +130,7 @@ export default function ObligationsClient({ obligations, total, page, totalPages
                     { label: t('date_created'), value: 'createdAt' },
                 ]}
                 primaryAction={
-                    ['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(role) && (
+                    permissionsOf({ role }).can('obligations.manage') && (
                         <Link href="/dashboard/obligations/new" className="btn btn-primary" style={{ textDecoration: 'none', height: '48px', display: 'flex', alignItems: 'center', borderRadius: '1.25rem' }}>
                             {t('add_obligation')}
                         </Link>
