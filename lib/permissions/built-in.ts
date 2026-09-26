@@ -30,6 +30,8 @@ import type { Permission, Scope } from "./catalogue"
  * - Obligations — lib/permissions/obligation-access.characterization.test.ts
  * - Requests, name-change requests and performance points —
  *   lib/permissions/request-access.characterization.test.ts
+ * - Clients, vendors and cost history —
+ *   lib/permissions/client-access.characterization.test.ts
  *   (not yet dayoff.adjust_credit: changing a balance goes through
  *   PUT /api/users, and moves with the Employees module)
  */
@@ -102,6 +104,16 @@ export const BUILT_IN_GRANTS: Record<BuiltInRole, Grants> = {
         "requests.review": "COMPANY",
         "requests.reset_points": "COMPANY",
         "profile_requests.review": "COMPANY",
+
+        // Clients, their sections and notes, and vendors: everything, in their
+        // company. A person's cost history: anyone's in their company.
+        "clients.view": "COMPANY",
+        "clients.contribute": "COMPANY",
+        "clients.edit": "COMPANY",
+        "clients.delete": "COMPANY",
+        "vendors.view": "COMPANY",
+        "vendors.manage": "COMPANY",
+        "costs.view": "COMPANY",
     },
     // A Team Leader sees their team in the employee list and can look each of
     // them up — TEAM scope, enforced by buildUserWhereClause and
@@ -134,8 +146,20 @@ export const BUILT_IN_GRANTS: Record<BuiltInRole, Grants> = {
         // Requests raised by their team.
         "requests.view": "TEAM",
         "requests.review": "TEAM",
+
+        // Clients are company-wide: a leader adds to them and renames, but
+        // does not delete. Vendors they read, to pick one for a task. They see
+        // their own cost history as anyone does, not their team's.
+        "clients.view": "COMPANY",
+        "clients.contribute": "COMPANY",
+        "clients.edit": "COMPANY",
+        "vendors.view": "COMPANY",
     },
-    EMPLOYEE: {},
+    // Everyone reads and adds to the company's clients.
+    EMPLOYEE: {
+        "clients.view": "COMPANY",
+        "clients.contribute": "COMPANY",
+    },
 }
 
 export function isBuiltInRole(role: string | null | undefined): role is BuiltInRole {

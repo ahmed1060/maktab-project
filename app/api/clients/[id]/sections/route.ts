@@ -3,9 +3,9 @@ import { prisma } from "@/lib/prisma"
 import { ApiResponse } from "@/lib/api-response"
 import { createSectionSchema, updateSectionSchema } from "@/lib/validations/section.schema"
 import { SectionService } from "@/lib/services/section.service"
+import { can } from "@/lib/permissions/can"
 
 export const GET = withStandardHandler(async (req, session, _body, context) => {
-    const userRole = session.user.role
     const clientId = context.params.id
 
     // Authorization
@@ -16,11 +16,8 @@ export const GET = withStandardHandler(async (req, session, _body, context) => {
 
     if (!client) return ApiResponse.notFound("Client not found")
 
-    if (userRole !== 'SUPER_ADMIN') {
-        const userCompanyId = (session.user as any).companyId
-        if (!userCompanyId || userCompanyId !== client.companyId) {
-            return ApiResponse.notFound() // Hide existence
-        }
+    if (!can(session.user, "clients.view", { companyId: client.companyId })) {
+        return ApiResponse.notFound() // Hide existence
     }
 
     const { searchParams } = new URL(req.url)
@@ -82,8 +79,7 @@ export const PUT = withStandardHandler(async (req, session, json) => {
         return ApiResponse.badRequest("Validation Error", validation.error.format())
     }
 
-    const userRole = session.user.role
-    if (!['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole || '')) {
+    if (!can(session.user, "clients.edit")) {
         return ApiResponse.forbidden()
     }
 
@@ -101,8 +97,7 @@ export const PUT = withStandardHandler(async (req, session, json) => {
 })
 
 export const DELETE = withStandardHandler(async (req, session) => {
-    const userRole = session.user.role
-    if (!['ADMIN', 'SUPER_ADMIN'].includes(userRole || '')) return ApiResponse.forbidden()
+    if (!can(session.user, "clients.delete")) return ApiResponse.forbidden()
 
     const { searchParams } = new URL(req.url)
     const sectionId = searchParams.get('sectionId') || searchParams.get('id')

@@ -77,8 +77,14 @@ export const PERMISSIONS = {
     // --- Obligations, clients, vendors, costs ------------------------------
     "obligations.view":         { module: "OBLIGATIONS", scopes: TEAM_OR_COMPANY },
     "obligations.manage":       { module: "OBLIGATIONS", scopes: TEAM_OR_COMPANY, implies: ["obligations.view"] },
+    // Clients are a shared notebook as much as a register, so adding to it is
+    // its own right, apart from renaming and deleting what is there.
+    // contribute: add a client, a section or a note, and edit any note.
+    // edit: rename a client or a section.
     "clients.view":             { module: "CLIENTS", scopes: COMPANY },
-    "clients.manage":           { module: "CLIENTS", scopes: COMPANY, implies: ["clients.view"] },
+    "clients.contribute":       { module: "CLIENTS", scopes: COMPANY, implies: ["clients.view"] },
+    "clients.edit":             { module: "CLIENTS", scopes: COMPANY, implies: ["clients.view"] },
+    "clients.delete":           { module: "CLIENTS", scopes: COMPANY, implies: ["clients.view"], highRisk: CANNOT_BE_UNDONE },
     "vendors.view":             { module: "VENDORS", scopes: COMPANY },
     "vendors.manage":           { module: "VENDORS", scopes: COMPANY, implies: ["vendors.view"] },
     "costs.view":               { module: "COSTS", scopes: COMPANY },

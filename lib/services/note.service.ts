@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma"
 import { NoteInput } from "../validations/note.schema"
 import { supabase } from "@/lib/storage"
 import { startOfDayIn } from "@/lib/time"
+import { can } from "@/lib/permissions/can"
 
 export class NoteService {
     static async getMany(sectionId: string, skip: number, take: number, search?: string) {
@@ -78,12 +79,8 @@ export class NoteService {
         })
         if (!note) throw new Error("NOTE_NOT_FOUND")
 
-        // Security: Company Isolation
-        if (userRole !== 'SUPER_ADMIN') {
-            const userCompanyId = (session.user as any).companyId
-            if (note.section.client.companyId !== userCompanyId) {
-                throw new Error("ACCESS_DENIED")
-            }
+        if (!can(session.user, "clients.contribute", { companyId: note.section.client.companyId })) {
+            throw new Error("ACCESS_DENIED")
         }
 
         const updated = await prisma.businessClientNote.update({
@@ -122,12 +119,8 @@ export class NoteService {
         })
         if (!note) throw new Error("NOTE_NOT_FOUND")
 
-        // Security: Company Isolation
-        if (userRole !== 'SUPER_ADMIN') {
-            const userCompanyId = (session.user as any).companyId
-            if (note.section.client.companyId !== userCompanyId) {
-                throw new Error("ACCESS_DENIED")
-            }
+        if (!can(session.user, "clients.delete", { companyId: note.section.client.companyId })) {
+            throw new Error("ACCESS_DENIED")
         }
 
         if (note.attachment) {
