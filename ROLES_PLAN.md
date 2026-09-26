@@ -26,6 +26,7 @@ Settled during the attendance brainstorm (rounds 3–6 of `ATTENDANCE_PLAN.md`):
 | The **company Admin may assign** roles the Super Admin created for their company — never create or edit them | Round 6 |
 | A **"who can do this?"** view for the Super Admin | Round 4 |
 | The Super Admin stays outside the role system | Round 3 |
+| **Custom roles are a real, current need** — several client companies already ask for them. Both parts of this plan (§1.1) are justified, not speculative. | Roles review |
 
 **Revised after a review of the first draft** against the code. The first draft
 overstated the migration (§2.2), relied on a circular safety net (§8), and missed
@@ -43,6 +44,30 @@ salaries, an Accountant who runs payroll but cannot manage tasks, a Branch Manag
 who leads a team and approves its day-off — **without a code change per company.**
 
 And the migration must change **nobody's access on the day it ships.**
+
+### 1.1 Why this architecture, and in what order
+
+Compared with the current fixed roles, this design wins on flexibility, on having
+every access rule in one place, on catching mistakes (every route must declare a
+permission, field leaks are tested), on testability and on auditability. The
+current design wins on simplicity, on access that cannot be misconfigured, and on
+zero operational load — nobody has to manage roles. Since client companies are
+already asking for custom roles, the flexibility is needed now, and the costs are
+worth paying — **provided the operational load on the Super Admin is kept small**
+(§6.7–6.10), because only the Super Admin builds roles.
+
+The work splits into two parts:
+
+- **Part A — one check, no visible change** (§7 steps 1–2, plus field shaping §3.7
+  and the lint rule, step 5). Every access decision goes through `can()`, which
+  still answers from today's four roles. Users see nothing new. It fixes weaknesses
+  that exist today — scattered checks, hidden field rules, no test of who can do
+  what — so it is worth doing as part of stabilising the website.
+- **Part B — roles become data** (§7 steps 3–4). Roles, templates, the editor, role
+  assignment. This is what client companies are asking for.
+
+Part A makes Part B small and safe: by the time roles become data, every check
+already goes through one function that is covered by recorded tests.
 
 ---
 
@@ -423,6 +448,49 @@ leave queue" before a company does.
 
 ---
 
+### 6.7 Copy roles from another company — proposed
+
+When a new client's structure resembles an existing one's, **"Copy roles from…"**
+another company brings over its whole role set in one step, as independent copies.
+Faster than rebuilding from templates when you already built exactly this last
+month.
+
+### 6.8 Push a template change deliberately — proposed
+
+Company roles are copies, so improving a template changes nobody (§0) — correct,
+but with many companies it means fixing the same thing many times. **"Offer this
+change to companies using this template"** lists the companies whose role was
+copied from it, shows each one's difference, and lets the Super Admin apply the
+change to the ones chosen. Nothing changes unless the Super Admin picks it; every
+application is audited and bumps the role's version (§4.4).
+
+### 6.9 Role change requests from the company — proposed
+
+Only the Super Admin edits roles, so today a company asks by phone or WhatsApp and
+the request lives in nobody's system. A company Admin gets **"Request a role
+change"**: pick a role, describe what is needed. It lands in a Super Admin queue,
+linked to that company, with a status the Admin can see. The decision stays with
+the Super Admin; only the channel changes.
+
+### 6.10 Role matrix export for the contract — proposed
+
+Custom roles are agreed in contracts. **Export the company's roles** as an Excel
+sheet (`exceljs` is already a dependency): one column per role, one row per
+permission, scope in the cell. The client signs it off as a contract annex, and
+when a dispute comes up — *"our HR Officer should have been able to…"* — both sides
+are looking at the same document.
+
+### 6.11 Separation-of-duties warnings — proposed
+
+Some combinations are risky in one person's hands even when both are legitimate:
+preparing **and** approving payroll, editing salaries **and** approving payroll,
+creating employees **and** changing their salary. The catalogue lists these
+pairs; the role editor **warns** (does not block) when a role holds both, and the
+warning is recorded with the Super Admin's decision. Clients with an auditor will
+ask about exactly this.
+
+---
+
 ## 7. Migration
 
 The one hard requirement: **nobody's access changes on the day it ships.**
@@ -514,8 +582,12 @@ another hardcoded check.
 2. **Should the built-in Admin role be editable per company?** Recommendation: no —
    it is the one role guaranteed to be able to fix the rest. A reduced admin is made
    as a separate ADMIN-based role (e.g. "Deputy Admin").
-3. **Preview as role (§6.6)** — adopt or not.
-4. **Final permission list.** §3.2 is a first draft; each module's owner should
+3. **Proposed Super Admin tools** — preview as role (§6.6), copy from another
+   company (§6.7), push a template change (§6.8), change requests (§6.9), role
+   matrix export (§6.10), separation-of-duties warnings (§6.11): adopt which?
+4. **When to build Part A** (§1.1) — as part of stabilising the website, or with
+   Part B later.
+5. **Final permission list.** §3.2 is a first draft; each module's owner should
    confirm the split between view and change, especially around salaries.
 
 ---
