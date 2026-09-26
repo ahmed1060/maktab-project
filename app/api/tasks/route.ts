@@ -71,6 +71,12 @@ export const POST = withStandardHandler(async (req, session, json) => {
         throw error // bubble up to withStandardHandler for 500
     }
 }, {
+    // Creating work for people is a manager's act. The route had no gate of
+    // its own, so while the screen only offered "Create task" to managers, an
+    // Employee could still POST here and create a task for anyone in their
+    // company, an Admin included — checkAssignees only checks company, and
+    // team only for a Team Leader. Bulk creation was already gated this way.
+    allowedRoles: ['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'],
     audit: {
         action: 'CREATE_TASK',
         entityType: 'TASK',

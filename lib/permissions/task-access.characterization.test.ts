@@ -16,9 +16,8 @@ vi.setConfig({ testTimeout: 120_000 })
  * Part A changes nobody's access. The screens hide all of them from employees;
  * the API does not refuse them:
  *
- * - An Employee may create a task, for anyone in their company, including an
- *   Admin (POST /api/tasks has no role gate; checkAssignees only checks
- *   company, and team only for a Team Leader).
+ * - (Fixed since recording: an Employee could create a task for anyone in
+ *   their company, an Admin included. POST /api/tasks is now managers only.)
  * - An Employee may review — approve — a task, including their own and an
  *   Admin's. The only self-review rule is for Admins.
  * - Anyone in the company may mark a task location verified, including the
@@ -129,9 +128,9 @@ const EXPECTED: Record<string, Record<string, Row>> = {
 
 const COMPANY_WIDE: [string, () => Promise<Response>, Row][] = [
     ["listing tasks",                          async () => (await import("@/app/api/tasks/route")).GET(new Request(url("/api/tasks"))), [200, 200, 200, 200, 200]],
-    ["creating a task for a team member",      create("emp"),   [201, 201, 403, 201, 201]],
-    ["creating a task for a teamless employee", create("loner"), [201, 201, 403, 403, 201]],
-    ["creating a task for an Admin",           create("admin"), [201, 201, 403, 403, 201]],
+    ["creating a task for a team member",      create("emp"),   [201, 201, 403, 201, 403]],
+    ["creating a task for a teamless employee", create("loner"), [201, 201, 403, 403, 403]],
+    ["creating a task for an Admin",           create("admin"), [201, 201, 403, 403, 403]],
     ["creating a task in another company",     create("other"), [201, 403, 201, 403, 403]],
     // An empty upload: 400 means the caller got past the gate.
     ["bulk-creating tasks",                    async () => (await import("@/app/api/tasks/bulk/route")).POST(withBody("POST", "/api/tasks/bulk", { tasks: [] })), [400, 400, 400, 400, 403]],
