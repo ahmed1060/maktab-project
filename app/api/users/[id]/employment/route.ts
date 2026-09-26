@@ -4,6 +4,7 @@ import { teamRefusalResponse } from "@/lib/team-handoff-response"
 import { EmploymentService } from "@/lib/services/employment.service"
 import { SettlementService } from "@/lib/services/settlement.service"
 import { verifyResourceAccess } from "@/lib/security"
+import { can } from "@/lib/permissions/can"
 import { toMajor } from "@/lib/payroll"
 import { calendarMonth } from "@/lib/time"
 
@@ -15,16 +16,18 @@ import { calendarMonth } from "@/lib/time"
  * confirmation screen and have a different one recorded.
  */
 
-const MANAGERS = ['ADMIN', 'SUPER_ADMIN']
-
 /** Preview: what ending on `lastWorkingDay` would settle at, plus this month's timeline. */
 export const GET = withStandardHandler(async (req, session, _json, { params }) => {
     const userId = params.id
-    if (!MANAGERS.includes(session.user.role || '')) return ApiResponse.forbidden("Managers only")
-    if (!(await verifyResourceAccess(session, userId, 'USER'))) return ApiResponse.forbidden("Access denied")
-
     const { searchParams } = new URL(req.url)
     const lastWorkingDay = searchParams.get('lastWorkingDay')
+
+    // The employment record is the HR record, seen by those who edit people —
+    // not employees.view, which a Team Leader holds for their team. Asking for
+    // a settlement preview is the first step of ending a contract.
+    const needed = lastWorkingDay ? "employees.end_contract" : "employees.edit"
+    if (!can(session.user, needed)) return ApiResponse.forbidden("Managers only")
+    if (!(await verifyResourceAccess(session, userId, 'USER'))) return ApiResponse.forbidden("Access denied")
 
     const now = new Date()
     const { year, month } = calendarMonth(now)
@@ -74,7 +77,7 @@ export const GET = withStandardHandler(async (req, session, _json, { params }) =
 /** Commit: end the contract, or reinstate somebody whose contract was ended. */
 export const POST = withStandardHandler(async (req, session, json, { params }) => {
     const userId = params.id
-    if (!MANAGERS.includes(session.user.role || '')) return ApiResponse.forbidden("Managers only")
+    if (!can(session.user, "employees.end_contract")) return ApiResponse.forbidden("Managers only")
     if (!(await verifyResourceAccess(session, userId, 'USER'))) return ApiResponse.forbidden("Access denied")
     if (userId === session.user.id) return ApiResponse.badRequest("You cannot end your own contract")
 

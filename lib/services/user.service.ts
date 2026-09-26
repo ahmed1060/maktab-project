@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma"
+import { can } from "@/lib/permissions/can"
 import { UserStatus } from "@prisma/client"
 import { VerificationService } from "./verification.service"
 import { supabase } from "@/lib/storage"
@@ -28,7 +29,7 @@ export class UserService {
         // the HTTP entry point, this one protects the operation, so a second
         // caller (a script, a future endpoint, an import) cannot reopen it by
         // forgetting an options object.
-        if (!['ADMIN', 'SUPER_ADMIN'].includes(userRole)) {
+        if (!can(session.user, "employees.create")) {
             throw new Error("ONLY_ADMIN_CAN_CREATE_USERS")
         }
 
@@ -234,7 +235,7 @@ export class UserService {
 
         // 4. Role & Privileged Fields
         if (regularUser) {
-            if (role && ['ADMIN', 'SUPER_ADMIN'].includes(userRole || '')) {
+            if (role && can(session.user, "employees.assign_role")) {
                 if ((role === 'ADMIN' || role === 'SUPER_ADMIN') && userRole !== 'SUPER_ADMIN') {
                     throw new Error("FORBIDDEN_ROLE_ASSIGNMENT")
                 }
@@ -243,7 +244,10 @@ export class UserService {
 
             if (username !== undefined && userRole === 'SUPER_ADMIN') updateData.username = username || null
 
-            if (['ADMIN', 'SUPER_ADMIN'].includes(userRole || '')) {
+            // Each field is its own permission: changing a salary and changing a
+            // leave balance are different acts, and in Part B a company can give
+            // them to different people.
+            if (salary !== undefined && can(session.user, "salary.edit")) {
                 // Deliberately not written here. A salary change is an
                 // effective-dated fact, not a field edit: it has to land in
                 // SalaryChange as well, and the two have to move together or a
@@ -251,7 +255,9 @@ export class UserService {
                 // an admin is looking at. SalaryHistoryService.record does both
                 // in one transaction, and is called below once the rest of the
                 // update has succeeded.
-                if (salary !== undefined) updateData.salary = salary
+                updateData.salary = salary
+            }
+            if (can(session.user, "dayoff.adjust_credit")) {
                 if (dayOffCredit !== undefined) updateData.dayOffCredit = dayOffCredit
                 if (baseDayOffCredit !== undefined) {
                     updateData.baseDayOffCredit = baseDayOffCredit
@@ -265,7 +271,7 @@ export class UserService {
             }
 
             if (companyId !== undefined && userRole === 'SUPER_ADMIN') updateData.companyId = companyId || null
-            if (status !== undefined && ['ADMIN', 'SUPER_ADMIN'].includes(userRole || '')) updateData.status = status
+            if (status !== undefined && can(session.user, "employees.change_status")) updateData.status = status
 
             // 5. Team membership.
             //
@@ -292,38 +298,42 @@ export class UserService {
                 rehome = await TeamHandOff.plan({ id, companyId: regularUser.companyId }, reassignReportsTo)
             }
 
-            if (['ADMIN', 'SUPER_ADMIN'].includes(userRole || '')) {
-                if (teamLeaderId !== undefined) {
-                    if (teamLeaderId === null) {
-                        updateData.teamLeaderId = null
-                    } else {
-                        const leader = await prisma.user.findUnique({
-                            where: { id: teamLeaderId },
-                            select: { id: true, role: true, companyId: true, status: true },
-                        })
-                        if (!leader) throw new Error("TEAM_LEADER_NOT_FOUND")
-                        const verdict = checkTeamAssignment(
-                            { id, role: nextRole, companyId: nextCompanyId },
-                            leader,
-                        )
-                        if (!verdict.ok) throw new Error(verdict.refusal.code)
-                        updateData.teamLeaderId = teamLeaderId
-                    }
-                }
-
-                // Gaining a role clears the leader you had. Applied silently,
-                // unlike losing one, because it costs nobody their visibility
-                // — but it has to happen, or a TEAM_LEADER row keeps a
-                // teamLeaderId and becomes a leader who is led.
-                if (updateData.teamLeaderId === undefined && clearsOwnLeader(regularUser, updateData.role)) {
+            if (teamLeaderId !== undefined && can(session.user, "employees.assign_team")) {
+                if (teamLeaderId === null) {
                     updateData.teamLeaderId = null
+                } else {
+                    const leader = await prisma.user.findUnique({
+                        where: { id: teamLeaderId },
+                        select: { id: true, role: true, companyId: true, status: true },
+                    })
+                    if (!leader) throw new Error("TEAM_LEADER_NOT_FOUND")
+                    const verdict = checkTeamAssignment(
+                        { id, role: nextRole, companyId: nextCompanyId },
+                        leader,
+                    )
+                    if (!verdict.ok) throw new Error(verdict.refusal.code)
+                    updateData.teamLeaderId = teamLeaderId
                 }
+            }
 
-                // Moving somebody to another company strands them under a
-                // leader who can no longer see them.
-                if (updateData.companyId !== undefined && updateData.companyId !== regularUser.companyId) {
-                    updateData.teamLeaderId = null
-                }
+            // The two below follow from a change already allowed above — a new
+            // role, a new company — rather than being changes of their own, so
+            // they run for whoever made that change. Tying them to the team
+            // permission would let someone who may change a role but not assign
+            // teams leave a Team Leader who is led.
+
+            // Gaining a role clears the leader you had. Applied silently,
+            // unlike losing one, because it costs nobody their visibility
+            // — but it has to happen, or a TEAM_LEADER row keeps a
+            // teamLeaderId and becomes a leader who is led.
+            if (updateData.teamLeaderId === undefined && clearsOwnLeader(regularUser, updateData.role)) {
+                updateData.teamLeaderId = null
+            }
+
+            // Moving somebody to another company strands them under a
+            // leader who can no longer see them.
+            if (updateData.companyId !== undefined && updateData.companyId !== regularUser.companyId) {
+                updateData.teamLeaderId = null
             }
 
             const writeSelect = { id: true, firstName: true, lastName: true, email: true, role: true, gender: true, salary: true, companyId: true, avatar: true, dayOffCredit: true, baseDayOffCredit: true, username: true }

@@ -23,8 +23,9 @@ import type { Permission, Scope } from "./catalogue"
  * - Payroll — lib/permissions/payroll-access.characterization.test.ts
  * - Day off — lib/permissions/dayoff-access.characterization.test.ts
  * - Salaries and adjustments — lib/permissions/salary-access.characterization.test.ts
- *   (not yet salary.edit: changing a salary goes through PUT /api/users, and
- *   moves with the Employees module)
+ * - Employees, including salary.edit and dayoff.adjust_credit, which are fields
+ *   of an employee edit — lib/permissions/employee-access.characterization.test.ts
+ *   and lib/user-lookup-scope.test.ts
  *   (not yet dayoff.adjust_credit: changing a balance goes through
  *   PUT /api/users, and moves with the Employees module)
  */
@@ -53,15 +54,36 @@ export const BUILT_IN_GRANTS: Record<BuiltInRole, Grants> = {
         // deductions for their company's people.
         "salary_adjustments.manage": "COMPANY",
 
-        // Day off: an Admin sees their company's requests and decides them.
+        // Day off: an Admin sees their company's requests and decides them,
+        // and sets people's balances and yearly allowances.
         "dayoff.view": "COMPANY",
         "dayoff.approve": "COMPANY",
+        "dayoff.adjust_credit": "COMPANY",
+
+        // Employees: an Admin manages their company's people. Making someone
+        // an Admin, moving them between companies, the account status route
+        // and permanent deletion stay the Super Admin's.
+        "employees.view": "COMPANY",
+        "employees.create": "COMPANY",
+        "employees.edit": "COMPANY",
+        "employees.change_status": "COMPANY",
+        "employees.end_contract": "COMPANY",
+        "employees.delete": "COMPANY",
+        "employees.reset_password": "COMPANY",
+        "employees.assign_team": "COMPANY",
+        "employees.assign_role": "COMPANY",
+        "salary.edit": "COMPANY",
     },
-    // Neither holds any payroll or day-off permission. A person's own
-    // payslips, leave requests and leave history reach them through owner
-    // rules on those routes, which are not permissions. A Team Leader does not
-    // see or decide their team's leave today.
-    TEAM_LEADER: {},
+    // A Team Leader sees their team in the employee list and can look each of
+    // them up — TEAM scope, enforced by buildUserWhereClause and
+    // verifyResourceAccess. Nothing else: they do not edit people, see
+    // salaries, or see or decide their team's leave today.
+    //
+    // A person's own profile, payslips, leave requests and histories reach
+    // them through owner rules on those routes, which are not permissions.
+    TEAM_LEADER: {
+        "employees.view": "TEAM",
+    },
     EMPLOYEE: {},
 }
 

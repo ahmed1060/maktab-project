@@ -107,11 +107,13 @@ describe("the service refuses too, not only the route", () => {
 })
 
 describe("the route declares the gate rather than relying on the service alone", () => {
-    it("names ADMIN and SUPER_ADMIN, and nobody else", () => {
+    it("names ADMIN and SUPER_ADMIN, and nobody else", async () => {
+        // The gate is a permission now (ROLES_PLAN.md, Part A). The route must
+        // declare it, and among the built-in roles only the Admin may hold it;
+        // the Super Admin holds every permission.
         const source = stripComments(readFileSync("app/api/users/route.ts", "utf8"))
-        const match = source.match(/allowedRoles:\s*\[([^\]]*)\]/)
-        expect(match, "POST /api/users must declare allowedRoles").toBeTruthy()
-        const roles = match![1].split(",").map(r => r.trim().replace(/['"]/g, "")).filter(Boolean)
-        expect(roles.sort()).toEqual(["ADMIN", "SUPER_ADMIN"])
+        expect(source, "POST /api/users must declare its permission").toMatch(/permission:\s*"employees\.create"/)
+        const { builtInRolesHolding } = await import("@/lib/permissions/built-in")
+        expect(builtInRolesHolding("employees.create")).toEqual(["ADMIN"])
     })
 })

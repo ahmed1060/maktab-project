@@ -8,6 +8,7 @@ import { UserService } from "@/lib/services/user.service"
 import { parsePaging } from "@/lib/pagination"
 import { buildUserWhereClause } from "@/lib/services/user-query"
 import { verifyResourceAccess } from "@/lib/security"
+import { can } from "@/lib/permissions/can"
 
 // F-13: role/status are now Postgres enums, not free text — a query-param
 // value that isn't a real enum member makes Postgres reject the whole
@@ -18,13 +19,12 @@ const VALID_ROLES: UserRole[] = ['SUPER_ADMIN', 'ADMIN', 'TEAM_LEADER', 'EMPLOYE
 const VALID_STATUSES: UserStatus[] = ['ACTIVE', 'INACTIVE', 'SUSPENDED', 'DELETED', 'OFFLINE', 'ARCHIVED']
 
 export const GET = withStandardHandler(async (req, session) => {
-    const userRole = session.user.role
     const { searchParams } = new URL(req.url)
     const userId = searchParams.get('id')
 
     // 1. Authorization & Single User Fetch
     if (userId) {
-        if (userId !== session.user.id && !['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole || '')) {
+        if (userId !== session.user.id && !can(session.user, "employees.view")) {
             return ApiResponse.forbidden()
         }
 
@@ -59,7 +59,7 @@ export const GET = withStandardHandler(async (req, session) => {
         })
 
         if (user) {
-            const canViewSalary = ['ADMIN', 'SUPER_ADMIN'].includes(userRole || '') || session.user.id === userId
+            const canViewSalary = can(session.user, "salary.view") || session.user.id === userId
             return ApiResponse.success({
                 ...user,
                 // Number(), not the raw Decimal — Decimal.toJSON() returns a
@@ -89,7 +89,10 @@ export const GET = withStandardHandler(async (req, session) => {
     }
 
     // 2. Multi-User Fetch (Filtered)
-    if (!['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole || '')) {
+    // Which people each caller sees — company, and for a Team Leader their
+    // team — is buildUserWhereClause's. This only asks whether they may list
+    // people at all.
+    if (!can(session.user, "employees.view")) {
         return ApiResponse.forbidden()
     }
 
@@ -190,7 +193,7 @@ export const POST = withStandardHandler(async (req, session, json) => {
     // Admins only, matching PUT below, which has always required admin-or-self.
     // A Team Leader cannot edit an account, so being able to conjure one was
     // the odd exception rather than a capability anybody relied on.
-    allowedRoles: ['ADMIN', 'SUPER_ADMIN'],
+    permission: "employees.create",
 })
 
 export const PUT = withStandardHandler(async (req, session, json) => {
@@ -201,10 +204,9 @@ export const PUT = withStandardHandler(async (req, session, json) => {
     }
 
     const { id } = validation.data
-    const userRole = session.user.role
 
     // 2. Authorization check
-    if (id !== session.user.id && !['ADMIN', 'SUPER_ADMIN'].includes(userRole || '')) {
+    if (id !== session.user.id && !can(session.user, "employees.edit")) {
         return ApiResponse.forbidden()
     }
 
@@ -230,8 +232,7 @@ export const PUT = withStandardHandler(async (req, session, json) => {
 })
 
 export const DELETE = withStandardHandler(async (req, session) => {
-    const userRole = session.user.role
-    if (!['ADMIN', 'SUPER_ADMIN'].includes(userRole || '')) return ApiResponse.forbidden()
+    if (!can(session.user, "employees.delete")) return ApiResponse.forbidden()
 
     const { searchParams } = new URL(req.url)
     const id = searchParams.get('id')
