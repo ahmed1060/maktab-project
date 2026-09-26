@@ -33,6 +33,7 @@ Settled during the attendance brainstorm (rounds 3–6 of `ATTENDANCE_PLAN.md`):
 | **Acting roles adopted** (§6.13) | Roles review |
 | **Periodic access review adopted as a per-company setting, off by default**, toggled in the company's settings (§6.14) | Roles review |
 | **One salary permission** — `salary.view` covers salaries everywhere: profiles, payroll, payslips, history, adjustments, settlements, debts (§3.2) | Roles review |
+| **Permission list draft 2 accepted** with: `tasks.penalize` as its own permission, labelled as affecting pay; deleting and archiving as separate permissions; waiving debts separate from seeing them (§3.2) | Roles review |
 
 **Revised after a review of the first draft** against the code. The first draft
 overstated the migration (§2.2), relied on a circular safety net (§8), and missed
@@ -189,10 +190,10 @@ A grant that would silently give no usable access is rejected with the reason,
 rather than stored.
 
 The list below is **draft 2**, checked against every company-facing API route in
-`app/api` (September 2026). Draft 1 was written from the module names and missed
+`app/api` (September 2026), and **accepted** by the Super Admin. Draft 1 was written from the module names and missed
 about a dozen real actions — task payments, penalties, transfers and reverts,
 bulk upload, password resets, performance-point resets, status changes, ending
-contracts, and debt waivers. **Pending the Super Admin's confirmation (§9).**
+contracts, and debt waivers.
 
 Actions a person takes on **their own** things — submitting or acknowledging a task
 assigned to them, requesting leave, editing their own profile, their own
@@ -206,7 +207,7 @@ them, as today.
 | | `employees.edit` | Edit profile fields (not role, not salary) | `PUT /users` |
 | | `employees.change_status` | Activate / suspend an account | `users/[id]/status` |
 | | `employees.end_contract` | End a contract or reinstate — starts a settlement | `users/[id]/employment` |
-| | `employees.delete` | Delete an account — separate from archiving because it is destructive | `DELETE /users` |
+| | `employees.delete` | **Soft-delete** an account — separate from archiving because it is destructive (the avatar is removed and the email released) | `DELETE /users` |
 | | `employees.reset_password` | Reset someone's password | `users/[id]/reset-password` |
 | | `employees.assign_team` | Put people on a team / move teams | `users/team` |
 | | `employees.assign_role` | Assign a role directly (§4.2) | new |
@@ -222,7 +223,7 @@ them, as today.
 | | `tasks.review` | Review submitted tasks, revert a decision | `tasks/[id]/review\|revert` |
 | | `tasks.delete` | Delete a task | `tasks/[id]/delete` |
 | | `tasks.pay` | Record task payments, single or bulk — **moves money** | `tasks/[id]/payment`, `tasks/payment/bulk` |
-| | `tasks.penalize` | Apply a task penalty — **deducts pay** | `tasks/[id]/penalty` |
+| | `tasks.penalize` | Apply a task penalty — **deducts pay**; its own permission, labelled "affects pay" in the role editor (decided) | `tasks/[id]/penalty` |
 | **Obligations** | `obligations.view` | See obligations | `GET /obligations` |
 | | `obligations.manage` | Create, edit, delete, revert | `obligations/*` |
 | **Clients** | `clients.view` | See clients, sections, notes | `GET /clients/*` |
@@ -245,6 +246,12 @@ them, as today.
 | | `debts.waive` | Forgive a debt — separate because it gives money away | `debts/[id]/waive` |
 | **Settings** | `settings.view` / `settings.edit` | Within the tabs the Super Admin exposed (attendance plan §5.2) | company settings |
 | **Audit** | `audit.view` | See the company's audit log | `admin/audit-logs` |
+
+**Permanent deletion is not a permission.** Today `DELETE /users?permanent=true`
+needs the verification passcode, only works on an account already soft-deleted, and
+is reached from the Super Admin's All Users screen. It stays exactly that: Super
+Admin only, never grantable to a company role, because it erases the record that
+payslips and audit history point at.
 
 Separation-of-duties pairs to warn about (§6.11), from this list:
 `payroll.prepare` + `payroll.approve`; `salary.edit` + `payroll.approve`;
@@ -683,6 +690,25 @@ the Super Admin. Clients with an auditor will be asked for exactly this record.
 
 ---
 
+### 6.15 High-risk permissions and step-up confirmation — proposed
+
+A few permissions move money, give it away, or cannot be undone: `tasks.pay`,
+`tasks.penalize`, `salary.edit`, `salary_adjustments.manage`, `payroll.approve`,
+`payroll.mark_paid`, `debts.waive`, `employees.delete`, `employees.end_contract`.
+
+- **Marked in the catalogue as high-risk**, with the reason ("moves money",
+  "cannot be undone"). The role editor shows the label — the "affects pay" label
+  decided for `tasks.penalize` is this, applied consistently.
+- **Step-up confirmation when used.** Performing one of these actions asks the
+  person to confirm with their MFA code if they have not done so in the last few
+  minutes, reusing the existing MFA service. A stolen session, or someone using an
+  unlocked laptop, then cannot approve payroll or waive a debt. The existing
+  passcode on permanent deletion is the same idea already in the codebase.
+- Everyone holding a high-risk permission must have MFA enabled; assigning such a
+  role to someone without it prompts them to enrol at next sign-in.
+
+---
+
 ## 7. Migration
 
 The one hard requirement: **nobody's access changes on the day it ships.**
@@ -779,15 +805,7 @@ another hardcoded check.
 
 1. **When to build Part A** (§1.1) — as part of stabilising the website, or with
    Part B later.
-2. **Confirm permission list draft 2** (§3.2), in particular:
-   - **Task penalties** (`tasks.penalize`) deduct pay. Keep it a Tasks permission,
-     or require `salary_adjustments.manage` as well? Recommendation: its own
-     permission, with the role editor showing a "this affects pay" label.
-   - **Deleting vs archiving employees** as two permissions. Recommendation: yes —
-     deleting cannot be undone.
-   - **Waiving debts** separate from seeing them. Recommendation: yes — waiving
-     gives money away.
-   - Anything a client has asked for that no row above expresses.
+2. **High-risk permissions with step-up confirmation (§6.15)** — adopt or not.
 
 ---
 
