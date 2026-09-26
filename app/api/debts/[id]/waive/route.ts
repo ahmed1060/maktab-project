@@ -33,7 +33,7 @@ export const POST = withStandardHandler(async (_req, session, json, { params }) 
     })
     if (!debt) return ApiResponse.notFound("Debt not found")
 
-    if (!managesCompany(session.user.role, session.user.companyId, debt.companyId)) {
+    if (!managesCompany(session.user, "debts.waive", debt.companyId)) {
         return ApiResponse.forbidden("Access denied")
     }
 

@@ -18,7 +18,7 @@ import { NextResponse } from "next/server"
  */
 export const GET = withStandardHandler(async (req, session, _json, { params }) => {
     const scope = resolvePayrollScope(
-        session.user.role, session.user.companyId,
+        session.user, "payroll.view",
         new URL(req.url).searchParams.get('companyId'),
         params.year, params.month,
     )

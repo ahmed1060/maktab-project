@@ -16,7 +16,7 @@ import { resolvePayrollScope, payrollScopeRefusal } from "@/lib/payroll-scope"
  */
 export const POST = withStandardHandler(async (_req, session, json, { params }) => {
     const scope = resolvePayrollScope(
-        session.user.role, session.user.companyId, json?.companyId,
+        session.user, "payroll.approve", json?.companyId,
         params.year, params.month,
     )
     if (!scope.ok) return payrollScopeRefusal(scope)

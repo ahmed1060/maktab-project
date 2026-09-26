@@ -36,7 +36,7 @@ describe("who may read one", () => {
         // trusting the session's companyId alone would let them. The comparison
         // itself now lives in managesCompany and is tested on its own; what is
         // pinned here is that the id handed to it comes off the *payslip*.
-        expect(PAYSLIP_API).toContain("managesCompany(session.user.role, session.user.companyId, company.id)")
+        expect(PAYSLIP_API).toContain("managesCompany(session.user, \"payroll.view\", company.id)")
         expect(PAYSLIP_API).toContain("payslip.payrollRun")
         // The one way to get this wrong while still calling the helper.
         expect(PAYSLIP_API).not.toContain("session.user.companyId, session.user.companyId")
@@ -55,7 +55,7 @@ describe("who may read one", () => {
     })
 
     it("keeps settlements to managers, because the subject cannot sign in", () => {
-        expect(SETTLEMENT_API).toContain("managesCompany(session.user.role, session.user.companyId, settlement.companyId)")
+        expect(SETTLEMENT_API).toContain("managesCompany(session.user, \"settlements.manage\", settlement.companyId)")
         expect(SETTLEMENT_API).not.toContain("isOwner")
     })
 
@@ -63,7 +63,7 @@ describe("who may read one", () => {
         // A send is a disclosure. An action route that checked less than the
         // read route would be a way to mail somebody else's settlement to
         // whatever address is on file, without ever being able to see it.
-        expect(RESEND_API).toContain("managesCompany(session.user.role, session.user.companyId, settlement.companyId)")
+        expect(RESEND_API).toContain("managesCompany(session.user, \"settlements.manage\", settlement.companyId)")
         expect(RESEND_API).toContain("ApiResponse.forbidden")
     })
 })

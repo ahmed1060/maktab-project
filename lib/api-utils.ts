@@ -8,9 +8,20 @@ import { isBlockedBySubscription } from "@/lib/billing/state"
 import { AuditLogService } from "./services/audit-log.service"
 import { isNextInternalError } from "./next-internal-error"
 import * as Sentry from "@sentry/nextjs"
+import { can } from "@/lib/permissions/can"
+import type { Permission } from "@/lib/permissions/catalogue"
 
 type HandlerOptions = {
     allowedRoles?: string[]
+    /**
+     * The permission the caller must hold to reach this route at all
+     * (ROLES_PLAN.md §3.4). Replaces `allowedRoles` route by route as each
+     * module migrates. It answers "may they do this kind of thing anywhere";
+     * whether they may do it to *this* record — the right company, the right
+     * team — is still the route's to check against the record, with can() and
+     * a target.
+     */
+    permission?: Permission
     audit?: {
         action: string
         entityType: string
@@ -146,6 +157,9 @@ export function withStandardHandler(
 
             // Role Check
             if (options.allowedRoles && !options.allowedRoles.includes(userRole as string)) {
+                return ApiResponse.forbidden()
+            }
+            if (options.permission && !can(session.user as any, options.permission)) {
                 return ApiResponse.forbidden()
             }
 

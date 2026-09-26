@@ -180,7 +180,7 @@ describe("E2: what happened to a debt", () => {
     })
 
     it("is manager-only, like every other payroll record", () => {
-        expect(DEBTS_API).toContain("managesCompany(session.user.role, session.user.companyId, user.companyId)")
+        expect(DEBTS_API).toContain("managesCompany(session.user, \"debts.view\", user.companyId)")
     })
 
     it("and something assembles it on the person's page", () => {
