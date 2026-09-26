@@ -33,6 +33,7 @@ Settled during the attendance brainstorm (rounds 3–6 of `ATTENDANCE_PLAN.md`):
 | **Acting roles adopted** (§6.13) | Roles review |
 | **Periodic access review adopted as a per-company setting, off by default**, toggled in the company's settings (§6.14) | Roles review |
 | **One salary permission** — `salary.view` covers salaries everywhere: profiles, payroll, payslips, history, adjustments, settlements, debts (§3.2) | Roles review |
+| **High-risk permissions adopted, with step-up MFA valid for 1 hour** (§6.15) | Roles review |
 | **Permission list draft 2 accepted** with: `tasks.penalize` as its own permission, labelled as affecting pay; deleting and archiving as separate permissions; waiving debts separate from seeing them (§3.2) | Roles review |
 
 **Revised after a review of the first draft** against the code. The first draft
@@ -690,7 +691,7 @@ the Super Admin. Clients with an auditor will be asked for exactly this record.
 
 ---
 
-### 6.15 High-risk permissions and step-up confirmation — proposed
+### 6.15 High-risk permissions and step-up confirmation — adopted
 
 A few permissions move money, give it away, or cannot be undone: `tasks.pay`,
 `tasks.penalize`, `salary.edit`, `salary_adjustments.manage`, `payroll.approve`,
@@ -699,9 +700,24 @@ A few permissions move money, give it away, or cannot be undone: `tasks.pay`,
 - **Marked in the catalogue as high-risk**, with the reason ("moves money",
   "cannot be undone"). The role editor shows the label — the "affects pay" label
   decided for `tasks.penalize` is this, applied consistently.
-- **Step-up confirmation when used.** Performing one of these actions asks the
-  person to confirm with their MFA code if they have not done so in the last few
-  minutes, reusing the existing MFA service. A stolen session, or someone using an
+- **Step-up confirmation when used, at most once an hour.** Performing one of these
+  actions asks for the MFA code only if the person has not confirmed one in the
+  **last hour**; within that hour, every high-risk action goes straight through.
+  Reuses the existing MFA service. The details that make the hour safe:
+  - **Fixed, not sliding.** The hour counts from when the code was entered, and
+    using high-risk actions does not extend it. Otherwise someone working
+    continuously would never be asked again, and neither would someone who took
+    over their session.
+  - **Per session, not per account.** Confirming on the office laptop does not
+    unlock the phone. The time is kept in the signed session token, so it cannot be
+    edited in the browser.
+  - **Signing out ends it.** A new sign-in starts with no confirmation.
+  - **"Trust this device" does not skip it.** Trusted devices (`TrustedDevice`)
+    skip the MFA prompt at *sign-in*; that is a different question. Step-up still
+    asks once an hour on a trusted device — otherwise the trusted laptop is exactly
+    the unlocked one this protects against.
+  - **The interval is a system setting** (default 60 minutes), changed by the
+    Super Admin, so it can be tuned without a release. A stolen session, or someone using an
   unlocked laptop, then cannot approve payroll or waive a debt. The existing
   passcode on permanent deletion is the same idea already in the codebase.
 - Everyone holding a high-risk permission must have MFA enabled; assigning such a
@@ -804,8 +820,7 @@ another hardcoded check.
 ## 9. Open questions
 
 1. **When to build Part A** (§1.1) — as part of stabilising the website, or with
-   Part B later.
-2. **High-risk permissions with step-up confirmation (§6.15)** — adopt or not.
+   Part B later. The last open question in this plan.
 
 ---
 
