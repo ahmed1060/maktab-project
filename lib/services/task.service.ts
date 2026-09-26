@@ -5,6 +5,7 @@ import { extractCoords, extractAccuracy, locationVerdict } from "@/lib/location"
 import { supabase } from "@/lib/storage"
 import { normalizeJsonInput } from "@/lib/json-input"
 import { SystemSettingsService } from "./system-settings.service"
+import { earliestDeadline } from "@/lib/deadline"
 
 /**
  * TaskService
@@ -57,7 +58,7 @@ export class TaskService {
         }
 
         // 2. Deadline Safety Check (Strengthened to 3-hour minimum)
-        const minDeadline = new Date(Date.now() + 3 * 60 * 60 * 1000)
+        const minDeadline = earliestDeadline()
         if (deadlineDate < minDeadline) throw new Error("DEADLINE_TOO_SOON")
 
         // 3. Attachment Count Limit
@@ -197,7 +198,7 @@ export class TaskService {
 
         if (deadline) {
             const deadlineDate = new Date(deadline as string)
-            const minDeadline = new Date(Date.now() + 3 * 60 * 60 * 1000)
+            const minDeadline = earliestDeadline()
             if (deadlineDate < minDeadline) throw new Error("DEADLINE_TOO_SOON")
             updateData.deadline = deadlineDate
         }
@@ -991,7 +992,7 @@ export class TaskService {
             for (const task of tasks) {
                 const { assigneeIds, deadline, vendorId, location: requestedLocation, ...rest } = task
                 const deadlineDate = new Date(deadline)
-                const minDeadline = new Date(Date.now() + 3 * 60 * 60 * 1000)
+                const minDeadline = earliestDeadline()
                 if (deadlineDate < minDeadline) throw new Error(`DEADLINE_TOO_SOON: ${task.title}`)
 
                 if (task.attachments && Array.isArray(task.attachments) && task.attachments.length > 20) {

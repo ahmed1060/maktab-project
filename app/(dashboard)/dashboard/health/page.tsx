@@ -1,6 +1,8 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
+import useSWR from 'swr'
+import { fetcher } from '@/lib/swr-fetcher'
 import { useLanguage } from '@/context/LanguageContext'
 import LoadingSpinner from '@/components/LoadingSpinner'
 import ConfirmModal from '@/components/ConfirmModal'
@@ -39,8 +41,10 @@ function formatBytes(bytes: number): string {
 export default function SystemHealthPage() {
     const { t, locale } = useLanguage()
     const { setTitle, setSubtitle } = useHeader()
-    const [metrics, setMetrics] = useState<HealthMetrics | null>(null)
-    const [loading, setLoading] = useState(true)
+    // SWR rather than a fetch in an effect; mutate() is the refresh after a
+    // maintenance action.
+    const { data: metricsResult, isLoading: loading, mutate: fetchMetrics } = useSWR('/api/admin/health', fetcher)
+    const metrics: HealthMetrics | null = metricsResult?.success ? metricsResult.data : null
     const [processing, setProcessing] = useState<string | null>(null)
     // Replaces alert(): a native dialog cannot be themed, and it blocks the
     // main thread, so a result could land on top of a button still painting
@@ -74,39 +78,20 @@ export default function SystemHealthPage() {
         }
     }, [setTitle, setSubtitle, t])
 
-    const fetchMetrics = useCallback(async () => {
-        try {
-            const res = await fetch('/api/admin/health')
-            if (res.ok) {
-                const result = await res.json()
-                if (result.success) {
-                    setMetrics(result.data)
-                }
-            }
-        } catch (error) {
-            console.error('Failed to fetch health metrics', error)
-        } finally {
-            setLoading(false)
-        }
-    }, [])
-
-    const fetchSystemSettings = useCallback(async () => {
-        try {
-            const res = await fetch('/api/system-settings')
-            const result = await res.json()
-            if (result.success) {
+    // Seeds the maintenance form once; ignored if the page has gone by the
+    // time it answers.
+    useEffect(() => {
+        let ignore = false
+        fetch('/api/system-settings')
+            .then(res => res.json())
+            .then(result => {
+                if (ignore || !result.success) return
                 setMaintenanceMode(!!result.data.maintenanceMode)
                 setMaintenanceMessage(result.data.maintenanceMessage || '')
-            }
-        } catch (error) {
-            console.error('Failed to fetch system settings', error)
-        }
+            })
+            .catch(error => console.error('Failed to fetch system settings', error))
+        return () => { ignore = true }
     }, [])
-
-    useEffect(() => {
-        fetchMetrics()
-        fetchSystemSettings()
-    }, [fetchMetrics, fetchSystemSettings])
 
     const runMaintenance = async (action: string, params?: Record<string, unknown>) => {
         setProcessing(action)

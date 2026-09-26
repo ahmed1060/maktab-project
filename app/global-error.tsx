@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import * as Sentry from '@sentry/nextjs'
 
 // The last-resort net: fires only for a crash Next.js can't recover from
 // inside the normal tree — e.g. RootLayout itself throwing — which is
@@ -20,6 +21,8 @@ export default function GlobalError({
 
     useEffect(() => {
         console.error('[GlobalError]', error)
+        // The root layout itself failed; nothing below it could report this.
+        Sentry.captureException(error)
         fetch('/api/system/log-client-error', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },

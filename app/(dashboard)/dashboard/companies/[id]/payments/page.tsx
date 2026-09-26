@@ -1,6 +1,8 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState } from 'react'
+import useSWR from 'swr'
+import { fetcher } from '@/lib/swr-fetcher'
 import { useParams, useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import AccessDenied from '@/components/AccessDenied'
@@ -41,9 +43,6 @@ export default function CompanyPaymentsPage() {
     const { showToast } = useToast()
     const { t, locale } = useLanguage()
 
-    const [company, setCompany] = useState<Company | null>(null)
-    const [payments, setPayments] = useState<Payment[]>([])
-    const [loading, setLoading] = useState(true)
     const [showModal, setShowModal] = useState(false)
     const [formData, setFormData] = useState({
         cost: '',
@@ -52,50 +51,13 @@ export default function CompanyPaymentsPage() {
     const [submitting, setSubmitting] = useState(false)
     const [paymentToDelete, setPaymentToDelete] = useState<string | null>(null)
 
-    const fetchCompanyData = useCallback(async () => {
-        try {
-            const res = await fetch(`/api/companies?id=${companyId}`)
-            if (res.ok) {
-                const result = await res.json()
-                setCompany(result.data || result)
-            } else {
-                showToast(t('failed_fetch_data'), 'error')
-            }
-        } catch {
-            console.error('Failed to fetch company')
-            showToast(t('failed_fetch_data'), 'error')
-        }
-        // t isn't memoized by LanguageContext — listing it here would
-        // recreate this callback (and the effect below that depends on its
-        // identity) on every render, refetching on every render with it.
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [companyId, showToast])
-
-    const fetchPayments = useCallback(async () => {
-        try {
-            const res = await fetch(`/api/companies/${companyId}/payments`)
-            if (res.ok) {
-                const result = await res.json()
-                const data = result.data
-                setPayments(data.data || data)
-            } else {
-                showToast(t('failed_fetch_data'), 'error')
-            }
-        } catch {
-            console.error('Failed to fetch payments')
-            showToast(t('failed_fetch_data'), 'error')
-        } finally {
-            setLoading(false)
-        }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [companyId, showToast])
-
-    useEffect(() => {
-        if (companyId) {
-            fetchCompanyData()
-            fetchPayments()
-        }
-    }, [companyId, fetchCompanyData, fetchPayments])
+    const onLoadError = () => showToast(t('failed_fetch_data'), 'error')
+    const { data: companyResult } = useSWR(companyId ? `/api/companies?id=${companyId}` : null, fetcher, { onError: onLoadError })
+    const company: Company | null = companyResult ? (companyResult.data || companyResult) : null
+    const { data: paymentsResult, isLoading: loading, mutate: fetchPayments } = useSWR(
+        companyId ? `/api/companies/${companyId}/payments` : null, fetcher, { onError: onLoadError },
+    )
+    const payments: Payment[] = paymentsResult ? (paymentsResult.data?.data || paymentsResult.data || []) : []
 
     const handleAddPayment = async (e: React.FormEvent) => {
         e.preventDefault()

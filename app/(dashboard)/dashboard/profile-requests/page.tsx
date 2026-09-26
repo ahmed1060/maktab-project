@@ -1,6 +1,8 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
+import useSWR from 'swr'
+import { fetcher } from '@/lib/swr-fetcher'
 import { useSession } from 'next-auth/react'
 import AccessDenied from '@/components/AccessDenied'
 import { useToast } from '@/context/ToastContext'
@@ -28,57 +30,35 @@ type Request = {
     }
 }
 
+// One empty list for every render with no data, so effects that depend on
+// the list do not re-run just because a new [] was made.
+const NO_REQUESTS: Request[] = []
+
 export default function ProfileRequestsPage() {
     const { t, locale } = useLanguage()
     const { setTitle, setSubtitle } = useHeader()
     const { data: session } = useSession()
-    const [requests, setRequests] = useState<Request[]>([])
-    const [loading, setLoading] = useState(true)
     const { showToast } = useToast()
     const router = useRouter()
     const [processingId, setProcessingId] = useState<string | null>(null)
 
     const [page, setPage] = useState(1)
-    const [totalPages, setTotalPages] = useState(0)
     const limit = 10
     const searchParams = useSearchParams()
     const highlightId = searchParams.get('highlight')
 
-    const fetchRequests = useCallback(async () => {
-        setLoading(true)
-        try {
-            const queryParams = new URLSearchParams()
-            queryParams.set('status', 'PENDING')
-            queryParams.set('page', page.toString())
-            queryParams.set('limit', limit.toString())
-
-            const res = await fetch(`/api/profile-requests?${queryParams.toString()}`)
-            if (res.ok) {
-                const result = await res.json()
-                const data = result.data
-                setRequests(data.data || [])
-                setTotalPages(data.totalPages || 0)
-            } else {
-                showToast(t('failed_fetch_data'), 'error')
-            }
-        } catch (err) {
-            console.error('Failed to fetch requests', err)
-            showToast(t('failed_fetch_data'), 'error')
-        } finally {
-            setLoading(false)
-        }
-        // t isn't memoized by LanguageContext — listing it here would
-        // recreate this callback (and the effect that depends on its
-        // identity) every render, refetching on every render with it.
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [page, limit, showToast])
-
-    useEffect(() => {
-        const role = session?.user?.role
-        if (role === 'ADMIN' || role === 'SUPER_ADMIN') {
-            fetchRequests()
-        }
-    }, [session, fetchRequests])
+    const role = session?.user?.role
+    const canReview = role === 'ADMIN' || role === 'SUPER_ADMIN'
+    const { data: result, isLoading, mutate: fetchRequests } = useSWR(
+        canReview ? `/api/profile-requests?${new URLSearchParams({ status: 'PENDING', page: String(page), limit: String(limit) })}` : null,
+        fetcher,
+        { onError: () => showToast(t('failed_fetch_data'), 'error') },
+    )
+    const requests: Request[] = result?.data?.data || NO_REQUESTS
+    const totalPages: number = result?.data?.totalPages || 0
+    // Before the session arrives nothing has been asked yet; that is still
+    // loading, not an empty queue.
+    const loading = !session || isLoading
 
     useEffect(() => {
         setTitle(t('profile_name_requests'))

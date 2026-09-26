@@ -3,6 +3,8 @@ import Modal from '@/components/Modal'
 import DateTimePicker from '@/components/DateTimePicker'
 import LocationSearchInput from '@/components/LocationSearchInput'
 import { useLanguage } from '@/context/LanguageContext'
+import { useNow } from '@/lib/useNow'
+import { earliestDeadline } from '@/lib/deadline'
 
 // F-23: extracted verbatim out of tasks/[id]/client.tsx. editForm/
 // editFieldErrors stay owned by the parent (handleSaveDetails and
@@ -28,6 +30,9 @@ interface TaskEditDetailsModalProps {
 
 export default function TaskEditDetailsModal({ isOpen, onClose, onSubmit, editForm, setEditForm, editFieldErrors, setEditFieldErrors, task }: TaskEditDetailsModalProps) {
     const { t, locale } = useLanguage()
+    // The deadline floor offered to the picker, kept current while the form
+    // stays open. See lib/useNow.ts.
+    const now = useNow()
 
     return (
         <Modal isOpen={isOpen} onClose={onClose} title={t('edit_task_details_title')} hideFooter>
@@ -106,7 +111,7 @@ export default function TaskEditDetailsModal({ isOpen, onClose, onSubmit, editFo
                         Previously just blocked the past, which let you pick
                         e.g. "10 minutes from now" here and get an unhandled
                         500 back. */}
-                    <DateTimePicker label={t('deadline_label')} value={editForm.deadline} onChange={v => setEditForm({ ...editForm, deadline: v })} min={new Date(Date.now() + 3 * 60 * 60 * 1000).toISOString()} />
+                    <DateTimePicker label={t('deadline_label')} value={editForm.deadline} onChange={v => setEditForm({ ...editForm, deadline: v })} min={earliestDeadline(now).toISOString()} />
                 </div>
 
                 <div style={{ marginBottom: '1.5rem' }}>

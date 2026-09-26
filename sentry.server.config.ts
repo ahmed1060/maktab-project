@@ -10,5 +10,8 @@ Sentry.init({
     // SENTRY_DSN to enable error reporting.
     dsn: process.env.SENTRY_DSN,
     tracesSampleRate: 0.1,
+    // No IP addresses, cookies or request bodies: payroll data stays out of
+    // a third-party error tracker. See instrumentation-client.ts.
+    sendDefaultPii: false,
     debug: false,
 })

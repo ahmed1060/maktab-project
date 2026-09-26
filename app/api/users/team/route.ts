@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma"
 import { z } from "zod"
 import { checkTeamAssignment } from "@/lib/team-assignment"
 import { AuditLogService } from "@/lib/services/audit-log.service"
+import { notifyTeamMoves } from "@/lib/services/team-notify.service"
 
 /**
  * Assign several employees to a team leader at once.
@@ -44,7 +45,7 @@ export const PATCH = withStandardHandler(async (req, session, json) => {
 
     const targets = await prisma.user.findMany({
         where: { id: { in: ids } },
-        select: { id: true, role: true, companyId: true, status: true },
+        select: { id: true, role: true, companyId: true, status: true, teamLeaderId: true },
     })
     if (targets.length !== ids.length) return ApiResponse.badRequest("One of those people no longer exists")
 
@@ -83,6 +84,10 @@ export const PATCH = withStandardHandler(async (req, session, json) => {
         })
         return result.count
     })
+
+    // After the commit, and one notification per person however many moved —
+    // see planTeamNotifications for why a leader hears once, not forty times.
+    await notifyTeamMoves(targets.map(t => ({ userId: t.id, from: t.teamLeaderId, to: teamLeaderId })))
 
     return ApiResponse.success({ updated })
 }, {

@@ -70,6 +70,17 @@ export function buildTaskWhereClause(
     if (employeeIdFilter && userRole !== 'EMPLOYEE') {
         filters.push({ assignees: { some: { id: employeeIdFilter } } })
     }
+    // Which team's work. Deliberately a filter and not a grouping: a task can
+    // be assigned to people on two different teams, so it belongs to both, and
+    // a grouped view would have to either duplicate it or pick one arbitrarily.
+    // "at least one assignee on this team" is a question with one answer.
+    const teamFilter = searchParams.get('teamLeaderId')
+    if (teamFilter === 'unassigned') {
+        filters.push({ assignees: { some: { teamLeaderId: null } } })
+    } else if (teamFilter) {
+        filters.push({ assignees: { some: { teamLeaderId: teamFilter } } })
+    }
+
     if (statusFilter) {
         // F-13: Task.status is a Postgres enum now — an invalid value would
         // make Postgres reject the whole query instead of the harmless

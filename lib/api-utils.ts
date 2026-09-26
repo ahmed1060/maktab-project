@@ -7,6 +7,7 @@ import { moduleForApiPath, requireFeature } from "@/lib/features"
 import { isBlockedBySubscription } from "@/lib/billing/state"
 import { AuditLogService } from "./services/audit-log.service"
 import { isNextInternalError } from "./next-internal-error"
+import * as Sentry from "@sentry/nextjs"
 
 type HandlerOptions = {
     allowedRoles?: string[]
@@ -319,6 +320,12 @@ export function withStandardHandler(
                 method: req.method,
                 userId: userRole !== 'SUPER_ADMIN' ? userId : null,
                 superAdminId: userRole === 'SUPER_ADMIN' ? userId : null,
+            })
+            // Caught here, so Sentry would never see it on its own. Tagged
+            // with the same reference the person was shown, so the code an
+            // Admin reads out finds the Sentry issue. Inert without a DSN.
+            Sentry.captureException(error, {
+                tags: { ref, route: new URL(req.url).pathname, method: req.method },
             })
             return ApiResponse.error(AuditLogService.friendlyErrorMessage(ref))
         }

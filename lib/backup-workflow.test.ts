@@ -322,3 +322,18 @@ describe("every night's dump is loaded back", () => {
         expect(prune, "the prune no longer runs after the restore check").toBeGreaterThan(prove)
     })
 })
+
+describe("the nightly schedule", () => {
+    it("is not on the hour", () => {
+        // GitHub delays scheduled runs under load, worst at minute 0. At
+        // '0 1 * * *' the backup started 4–4.7 hours late every night in
+        // September, landing in the Cairo working morning. Reading this as
+        // an untidy number and rounding it back is the regression.
+        const yml = readFileSync(".github/workflows/backup.yml", "utf8")
+        const cron = yml.match(/^\s*- cron: '([^']+)'/m)
+        expect(cron, "backup.yml must keep a schedule").toBeTruthy()
+        const minute = cron![1].split(/\s+/)[0]
+        expect(minute).not.toBe("0")
+        expect(minute).not.toMatch(/^\*|\//)
+    })
+})

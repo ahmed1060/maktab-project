@@ -7,6 +7,8 @@ import { nextPaydayOnOrAfter, daysAlreadyPaid } from "@/lib/payday"
 import { resolveTimeZone } from "@/lib/timezone"
 import { EmploymentService } from "./employment.service"
 import { SalaryHistoryService } from "./salary-history.service"
+import { TeamHandOff } from "./team-handoff.service"
+import { notifyTeamMoves } from "./team-notify.service"
 
 /**
  * Producing the statement that ends an employment.
@@ -203,12 +205,39 @@ export class SettlementService {
         lastWorkingDay: string
         reason?: string
         createdById?: string | null
+        /** Role of whoever is ending it, for the hand-off's audit entry. */
+        actorRole?: string | null
+        /**
+         * Where their team goes if they lead one: absent until somebody has
+         * answered (refused with LEADER_HAS_REPORTS), null to leave them
+         * unassigned, an id to move them. See TeamHandOff.
+         */
+        reassignReportsTo?: string | null
     }) {
         const preview = await this.preview(input.userId, input.lastWorkingDay)
         const { companyId } = await this.policyFor(input.userId)
         if (!companyId) throw new Error("USER_HAS_NO_COMPANY")
 
-        return prisma.$transaction(async (tx) => {
+        // Ending a leader's contract takes them away from their team as surely
+        // as demoting them does, and used to skip the question entirely: the
+        // team stayed pointing at an archived account, visible to no leader.
+        // Asked here rather than in the route, so no way of ending a contract
+        // can skip it. Settled before anything is written — a refusal after
+        // the settlement would be a statement for a contract that did not end.
+        //
+        // The team moves when the ending is recorded, not on the leaving date.
+        // Until then the leader is still working, but from here on the team
+        // needs somebody who will still be there after it.
+        const rehome = await TeamHandOff.plan({ id: input.userId, companyId }, input.reassignReportsTo)
+
+        const result = await prisma.$transaction(async (tx) => {
+            if (rehome) {
+                await TeamHandOff.apply(tx, input.userId, rehome, {
+                    id: input.createdById ?? input.userId,
+                    role: input.actorRole,
+                })
+            }
+
             const event = await EmploymentService.record({
                 userId: input.userId,
                 type: "CONTRACT_ENDED",
@@ -276,6 +305,11 @@ export class SettlementService {
 
             return { event, settlement, debt, preview }
         })
+
+        // News, after the commit, as every other hand-off does it.
+        await notifyTeamMoves(TeamHandOff.moves(input.userId, rehome))
+
+        return result
     }
 
     static async forUser(userId: string) {

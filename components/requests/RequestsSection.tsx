@@ -1,25 +1,27 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
+import useSWR from 'swr'
+import { fetcher } from '@/lib/swr-fetcher'
 import RequestCard from './RequestCard'
 import CreateRequestModal from './CreateRequestModal'
 import ViewRequestModal from './ViewRequestModal'
 import { useLanguage } from '@/context/LanguageContext'
-import { useCallback } from 'react'
 import { useToast } from '@/context/ToastContext'
 import { useCompany } from '@/context/CompanyContext'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import EmployeeFilter from '@/components/EmployeeFilter'
 import Pagination from '@/components/Pagination'
+import { useFadingHighlight } from '@/lib/useFadingHighlight'
+import { useAdjustOnChange } from '@/lib/useAdjustOnChange'
 
+const NO_REQUESTS: any[] = []
 
 export default function RequestsSection({ userRole }: { userRole: string }) {
     const { t, locale } = useLanguage()
     const { showToast } = useToast()
     const { selectedCompanyId } = useCompany()
     const searchParams = useSearchParams()
-    const [requests, setRequests] = useState<any[]>([])
-    const [loading, setLoading] = useState(true)
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
     const [selectedRequest, setSelectedRequest] = useState<any>(null)
     const [isViewModalOpen, setIsViewModalOpen] = useState(false)
@@ -33,62 +35,32 @@ export default function RequestsSection({ userRole }: { userRole: string }) {
         dateTo: ''
     })
     const [page, setPage] = useState(1)
-    const [total, setTotal] = useState(0)
-    const [totalPages, setTotalPages] = useState(0)
-    const [highlightId, setHighlightId] = useState<string | null>(null)
+    // Held for ten seconds after arriving via ?highlight=, then released
+    // so a card that remounts later does not scroll and pulse again. See
+    // lib/useFadingHighlight.ts.
+    const highlightId = useFadingHighlight(searchParams.get('highlight'), 10_000)
 
 
-    const fetchRequests = useCallback(async () => {
-        try {
-            let url = `/api/requests?sortBy=${sortBy}&order=${order}&page=${page}&limit=10`
-            if (selectedCompanyId) url += `&companyId=${selectedCompanyId}`
-            if (filters.search) url += `&search=${encodeURIComponent(filters.search)}`
-            if (filters.status) url += `&status=${filters.status}`
-            if (filters.employeeId) url += `&userId=${filters.employeeId}`
+    let requestsUrl = `/api/requests?sortBy=${sortBy}&order=${order}&page=${page}&limit=10`
+    if (selectedCompanyId) requestsUrl += `&companyId=${selectedCompanyId}`
+    if (filters.search) requestsUrl += `&search=${encodeURIComponent(filters.search)}`
+    if (filters.status) requestsUrl += `&status=${filters.status}`
+    if (filters.employeeId) requestsUrl += `&userId=${filters.employeeId}`
+    // Keyed by the whole query, so an answer for filters that have since
+    // changed can never land on top of the current ones. The previous page
+    // stays up while the next loads, as it did before.
+    const { data: result, isLoading: loading, mutate: fetchRequests } = useSWR(requestsUrl, fetcher, { keepPreviousData: true })
+    const listed = result?.success ? result.data : undefined
+    const requests: any[] = listed?.data || NO_REQUESTS
+    const total: number = listed?.total || 0
+    const totalPages: number = listed?.totalPages || 0
 
-            const res = await fetch(url)
-            const result = await res.json()
-            if (res.ok && result.success) {
-                const data = result.data
-                setRequests(data.data || [])
-                setTotal(data.total || 0)
-                setTotalPages(data.totalPages || 0)
-            }
-        } catch (error) {
-            console.error("Error fetching requests:", error)
-        } finally {
-            setLoading(false)
-        }
-    }, [sortBy, order, page, selectedCompanyId, filters])
-
-    useEffect(() => {
-        fetchRequests()
-    }, [fetchRequests])
-
-    useEffect(() => {
-        setPage(1)
-    }, [selectedCompanyId, filters, sortBy, order])
-
-    useEffect(() => {
-        const highlight = searchParams.get('highlight')
-        if (highlight) {
-            setHighlightId(highlight)
-        }
-    }, [searchParams])
-
-    useEffect(() => {
-        if (highlightId && requests.length > 0) {
-            const req = requests.find(r => r.id === highlightId)
-            if (req) {
-                // We no longer auto-open the modal
-                // Instead, we let the RequestCard show the highlight
-
-                // Clear highlight after 10 seconds to stop the pulse
-                const timer = setTimeout(() => setHighlightId(null), 10000)
-                return () => clearTimeout(timer)
-            }
-        }
-    }, [highlightId, requests])
+    // Back to page 1 in the same render the filters change, so the first
+    // fetch for the new filters already asks for page 1. As an effect this
+    // fetched the old page of the new results first, then page 1 — two
+    // requests, and a list and pager that disagreed if they came back out of
+    // order. See lib/useAdjustOnChange.ts.
+    useAdjustOnChange([selectedCompanyId, filters, sortBy, order], () => setPage(1))
 
     const handleCreateRequest = async (title: string, details: string) => {
         try {

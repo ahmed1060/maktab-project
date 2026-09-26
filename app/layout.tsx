@@ -1,9 +1,9 @@
 import './globals.css'
 import { Providers } from './providers'
-import { cookies } from 'next/headers'
+import { cookies, headers } from 'next/headers'
 import { Analytics } from '@vercel/analytics/next'
 import { SpeedInsights } from '@vercel/speed-insights/next'
-import type { Locale } from '@/lib/translations'
+import { resolveLocale } from '@/lib/locale'
 import { en } from '@/lib/translations/en'
 import { ar } from '@/lib/translations/ar'
 import { parseTheme, themeAttribute, THEME_COOKIE } from '@/lib/theme'
@@ -20,7 +20,7 @@ export default async function RootLayout({
 }) {
   // cookies() is async since Next 15, which makes this layout async too.
   const cookieStore = await cookies()
-  const initialLocale = (cookieStore.get('NEXT_LOCALE')?.value || 'en') as Locale
+  const initialLocale = resolveLocale(cookieStore.get('NEXT_LOCALE')?.value, (await headers()).get('accept-language'))
   const dir = initialLocale === 'ar' ? 'rtl' : 'ltr'
 
   // Resolved here, server-side, exactly as the locale is — and for the same
@@ -44,7 +44,7 @@ export default async function RootLayout({
   return (
     <html lang={initialLocale} dir={dir} data-theme={themeAttr}>
       <body>
-        <Providers initialLocale={initialLocale} initialDict={initialDict} initialTheme={theme}>{children}</Providers>
+        <Providers initialLocale={initialLocale} initialDict={initialDict} initialTheme={theme} themeChosen={cookieStore.has(THEME_COOKIE)}>{children}</Providers>
         <Analytics />
         {/* Speed Insights reports the route pattern, not the URL: its
             computeRoute substitutes the dynamic segments back in, so

@@ -13,6 +13,8 @@ import { stripComments } from "./strip-comments"
 
 const ROUTE = stripComments(readFileSync("app/api/users/route.ts", "utf8"))
 const FORM = stripComments(readFileSync("components/EmployeeProfileForm.tsx", "utf8"))
+const HANDOFF = stripComments(readFileSync("components/TeamHandOffModal.tsx", "utf8"))
+const END_CONTRACT = stripComments(readFileSync("components/EndContractModal.tsx", "utf8"))
 
 /** The balanced block starting at `from`, so an assertion about one query
  *  cannot accidentally be satisfied by a different query in the same file —
@@ -56,7 +58,7 @@ describe("the edit form loads what it is about to save", () => {
         // Without this the select renders "no team leader" for everybody, and
         // saving an unrelated field silently unassigns them — a data loss with
         // no error and no visible cause.
-        expect(blockAt(ROUTE, "const user = await prisma.user.findFirst(")).toContain("teamLeaderId: true")
+        expect(blockAt(ROUTE, "const user = await prisma.user.findUnique(")).toContain("teamLeaderId: true")
     })
 
     it("the form reads it into state", () => {
@@ -96,22 +98,57 @@ describe("the hand-off modal asks a question rather than reporting an error", ()
     it("names the people instead of counting them", () => {
         // "7 people" is a number to accept; a list is a decision somebody can
         // actually make.
-        expect(FORM).toMatch(/handoff\.map\(/)
+        expect(HANDOFF).toMatch(/reports\.map\(/)
     })
 
     it("sends null to unassign, never an empty string", () => {
         // Same three states as everywhere else: absent means nobody answered
         // and the change stays refused, null means unassign, an id means move.
         // An empty string is none of them and would fail validation.
-        expect(FORM).toMatch(/executeSubmit\(handoffTo \|\| null\)/)
+        expect(HANDOFF).toMatch(/onConfirm\(handoffTo \|\| null\)/)
+        expect(FORM).toMatch(/executeSubmit\(reassignTo\)/)
     })
 
     it("does not offer to hand the team to the person losing it", () => {
-        const block = FORM.slice(FORM.indexOf("handoff && createPortal"))
-        expect(block.slice(0, 2600)).toMatch(/leaders\.filter\(l => l\.id !== userId\)/)
+        expect(HANDOFF).toMatch(/leaders\.filter\(l => l\.id !== leaderId\)/)
+        // And both callers say who that is.
+        expect(FORM).toMatch(/<TeamHandOffModal[\s\S]{0,80}leaderId=\{userId\}/)
+        expect(END_CONTRACT).toMatch(/<TeamHandOffModal[\s\S]{0,80}leaderId=\{userId\}/)
     })
 
     it("passes the answer through to the request", () => {
         expect(FORM).toMatch(/reassignReportsTo:\s*reassignTo/)
+    })
+})
+
+describe("ending a leader's contract asks the same question", () => {
+    // Ending a contract takes a leader away from their team as surely as a
+    // demotion does, and used to skip the question: the team stayed pointing
+    // at an archived account.
+    it("reads the refusal as a question, not an error", () => {
+        const submit = END_CONTRACT.slice(END_CONTRACT.indexOf("const submit = async"))
+        const block = submit.slice(submit.indexOf("if (!res.ok)"), submit.indexOf("if (!res.ok)") + 600)
+        expect(block).toMatch(/details\?\.reports/)
+        expect(block).toContain("setHandoff(reports)")
+        // Asked before the toast, or the Admin reads a sentence instead of
+        // getting the choice.
+        expect(block.indexOf("setHandoff(reports)")).toBeLessThan(block.indexOf("showToast("))
+    })
+
+    it("uses the one hand-off popup, and resubmits the answer", () => {
+        expect(END_CONTRACT).toContain("<TeamHandOffModal")
+        expect(END_CONTRACT).toContain("submit('END_CONTRACT', reassignTo)")
+    })
+
+    it("sends no answer on the first attempt, so the server can ask", () => {
+        // Absent is a state of its own. Sending null up front would silently
+        // unassign the team without anybody having been asked.
+        expect(END_CONTRACT).toContain("...(reassignTo !== undefined && { reassignReportsTo: reassignTo })")
+    })
+
+    it("has one copy of the popup in the codebase", () => {
+        expect(FORM).not.toContain("handoff_move_to")
+        expect(END_CONTRACT).not.toContain("handoff_move_to")
+        expect(HANDOFF).toContain("handoff_move_to")
     })
 })

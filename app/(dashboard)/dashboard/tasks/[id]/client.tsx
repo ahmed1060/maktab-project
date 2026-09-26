@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 'use client'
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Modal from '@/components/Modal'
 import DiffViewer from '@/components/DiffViewer'
@@ -14,6 +14,8 @@ import TaskEditDetailsModal from '@/components/TaskEditDetailsModal'
 import TaskTransferModal from '@/components/TaskTransferModal'
 import TaskConfirmModals from '@/components/TaskConfirmModals'
 import { SESSION_EXPIRED_MESSAGE, redirectAfterSessionExpiry } from '@/lib/session-expired'
+import SectionBoundary from '@/components/SectionBoundary'
+import { useAdjustOnChange } from '@/lib/useAdjustOnChange'
 
 export default function TaskDetailClient({ task: initialTask, userRole, userId, creatorName, isRestricted }: { task: any, userRole: string, userId: string, creatorName: string | null, currentUserName: string, isRestricted: boolean }) {
     const { t, locale } = useLanguage()
@@ -41,12 +43,19 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
         } catch (e) { console.error('[LOCATION_PARSE_FAIL]', e) }
         return { name: locStr, link: '' }
     }
-    const [task, setTask] = useState(initialTask)
-    const [existingAttachments, setExistingAttachments] = useState<any[]>(() => {
-        try {
-            return Array.isArray(initialTask.attachments) ? initialTask.attachments : []
-        } catch (e) { console.error('[ATTACHMENTS_PARSE_FAIL]', e); return [] }
+    const attachmentsOf = (src: any): any[] => Array.isArray(src.attachments) ? src.attachments : []
+    const editFormFrom = (src: any) => ({
+        title: src.title,
+        description: src.description,
+        assigneeIds: src.assignees?.map((a: any) => a.id) || [],
+        deadline: src.deadline,
+        difficulty: src.difficulty,
+        location: parseLocation(src.location || '').name,
+        locationLink: parseLocation(src.location || '').link,
+        attachments: attachmentsOf(src),
     })
+    const [task, setTask] = useState(initialTask)
+    const [existingAttachments, setExistingAttachments] = useState<any[]>(() => attachmentsOf(initialTask))
     const [note, setNote] = useState('')
     const [cost, setCost] = useState('')
     const [costDescription, setCostDescription] = useState('')
@@ -65,20 +74,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
     const [showRevertConfirm, setShowRevertConfirm] = useState(false)
     const [isEditing, setIsEditing] = useState(false)
-    const [editForm, setEditForm] = useState({
-        title: initialTask.title,
-        description: initialTask.description,
-        assigneeIds: initialTask.assignees?.map((a: any) => a.id) || [],
-        deadline: initialTask.deadline,
-        difficulty: initialTask.difficulty,
-        location: parseLocation(initialTask.location || '').name,
-        locationLink: parseLocation(initialTask.location || '').link,
-        attachments: (() => {
-            try {
-                return Array.isArray(initialTask.attachments) ? initialTask.attachments : []
-            } catch (e) { console.error('[ATTACHMENTS_PARSE_FAIL]', e); return [] }
-        })()
-    })
+    const [editForm, setEditForm] = useState(() => editFormFrom(initialTask))
     const [editFieldErrors, setEditFieldErrors] = useState({ title: '', description: '' })
     const [isReviewModalOpen, setIsReviewModalOpen] = useState(false)
     const [reviewAction, setReviewAction] = useState<'APPROVED' | 'REJECTED' | null>(null)
@@ -88,7 +84,6 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
     const [viewedDescriptionChange, setViewedDescriptionChange] = useState(false)
     const [diffField, setDiffField] = useState<'title' | 'description' | null>(null)
     const [isEditedPersistent, setIsEditedPersistent] = useState(initialTask.isEdited)
-    const [latestChanges, setLatestChanges] = useState<{ title?: any, description?: any } | null>(null)
     const [showSubmitConfirm, setShowSubmitConfirm] = useState(false)
     const [itemToDelete, setItemToDelete] = useState<{ type: 'ATTACHMENT' | 'COST_ADDITION' | 'SUBMISSION_NOTE', itemId: string } | null>(null)
     const [locationToDelete, setLocationToDelete] = useState<{ index?: number, date?: string } | null>(null)
@@ -104,38 +99,22 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
     // The userRole prop is already passed to the component, so no need to derive it from session here.
     // const userRole = (session?.user as any)?.role // Removed this line as userRole is a prop
 
-    // Sync state when props change (after router.refresh)
-    useEffect(() => {
+    // Re-seed local state when the server sends a fresh task (after
+    // router.refresh), in the same render rather than one render late.
+    useAdjustOnChange([initialTask], () => {
         setTask(initialTask)
-        try {
-            setExistingAttachments(Array.isArray(initialTask.attachments) ? initialTask.attachments : [])
-        } catch { setExistingAttachments([]) }
-        setEditForm({
-            title: initialTask.title,
-            description: initialTask.description,
-            assigneeIds: initialTask.assignees?.map((a: any) => a.id) || [],
-            deadline: initialTask.deadline,
-            difficulty: initialTask.difficulty,
-            location: parseLocation(initialTask.location || '').name,
-            locationLink: parseLocation(initialTask.location || '').link,
-            attachments: (() => {
-                try {
-                    return Array.isArray(initialTask.attachments) ? initialTask.attachments : []
-                } catch { return [] }
-            })()
-        })
+        setExistingAttachments(attachmentsOf(initialTask))
+        setEditForm(editFormFrom(initialTask))
         setReviewDifficulty(initialTask.difficulty)
-    }, [initialTask])
+    })
 
-    useEffect(() => {
-        // task.comments arrives already parsed (F-12: Json, not a
-        // JSON-in-string column) — no JSON.parse needed anymore.
-        if (Array.isArray(task.comments)) {
-            const lastEdit = [...task.comments].reverse().find((l: any) => l.type === 'TASK_EDITED')
-            if (lastEdit && lastEdit.changes) {
-                setLatestChanges(lastEdit.changes)
-            }
-        }
+    // What the most recent edit changed, for the "edited" badges and the diff
+    // viewer. task.comments arrives already parsed (F-12: Json, not a
+    // JSON-in-string column) — no JSON.parse needed anymore.
+    const latestChanges: { title?: any, description?: any } | null = useMemo(() => {
+        if (!Array.isArray(task.comments)) return null
+        const lastEdit = [...task.comments].reverse().find((l: any) => l.type === 'TASK_EDITED')
+        return lastEdit?.changes ?? null
     }, [task.comments])
 
     useEffect(() => {
@@ -991,46 +970,14 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
             </div>
 
             {/* Comments / Logs Section */}
-            {
-                (() => {
-                    if (!task.comments) return null
-                    try {
-                        const logs = Array.isArray(task.comments) ? task.comments : []
-                        if (!Array.isArray(logs)) return null
-                        const regularLogs = logs.filter((l: any) => l.type !== 'COST_ADDITION' && l.type !== 'LOCATION_ADDED')
-                        if (regularLogs.length > 0) {
-                            return (
-                                <div style={{ marginTop: '2rem', borderTop: '1px solid var(--border)', paddingTop: '1.5rem' }}>
-                                    <h3 style={{ marginBottom: '1rem' }}>{t('comments_notes_title')}</h3>
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                                        {[...regularLogs].reverse().map((log: any, i: number) => (
-                                            <div key={i} style={{ padding: '1rem', background: 'var(--surface-subtle)', borderRadius: '0.5rem', border: '1px solid var(--border)' }}>
-                                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', flexDirection: 'row' }}>
-                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                                        {(task.assignees?.length > 1) && (
-                                                            <span style={{ background: 'var(--surface-sunk)', border: '1px solid var(--border-firm)', color: 'var(--text-muted)', padding: '0.1rem 0.4rem', borderRadius: '1rem', fontSize: '0.65rem', fontWeight: 'bold' }}>
-                                                                {locale === 'ar' ? 'بواسطة:' : 'By:'} {log.author}
-                                                            </span>
-                                                        )}
-                                                        {!((task.assignees?.length > 1)) && <span style={{ fontWeight: 'bold', color: 'var(--text-main)' }}>{log.author}</span>}
-                                                        {log.type === 'SUBMISSION_NOTE' && task.status === 'IN_PROGRESS' && (log.authorId === userId || ['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole)) && (
-                                                            <button onClick={() => handleDeleteItem('SUBMISSION_NOTE', log.date)} className="btn-icon" style={{ padding: '2px', border: 'none', background: 'none', cursor: 'pointer', display: 'flex' }} title={t('delete_note_title')}>
-                                                                <TrashIcon size={14} />
-                                                            </button>
-                                                        )}
-                                                    </div>
-                                                    <span style={{ fontSize: '0.75rem', color: 'var(--text-soft)' }}>{new Date(log.date || log.createdAt).toLocaleString(locale)}</span>
-                                                </div>
-                                                <p style={{ margin: 0, fontSize: '0.95rem', color: 'var(--text-body)', whiteSpace: 'pre-wrap' }}>{log.text}</p>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            )
-                        }
-                    } catch { return null }
-                })()
-            }
+            <SectionBoundary name="TaskCommentsLog">
+                <TaskCommentsLog
+                    task={task}
+                    userId={userId}
+                    userRole={userRole}
+                    onDeleteNote={(date: string) => handleDeleteItem('SUBMISSION_NOTE', date)}
+                />
+            </SectionBoundary>
 
             {/* Attachments Section */}
             <div style={{ marginTop: '2rem', borderTop: '1px solid var(--border)', paddingTop: '1.5rem' }}>
@@ -1233,5 +1180,56 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
 
 
         </div>
+    )
+}
+
+/**
+ * The comments and notes on a task — everything in its log that is not a cost
+ * or a location, which have sections of their own.
+ *
+ * Extracted from an inline IIFE that wrapped its JSX in try/catch. That caught
+ * errors in the expressions here but not in child components, and reported
+ * nothing; the SectionBoundary around this does both, and a malformed log
+ * still costs only this section rather than the page.
+ */
+function TaskCommentsLog({ task, userId, userRole, onDeleteNote }: {
+    task: any
+    userId: string
+    userRole: string
+    onDeleteNote: (date: string) => void
+}) {
+    const { t, locale } = useLanguage()
+    if (!task.comments) return null
+    const logs = Array.isArray(task.comments) ? task.comments : []
+    const regularLogs = logs.filter((l: any) => l.type !== 'COST_ADDITION' && l.type !== 'LOCATION_ADDED')
+    if (regularLogs.length === 0) return null
+
+    return (
+                <div style={{ marginTop: '2rem', borderTop: '1px solid var(--border)', paddingTop: '1.5rem' }}>
+                    <h3 style={{ marginBottom: '1rem' }}>{t('comments_notes_title')}</h3>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                        {[...regularLogs].reverse().map((log: any, i: number) => (
+                            <div key={i} style={{ padding: '1rem', background: 'var(--surface-subtle)', borderRadius: '0.5rem', border: '1px solid var(--border)' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', flexDirection: 'row' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                        {(task.assignees?.length > 1) && (
+                                            <span style={{ background: 'var(--surface-sunk)', border: '1px solid var(--border-firm)', color: 'var(--text-muted)', padding: '0.1rem 0.4rem', borderRadius: '1rem', fontSize: '0.65rem', fontWeight: 'bold' }}>
+                                                {locale === 'ar' ? 'بواسطة:' : 'By:'} {log.author}
+                                            </span>
+                                        )}
+                                        {!((task.assignees?.length > 1)) && <span style={{ fontWeight: 'bold', color: 'var(--text-main)' }}>{log.author}</span>}
+                                        {log.type === 'SUBMISSION_NOTE' && task.status === 'IN_PROGRESS' && (log.authorId === userId || ['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole)) && (
+                                            <button onClick={() => onDeleteNote(log.date)} className="btn-icon" style={{ padding: '2px', border: 'none', background: 'none', cursor: 'pointer', display: 'flex' }} title={t('delete_note_title')}>
+                                                <TrashIcon size={14} />
+                                            </button>
+                                        )}
+                                    </div>
+                                    <span style={{ fontSize: '0.75rem', color: 'var(--text-soft)' }}>{new Date(log.date || log.createdAt).toLocaleString(locale)}</span>
+                                </div>
+                                <p style={{ margin: 0, fontSize: '0.95rem', color: 'var(--text-body)', whiteSpace: 'pre-wrap' }}>{log.text}</p>
+                            </div>
+                        ))}
+                    </div>
+                </div>
     )
 }

@@ -121,12 +121,15 @@ export const config = {
          * - _next/static (static files)
          * - _next/image (image optimization files)
          * - favicon.ico (favicon file)
+         * - monitoring (Sentry's tunnel, next.config.mjs — error reports,
+         *   including from the login page and a locked subscription, must
+         *   not be redirected)
          * - common extensions (svg, png, jpg, etc.)
          *
          * F-21: no more "uploads" exclusion — storage moved to Supabase
          * long ago, there's no local public/uploads/ path this app ever
          * serves from.
          */
-        '/((?!api|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+        '/((?!api|_next/static|_next/image|favicon.ico|monitoring|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
     ],
 }

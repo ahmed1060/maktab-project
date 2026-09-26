@@ -1,5 +1,7 @@
 'use client'
-import { useCallback, useEffect, useState } from 'react'
+import { useState } from 'react'
+import useSWR from 'swr'
+import { fetcher } from '@/lib/swr-fetcher'
 import { useParams } from 'next/navigation'
 import { useLanguage } from '@/context/LanguageContext'
 import { useToast } from '@/context/ToastContext'
@@ -28,24 +30,12 @@ export default function SettlementDocumentPage() {
     const params = useParams()
     const isRtl = locale === 'ar'
 
-    const [doc, setDoc] = useState<Doc | null>(null)
-    const [error, setError] = useState(false)
-    const [loading, setLoading] = useState(true)
+    const { data, error: loadError, isLoading: loading, mutate: load } = useSWR(`/api/settlements/${params.id}`, fetcher)
+    const doc: Doc | null = data?.data ?? null
+    // Only when there is nothing to show: a failed refresh after a resend
+    // keeps the document on screen.
+    const error = !!loadError && !doc
     const [sending, setSending] = useState(false)
-
-    const load = useCallback(async () => {
-        try {
-            const res = await fetch(`/api/settlements/${params.id}`)
-            if (!res.ok) { setError(true); return }
-            setDoc((await res.json()).data)
-        } catch {
-            setError(true)
-        } finally {
-            setLoading(false)
-        }
-    }, [params.id])
-
-    useEffect(() => { load() }, [load])
 
     const resend = async () => {
         setSending(true)

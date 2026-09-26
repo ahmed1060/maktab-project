@@ -3,6 +3,7 @@ import { checkAssignees } from "./assignee-guard"
 import { nextOccurrence } from "@/lib/recurrence"
 import { CreateObligationInput } from "../validations/obligation.schema"
 import { supabase } from "@/lib/storage"
+import { earliestDeadline } from "@/lib/deadline"
 
 /** The codes this service's routes already map. */
 const CREATE_CODES = {
@@ -37,7 +38,7 @@ export class ObligationService {
 
         // 2. Deadline Safety Check (3-hour buffer)
         const deadlineDate = new Date(deadline)
-        const minDeadline = new Date(Date.now() + 3 * 60 * 60 * 1000)
+        const minDeadline = earliestDeadline()
         if (deadlineDate < minDeadline) throw new Error("DEADLINE_TOO_SOON")
 
         // 3. Attachment Count Limit

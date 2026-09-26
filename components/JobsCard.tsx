@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useLanguage } from '@/context/LanguageContext'
+import { useNow } from '@/lib/useNow'
 
 type Job = {
     job: string
@@ -66,6 +67,9 @@ function Pill({ tone, children }: { tone: Tone; children: React.ReactNode }) {
  */
 export default function JobsCard() {
     const { t, locale } = useLanguage()
+    // So "3 hours ago" becomes "4 hours ago" while the card is open,
+    // rather than only when something else redraws it.
+    const now = useNow()
     const [health, setHealth] = useState<Health | null>(null)
     const [failed, setFailed] = useState(false)
 
@@ -84,7 +88,7 @@ export default function JobsCard() {
 
     const ago = (iso: string | null): string => {
         if (!iso) return '—'
-        const hours = (Date.now() - new Date(iso).getTime()) / 36e5
+        const hours = (now - new Date(iso).getTime()) / 36e5
         if (hours < 1) return t('jobs_just_now' as any)
         if (hours < 48) return `${Math.round(hours)}${t('jobs_hours_short' as any)}`
         return `${Math.round(hours / 24)}${t('jobs_days_short' as any)}`

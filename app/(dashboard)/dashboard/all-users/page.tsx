@@ -11,6 +11,7 @@ import { useLanguage } from '@/context/LanguageContext'
 import LoadingSpinner from '@/components/LoadingSpinner'
 import { useHeader } from '@/context/HeaderContext'
 import { fetcher } from '@/lib/swr-fetcher'
+import { useAdjustOnChange } from '@/lib/useAdjustOnChange'
 
 type User = {
     id: string
@@ -87,9 +88,12 @@ export default function AllUsersPage() {
         }
     }, [setTitle, setSubtitle, t])
 
-    useEffect(() => {
-        setPage(1)
-    }, [filters])
+    // Back to page 1 in the same render the filters change, so the first
+    // fetch for the new filters already asks for page 1. As an effect this
+    // fetched the old page of the new results first, then page 1 — two
+    // requests, and a list and pager that disagreed if they came back out of
+    // order. See lib/useAdjustOnChange.ts.
+    useAdjustOnChange([filters], () => setPage(1))
 
     const deletedUsersQuery = showExUsersModal
         ? (() => {

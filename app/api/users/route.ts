@@ -2,10 +2,12 @@ import { withStandardHandler } from "@/lib/api-utils"
 import { prisma } from "@/lib/prisma"
 import { UserRole, UserStatus } from "@prisma/client"
 import { ApiResponse } from "@/lib/api-response"
+import { teamRefusalResponse } from "@/lib/team-handoff-response"
 import { createUserSchema, updateUserSchema } from "@/lib/validations/user.schema"
 import { UserService } from "@/lib/services/user.service"
 import { parsePaging } from "@/lib/pagination"
-import { buildUserWhereClause, buildSingleUserWhere, canViewSalaryOf } from "@/lib/services/user-query"
+import { buildUserWhereClause } from "@/lib/services/user-query"
+import { verifyResourceAccess } from "@/lib/security"
 
 // F-13: role/status are now Postgres enums, not free text — a query-param
 // value that isn't a real enum member makes Postgres reject the whole
@@ -22,24 +24,42 @@ export const GET = withStandardHandler(async (req, session) => {
 
     // 1. Authorization & Single User Fetch
     if (userId) {
-        // Scoped to the caller's company, and a Team Leader's team — see
-        // buildSingleUserWhere for why this was a cross-tenant read before.
-        const scope = buildSingleUserWhere(session as any, userId)
-        if (scope.outcome === 'forbidden') return ApiResponse.forbidden()
-        if (scope.outcome === 'not-found') return ApiResponse.notFound("User not found")
+        if (userId !== session.user.id && !['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole || '')) {
+            return ApiResponse.forbidden()
+        }
 
-        const user = await prisma.user.findFirst({
-            where: scope.where,
+        // The role check above says *which kinds of people* may look somebody
+        // up. It never said *which people* — so an Admin or Team Leader could
+        // fetch any user in any company by id and receive their name, email,
+        // username, role, status and leave balance, with salary included for
+        // an Admin because canViewSalary below keys on the role alone. Every
+        // other per-user route in this codebase calls verifyResourceAccess;
+        // this one, the one that returns the whole row, did not.
+        //
+        // It also applies the team rule, so a Team Leader looking up an id
+        // outside their team is refused rather than answered.
+        if (userId !== session.user.id) {
+            const hasAccess = await verifyResourceAccess(session, userId, 'USER')
+            if (!hasAccess) return ApiResponse.forbidden()
+        }
+
+        const user = await prisma.user.findUnique({
+            where: { id: userId },
             select: {
                 id: true, firstName: true, lastName: true, email: true, status: true,
                 role: true, gender: true, salary: true, companyId: true,
                 totalDifficultyPoints: true, avatar: true, dayOffCredit: true,
-                baseDayOffCredit: true, username: true, teamLeaderId: true
+                baseDayOffCredit: true, username: true, teamLeaderId: true,
+                // The name, so somebody can be told who manages them. Selected
+                // fields rather than the relation, for the same reason the
+                // list does it: a leader is a User, and `teamLeader: true`
+                // would attach their whole row, salary included.
+                teamLeader: { select: { id: true, firstName: true, lastName: true } }
             }
         })
 
         if (user) {
-            const canViewSalary = canViewSalaryOf(session as any, userId)
+            const canViewSalary = ['ADMIN', 'SUPER_ADMIN'].includes(userRole || '') || session.user.id === userId
             return ApiResponse.success({
                 ...user,
                 // Number(), not the raw Decimal — Decimal.toJSON() returns a
@@ -197,23 +217,10 @@ export const PUT = withStandardHandler(async (req, session, json) => {
         if (error.message === 'USER_NOT_FOUND') return ApiResponse.notFound("User not found")
         if (error.message === 'NAME_CHANGE_REQUIRES_ADMIN') return ApiResponse.forbidden("Name changes require admin approval")
         if (error.message === 'FORBIDDEN_ROLE_ASSIGNMENT') return ApiResponse.forbidden("Forbidden role assignment")
-        // The refusal names the people it is about. "Reassign them first"
-        // without saying who sends an Admin hunting through a list, and the
-        // modal that offers to reassign or unassign them is built from exactly
-        // this payload.
-        if (error.message === 'LEADER_HAS_REPORTS') {
-            return ApiResponse.badRequest(
-                "This person still leads a team. Choose where their team members go before changing this.",
-                { reports: error.reports ?? [] },
-            )
-        }
-        if (error.message === 'TEAM_LEADER_NOT_FOUND') return ApiResponse.badRequest("That team leader no longer exists")
-        if (error.message === 'REASSIGN_TARGET_IS_LEAVING') return ApiResponse.badRequest("Their team cannot be moved to the person who is leaving it")
-        if (error.message === 'NOT_A_LEADER') return ApiResponse.badRequest("That person is not a team leader")
-        if (error.message === 'ONLY_EMPLOYEES_HAVE_LEADERS') return ApiResponse.badRequest("Only employees are assigned to a team leader")
-        if (error.message === 'SELF_LEADERSHIP') return ApiResponse.badRequest("Somebody cannot be their own team leader")
-        if (error.message === 'DIFFERENT_COMPANY') return ApiResponse.badRequest("A team leader and their team must be in the same company")
-        if (error.message === 'LEADER_UNAVAILABLE') return ApiResponse.badRequest("That team leader's account is archived or deleted")
+        // Team refusals, including the hand-off question, in the one shape
+        // every route that can take a leader away answers with.
+        const teamRefusal = teamRefusalResponse(error)
+        if (teamRefusal) return teamRefusal
         if (error.message === 'INVALID_PASSCODE') return ApiResponse.forbidden("Invalid verification passcode")
         if (error.message === 'EMAIL_CHANGE_REQUIRES_VERIFICATION') return ApiResponse.badRequest("Email changes require verification — use Email settings")
         if (error.message === 'TARGET_PROTECTED') return ApiResponse.forbidden("This account's email is protected and cannot be changed")

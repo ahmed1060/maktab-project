@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import { useAdjustOnChange } from '@/lib/useAdjustOnChange'
 
 interface LocationSearchInputProps {
     value: { name: string, link: string }
@@ -17,9 +18,8 @@ export default function LocationSearchInput({ value, onChange, placeholder, labe
     const [showSuggestions, setShowSuggestions] = useState(false)
     const wrapperRef = useRef<HTMLDivElement>(null)
 
-    useEffect(() => {
-        setQuery(value.name)
-    }, [value.name])
+    // Follow the chosen place when the parent changes it, in the same render.
+    useAdjustOnChange([value.name], () => setQuery(value.name))
 
     useEffect(() => {
         function handleClickOutside(event: MouseEvent) {

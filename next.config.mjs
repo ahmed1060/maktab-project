@@ -61,6 +61,12 @@ export default withSentryConfig(nextConfig, {
     authToken: process.env.SENTRY_AUTH_TOKEN,
     silent: true,
     widenClientFileUpload: true,
+    // Browser events go to /monitoring on this site and are forwarded from
+    // there, instead of straight to sentry.io. Ad and tracker blockers drop
+    // requests to sentry.io — which would hide the very errors worth seeing —
+    // and a same-origin request is already allowed by the CSP's connect-src.
+    // proxy.ts leaves the path alone.
+    tunnelRoute: '/monitoring',
     webpack: {
         treeshake: { removeDebugLogging: true },
         automaticVercelMonitors: false,

@@ -1,9 +1,10 @@
 'use client'
 
 import { createPortal } from 'react-dom'
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useLanguage } from '@/context/LanguageContext'
 import { useHydrated } from '@/lib/useHydrated'
+import { useAdjustOnChange } from '@/lib/useAdjustOnChange'
 
 interface ConfirmModalProps {
     isOpen: boolean
@@ -53,10 +54,10 @@ export default function ConfirmModal({
 
     // Reset the typed value every time the modal opens/closes, so a
     // previous confirmation doesn't carry over to the next action.
-    useEffect(() => {
+    useAdjustOnChange([isOpen], () => {
         setTypedValue('')
         setReasonValue('')
-    }, [isOpen])
+    })
 
     if (!isOpen || !mounted) return null
 

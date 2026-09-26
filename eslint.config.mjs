@@ -2,6 +2,11 @@ import coreWebVitals from "eslint-config-next/core-web-vitals"
 import typescript from "eslint-config-next/typescript"
 
 /**
+ * ESLint 9, not 10, on purpose. eslint-config-next pulls in eslint-plugin-react,
+ * -jsx-a11y and -import, whose newest releases still declare ESLint 9 as their
+ * ceiling — and under 10, eslint-plugin-react crashes on the first file
+ * (context.getFilename was removed). Move to 10 once those three list it.
+ *
  * Flat config, because ESLint 9 dropped .eslintrc and eslint-config-next 16
  * ships nothing else. `ignores` replaces the .eslintignore that flat config
  * also dropped; without it ESLint walks the build output and reports thousands
@@ -35,16 +40,22 @@ const config = [
             // component renders, and doing sixty-one of those at once, untested
             // against a browser, is how an upgrade turns into an outage.
             //
-            // Worth working through deliberately, in their own change. The
-            // current count, for whoever picks that up:
-            //   61  set-state-in-effect  — cascading renders
-            //   32  error-boundaries     — JSX built inside try/catch
-            //    6  purity               — impure calls during render
-            //    1  immutability         — a variable reassigned after render
-            "react-hooks/set-state-in-effect": "warn",
-            "react-hooks/error-boundaries": "warn",
-            "react-hooks/purity": "warn",
-            "react-hooks/immutability": "warn",
+            // Worked through deliberately since, and all four are at zero and
+            // errors now, so a new instance fails CI rather than joining a pile
+            // of warnings nobody reads:
+            //   error-boundaries    — try/catch around JSX became SectionBoundary
+            //   purity              — the clock read in render became useNow(),
+            //                         and eleven copies of the deadline rule one
+            //   immutability        — the donut's running total became precomputed
+            //   set-state-in-effect — prop-to-state copies adjust during render
+            //                         (useAdjustOnChange, useFadingHighlight),
+            //                         fetches are SWR keys or ignore-flag effects,
+            //                         storage is useSyncExternalStore, and the
+            //                         locale is decided on the server
+            "react-hooks/set-state-in-effect": "error",
+            "react-hooks/error-boundaries": "error",
+            "react-hooks/purity": "error",
+            "react-hooks/immutability": "error",
         },
     },
 ]

@@ -11,7 +11,7 @@ import AuthInterceptor from "@/components/AuthInterceptor"
 import { ThemeProvider } from "@/context/ThemeContext"
 import type { Theme } from "@/lib/theme"
 
-export function Providers({ children, initialLocale, initialDict, initialTheme }: { children: React.ReactNode, initialLocale: Locale, initialDict: TranslationDict, initialTheme: Theme }) {
+export function Providers({ children, initialLocale, initialDict, initialTheme, themeChosen }: { children: React.ReactNode, initialLocale: Locale, initialDict: TranslationDict, initialTheme: Theme, themeChosen: boolean }) {
     return (
         <SessionProvider
             refetchOnWindowFocus={false}
@@ -25,7 +25,7 @@ export function Providers({ children, initialLocale, initialDict, initialTheme }
                 <LanguageProvider initialLocale={initialLocale} initialDict={initialDict}>
                     {/* Inside SessionProvider: it persists the choice to the
                         account, which needs to know who is signed in. */}
-                    <ThemeProvider initialTheme={initialTheme}>
+                    <ThemeProvider initialTheme={initialTheme} themeChosen={themeChosen}>
                     <CompanyProvider>
                         <HeaderProvider>
                             <ToastProvider>

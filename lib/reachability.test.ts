@@ -131,7 +131,7 @@ describe("G5: a payslip can be reached", () => {
     })
 
     it("tells somebody their company switched it off rather than denying them", () => {
-        expect(MY_PAYSLIPS).toContain("res.status === 403")
+        expect(MY_PAYSLIPS).toMatch(/\.status === 403/)
         expect(MY_PAYSLIPS).toContain("my_payslips_off")
     })
 })

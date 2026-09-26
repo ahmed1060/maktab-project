@@ -4,8 +4,9 @@ import { prisma } from "@/lib/prisma"
 import Link from "next/link"
 import { DonutChart, StatMetric } from "@/components/DashboardCharts"
 import HeaderSetter from "@/components/HeaderSetter"
-import { cookies } from "next/headers"
-import type { Locale, TranslationKey } from "@/lib/translations"
+import { cookies, headers } from "next/headers"
+import type { TranslationKey } from "@/lib/translations"
+import { resolveLocale } from "@/lib/locale"
 import { en } from "@/lib/translations/en"
 import { ar } from "@/lib/translations/ar"
 import { getSuperAdminOverviewStats } from "@/lib/services/dashboard-stats.service"
@@ -31,7 +32,7 @@ export default async function DashboardPage(props: { searchParams: Promise<{ com
     // because a request's store is now resolved when it is asked for rather
     // than assumed to be already there.
     const cookieStore = await cookies()
-    const locale = (cookieStore.get('NEXT_LOCALE')?.value || 'en') as Locale
+    const locale = resolveLocale(cookieStore.get('NEXT_LOCALE')?.value, (await headers()).get('accept-language'))
     const dict = locale === 'ar' ? ar : en
     const t = (key: TranslationKey) => dict[key] || en[key]
 
@@ -70,6 +71,12 @@ export default async function DashboardPage(props: { searchParams: Promise<{ com
             // (not read from the cached stats below) only for the audit-log
             // link's date boundary — a few seconds' difference from the
             // cached query's own internal snapshot doesn't matter for that.
+            // A Server Component: this renders once per request and never
+            // again, so there is no later render for the clock to disagree
+            // with — which is what the purity rule guards against, and why it
+            // is a client-component rule that has no way to know this file
+            // runs on the server.
+            // eslint-disable-next-line react-hooks/purity -- server-rendered once per request
             const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000)
 
             // Cached 30s — this is the same read for every super admin

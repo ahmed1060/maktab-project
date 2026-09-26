@@ -7,6 +7,8 @@ import { useToast } from '@/context/ToastContext'
 import DateTimePicker from '@/components/DateTimePicker'
 import LocationSearchInput from '@/components/LocationSearchInput'
 import { useHydrated } from '@/lib/useHydrated'
+import { useNow } from '@/lib/useNow'
+import { earliestDeadline } from '@/lib/deadline'
 
 // F-23: extracted verbatim out of tasks/new/page.tsx, which had grown to
 // 1386 lines. `bulkTasks`/`setBulkTasks` and `revalidateRow` stay owned by
@@ -31,6 +33,9 @@ export default function BulkTaskReviewModal({
     isOpen, onClose, bulkTasks, setBulkTasks, users, vendors, vendorsName, revalidateRow, isSubmitting, setIsSubmitting
 }: BulkTaskReviewModalProps) {
     const { t, locale } = useLanguage()
+    // The deadline floor offered to the picker, kept current while the form
+    // stays open. See lib/useNow.ts.
+    const now = useNow()
     const { showToast } = useToast()
     const router = useRouter()
 
@@ -500,7 +505,7 @@ export default function BulkTaskReviewModal({
                                                         newTasks[idx] = validated
                                                         setBulkTasks(newTasks)
                                                     }}
-                                                    min={new Date(Date.now() + 3 * 60 * 60 * 1000).toISOString()}
+                                                    min={earliestDeadline(now).toISOString()}
                                                     customTrigger={
                                                         <button
                                                             style={{

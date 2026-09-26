@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useEffectEvent } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { useToast } from '@/context/ToastContext'
@@ -9,6 +9,7 @@ import ConfirmModal from './ConfirmModal'
 import { useLanguage } from '@/context/LanguageContext'
 import LoadingSpinner from './LoadingSpinner'
 import EndContractModal from './EndContractModal'
+import TeamHandOffModal from './TeamHandOffModal'
 
 type EmployeeProfileFormProps = {
     userId: string
@@ -33,14 +34,16 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
     // explicit null in the payload, because absent means "leave it alone" and
     // an Admin resolving a hand-off needs to be able to say "unassign".
     const [teamLeaderId, setTeamLeaderId] = useState('')
+    const [myLeader, setMyLeader] = useState<{ firstName: string; lastName: string } | null>(null)
     const [leaders, setLeaders] = useState<{ id: string; firstName: string; lastName: string }[]>([])
     // Set when the server refuses a change because this person still leads a
     // team. It carries the names, so the modal asks about these people rather
     // than about a count.
     const [handoff, setHandoff] = useState<{ id: string; firstName: string; lastName: string }[] | null>(null)
-    const [handoffTo, setHandoffTo] = useState<string>('')
     const [companies, setCompanies] = useState<{ id: string, name: string }[]>([])
-    const [loading, setLoading] = useState(true)
+    // Nothing to load without a user id; the effect below warns about that
+    // case rather than loading anything.
+    const [loading, setLoading] = useState(Boolean(userId))
     const [saving, setSaving] = useState(false)
     const [uploadingAvatar, setUploadingAvatar] = useState(false)
     const [isResetting, setIsResetting] = useState(false)
@@ -50,6 +53,10 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
     const [originalLastName, setOriginalLastName] = useState('')
     const [showAvatarModal, setShowAvatarModal] = useState(false)
     const [showEndContract, setShowEndContract] = useState(false)
+    // Bumped after ending or reinstating a contract, so the profile reloads and
+    // shows the new status (and the button its opposite action). The view has
+    // no save that would otherwise bring it up to date.
+    const [reloadKey, setReloadKey] = useState(0)
     const [showResetConfirm, setShowResetConfirm] = useState(false)
     const router = useRouter()
     const { data: session, update } = useSession()
@@ -85,9 +92,19 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
         }
     }, [])
 
+    // Read at the moment it fires, not a reason to fetch again: a language
+    // switch should not reload the form under somebody's edits.
+    const reportLoadFailure = useEffectEvent(() => showToast(t('error_generic'), 'error'))
+
+    // Keyed on who is signed in, not on the session object. The session is
+    // refetched every five minutes and comes back as a new object each time;
+    // depending on it re-ran this load and re-seeded every field from the
+    // server, throwing away whatever an Admin was halfway through editing.
+    const sessionUserId = session?.user?.id
+
     useEffect(() => {
         const fetchEmployee = async () => {
-            if (!session) return // Don't fetch if no session (avoids errors on signout)
+            if (!sessionUserId) return // Don't fetch if no session (avoids errors on signout)
             try {
                 const res = await fetch(`/api/users?id=${userId}`, { cache: 'no-store' })
                 const result = await res.json()
@@ -116,10 +133,11 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                 setUsername(employee.username || '')
                 setStatus(employee.status || 'OFFLINE')
                 setTeamLeaderId(employee.teamLeaderId || '')
+                setMyLeader(employee.teamLeader || null)
                 setAvatarUrl(employee.avatar || null)
 
                 // Check for pending name change requests
-                if (userId === session?.user?.id && (employee.role === 'EMPLOYEE' || employee.role === 'TEAM_LEADER')) {
+                if (userId === sessionUserId && (employee.role === 'EMPLOYEE' || employee.role === 'TEAM_LEADER')) {
                     const reqRes = await fetch(`/api/profile-requests?status=PENDING`)
                     if (reqRes.ok) {
                         const result = await reqRes.json()
@@ -130,7 +148,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                     }
                 }
             } catch {
-                showToast(t('error_generic'), 'error')
+                reportLoadFailure()
             } finally {
                 setLoading(false)
             }
@@ -153,7 +171,6 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
             fetchEmployee()
         } else {
             console.warn('EmployeeProfileForm: userId is missing')
-            setLoading(false)
         }
         // Who this employee could be assigned to. Asked for by role rather
         // than fetched wholesale and filtered here — the browser should not be
@@ -176,7 +193,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
         if (userRole === 'SUPER_ADMIN' || userRole === 'ADMIN') {
             fetchLeaders()
         }
-    }, [userId, userRole, showToast, session, t])
+    }, [userId, userRole, sessionUserId, reloadKey])
 
     const handleResetPassword = async (adminPasswordInput: string) => {
         setIsVerifying(true)
@@ -321,7 +338,6 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                     const reports = body?.details?.reports
                     if (Array.isArray(reports) && reports.length > 0) {
                         setHandoff(reports)
-                        setHandoffTo('')
                         setSaving(false)
                         return
                     }
@@ -927,6 +943,28 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                 }
 
                 {
+                    /* Read-only, and only on your own profile. Everywhere else
+                       the field above is an Admin's control; here it is simply
+                       information, because knowing who manages you is not
+                       something you should have to ask a colleague for. */
+                    userId === session?.user?.id && role === 'EMPLOYEE' && (
+                        <div style={{ marginBottom: '1rem' }}>
+                            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('team_leader_yours')}</label>
+                            <p style={{
+                                margin: 0,
+                                padding: '0.6rem 0.75rem',
+                                borderRadius: '0.5rem',
+                                background: 'var(--surface-sunk)',
+                                color: myLeader ? 'var(--text-body)' : 'var(--text-faint)',
+                                textAlign: locale === 'ar' ? 'right' : 'left',
+                            }}>
+                                {myLeader ? `${myLeader.firstName} ${myLeader.lastName}` : t('team_leader_yours_none')}
+                            </p>
+                        </div>
+                    )
+                }
+
+                {
                     /* Only an employee has a team leader — leaders are not led,
                        and an Admin is not managed through this screen. The field
                        disappears rather than greying out when the role above is
@@ -990,8 +1028,13 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                               is the one status change that cannot be undone by
                               picking the previous value again. A separate
                               action, with the settlement shown first.
+
+                              On the profile view, not the edit form: it saves
+                              on its own through its own confirmation, so it
+                              never needed the form, and next to Update it read
+                              as though Update would apply it.
                             */}
-                            {!isViewMode && (
+                            {isViewMode && (
                                 <button
                                     type="button"
                                     className="btn"
@@ -1035,74 +1078,25 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                         name={`${firstName} ${lastName}`.trim() || email}
                         status={status}
                         onClose={() => setShowEndContract(false)}
-                        onDone={() => router.refresh()}
+                        onDone={() => { setReloadKey(k => k + 1); router.refresh() }}
                     />
                 )
             }
 
             {
-                handoff && createPortal(
-                    <div className="modal-overlay">
-                        <div className="modal-content" style={{ maxWidth: '460px', width: '90%' }}>
-                            <div className="modal-header">
-                                <h3 className="modal-title">{t('handoff_title')}</h3>
-                                <button className="modal-close" onClick={() => setHandoff(null)}>&times;</button>
-                            </div>
-                            <div className="modal-body" style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>
-                                <p style={{ marginTop: 0 }}>
-                                    {t('handoff_body')
-                                        .replace('{name}', `${firstName} ${lastName}`.trim())
-                                        .replace('{count}', String(handoff.length))}
-                                </p>
-
-                                {/* Named, not counted. "7 people" is a number
-                                    to accept; a list is a decision an Admin can
-                                    actually make. */}
-                                <ul style={{ margin: '0 0 1rem', [locale === 'ar' ? 'paddingRight' : 'paddingLeft']: '1.25rem', color: 'var(--text-soft)' }}>
-                                    {handoff.map(r => <li key={r.id}>{r.firstName} {r.lastName}</li>)}
-                                </ul>
-
-                                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>{t('handoff_move_to')}</label>
-                                <select
-                                    className="input"
-                                    value={handoffTo}
-                                    onChange={e => setHandoffTo(e.target.value)}
-                                    style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}
-                                >
-                                    <option value="">{t('handoff_unassign')}</option>
-                                    {leaders.filter(l => l.id !== userId).map(l => (
-                                        <option key={l.id} value={l.id}>{l.firstName} {l.lastName}</option>
-                                    ))}
-                                </select>
-                                {handoffTo === '' && (
-                                    <p style={{ marginTop: '0.5rem', fontSize: '0.75rem', color: 'var(--warn-fg)' }}>
-                                        {t('handoff_unassign_note')}
-                                    </p>
-                                )}
-                            </div>
-                            <div className="modal-footer" style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
-                                <button type="button" className="btn" onClick={() => setHandoff(null)} disabled={saving}>
-                                    {t('handoff_cancel')}
-                                </button>
-                                <button
-                                    type="button"
-                                    className="btn btn-primary"
-                                    disabled={saving}
-                                    onClick={() => {
-                                        // The empty option means unassign, so
-                                        // it goes as null rather than "". The
-                                        // same three-state distinction the
-                                        // server relies on.
-                                        setHandoff(null)
-                                        executeSubmit(handoffTo || null)
-                                    }}
-                                >
-                                    {saving ? t('saving') : t('handoff_confirm')}
-                                </button>
-                            </div>
-                        </div>
-                    </div>,
-                    document.body
+                handoff && (
+                    <TeamHandOffModal
+                        leaderId={userId}
+                        leaderName={`${firstName} ${lastName}`.trim()}
+                        reports={handoff}
+                        leaders={leaders}
+                        busy={saving}
+                        onCancel={() => setHandoff(null)}
+                        onConfirm={reassignTo => {
+                            setHandoff(null)
+                            executeSubmit(reassignTo)
+                        }}
+                    />
                 )
             }
             {

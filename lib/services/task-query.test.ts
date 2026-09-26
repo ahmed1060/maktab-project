@@ -143,3 +143,40 @@ describe("a Team Leader is scoped to their team", () => {
         expect(JSON.stringify(scope)).not.toContain("teamLeaderId")
     })
 })
+
+describe("filtering work by team", () => {
+    const admin = { user: { id: "a-1", role: "ADMIN", companyId: "co-1" } }
+
+    it("asks for tasks with at least one assignee on that team", () => {
+        const clauses = (buildTaskWhereClause(admin, new URLSearchParams("teamLeaderId=tl-1"), null) as any).whereClause.AND
+        expect(clauses).toContainEqual({ assignees: { some: { teamLeaderId: "tl-1" } } })
+    })
+
+    it("treats unassigned as a real value", () => {
+        // Work assigned to people nobody manages is visible to no team leader,
+        // so an Admin is the only one who can find it — and only if it is
+        // reachable as a filter value rather than as the absence of one.
+        const clauses = (buildTaskWhereClause(admin, new URLSearchParams("teamLeaderId=unassigned"), null) as any).whereClause.AND
+        expect(clauses).toContainEqual({ assignees: { some: { teamLeaderId: null } } })
+    })
+
+    it("is a filter, so a task spanning two teams answers to both", () => {
+        // The reason this is not a grouping. A task assigned to one person on
+        // each of two teams belongs to both; a grouped view would have to
+        // duplicate it or pick one arbitrarily. Two separate queries, each
+        // matching, is the honest shape — and `some` is what makes that true.
+        for (const team of ["tl-1", "tl-2"]) {
+            const clauses = (buildTaskWhereClause(admin, new URLSearchParams(`teamLeaderId=${team}`), null) as any).whereClause.AND
+            expect(clauses).toContainEqual({ assignees: { some: { teamLeaderId: team } } })
+        }
+    })
+
+    it("cannot widen a Team Leader's scope", () => {
+        // A leader asking for another team gets the intersection of "my team"
+        // and "their team", which is empty — not the other team's work.
+        const leader = { user: { id: "tl-1", role: "TEAM_LEADER", companyId: "co-1" } }
+        const clauses = (buildTaskWhereClause(leader, new URLSearchParams("teamLeaderId=tl-2"), null) as any).whereClause.AND
+        expect(clauses).toContainEqual({ assignees: { some: { OR: [{ teamLeaderId: "tl-1" }, { id: "tl-1" }] } } })
+        expect(clauses).toContainEqual({ assignees: { some: { teamLeaderId: "tl-2" } } })
+    })
+})

@@ -5,7 +5,7 @@ import { isValidTaskStatus } from "@/lib/valid-enums"
 import TasksClient from "./TasksClient"
 import { and, assignedToReportsWhere } from '@/lib/team-scope'
 
-export default async function TasksPage(props: { searchParams: Promise<{ company?: string, page?: string, status?: string, search?: string, employeeId?: string, view?: string, dateFrom?: string, dateTo?: string }> }) {
+export default async function TasksPage(props: { searchParams: Promise<{ company?: string, page?: string, status?: string, search?: string, employeeId?: string, teamLeaderId?: string, view?: string, dateFrom?: string, dateTo?: string }> }) {
     // Next 15 hands a page its dynamic segments and query string as
     // promises rather than plain objects, so they are awaited here and
     // the rest of the function reads them exactly as it did before.
@@ -74,6 +74,14 @@ export default async function TasksPage(props: { searchParams: Promise<{ company
     }
     if (searchParams.search) {
         whereClause.title = { contains: searchParams.search, mode: 'insensitive' }
+    }
+    if (searchParams.teamLeaderId) {
+        // Same rule as the API's: at least one assignee on that team, and
+        // `and` so it narrows whatever scope is already in place rather than
+        // replacing it.
+        and(whereClause, searchParams.teamLeaderId === 'unassigned'
+            ? { assignees: { some: { teamLeaderId: null } } }
+            : { assignees: { some: { teamLeaderId: searchParams.teamLeaderId } } })
     }
     if (searchParams.employeeId) {
         // `and`, not assignment. This line used to be

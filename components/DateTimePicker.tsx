@@ -31,19 +31,20 @@ export default function DateTimePicker({ value, onChange, label, min, customTrig
         return () => window.removeEventListener('resize', checkMobile)
     }, [])
 
-    useEffect(() => {
+    // Opening jumps the calendar to the selected month, or to the earliest
+    // allowed month when nothing valid is selected. Done in the click that
+    // opens it rather than in an effect watching isOpen, which painted the
+    // stale month first and then corrected it.
+    const toggleOpen = () => {
         if (isOpen) {
-            const now = new Date()
-            const minDate = min ? new Date(min) : now
-
-            if (selectedDate && selectedDate >= minDate) {
-                setCurrentMonth(new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1))
-            } else {
-                // If past date or no date, show current month (or min date month)
-                setCurrentMonth(new Date(minDate.getFullYear(), minDate.getMonth(), 1))
-            }
+            setIsOpen(false)
+            return
         }
-    }, [isOpen, selectedDate, min])
+        const minDate = min ? new Date(min) : new Date()
+        const shown = selectedDate && selectedDate >= minDate ? selectedDate : minDate
+        setCurrentMonth(new Date(shown.getFullYear(), shown.getMonth(), 1))
+        setIsOpen(true)
+    }
 
     // Close dropdown when clicking outside
     useEffect(() => {
@@ -163,12 +164,12 @@ export default function DateTimePicker({ value, onChange, label, min, customTrig
         <div ref={containerRef} style={{ position: 'relative', width: '100%', direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
             {label && <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600', textAlign: locale === 'ar' ? 'right' : 'left' }}>{label}</label>}
             {customTrigger ? (
-                <div onClick={() => setIsOpen(!isOpen)}>
+                <div onClick={toggleOpen}>
                     {customTrigger}
                 </div>
             ) : (
                 <div
-                    onClick={() => setIsOpen(!isOpen)}
+                    onClick={toggleOpen}
                     style={{
                         padding: '0.625rem 1rem',
                         borderRadius: '1rem',
