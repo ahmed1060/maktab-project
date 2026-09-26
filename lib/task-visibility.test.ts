@@ -79,9 +79,10 @@ describe("an employee's payload carries only their own cost", () => {
         // disclosure with an extra step.
         expect(PAGE).toMatch(/function visibleMemberCosts/)
         expect(PAGE).toMatch(/memberCosts:\s*visibleMemberCosts\(task\.memberCosts\)/)
+        // The rule itself — everything with tasks.view, one's own line without
+        // it — is shapeTask's, tested in lib/permissions/shape/shape.test.ts.
         const fn = PAGE.slice(PAGE.indexOf("function visibleMemberCosts"))
-        expect(fn).toMatch(/scope !== null \|\| !raw/)
-        expect(fn, "it must keep the employee's own entry").toMatch(/\[userId\]:\s*parsed\[userId\]/)
+        expect(fn).toMatch(/shapeTask\(viewer,/)
     })
 })
 
@@ -94,8 +95,7 @@ describe("the task detail page narrows it too", () => {
         expect(DETAIL).toMatch(/visibleMemberCosts/)
         expect(DETAIL).toMatch(/memberCosts:\s*visibleMemberCosts/)
         const fn = DETAIL.slice(DETAIL.indexOf("const visibleMemberCosts"))
-        expect(fn).toMatch(/seesOthersTasks \|\| !raw/)
-        expect(fn, "the employee's own entry must survive").toMatch(/\[userId\]:\s*parsed\[userId\]/)
+        expect(fn).toMatch(/shapeTask\(viewer,/)
     })
 
     it("still spreads the row, so a new sensitive column would be caught by review not by luck", () => {

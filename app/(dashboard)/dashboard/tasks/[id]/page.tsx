@@ -5,6 +5,7 @@ import { verifyResourceAccess } from "@/lib/security"
 import AccessDenied from "@/components/AccessDenied"
 import TaskDetailClient from "./client"
 import { can } from '@/lib/permissions/can'
+import { shapeTask } from '@/lib/permissions/shape'
 
 export default async function TaskDetailPage(props: { params: Promise<{ id: string }> }) {
     // Next 15 hands a page its dynamic segments and query string as
@@ -68,29 +69,16 @@ export default async function TaskDetailPage(props: { params: Promise<{ id: stri
     }
 
     // Someone who does not see others' tasks, looking at one they are not on.
-    const seesOthersTasks = can((session?.user ?? { role: null }) as any, 'tasks.view')
+    const viewer = (session?.user ?? { role: null }) as any
+    const seesOthersTasks = can(viewer, 'tasks.view')
     const isRestricted = !seesOthersTasks && !isAssigned
 
-    /**
-     * memberCosts maps each assignee to what they are paid for this task.
-     *
-     * TaskCostsSection already shows an employee only their own figure, as "My
-     * Total Cost", beside the task's grand total — a manager gets the
-     * breakdown, an employee does not. But the whole map was serialised into
-     * the page regardless, so on a task with three assignees any one of them
-     * could read the other two's rate out of the source.
-     *
-     * The same narrowing the tasks list does, for the same reason: the screen
-     * being right is not the same as the payload being right, and the next
-     * component handed this object need not be as careful as this one.
-     */
-    const visibleMemberCosts = (() => {
-        const raw = (task as any).memberCosts
-        if (seesOthersTasks || !raw) return raw
-        const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw
-        if (!parsed || typeof parsed !== 'object') return raw
-        return userId in parsed ? { [userId]: parsed[userId] } : {}
-    })()
+    // What each assignee is paid: all of it for someone who sees others'
+    // tasks, only their own line for anybody else. shapeTask is the one rule,
+    // shared with the task list and the task routes — the whole map used to be
+    // serialised into the page, so any assignee could read the others' rates
+    // out of the source.
+    const visibleMemberCosts = shapeTask(viewer, { memberCosts: (task as any).memberCosts }).memberCosts
 
     // totalCost is a Prisma.Decimal (F-07) — Server Components can only pass
     // plain serializable values to Client Components.

@@ -9,6 +9,7 @@ import { parsePaging } from "@/lib/pagination"
 import { buildUserWhereClause } from "@/lib/services/user-query"
 import { verifyResourceAccess } from "@/lib/security"
 import { can } from "@/lib/permissions/can"
+import { shapeUser } from "@/lib/permissions/shape"
 
 // F-13: role/status are now Postgres enums, not free text — a query-param
 // value that isn't a real enum member makes Postgres reject the whole
@@ -58,15 +59,9 @@ export const GET = withStandardHandler(async (req, session) => {
             }
         })
 
-        if (user) {
-            const canViewSalary = can(session.user, "salary.view") || session.user.id === userId
-            return ApiResponse.success({
-                ...user,
-                // Number(), not the raw Decimal — Decimal.toJSON() returns a
-                // string, which would silently change this response field's type.
-                salary: canViewSalary ? Number(user.salary) : undefined
-            })
-        }
+        // Salary is the viewer's own or salary.view's — shapeUser decides, as
+        // it does for every response that can carry one.
+        if (user) return ApiResponse.success(shapeUser(session.user, user))
 
         const superAdmin = await prisma.superAdmin.findUnique({
             where: { id: userId },
@@ -213,7 +208,7 @@ export const PUT = withStandardHandler(async (req, session, json) => {
     try {
         // 3. Service
         const result = await UserService.update(validation.data, session)
-        return ApiResponse.success(result)
+        return ApiResponse.success(shapeUser(session.user, result as any))
     } catch (error: any) {
         // 4. Error Mapping
         if (error.message === 'USER_NOT_FOUND') return ApiResponse.notFound("User not found")

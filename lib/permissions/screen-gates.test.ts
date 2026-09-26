@@ -118,7 +118,7 @@ const GATES: Gate[] = [
     { what: "task list: own only", file: D + "tasks/page.tsx", uses: "if (scope === null)", before: r => r === "EMPLOYEE", now: p => p.scope("tasks.view") === null },
     { what: "task list: team views", file: D + "tasks/page.tsx", uses: "} else if (scope === 'TEAM') {", before: r => r === "TEAM_LEADER", now: p => p.scope("tasks.view") === "TEAM" },
     { what: "task list: company", file: D + "tasks/page.tsx", uses: "} else if (scope === 'COMPANY') {", before: r => r === "ADMIN", now: p => p.scope("tasks.view") === "COMPANY" },
-    { what: "task page: sees others' tasks", file: D + "tasks/[id]/page.tsx", uses: "can((session?.user ?? { role: null }) as any, 'tasks.view')", before: r => r !== "EMPLOYEE", now: p => p.can("tasks.view") },
+    { what: "task page: sees others' tasks", file: D + "tasks/[id]/page.tsx", uses: "const seesOthersTasks = can(viewer, 'tasks.view')", before: r => r !== "EMPLOYEE", now: p => p.can("tasks.view") },
     { what: "tasks: tabs", file: D + "tasks/TasksClient.tsx", uses: "{reach === 'TEAM' && (", before: r => r === "TEAM_LEADER", now: p => p.scope("tasks.view") === "TEAM" },
     { what: "tasks: employee filters", file: D + "tasks/TasksClient.tsx", uses: "isEmployee={reach === null}", before: r => r === "EMPLOYEE", now: p => p.scope("tasks.view") === null },
     { what: "tasks: create", file: D + "tasks/TasksClient.tsx", uses: "can('tasks.create') && (", before: managers, now: p => p.can("tasks.create") },

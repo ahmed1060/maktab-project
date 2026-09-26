@@ -5,6 +5,7 @@ import { isValidTaskStatus } from "@/lib/valid-enums"
 import TasksClient from "./TasksClient"
 import { and, assignedToReportsWhere } from '@/lib/team-scope'
 import { grantFor } from '@/lib/permissions/can'
+import { shapeTask } from '@/lib/permissions/shape'
 
 export default async function TasksPage(props: { searchParams: Promise<{ company?: string, page?: string, status?: string, search?: string, employeeId?: string, teamLeaderId?: string, view?: string, dateFrom?: string, dateTo?: string }> }) {
     // Next 15 hands a page its dynamic segments and query string as
@@ -124,23 +125,13 @@ export default async function TasksPage(props: { searchParams: Promise<{ company
         (prisma.task as any).count({ where: whereClause })
     ])
 
-    /**
-     * memberCosts is a map of assignee id to what that person is paid for the
-     * task. An employee's own entry is theirs to see — TaskListItem draws it as
-     * "My Cost" — and the rest of the map is not.
-     *
-     * The list renders only `memberCosts[currentUserId]`, so nothing else was
-     * ever on screen. It was in the HTML, though, which is the same disclosure
-     * with an extra step: on a task with three assignees, any one of them could
-     * read the other two's rate out of the page source. Narrowed here, at the
-     * boundary, rather than trusting every present and future component that
-     * receives this object to keep ignoring the rest.
-     */
+    // Each task as this viewer may see it: someone without tasks.view — an
+    // employee — gets only their own line of what each assignee is paid.
+    // memberCosts used to be serialised whole, so on a shared task any one
+    // assignee could read the others' rates out of the page source.
+    const viewer = (session?.user ?? { role: null }) as any
     function visibleMemberCosts(raw: any) {
-        if (scope !== null || !raw) return raw
-        const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw
-        if (!parsed || typeof parsed !== 'object') return raw
-        return userId in parsed ? { [userId]: parsed[userId] } : {}
+        return shapeTask(viewer, { memberCosts: raw }).memberCosts
     }
 
     // totalCost is a Prisma.Decimal (F-07) — Server Components can only pass
