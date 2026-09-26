@@ -250,7 +250,11 @@ export class UserService {
             // Each field is its own permission: changing a salary and changing a
             // leave balance are different acts, and in Part B a company can give
             // them to different people.
-            if (salary !== undefined && can(session.user, "salary.edit")) {
+            // The person being edited: a grant's scope, and the rule that
+            // nobody sets their own pay or allowance (ROLES_PLAN.md §4.2,
+            // rule 5), are checked against them.
+            const person = { companyId: regularUser.companyId, userId: regularUser.id, teamLeaderId: regularUser.teamLeaderId }
+            if (salary !== undefined && can(session.user, "salary.edit", person)) {
                 // Deliberately not written here. A salary change is an
                 // effective-dated fact, not a field edit: it has to land in
                 // SalaryChange as well, and the two have to move together or a
@@ -260,7 +264,7 @@ export class UserService {
                 // update has succeeded.
                 updateData.salary = salary
             }
-            if (can(session.user, "dayoff.adjust_credit")) {
+            if (can(session.user, "dayoff.adjust_credit", person)) {
                 if (dayOffCredit !== undefined) updateData.dayOffCredit = dayOffCredit
                 if (baseDayOffCredit !== undefined) {
                     updateData.baseDayOffCredit = baseDayOffCredit

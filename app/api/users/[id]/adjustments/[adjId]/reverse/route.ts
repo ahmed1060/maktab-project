@@ -1,7 +1,7 @@
 import { withStandardHandler } from "@/lib/api-utils"
 import { ApiResponse } from "@/lib/api-response"
 import { SalaryService } from "@/lib/services/salary.service"
-import { verifyResourceAccess } from "@/lib/security"
+import { verifyResourceAccess, personTarget } from "@/lib/security"
 import { can } from "@/lib/permissions/can"
 
 /**
@@ -19,6 +19,12 @@ export const POST = withStandardHandler(async (req, session, json, { params }) =
 
     if (!can(session.user, "salary_adjustments.manage")) {
         return ApiResponse.forbidden()
+    }
+
+    // Nobody adjusts their own pay (ROLES_PLAN.md §4.2, rule 5).
+    const person = await personTarget(userId)
+    if (!person || !can(session.user, "salary_adjustments.manage", person)) {
+        return ApiResponse.forbidden("You cannot adjust your own pay")
     }
 
     const reason = typeof json?.reason === 'string' ? json.reason : undefined

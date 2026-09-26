@@ -46,6 +46,13 @@ type PermissionDefinition = {
     scopes: readonly Scope[]
     highRisk?: string
     implies?: readonly string[]
+    /**
+     * Never about oneself (ROLES_PLAN.md §4.2, rule 5): nobody approves their
+     * own leave, sets their own pay or allowance, or decides their own name
+     * change, whatever their role holds. can() refuses it whenever the target
+     * is the actor, so no route has to remember to.
+     */
+    notOnOwn?: true
 }
 
 const TEAM_OR_COMPANY = ["TEAM", "COMPANY"] as const
@@ -67,7 +74,7 @@ export const PERMISSIONS = {
     "employees.request_role":   { code: 10, module: "EMPLOYEES", scopes: COMPANY, implies: ["employees.view"] },
 
     // --- Profile requests and internal requests ---------------------------
-    "profile_requests.review":  { code: 11, module: "PROFILE_REQUESTS", scopes: COMPANY },
+    "profile_requests.review":  { code: 11, module: "PROFILE_REQUESTS", scopes: COMPANY, notOnOwn: true },
     "requests.view":            { code: 12, module: "REQUESTS", scopes: TEAM_OR_COMPANY },
     "requests.review":          { code: 13, module: "REQUESTS", scopes: TEAM_OR_COMPANY, implies: ["requests.view"] },
     "requests.reset_points":    { code: 14, module: "REQUESTS", scopes: COMPANY, implies: ["requests.view"] },
@@ -99,16 +106,16 @@ export const PERMISSIONS = {
 
     // --- Day off -----------------------------------------------------------
     "dayoff.view":              { code: 32, module: "DAY_OFF", scopes: TEAM_OR_COMPANY },
-    "dayoff.approve":           { code: 33, module: "DAY_OFF", scopes: TEAM_OR_COMPANY, implies: ["dayoff.view"] },
-    "dayoff.adjust_credit":     { code: 34, module: "DAY_OFF", scopes: COMPANY, implies: ["dayoff.view"] },
+    "dayoff.approve":           { code: 33, module: "DAY_OFF", scopes: TEAM_OR_COMPANY, implies: ["dayoff.view"], notOnOwn: true },
+    "dayoff.adjust_credit":     { code: 34, module: "DAY_OFF", scopes: COMPANY, implies: ["dayoff.view"], notOnOwn: true },
 
     // --- Salaries ----------------------------------------------------------
     // One permission for seeing a salary anywhere — profile, history, payroll,
     // payslips (decided, ROLES_PLAN.md §3.2). Its module is settled when the
     // Employees screens migrate, since a salary is shown there too.
     "salary.view":              { code: 35, module: null, scopes: TEAM_OR_COMPANY },
-    "salary.edit":              { code: 36, module: null, scopes: COMPANY, implies: ["salary.view"], highRisk: MOVES_MONEY },
-    "salary_adjustments.manage": { code: 37, module: "SALARY_ADJUSTMENTS", scopes: COMPANY, implies: ["salary.view"], highRisk: MOVES_MONEY },
+    "salary.edit":              { code: 36, module: null, scopes: COMPANY, implies: ["salary.view"], highRisk: MOVES_MONEY, notOnOwn: true },
+    "salary_adjustments.manage": { code: 37, module: "SALARY_ADJUSTMENTS", scopes: COMPANY, implies: ["salary.view"], highRisk: MOVES_MONEY, notOnOwn: true },
 
     // --- Payroll -----------------------------------------------------------
     "payroll.view":             { code: 38, module: "PAYROLL", scopes: COMPANY, implies: ["salary.view"] },

@@ -1,4 +1,4 @@
-import type { Permission, Scope } from "./catalogue"
+import { definitionOf, type Permission, type Scope } from "./catalogue"
 import { decodeGrants } from "./grants"
 
 /**
@@ -54,6 +54,9 @@ export function grantFor(actor: Actor, permission: Permission): Scope | "ALL" | 
  * guesses, because every one of those is the shape a tenancy leak takes.
  */
 export function can(actor: Actor, permission: Permission, target?: Target): boolean {
+    // Before the grant, and for everyone: rule 5 is not something a role can
+    // hold its way past.
+    if (target?.userId && actor.id && target.userId === actor.id && definitionOf(permission).notOnOwn) return false
     const scope = grantFor(actor, permission)
     if (scope === null) return false
     if (scope === "ALL") return true

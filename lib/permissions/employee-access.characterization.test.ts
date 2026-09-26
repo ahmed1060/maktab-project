@@ -81,8 +81,16 @@ const EDITS: Case[] = [
     {
         name: "an Admin's salary",
         run: put({ id: "admin", salary: 5000 }),
-        // Recorded as it is: the Admin may change their own.
-        expected: c1Managers("salary"),
+        // Fixed in Part B: nobody sets their own pay (ROLES_PLAN.md §4.2,
+        // rule 5) — accepted, salary ignored, as for an employee. Recorded
+        // first as the Admin changing their own.
+        expected: c1Managers("salary", { admin: [200, ""] }),
+    },
+    {
+        name: "an Admin's own leave allowance",
+        run: put({ id: "admin", baseDayOffCredit: 30 }),
+        // Nobody sets their own allowance either.
+        expected: c1Managers("baseDayOffCredit,dayOffCredit", { admin: [200, ""] }),
     },
     {
         name: "changing a leave balance",

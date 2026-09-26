@@ -63,9 +63,12 @@ export class ProfileService {
         if (!request) throw new Error("REQUEST_NOT_FOUND")
         if (request.status !== 'PENDING') throw new Error("REQUEST_ALREADY_PROCESSED")
 
-        const { verifyResourceAccess } = await import("@/lib/security")
+        const { verifyResourceAccess, personTarget } = await import("@/lib/security")
         const hasAccess = await verifyResourceAccess(session, request.userId, 'USER')
         if (!hasAccess) throw new Error("ACCESS_DENIED")
+        // Nobody decides their own name change (ROLES_PLAN.md §4.2, rule 5).
+        const person = await personTarget(request.userId)
+        if (!person || !can(session.user, "profile_requests.review", person)) throw new Error("OWN_REQUEST")
 
         return await prisma.$transaction(async (tx) => {
             await tx.user.update({
@@ -105,9 +108,12 @@ export class ProfileService {
         if (!request) throw new Error("REQUEST_NOT_FOUND")
         if (request.status !== 'PENDING') throw new Error("REQUEST_ALREADY_PROCESSED")
 
-        const { verifyResourceAccess } = await import("@/lib/security")
+        const { verifyResourceAccess, personTarget } = await import("@/lib/security")
         const hasAccess = await verifyResourceAccess(session, request.userId, 'USER')
         if (!hasAccess) throw new Error("ACCESS_DENIED")
+        // Nobody decides their own name change (ROLES_PLAN.md §4.2, rule 5).
+        const person = await personTarget(request.userId)
+        if (!person || !can(session.user, "profile_requests.review", person)) throw new Error("OWN_REQUEST")
 
         return await prisma.$transaction(async (tx) => {
             await tx.profileUpdateRequest.update({

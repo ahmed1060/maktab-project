@@ -25,6 +25,12 @@ export type Can = {
      * a screen that shows a team view where others see the company's.
      */
     scope: (permission: Permission) => Scope | "ALL" | null
+    /**
+     * Whether they may do this to the person with this id in their own
+     * company — for a decision about somebody, where who it is matters: nobody
+     * approves their own leave or sets their own pay.
+     */
+    canFor: (permission: Permission, userId: string | null | undefined) => boolean
 }
 
 /**
@@ -38,6 +44,7 @@ export function permissionsOf(actor: Actor | null | undefined): Can {
         can: (permission, target) => !!who && can(who, permission, target),
         companyWide: permission => !!who && canCompanyWide(who, permission),
         scope: permission => who ? grantFor(who, permission) : null,
+        canFor: (permission, userId) => !!who && !!userId && can(who, permission, { companyId: who.companyId, userId }),
     }
 }
 

@@ -27,7 +27,7 @@ const requestRow = (id: string) => {
 }
 
 const profileRow = (id: string) => {
-    const userId = ({ "p-emp": "emp", "p-other": "other" } as Record<string, string>)[id]
+    const userId = ({ "p-emp": "emp", "p-other": "other", "p-admin": "admin" } as Record<string, string>)[id]
     return userId ? { id, userId, status: "PENDING", oldFirstName: "A", oldLastName: "B", newFirstName: "C", newLastName: "D" } : null
 }
 

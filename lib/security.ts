@@ -1,5 +1,6 @@
 import { prisma } from "./prisma";
 import { scopesToTeam } from "./team-scope";
+import type { Target } from "./permissions/can";
 
 /**
  * Whether this session may touch this resource.
@@ -118,4 +119,18 @@ export function isTeamWork(
     leaderId: string,
 ): boolean {
     return assignees.some(a => a.id === leaderId || a.teamLeaderId === leaderId);
+}
+
+/**
+ * A person as can() reads a target: their company, their id and their leader.
+ * For the decisions that are about somebody — their pay, their leave, their
+ * name — so a grant's scope, and the rule that nobody decides their own, are
+ * checked against the right person. Null for nobody.
+ */
+export async function personTarget(userId: string): Promise<Target | null> {
+    const person = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { id: true, companyId: true, teamLeaderId: true },
+    })
+    return person ? { companyId: person.companyId, userId: person.id, teamLeaderId: person.teamLeaderId } : null
 }

@@ -58,7 +58,7 @@ export default function DayOffRequestsPage() {
     const user = session?.user
     // The manager's view — the company's requests, not one's own — is for
     // those who may see them; deciding one is narrower still.
-    const { can } = useCan()
+    const { can, canFor } = useCan()
     const managesRequests = can('dayoff.view')
     const canDecide = can('dayoff.approve')
     const { selectedCompanyId: contextCompanyId } = useCompany()
@@ -564,7 +564,7 @@ export default function DayOffRequestsPage() {
                                     </div>
 
                                     {/* Card Actions (Admin only) */}
-                                    {canDecide && req.status === 'PENDING' && (
+                                    {canDecide && req.status === 'PENDING' && canFor('dayoff.approve', req.userId) && (
                                         <div style={{ display: 'flex', gap: '0.75rem', marginTop: 'auto', paddingTop: '1rem', borderTop: '1px dashed var(--border)' }}>
                                             <button
                                                 onClick={() => handleAction(req.id, 'APPROVED')}

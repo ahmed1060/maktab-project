@@ -21,6 +21,7 @@ const state = { session: null as any }
 const USERS: Record<string, any> = {
     emp:   { id: "emp",   companyId: "c1", teamLeaderId: "tl" },
     tl:    { id: "tl",    companyId: "c1", teamLeaderId: null },
+    admin: { id: "admin", companyId: "c1", teamLeaderId: null },
     other: { id: "other", companyId: "c2", teamLeaderId: null },
 }
 
@@ -109,6 +110,18 @@ const CASES: Case[] = [
         expected: { ...MANAGERS_OF_C1, leader: 200 },
     },
     { name: "another company's employee's salary history", run: history("other"), expected: MANAGERS_OF_C2 },
+    // Added in Part B: nobody adjusts their own pay (ROLES_PLAN.md §4.2,
+    // rule 5). The Admin may adjust anyone's in their company but their own.
+    ...(["bonus", "deduction"] as const).map((kind): Case => ({
+        name: `a ${kind} on the Admin's own pay`,
+        run: async () => (await import(`@/app/api/users/[id]/${kind}/route`)).POST(post(`/api/users/admin/${kind}`, { amount: 1, reason: "r" }), { params: { id: "admin" } }),
+        expected: { ...MANAGERS_OF_C1, admin: 403 },
+    })),
+    ...(["reverse", "rollback"] as const).map((action): Case => ({
+        name: `${action === "reverse" ? "reversing" : "rolling back"} an adjustment to the Admin's own pay`,
+        run: async () => (await import(`@/app/api/users/[id]/adjustments/[adjId]/${action}/route`)).POST(post(`/api/users/admin/adjustments/a1/${action}`, { reason: "r" }), { params: { id: "admin", adjId: "a1" } }),
+        expected: { ...MANAGERS_OF_C1, admin: 403 },
+    })),
 ]
 
 describe("salaries and adjustments — recorded access", () => {

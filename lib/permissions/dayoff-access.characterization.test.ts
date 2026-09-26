@@ -156,8 +156,14 @@ const CASES: Case[] = [
     { name: "approving an employee's request", run: () => patch("pending-emp", { status: "APPROVED" }), expected: MANAGERS_OF_C1 },
     { name: "rejecting an employee's request", run: () => patch("pending-emp", { status: "REJECTED", rejectionReason: "busy" }), expected: MANAGERS_OF_C1 },
     {
-        // Recorded as it is: the Admin whose request it is may approve it.
-        name: "approving the Admin's own request", run: () => patch("pending-admin", { status: "APPROVED" }), expected: MANAGERS_OF_C1,
+        // Fixed in Part B: nobody approves their own request (ROLES_PLAN.md
+        // §4.2, rule 5). Recorded first as allowed for the Admin whose it is.
+        name: "approving the Admin's own request", run: () => patch("pending-admin", { status: "APPROVED" }),
+        expected: { ...MANAGERS_OF_C1, admin: 403 },
+    },
+    {
+        name: "rejecting the Admin's own request", run: () => patch("pending-admin", { status: "REJECTED", rejectionReason: "busy" }),
+        expected: { ...MANAGERS_OF_C1, admin: 403 },
     },
     {
         name: "re-evaluating an approved request",

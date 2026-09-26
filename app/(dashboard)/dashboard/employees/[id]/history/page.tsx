@@ -101,10 +101,11 @@ export default function EmployeeHistoryPage() {
     const { t, locale } = useLanguage()
     const params = useParams()
     const router = useRouter()
-    const { can } = useCan()
+    const { can, canFor } = useCan()
     // Each part of the page asks for the permission its route checks.
     const canSeeSalary = can('salary.view')
-    const canAdjust = can('salary_adjustments.manage')
+    // Anyone's pay but their own (ROLES_PLAN.md §4.2, rule 5).
+    const canAdjust = canFor('salary_adjustments.manage', params.id as string | undefined)
     const canReevaluateDayOff = can('dayoff.approve')
 
     const [reevaluating, setReevaluating] = useState(false)

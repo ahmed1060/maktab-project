@@ -127,3 +127,27 @@ describe("canCompanyWide", () => {
         expect(canCompanyWide(withGrants({ id: "e", role: "EMPLOYEE", companyId: "c1" }), "obligations.manage")).toBe(false)
     })
 })
+
+describe("nobody decides their own (ROLES_PLAN.md §4.2, rule 5)", () => {
+    const admin = withGrants({ id: "a", role: "ADMIN", companyId: "c1" })
+    const own = { companyId: "c1", userId: "a", teamLeaderId: null }
+    const someoneElse = { companyId: "c1", userId: "e", teamLeaderId: null }
+
+    for (const permission of ["dayoff.approve", "dayoff.adjust_credit", "salary.edit", "salary_adjustments.manage", "profile_requests.review"] as const) {
+        it(`refuses ${permission} on oneself, and allows it on someone else`, () => {
+            expect(can(admin, permission, own)).toBe(false)
+            expect(can(admin, permission, someoneElse)).toBe(true)
+        })
+    }
+
+    it("leaves every other permission alone on oneself", () => {
+        expect(can(admin, "employees.edit", own)).toBe(true)
+        expect(can(admin, "tasks.review", own)).toBe(true)
+    })
+
+    it("is a rule of the permission, which no grant outranks", () => {
+        // Checked before the grant is read: holding it company-wide, or
+        // everywhere, does not make one's own request someone else's.
+        expect(can({ id: "sa", role: "SUPER_ADMIN", companyId: null }, "dayoff.approve", { companyId: "c1", userId: "sa" })).toBe(false)
+    })
+})

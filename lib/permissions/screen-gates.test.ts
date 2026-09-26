@@ -39,7 +39,7 @@ type Gate = {
     file: string | string[]
     uses: string
     before: (role: Role, flag: boolean) => boolean
-    now: (p: Can, flag: boolean) => boolean
+    now: (p: Can, flag: boolean, role: Role) => boolean
 }
 
 const managers = (r: Role) => ["ADMIN", "SUPER_ADMIN", "TEAM_LEADER"].includes(r)
@@ -62,7 +62,7 @@ const GATES: Gate[] = [
     { what: "costs: pay everything", file: D + "costs/CostsClient.tsx", uses: "companyWide('tasks.pay') && total > 0", before: admins, now: p => p.companyWide("tasks.pay") },
 
     // --- Requests and name changes ---------------------------------------------
-    { what: "name changes: page", file: D + "profile-requests/page.tsx", uses: "const canReview = useCan().can('profile_requests.review')", before: r => r === "ADMIN" || r === "SUPER_ADMIN", now: p => p.can("profile_requests.review") },
+    { what: "name changes: page", file: D + "profile-requests/page.tsx", uses: "const canReview = permissions.can('profile_requests.review')", before: r => r === "ADMIN" || r === "SUPER_ADMIN", now: p => p.can("profile_requests.review") },
     { what: "name changes: header counter", file: "components/DashboardHeader.tsx", uses: "permissionsOf(currentUser as any).can('profile_requests.review')", before: admins, now: p => p.can("profile_requests.review") },
     { what: "request card: who raised it", file: "components/requests/RequestCard.tsx", uses: "const canSeeWho = can('requests.view')", before: managers, now: p => p.can("requests.view") },
     { what: "request card: change status", file: "components/requests/RequestCard.tsx", uses: "const canReview = can('requests.review')", before: managers, now: p => p.can("requests.review") },
@@ -81,6 +81,9 @@ const GATES: Gate[] = [
     // --- Day off and payroll ---------------------------------------------------
     { what: "day off: the company's requests", file: D + "day-off-requests/page.tsx", uses: "const managesRequests = can('dayoff.view')", before: admins, now: p => p.can("dayoff.view") },
     { what: "day off: decide", file: D + "day-off-requests/page.tsx", uses: "const canDecide = can('dayoff.approve')", before: admins, now: p => p.can("dayoff.approve") },
+    // Added in Part B: the buttons on one request, never one's own.
+    { what: "day off: decide this one (flag: one's own)", file: D + "day-off-requests/page.tsx", uses: "canFor('dayoff.approve', req.userId)", before: (r, own) => admins(r) && !own, now: (p, own, role) => p.canFor("dayoff.approve", own ? ACTOR[role].id : "someone-else") },
+    { what: "name changes: decide this one (flag: one's own)", file: D + "profile-requests/page.tsx", uses: "permissions.canFor('profile_requests.review', req.userId)", before: (r, own) => admins(r) && !own, now: (p, own, role) => p.canFor("profile_requests.review", own ? ACTOR[role].id : "someone-else") },
     { what: "payroll: save draft", file: D + "payroll/page.tsx", uses: "const canPrepare = can('payroll.prepare')", before: admins, now: p => p.can("payroll.prepare") },
     { what: "payroll: approve", file: D + "payroll/page.tsx", uses: "const canApprove = can('payroll.approve')", before: admins, now: p => p.can("payroll.approve") },
     { what: "payroll: delivery", file: D + "payroll/page.tsx", uses: "const canDeliver = can('payroll.issue_payslips') || can('payroll.mark_paid')", before: admins, now: p => p.can("payroll.issue_payslips") || p.can("payroll.mark_paid") },
@@ -90,7 +93,9 @@ const GATES: Gate[] = [
     { what: "history: settlements", file: D + "employees/[id]/history/page.tsx", uses: "can('settlements.manage') && id", before: admins, now: p => p.can("settlements.manage") },
     { what: "history: debts", file: D + "employees/[id]/history/page.tsx", uses: "can('debts.view') && id", before: admins, now: p => p.can("debts.view") },
     { what: "history: salary label", file: D + "employees/[id]/history/page.tsx", uses: "const canSeeSalary = can('salary.view')", before: admins, now: p => p.can("salary.view") },
-    { what: "history: adjustments", file: D + "employees/[id]/history/page.tsx", uses: "const canAdjust = can('salary_adjustments.manage')", before: admins, now: p => p.can("salary_adjustments.manage") },
+    // Changed in Part B: not on one's own pay (ROLES_PLAN.md §4.2, rule 5).
+    // Recorded first as admins(r), own page or not.
+    { what: "history: adjustments (flag: one's own page)", file: D + "employees/[id]/history/page.tsx", uses: "const canAdjust = canFor('salary_adjustments.manage', params.id as string | undefined)", before: (r, own) => admins(r) && !own, now: (p, own, role) => p.canFor("salary_adjustments.manage", own ? ACTOR[role].id : "someone-else") },
     { what: "history: re-evaluate day off", file: D + "employees/[id]/history/page.tsx", uses: "const canReevaluateDayOff = can('dayoff.approve')", before: admins, now: p => p.can("dayoff.approve") },
     { what: "new employee: team leader", file: D + "employees/new/page.tsx", uses: "const canAssignTeam = can('employees.assign_team')", before: r => r === "SUPER_ADMIN" || r === "ADMIN", now: p => p.can("employees.assign_team") },
     { what: "new employee: role", file: D + "employees/new/page.tsx", uses: "const canAssignRole = can('employees.assign_role')", before: r => r === "SUPER_ADMIN" || r === "ADMIN", now: p => p.can("employees.assign_role") },
@@ -191,7 +196,7 @@ describe("each screen gate asks what it replaced", () => {
             for (const role of ROLES) {
                 for (const flag of [false, true]) {
                     it(`answers as before for ${role}${flag ? " (flag set)" : ""}`, () => {
-                        expect(gate.now(permissionsOf(ACTOR[role]), flag)).toBe(gate.before(role, flag))
+                        expect(gate.now(permissionsOf(ACTOR[role]), flag, role)).toBe(gate.before(role, flag))
                     })
                 }
             }
