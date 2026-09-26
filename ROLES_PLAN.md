@@ -34,6 +34,7 @@ Settled during the attendance brainstorm (rounds 3–6 of `ATTENDANCE_PLAN.md`):
 | **Periodic access review adopted as a per-company setting, off by default**, toggled in the company's settings (§6.14) | Roles review |
 | **One salary permission** — `salary.view` covers salaries everywhere: profiles, payroll, payslips, history, adjustments, settlements, debts (§3.2) | Roles review |
 | **High-risk permissions adopted, with step-up MFA valid for 1 hour** (§6.15) | Roles review |
+| **Part A is built now, as part of stabilising the website**, on its own branch and PR; Part B follows later (§1.1) | Roles review |
 | **Permission list draft 2 accepted** with: `tasks.penalize` as its own permission, labelled as affecting pay; deleting and archiving as separate permissions; waiving debts separate from seeing them (§3.2) | Roles review |
 
 **Revised after a review of the first draft** against the code. The first draft
@@ -819,8 +820,7 @@ another hardcoded check.
 
 ## 9. Open questions
 
-1. **When to build Part A** (§1.1) — as part of stabilising the website, or with
-   Part B later. The last open question in this plan.
+None. Every question raised while planning has been decided (§0).
 
 ---
 
