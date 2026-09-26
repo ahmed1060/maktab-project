@@ -23,10 +23,9 @@ vi.setConfig({ testTimeout: 60_000 })
  *
  * - An Admin may change their own salary (the field rule reads the caller's
  *   role, not whose record it is).
- * - Editing or deleting someone in another company is refused with a 500, not a
- *   403: UserService throws CROSS_COMPANY_ACCESS_FORBIDDEN and the route does
- *   not map it. Nothing is written, so the refusal holds; only the status is
- *   wrong.
+ * - (Fixed since recording: editing or deleting someone in another company was
+ *   refused with an unmapped 500. The routes now answer 403, and the cases
+ *   below say so. Nothing was ever written either way.)
  * - Two different "status" paths: POST /users/[id]/status is Super Admin only,
  *   while the status field of an edit is open to Admins.
  */
@@ -52,7 +51,7 @@ const put = (body: unknown) => async () => (await users()).PUT(withBody("PUT", "
 function c1Managers(written: string, others: Partial<Record<ActorName, Outcome>> = {}): Record<ActorName, Outcome> {
     return {
         superAdmin: [200, written], admin: [200, written],
-        otherAdmin: [500, ""], leader: [403, ""], employee: [403, ""],
+        otherAdmin: [403, ""], leader: [403, ""], employee: [403, ""],
         ...others,
     }
 }
@@ -66,7 +65,7 @@ const EDITS: Case[] = [
     {
         name: "editing an ordinary field of someone in another company",
         run: put({ id: "other", gender: "FEMALE" }),
-        expected: { superAdmin: [200, "gender"], admin: [500, ""], otherAdmin: [200, "gender"], leader: [403, ""], employee: [403, ""] },
+        expected: { superAdmin: [200, "gender"], admin: [403, ""], otherAdmin: [200, "gender"], leader: [403, ""], employee: [403, ""] },
     },
     {
         name: "editing an ordinary field of a teamless employee",
@@ -157,7 +156,7 @@ const OTHERS: Case[] = [
     {
         name: "deleting someone in another company",
         run: del("other"),
-        expected: { superAdmin: [200, SOFT_DELETE], admin: [500, ""], otherAdmin: [200, SOFT_DELETE], leader: [403, ""], employee: [403, ""] },
+        expected: { superAdmin: [200, SOFT_DELETE], admin: [403, ""], otherAdmin: [200, SOFT_DELETE], leader: [403, ""], employee: [403, ""] },
     },
     {
         name: "the account status route",
