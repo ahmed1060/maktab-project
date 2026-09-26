@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma"
 import { NotificationService } from "./notification.service"
+import { can } from "@/lib/permissions/can"
 
 export class SystemService {
     static async getBootstrapData(userId: string, role: string) {
@@ -72,10 +73,13 @@ export class SystemService {
             )
         }
 
-        if (['ADMIN', 'SUPER_ADMIN'].includes(role)) {
+        // The header's name-change badge: for whoever decides them, and only
+        // their own company's. It counted every company's pending requests,
+        // so an Admin's badge carried other companies' numbers.
+        if (can({ id: user.id, role, companyId: user.companyId }, "profile_requests.review")) {
             extraTasks.push(
                 prisma.profileUpdateRequest.count({
-                    where: { status: 'PENDING' }
+                    where: { status: 'PENDING', user: { companyId: user.companyId } }
                 }).then(res => pendingProfileRequestsCount = res)
             )
         }
