@@ -18,11 +18,9 @@ vi.setConfig({ testTimeout: 120_000 })
  *
  * - (Fixed since recording: an Employee could create a task for anyone in
  *   their company, an Admin included. POST /api/tasks is now managers only.)
- * - An Employee may review — approve — a task, including their own and an
- *   Admin's. The only self-review rule is for Admins.
- * - Anyone in the company may mark a task location verified, including the
- *   person who added it (TaskService.verifyLocation checks nothing; the route
- *   only checks company).
+ * - (Fixed since recording: an Employee could review — approve — a task,
+ *   their own included, and anyone in the company could mark a location
+ *   verified. Both are now managers only.)
  * - An Employee may acknowledge someone else's task.
  * - An Employee submitting someone else's task is refused, but with an
  *   unmapped 500.
@@ -75,7 +73,7 @@ const EXPECTED: Record<string, Record<string, Row>> = {
     "t-emp": {
         "edit details":        [200, 200, 403, 200, 403],
         "delete":              [200, 200, 403, 200, 403],
-        "review":              [200, 200, 403, 200, 200],   // the employee approves their own task
+        "review":              [200, 200, 403, 200, 403],
         "submit":              [200, 200, 403, 200, 200],
         "transfer":            [200, 200, 403, 200, 200],
         "acknowledge":         [200, 200, 403, 200, 200],
@@ -83,12 +81,12 @@ const EXPECTED: Record<string, Record<string, Row>> = {
         "apply a penalty":     [200, 200, 403, 200, 403],
         "revert":              [200, 403, 403, 403, 403],   // Super Admin only
         "delete the assignee's note": [500, 500, 403, 500, 500],   // broken for everyone: see header
-        "verify a location":   [200, 200, 403, 200, 200],   // the employee verifies their own location
+        "verify a location":   [200, 200, 403, 200, 403],
     },
     "t-loner": {
         "edit details":        [200, 200, 403, 403, 403],
         "delete":              [200, 200, 403, 403, 403],
-        "review":              [200, 200, 403, 403, 200],   // an employee approves a colleague's task
+        "review":              [200, 200, 403, 403, 403],
         "submit":              [200, 200, 403, 403, 500],   // refused, unmapped
         "transfer":            [200, 200, 403, 403, 403],
         "acknowledge":         [200, 200, 403, 403, 200],
@@ -96,12 +94,12 @@ const EXPECTED: Record<string, Record<string, Row>> = {
         "apply a penalty":     [200, 200, 403, 403, 403],
         "revert":              [200, 403, 403, 403, 403],
         "delete the assignee's note": [500, 500, 403, 403, 500],
-        "verify a location":   [200, 200, 403, 403, 200],
+        "verify a location":   [200, 200, 403, 403, 403],
     },
     "t-admin": {
         "edit details":        [200, 200, 403, 403, 403],
         "delete":              [200, 403, 403, 403, 403],   // an Admin may not delete their own task
-        "review":              [200, 403, 403, 403, 200],   // nor review it — but an employee may
+        "review":              [200, 403, 403, 403, 403],   // nor review it
         "submit":              [200, 200, 403, 403, 500],
         "transfer":            [200, 200, 403, 403, 403],
         "acknowledge":         [200, 200, 403, 403, 200],
@@ -109,7 +107,7 @@ const EXPECTED: Record<string, Record<string, Row>> = {
         "apply a penalty":     [200, 200, 403, 403, 403],
         "revert":              [200, 403, 403, 403, 403],
         "delete the assignee's note": [500, 500, 403, 403, 500],
-        "verify a location":   [200, 200, 403, 403, 200],
+        "verify a location":   [200, 200, 403, 403, 403],
     },
     "t-other": {
         "edit details":        [200, 403, 200, 403, 403],

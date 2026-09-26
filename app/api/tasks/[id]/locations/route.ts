@@ -6,6 +6,14 @@ import { verifyResourceAccess } from "@/lib/security"
 export const PUT = withStandardHandler(async (req, session, json, { params }) => {
     const taskId = params.id
 
+    // Verifying a location is the check on where somebody said they were, so
+    // it is a manager's. The route asked only for the company, and
+    // TaskService.verifyLocation asks nothing, so anyone in the company —
+    // including the person who added the location — could mark it verified.
+    if (!['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(session.user.role)) {
+        return ApiResponse.forbidden("Only managers can verify locations")
+    }
+
     const hasAccess = await verifyResourceAccess(session, taskId, 'TASK')
     if (!hasAccess) return ApiResponse.forbidden("Access denied")
 
