@@ -103,12 +103,20 @@ export class ObligationService {
             const isAssignee = current.assignees.some((a: any) => a.id === userId)
             if (!isManager && !isAssignee) throw new Error("ACCESS_DENIED")
 
-            // 2. Self-approval restriction
+            // 2. Approving and rejecting are a manager's decision. An assignee
+            // may move their own obligation along — in progress, completed —
+            // but deciding whether it was done is not theirs: this used to let
+            // an Employee approve their own.
+            if (status && ['APPROVED', 'REJECTED'].includes(status) && !isManager) {
+                throw new Error("ONLY_MANAGERS_DECIDE")
+            }
+
+            // 3. Self-approval restriction
             if (status && ['APPROVED', 'REJECTED'].includes(status) && ['ADMIN', 'SUPER_ADMIN'].includes(userRole) && isAssignee) {
                 throw new Error("SELF_APPROVAL_FORBIDDEN")
             }
 
-            // 3. Attachment logic
+            // 4. Attachment logic
             let finalAttachments: any[] = []
             if (current.attachments) {
                 try {

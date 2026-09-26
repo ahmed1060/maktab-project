@@ -15,9 +15,8 @@ vi.setConfig({ testTimeout: 120_000 })
  *
  * Recorded exactly as they are, because Part A changes nobody's access:
  *
- * - An Employee may approve their own obligation: the update route passes the
- *   request straight to ObligationService.update, which lets an assignee set any
- *   status, and its self-approval rule is for Admins only.
+ * - (Fixed since recording: an Employee could approve their own obligation.
+ *   Approving and rejecting are now managers only.)
  * - There are two delete paths with different rules. DELETE /obligations/[id]/
  *   delete is Admins only. DELETE /obligations/[id] has no check of its own;
  *   ObligationService.delete lets Team Leaders through and checks the company
@@ -56,7 +55,7 @@ const ON_OBLIGATION: [string, string, (o: string) => Promise<Response>][] = [
 const EXPECTED: Record<string, Record<string, Row>> = {
     "o-emp": {
         "mark completed":      [200, 200, 403, 200, 200],
-        "approve":             [200, 200, 403, 200, 200],   // the employee approves their own
+        "approve":             [200, 200, 403, 200, 403],
         "reassign":            [200, 200, 403, 403, 200],   // leader: 'loner' is outside the team; employee: ignored
         "delete":              [200, 200, 403, 200, 403],
         "delete (Admin path)": [200, 200, 403, 403, 403],
