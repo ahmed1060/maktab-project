@@ -35,19 +35,11 @@ const THE_PERSON = "about the person acted on"
  * about the role itself, which no custom role can become.
  */
 const ADMIN_ROLE = "the locked Admin role"
-/**
- * A cross-company system job an Admin may trigger by hand. No company
- * permission fits it; Part B makes it the Super Admin's.
- */
-const SYSTEM_JOB = "system job (Part B: Super Admin only)"
 
 const ALLOWED: [file: string, line: string, why: string][] = [
     // app/api/tasks/bulk/route.ts
     ["app/api/tasks/bulk/route.ts", "if (['ADMIN', 'SUPER_ADMIN'].includes(user.role)) { isTaskValid = false; break }", THE_PERSON],
 
-    // app/api/notes/check-expiry/route.ts
-    ["app/api/notes/check-expiry/route.ts", "const isAdmin = session && ['ADMIN', 'SUPER_ADMIN'].includes(role)", SYSTEM_JOB],
-    ["app/api/notes/check-expiry/route.ts", "else if (role === 'ADMIN') userId = (session!.user as any).id", SYSTEM_JOB],
 
     // app/(dashboard)/dashboard/employees/new/page.tsx
     ["app/(dashboard)/dashboard/employees/new/page.tsx", "if (role === 'EMPLOYEE' && teamLeaderId) {", THE_PERSON],
@@ -186,6 +178,6 @@ describe("access is decided by permission, not by role name", () => {
     })
 
     it("gives every listed check a reason", () => {
-        for (const [, , why] of ALLOWED) expect([LABEL, THE_PERSON, ADMIN_ROLE, SYSTEM_JOB]).toContain(why)
+        for (const [, , why] of ALLOWED) expect([LABEL, THE_PERSON, ADMIN_ROLE]).toContain(why)
     })
 })
