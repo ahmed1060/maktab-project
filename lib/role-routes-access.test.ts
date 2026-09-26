@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
+import { builtInGrantsToken } from "@/lib/permissions/built-in"
 
 /**
  * Who may manage roles and role templates (ROLES_PLAN.md §4.1, §6).
@@ -18,9 +19,13 @@ vi.mock("@/lib/services/role.service", () => {
     const record = (name: string) => async () => { state.calls.push(`role.${name}`); return {} }
     return {
         GrantsError: class extends Error {},
-        RoleService: { getById: record("getById"), listForCompany: record("listForCompany"), create: record("create"), update: record("update"), delete: record("delete") },
+        RoleService: { setDefault: record("setDefault"), getById: record("getById"), listForCompany: record("listForCompany"), create: record("create"), update: record("update"), delete: record("delete") },
     }
 })
+vi.mock("@/lib/prisma", () => ({ prisma: {} }))
+vi.mock("@/lib/services/role-assignment.service", () => ({
+    RoleAssignmentService: { assignable: async (_: any, actor: any, companyId: string) => { state.calls.push(`assignable:${companyId}`); return [] } },
+}))
 vi.mock("@/lib/services/role-template.service", () => {
     const record = (name: string) => async () => { state.calls.push(`template.${name}`); return {} }
     return { RoleTemplateService: { list: record("list"), getById: record("getById"), create: record("create"), update: record("update"), delete: record("delete") } }
@@ -29,7 +34,7 @@ vi.mock("@/lib/services/role-template.service", () => {
 const ROLE_BODY = { companyId: "c1", name: "Accountant", description: null, baseRole: "EMPLOYEE", grants: [] }
 const TEMPLATE_BODY = { name: "Accountant", description: null, baseRole: "EMPLOYEE", grants: [] }
 
-type Call = { route: "roles" | "role-templates"; method: "GET" | "POST" | "PUT" | "DELETE"; query?: string; body?: any }
+type Call = { route: "roles" | "role-templates" | "roles/default"; method: "GET" | "POST" | "PUT" | "DELETE"; query?: string; body?: any }
 
 const CALLS: Call[] = [
     { route: "roles", method: "GET", query: "?companyId=c1" },
@@ -41,10 +46,13 @@ const CALLS: Call[] = [
     { route: "role-templates", method: "POST", body: TEMPLATE_BODY },
     { route: "role-templates", method: "PUT", body: { id: "t1", name: "Accountant" } },
     { route: "role-templates", method: "DELETE", query: "?id=t1" },
+    { route: "roles/default", method: "PUT", body: { companyId: "c1", roleId: "r1" } },
 ]
 
 async function send({ route, method, query = "", body }: Call) {
-    const handlers: any = route === "roles" ? await import("@/app/api/roles/route") : await import("@/app/api/role-templates/route")
+    const handlers: any = route === "roles" ? await import("@/app/api/roles/route")
+        : route === "roles/default" ? await import("@/app/api/roles/default/route")
+        : await import("@/app/api/role-templates/route")
     const init: RequestInit = { method, headers: { "content-type": "application/json" } }
     if (body) init.body = JSON.stringify(body)
     return handlers[method](new Request(`https://nizmo.test/api/${route}${query}`, init))
@@ -77,6 +85,34 @@ describe("managing roles and templates", () => {
 
     it.each(CALLS.map(c => [label(c), c] as const))("nobody signed in may not: %s", async (_, call) => {
         expect((await send(call)).status).toBe(401)
+        expect(state.calls).toEqual([])
+    })
+})
+
+/**
+ * The roles somebody may hand out, for a Role dropdown: whoever holds
+ * employees.assign_role, in their own company. Which roles, the service
+ * decides (lib/roles.db.test.ts).
+ */
+describe("listing the roles one may hand out", () => {
+    const list = async (query = "") => (await import("@/app/api/roles/assignable/route")).GET(new Request(`https://nizmo.test/api/roles/assignable${query}`))
+
+    it("an Admin may, for their own company, whatever company they name", async () => {
+        state.session = { user: { id: "a", role: "ADMIN", companyId: "c1", grants: builtInGrantsToken("ADMIN") } }
+        expect((await list("?companyId=c2")).status).toBe(200)
+        expect(state.calls).toEqual(["assignable:c1"])
+    })
+
+    it("the Super Admin may, for the company they name", async () => {
+        state.session = { user: { id: "sa", role: "SUPER_ADMIN" } }
+        expect((await list("?companyId=c2")).status).toBe(200)
+        expect(state.calls).toEqual(["assignable:c2"])
+        expect((await list()).status).toBe(400)
+    })
+
+    it.each(["TEAM_LEADER", "EMPLOYEE"] as const)("a %s may not", async role => {
+        state.session = { user: { id: "x", role, companyId: "c1", grants: builtInGrantsToken(role) } }
+        expect((await list()).status).toBe(403)
         expect(state.calls).toEqual([])
     })
 })

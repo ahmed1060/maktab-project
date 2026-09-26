@@ -14,6 +14,10 @@ export const createUserSchema = z.object({
     // managers and passphrases. Floor of 12 replaces the old floor of 8.
     password: z.string().min(12, "Password must be at least 12 characters").max(72, "Password must be at most 72 characters"),
     role: z.enum(['SUPER_ADMIN', 'ADMIN', 'TEAM_LEADER', 'EMPLOYEE']).optional().default('EMPLOYEE'),
+    // A role of the company's, by id (ROLES_PLAN.md §6.4). When given it wins
+    // over `role`, which then only says what kind — the base role comes from
+    // the role itself.
+    roleId: z.string().min(1).optional(),
     gender: z.enum(['MALE', 'FEMALE']).optional().default('MALE'),
     companyId: z.string().optional(),
     salary: z.coerce.number().min(0).optional().default(0),

@@ -124,6 +124,29 @@ const EDITS: Case[] = [
         run: put({ id: "emp", status: "DELETED" }),
         expected: c1Managers("", { superAdmin: [400, ""], admin: [400, ""], employee: [200, ""] }),
     },
+    // Added in B3: a role by id, one of the company's own (ROLES_PLAN.md
+    // §6.4), under the rules for handing one out (§4.2). Built-in roles here;
+    // the rules over a company's own roles are in lib/roles.db.test.ts.
+    {
+        name: "giving somebody one of the company's roles by id",
+        run: put({ id: "loner", roleId: "c1:TEAM_LEADER" }),
+        expected: c1Managers("role,roleId"),
+    },
+    {
+        name: "giving somebody another company's role (rule 3)",
+        run: put({ id: "loner", roleId: "c2:EMPLOYEE" }),
+        expected: c1Managers("", { superAdmin: [400, ""], admin: [400, ""] }),
+    },
+    {
+        name: "giving somebody an Admin-based role by id (rule 2)",
+        run: put({ id: "loner", roleId: "c1:ADMIN" }),
+        expected: c1Managers("role,roleId", { admin: [403, ""] }),
+    },
+    {
+        name: "an Admin giving themselves a role by id (rule 1)",
+        run: put({ id: "admin", roleId: "c1:TEAM_LEADER" }),
+        expected: c1Managers("role,roleId", { admin: [403, ""] }),
+    },
     {
         name: "making an employee a Team Leader",
         run: put({ id: "loner", role: "TEAM_LEADER" }),
@@ -154,6 +177,10 @@ const create = (role: string) => async () => (await users()).POST(withBody("POST
     firstName: "New", lastName: "Person", email: `new-${role}@x.co`, password: "a-long-password-123",
     role, gender: "MALE", companyId: "c1",
 }))
+const createOn = (roleId: string) => async () => (await users()).POST(withBody("POST", "/api/users", {
+    firstName: "New", lastName: "Person", email: `new-${roleId.replace(":", "-").toLowerCase()}@x.co`, password: "a-long-password-123",
+    roleId, gender: "MALE", companyId: "c1",
+}))
 const del = (id: string) => async () => (await users()).DELETE(new Request(url(`/api/users?id=${id}`), { method: "DELETE" }))
 const SOFT_DELETE = "avatar,email,firstName,lastName,status,username"
 
@@ -169,6 +196,18 @@ const OTHERS: Case[] = [
         name: "creating an employee",
         run: create("EMPLOYEE"),
         expected: { superAdmin: [201], admin: [201], otherAdmin: [201], leader: [403], employee: [403] },
+    },
+    {
+        // Added in B3. The other company's Admin creates in their own
+        // company, where c1's role is not one of theirs.
+        name: "creating somebody on one of the company's roles by id",
+        run: createOn("c1:TEAM_LEADER"),
+        expected: { superAdmin: [201], admin: [201], otherAdmin: [400], leader: [403], employee: [403] },
+    },
+    {
+        name: "creating somebody on an Admin-based role by id",
+        run: createOn("c1:ADMIN"),
+        expected: { superAdmin: [201], admin: [403], otherAdmin: [400], leader: [403], employee: [403] },
     },
     {
         name: "creating an Admin",
@@ -246,9 +285,14 @@ const LAST_ADMIN: Case[] = [
         // refused (403) — the role field ran into "only the Super Admin
         // assigns the Admin role". Now their own role is simply not theirs to
         // set, and the rest of the save goes through.
+        //
+        // In B3 the Super Admin's save of the same form stopped rewriting the
+        // role (it wrote role and roleId): an unchanged kind is not a change,
+        // and taking it as one moved anybody on a company's own role back to
+        // the built-in role of that kind whenever their profile was saved.
         name: "an Admin saving their own profile",
         run: put({ id: "admin", role: "ADMIN", gender: "FEMALE" }),
-        expected: { superAdmin: [200, "gender,role,roleId"], admin: [200, "gender"], otherAdmin: [403, ""], leader: [403, ""], employee: [403, ""] },
+        expected: { superAdmin: [200, "gender"], admin: [200, "gender"], otherAdmin: [403, ""], leader: [403, ""], employee: [403, ""] },
     },
     {
         // Added in Part B: nobody changes their own role (ROLES_PLAN.md §4.2,

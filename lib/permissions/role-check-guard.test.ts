@@ -97,15 +97,22 @@ const ALLOWED: [file: string, line: string, why: string][] = [
     ["lib/services/role-assignment.service.ts", "if (!user?.roleId || user.assignedRole?.builtIn !== \"ADMIN\") return", ADMIN_ROLE],
     // …and only the Super Admin acts on an Admin (role, status, contract, deletion)
     ["lib/services/role-assignment.service.ts", "if (target.role === \"ADMIN\" && actor.role !== \"SUPER_ADMIN\") throw new Error(\"ADMIN_IS_SUPER_ADMINS\")", ADMIN_ROLE],
+    // rule 2: only the Super Admin hands out an ADMIN-based role
+    ["lib/services/role-assignment.service.ts", "if (role.baseRole === \"ADMIN\" || role.baseRole === \"SUPER_ADMIN\") return \"FORBIDDEN_ROLE_ASSIGNMENT\"", THE_ROLE],
+    // with no default set, a new account starts on the built-in Employee
+    ["lib/services/role-assignment.service.ts", "const defaultId = company?.defaultRoleId ?? roles.find(r => r.builtIn === \"EMPLOYEE\")?.id ?? null", THE_ROLE],
 
     // lib/services/role.service.ts — the rules of roles themselves (§4.2 rule 7, §4.3, §6.4)
     ["lib/services/role.service.ts", "if (before.builtIn === \"ADMIN\" && (renames || rebases || regrants)) throw new Error(\"ROLE_LOCKED\")", ADMIN_ROLE],
     ["lib/services/role.service.ts", "if (rebases && input.baseRole === \"ADMIN\" && before.isDefault) throw new Error(\"DEFAULT_ROLE_ADMIN\")", THE_ROLE],
+    ["lib/services/role.service.ts", "if (role.baseRole === \"ADMIN\") throw new Error(\"DEFAULT_ROLE_ADMIN\")", THE_ROLE],
     ["lib/services/role.service.ts", "isDefault: defaultRoleId ? role.id === defaultRoleId : role.builtIn === \"EMPLOYEE\",", THE_ROLE],
     ["lib/services/role.service.ts", "locked: role.builtIn === \"ADMIN\",", ADMIN_ROLE],
 
     // lib/services/user.service.ts
     ["lib/services/user.service.ts", "if ((newUserRole === 'ADMIN' || newUserRole === 'SUPER_ADMIN') && userRole !== 'SUPER_ADMIN') {", ADMIN_ROLE],
+    // an ordinary new account (the kind the form defaults to) starts on the company's default role
+    ["lib/services/user.service.ts", "if (!roleId && newUserRole === 'EMPLOYEE') return RoleAssignmentService.defaultFor(prisma, targetCompanyId)", THE_ROLE],
     ["lib/services/user.service.ts", "if (isSelf && regularUser && ['EMPLOYEE', 'TEAM_LEADER'].includes(regularUser.role)) {", THE_PERSON],
     ["lib/services/user.service.ts", "if (['ADMIN', 'SUPER_ADMIN'].includes(targetRole) && !isSelf && userRole === 'SUPER_ADMIN') {", ADMIN_ROLE],
     ["lib/services/user.service.ts", "if ((role === 'ADMIN' || role === 'SUPER_ADMIN') && userRole !== 'SUPER_ADMIN') {", ADMIN_ROLE],

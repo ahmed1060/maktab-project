@@ -45,3 +45,18 @@ export function matchesUserWhere(person: Person, where: Record<string, any>): bo
 export function whoMatches(people: Person[], where: Record<string, any>): string[] {
     return people.filter(p => matchesUserWhere(p, where)).map(p => p.id).sort()
 }
+
+/**
+ * `role.findUnique` over every company's built-in roles, as the roles
+ * migration creates them: a role's id is `${companyId}:${kind}`. Answers a
+ * lookup by kind (RoleAssignmentService.builtIn) and by id, with its grants
+ * (RoleAssignmentService.chosen). Anything else is not a built-in role.
+ */
+export async function builtInRoleLookup({ where }: { where: any }) {
+    const [companyId, kind] = where.companyId_builtIn
+        ? [where.companyId_builtIn.companyId, where.companyId_builtIn.builtIn]
+        : String(where.id ?? "").split(":")
+    if (!companyId || !isBuiltInRole(kind)) return null
+    const grants = Object.entries(BUILT_IN_GRANTS[kind]).map(([permission, scope]) => ({ permission, scope }))
+    return { id: `${companyId}:${kind}`, companyId, baseRole: kind, builtIn: kind, grants }
+}

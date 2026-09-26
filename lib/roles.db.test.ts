@@ -3,8 +3,8 @@ import { readFileSync } from "node:fs"
 import { Client } from "pg"
 import { PrismaClient } from "@prisma/client"
 import { PrismaPg } from "@prisma/adapter-pg"
-import { BUILT_IN_GRANTS } from "@/lib/permissions/built-in"
-import { decodeGrants } from "@/lib/permissions/grants"
+import { BUILT_IN_GRANTS, builtInGrantsToken } from "@/lib/permissions/built-in"
+import { decodeGrants, encodeGrants } from "@/lib/permissions/grants"
 import { RoleService } from "@/lib/services/role.service"
 import { RoleAssignmentService } from "@/lib/services/role-assignment.service"
 import { holdersOf } from "@/lib/permissions/holders"
@@ -313,5 +313,73 @@ describe.skipIf(!ADMIN_URL)("roles as data, in Postgres", () => {
 
         it("refuses a template based on the Super Admin", () =>
             refused(`INSERT INTO "RoleTemplate"(id, name, "baseRole", grants, "updatedAt") VALUES ('t-x', 'God', 'SUPER_ADMIN', '[]', now())`))
+    })
+
+    describe("handing roles out (B3)", () => {
+        const sa = { user: { id: "sa", role: "SUPER_ADMIN" } }
+        const superAdmin = sa.user
+        // c1's Admin, with the grants their session carries.
+        const admin = { id: "a1", role: "ADMIN", companyId: "c1", grants: builtInGrantsToken("ADMIN") }
+        // Somebody on a narrower role that may assign: the rule-4 case.
+        const deputy = { id: "t1", role: "TEAM_LEADER", companyId: "c1", grants: encodeGrants({ "employees.view": "COMPANY", "employees.assign_role": "COMPANY", "clients.view": "COMPANY" }) }
+        let hr: string, deputyAdmin: string, payroll: string
+        const auditOf = async (entityId: string) =>
+            (await db.query(`SELECT action, details FROM "AuditLog" WHERE "entityId" = $1 ORDER BY "createdAt"`, [entityId])).rows
+        const idOf = async (company: string, builtIn: string): Promise<string> =>
+            (await db.query(`SELECT id FROM "Role" WHERE "companyId" = $1 AND "builtIn" = $2`, [company, builtIn])).rows[0].id
+
+        beforeAll(async () => {
+            await db.query(`INSERT INTO "SuperAdmin" (id, email, password, "firstName", "lastName", username, "updatedAt")
+                VALUES ('sa', 'sa@test', 'x', 'Super', 'Admin', 'sa', now()) ON CONFLICT DO NOTHING`)
+            hr = (await RoleService.create({ companyId: "c1", name: "HR Officer", baseRole: "EMPLOYEE", grants: [{ permission: "dayoff.approve", scope: "COMPANY" }] }, sa)).id
+            deputyAdmin = (await RoleService.create({ companyId: "c1", name: "Deputy Admin", baseRole: "ADMIN", grants: [{ permission: "employees.view", scope: "COMPANY" }] }, sa)).id
+            payroll = (await RoleService.create({ companyId: "c1", name: "Clients desk", baseRole: "EMPLOYEE", grants: [{ permission: "clients.view", scope: "COMPANY" }] }, sa)).id
+        })
+
+        it("gives a company's own role, with its base role, in a pair the database accepts", async () => {
+            const assignment = await RoleAssignmentService.chosen(prisma, admin, hr, { companyId: "c1", userId: "e1" })
+            expect(assignment).toEqual({ role: "EMPLOYEE", roleId: hr })
+            await prisma.user.update({ where: { id: "e1" }, data: assignment })
+            expect(decodeGrants((await RoleService.forToken("e1", prisma)).grants)).toEqual({ "dayoff.view": "COMPANY", "dayoff.approve": "COMPANY" })
+            await prisma.user.update({ where: { id: "e1" }, data: await RoleAssignmentService.builtIn(prisma, "EMPLOYEE", "c1") })
+        })
+
+        it("refuses somebody their own role (rule 1)", () =>
+            expect(RoleAssignmentService.chosen(prisma, admin, hr, { companyId: "c1", userId: "a1" })).rejects.toThrow("OWN_ROLE"))
+
+        it("gives an ADMIN-based role only as the Super Admin (rule 2)", async () => {
+            await expect(RoleAssignmentService.chosen(prisma, admin, deputyAdmin, { companyId: "c1", userId: "e1" })).rejects.toThrow("FORBIDDEN_ROLE_ASSIGNMENT")
+            expect(await RoleAssignmentService.chosen(prisma, superAdmin, deputyAdmin, { companyId: "c1", userId: "e1" })).toEqual({ role: "ADMIN", roleId: deputyAdmin })
+        })
+
+        it("gives only that company's roles, and says the same of one that does not exist (rule 3)", async () => {
+            const otherCompanys = await idOf("c2", "EMPLOYEE")
+            expect(otherCompanys).toMatch(/^[0-9a-f-]{36}$/)
+            await expect(RoleAssignmentService.chosen(prisma, superAdmin, otherCompanys, { companyId: "c1", userId: "e1" })).rejects.toThrow("ROLE_NOT_IN_COMPANY")
+            await expect(RoleAssignmentService.chosen(prisma, admin, "no-such-role", { companyId: "c1", userId: "e1" })).rejects.toThrow("ROLE_NOT_IN_COMPANY")
+        })
+
+        it("gives only access the giver holds (rule 4)", async () => {
+            await expect(RoleAssignmentService.chosen(prisma, deputy, hr, { companyId: "c1", userId: "e1" })).rejects.toThrow("ROLE_EXCEEDS_YOURS")
+            expect((await RoleAssignmentService.chosen(prisma, deputy, payroll, { companyId: "c1", userId: "e1" })).roleId).toBe(payroll)
+        })
+
+        it("offers in a dropdown exactly what it would accept", async () => {
+            const names = async (actor: any) => (await RoleAssignmentService.assignable(prisma, actor, "c1")).map(r => r.name).sort()
+            expect(await names(superAdmin)).toEqual(["Admin", "Clients desk", "Deputy Admin", "Employee", "HR Officer", "Team Leader"])
+            expect(await names(admin)).toEqual(["Clients desk", "Employee", "HR Officer", "Team Leader"])
+            expect(await names(deputy)).toEqual(["Clients desk"])
+        })
+
+        it("starts a new account on the company's default role, or the built-in Employee", async () => {
+            expect(await RoleAssignmentService.defaultFor(prisma, "c1")).toEqual({ role: "EMPLOYEE", roleId: await idOf("c1", "EMPLOYEE") })
+            await RoleService.setDefault("c1", hr, sa)
+            expect(await RoleAssignmentService.defaultFor(prisma, "c1")).toEqual({ role: "EMPLOYEE", roleId: hr })
+            expect((await RoleAssignmentService.assignable(prisma, admin, "c1")).find(r => r.isDefault)?.name).toBe("HR Officer")
+            await expect(RoleService.setDefault("c1", deputyAdmin, sa)).rejects.toThrow("DEFAULT_ROLE_ADMIN")
+            await expect(RoleService.setDefault("c1", await idOf("c2", "EMPLOYEE"), sa)).rejects.toThrow("ROLE_NOT_FOUND")
+            await RoleService.setDefault("c1", null, sa)
+            expect((await auditOf("c1")).filter(a => a.action === "SET_DEFAULT_ROLE").map(a => a.details.after)).toEqual([hr, null])
+        })
     })
 })

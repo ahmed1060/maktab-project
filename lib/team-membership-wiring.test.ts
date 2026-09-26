@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
-import { withGrants } from "@/lib/permissions/test-actors"
+import { withGrants, builtInRoleLookup } from "@/lib/permissions/test-actors"
 
 /**
  * That the rules are wired in, and wired in at the right moment.
@@ -52,7 +52,7 @@ vi.mock("@/lib/prisma", () => ({
     prisma: {
         user: userModel(false),
         // Each company's built-in roles, as the roles migration creates them.
-        role: { findUnique: async ({ where }: any) => ({ id: `${where.companyId_builtIn.companyId}:${where.companyId_builtIn.builtIn}` }) },
+        role: { findUnique: (args: any) => builtInRoleLookup(args) },
         superAdmin: { findUnique: async () => null },
         dayOffRequest: { aggregate: async () => ({ _sum: { daysDeducted: 0 } }) },
         // Runs the callback with a tx whose writes are marked as being inside

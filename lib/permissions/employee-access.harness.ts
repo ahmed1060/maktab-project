@@ -7,7 +7,7 @@
  * Kept in its own module so the record file reads as the record.
  */
 
-import { withGrants } from "./test-actors"
+import { withGrants, builtInRoleLookup } from "./test-actors"
 
 export const state = { session: null as any, written: [] as Record<string, unknown>[], created: [] as any[] }
 
@@ -42,7 +42,7 @@ function model(overrides: Record<string, any> = {}) {
 
 const models: Record<string, any> = {
     // Each company's built-in roles, as the roles migration creates them.
-    role: model({ findUnique: async ({ where }: any) => ({ id: `${where.companyId_builtIn.companyId}:${where.companyId_builtIn.builtIn}` }) }),
+    role: model({ findUnique: (args: any) => builtInRoleLookup(args) }),
     rateLimit: model({ upsert: async () => ({ count: 1 }) }),
     company: model({ findUnique: async ({ where }: any) => ({ id: where.id, name: where.id, isBanned: false }) }),
     user: model({

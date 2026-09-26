@@ -1,9 +1,39 @@
 import { prisma } from "@/lib/prisma"
 import { isBuiltInRole } from "@/lib/permissions/built-in"
+import { isPermission } from "@/lib/permissions/catalogue"
+import { decodeGrants, type Grants } from "@/lib/permissions/grants"
+import { covers } from "@/lib/permissions/grant-rules"
 import { RoleService } from "./role.service"
 import type { UserRole } from "@prisma/client"
 
 type Client = Pick<typeof prisma, "role">
+type CompanyClient = Pick<typeof prisma, "role" | "company">
+
+/** Whoever is handing a role out: the signed-in user, grants included. */
+export type Assigner = { id?: string | null; role?: string | null; grants?: string | null }
+
+type RoleRow = { id: string; companyId: string; baseRole: UserRole; grants: { permission: string; scope: string }[] }
+
+/** A role's grants as the catalogue knows them. */
+function grantsOf(role: RoleRow): Grants {
+    const grants: Grants = {}
+    for (const g of role.grants) if (isPermission(g.permission)) grants[g.permission] = g.scope as any
+    return grants
+}
+
+/**
+ * Whether `actor` may hand `role` out (ROLES_PLAN.md §4.2, rules 2 and 4): an
+ * ADMIN-based role only the Super Admin, and any other only if every grant it
+ * carries is one the actor holds, at an equal or wider scope. The reason, or
+ * null when they may.
+ */
+function refusal(actor: Assigner, role: RoleRow): "FORBIDDEN_ROLE_ASSIGNMENT" | "ROLE_EXCEEDS_YOURS" | null {
+    if (actor.role === "SUPER_ADMIN") return null
+    if (role.baseRole === "ADMIN" || role.baseRole === "SUPER_ADMIN") return "FORBIDDEN_ROLE_ASSIGNMENT"
+    return covers(decodeGrants(actor.grants), grantsOf(role)) ? null : "ROLE_EXCEEDS_YOURS"
+}
+
+const ROLE_ROW = { id: true, companyId: true, baseRole: true, grants: { select: { permission: true, scope: true } } } as const
 type UserClient = Pick<typeof prisma, "user">
 
 /** Statuses in which somebody is at work. The rest take them out of it. */
@@ -50,6 +80,64 @@ export class RoleAssignmentService {
         }
         if (!found) throw new Error("BUILT_IN_ROLE_MISSING")
         return { role, roleId: found.id }
+    }
+
+    /**
+     * The fields to write for somebody `actor` is putting on the role
+     * `roleId`, in `to.companyId` — after the rules for handing a role out
+     * (ROLES_PLAN.md §4.2):
+     *
+     * 1. Nobody changes their own role (OWN_ROLE).
+     * 2. Only the Super Admin hands out an ADMIN-based role
+     *    (FORBIDDEN_ROLE_ASSIGNMENT).
+     * 3. Only that company's roles (ROLE_NOT_IN_COMPANY) — an unknown id reads
+     *    the same, so nobody learns another company's roles by guessing.
+     * 4. Only access the actor holds (ROLE_EXCEEDS_YOURS).
+     *
+     * Who may assign at all, the last Admin and the team rules are the
+     * caller's, as they are for every other change to a person.
+     */
+    static async chosen(
+        client: Client,
+        actor: Assigner,
+        roleId: string,
+        to: { companyId: string | null | undefined; userId?: string | null },
+    ): Promise<{ role: UserRole; roleId: string }> {
+        if (to.userId && actor.id && to.userId === actor.id) throw new Error("OWN_ROLE")
+        const role = await client.role.findUnique({ where: { id: roleId }, select: ROLE_ROW })
+        if (!role || !to.companyId || role.companyId !== to.companyId) throw new Error("ROLE_NOT_IN_COMPANY")
+        const refused = refusal(actor, role)
+        if (refused) throw new Error(refused)
+        return { role: role.baseRole, roleId: role.id }
+    }
+
+    /**
+     * What a new account in `companyId` starts on (ROLES_PLAN.md §6.4): the
+     * company's default role, which the Super Admin sets, or the built-in
+     * Employee while none is set. Nobody ever exists without a role.
+     */
+    static async defaultFor(client: CompanyClient, companyId: string): Promise<{ role: UserRole; roleId: string | null }> {
+        const company = await client.company.findUnique({
+            where: { id: companyId },
+            select: { defaultRole: { select: { id: true, baseRole: true } } },
+        })
+        if (company?.defaultRole) return { role: company.defaultRole.baseRole, roleId: company.defaultRole.id }
+        return this.builtIn(client, "EMPLOYEE", companyId)
+    }
+
+    /**
+     * The roles `actor` may hand out in `companyId` — what a Role dropdown
+     * offers. The same rules as chosen(), so the list and the server agree.
+     */
+    static async assignable(client: CompanyClient, actor: Assigner, companyId: string) {
+        const [roles, company] = await Promise.all([
+            client.role.findMany({ where: { companyId }, select: { ...ROLE_ROW, name: true, builtIn: true }, orderBy: { name: "asc" } }),
+            client.company.findUnique({ where: { id: companyId }, select: { defaultRoleId: true } }),
+        ])
+        const defaultId = company?.defaultRoleId ?? roles.find(r => r.builtIn === "EMPLOYEE")?.id ?? null
+        return roles
+            .filter(role => !refusal(actor, role))
+            .map(role => ({ id: role.id, name: role.name, baseRole: role.baseRole, builtIn: role.builtIn, isDefault: role.id === defaultId }))
     }
 
     /**

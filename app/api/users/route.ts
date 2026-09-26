@@ -10,6 +10,7 @@ import { buildUserWhereClause } from "@/lib/services/user-query"
 import { verifyResourceAccess } from "@/lib/security"
 import { can } from "@/lib/permissions/can"
 import { shapeUser } from "@/lib/permissions/shape"
+import { assignmentRefusal } from "@/lib/role-errors"
 
 // F-13: role/status are now Postgres enums, not free text — a query-param
 // value that isn't a real enum member makes Postgres reject the whole
@@ -166,6 +167,8 @@ export const POST = withStandardHandler(async (req, session, json) => {
         // 3. Error Mapping
         if (error.message === 'ONLY_ADMIN_CAN_CREATE_USERS') return ApiResponse.forbidden("Only Admins can create accounts")
         if (error.message === 'ONLY_SUPER_ADMIN_CAN_CREATE_ADMIN') return ApiResponse.forbidden("Only Super Admin can create Admin users")
+        const refusedRole = assignmentRefusal(error)
+        if (refusedRole) return refusedRole
         if (error.message === 'TARGET_COMPANY_NOT_FOUND') return ApiResponse.forbidden("Target company not found or access restricted")
         if (error.message === 'USER_ALREADY_EXISTS') return ApiResponse.badRequest("User already exists")
         if (error.message === 'USERNAME_IN_USE') return ApiResponse.badRequest("Username in use")
@@ -220,7 +223,8 @@ export const PUT = withStandardHandler(async (req, session, json) => {
         // error, and shown to the Admin as the app failing rather than as no.
         if (error.message === 'CROSS_COMPANY_ACCESS_FORBIDDEN') return ApiResponse.forbidden("Access denied")
         if (error.message === 'NAME_CHANGE_REQUIRES_ADMIN') return ApiResponse.forbidden("Name changes require admin approval")
-        if (error.message === 'FORBIDDEN_ROLE_ASSIGNMENT') return ApiResponse.forbidden("Forbidden role assignment")
+        const refusedRole = assignmentRefusal(error)
+        if (refusedRole) return refusedRole
         // Team refusals, including the hand-off question, in the one shape
         // every route that can take a leader away answers with.
         const teamRefusal = teamRefusalResponse(error)

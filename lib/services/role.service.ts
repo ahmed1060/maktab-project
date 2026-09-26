@@ -218,6 +218,30 @@ export class RoleService {
         })
         return { id }
     }
+
+    /**
+     * The role a company's new accounts start on (ROLES_PLAN.md §6.4) — one
+     * of its own, never Admin-based. Null goes back to the built-in Employee.
+     * The database holds the same line (the role templates migration).
+     */
+    static async setDefault(companyId: string, roleId: string | null, session: any) {
+        const company = await prisma.company.findUnique({ where: { id: companyId }, select: { defaultRoleId: true } })
+        if (!company) throw new Error("COMPANY_NOT_FOUND")
+        if (roleId) {
+            const role = await prisma.role.findUnique({ where: { id: roleId }, select: { companyId: true, baseRole: true } })
+            if (!role || role.companyId !== companyId) throw new Error("ROLE_NOT_FOUND")
+            if (role.baseRole === "ADMIN") throw new Error("DEFAULT_ROLE_ADMIN")
+        }
+        await prisma.$transaction(async (tx) => {
+            await tx.company.update({ where: { id: companyId }, data: { defaultRoleId: roleId } })
+            const { AuditLogService } = await import("./audit-log.service")
+            await AuditLogService.log("SET_DEFAULT_ROLE", "COMPANY", companyId, {
+                tx, superAdminId: session.user.id,
+                details: { before: company.defaultRoleId, after: roleId },
+            })
+        })
+        return RoleService.listForCompany(companyId)
+    }
 }
 
 /** Grants that failed the catalogue's rules, with every reason. */

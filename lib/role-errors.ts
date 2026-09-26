@@ -27,3 +27,17 @@ export function roleErrorResponse(error: any) {
 export function denyUnlessSuperAdmin(session: any) {
     return session?.user?.role !== "SUPER_ADMIN" ? ApiResponse.forbidden("Only the Super Admin manages roles") : null
 }
+
+/**
+ * Refusals of handing a role out (ROLES_PLAN.md §4.2), wherever it happens —
+ * creating an account or editing one. Null for anything else.
+ */
+export function assignmentRefusal(error: any) {
+    switch (error?.message) {
+        case "OWN_ROLE": return ApiResponse.forbidden("Nobody changes their own role")
+        case "FORBIDDEN_ROLE_ASSIGNMENT": return ApiResponse.forbidden("You cannot give that role")
+        case "ROLE_NOT_IN_COMPANY": return ApiResponse.badRequest("That role is not one of this company's")
+        case "ROLE_EXCEEDS_YOURS": return ApiResponse.forbidden("That role holds access you do not have, so you cannot give it")
+    }
+    return null
+}

@@ -74,8 +74,12 @@ describe("only RoleAssignmentService decides a person's role", () => {
 
     it("the paths that create or change someone's role use it", () => {
         const users = code("lib/services/user.service.ts")
-        // Hiring, and editing a role or company.
-        expect(users.match(/RoleAssignmentService\.builtIn\(/g)).toHaveLength(2)
+        // Hiring (a Super Admin or company-less account, and a role asked for
+        // by kind), and editing a role by kind or a company.
+        expect(users.match(/RoleAssignmentService\.builtIn\(/g)).toHaveLength(3)
+        // A role asked for by id, on hiring and on editing; and the default.
+        expect(users.match(/RoleAssignmentService\.chosen\(/g)).toHaveLength(3)
+        expect(users).toContain("RoleAssignmentService.defaultFor(")
         expect(users).toContain("...assignment")
         expect(code("scripts/seed-payroll-demo.ts")).toContain("RoleAssignmentService.builtIn(")
     })

@@ -24,7 +24,7 @@ const SETTABLE_STATUSES = ["ACTIVE", "OFFLINE", "SUSPENDED"] as const
 export class UserService {
     static async create(input: CreateUserInput, session: any) {
         const userRole = session.user.role
-        const { firstName, lastName, email, password, role, gender, companyId, salary, dayOffCredit, baseDayOffCredit, username, teamLeaderId } = input
+        const { firstName, lastName, email, password, role, roleId, gender, companyId, salary, dayOffCredit, baseDayOffCredit, username, teamLeaderId } = input
 
         // 1. Role Restrictions
         //
@@ -51,6 +51,21 @@ export class UserService {
 
         if (!targetCompanyId && userRole !== 'SUPER_ADMIN') throw new Error("TARGET_COMPANY_NOT_FOUND")
 
+        // Which role they start on (ROLES_PLAN.md §6.4). An ordinary new
+        // account starts on the company's default role. Anything else — a
+        // role picked by id, or a Team Leader or Admin by kind — is handing a
+        // role out, and goes through the same rules as changing one later: it
+        // takes employees.assign_role, and only a role the creator could hand
+        // out anyway. Without that, creating an account would be a way round
+        // assigning one.
+        const assignment = await (async () => {
+            if (!targetCompanyId || newUserRole === 'SUPER_ADMIN') return RoleAssignmentService.builtIn(prisma, newUserRole, targetCompanyId)
+            if (!roleId && newUserRole === 'EMPLOYEE') return RoleAssignmentService.defaultFor(prisma, targetCompanyId)
+            if (!can(session.user, "employees.assign_role")) throw new Error("FORBIDDEN_ROLE_ASSIGNMENT")
+            const id = roleId ?? (await RoleAssignmentService.builtIn(prisma, newUserRole, targetCompanyId)).roleId!
+            return RoleAssignmentService.chosen(prisma, session.user, id, { companyId: targetCompanyId })
+        })()
+
         // Who manages the new hire. Checked against the leader's real row, not
         // the id the form sent — the id is the only thing a caller controls,
         // and every rule worth having is about the row behind it.
@@ -61,7 +76,7 @@ export class UserService {
             })
             if (!leader) throw new Error("TEAM_LEADER_NOT_FOUND")
             const verdict = checkTeamAssignment(
-                { id: "", role: newUserRole, companyId: targetCompanyId },
+                { id: "", role: assignment.role, companyId: targetCompanyId },
                 leader,
             )
             if (!verdict.ok) throw new Error(verdict.refusal.code)
@@ -111,11 +126,10 @@ export class UserService {
 
         // A Super Admin has no company and draws no salary — the payroll
         // module is about a company's own people.
-        const isCompanyEmployee = Boolean(targetCompanyId) && newUserRole !== 'SUPER_ADMIN'
+        const isCompanyEmployee = Boolean(targetCompanyId) && assignment.role !== 'SUPER_ADMIN'
 
         const user = await prisma.$transaction(async (tx) => {
             // role and roleId together, from the one place that writes them.
-            const assignment = await RoleAssignmentService.builtIn(tx, newUserRole, targetCompanyId)
             const created = await tx.user.create({
                 data: {
                     firstName, lastName, email, username: finalUsername!, password: hashedPassword,
@@ -159,7 +173,7 @@ export class UserService {
         await AuditLogService.log('CREATE_USER', 'USER', user.id, {
             userId: userRole !== 'SUPER_ADMIN' ? session.user.id : null,
             superAdminId: userRole === 'SUPER_ADMIN' ? session.user.id : null,
-            details: { email: email, role: newUserRole, companyId: targetCompanyId }
+            details: { email: email, role: assignment.role, roleId: assignment.roleId, companyId: targetCompanyId }
         })
 
         return user
@@ -167,7 +181,7 @@ export class UserService {
 
     static async update(input: UpdateUserInput, session: any) {
         const userRole = session.user.role
-        const { id, firstName, lastName, email, password, role, gender, salary, companyId, avatar, dayOffCredit, baseDayOffCredit, username, status, teamLeaderId, reassignReportsTo } = input
+        const { id, firstName, lastName, email, password, role, roleId, gender, salary, companyId, avatar, dayOffCredit, baseDayOffCredit, username, status, teamLeaderId, reassignReportsTo } = input
 
         const regularUser = await prisma.user.findUnique({ where: { id } })
         const superAdminUser = !regularUser ? await prisma.superAdmin.findUnique({ where: { id } }) : null
@@ -248,12 +262,29 @@ export class UserService {
             // nobody decides their own role, pay or allowance (ROLES_PLAN.md
             // §4.2, rules 1 and 5), are checked against them.
             const person = { companyId: regularUser.companyId, userId: regularUser.id, teamLeaderId: regularUser.teamLeaderId }
-            if (role && can(session.user, "employees.assign_role", person)) {
+            if (roleId !== undefined && roleId !== regularUser.roleId) {
+                // A role of the company's, by id (ROLES_PLAN.md §6.4), through
+                // the rules for handing one out. The company is the one they
+                // will be in, if the Super Admin is moving them too.
+                if (isSelf) throw new Error("OWN_ROLE")
+                if (!can(session.user, "employees.assign_role", person)) throw new Error("FORBIDDEN_ROLE_ASSIGNMENT")
+                RoleAssignmentService.onlySuperAdminActsOnAdmins(session.user, regularUser)
+                const toCompany = companyId !== undefined && userRole === 'SUPER_ADMIN' ? (companyId || null) : regularUser.companyId
+                Object.assign(updateData, await RoleAssignmentService.chosen(prisma, session.user, roleId, { companyId: toCompany, userId: id }))
+            } else if (role && can(session.user, "employees.assign_role", person)) {
+                // By kind, as the form sent it before roles had ids. It sends
+                // the current kind with every save, so only a different one is
+                // a change: taking an unchanged one as a change would move
+                // somebody on a company's own role — an HR Officer, say — back
+                // to the built-in role of that kind whenever their profile was
+                // saved.
                 if ((role === 'ADMIN' || role === 'SUPER_ADMIN') && userRole !== 'SUPER_ADMIN') {
                     throw new Error("FORBIDDEN_ROLE_ASSIGNMENT")
                 }
-                if (role !== regularUser.role) RoleAssignmentService.onlySuperAdminActsOnAdmins(session.user, regularUser)
-                updateData.role = role
+                if (role !== regularUser.role) {
+                    RoleAssignmentService.onlySuperAdminActsOnAdmins(session.user, regularUser)
+                    updateData.role = role
+                }
             }
 
             if (username !== undefined && userRole === 'SUPER_ADMIN') updateData.username = username || null
@@ -363,12 +394,14 @@ export class UserService {
 
             // A new role, or a new company — whose roles are different ones —
             // takes its role and roleId from RoleAssignmentService, together.
-            if (updateData.role !== undefined || (updateData.companyId !== undefined && updateData.companyId !== regularUser.companyId)) {
-                Object.assign(updateData, await RoleAssignmentService.builtIn(
-                    prisma,
-                    updateData.role ?? regularUser.role,
-                    updateData.companyId !== undefined ? updateData.companyId : regularUser.companyId,
-                ))
+            // A role chosen by id has both already. One chosen by kind is that
+            // company's built-in role of the kind, handed out under the same
+            // rules; a move alone keeps the kind, in the new company.
+            if (updateData.roleId === undefined && (updateData.role !== undefined || (updateData.companyId !== undefined && updateData.companyId !== regularUser.companyId))) {
+                const next = await RoleAssignmentService.builtIn(prisma, updateData.role ?? regularUser.role, nextCompanyId)
+                Object.assign(updateData, updateData.role !== undefined && next.roleId
+                    ? await RoleAssignmentService.chosen(prisma, session.user, next.roleId, { companyId: nextCompanyId, userId: id })
+                    : next)
             }
 
             // Never the company's last Admin at work (ROLES_PLAN.md §4.2, rule 8).
