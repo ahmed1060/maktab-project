@@ -35,6 +35,7 @@ Settled during the attendance brainstorm (rounds 3–6 of `ATTENDANCE_PLAN.md`):
 | **One salary permission** — `salary.view` covers salaries everywhere: profiles, payroll, payslips, history, adjustments, settlements, debts (§3.2) | Roles review |
 | **High-risk permissions adopted, with step-up MFA valid for 1 hour** (§6.15) | Roles review |
 | **Part A is built now, as part of stabilising the website**, on its own branch and PR; Part B follows later (§1.1) | Roles review |
+| **An Admin approving their own leave is closed in Part B, not Part A.** Found while recording day-off access: today it is allowed. Part A changes nobody's access, so the record keeps it; Part B enforces §4.2 rule 5 for leave along with every other approval | Part A |
 | **Permission list draft 2 accepted** with: `tasks.penalize` as its own permission, labelled as affecting pay; deleting and archiving as separate permissions; waiving debts separate from seeing them (§3.2) | Roles review |
 
 **Revised after a review of the first draft** against the code. The first draft
