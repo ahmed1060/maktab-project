@@ -39,6 +39,8 @@ vi.mock("@/lib/prisma", () => ({ prisma: prismaMock }))
 vi.mock("@/lib/supabase", () => ({ supabase: { storage: { from: () => ({ remove: async () => ({}), upload: async () => ({}) }) } } }))
 vi.mock("@/lib/services/audit-log.service", () => ({ AuditLogService: { log: async () => {}, logSystemError: async () => "ref", friendlyErrorMessage: () => "error" } }))
 vi.mock("@/lib/services/notification.service", () => ({ NotificationService: { notify: async () => {}, notifyMany: async () => {} } }))
+vi.mock("@/lib/storage", () => ({ downloadTemplateBuffer: async () => Buffer.from("base") }))
+vi.mock("@/lib/services/template-generator.service", () => ({ generateBulkTaskTemplate: async () => Buffer.from("xlsx") }))
 vi.mock("@/lib/services/salary.service", () => ({ SalaryService: { applyAdjustment: async () => ({ id: "adj" }), ensureRecordExists: async () => {} } }))
 
 type Row = [superAdmin: number, admin: number, otherAdmin: number, leader: number, employee: number]
@@ -134,6 +136,11 @@ const COMPANY_WIDE: [string, () => Promise<Response>, Row][] = [
     // An empty upload: 400 means the caller got past the gate.
     ["bulk-creating tasks",                    async () => (await import("@/app/api/tasks/bulk/route")).POST(withBody("POST", "/api/tasks/bulk", { tasks: [] })), [400, 400, 400, 400, 403]],
     ["recording payment in bulk",              async () => (await import("@/app/api/tasks/payment/bulk/route")).POST(withBody("POST", "/api/tasks/payment/bulk", { taskIds: ["t-emp"] })), [200, 200, 200, 200, 403]],
+    // Changed in Part B: the template lists every colleague's name, username
+    // and role and the company's vendors, and is for bulk-creating tasks — it
+    // now asks tasks.create. It asked nothing, so an employee could download
+    // the staff list. (A Super Admin names the company; without one, 400.)
+    ["downloading the task import template",   async () => (await import("@/app/api/templates/download/route")).GET(new Request(url("/api/templates/download?locale=en"))), [400, 200, 200, 200, 403]],
 ]
 
 beforeEach(() => { taskState.status = "SUBMITTED" })
