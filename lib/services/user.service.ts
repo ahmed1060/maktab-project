@@ -252,6 +252,7 @@ export class UserService {
                 if ((role === 'ADMIN' || role === 'SUPER_ADMIN') && userRole !== 'SUPER_ADMIN') {
                     throw new Error("FORBIDDEN_ROLE_ASSIGNMENT")
                 }
+                if (role !== regularUser.role) RoleAssignmentService.onlySuperAdminActsOnAdmins(session.user, regularUser)
                 updateData.role = role
             }
 
@@ -293,6 +294,7 @@ export class UserService {
             // one is not a change.
             if (status !== undefined && status !== regularUser.status && can(session.user, "employees.change_status", person)) {
                 if (!(SETTABLE_STATUSES as readonly string[]).includes(status)) throw new Error("STATUS_HAS_ITS_OWN_FLOW")
+                RoleAssignmentService.onlySuperAdminActsOnAdmins(session.user, regularUser)
                 updateData.status = status
             }
 
@@ -535,8 +537,9 @@ export class UserService {
             throw new Error("INVALID_STATUS")
         }
 
-        const existingUser = await prisma.user.findUnique({ where: { id: userId }, select: { status: true } })
+        const existingUser = await prisma.user.findUnique({ where: { id: userId }, select: { status: true, role: true } })
         if (!existingUser) throw new Error("USER_NOT_FOUND")
+        RoleAssignmentService.onlySuperAdminActsOnAdmins(session.user, existingUser)
         await RoleAssignmentService.keepsAnAdmin(prisma, userId, { status })
 
         const updated = await prisma.user.update({
@@ -772,7 +775,7 @@ export class UserService {
             }
         }
 
-        if (user.role === 'ADMIN' && requesterRole !== 'SUPER_ADMIN') throw new Error("FORBIDDEN")
+        RoleAssignmentService.onlySuperAdminActsOnAdmins(session.user, user)
         if (user.role === 'SUPER_ADMIN') throw new Error("FORBIDDEN")
         // Never the company's last Admin at work (ROLES_PLAN.md §4.2, rule 8).
         if (!isPermanent) await RoleAssignmentService.keepsAnAdmin(prisma, id, { status: 'DELETED' })

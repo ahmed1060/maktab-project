@@ -89,13 +89,14 @@ const ALLOWED: [file: string, line: string, why: string][] = [
 
     // lib/services/role-assignment.service.ts — rule 8: a company keeps someone at work on its built-in Admin role
     ["lib/services/role-assignment.service.ts", "if (!user?.roleId || user.assignedRole?.builtIn !== \"ADMIN\") return", ADMIN_ROLE],
+    // …and only the Super Admin acts on an Admin (role, status, contract, deletion)
+    ["lib/services/role-assignment.service.ts", "if (target.role === \"ADMIN\" && actor.role !== \"SUPER_ADMIN\") throw new Error(\"ADMIN_IS_SUPER_ADMINS\")", ADMIN_ROLE],
 
     // lib/services/user.service.ts
     ["lib/services/user.service.ts", "if ((newUserRole === 'ADMIN' || newUserRole === 'SUPER_ADMIN') && userRole !== 'SUPER_ADMIN') {", ADMIN_ROLE],
     ["lib/services/user.service.ts", "if (isSelf && regularUser && ['EMPLOYEE', 'TEAM_LEADER'].includes(regularUser.role)) {", THE_PERSON],
     ["lib/services/user.service.ts", "if (['ADMIN', 'SUPER_ADMIN'].includes(targetRole) && !isSelf && userRole === 'SUPER_ADMIN') {", ADMIN_ROLE],
     ["lib/services/user.service.ts", "if ((role === 'ADMIN' || role === 'SUPER_ADMIN') && userRole !== 'SUPER_ADMIN') {", ADMIN_ROLE],
-    ["lib/services/user.service.ts", "if (user.role === 'ADMIN' && requesterRole !== 'SUPER_ADMIN') throw new Error(\"FORBIDDEN\")", ADMIN_ROLE],
 
     // lib/team-assignment.ts
     ["lib/team-assignment.ts", "if (target.role !== \"EMPLOYEE\") {", THE_PERSON],

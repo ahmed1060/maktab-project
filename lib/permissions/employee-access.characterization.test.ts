@@ -231,7 +231,8 @@ const LAST_ADMIN: Case[] = [
     {
         name: "suspending a company's only Admin",
         run: put({ id: "admin2", status: "SUSPENDED" }),
-        expected: { superAdmin: [400, ""], admin: [403, ""], otherAdmin: [400, ""], leader: [403, ""], employee: [403, ""] },
+        // admin2 on themselves: only the Super Admin acts on an Admin.
+        expected: { superAdmin: [400, ""], admin: [403, ""], otherAdmin: [403, ""], leader: [403, ""], employee: [403, ""] },
     },
     {
         name: "making a company's only Admin an employee",
@@ -272,13 +273,37 @@ const LAST_ADMIN: Case[] = [
     {
         name: "suspending a company's only Admin through the status route",
         run: async () => (await import("@/app/api/users/[id]/status/route")).POST(withBody("POST", "/api/users/admin2/status", { status: "SUSPENDED" }), { params: { id: "admin2" } }),
-        expected: { superAdmin: [400, ""], admin: [403, ""], otherAdmin: [400, ""], leader: [403, ""], employee: [403, ""] },
+        expected: { superAdmin: [400, ""], admin: [403, ""], otherAdmin: [403, ""], leader: [403, ""], employee: [403, ""] },
     },
     {
         name: "suspending one of a company's two Admins",
         run: put({ id: "admin1b", status: "SUSPENDED" }),
-        // Another stays at work, so this is allowed.
-        expected: c1Managers("status"),
+        // Another stays at work, so the Super Admin may. A fellow Admin may
+        // not: only the Super Admin acts on an Admin.
+        expected: c1Managers("status", { admin: [403, ""] }),
+    },
+    {
+        // Decided in Part B: only the Super Admin acts on an Admin — their
+        // role, their status, their contract, deleting them. A company Admin
+        // could demote or suspend a fellow Admin, or end their contract,
+        // though deleting one was already the Super Admin's alone.
+        name: "making another Admin an employee",
+        run: put({ id: "admin1b", role: "EMPLOYEE" }),
+        expected: c1Managers("role,roleId", { admin: [403, ""] }),
+    },
+    {
+        // The employment route has one gate for ending and restoring a
+        // contract, before it looks at which; driven through REINSTATE, which
+        // needs no settlement.
+        name: "acting on another Admin's contract",
+        run: async () => (await import("@/app/api/users/[id]/employment/route")).POST(withBody("POST", "/api/users/admin1b/employment", { action: "REINSTATE" }), { params: { id: "admin1b" } }),
+        expected: c1Managers("", { admin: [403, ""] }),
+    },
+    {
+        name: "acting on an employee's contract",
+        run: async () => (await import("@/app/api/users/[id]/employment/route")).POST(withBody("POST", "/api/users/emp/employment", { action: "REINSTATE" }), { params: { id: "emp" } }),
+        // Unchanged: an Admin still ends an employee's.
+        expected: c1Managers(""),
     },
 ]
 

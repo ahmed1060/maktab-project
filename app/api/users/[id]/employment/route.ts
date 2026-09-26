@@ -7,6 +7,10 @@ import { verifyResourceAccess } from "@/lib/security"
 import { can } from "@/lib/permissions/can"
 import { toMajor } from "@/lib/payroll"
 import { calendarMonth } from "@/lib/time"
+import { prisma } from "@/lib/prisma"
+import { RoleAssignmentService } from "@/lib/services/role-assignment.service"
+
+const ONLY_SUPER_ADMIN = "Only the Super Admin acts on an Admin"
 
 /**
  * Ending a contract, and seeing what it would settle at first.
@@ -80,6 +84,14 @@ export const POST = withStandardHandler(async (req, session, json, { params }) =
     if (!can(session.user, "employees.end_contract")) return ApiResponse.forbidden("Managers only")
     if (!(await verifyResourceAccess(session, userId, 'USER'))) return ApiResponse.forbidden("Access denied")
     if (userId === session.user.id) return ApiResponse.badRequest("You cannot end your own contract")
+    // Only the Super Admin ends, or restores, an Admin's contract.
+    const target = await prisma.user.findUnique({ where: { id: userId }, select: { role: true } })
+    if (!target) return ApiResponse.notFound("User not found")
+    try {
+        RoleAssignmentService.onlySuperAdminActsOnAdmins(session.user, target)
+    } catch {
+        return ApiResponse.forbidden(ONLY_SUPER_ADMIN)
+    }
 
     const { action, lastWorkingDay, reason } = json ?? {}
     // Three states, as everywhere in team assignment: absent means nobody has

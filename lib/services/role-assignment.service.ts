@@ -53,6 +53,18 @@ export class RoleAssignmentService {
     }
 
     /**
+     * Only the Super Admin acts on an Admin: changes their role or account
+     * status, ends their contract or deletes them. A company's Admins are
+     * peers, and the built-in Admin role is locked (ROLES_PLAN.md §4.2, rule
+     * 7) — one of them cannot take another out of it or out of work. Throws
+     * ADMIN_IS_SUPER_ADMINS for anybody else acting on somebody whose base
+     * role is ADMIN.
+     */
+    static onlySuperAdminActsOnAdmins(actor: { role?: string | null }, target: { role?: string | null }): void {
+        if (target.role === "ADMIN" && actor.role !== "SUPER_ADMIN") throw new Error("ADMIN_IS_SUPER_ADMINS")
+    }
+
+    /**
      * Refuses a change that would leave a company with nobody at work on its
      * built-in Admin role (ROLES_PLAN.md §4.2, rule 8) — the one role
      * guaranteed to be able to fix every other, so a company without one

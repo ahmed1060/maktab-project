@@ -212,6 +212,7 @@ export const PUT = withStandardHandler(async (req, session, json) => {
     } catch (error: any) {
         // 4. Error Mapping
         if (error.message === 'USER_NOT_FOUND') return ApiResponse.notFound("User not found")
+        if (error.message === 'ADMIN_IS_SUPER_ADMINS') return ApiResponse.forbidden("Only the Super Admin acts on an Admin")
         if (error.message === 'LAST_ADMIN') return ApiResponse.badRequest("A company must keep at least one Admin at work. Give its Admin role to someone else first.")
         if (error.message === 'STATUS_HAS_ITS_OWN_FLOW') return ApiResponse.badRequest("Archive by ending the contract, and delete from the employee list — not through an edit")
         // Somebody in another company. Refused inside UserService, and until
@@ -249,6 +250,7 @@ export const DELETE = withStandardHandler(async (req, session) => {
         if (error.message === 'INVALID_PASSCODE') return ApiResponse.forbidden("Invalid verification passcode")
         if (error.message === 'INVALID_ID') return ApiResponse.badRequest("Invalid ID or cannot delete self")
         if (error.message === 'USER_NOT_FOUND') return ApiResponse.notFound("User not found")
+        if (error.message === 'ADMIN_IS_SUPER_ADMINS') return ApiResponse.forbidden("Only the Super Admin acts on an Admin")
         if (error.message === 'LAST_ADMIN') return ApiResponse.badRequest("A company must keep at least one Admin at work. Give its Admin role to someone else first.")
         if (error.message === 'CROSS_COMPANY_ACCESS_FORBIDDEN') return ApiResponse.forbidden("Access denied")
         if (error.message === 'FORBIDDEN') return ApiResponse.forbidden("Insufficient permissions to delete this user")
