@@ -23,8 +23,9 @@ vi.setConfig({ testTimeout: 120_000 })
  *   verified. Both are now managers only.)
  * - (Fixed since recording: anyone in the company could acknowledge — clear
  *   the "edited" notice on — someone else's task. Only its assignees may now.)
- * - An Employee submitting someone else's task is refused, but with an
- *   unmapped 500.
+ * - (Fixed since recording: submitting someone else's task, and transferring a
+ *   task to someone in another company, were refused with unmapped 500s. Both
+ *   now answer 403.)
  *
  * And one bug that is not about access: deleting a note, cost or attachment
  * from a task fails with a 500 for everyone. The screen sends DELETE with a
@@ -88,7 +89,7 @@ const EXPECTED: Record<string, Record<string, Row>> = {
         "edit details":        [200, 200, 403, 403, 403],
         "delete":              [200, 200, 403, 403, 403],
         "review":              [200, 200, 403, 403, 403],
-        "submit":              [200, 200, 403, 403, 500],   // refused, unmapped
+        "submit":              [200, 200, 403, 403, 403],
         "transfer":            [200, 200, 403, 403, 403],
         "acknowledge":         [200, 403, 403, 403, 403],
         "record payment":      [200, 200, 403, 403, 403],
@@ -101,7 +102,7 @@ const EXPECTED: Record<string, Record<string, Row>> = {
         "edit details":        [200, 200, 403, 403, 403],
         "delete":              [200, 403, 403, 403, 403],   // an Admin may not delete their own task
         "review":              [200, 403, 403, 403, 403],   // nor review it
-        "submit":              [200, 200, 403, 403, 500],
+        "submit":              [200, 200, 403, 403, 403],
         "transfer":            [200, 200, 403, 403, 403],
         "acknowledge":         [200, 200, 403, 403, 403],   // the Admin is the assignee
         "record payment":      [200, 200, 403, 403, 403],
@@ -115,7 +116,7 @@ const EXPECTED: Record<string, Record<string, Row>> = {
         "delete":              [200, 403, 200, 403, 403],
         "review":              [200, 403, 200, 403, 403],
         "submit":              [200, 403, 200, 403, 403],
-        "transfer":            [200, 403, 500, 403, 403],   // 'loner' is not in c2: refused, unmapped
+        "transfer":            [200, 403, 403, 403, 403],   // 'loner' is not in c2
         "acknowledge":         [200, 403, 403, 403, 403],
         "record payment":      [200, 403, 200, 403, 403],
         "apply a penalty":     [200, 403, 200, 403, 403],

@@ -20,6 +20,9 @@ export const POST = withStandardHandler(async (req, session, json, { params }) =
         if (error.message === 'TASK_NOT_FOUND') return ApiResponse.notFound("Task not found")
         if (error.message === 'UNAUTHORIZED_TRANSFER') return ApiResponse.forbidden("Unauthorized to transfer this task")
         if (error.message === 'TL_RESTRICTION') return ApiResponse.forbidden("Team Leaders cannot transfer tasks to Admins")
+        // Handing a task to somebody in another company. Unmapped, the refusal
+        // escaped as a 500.
+        if (error.message === 'CROSS_COMPANY_TRANSFER_FORBIDDEN') return ApiResponse.forbidden("A task cannot be transferred outside its company")
         console.error("Transfer error:", error)
         throw error
     }

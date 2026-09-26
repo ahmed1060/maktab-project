@@ -21,6 +21,9 @@ export const PUT = withStandardHandler(async (req, session, json, { params }) =>
         return ApiResponse.success(task)
     } catch (error: any) {
         if (error.message === 'TASK_NOT_FOUND') return ApiResponse.notFound("Task not found")
+        // Refusals from TaskService.submit — not the caller's task, or not their
+        // company. Unmapped, they escaped as a 500.
+        if (error.message === 'ACCESS_DENIED') return ApiResponse.forbidden("Access denied")
         if (error.message === 'USER_LOCATION_LIMIT') return ApiResponse.badRequest("Location limit reached (10 per user)")
         console.error("Task submission error:", error)
         return ApiResponse.error("Failed to save task progress")
