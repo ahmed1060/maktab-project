@@ -17,11 +17,10 @@ vi.setConfig({ testTimeout: 120_000 })
  *
  * - (Fixed since recording: an Employee could approve their own obligation.
  *   Approving and rejecting are now managers only.)
- * - There are two delete paths with different rules. DELETE /obligations/[id]/
- *   delete is Admins only. DELETE /obligations/[id] has no check of its own;
- *   ObligationService.delete lets Team Leaders through and checks the company
- *   but never the team — so a Team Leader may delete an obligation outside their
- *   team, the Admin's own included.
+ * - There are two delete paths with different rules: DELETE /obligations/[id]/
+ *   delete is Admins only, DELETE /obligations/[id] also lets Team Leaders
+ *   delete within their team. (Fixed since recording: the second path did not
+ *   check the team, so a Team Leader could delete outside it.)
  * - Reassigning an obligation to someone in another company is refused with an
  *   unmapped 500.
  *
@@ -65,7 +64,7 @@ const EXPECTED: Record<string, Record<string, Row>> = {
         "mark completed":      [200, 200, 403, 403, 403],
         "approve":             [200, 200, 403, 403, 403],
         "reassign":            [200, 200, 403, 403, 403],
-        "delete":              [200, 200, 403, 200, 403],   // a leader deletes outside their team
+        "delete":              [200, 200, 403, 403, 403],
         "delete (Admin path)": [200, 200, 403, 403, 403],
         "revert":              [200, 403, 403, 403, 403],
     },
@@ -73,7 +72,7 @@ const EXPECTED: Record<string, Record<string, Row>> = {
         "mark completed":      [200, 200, 403, 403, 403],
         "approve":             [200, 403, 403, 403, 403],   // an Admin may not approve their own
         "reassign":            [200, 200, 403, 403, 403],
-        "delete":              [200, 403, 403, 200, 403],   // ...nor delete it — but a leader may
+        "delete":              [200, 403, 403, 403, 403],   // ...nor delete it
         "delete (Admin path)": [200, 403, 403, 403, 403],
         "revert":              [200, 403, 403, 403, 403],
     },

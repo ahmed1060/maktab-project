@@ -29,6 +29,13 @@ export const PUT = withStandardHandler(async (req, session, json, { params }) =>
 })
 
 export const DELETE = withStandardHandler(async (req, session, _body, { params }) => {
+    // The same check every other obligation route makes first. Without it this
+    // path relied on ObligationService.delete, which checks the company but not
+    // the team — so a Team Leader could delete an obligation outside their
+    // team, the Admin's own included.
+    const hasAccess = await verifyResourceAccess(session, params.id, 'OBLIGATION')
+    if (!hasAccess) return ApiResponse.forbidden("Access denied")
+
     try {
         await ObligationService.delete(params.id, session)
         return ApiResponse.success({ success: true, id: params.id })
