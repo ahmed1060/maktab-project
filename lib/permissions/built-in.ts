@@ -27,6 +27,7 @@ import type { Permission, Scope } from "./catalogue"
  *   of an employee edit — lib/permissions/employee-access.characterization.test.ts
  *   and lib/user-lookup-scope.test.ts
  * - Tasks — lib/permissions/task-access.characterization.test.ts
+ * - Obligations — lib/permissions/obligation-access.characterization.test.ts
  *   (not yet dayoff.adjust_credit: changing a balance goes through
  *   PUT /api/users, and moves with the Employees module)
  */
@@ -86,6 +87,11 @@ export const BUILT_IN_GRANTS: Record<BuiltInRole, Grants> = {
         "tasks.delete": "COMPANY",
         "tasks.pay": "COMPANY",
         "tasks.penalize": "COMPANY",
+
+        // Obligations: an Admin creates, updates, decides and deletes their
+        // company's. Reverting a decided one stays the Super Admin's.
+        "obligations.view": "COMPANY",
+        "obligations.manage": "COMPANY",
     },
     // A Team Leader sees their team in the employee list and can look each of
     // them up — TEAM scope, enforced by buildUserWhereClause and
@@ -109,6 +115,11 @@ export const BUILT_IN_GRANTS: Record<BuiltInRole, Grants> = {
         "tasks.delete": "TEAM",
         "tasks.pay": "TEAM",
         "tasks.penalize": "TEAM",
+
+        // Obligations, for their team. Company-wide-only acts — removing other
+        // people's attachments, the Admin delete path — follow from TEAM scope.
+        "obligations.view": "TEAM",
+        "obligations.manage": "TEAM",
     },
     EMPLOYEE: {},
 }

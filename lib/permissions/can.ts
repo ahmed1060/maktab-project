@@ -59,6 +59,17 @@ export function can(actor: Actor, permission: Permission, target?: Target): bool
 }
 
 /**
+ * Whether the actor holds this permission across their whole company — not
+ * only for a team or for themselves. For the few rules that separate the
+ * people who manage something company-wide from those who manage it for a
+ * team, so that difference comes from the grant rather than from a role name.
+ */
+export function canCompanyWide(actor: Actor, permission: Permission): boolean {
+    const scope = grantFor(actor, permission)
+    return scope === "ALL" || scope === "COMPANY"
+}
+
+/**
  * Whether a target falls inside a grant of this scope. Separate from can() so
  * each scope's rule is tested directly, including the ones no built-in role
  * holds yet.

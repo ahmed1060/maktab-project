@@ -112,3 +112,17 @@ describe("scope rules", () => {
         expect(withinScope("OWN", leader, { companyId: "c1", userId: "e1", teamLeaderId: "tl" })).toBe(false)
     })
 })
+
+describe("canCompanyWide", () => {
+    it("is true for a Super Admin and for a COMPANY grant", async () => {
+        const { canCompanyWide } = await import("./can")
+        expect(canCompanyWide({ id: "sa", role: "SUPER_ADMIN" }, "obligations.manage")).toBe(true)
+        expect(canCompanyWide({ id: "a", role: "ADMIN", companyId: "c1" }, "obligations.manage")).toBe(true)
+    })
+
+    it("is false for a TEAM grant, and for no grant at all", async () => {
+        const { canCompanyWide } = await import("./can")
+        expect(canCompanyWide({ id: "t", role: "TEAM_LEADER", companyId: "c1" }, "obligations.manage")).toBe(false)
+        expect(canCompanyWide({ id: "e", role: "EMPLOYEE", companyId: "c1" }, "obligations.manage")).toBe(false)
+    })
+})

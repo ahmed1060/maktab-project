@@ -1,13 +1,15 @@
 import { withStandardHandler } from "@/lib/api-utils"
 import { ApiResponse } from "@/lib/api-response"
+import { canCompanyWide } from "@/lib/permissions/can"
 import { ObligationService } from "@/lib/services/obligation.service"
 import { verifyResourceAccess } from "@/lib/security"
 
 export const DELETE = withStandardHandler(async (req, session, json, { params }) => {
     const obligationId = params.id
-    const userRole = session.user.role
 
-    if (!['ADMIN', 'SUPER_ADMIN'].includes(userRole)) {
+    // This path is for those who manage obligations company-wide; Team
+    // Leaders delete within their team through DELETE /obligations/[id].
+    if (!canCompanyWide(session.user, "obligations.manage")) {
         return ApiResponse.forbidden("Only Admins and Super Admins can delete obligations")
     }
 

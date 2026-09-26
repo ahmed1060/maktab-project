@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma"
+import { can, canCompanyWide } from "@/lib/permissions/can"
 import { checkAssignees } from "./assignee-guard"
 import { nextOccurrence } from "@/lib/recurrence"
 import { CreateObligationInput } from "../validations/obligation.schema"
@@ -26,7 +27,7 @@ export class ObligationService {
         const creatorCompanyId = (session.user as any).companyId
         const { title, description, assigneeIds, deadline, recurrence, difficulty, attachments } = input
 
-        if (userRole === 'EMPLOYEE') throw new Error("EMPLOYEES_CANNOT_CREATE_OBLIGATIONS")
+        if (!can(session.user, "obligations.manage")) throw new Error("EMPLOYEES_CANNOT_CREATE_OBLIGATIONS")
 
         // 1. Assignee & Company Validation
         if (userRole !== 'SUPER_ADMIN') {
@@ -99,7 +100,7 @@ export class ObligationService {
             }
 
             // 1. Authorization
-            const isManager = ['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole)
+            const isManager = can(session.user, "obligations.manage")
             const isAssignee = current.assignees.some((a: any) => a.id === userId)
             if (!isManager && !isAssignee) throw new Error("ACCESS_DENIED")
 
@@ -128,7 +129,9 @@ export class ObligationService {
             // Merge/Remove attachments
             if (input.attachments && Array.isArray(input.attachments)) {
                 const removedItems = finalAttachments.filter(old => !input.attachments.some((req: any) => (req.url || req) === (old.url || old)))
-                if (removedItems.length > 0 && !['ADMIN', 'SUPER_ADMIN'].includes(userRole)) {
+                // Removing other people's attachments is for those who manage
+                // obligations company-wide; anyone else only their own.
+                if (removedItems.length > 0 && !canCompanyWide(session.user, "obligations.manage")) {
                     if (removedItems.some(i => i.uploadedById !== userId)) throw new Error("UNAUTHORIZED_ATTACHMENT_REMOVAL")
                 }
                 finalAttachments = input.attachments
@@ -213,7 +216,7 @@ export class ObligationService {
         const userId = session.user.id
         const userRole = session.user.role
 
-        if (!['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole)) throw new Error("ACCESS_DENIED")
+        if (!can(session.user, "obligations.manage")) throw new Error("ACCESS_DENIED")
 
         return await prisma.$transaction(async (tx) => {
             const obligation = await tx.obligation.findUnique({
