@@ -257,14 +257,21 @@ export function withStandardHandler(
             }
             // -----------------------------------
 
-            // Parse body if it exists (for POST/PATCH/PUT).
+            // Parse body if it exists (for POST/PATCH/PUT/DELETE).
+            //
+            // DELETE was missing. Two routes take a JSON body on DELETE —
+            // deleting a task's note, cost or attachment, and a task location —
+            // and the screen sends one, so both handlers received null and
+            // failed with a 500 for everyone. Other DELETE handlers read query
+            // parameters and ignore the body, so parsing it costs them nothing.
+            //
             // Only attempt this for JSON bodies — calling req.json() on a
             // multipart/form-data request consumes the body stream, which then
             // makes a later req.formData() call in the handler throw. Handlers
             // that need multipart data read it themselves via req.formData().
             let body: any = null
             const contentType = req.headers.get('content-type') || ''
-            if (['POST', 'PATCH', 'PUT'].includes(req.method) && contentType.includes('application/json')) {
+            if (['POST', 'PATCH', 'PUT', 'DELETE'].includes(req.method) && contentType.includes('application/json')) {
                 try {
                     body = await req.json()
                 } catch {

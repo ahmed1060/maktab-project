@@ -27,11 +27,10 @@ vi.setConfig({ testTimeout: 120_000 })
  *   task to someone in another company, were refused with unmapped 500s. Both
  *   now answer 403.)
  *
- * And one bug that is not about access: deleting a note, cost or attachment
- * from a task fails with a 500 for everyone. The screen sends DELETE with a
- * JSON body, withStandardHandler only parses bodies for POST, PATCH and PUT,
- * so TaskService.deleteItem receives nothing. Its own access rule — the item's
- * author, or a manager — is therefore never reached today. Recorded as it is.
+ * (Fixed since recording: deleting a note, cost or attachment from a task
+ * failed with a 500 for everyone, because withStandardHandler did not parse
+ * JSON bodies on DELETE. It does now, so TaskService.deleteItem's own rule — the
+ * item's author, or a manager — is reached and recorded below.)
  */
 
 vi.mock("next-auth", () => ({ getServerSession: async () => state.session }))
@@ -82,7 +81,7 @@ const EXPECTED: Record<string, Record<string, Row>> = {
         "record payment":      [200, 200, 403, 200, 403],
         "apply a penalty":     [200, 200, 403, 200, 403],
         "revert":              [200, 403, 403, 403, 403],   // Super Admin only
-        "delete the assignee's note": [500, 500, 403, 500, 500],   // broken for everyone: see header
+        "delete the assignee's note": [200, 200, 403, 200, 200],   // the employee wrote it
         "verify a location":   [200, 200, 403, 200, 403],
     },
     "t-loner": {
@@ -95,7 +94,7 @@ const EXPECTED: Record<string, Record<string, Row>> = {
         "record payment":      [200, 200, 403, 403, 403],
         "apply a penalty":     [200, 200, 403, 403, 403],
         "revert":              [200, 403, 403, 403, 403],
-        "delete the assignee's note": [500, 500, 403, 403, 500],
+        "delete the assignee's note": [200, 200, 403, 403, 403],   // not the author, not a manager
         "verify a location":   [200, 200, 403, 403, 403],
     },
     "t-admin": {
@@ -108,7 +107,7 @@ const EXPECTED: Record<string, Record<string, Row>> = {
         "record payment":      [200, 200, 403, 403, 403],
         "apply a penalty":     [200, 200, 403, 403, 403],
         "revert":              [200, 403, 403, 403, 403],
-        "delete the assignee's note": [500, 500, 403, 403, 500],
+        "delete the assignee's note": [200, 200, 403, 403, 403],   // not the author, not a manager
         "verify a location":   [200, 200, 403, 403, 403],
     },
     "t-other": {
@@ -121,7 +120,7 @@ const EXPECTED: Record<string, Record<string, Row>> = {
         "record payment":      [200, 403, 200, 403, 403],
         "apply a penalty":     [200, 403, 200, 403, 403],
         "revert":              [200, 403, 403, 403, 403],
-        "delete the assignee's note": [500, 403, 500, 403, 403],
+        "delete the assignee's note": [200, 403, 200, 403, 403],
         "verify a location":   [200, 403, 200, 403, 403],
     },
 }
