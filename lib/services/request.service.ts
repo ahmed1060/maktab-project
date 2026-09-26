@@ -1,4 +1,6 @@
 import { prisma } from "@/lib/prisma"
+import { scopesToTeam } from "@/lib/team-scope"
+import { verifyResourceAccess } from "@/lib/security"
 import { CreateRequestInput } from "../validations/request.schema"
 
 export class RequestService {
@@ -120,6 +122,7 @@ export class RequestService {
         if (userRole === 'SUPER_ADMIN') { /* OK */ }
         else if (['ADMIN', 'TEAM_LEADER'].includes(userRole)) {
             if (request.companyId !== userCompanyId) throw new Error("ACCESS_DENIED")
+            await requireTeamReach(session, request.userId)
         } else {
             if (request.userId !== userId) throw new Error("ACCESS_DENIED")
         }
@@ -140,6 +143,7 @@ export class RequestService {
             if (!request) throw new Error("REQUEST_NOT_FOUND")
 
             if (userRole !== 'SUPER_ADMIN' && request.companyId !== userCompanyId) throw new Error("ACCESS_DENIED")
+            await requireTeamReach(session, request.userId)
 
             // --- NEW: State Transition Guard ---
             if (request.status === 'COMPLETED' && ['PENDING', 'IN_PROGRESS'].includes(status)) {
@@ -192,6 +196,7 @@ export class RequestService {
         if (userRole === 'SUPER_ADMIN') { /* OK */ }
         else if (['ADMIN', 'TEAM_LEADER'].includes(userRole)) {
             if (request.companyId !== userCompanyId) throw new Error("ACCESS_DENIED")
+            await requireTeamReach(session, request.userId)
         } else {
             if (request.userId !== userId) throw new Error("ACCESS_DENIED")
         }
@@ -208,4 +213,16 @@ export class RequestService {
 
         return result
     }
+}
+
+/**
+ * A Team Leader reaches only requests raised by their team, or by themselves —
+ * the same rule the request list applies. Viewing, changing and deleting one
+ * request checked only the company, so a Team Leader could act on requests
+ * outside their team, the Admin's own included. verifyResourceAccess on the
+ * person who raised it is the team rule every other per-person check uses.
+ */
+async function requireTeamReach(session: any, requesterId: string) {
+    if (!scopesToTeam(session.user.role)) return
+    if (!(await verifyResourceAccess(session, requesterId, 'USER'))) throw new Error("ACCESS_DENIED")
 }

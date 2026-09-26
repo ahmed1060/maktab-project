@@ -13,10 +13,10 @@ vi.setConfig({ testTimeout: 120_000 })
  * someone in another company. Every value was observed by running the code and
  * checked against a reading of it.
  *
- * Recorded exactly as it is, because Part A changes nobody's access: the
- * request *list* is limited to a Team Leader's team, but viewing one request,
- * changing its status and deleting it check only the company — so a Team Leader
- * may act on requests outside their team, the Admin's own included.
+ * (Fixed since recording: the request list was limited to a Team Leader's team,
+ * but viewing, changing and deleting one request checked only the company, so
+ * a Team Leader could act on requests outside their team. They now follow the
+ * list's team rule.)
  */
 
 vi.mock("next-auth", () => ({ getServerSession: async () => state.session }))
@@ -46,15 +46,15 @@ const EXPECTED: Record<string, Record<string, Row>> = {
         "delete a completed one": [200, 403, 403, 403, 403],   // Super Admin only
     },
     "r-loner": {
-        "view":                   [200, 200, 403, 200, 403],   // a leader, outside their team
-        "change status":          [200, 200, 403, 200, 403],
-        "delete":                 [200, 200, 403, 200, 403],
+        "view":                   [200, 200, 403, 403, 403],   // outside the leader's team
+        "change status":          [200, 200, 403, 403, 403],
+        "delete":                 [200, 200, 403, 403, 403],
         "delete a completed one": [200, 403, 403, 403, 403],
     },
     "r-admin": {
-        "view":                   [200, 200, 403, 200, 403],   // a leader, on the Admin's own
-        "change status":          [200, 200, 403, 200, 403],
-        "delete":                 [200, 200, 403, 200, 403],
+        "view":                   [200, 200, 403, 403, 403],
+        "change status":          [200, 200, 403, 403, 403],
+        "delete":                 [200, 200, 403, 403, 403],
         "delete a completed one": [200, 403, 403, 403, 403],
     },
     "r-other": {
