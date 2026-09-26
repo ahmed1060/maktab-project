@@ -170,9 +170,18 @@ describe.skipIf(!ADMIN_URL)("roles as data, in Postgres", () => {
             expect(await who({ companyId: "c1", ...holdersOf("clients.view") })).toEqual(["a1", "e1", "n1", "t1"])
         })
 
-        it("refuse a company whose built-in role is missing, rather than write a null", async () => {
-            await db.query(`INSERT INTO "Company"(id, name, "updatedAt") VALUES ('c4', 'Broken', now())`)
-            await expect(RoleAssignmentService.builtIn(prisma, "EMPLOYEE", "c4")).rejects.toThrow("BUILT_IN_ROLE_MISSING")
+        it("give a company with no roles at all its built-in ones — one made while the migration ran", async () => {
+            await db.query(`INSERT INTO "Company"(id, name, "updatedAt") VALUES ('c4', 'Made mid-deploy', now())`)
+            const assignment = await RoleAssignmentService.builtIn(prisma, "EMPLOYEE", "c4")
+            expect(assignment.roleId).toBeTruthy()
+            const { rows } = await db.query(`SELECT count(*)::int AS n FROM "Role" WHERE "companyId" = 'c4'`)
+            expect(rows[0].n).toBe(3)
+        })
+
+        it("refuse a company missing only some of them, rather than write a null", async () => {
+            await db.query(`INSERT INTO "Company"(id, name, "updatedAt") VALUES ('c5', 'Broken', now())`)
+            await db.query(`INSERT INTO "Role"(id, "companyId", name, "baseRole", "builtIn", "updatedAt") VALUES ('r-c5', 'c5', 'Admin', 'ADMIN', 'ADMIN', now())`)
+            await expect(RoleAssignmentService.builtIn(prisma, "EMPLOYEE", "c5")).rejects.toThrow("BUILT_IN_ROLE_MISSING")
         })
     })
 })

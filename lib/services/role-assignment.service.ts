@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma"
 import { isBuiltInRole } from "@/lib/permissions/built-in"
+import { RoleService } from "./role.service"
 import type { UserRole } from "@prisma/client"
 
 type Client = Pick<typeof prisma, "role">
@@ -29,13 +30,20 @@ export class RoleAssignmentService {
         companyId: string | null | undefined,
     ): Promise<{ role: UserRole; roleId: string | null }> {
         if (!companyId || !isBuiltInRole(role)) return { role, roleId: null }
-        const found = await client.role.findUnique({
+        const find = () => client.role.findUnique({
             where: { companyId_builtIn: { companyId, builtIn: role } },
             select: { id: true },
         })
+        let found = await find()
         // Every company is created with its built-in roles, and the migration
-        // gave them to every company before that. Missing one is a broken
-        // company, not a case to paper over with a null the database refuses.
+        // gave them to every company before that — except one created by the
+        // previous release while this one's migration ran. A company with no
+        // roles at all is that case, and gets them now. One missing only some
+        // is broken in a way nobody should paper over.
+        if (!found && (await client.role.count({ where: { companyId } })) === 0) {
+            await RoleService.seedBuiltInRoles(client as any, companyId)
+            found = await find()
+        }
         if (!found) throw new Error("BUILT_IN_ROLE_MISSING")
         return { role, roleId: found.id }
     }
