@@ -17,10 +17,11 @@ vi.setConfig({ testTimeout: 120_000 })
  *
  * - (Fixed since recording: an Employee could approve their own obligation.
  *   Approving and rejecting are now managers only.)
- * - There are two delete paths with different rules: DELETE /obligations/[id]/
- *   delete is Admins only, DELETE /obligations/[id] also lets Team Leaders
+ * - There were two delete paths with different rules: DELETE /obligations/[id]/
+ *   delete was Admins only, DELETE /obligations/[id] also lets Team Leaders
  *   delete within their team. (Fixed since recording: the second path did not
- *   check the team, so a Team Leader could delete outside it.)
+ *   check the team, so a Team Leader could delete outside it. Removed in
+ *   Part B: the first, which no screen called — one door, one rule.)
  * - (Fixed since recording: reassigning to someone in another company was
  *   refused with an unmapped 500; it answers 403.)
  *
@@ -46,7 +47,6 @@ const ON_OBLIGATION: [string, string, (o: string) => Promise<Response>][] = [
     ["approve",           "COMPLETED",   async o => (await route()).PUT(withBody("PUT", `/api/obligations/${o}`, { status: "APPROVED" }), P(o))],
     ["reassign",          "IN_PROGRESS", async o => (await route()).PUT(withBody("PUT", `/api/obligations/${o}`, { assigneeIds: ["loner"] }), P(o))],
     ["delete",            "IN_PROGRESS", async o => (await route()).DELETE(new Request(url(`/api/obligations/${o}`), { method: "DELETE" }), P(o))],
-    ["delete (Admin path)", "IN_PROGRESS", async o => (await import("@/app/api/obligations/[id]/delete/route")).DELETE(new Request(url(`/api/obligations/${o}/delete`), { method: "DELETE" }), P(o))],
     ["revert",            "APPROVED",    async o => (await import("@/app/api/obligations/[id]/revert/route")).POST(withBody("POST", `/api/obligations/${o}/revert`, {}), P(o))],
 ]
 
@@ -57,7 +57,6 @@ const EXPECTED: Record<string, Record<string, Row>> = {
         "approve":             [200, 200, 403, 200, 403],
         "reassign":            [200, 200, 403, 403, 200],   // leader: 'loner' is outside the team; employee: ignored
         "delete":              [200, 200, 403, 200, 403],
-        "delete (Admin path)": [200, 200, 403, 403, 403],
         "revert":              [200, 403, 403, 403, 403],   // Super Admin only
     },
     "o-loner": {
@@ -65,7 +64,6 @@ const EXPECTED: Record<string, Record<string, Row>> = {
         "approve":             [200, 200, 403, 403, 403],
         "reassign":            [200, 200, 403, 403, 403],
         "delete":              [200, 200, 403, 403, 403],
-        "delete (Admin path)": [200, 200, 403, 403, 403],
         "revert":              [200, 403, 403, 403, 403],
     },
     "o-admin": {
@@ -73,7 +71,6 @@ const EXPECTED: Record<string, Record<string, Row>> = {
         "approve":             [200, 403, 403, 403, 403],   // an Admin may not approve their own
         "reassign":            [200, 200, 403, 403, 403],
         "delete":              [200, 403, 403, 403, 403],   // ...nor delete it
-        "delete (Admin path)": [200, 403, 403, 403, 403],
         "revert":              [200, 403, 403, 403, 403],
     },
     "o-other": {
@@ -81,7 +78,6 @@ const EXPECTED: Record<string, Record<string, Row>> = {
         "approve":             [200, 403, 200, 403, 403],
         "reassign":            [200, 403, 403, 403, 403],   // 'loner' is not in c2
         "delete":              [200, 403, 200, 403, 403],
-        "delete (Admin path)": [200, 403, 200, 403, 403],
         "revert":              [200, 403, 403, 403, 403],
     },
 }
