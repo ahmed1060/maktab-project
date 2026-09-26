@@ -188,23 +188,68 @@ allowed scopes **and** the role's base role (TEAM only on TEAM_LEADER-based role
 A grant that would silently give no usable access is rejected with the reason,
 rather than stored.
 
-A first draft, derived from what the product does today:
+The list below is **draft 2**, checked against every company-facing API route in
+`app/api` (September 2026). Draft 1 was written from the module names and missed
+about a dozen real actions — task payments, penalties, transfers and reverts,
+bulk upload, password resets, performance-point resets, status changes, ending
+contracts, and debt waivers. **Pending the Super Admin's confirmation (§9).**
 
-| Module | Permissions |
-|---|---|
-| Employees | `employees.view`, `employees.create`, `employees.edit`, `employees.archive`, `employees.assign_role`, `employees.request_role`, `employees.assign_team` |
-| Profile requests | `profile_requests.review` |
-| Requests | `requests.view`, `requests.review` |
-| Tasks | `tasks.view`, `tasks.create`, `tasks.assign`, `tasks.review`, `tasks.delete` |
-| Obligations | `obligations.view`, `obligations.manage` |
-| Clients | `clients.view`, `clients.manage` |
-| Vendors | `vendors.view`, `vendors.manage` |
-| Costs | `costs.view`, `costs.manage` |
-| Day off | `dayoff.view`, `dayoff.approve`, `dayoff.adjust_credit` |
-| Salaries | `salary.view`, `salary.edit`, `salary_adjustments.manage` |
-| Payroll | `payroll.view`, `payroll.prepare`, `payroll.approve`, `payroll.mark_paid`, `payroll.issue_payslips`, `settlements.manage`, `debts.manage` |
-| Settings | `settings.view`, `settings.edit` (within the tabs the Super Admin exposed — attendance plan §5.2) |
-| Audit | `audit.view` |
+Actions a person takes on **their own** things — submitting or acknowledging a task
+assigned to them, requesting leave, editing their own profile, their own
+notifications, MFA and language — are not permissions. Everyone can always do
+them, as today.
+
+| Module | Permission | What it allows | Routes today |
+|---|---|---|---|
+| **Employees** | `employees.view` | See employee profiles and lists | `GET /users` |
+| | `employees.create` | Add an employee | `POST /users` |
+| | `employees.edit` | Edit profile fields (not role, not salary) | `PUT /users` |
+| | `employees.change_status` | Activate / suspend an account | `users/[id]/status` |
+| | `employees.end_contract` | End a contract or reinstate — starts a settlement | `users/[id]/employment` |
+| | `employees.delete` | Delete an account — separate from archiving because it is destructive | `DELETE /users` |
+| | `employees.reset_password` | Reset someone's password | `users/[id]/reset-password` |
+| | `employees.assign_team` | Put people on a team / move teams | `users/team` |
+| | `employees.assign_role` | Assign a role directly (§4.2) | new |
+| | `employees.request_role` | Request a role assignment for Admin approval (§6.12) | new |
+| **Profile requests** | `profile_requests.review` | Approve / reject name-change requests | `profile-requests/[id]/approve\|reject` |
+| **Requests** | `requests.view` | See internal requests | `GET /requests` |
+| | `requests.review` | Decide requests and award performance points | `PATCH /requests/[id]` |
+| | `requests.reset_points` | Reset performance points (one person or all) | `users/[id]/reset-points` |
+| **Tasks** | `tasks.view` | See tasks beyond their own | `GET /tasks` |
+| | `tasks.create` | Create tasks, including bulk upload from the template | `POST /tasks`, `tasks/bulk`, `templates/*` |
+| | `tasks.edit` | Edit details, items and locations | `tasks/[id]/details\|items\|locations` |
+| | `tasks.transfer` | Move a task to someone else | `tasks/[id]/transfer` |
+| | `tasks.review` | Review submitted tasks, revert a decision | `tasks/[id]/review\|revert` |
+| | `tasks.delete` | Delete a task | `tasks/[id]/delete` |
+| | `tasks.pay` | Record task payments, single or bulk — **moves money** | `tasks/[id]/payment`, `tasks/payment/bulk` |
+| | `tasks.penalize` | Apply a task penalty — **deducts pay** | `tasks/[id]/penalty` |
+| **Obligations** | `obligations.view` | See obligations | `GET /obligations` |
+| | `obligations.manage` | Create, edit, delete, revert | `obligations/*` |
+| **Clients** | `clients.view` | See clients, sections, notes | `GET /clients/*` |
+| | `clients.manage` | Create / edit / delete clients, sections, notes | `clients/*` |
+| **Vendors** | `vendors.view` / `vendors.manage` | As clients | `vendors` |
+| **Costs** | `costs.view` | See costs, including a person's cost history | `users/[id]/costs-history` |
+| **Day off** | `dayoff.view` | See others' leave and balances | `admin/day-off-requests`, `users/[id]/day-off-history` |
+| | `dayoff.approve` | Approve / reject / re-evaluate leave | `admin/day-off-requests/[id]*` |
+| | `dayoff.adjust_credit` | Change someone's leave balance | `PUT /users` (credit fields) |
+| **Salaries** | `salary.view` | See salary figures anywhere (decided: one permission) | `users/[id]/salary-history`, profile, payroll |
+| | `salary.edit` | Change a salary — implies view | `PUT /users` (salary) |
+| | `salary_adjustments.manage` | Bonus / deduction, reverse, roll back | `users/[id]/bonus\|deduction\|adjustments/*` |
+| **Payroll** | `payroll.view` | See the monthly run, payslips, export — implies `salary.view` | `payroll/[y]/[m]` GET, `export`, `payslips/*` |
+| | `payroll.prepare` | Save the draft run | `payroll/[y]/[m]` POST |
+| | `payroll.approve` | Approve (freeze) the month | `payroll/[y]/[m]/approve` |
+| | `payroll.issue_payslips` | Email payslips to employees | `payroll/[y]/[m]/issue` |
+| | `payroll.mark_paid` | Mark the month paid | `payroll/[y]/[m]/paid` |
+| | `settlements.manage` | See and resend final settlements | `settlements/*`, `users/[id]/settlements` |
+| | `debts.view` | See debts | `users/[id]/debts` |
+| | `debts.waive` | Forgive a debt — separate because it gives money away | `debts/[id]/waive` |
+| **Settings** | `settings.view` / `settings.edit` | Within the tabs the Super Admin exposed (attendance plan §5.2) | company settings |
+| **Audit** | `audit.view` | See the company's audit log | `admin/audit-logs` |
+
+Separation-of-duties pairs to warn about (§6.11), from this list:
+`payroll.prepare` + `payroll.approve`; `salary.edit` + `payroll.approve`;
+`employees.create` + `salary.edit`; `tasks.pay` + `tasks.review`;
+`salary_adjustments.manage` + `payroll.approve`.
 
 Attendance adds its own when it is built (`attendance.correct`,
 `attendance.approve_face`, …).
@@ -734,8 +779,15 @@ another hardcoded check.
 
 1. **When to build Part A** (§1.1) — as part of stabilising the website, or with
    Part B later.
-2. **Final permission list** (§3.2) — confirm the modules and the view/change split
-   for the rest of the list. Salaries are settled.
+2. **Confirm permission list draft 2** (§3.2), in particular:
+   - **Task penalties** (`tasks.penalize`) deduct pay. Keep it a Tasks permission,
+     or require `salary_adjustments.manage` as well? Recommendation: its own
+     permission, with the role editor showing a "this affects pay" label.
+   - **Deleting vs archiving employees** as two permissions. Recommendation: yes —
+     deleting cannot be undone.
+   - **Waiving debts** separate from seeing them. Recommendation: yes — waiving
+     gives money away.
+   - Anything a client has asked for that no row above expresses.
 
 ---
 
