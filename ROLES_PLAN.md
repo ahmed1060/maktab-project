@@ -32,6 +32,7 @@ Settled during the attendance brainstorm (rounds 3–6 of `ATTENDANCE_PLAN.md`):
 | **The built-in Admin role is locked** — not editable per company; a reduced admin is a separate ADMIN-based role (§4.3) | Roles review |
 | **Acting roles adopted** (§6.13) | Roles review |
 | **Periodic access review adopted as a per-company setting, off by default**, toggled in the company's settings (§6.14) | Roles review |
+| **One salary permission** — `salary.view` covers salaries everywhere: profiles, payroll, payslips, history, adjustments, settlements, debts (§3.2) | Roles review |
 
 **Revised after a review of the first draft** against the code. The first draft
 overstated the migration (§2.2), relied on a circular safety net (§8), and missed
@@ -223,9 +224,13 @@ profile the same permission as seeing it in payroll and payslips?** If yes, one
 `salary.view` covers all of them — simple, but an Accountant who runs payroll
 necessarily sees every salary. If no, payroll gets its own view permission and a
 company can have someone who runs payroll figures without browsing profiles —
-finer, but more to configure. Recommendation: **one `salary.view`**, because
-running payroll without seeing salaries is not realistic, and fewer permissions
-means fewer misconfigured roles.
+finer, but more to configure.
+
+**Decided: one `salary.view`.** Running payroll without seeing salaries is not
+realistic, and fewer permissions means fewer misconfigured roles. Every place a
+salary figure appears checks this one permission, at the scope it was granted.
+The payroll permissions (`payroll.prepare`, `payroll.approve`, …) imply it (§3.8),
+so a role cannot be given payroll without it.
 
 Every action in the product belongs to exactly one permission. "Viewing" and
 "changing" are separate wherever a real company would want to split them —
@@ -691,9 +696,8 @@ another hardcoded check.
 
 1. **When to build Part A** (§1.1) — as part of stabilising the website, or with
    Part B later.
-2. **Final permission list** (§3.2) — confirm the modules and the view/change split.
-   In particular the salary question in §3.2: one `salary.view` across profiles and
-   payroll (recommended), or separate permissions.
+2. **Final permission list** (§3.2) — confirm the modules and the view/change split
+   for the rest of the list. Salaries are settled.
 
 ---
 
