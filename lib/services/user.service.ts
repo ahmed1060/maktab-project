@@ -15,6 +15,12 @@ import { checkTeamAssignment, clearsOwnLeader, stripsLeadership } from "@/lib/te
 import { notifyTeamMoves } from "./team-notify.service"
 import { TeamHandOff, type Rehome } from "./team-handoff.service"
 
+/**
+ * The account statuses a status write may set. ARCHIVED and DELETED come only
+ * from ending a contract and deleting, which carry their own permissions.
+ */
+const SETTABLE_STATUSES = ["ACTIVE", "OFFLINE", "SUSPENDED"] as const
+
 export class UserService {
     static async create(input: CreateUserInput, session: any) {
         const userRole = session.user.role
@@ -278,7 +284,17 @@ export class UserService {
             }
 
             if (companyId !== undefined && userRole === 'SUPER_ADMIN') updateData.companyId = companyId || null
-            if (status !== undefined && can(session.user, "employees.change_status")) updateData.status = status
+            // One rule for account status, here and on the status route: who
+            // holds employees.change_status over the person may set them
+            // ACTIVE, OFFLINE or SUSPENDED. Ending a contract and deleting are
+            // their own flows, with their own permissions, hand-off and
+            // settlement; a status write must not be a way round them. The
+            // form sends the current status with every save, so an unchanged
+            // one is not a change.
+            if (status !== undefined && status !== regularUser.status && can(session.user, "employees.change_status", person)) {
+                if (!(SETTABLE_STATUSES as readonly string[]).includes(status)) throw new Error("STATUS_HAS_ITS_OWN_FLOW")
+                updateData.status = status
+            }
 
             // 5. Team membership.
             //
@@ -509,13 +525,13 @@ export class UserService {
     }
 
     static async updateStatus(userId: string, status: string, session: any) {
-        const requesterRole = session.user.role
-        if (requesterRole !== 'SUPER_ADMIN') {
-            throw new Error("FORBIDDEN")
-        }
+        // The same rule as the status field of an edit (see update()).
+        const { personTarget } = await import("@/lib/security")
+        const person = await personTarget(userId)
+        if (!person) throw new Error("USER_NOT_FOUND")
+        if (!can(session.user, "employees.change_status", person)) throw new Error("FORBIDDEN")
 
-        const allowedStatuses: UserStatus[] = ['ACTIVE', 'OFFLINE', 'SUSPENDED']
-        if (!allowedStatuses.includes(status as UserStatus)) {
+        if (!(SETTABLE_STATUSES as readonly string[]).includes(status)) {
             throw new Error("INVALID_STATUS")
         }
 

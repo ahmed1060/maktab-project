@@ -21,13 +21,15 @@ vi.setConfig({ testTimeout: 60_000 })
  * recorded as they are and are not what the roles plan would choose — Part A
  * changes nobody's access, so fixing them is deliberate, separate work:
  *
- * - An Admin may change their own salary (the field rule reads the caller's
- *   role, not whose record it is).
+ * - (Fixed in Part B: an Admin could change their own salary. Nobody sets
+ *   their own pay now — ROLES_PLAN.md §4.2, rule 5.)
  * - (Fixed since recording: editing or deleting someone in another company was
  *   refused with an unmapped 500. The routes now answer 403, and the cases
  *   below say so. Nothing was ever written either way.)
- * - Two different "status" paths: POST /users/[id]/status is Super Admin only,
- *   while the status field of an edit is open to Admins.
+ * - (Fixed in Part B: two "status" paths with different rules — the status
+ *   route was Super Admin only while an edit let an Admin set any status,
+ *   ARCHIVED and DELETED included. Both now follow employees.change_status,
+ *   and only to ACTIVE, OFFLINE or SUSPENDED.)
  */
 
 vi.mock("next-auth", () => ({ getServerSession: async () => state.session }))
@@ -108,6 +110,21 @@ const EDITS: Case[] = [
         expected: c1Managers("status", { employee: [200, ""] }),
     },
     {
+        // Changed in Part B: archiving is ending a contract, with its own
+        // permission, team hand-off and settlement. An edit set it directly,
+        // skipping all three.
+        name: "archiving through an edit",
+        run: put({ id: "emp", status: "ARCHIVED" }),
+        expected: c1Managers("", { superAdmin: [400, ""], admin: [400, ""], employee: [200, ""] }),
+    },
+    {
+        // Changed in Part B: deleting has its own route and permission
+        // (employees.delete). An edit set DELETED directly.
+        name: "deleting through an edit",
+        run: put({ id: "emp", status: "DELETED" }),
+        expected: c1Managers("", { superAdmin: [400, ""], admin: [400, ""], employee: [200, ""] }),
+    },
+    {
         name: "making an employee a Team Leader",
         run: put({ id: "loner", role: "TEAM_LEADER" }),
         // role and the role that sets it, written together since roles became
@@ -172,7 +189,9 @@ const OTHERS: Case[] = [
     {
         name: "the account status route",
         run: async () => (await import("@/app/api/users/[id]/status/route")).POST(withBody("POST", "/api/users/emp/status", { status: "SUSPENDED" }), { params: { id: "emp" } }),
-        expected: { superAdmin: [200], admin: [403], otherAdmin: [403], leader: [403], employee: [403] },
+        // Changed in Part B: one rule with the status field of an edit, which
+        // an Admin already had. It was Super Admin only.
+        expected: { superAdmin: [200], admin: [200], otherAdmin: [403], leader: [403], employee: [403] },
     },
     {
         name: "an employee's employment history",
@@ -253,7 +272,7 @@ const LAST_ADMIN: Case[] = [
     {
         name: "suspending a company's only Admin through the status route",
         run: async () => (await import("@/app/api/users/[id]/status/route")).POST(withBody("POST", "/api/users/admin2/status", { status: "SUSPENDED" }), { params: { id: "admin2" } }),
-        expected: { superAdmin: [400, ""], admin: [403, ""], otherAdmin: [403, ""], leader: [403, ""], employee: [403, ""] },
+        expected: { superAdmin: [400, ""], admin: [403, ""], otherAdmin: [400, ""], leader: [403, ""], employee: [403, ""] },
     },
     {
         name: "suspending one of a company's two Admins",

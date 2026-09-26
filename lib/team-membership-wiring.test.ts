@@ -120,8 +120,12 @@ describe("a leader is not stripped out from under their team", () => {
     })
 
     it("refuses archiving them too, which does not look like demotion", async () => {
+        // Refused earlier since Part B: archiving is ending a contract, which
+        // has its own flow — and that flow asks where the team goes, with the
+        // same refusal (app/api/users/[id]/employment). An edit may not set
+        // ARCHIVED at all, reports or none.
         db.reports = [{ id: "e-1", firstName: "Laila", lastName: "Fouad" }]
-        await expect(update({ status: "ARCHIVED" })).rejects.toThrow("LEADER_HAS_REPORTS")
+        await expect(update({ status: "ARCHIVED" })).rejects.toThrow("STATUS_HAS_ITS_OWN_FLOW")
     })
 
     it("allows the demotion once nobody reports to them", async () => {
