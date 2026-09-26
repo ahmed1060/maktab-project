@@ -30,6 +30,8 @@ Settled during the attendance brainstorm (rounds 3–6 of `ATTENDANCE_PLAN.md`):
 | **All Super Admin tools adopted**: preview as role, copy roles from another company, push a template change, in-app role change requests, role matrix export, separation-of-duties warnings (§6.6–6.11) | Roles review |
 | **HR may assign roles through a request that an Admin approves**; Admins assign directly (§6.12) | Roles review |
 | **The built-in Admin role is locked** — not editable per company; a reduced admin is a separate ADMIN-based role (§4.3) | Roles review |
+| **Acting roles adopted** (§6.13) | Roles review |
+| **Periodic access review adopted as a per-company setting, off by default**, toggled in the company's settings (§6.14) | Roles review |
 
 **Revised after a review of the first draft** against the code. The first draft
 overstated the migration (§2.2), relied on a circular safety net (§8), and missed
@@ -198,6 +200,32 @@ A first draft, derived from what the product does today:
 
 Attendance adds its own when it is built (`attendance.correct`,
 `attendance.approve_face`, …).
+
+#### Salaries — the split that needs deciding
+
+Today, in `app/api/users/route.ts`: **Admins and Super Admins see every salary in the
+company; each employee sees their own; team leaders see their team's profiles but
+not salaries.** Salaries also appear inside payroll, payslips, salary history,
+adjustments, settlements and debts, and each of those follows its own module check.
+
+With custom roles, "who may see salaries" stops being one rule and becomes a
+choice per role. The draft offers these levels:
+
+| Level | Permission | Typical holder |
+|---|---|---|
+| Own salary only | *(everyone — not a permission)* | Every employee |
+| See team's salaries | `salary.view` at TEAM scope | A Branch Manager, if the client wants it |
+| See everyone's salaries | `salary.view` at COMPANY scope | HR, Accountant |
+| Change salaries | `salary.edit` (implies view) | HR manager, Admin |
+
+And the question the final list must answer: **is seeing a salary on an employee's
+profile the same permission as seeing it in payroll and payslips?** If yes, one
+`salary.view` covers all of them — simple, but an Accountant who runs payroll
+necessarily sees every salary. If no, payroll gets its own view permission and a
+company can have someone who runs payroll figures without browsing profiles —
+finer, but more to configure. Recommendation: **one `salary.view`**, because
+running payroll without seeing salaries is not realistic, and fewer permissions
+means fewer misconfigured roles.
 
 Every action in the product belongs to exactly one permission. "Viewing" and
 "changing" are separate wherever a real company would want to split them —
@@ -549,7 +577,7 @@ so an Admin confirms it.
   new hire is not left on the default role indefinitely by oversight.
 - Works for existing employees too — a promotion is a request in the same way.
 
-### 6.13 Acting roles — proposed
+### 6.13 Acting roles — adopted
 
 A Branch Manager goes on leave and someone covers for two weeks. Today that means
 changing the cover's role and remembering to change it back. Proposal: a role
@@ -558,10 +586,18 @@ on that date they return automatically to their previous role, and both changes 
 audited. It keeps one role per user — the acting role *replaces* theirs for the
 period rather than adding to it. Assigned through the same direct or request path.
 
-### 6.14 Periodic access review — proposed
+### 6.14 Periodic access review — adopted, per-company setting
 
-Access that was right a year ago often is not now. Every quarter (interval chosen
-by the Super Admin), each company's Admins receive a short in-app review: who holds
+Access that was right a year ago often is not now.
+
+**It is an option, not a default.** In the company's settings — a *Roles* section of
+the Company Options page — a toggle **Periodic access review**, **off by default**,
+with the interval beside it (quarterly suggested). The Super Admin sets it, as part
+of what a company's contract includes; it is not one of the tabs exposed to the
+company Admin, since a review the reviewed can switch off is not much of a review.
+Turning it off stops future reviews and keeps the record of past ones.
+
+When on, at each interval the company's Admins receive a short in-app review: who holds
 each sensitive permission — salaries, payroll approval, role assignment — with a
 **confirm** or **request change** button per line. Unanswered reviews are visible to
 the Super Admin. Clients with an auditor will be asked for exactly this record.
@@ -655,9 +691,9 @@ another hardcoded check.
 
 1. **When to build Part A** (§1.1) — as part of stabilising the website, or with
    Part B later.
-2. **Acting roles (§6.13) and periodic access review (§6.14)** — adopt or not.
-3. **Final permission list.** §3.2 is a first draft; confirm the split between view
-   and change, especially who may see salaries.
+2. **Final permission list** (§3.2) — confirm the modules and the view/change split.
+   In particular the salary question in §3.2: one `salary.view` across profiles and
+   payroll (recommended), or separate permissions.
 
 ---
 
