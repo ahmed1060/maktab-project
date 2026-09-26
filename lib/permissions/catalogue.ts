@@ -47,9 +47,10 @@ type PermissionDefinition = {
     highRisk?: string
     implies?: readonly string[]
     /**
-     * Never about oneself (ROLES_PLAN.md §4.2, rule 5): nobody approves their
-     * own leave, sets their own pay or allowance, or decides their own name
-     * change, whatever their role holds. can() refuses it whenever the target
+     * Never about oneself (ROLES_PLAN.md §4.2, rules 1, 5 and 6): nobody
+     * approves their own leave, sets their own pay or allowance, decides their
+     * own name change, or changes or requests their own role, whatever their
+     * role holds. can() refuses it whenever the target
      * is the actor, so no route has to remember to.
      */
     notOnOwn?: true
@@ -70,8 +71,9 @@ export const PERMISSIONS = {
     "employees.delete":         { code: 6, module: "EMPLOYEES", scopes: COMPANY, implies: ["employees.view"], highRisk: CANNOT_BE_UNDONE },
     "employees.reset_password": { code: 7, module: "EMPLOYEES", scopes: COMPANY, implies: ["employees.view"] },
     "employees.assign_team":    { code: 8, module: "EMPLOYEES", scopes: COMPANY, implies: ["employees.view"] },
-    "employees.assign_role":    { code: 9, module: "EMPLOYEES", scopes: COMPANY, implies: ["employees.view"] },
-    "employees.request_role":   { code: 10, module: "EMPLOYEES", scopes: COMPANY, implies: ["employees.view"] },
+    // Nobody changes, or asks for, their own role (§4.2, rules 1 and 6).
+    "employees.assign_role":    { code: 9, module: "EMPLOYEES", scopes: COMPANY, implies: ["employees.view"], notOnOwn: true },
+    "employees.request_role":   { code: 10, module: "EMPLOYEES", scopes: COMPANY, implies: ["employees.view"], notOnOwn: true },
 
     // --- Profile requests and internal requests ---------------------------
     "profile_requests.review":  { code: 11, module: "PROFILE_REQUESTS", scopes: COMPANY, notOnOwn: true },

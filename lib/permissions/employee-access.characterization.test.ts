@@ -217,7 +217,26 @@ const LAST_ADMIN: Case[] = [
     {
         name: "making a company's only Admin an employee",
         run: put({ id: "admin2", role: "EMPLOYEE" }),
-        expected: { superAdmin: [400, ""], admin: [403, ""], otherAdmin: [400, ""], leader: [403, ""], employee: [403, ""] },
+        // admin2 on themselves: ignored, since nobody changes their own role.
+        expected: { superAdmin: [400, ""], admin: [403, ""], otherAdmin: [200, ""], leader: [403, ""], employee: [403, ""] },
+    },
+    {
+        // Added in Part B. The edit form sends the person's current role with
+        // every save, so this is an Admin saving their own profile. It was
+        // refused (403) — the role field ran into "only the Super Admin
+        // assigns the Admin role". Now their own role is simply not theirs to
+        // set, and the rest of the save goes through.
+        name: "an Admin saving their own profile",
+        run: put({ id: "admin", role: "ADMIN", gender: "FEMALE" }),
+        expected: { superAdmin: [200, "gender,role,roleId"], admin: [200, "gender"], otherAdmin: [403, ""], leader: [403, ""], employee: [403, ""] },
+    },
+    {
+        // Added in Part B: nobody changes their own role (ROLES_PLAN.md §4.2,
+        // rule 1) — ignored, as other fields a caller may not set are. Before,
+        // the Admin could make themselves an employee.
+        name: "an Admin changing their own role",
+        run: put({ id: "admin", role: "EMPLOYEE" }),
+        expected: { superAdmin: [200, "role,roleId"], admin: [200, ""], otherAdmin: [403, ""], leader: [403, ""], employee: [403, ""] },
     },
     {
         name: "moving a company's only Admin to another company",

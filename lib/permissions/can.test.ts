@@ -133,7 +133,7 @@ describe("nobody decides their own (ROLES_PLAN.md §4.2, rule 5)", () => {
     const own = { companyId: "c1", userId: "a", teamLeaderId: null }
     const someoneElse = { companyId: "c1", userId: "e", teamLeaderId: null }
 
-    for (const permission of ["dayoff.approve", "dayoff.adjust_credit", "salary.edit", "salary_adjustments.manage", "profile_requests.review"] as const) {
+    for (const permission of ["dayoff.approve", "dayoff.adjust_credit", "salary.edit", "salary_adjustments.manage", "profile_requests.review", "employees.assign_role"] as const) {
         it(`refuses ${permission} on oneself, and allows it on someone else`, () => {
             expect(can(admin, permission, own)).toBe(false)
             expect(can(admin, permission, someoneElse)).toBe(true)

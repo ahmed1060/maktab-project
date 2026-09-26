@@ -238,7 +238,11 @@ export class UserService {
 
         // 4. Role & Privileged Fields
         if (regularUser) {
-            if (role && can(session.user, "employees.assign_role")) {
+            // The person being edited: a grant's scope, and the rule that
+            // nobody decides their own role, pay or allowance (ROLES_PLAN.md
+            // §4.2, rules 1 and 5), are checked against them.
+            const person = { companyId: regularUser.companyId, userId: regularUser.id, teamLeaderId: regularUser.teamLeaderId }
+            if (role && can(session.user, "employees.assign_role", person)) {
                 if ((role === 'ADMIN' || role === 'SUPER_ADMIN') && userRole !== 'SUPER_ADMIN') {
                     throw new Error("FORBIDDEN_ROLE_ASSIGNMENT")
                 }
@@ -250,10 +254,6 @@ export class UserService {
             // Each field is its own permission: changing a salary and changing a
             // leave balance are different acts, and in Part B a company can give
             // them to different people.
-            // The person being edited: a grant's scope, and the rule that
-            // nobody sets their own pay or allowance (ROLES_PLAN.md §4.2,
-            // rule 5), are checked against them.
-            const person = { companyId: regularUser.companyId, userId: regularUser.id, teamLeaderId: regularUser.teamLeaderId }
             if (salary !== undefined && can(session.user, "salary.edit", person)) {
                 // Deliberately not written here. A salary change is an
                 // effective-dated fact, not a field edit: it has to land in
