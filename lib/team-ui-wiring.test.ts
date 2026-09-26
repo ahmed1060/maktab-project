@@ -56,7 +56,7 @@ describe("the edit form loads what it is about to save", () => {
         // Without this the select renders "no team leader" for everybody, and
         // saving an unrelated field silently unassigns them — a data loss with
         // no error and no visible cause.
-        expect(blockAt(ROUTE, "const user = await prisma.user.findUnique(")).toContain("teamLeaderId: true")
+        expect(blockAt(ROUTE, "const user = await prisma.user.findFirst(")).toContain("teamLeaderId: true")
     })
 
     it("the form reads it into state", () => {

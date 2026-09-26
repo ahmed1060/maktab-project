@@ -5,7 +5,7 @@ import { ApiResponse } from "@/lib/api-response"
 import { createUserSchema, updateUserSchema } from "@/lib/validations/user.schema"
 import { UserService } from "@/lib/services/user.service"
 import { parsePaging } from "@/lib/pagination"
-import { buildUserWhereClause } from "@/lib/services/user-query"
+import { buildUserWhereClause, buildSingleUserWhere, canViewSalaryOf } from "@/lib/services/user-query"
 
 // F-13: role/status are now Postgres enums, not free text — a query-param
 // value that isn't a real enum member makes Postgres reject the whole
@@ -22,12 +22,14 @@ export const GET = withStandardHandler(async (req, session) => {
 
     // 1. Authorization & Single User Fetch
     if (userId) {
-        if (userId !== session.user.id && !['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole || '')) {
-            return ApiResponse.forbidden()
-        }
+        // Scoped to the caller's company, and a Team Leader's team — see
+        // buildSingleUserWhere for why this was a cross-tenant read before.
+        const scope = buildSingleUserWhere(session as any, userId)
+        if (scope.outcome === 'forbidden') return ApiResponse.forbidden()
+        if (scope.outcome === 'not-found') return ApiResponse.notFound("User not found")
 
-        const user = await prisma.user.findUnique({
-            where: { id: userId },
+        const user = await prisma.user.findFirst({
+            where: scope.where,
             select: {
                 id: true, firstName: true, lastName: true, email: true, status: true,
                 role: true, gender: true, salary: true, companyId: true,
@@ -37,7 +39,7 @@ export const GET = withStandardHandler(async (req, session) => {
         })
 
         if (user) {
-            const canViewSalary = ['ADMIN', 'SUPER_ADMIN'].includes(userRole || '') || session.user.id === userId
+            const canViewSalary = canViewSalaryOf(session as any, userId)
             return ApiResponse.success({
                 ...user,
                 // Number(), not the raw Decimal — Decimal.toJSON() returns a
