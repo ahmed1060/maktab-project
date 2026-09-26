@@ -50,3 +50,40 @@ describe("a salary read from the database is shaped before it is sent", () => {
         for (const path of Object.keys(NEVER_SENT)) expect(readers, `${path} is listed but reads no salary`).toContain(path)
     })
 })
+
+/**
+ * Every task route, sorted by whether its response carries a task. The ones
+ * that do must shape it; a new route fails here until somebody decides which
+ * it is.
+ */
+const TASK_ROUTES: Record<string, "returns a task" | "no task in the response"> = {
+    "app/api/tasks/route.ts": "returns a task",
+    "app/api/tasks/[id]/submit/route.ts": "returns a task",
+    "app/api/tasks/[id]/review/route.ts": "returns a task",
+    "app/api/tasks/[id]/revert/route.ts": "returns a task",
+    "app/api/tasks/[id]/payment/route.ts": "returns a task",
+    "app/api/tasks/[id]/details/route.ts": "returns a task",
+    "app/api/tasks/[id]/penalty/route.ts": "returns a task",
+    "app/api/tasks/[id]/acknowledge/route.ts": "no task in the response",
+    "app/api/tasks/[id]/delete/route.ts": "no task in the response",
+    "app/api/tasks/[id]/items/route.ts": "no task in the response",
+    "app/api/tasks/[id]/locations/route.ts": "no task in the response",
+    "app/api/tasks/[id]/transfer/route.ts": "no task in the response",
+    "app/api/tasks/bulk/route.ts": "no task in the response",
+    "app/api/tasks/payment/bulk/route.ts": "no task in the response",
+}
+
+describe("a task sent from a task route is shaped", () => {
+    const routes = walk("app/api/tasks").filter(path => path.endsWith("route.ts"))
+
+    it("every task route is sorted", () => {
+        expect(routes.sort()).toEqual(Object.keys(TASK_ROUTES).sort())
+    })
+
+    for (const [path, kind] of Object.entries(TASK_ROUTES)) {
+        if (kind !== "returns a task") continue
+        it(path, () => {
+            expect(stripComments(readFileSync(path, "utf8")), `${path} sends a task; send it through shapeTask`).toContain("shapeTask(session.user,")
+        })
+    }
+})

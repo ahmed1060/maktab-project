@@ -16,7 +16,8 @@ vi.setConfig({ testTimeout: 120_000 })
  *   employee can reach: the list, and the response to submitting their work.
  *
  * Driven through the real routes as every kind of caller, against a task that
- * two employees share at different rates. Observed by running the code.
+ * two employees share at different rates. Observed by running the code, then
+ * changed on purpose where noted.
  */
 
 vi.mock("next-auth", () => ({ getServerSession: async () => state.session }))
@@ -80,12 +81,14 @@ async function submittedCosts() {
 }
 
 describe("what each assignee is paid for a task — recorded", () => {
-    // Recorded as it is: the employee receives their colleague's payment too.
-    // The task pages narrow this before rendering; these two routes do not.
-    // (The list's fixture answers every caller — which tasks each may list is
-    // task-access's record; this one is about what a listed task carries.)
-    const LIST: Row = [EVERYONE, EVERYONE, EVERYONE, EVERYONE, EVERYONE]
-    const SUBMIT: Row = [EVERYONE, EVERYONE, null, EVERYONE, EVERYONE]
+    // An employee receives their own line only. (Fixed since recording: both
+    // routes sent them their colleague's payment too, which the task pages
+    // already narrowed away. Every task response now goes through shapeTask.)
+    // The list's fixture answers every caller — which tasks each may list is
+    // task-access's record; this one is about what a listed task carries.
+    const OWN = { emp: 100 }
+    const LIST: Row = [EVERYONE, EVERYONE, EVERYONE, EVERYONE, OWN]
+    const SUBMIT: Row = [EVERYONE, EVERYONE, null, EVERYONE, OWN]
 
     ORDER.forEach((actor, i) => {
         it(`the task list, as ${actor}`, async () => {

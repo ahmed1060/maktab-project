@@ -4,6 +4,7 @@ import { can } from "@/lib/permissions/can"
 import { updateTaskSchema } from "@/lib/validations/task.schema"
 import { TaskService } from "@/lib/services/task.service"
 import { verifyResourceAccess } from "@/lib/security"
+import { shapeTask } from "@/lib/permissions/shape"
 
 export const PUT = withStandardHandler(async (req, session, json, { params }) => {
     if (!can(session.user, "tasks.edit")) {
@@ -22,7 +23,7 @@ export const PUT = withStandardHandler(async (req, session, json, { params }) =>
     try {
         // 2. Service
         const result = await TaskService.updateDetails(params.id, validation.data, session)
-        return ApiResponse.success(result)
+        return ApiResponse.success(shapeTask(session.user, result))
     } catch (error: any) {
         if (error.message === 'TASK_NOT_FOUND') return ApiResponse.notFound("Task not found")
         if (error.message === 'DEADLINE_TOO_SOON') return ApiResponse.badRequest("Deadline must be at least 3 hours from now")

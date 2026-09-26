@@ -3,6 +3,7 @@ import { ApiResponse } from "@/lib/api-response"
 import { can } from "@/lib/permissions/can"
 import { TaskService } from "@/lib/services/task.service"
 import { verifyResourceAccess } from "@/lib/security"
+import { shapeTask } from "@/lib/permissions/shape"
 
 export const POST = withStandardHandler(async (req, session, json, { params }) => {
     if (!can(session.user, "tasks.penalize")) {
@@ -18,7 +19,7 @@ export const POST = withStandardHandler(async (req, session, json, { params }) =
 
     try {
         const result = await TaskService.applyPenalty(params.id, userId, amount, session)
-        return ApiResponse.success(result)
+        return ApiResponse.success(shapeTask(session.user, result))
     } catch (error: any) {
         if (error.message === 'TASK_NOT_FOUND') return ApiResponse.notFound("Task not found")
         console.error("Penalty API error:", error)

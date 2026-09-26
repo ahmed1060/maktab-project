@@ -3,6 +3,7 @@ import { ApiResponse } from "@/lib/api-response"
 import { can } from "@/lib/permissions/can"
 import { TaskService } from "@/lib/services/task.service"
 import { verifyResourceAccess } from "@/lib/security"
+import { shapeTask } from "@/lib/permissions/shape"
 
 export const PUT = withStandardHandler(async (req, session, json, { params }) => {
     const taskId = params.id
@@ -16,7 +17,7 @@ export const PUT = withStandardHandler(async (req, session, json, { params }) =>
 
     try {
         const task = await TaskService.updatePayment(taskId, session, json)
-        return ApiResponse.success({ success: true, task })
+        return ApiResponse.success({ success: true, task: shapeTask(session.user, task) })
     } catch (error: any) {
         if (error.message === 'TASK_NOT_FOUND') return ApiResponse.notFound("Task not found")
         console.error("Payment update API error:", error)
