@@ -8,6 +8,7 @@ import { decodeGrants } from "@/lib/permissions/grants"
 import { RoleService } from "@/lib/services/role.service"
 import { RoleAssignmentService } from "@/lib/services/role-assignment.service"
 import { holdersOf } from "@/lib/permissions/holders"
+import { RoleTemplateService } from "@/lib/services/role-template.service"
 
 /**
  * Roles as data, against a real Postgres.
@@ -26,6 +27,7 @@ import { holdersOf } from "@/lib/permissions/holders"
 const ADMIN_URL = process.env.ROLES_TEST_DATABASE_URL
 const MIGRATIONS = ["0_init", "20260920000000_team_leader"]
 const ROLES = "20260927000000_roles"
+const TEMPLATES = "20260928000000_role_templates"
 const sql = (name: string) => readFileSync(`prisma/migrations/${name}/migration.sql`, "utf8")
 
 const BEFORE_ROLES = `
@@ -56,11 +58,16 @@ describe.skipIf(!ADMIN_URL)("roles as data, in Postgres", () => {
         for (const m of MIGRATIONS) await db.query(sql(m))
         await db.query(BEFORE_ROLES)
         await db.query(sql(ROLES))
+        await db.query(sql(TEMPLATES))
         prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: url.toString() }) })
+        // The services that manage roles use the application's client; point it
+        // here before its first use (it is built lazily).
+        process.env.POSTGRES_PRISMA_URL = url.toString()
     }, 60_000)
 
     afterAll(async () => {
         await prisma?.$disconnect()
+        await (await import("@/lib/prisma")).prisma.$disconnect()
         await db?.end()
         const admin = new Client({ connectionString: ADMIN_URL })
         await admin.connect()
@@ -201,5 +208,110 @@ describe.skipIf(!ADMIN_URL)("roles as data, in Postgres", () => {
             await db.query(`INSERT INTO "Role"(id, "companyId", name, "baseRole", "builtIn", "updatedAt") VALUES ('r-c5', 'c5', 'Admin', 'ADMIN', 'ADMIN', now())`)
             await expect(RoleAssignmentService.builtIn(prisma, "EMPLOYEE", "c5")).rejects.toThrow("BUILT_IN_ROLE_MISSING")
         })
+    })
+
+    describe("managing roles (B3)", () => {
+        const sa = { user: { id: "sa", role: "SUPER_ADMIN" } }
+        // Every change is audited under the Super Admin who made it, and the
+        // audit row's foreign key wants that account to exist.
+        beforeAll(async () => {
+            await db.query(`INSERT INTO "SuperAdmin" (id, email, password, "firstName", "lastName", username, "updatedAt")
+                VALUES ('sa', 'sa@test', 'x', 'Super', 'Admin', 'sa', now()) ON CONFLICT DO NOTHING`)
+        })
+        const auditOf = async (entityId: string) =>
+            (await db.query(`SELECT action, details FROM "AuditLog" WHERE "entityId" = $1 ORDER BY "createdAt"`, [entityId])).rows
+
+        it("creates a role from scratch, with what its grants need added", async () => {
+            const role = await RoleService.create({ companyId: "c2", name: "Accountant", baseRole: "EMPLOYEE", grants: [{ permission: "payroll.approve", scope: "COMPANY" }] }, sa)
+            expect(role.grants).toEqual([
+                { permission: "salary.view", scope: "COMPANY" },
+                { permission: "payroll.view", scope: "COMPANY" },
+                { permission: "payroll.approve", scope: "COMPANY" },
+            ])
+            expect(role).toMatchObject({ builtIn: null, holders: 0, isDefault: false, locked: false, version: 1 })
+            expect((await auditOf(role.id)).map(a => a.action)).toEqual(["CREATE_ROLE"])
+        })
+
+        it("creates one as a copy of a template", async () => {
+            const template = await RoleTemplateService.create({ name: "HR Officer", baseRole: "EMPLOYEE", grants: [{ permission: "dayoff.approve", scope: "COMPANY" }] }, sa)
+            const role = await RoleService.create({ companyId: "c2", name: "HR", fromTemplateId: template.id }, sa)
+            expect(role).toMatchObject({ baseRole: "EMPLOYEE", copiedFromTemplateId: template.id })
+            expect(role.grants.map(g => g.permission)).toEqual(["dayoff.view", "dayoff.approve"])
+            // A copy, never a link: changing the template changes no company.
+            await RoleTemplateService.update({ id: template.id, grants: [] }, sa)
+            expect((await RoleService.getById(role.id)).grants.map(g => g.permission)).toEqual(["dayoff.view", "dayoff.approve"])
+        })
+
+        it("refuses grants the catalogue does not allow", async () => {
+            await expect(RoleService.create({ companyId: "c2", name: "Bad", baseRole: "EMPLOYEE", grants: [{ permission: "payroll.approve", scope: "TEAM" }] }, sa))
+                .rejects.toThrow("INVALID_GRANTS")
+        })
+
+        it("locks the built-in Admin role", async () => {
+            const admin = (await RoleService.listForCompany("c2")).find(r => r.builtIn === "ADMIN")!
+            expect(admin.locked).toBe(true)
+            await expect(RoleService.update({ id: admin.id, grants: [] }, sa)).rejects.toThrow("ROLE_LOCKED")
+            await expect(RoleService.update({ id: admin.id, name: "Boss" }, sa)).rejects.toThrow("ROLE_LOCKED")
+        })
+
+        it("lets a company's Employee role hold different grants, but not a new name or base", async () => {
+            const employee = (await RoleService.listForCompany("c2")).find(r => r.builtIn === "EMPLOYEE")!
+            await expect(RoleService.update({ id: employee.id, name: "Staff" }, sa)).rejects.toThrow("ROLE_BUILT_IN_FIXED")
+            await expect(RoleService.delete(employee.id, sa)).rejects.toThrow("ROLE_BUILT_IN_FIXED")
+            const updated = await RoleService.update({ id: employee.id, grants: [{ permission: "clients.view", scope: "COMPANY" }] }, sa)
+            expect(updated.grants).toEqual([{ permission: "clients.view", scope: "COMPANY" }])
+            // What its holders may do changed, so their sessions reload (§4.4)…
+            expect(updated.version).toBe(employee.version + 1)
+            const token = await RoleService.forToken("e2", prisma)
+            expect(decodeGrants(token.grants)).toEqual({ "clients.view": "COMPANY" })
+            expect(token.roleVersion).toBe(updated.version)
+            // …and the change is audited, before and after.
+            const [audit] = (await auditOf(employee.id)).filter(a => a.action === "UPDATE_ROLE")
+            expect(audit.details.before.grants).toHaveLength(2)
+            expect(audit.details.after.grants).toEqual([{ permission: "clients.view", scope: "COMPANY" }])
+            expect(audit.details.holders).toBe(1)
+        })
+
+        it("signs holders out at once when asked to apply now", async () => {
+            const employee = (await RoleService.listForCompany("c2")).find(r => r.builtIn === "EMPLOYEE")!
+            const before = (await db.query(`SELECT "sessionVersion" FROM "User" WHERE id = 'e2'`)).rows[0].sessionVersion
+            await RoleService.update({ id: employee.id, grants: [], applyNow: true }, sa)
+            const after = (await db.query(`SELECT "sessionVersion" FROM "User" WHERE id = 'e2'`)).rows[0].sessionVersion
+            expect(after).toBe(before + 1)
+        })
+
+        it("does not bump a role's version for a new name alone", async () => {
+            const role = await RoleService.create({ companyId: "c2", name: "Clerk", baseRole: "EMPLOYEE", grants: [] }, sa)
+            expect((await RoleService.update({ id: role.id, name: "Senior Clerk" }, sa)).version).toBe(role.version)
+        })
+
+        it("refuses moving a held role's base, and deleting it", async () => {
+            const role = await RoleService.create({ companyId: "c2", name: "Supervisor", baseRole: "EMPLOYEE", grants: [] }, sa)
+            await prisma.user.update({ where: { id: "e2" }, data: { roleId: role.id } })
+            await expect(RoleService.update({ id: role.id, baseRole: "TEAM_LEADER" }, sa)).rejects.toThrow("ROLE_HELD")
+            await expect(RoleService.delete(role.id, sa)).rejects.toThrow("ROLE_HELD")
+            const employee = (await RoleService.listForCompany("c2")).find(r => r.builtIn === "EMPLOYEE")!
+            await prisma.user.update({ where: { id: "e2" }, data: { roleId: employee.id } })
+            // Unheld, it may be rebased, and deleted.
+            expect((await RoleService.update({ id: role.id, baseRole: "TEAM_LEADER" }, sa)).baseRole).toBe("TEAM_LEADER")
+            await RoleService.delete(role.id, sa)
+            await expect(RoleService.getById(role.id)).rejects.toThrow("ROLE_NOT_FOUND")
+        })
+
+        it("keeps a company's default role its own, and not Admin-based", async () => {
+            const role = await RoleService.create({ companyId: "c2", name: "Trainee", baseRole: "EMPLOYEE", grants: [] }, sa)
+            await db.query(`UPDATE "Company" SET "defaultRoleId" = $1 WHERE id = 'c2'`, [role.id])
+            expect((await RoleService.getById(role.id)).isDefault).toBe(true)
+            await expect(RoleService.delete(role.id, sa)).rejects.toThrow("ROLE_IS_DEFAULT")
+            await expect(RoleService.update({ id: role.id, baseRole: "ADMIN" }, sa)).rejects.toThrow("DEFAULT_ROLE_ADMIN")
+            // The database refuses both too.
+            await refused(`UPDATE "Role" SET "baseRole" = 'ADMIN' WHERE id = '${role.id}'`)
+            await refused(`UPDATE "Company" SET "defaultRoleId" = ${roleOf("c1", "EMPLOYEE")} WHERE id = 'c2'`)
+            await refused(`UPDATE "Company" SET "defaultRoleId" = ${roleOf("c2", "ADMIN")} WHERE id = 'c2'`)
+            await db.query(`UPDATE "Company" SET "defaultRoleId" = NULL WHERE id = 'c2'`)
+        })
+
+        it("refuses a template based on the Super Admin", () =>
+            refused(`INSERT INTO "RoleTemplate"(id, name, "baseRole", grants, "updatedAt") VALUES ('t-x', 'God', 'SUPER_ADMIN', '[]', now())`))
     })
 })

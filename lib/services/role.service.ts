@@ -2,6 +2,9 @@ import { prisma } from "@/lib/prisma"
 import { BUILT_IN_GRANTS, type BuiltInRole } from "@/lib/permissions/built-in"
 import { encodeGrants, type Grants } from "@/lib/permissions/grants"
 import { isPermission, type Scope } from "@/lib/permissions/catalogue"
+import { normalizeGrants, grantRows, type GrantInput } from "@/lib/permissions/grant-rules"
+import type { CreateRoleInput, UpdateRoleInput } from "@/lib/validations/role.schema"
+import type { UserRole } from "@prisma/client"
 
 type Client = Pick<typeof prisma, "role" | "user">
 
@@ -66,4 +69,188 @@ export class RoleService {
         })
         return { roleId: user?.roleId ?? null, roleVersion: user?.assignedRole?.version ?? 0 }
     }
+
+    // --- Managing a company's roles (ROLES_PLAN.md §4.1, §4.3, §6.2) --------
+    //
+    // The Super Admin's alone; the routes check that. Every change is audited
+    // with what it was and what it became (§4.2, rule 9).
+
+    /** A company's roles, each with its grants and how many people hold it. */
+    static async listForCompany(companyId: string) {
+        const [roles, company] = await Promise.all([
+            prisma.role.findMany({
+                where: { companyId },
+                include: { grants: { select: { permission: true, scope: true } }, _count: { select: { users: true } } },
+                orderBy: [{ builtIn: { sort: "asc", nulls: "last" } }, { name: "asc" }],
+            }),
+            prisma.company.findUnique({ where: { id: companyId }, select: { defaultRoleId: true } }),
+        ])
+        return roles.map(role => shapeRole(role, company?.defaultRoleId ?? null))
+    }
+
+    static async getById(id: string) {
+        const role = await prisma.role.findUnique({
+            where: { id },
+            include: {
+                grants: { select: { permission: true, scope: true } },
+                _count: { select: { users: true } },
+                company: { select: { defaultRoleId: true } },
+            },
+        })
+        if (!role) throw new Error("ROLE_NOT_FOUND")
+        return shapeRole(role, role.company.defaultRoleId)
+    }
+
+    static async create(input: CreateRoleInput, session: any) {
+        const company = await prisma.company.findUnique({ where: { id: input.companyId }, select: { id: true } })
+        if (!company) throw new Error("COMPANY_NOT_FOUND")
+
+        // A copy of the template, never a link to it: changing the template
+        // later changes nobody (§0).
+        const template = input.fromTemplateId
+            ? await prisma.roleTemplate.findUnique({ where: { id: input.fromTemplateId } })
+            : null
+        if (input.fromTemplateId && !template) throw new Error("TEMPLATE_NOT_FOUND")
+
+        const baseRole = (input.baseRole ?? template?.baseRole) as UserRole | undefined
+        if (!baseRole) throw new Error("BASE_ROLE_REQUIRED")
+        const verdict = normalizeGrants(input.grants ?? (template?.grants as GrantInput[] | undefined) ?? [])
+        if (!verdict.ok) throw new GrantsError(verdict.errors)
+
+        const role = await prisma.$transaction(async (tx) => {
+            const created = await tx.role.create({
+                data: {
+                    companyId: input.companyId, name: input.name, description: input.description ?? null,
+                    baseRole, copiedFromTemplateId: template?.id ?? null,
+                    grants: { create: grantRows(verdict.grants) },
+                },
+            })
+            const { AuditLogService } = await import("./audit-log.service")
+            await AuditLogService.log("CREATE_ROLE", "ROLE", created.id, {
+                tx, superAdminId: session.user.id,
+                details: { companyId: input.companyId, after: { name: input.name, baseRole, grants: grantRows(verdict.grants) }, fromTemplateId: template?.id ?? null },
+            })
+            return created
+        })
+        return RoleService.getById(role.id)
+    }
+
+    static async update(input: UpdateRoleInput, session: any) {
+        const before = await RoleService.getById(input.id)
+
+        const renames = input.name !== undefined && input.name !== before.name
+        const rebases = input.baseRole !== undefined && input.baseRole !== before.baseRole
+        const regrants = input.grants !== undefined
+
+        // The one role guaranteed to be able to fix all the others is not
+        // itself editable, for any company (§4.2, rule 7). A narrower admin is
+        // a separate ADMIN-based role.
+        if (before.builtIn === "ADMIN" && (renames || rebases || regrants)) throw new Error("ROLE_LOCKED")
+        // The other built-ins may hold different grants per company, but stay
+        // what they are called and what kind of person they are.
+        if (before.builtIn && (renames || rebases)) throw new Error("ROLE_BUILT_IN_FIXED")
+        // A held role's base cannot move under its holders (§4.3); the database
+        // refuses it too, this says why.
+        if (rebases && before.holders > 0) throw new Error("ROLE_HELD")
+        if (rebases && input.baseRole === "ADMIN" && before.isDefault) throw new Error("DEFAULT_ROLE_ADMIN")
+
+        let grants = null as ReturnType<typeof grantRows> | null
+        if (regrants) {
+            const verdict = normalizeGrants(input.grants!)
+            if (!verdict.ok) throw new GrantsError(verdict.errors)
+            grants = grantRows(verdict.grants)
+        }
+        // What a session carries changed: bump the version so holders reload
+        // within a minute (§4.4).
+        const accessChanged = rebases || (grants !== null && !sameGrants(grants, before.grants))
+
+        await prisma.$transaction(async (tx) => {
+            await tx.role.update({
+                where: { id: input.id },
+                data: {
+                    ...(renames ? { name: input.name } : {}),
+                    ...(input.description !== undefined ? { description: input.description } : {}),
+                    ...(rebases ? { baseRole: input.baseRole } : {}),
+                    ...(accessChanged ? { version: { increment: 1 } } : {}),
+                },
+            })
+            if (grants) {
+                await tx.roleGrant.deleteMany({ where: { roleId: input.id } })
+                await tx.roleGrant.createMany({ data: grants.map(g => ({ roleId: input.id, ...g })) })
+            }
+            // For a removal that must be instant: sign every holder out now.
+            if (input.applyNow && accessChanged) {
+                await tx.user.updateMany({ where: { roleId: input.id }, data: { sessionVersion: { increment: 1 } } })
+            }
+            const { AuditLogService } = await import("./audit-log.service")
+            await AuditLogService.log("UPDATE_ROLE", "ROLE", input.id, {
+                tx, superAdminId: session.user.id,
+                details: {
+                    companyId: before.companyId,
+                    before: { name: before.name, description: before.description, baseRole: before.baseRole, grants: before.grants },
+                    after: {
+                        name: renames ? input.name : before.name,
+                        description: input.description !== undefined ? input.description : before.description,
+                        baseRole: rebases ? input.baseRole : before.baseRole,
+                        grants: grants ?? before.grants,
+                    },
+                    holders: before.holders,
+                    appliedNow: !!(input.applyNow && accessChanged),
+                },
+            })
+        })
+        return RoleService.getById(input.id)
+    }
+
+    static async delete(id: string, session: any) {
+        const role = await RoleService.getById(id)
+        if (role.builtIn) throw new Error("ROLE_BUILT_IN_FIXED")
+        // Nobody is ever left without a role (§4.3): reassign them first.
+        if (role.holders > 0) throw new Error("ROLE_HELD")
+        if (role.isDefault) throw new Error("ROLE_IS_DEFAULT")
+        await prisma.$transaction(async (tx) => {
+            await tx.role.delete({ where: { id } })
+            const { AuditLogService } = await import("./audit-log.service")
+            await AuditLogService.log("DELETE_ROLE", "ROLE", id, {
+                tx, superAdminId: session.user.id,
+                details: { companyId: role.companyId, before: { name: role.name, baseRole: role.baseRole, grants: role.grants } },
+            })
+        })
+        return { id }
+    }
 }
+
+/** Grants that failed the catalogue's rules, with every reason. */
+export class GrantsError extends Error {
+    constructor(public readonly errors: string[]) {
+        super("INVALID_GRANTS")
+    }
+}
+
+function shapeRole(
+    role: {
+        id: string; companyId: string; name: string; description: string | null; baseRole: UserRole
+        builtIn: UserRole | null; version: number; copiedFromTemplateId: string | null
+        grants: { permission: string; scope: string }[]; _count: { users: number }
+    },
+    defaultRoleId: string | null,
+) {
+    const grants: Grants = {}
+    for (const g of role.grants) if (isPermission(g.permission)) grants[g.permission] = g.scope as Scope
+    return {
+        id: role.id, companyId: role.companyId, name: role.name, description: role.description,
+        baseRole: role.baseRole, builtIn: role.builtIn, version: role.version,
+        copiedFromTemplateId: role.copiedFromTemplateId,
+        holders: role._count.users,
+        // The default is the chosen role, or the built-in Employee when none is.
+        isDefault: defaultRoleId ? role.id === defaultRoleId : role.builtIn === "EMPLOYEE",
+        locked: role.builtIn === "ADMIN",
+        grants: grantRows(grants),
+    }
+}
+
+function sameGrants(a: { permission: string; scope: string }[], b: { permission: string; scope: string }[]) {
+    const key = (g: { permission: string; scope: string }[]) => g.map(x => `${x.permission}:${x.scope}`).sort().join(",")
+    return key(a) === key(b)
+}
+

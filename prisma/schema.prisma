@@ -241,7 +241,12 @@ model Company {
   tasks                Task[]
   users                User[]
   vendors              Vendor[]
-  roles                Role[]
+  roles                Role[]                @relation("CompanyRoles")
+  /// The role a new account starts on (ROLES_PLAN.md §6.4). Null means the
+  /// company's built-in Employee role — every company has one, so nobody is
+  /// ever created without a role, even while a request for another waits.
+  defaultRoleId        String?
+  defaultRole          Role?                 @relation("CompanyDefaultRole", fields: [defaultRoleId], references: [id], onDelete: SetNull)
 }
 
 // System Settings: a single-row table (id is always "default") for
@@ -1253,7 +1258,8 @@ enum PermissionScope {
 model Role {
   id                   String      @id @default(uuid())
   companyId            String
-  company              Company     @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  company              Company     @relation("CompanyRoles", fields: [companyId], references: [id], onDelete: Cascade)
+  defaultFor           Company[]   @relation("CompanyDefaultRole")
   name                 String
   description          String?
   /// What kind of person holds it — team structure, subscription exemption,
@@ -1287,4 +1293,20 @@ model RoleGrant {
 
   @@id([roleId, permission])
   @@index([permission, roleId])
+}
+
+/// A starting point the Super Admin keeps for roles companies commonly need —
+/// HR Officer, Branch Manager, Accountant (ROLES_PLAN.md §6.1). A company's
+/// role is a copy of one, never a live link: changing a template changes no
+/// company until the Super Admin chooses to offer it (§6.8).
+model RoleTemplate {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  description String?
+  baseRole    UserRole
+  /// [{ permission, scope }], checked against the catalogue when written. Json
+  /// rather than rows: nothing queries into a template.
+  grants      Json
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }

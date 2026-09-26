@@ -35,6 +35,12 @@ const THE_PERSON = "about the person acted on"
  * about the role itself, which no custom role can become.
  */
 const ADMIN_ROLE = "the locked Admin role"
+/**
+ * About the role being managed, not the person managing it: which built-in a
+ * role is, and what a company's default role may be. The Super Admin edits
+ * roles; these are the rules of the roles themselves.
+ */
+const THE_ROLE = "about the role being managed"
 
 const ALLOWED: [file: string, line: string, why: string][] = [
     // app/api/tasks/bulk/route.ts
@@ -91,6 +97,12 @@ const ALLOWED: [file: string, line: string, why: string][] = [
     ["lib/services/role-assignment.service.ts", "if (!user?.roleId || user.assignedRole?.builtIn !== \"ADMIN\") return", ADMIN_ROLE],
     // …and only the Super Admin acts on an Admin (role, status, contract, deletion)
     ["lib/services/role-assignment.service.ts", "if (target.role === \"ADMIN\" && actor.role !== \"SUPER_ADMIN\") throw new Error(\"ADMIN_IS_SUPER_ADMINS\")", ADMIN_ROLE],
+
+    // lib/services/role.service.ts — the rules of roles themselves (§4.2 rule 7, §4.3, §6.4)
+    ["lib/services/role.service.ts", "if (before.builtIn === \"ADMIN\" && (renames || rebases || regrants)) throw new Error(\"ROLE_LOCKED\")", ADMIN_ROLE],
+    ["lib/services/role.service.ts", "if (rebases && input.baseRole === \"ADMIN\" && before.isDefault) throw new Error(\"DEFAULT_ROLE_ADMIN\")", THE_ROLE],
+    ["lib/services/role.service.ts", "isDefault: defaultRoleId ? role.id === defaultRoleId : role.builtIn === \"EMPLOYEE\",", THE_ROLE],
+    ["lib/services/role.service.ts", "locked: role.builtIn === \"ADMIN\",", ADMIN_ROLE],
 
     // lib/services/user.service.ts
     ["lib/services/user.service.ts", "if ((newUserRole === 'ADMIN' || newUserRole === 'SUPER_ADMIN') && userRole !== 'SUPER_ADMIN') {", ADMIN_ROLE],
@@ -179,6 +191,6 @@ describe("access is decided by permission, not by role name", () => {
     })
 
     it("gives every listed check a reason", () => {
-        for (const [, , why] of ALLOWED) expect([LABEL, THE_PERSON, ADMIN_ROLE]).toContain(why)
+        for (const [, , why] of ALLOWED) expect([LABEL, THE_PERSON, ADMIN_ROLE, THE_ROLE]).toContain(why)
     })
 })
