@@ -16,7 +16,7 @@ import TaskConfirmModals from '@/components/TaskConfirmModals'
 import { SESSION_EXPIRED_MESSAGE, redirectAfterSessionExpiry } from '@/lib/session-expired'
 import SectionBoundary from '@/components/SectionBoundary'
 import { useAdjustOnChange } from '@/lib/useAdjustOnChange'
-import { permissionsOf } from '@/lib/useCan'
+import { useCan } from '@/lib/useCan'
 
 export default function TaskDetailClient({ task: initialTask, userRole, userId, creatorName, isRestricted }: { task: any, userRole: string, userId: string, creatorName: string | null, currentUserName: string, isRestricted: boolean }) {
     const { t, locale } = useLanguage()
@@ -59,7 +59,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
 
     // From the role the page passed down, so the first paint is complete.
     // Someone without tasks.view acts on a task only as one of its assignees.
-    const { can, companyWide, scope } = permissionsOf({ role: userRole, id: userId })
+    const { can, companyWide, scope } = useCan()
     const seesOthersTasks = can('tasks.view')
     const teamReach = scope('tasks.view') === 'TEAM'
     const canTransfer = can('tasks.transfer')
@@ -989,7 +989,6 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                 <TaskCommentsLog
                     task={task}
                     userId={userId}
-                    userRole={userRole}
                     onDeleteNote={(date: string) => handleDeleteItem('SUBMISSION_NOTE', date)}
                 />
             </SectionBoundary>
@@ -1037,7 +1036,6 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
             <TaskCostsSection
                 task={task}
                 userId={userId}
-                userRole={userRole}
                 onDeleteItem={handleDeleteItem}
                 onPaymentStatusChange={handlePaymentStatusChange}
                 getMemberCosts={getMemberCosts}
@@ -1051,7 +1049,6 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                         <TaskLocationHistorySection
                             task={task}
                             setTask={setTask}
-                            userRole={userRole}
                             userId={userId}
                             setLocationToDelete={setLocationToDelete}
                         />
@@ -1207,13 +1204,13 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
  * nothing; the SectionBoundary around this does both, and a malformed log
  * still costs only this section rather than the page.
  */
-function TaskCommentsLog({ task, userId, userRole, onDeleteNote }: {
+function TaskCommentsLog({ task, userId, onDeleteNote }: {
     task: any
     userId: string
-    userRole: string
     onDeleteNote: (date: string) => void
 }) {
     const { t, locale } = useLanguage()
+    const canEditTask = useCan().can('tasks.edit')
     if (!task.comments) return null
     const logs = Array.isArray(task.comments) ? task.comments : []
     const regularLogs = logs.filter((l: any) => l.type !== 'COST_ADDITION' && l.type !== 'LOCATION_ADDED')
@@ -1233,7 +1230,7 @@ function TaskCommentsLog({ task, userId, userRole, onDeleteNote }: {
                                             </span>
                                         )}
                                         {!((task.assignees?.length > 1)) && <span style={{ fontWeight: 'bold', color: 'var(--text-main)' }}>{log.author}</span>}
-                                        {log.type === 'SUBMISSION_NOTE' && task.status === 'IN_PROGRESS' && (log.authorId === userId || permissionsOf({ role: userRole }).can('tasks.edit')) && (
+                                        {log.type === 'SUBMISSION_NOTE' && task.status === 'IN_PROGRESS' && (log.authorId === userId || canEditTask) && (
                                             <button onClick={() => onDeleteNote(log.date)} className="btn-icon" style={{ padding: '2px', border: 'none', background: 'none', cursor: 'pointer', display: 'flex' }} title={t('delete_note_title')}>
                                                 <TrashIcon size={14} />
                                             </button>

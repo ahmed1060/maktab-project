@@ -1,4 +1,5 @@
 import { describe, it, expect, vi } from "vitest"
+import { withGrants } from "./test-actors"
 
 /**
  * withStandardHandler's `permission` option refuses a caller who does not hold
@@ -22,7 +23,7 @@ const handler = withStandardHandler(async () => {
 
 async function call(role: string) {
     state.ran = false
-    state.session = { user: { id: "u", role, companyId: "c1" } }
+    state.session = { user: withGrants({ id: "u", role, companyId: "c1" }) }
     const res = await handler(new Request("https://nizmo.test/api/anything"))
     return { status: res.status, ran: state.ran }
 }

@@ -8,23 +8,22 @@ import Pagination from '@/components/Pagination'
 import { useLanguage } from '@/context/LanguageContext'
 import { useModules } from '@/lib/useModules'
 import { useHeader } from '@/context/HeaderContext'
-import { permissionsOf } from '@/lib/useCan'
+import { useCan } from '@/lib/useCan'
 
 interface TasksClientProps {
     tasks: any[]
     total: number
     page: number
     totalPages: number
-    role: string
     currentUserId: string
     view: string
 }
 
-export default function TasksClient({ tasks, total, page, totalPages, role, currentUserId, view }: TasksClientProps) {
+export default function TasksClient({ tasks, total, page, totalPages, currentUserId, view }: TasksClientProps) {
     const { t, locale } = useLanguage()
     // From the role the page passed down, so the first paint is complete. A
     // team-wide reach is a Team Leader's two tabs; none is an employee's one.
-    const { can, scope } = permissionsOf({ role, id: currentUserId })
+    const { can, scope } = useCan()
     const reach = scope('tasks.view')
     const { setTitle, setSubtitle } = useHeader()
     const modules = useModules()

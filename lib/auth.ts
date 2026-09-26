@@ -5,6 +5,7 @@ import { isBlockedBySubscription } from "@/lib/billing/state"
 import { parseModuleIcons, parseModuleOverrides } from "@/lib/modules"
 import { parseTheme } from "@/lib/theme"
 import CredentialsProvider from "next-auth/providers/credentials"
+import { RoleService } from "@/lib/services/role.service"
 import { prisma } from "@/lib/prisma"
 import bcrypt from "bcryptjs"
 import { v4 as uuidv4 } from 'uuid'
@@ -339,6 +340,8 @@ export const authOptions: NextAuthOptions = {
 
                 session.user.id = token.sub as string
                 session.user.role = token.role as string
+                session.user.roleId = token.roleId ?? null
+                session.user.grants = token.grants ?? ""
                 session.user.firstName = token.firstName as string
                 session.user.lastName = token.lastName as string
                 session.user.gender = token.gender as string
@@ -414,6 +417,9 @@ export const authOptions: NextAuthOptions = {
                 token.subscription = (user as any).subscription || null
                 token.checkedAt = Date.now()
                 token.jti = uuidv4()
+                // What they may do: their role's grants (ROLES_PLAN.md §4.4).
+                // The Super Admin is outside the role system and holds none.
+                if (user.role !== 'SUPER_ADMIN') Object.assign(token, await RoleService.forToken(user.id as string))
 
                 // Store remember flag in token
                 if ('remember' in user) {
@@ -451,6 +457,19 @@ export const authOptions: NextAuthOptions = {
             // nothing extra.
             // Skip on initial sign-in (!user check) — token.checkedAt was
             // just seeded above in that branch.
+            // A token issued before roles were data carries no grants, and
+            // can() gives nothing to someone without them. Load them now, on
+            // its first request, rather than leave the person refused
+            // everything until the next minute's check.
+            if (token.sub && !user && token.role !== 'SUPER_ADMIN' && token.grants === undefined) {
+                try {
+                    Object.assign(token, await RoleService.forToken(token.sub as string))
+                } catch (e) {
+                    console.error("[AUTH] Loading role grants failed — revoking session", e)
+                    return {} as any
+                }
+            }
+
             if (token.sub && !user) {
                 const lastChecked = token.checkedAt || 0
                 const checkIntervalMs = 60_000
@@ -478,6 +497,7 @@ export const authOptions: NextAuthOptions = {
                                     where: { id: userId },
                                     select: {
                                         sessionVersion: true, status: true, emailVerifiedAt: true, mfaEnabled: true,
+                                        role: true, roleId: true, assignedRole: { select: { version: true } },
                                         company: {
                                             select: {
                                                 isBanned: true,
@@ -531,6 +551,14 @@ export const authOptions: NextAuthOptions = {
                             // took effect at the next sign-in would let somebody
                             // work all day past their grace period.
                             token.subscription = summarizeSubscription(u?.company)
+                            // Reassigned, or their role edited: reload what they
+                            // may do, without signing them out. Both are compared —
+                            // every role starts at version 1, so a move between
+                            // two unedited roles changes only the id (§4.4).
+                            if (u && ((u.roleId ?? null) !== (token.roleId ?? null) || (u.assignedRole?.version ?? 0) !== (token.roleVersion ?? 0))) {
+                                Object.assign(token, await RoleService.forToken(userId))
+                                token.role = u.role
+                            }
                         }
 
                         if (token.sessionVersion === undefined) {

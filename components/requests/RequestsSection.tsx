@@ -14,12 +14,13 @@ import EmployeeFilter from '@/components/EmployeeFilter'
 import Pagination from '@/components/Pagination'
 import { useFadingHighlight } from '@/lib/useFadingHighlight'
 import { useAdjustOnChange } from '@/lib/useAdjustOnChange'
-import { permissionsOf } from '@/lib/useCan'
+import { useCan } from '@/lib/useCan'
 
 const NO_REQUESTS: any[] = []
 
 export default function RequestsSection({ userRole }: { userRole: string }) {
     const { t, locale } = useLanguage()
+    const seesOthersRequests = useCan().can('requests.view')
     const { showToast } = useToast()
     const { selectedCompanyId } = useCompany()
     const searchParams = useSearchParams()
@@ -182,7 +183,7 @@ export default function RequestsSection({ userRole }: { userRole: string }) {
                 selectedStatus={filters.status}
                 searchQuery={filters.search}
                 placeholder={t('search_by_title')}
-                isEmployee={!permissionsOf({ role: userRole }).can('requests.view')}
+                isEmployee={!seesOthersRequests}
                 sortBy={sortBy}
                 sortOrder={order as any}
                 onSortChange={(field, ord) => {
@@ -236,7 +237,6 @@ export default function RequestsSection({ userRole }: { userRole: string }) {
                         <RequestCard
                             key={req.id}
                             request={req}
-                            userRole={userRole}
                             onView={handleViewRequest}
                             onStatusUpdate={handleStatusUpdate}
                             isHighlighted={req.id === highlightId}

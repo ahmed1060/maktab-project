@@ -5,6 +5,11 @@ declare module "next-auth" {
         user: {
             id: string
             role: string
+            // The role this person holds and its grants, encoded as
+            // lib/permissions/grants.ts does — what can() reads. Reloaded by
+            // the jwt() callback within a minute of the role changing.
+            roleId?: string | null
+            grants?: string
             firstName: string
             lastName: string
             gender?: string
@@ -105,6 +110,9 @@ declare module "next-auth" {
 declare module "next-auth/jwt" {
     interface JWT {
         role: string
+        roleId?: string | null
+        roleVersion?: number
+        grants?: string
         firstName: string
         lastName: string
         gender?: string

@@ -6,7 +6,7 @@ import { useLanguage } from '@/context/LanguageContext'
 import SafeDate from '@/components/SafeDate'
 import { SESSION_EXPIRED_MESSAGE, redirectAfterSessionExpiry } from '@/lib/session-expired'
 import { RECURRENCE_STYLE } from '@/lib/recurrence'
-import { permissionsOf } from '@/lib/useCan'
+import { useCan } from '@/lib/useCan'
 
 
 export default function ObligationDetailClient({ obligation, userRole, userId, userName, creatorName, creatorUnknown }: { obligation: any, userRole: string, userId: string, userName: string, creatorName: string | null, creatorUnknown: boolean }) {
@@ -16,7 +16,7 @@ export default function ObligationDetailClient({ obligation, userRole, userId, u
     // assignee. Deciding or deleting one you are assigned to is refused to a
     // company-wide manager (the self-approval rules in ObligationService); a
     // Team Leader manages their team's, their own among them.
-    const { can, companyWide, scope } = permissionsOf({ role: userRole, id: userId })
+    const { can, companyWide, scope } = useCan()
     const seesOthers = can('obligations.view')
     const canManage = can('obligations.manage')
     const teamReach = scope('obligations.view') === 'TEAM'

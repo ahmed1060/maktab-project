@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma"
 import { can, type Target } from "@/lib/permissions/can"
-import { builtInRolesHolding } from "@/lib/permissions/built-in"
+import { holdersOf } from "@/lib/permissions/holders"
 import { CreateDayOffInput, AdminUpdateDayOffInput } from "../validations/day-off.schema"
 
 export class DayOffService {
@@ -67,12 +67,16 @@ export class DayOffService {
             })
             // ... (rest of notification and audit logic unchanged)
             // Notify Admins
+            const requesterLeaderId = (await tx.user.findUnique({ where: { id: userId }, select: { teamLeaderId: true } }))?.teamLeaderId
             const admins = await tx.user.findMany({
                 where: {
-                    // Whoever can decide it: the roles holding dayoff.approve in
-                    // this company, and every Super Admin.
+                    // Whoever can decide it: everyone in this company whose role
+                    // holds dayoff.approve company-wide, the requester's own
+                    // leader if theirs holds it for their team, and every
+                    // Super Admin.
                     OR: [
-                        ...builtInRolesHolding("dayoff.approve").map(role => ({ role, companyId: userCompanyId })),
+                        { companyId: userCompanyId, ...holdersOf("dayoff.approve", "COMPANY") },
+                        ...(requesterLeaderId ? [{ id: requesterLeaderId, companyId: userCompanyId, ...holdersOf("dayoff.approve", "TEAM") }] : []),
                         { role: 'SUPER_ADMIN' }
                     ]
                 },

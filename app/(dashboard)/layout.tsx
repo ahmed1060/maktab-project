@@ -3,6 +3,7 @@ import { redirect } from "next/navigation"
 import UserHeartbeat from "@/components/UserHeartbeat"
 import { authOptions } from "@/lib/auth"
 import DashboardShell from "@/components/DashboardShell"
+import { ViewerProvider } from "@/lib/useCan"
 import { SystemSettingsService } from "@/lib/services/system-settings.service"
 import { CompanyService } from "@/lib/services/company.service"
 import { SCOPED_COMPANY_COOKIE, scopedCompanyId } from "@/lib/company-scope"
@@ -55,6 +56,9 @@ export default async function DashboardLayout({
 
     return (
         <CompanyBrandingProvider value={scopedBranding}>
+        {/* Who is looking, grants included, for every screen's useCan() on
+            its first paint — before the session hook has loaded. */}
+        <ViewerProvider viewer={user as any}>
         <DashboardShell user={user} showPoweredBy={showPoweredBy} poweredByName={poweredByName}>
             <UserHeartbeat />
             <DashboardErrorBoundary>
@@ -63,6 +67,7 @@ export default async function DashboardLayout({
                 </Suspense>
             </DashboardErrorBoundary>
         </DashboardShell>
+        </ViewerProvider>
         </CompanyBrandingProvider>
     )
 }

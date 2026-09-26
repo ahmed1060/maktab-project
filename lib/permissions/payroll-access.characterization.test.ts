@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
+import { withGrants } from "./test-actors"
 
 /**
  * Who may reach payroll today — recorded, not reasoned about.
@@ -125,7 +126,7 @@ const ACTORS = {
 type ActorName = keyof typeof ACTORS
 
 function as(name: ActorName) {
-    state.session = { user: { ...ACTORS[name] } }
+    state.session = { user: withGrants({ ...ACTORS[name] }) }
 }
 
 const url = (path: string) => `https://nizmo.test${path}`

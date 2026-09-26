@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma"
 import { Prisma } from "@prisma/client"
 import { NotificationService } from "./notification.service"
+import { RoleService } from "./role.service"
 import { computePeriodStart, computePeriodEnd, isSubscriptionType, daysUntil } from "@/lib/billing/period"
 import { decideReminder, REMINDER_RUNGS } from "@/lib/billing/reminders"
 import { decideLifecycleNotices, NOTICE_AUDIENCE, lifecycleEmailCopy, lifecycleOperatorMessage } from "@/lib/billing/lifecycle"
@@ -27,12 +28,19 @@ export class CompanyService {
         // applies when nobody is thinking about it should be the sensible one.
         const trialPreset = input.trialPreset ?? DEFAULT_TRIAL_PRESET
 
-        const company = await prisma.company.create({
-            data: {
-                name: input.name,
-                trialPreset,
-                packageId: input.packageId ?? null,
-            },
+        // With its Admin, Team Leader and Employee roles, in the same
+        // transaction: an account can only be created on one of a company's
+        // roles, so a company without them could hire nobody.
+        const company = await prisma.$transaction(async (tx) => {
+            const created = await tx.company.create({
+                data: {
+                    name: input.name,
+                    trialPreset,
+                    packageId: input.packageId ?? null,
+                },
+            })
+            await RoleService.seedBuiltInRoles(tx, created.id)
+            return created
         })
 
         const { AuditLogService } = await import("./audit-log.service")

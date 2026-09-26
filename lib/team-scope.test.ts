@@ -1,8 +1,9 @@
 import { describe, it, expect } from "vitest"
 import { scopesToTeam, teamMemberWhere, assignedToTeamWhere, assignedToReportsWhere, and } from "./team-scope"
+import { withGrants } from "@/lib/permissions/test-actors"
 
 describe("who gets narrowed", () => {
-    const as = (role: string | null | undefined) => ({ id: "x", role, companyId: "c1" })
+    const as = (role: string | null | undefined) => withGrants({ id: "x", role, companyId: "c1" })
 
     it("narrows whoever holds the permission at team scope, and nobody else", () => {
         expect(scopesToTeam(as("TEAM_LEADER"), "tasks.view")).toBe(true)

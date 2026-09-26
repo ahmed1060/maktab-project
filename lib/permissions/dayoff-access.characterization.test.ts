@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
+import { withGrants, whoMatches } from "./test-actors"
 
 // The first import of a route loads the whole service graph.
 vi.setConfig({ testTimeout: 30_000 })
@@ -101,7 +102,7 @@ const ACTORS = {
     employee:   { id: "emp",    role: "EMPLOYEE",    companyId: "c1" },
 } as const
 type ActorName = keyof typeof ACTORS
-const as = (name: ActorName) => { state.session = { user: { ...ACTORS[name] } } }
+const as = (name: ActorName) => { state.session = { user: withGrants({ ...ACTORS[name] }) } }
 
 const url = (p: string) => `https://nizmo.test${p}`
 const send = (method: string, p: string, body: unknown) => new Request(url(p), {
@@ -187,13 +188,26 @@ describe("deciding and reading leave — recorded access", () => {
 // --- who is told ------------------------------------------------------------
 
 describe("who is notified of a new request — recorded", () => {
+    // Everybody who could be told. Recorded as the people the recipient query
+    // picks out, not as the query's shape: since roles became data it asks for
+    // the roles holding dayoff.approve rather than naming ADMIN, and what must
+    // not change is who hears about it.
+    const EVERYONE = [
+        { id: "admin",   role: "ADMIN",       companyId: "c1", teamLeaderId: null },
+        { id: "admin1b", role: "ADMIN",       companyId: "c1", teamLeaderId: null },
+        { id: "tl",      role: "TEAM_LEADER", companyId: "c1", teamLeaderId: null },
+        { id: "emp",     role: "EMPLOYEE",    companyId: "c1", teamLeaderId: "tl" },
+        { id: "loner",   role: "EMPLOYEE",    companyId: "c1", teamLeaderId: null },
+        { id: "admin2",  role: "ADMIN",       companyId: "c2", teamLeaderId: null },
+        { id: "sa-row",  role: "SUPER_ADMIN", companyId: null, teamLeaderId: null },
+    ]
+
     it("the requester's company's Admins, and every Super Admin", async () => {
         as("employee")
         const { POST } = await import("@/app/api/day-off-requests/route")
         const res = await POST(send("POST", "/api/day-off-requests", { date: "2026-10-04", type: "REGULAR" }))
         expect(res.status).toBe(201)
-        expect(seen.notified.map(w => JSON.parse(w))).toContainEqual({
-            OR: [{ role: "ADMIN", companyId: "c1" }, { role: "SUPER_ADMIN" }],
-        })
+        const recipients = seen.notified.map(w => whoMatches(EVERYONE, JSON.parse(w)))
+        expect(recipients).toContainEqual(["admin", "admin1b", "sa-row"])
     })
 })

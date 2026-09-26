@@ -1,11 +1,12 @@
 import { describe, it, expect } from "vitest"
 import { PROTECTED_FIELDS, shapeUser, shapeTask } from "."
 import { can, type Actor } from "../can"
+import { withGrants } from "@/lib/permissions/test-actors"
 
-const admin: Actor = { id: "admin", role: "ADMIN", companyId: "c1" }
-const otherAdmin: Actor = { id: "admin2", role: "ADMIN", companyId: "c2" }
-const leader: Actor = { id: "tl", role: "TEAM_LEADER", companyId: "c1" }
-const employee: Actor = { id: "emp", role: "EMPLOYEE", companyId: "c1" }
+const admin: Actor = withGrants({ id: "admin", role: "ADMIN", companyId: "c1" })
+const otherAdmin: Actor = withGrants({ id: "admin2", role: "ADMIN", companyId: "c2" })
+const leader: Actor = withGrants({ id: "tl", role: "TEAM_LEADER", companyId: "c1" })
+const employee: Actor = withGrants({ id: "emp", role: "EMPLOYEE", companyId: "c1" })
 const superAdmin: Actor = { id: "sa", role: "SUPER_ADMIN", companyId: null }
 
 const colleague = { id: "loner", companyId: "c1", teamLeaderId: null, firstName: "L", salary: "1500.00" }
@@ -52,7 +53,7 @@ describe("shapeTask", () => {
     })
 
     it("shows nothing to someone with no line", () => {
-        expect(shapeTask({ id: "x", role: "EMPLOYEE", companyId: "c1" }, task).memberCosts).toEqual({})
+        expect(shapeTask(withGrants({ id: "x", role: "EMPLOYEE", companyId: "c1" }), task).memberCosts).toEqual({})
     })
 
     it("reads the map when it is stored as a string", () => {

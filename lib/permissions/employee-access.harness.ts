@@ -7,6 +7,8 @@
  * Kept in its own module so the record file reads as the record.
  */
 
+import { withGrants } from "./test-actors"
+
 export const state = { session: null as any, written: [] as Record<string, unknown>[], created: [] as any[] }
 
 export const PEOPLE: Record<string, any> = {
@@ -39,6 +41,8 @@ function model(overrides: Record<string, any> = {}) {
 }
 
 const models: Record<string, any> = {
+    // Each company's built-in roles, as the roles migration creates them.
+    role: model({ findUnique: async ({ where }: any) => ({ id: `${where.companyId_builtIn.companyId}:${where.companyId_builtIn.builtIn}` }) }),
     rateLimit: model({ upsert: async () => ({ count: 1 }) }),
     company: model({ findUnique: async ({ where }: any) => ({ id: where.id, name: where.id, isBanned: false }) }),
     user: model({
@@ -73,7 +77,7 @@ export type ActorName = keyof typeof ACTORS
 export const ACTOR_NAMES = Object.keys(ACTORS) as ActorName[]
 
 export function as(name: ActorName) {
-    state.session = { user: { ...ACTORS[name] } }
+    state.session = { user: withGrants({ ...ACTORS[name] }) }
     state.written = []
     state.created = []
 }

@@ -2,17 +2,16 @@
 import { useState, useEffect, useRef } from 'react'
 import { useLanguage } from '@/context/LanguageContext'
 import { useTemporaryHighlight } from '@/lib/useTemporaryHighlight'
-import { permissionsOf } from '@/lib/useCan'
+import { useCan } from '@/lib/useCan'
 
 interface RequestCardProps {
     request: any
-    userRole: string
     onView: (request: any) => void
     onStatusUpdate?: (id: string, status: string) => Promise<void>
     isHighlighted?: boolean
 }
 
-export default function RequestCard({ request, userRole, onView, onStatusUpdate, isHighlighted }: RequestCardProps) {
+export default function RequestCard({ request, onView, onStatusUpdate, isHighlighted }: RequestCardProps) {
     const { t } = useLanguage()
     const [updating, setUpdating] = useState(false)
     const cardRef = useRef<HTMLDivElement>(null)
@@ -37,7 +36,7 @@ export default function RequestCard({ request, userRole, onView, onStatusUpdate,
         }
     }
 
-    const { can } = permissionsOf({ role: userRole })
+    const { can } = useCan()
     const canSeeWho = can('requests.view')
     const canReview = can('requests.review')
 

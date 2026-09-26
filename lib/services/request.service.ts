@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma"
 import { can } from "@/lib/permissions/can"
-import { builtInRolesHolding } from "@/lib/permissions/built-in"
+import { holdersOf } from "@/lib/permissions/holders"
 import { scopesToTeam } from "@/lib/team-scope"
 import { verifyResourceAccess } from "@/lib/security"
 import { CreateRequestInput } from "../validations/request.schema"
@@ -73,12 +73,13 @@ export class RequestService {
                         companyId,
                         OR: [
                             // Whoever decides requests company-wide.
-                            ...builtInRolesHolding("requests.review", "COMPANY").map(role => ({ role })),
-                            // `?? ''` rather than omitting the branch: an
-                            // employee with no leader simply matches nothing
-                            // here, instead of the condition collapsing to
-                            // "any id" the way an undefined would.
-                            { id: requester?.teamLeaderId ?? '', role: 'TEAM_LEADER' },
+                            holdersOf("requests.review", "COMPANY"),
+                            // The requester's own leader, whose role decides
+                            // their team's. `?? ''` rather than omitting the
+                            // branch: an employee with no leader simply matches
+                            // nothing here, instead of the condition collapsing
+                            // to "any id" the way an undefined would.
+                            { id: requester?.teamLeaderId ?? '', ...holdersOf("requests.review", "TEAM") },
                         ],
                     },
                     select: { id: true }

@@ -3,7 +3,7 @@ import { useLanguage } from '@/context/LanguageContext'
 import { useModules } from '@/lib/useModules'
 import TrashIcon from '@/components/TrashIcon'
 import SectionBoundary from './SectionBoundary'
-import { permissionsOf } from '@/lib/useCan'
+import { useCan } from '@/lib/useCan'
 
 // F-23: extracted verbatim out of tasks/[id]/client.tsx (1834 lines before
 // this split). Purely presentational — no state of its own, just reads
@@ -12,7 +12,6 @@ import { permissionsOf } from '@/lib/useCan'
 interface TaskCostsSectionProps {
     task: any
     userId: string
-    userRole: string
     onDeleteItem: (type: 'ATTACHMENT' | 'COST_ADDITION' | 'SUBMISSION_NOTE', itemId: string) => void
     onPaymentStatusChange: (newStatus: string, targetUserId?: string) => void
     getMemberCosts: (taskObj: any) => Record<string, number>
@@ -20,9 +19,10 @@ interface TaskCostsSectionProps {
 }
 
 function TaskCostsSectionBody({
-    task, userId, userRole, onDeleteItem, onPaymentStatusChange, getMemberCosts, getMemberPaymentStatus
+    task, userId, onDeleteItem, onPaymentStatusChange, getMemberCosts, getMemberPaymentStatus
 }: TaskCostsSectionProps) {
     const { t, locale } = useLanguage()
+    const { can } = useCan()
     const modules = useModules()
 
     if (!task.comments) return null
@@ -41,7 +41,7 @@ function TaskCostsSectionBody({
                                 <div style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                         <div style={{ fontSize: '0.75rem', color: 'var(--warn-fg)', textTransform: 'uppercase', fontWeight: '600', marginBottom: '0.25rem' }}>{t('cost_description_placeholder').split(' ')[0]}</div>
-                                        {task.status === 'IN_PROGRESS' && (c.authorId === userId || permissionsOf({ role: userRole }).can('tasks.edit')) && (
+                                        {task.status === 'IN_PROGRESS' && (c.authorId === userId || can('tasks.edit')) && (
                                             <button onClick={() => onDeleteItem('COST_ADDITION', c.date)} style={{ background: 'none', border: 'none', padding: '2px', cursor: 'pointer', display: 'flex' }} title={t('delete_cost_title')}>
                                                 <TrashIcon size={14} />
                                             </button>
@@ -134,7 +134,7 @@ function TaskCostsSectionBody({
                     })()}
 
                     {/* Individual Settlements for Admins */}
-                    {permissionsOf({ role: userRole }).can('tasks.pay') && !['PENDING', 'IN_PROGRESS'].includes(task.status) && (task.assignees?.length || 0) > 1 && Object.keys(getMemberCosts(task)).length > 0 && (
+                    {can('tasks.pay') && !['PENDING', 'IN_PROGRESS'].includes(task.status) && (task.assignees?.length || 0) > 1 && Object.keys(getMemberCosts(task)).length > 0 && (
                         <div style={{ marginTop: '1rem', padding: '1.25rem', background: 'var(--surface-subtle)', borderRadius: '1rem', border: '1px solid var(--border)' }}>
                             <h4 style={{ fontSize: '0.9rem', fontWeight: '700', marginBottom: '1rem', color: 'var(--text-main)' }}>
                                 {t('individual_settlements' as any) || 'Individual Settlements'}

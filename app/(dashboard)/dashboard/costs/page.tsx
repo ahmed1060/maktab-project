@@ -48,7 +48,7 @@ export default async function CostsPage(props: { searchParams: Promise<{
 
     if (userRole !== 'SUPER_ADMIN') {
         if (!userCompanyId) {
-            return <CostsClient tasksWithCosts={[]} userRole={userRole} total={0} page={1} totalPages={0} />
+            return <CostsClient tasksWithCosts={[]} total={0} page={1} totalPages={0} />
         }
         finalCompanyId = userCompanyId
     }
@@ -151,7 +151,7 @@ export default async function CostsPage(props: { searchParams: Promise<{
     return (
         <CostsClient
             tasksWithCosts={serializedTasks}
-            userRole={userRole}
+           
             total={total}
             page={page}
             totalPages={totalPages}

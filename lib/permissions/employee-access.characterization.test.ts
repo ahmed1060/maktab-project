@@ -102,12 +102,14 @@ const EDITS: Case[] = [
     {
         name: "making an employee a Team Leader",
         run: put({ id: "loner", role: "TEAM_LEADER" }),
-        expected: c1Managers("role"),
+        // role and the role that sets it, written together since roles became
+        // data — who may do it is unchanged.
+        expected: c1Managers("role,roleId"),
     },
     {
         name: "making an employee an Admin",
         run: put({ id: "loner", role: "ADMIN" }),
-        expected: c1Managers("role", { admin: [403, ""] }),   // Super Admin only
+        expected: c1Managers("role,roleId", { admin: [403, ""] }),   // Super Admin only
     },
     {
         name: "putting an employee on a team",
@@ -117,8 +119,9 @@ const EDITS: Case[] = [
     {
         name: "moving an employee to another company",
         run: put({ id: "emp", companyId: "c2" }),
-        // Super Admin only; for an Admin the field is ignored.
-        expected: c1Managers("companyId,teamLeaderId", { admin: [200, ""], employee: [200, ""] }),
+        // Super Admin only; for an Admin the field is ignored. A new company
+        // means that company's role, so role and roleId are written with it.
+        expected: c1Managers("companyId,role,roleId,teamLeaderId", { admin: [200, ""], employee: [200, ""] }),
     },
 ]
 

@@ -241,6 +241,7 @@ model Company {
   tasks                Task[]
   users                User[]
   vendors              Vendor[]
+  roles                Role[]
 }
 
 // System Settings: a single-row table (id is always "default") for
@@ -422,6 +423,16 @@ model User {
   payslips                   Payslip[]
   finalSettlements           FinalSettlement[]
   debts                      Debt[]
+  /// The role this person holds (ROLES_PLAN.md §3.1): what they may do comes
+  /// from its grants. `role` above is its base role, copied from it whenever a
+  /// role is assigned — RoleAssignmentService is the only writer of either,
+  /// and the database refuses a pair that disagree (see the migration).
+  ///
+  /// Null only for a row whose role is SUPER_ADMIN, who is outside the role
+  /// system, or for an account with no company, which no company role can
+  /// belong to.
+  roleId                     String?
+  assignedRole               Role?                   @relation(fields: [roleId], references: [id], onDelete: NoAction)
 
   @@index([email])
   @@index([companyId])
@@ -429,6 +440,8 @@ model User {
   @@index([role])
   // Every Team Leader read filters on this, on every page they open.
   @@index([teamLeaderId])
+  // "Who holds this role" — every role edit counts its holders first.
+  @@index([roleId])
 }
 
 model Task {
@@ -1222,4 +1235,56 @@ enum DebtStatus {
   OUTSTANDING
   SETTLED
   WAIVED
+}
+
+/// How far a grant reaches: the person's own records, their team's, or the
+/// whole company's. The same three values as `Scope` in
+/// lib/permissions/catalogue.ts.
+enum PermissionScope {
+  OWN
+  TEAM
+  COMPANY
+}
+
+/// A company's role: a name, a base role, and the permissions it grants
+/// (ROLES_PLAN.md §3.1, §5). Every company has the three built-in ones, which
+/// the migration and CompanyService create with the grants in
+/// lib/permissions/built-in.ts; the Super Admin adds others.
+model Role {
+  id                   String      @id @default(uuid())
+  companyId            String
+  company              Company     @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  name                 String
+  description          String?
+  /// What kind of person holds it — team structure, subscription exemption,
+  /// who may create whom still read this, through User.role (§2.3).
+  baseRole             UserRole
+  /// Which built-in role this is, or null for one the Super Admin made. At
+  /// most one of each per company.
+  builtIn              UserRole?
+  /// Bumped on every change to the role or its grants, so sessions reload
+  /// them within a minute (§4.4).
+  version              Int         @default(1)
+  /// The template it was copied from — informational, never a live link.
+  copiedFromTemplateId String?
+  grants               RoleGrant[]
+  users                User[]
+  createdAt            DateTime    @default(now())
+  updatedAt            DateTime    @updatedAt
+
+  @@unique([companyId, name])
+  @@unique([companyId, builtIn])
+}
+
+/// One permission a role holds, at one scope. Rows rather than a Json column
+/// because "who can do this?" is a query by permission across roles (§5).
+model RoleGrant {
+  roleId     String
+  role       Role            @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  /// A key from lib/permissions/catalogue.ts. Checked when written.
+  permission String
+  scope      PermissionScope
+
+  @@id([roleId, permission])
+  @@index([permission, roleId])
 }

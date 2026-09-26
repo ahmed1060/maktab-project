@@ -5,6 +5,7 @@ import { resolvePayrollScope, managesCompany } from "./payroll-scope"
 import { issueProgress, nextIssueBatch, ISSUE_BATCH_SIZE } from "./register"
 import { en } from "@/lib/translations/en"
 import { ar } from "@/lib/translations/ar"
+import { withGrants } from "@/lib/permissions/test-actors"
 
 /**
  * Paying and delivering — the last phase, and the only one where every failure
@@ -29,9 +30,9 @@ const PAGE = readFileSync("app/(dashboard)/dashboard/payroll/page.tsx", "utf8")
  * lib/permissions/payroll-access.characterization.test.ts.
  */
 const scopeFor = (role: string | null | undefined, companyId: string | null, requested: string | null, year: unknown, month: unknown) =>
-    resolvePayrollScope({ id: "u", role, companyId }, "payroll.view", requested, year, month)
+    resolvePayrollScope(withGrants({ id: "u", role, companyId }), "payroll.view", requested, year, month)
 const manages = (role: string | null | undefined, companyId: string | null, target: string) =>
-    managesCompany({ id: "u", role, companyId }, "payroll.view", target)
+    managesCompany(withGrants({ id: "u", role, companyId }), "payroll.view", target)
 
 describe("who may act on a month", () => {
     const ADMIN = ["ADMIN", "c1"] as const

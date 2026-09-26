@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from "vitest"
 import { readFileSync } from "node:fs"
 import { stripComments } from "@/lib/strip-comments"
+import { withGrants } from "./test-actors"
 
 /**
  * Four places a screen disagreed with what its routes allow, fixed.
@@ -37,7 +38,7 @@ vi.mock("@/lib/prisma", () => ({
 }))
 
 async function costsWhereFor(user: Record<string, unknown>) {
-    state.session = { user }
+    state.session = { user: withGrants(user) }
     state.where = null
     const { default: CostsPage } = await import("@/app/(dashboard)/dashboard/costs/page")
     await CostsPage({ searchParams: Promise.resolve({}) })
@@ -45,7 +46,7 @@ async function costsWhereFor(user: Record<string, unknown>) {
 }
 
 async function obligationsWhereFor(user: Record<string, unknown>, query: Record<string, string> = {}) {
-    state.session = { user }
+    state.session = { user: withGrants(user) }
     state.where = null
     const { default: ObligationsPage } = await import("@/app/(dashboard)/dashboard/obligations/page")
     await ObligationsPage({ searchParams: Promise.resolve(query) } as any)

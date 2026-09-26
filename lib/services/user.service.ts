@@ -3,6 +3,7 @@ import { can } from "@/lib/permissions/can"
 import { UserStatus } from "@prisma/client"
 import { VerificationService } from "./verification.service"
 import { supabase } from "@/lib/storage"
+import { RoleAssignmentService } from "./role-assignment.service"
 import bcrypt from "bcryptjs"
 import { generateUsername } from "@/lib/username"
 import { generateTempPassword } from "@/lib/generate-password"
@@ -107,10 +108,12 @@ export class UserService {
         const isCompanyEmployee = Boolean(targetCompanyId) && newUserRole !== 'SUPER_ADMIN'
 
         const user = await prisma.$transaction(async (tx) => {
+            // role and roleId together, from the one place that writes them.
+            const assignment = await RoleAssignmentService.builtIn(tx, newUserRole, targetCompanyId)
             const created = await tx.user.create({
                 data: {
                     firstName, lastName, email, username: finalUsername!, password: hashedPassword,
-                    role: newUserRole, status: 'OFFLINE', gender: gender || 'MALE', companyId: targetCompanyId,
+                    ...assignment, status: 'OFFLINE', gender: gender || 'MALE', companyId: targetCompanyId,
                     teamLeaderId: teamLeaderId || null,
                     salary: salary || 0,
                     dayOffCredit: baseDayOffCredit !== undefined ? baseDayOffCredit : (dayOffCredit !== undefined ? dayOffCredit : 0),
@@ -334,6 +337,16 @@ export class UserService {
             // leader who can no longer see them.
             if (updateData.companyId !== undefined && updateData.companyId !== regularUser.companyId) {
                 updateData.teamLeaderId = null
+            }
+
+            // A new role, or a new company — whose roles are different ones —
+            // takes its role and roleId from RoleAssignmentService, together.
+            if (updateData.role !== undefined || (updateData.companyId !== undefined && updateData.companyId !== regularUser.companyId)) {
+                Object.assign(updateData, await RoleAssignmentService.builtIn(
+                    prisma,
+                    updateData.role ?? regularUser.role,
+                    updateData.companyId !== undefined ? updateData.companyId : regularUser.companyId,
+                ))
             }
 
             const writeSelect = { id: true, firstName: true, lastName: true, email: true, role: true, gender: true, salary: true, companyId: true, avatar: true, dayOffCredit: true, baseDayOffCredit: true, username: true }

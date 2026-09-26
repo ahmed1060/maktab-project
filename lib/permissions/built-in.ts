@@ -1,47 +1,39 @@
-import type { Permission, Scope } from "./catalogue"
+import { encodeGrants, type Grants } from "./grants"
+
+export type { Grants }
 
 /**
- * What each of today's built-in roles may do, as permissions.
+ * The grants the three built-in roles are created with.
  *
- * This is Part A's bridge (ROLES_PLAN.md §7): can() answers from this table, so
- * moving a check from `role === 'ADMIN'` to `can(actor, 'payroll.approve')`
- * changes nothing anybody can do. In Part B the same grants become rows, and
- * this table is what the migration seeds them from.
+ * Part A's bridge (ROLES_PLAN.md §7): until roles were data, can() answered
+ * from this table, and every access check moved onto it one module at a time,
+ * each proved by characterization tests that drive the real routes as every
+ * role. Now each company's Admin, Team Leader and Employee roles are rows, and
+ * this is what they are seeded from — by the migration that created them, and
+ * by CompanyService for every company created since. can() reads the person's
+ * own grants, never this table.
  *
- * **A module appears here only once it has migrated.** An entry is a claim
- * about what the code allowed, and a claim written from reading the code can be
- * a misreading. So each module is added together with characterization tests
- * that drive its real routes as every role, recorded against the code before
- * the migration and passing unchanged after it. A permission missing from a
- * role's entry is refused — which is correct for a module whose checks still
- * read the role directly and never ask can() at all.
- *
- * SUPER_ADMIN is not here. The Super Admin is outside the role system and holds
- * every permission everywhere (can() answers that before reading this table).
- *
- * Migrated so far:
+ * The records it was proved against:
  * - Payroll — lib/permissions/payroll-access.characterization.test.ts
  * - Day off — lib/permissions/dayoff-access.characterization.test.ts
  * - Salaries and adjustments — lib/permissions/salary-access.characterization.test.ts
- * - Employees, including salary.edit and dayoff.adjust_credit, which are fields
- *   of an employee edit — lib/permissions/employee-access.characterization.test.ts
- *   and lib/user-lookup-scope.test.ts
+ * - Employees — lib/permissions/employee-access.characterization.test.ts and
+ *   lib/user-lookup-scope.test.ts
  * - Tasks — lib/permissions/task-access.characterization.test.ts
  * - Obligations — lib/permissions/obligation-access.characterization.test.ts
  * - Requests, name-change requests and performance points —
  *   lib/permissions/request-access.characterization.test.ts
  * - Clients, vendors and cost history —
  *   lib/permissions/client-access.characterization.test.ts
+ * - Screens — lib/permissions/screen-gates.test.ts
+ * - Protected fields — lib/permissions/field-access.characterization.test.ts
  *
- * Screens ask the same table, through lib/useCan.ts. What each one showed to
- * which role before it did is recorded in lib/permissions/screen-gates.test.ts.
- *   (not yet dayoff.adjust_credit: changing a balance goes through
- *   PUT /api/users, and moves with the Employees module)
+ * SUPER_ADMIN is not here. The Super Admin is outside the role system and holds
+ * every permission everywhere (can() answers that before reading any grants).
  */
 
 export type BuiltInRole = "ADMIN" | "TEAM_LEADER" | "EMPLOYEE"
 
-export type Grants = Partial<Record<Permission, Scope>>
 
 export const BUILT_IN_GRANTS: Record<BuiltInRole, Grants> = {
     ADMIN: {
@@ -165,18 +157,14 @@ export const BUILT_IN_GRANTS: Record<BuiltInRole, Grants> = {
     },
 }
 
-export function isBuiltInRole(role: string | null | undefined): role is BuiltInRole {
-    return role === "ADMIN" || role === "TEAM_LEADER" || role === "EMPLOYEE"
+/**
+ * A built-in role's grants as a session token carries them — what somebody on
+ * that role holds until the Super Admin gives their company anything else.
+ */
+export function builtInGrantsToken(role: BuiltInRole): string {
+    return encodeGrants(BUILT_IN_GRANTS[role])
 }
 
-/**
- * The built-in roles that hold a permission — for "who should be told", which
- * is a query over people rather than a check on one. Until roles are data this
- * is how a notification finds the people who can act on it, instead of naming
- * a role. Super Admins are not included; callers add them as they always have.
- */
-export function builtInRolesHolding(permission: Permission, scope?: Scope): BuiltInRole[] {
-    return (Object.keys(BUILT_IN_GRANTS) as BuiltInRole[])
-        .filter(role => BUILT_IN_GRANTS[role][permission] !== undefined)
-        .filter(role => scope === undefined || BUILT_IN_GRANTS[role][permission] === scope)
+export function isBuiltInRole(role: string | null | undefined): role is BuiltInRole {
+    return role === "ADMIN" || role === "TEAM_LEADER" || role === "EMPLOYEE"
 }

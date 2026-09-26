@@ -1,4 +1,5 @@
 import { describe, it, expect, vi } from "vitest"
+import { withGrants } from "./test-actors"
 
 vi.setConfig({ testTimeout: 30_000 })
 
@@ -114,7 +115,7 @@ describe("salaries and adjustments — recorded access", () => {
     for (const c of CASES) {
         for (const actor of Object.keys(ACTORS) as ActorName[]) {
             it(`${c.name} as ${actor}`, async () => {
-                state.session = { user: { ...ACTORS[actor] } }
+                state.session = { user: withGrants({ ...ACTORS[actor] }) }
                 const res = await c.run()
                 expect(res.status).toBe(c.expected[actor])
             })

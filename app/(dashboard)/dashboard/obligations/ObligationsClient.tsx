@@ -8,18 +8,18 @@ import Pagination from '@/components/Pagination'
 import { useLanguage } from '@/context/LanguageContext'
 import { useModules } from '@/lib/useModules'
 import { useHeader } from '@/context/HeaderContext'
-import { permissionsOf } from '@/lib/useCan'
+import { useCan } from '@/lib/useCan'
 
 interface ObligationsClientProps {
     obligations: any[]
     total: number
     page: number
     totalPages: number
-    role: string
 }
 
-export default function ObligationsClient({ obligations, total, page, totalPages, role }: ObligationsClientProps) {
+export default function ObligationsClient({ obligations, total, page, totalPages }: ObligationsClientProps) {
     const { t, locale } = useLanguage()
+    const permissions = useCan()
     const { setTitle, setSubtitle } = useHeader()
     const modules = useModules()
     const router = useRouter()
@@ -120,7 +120,7 @@ export default function ObligationsClient({ obligations, total, page, totalPages
                 selectedStatus={filters.status}
                 searchQuery={filters.search}
                 placeholder={locale === 'ar' ? 'بحث في العنوان أو الوصف' : 'Search Title or Description'}
-                isEmployee={!permissionsOf({ role }).can('obligations.view')}
+                isEmployee={!permissions.can('obligations.view')}
                 sortBy={sortBy}
                 sortOrder={sortOrder}
                 onSortChange={(field, order) => { setSortBy(field); setSortOrder(order) }}
@@ -130,7 +130,7 @@ export default function ObligationsClient({ obligations, total, page, totalPages
                     { label: t('date_created'), value: 'createdAt' },
                 ]}
                 primaryAction={
-                    permissionsOf({ role }).can('obligations.manage') && (
+                    permissions.can('obligations.manage') && (
                         <Link href="/dashboard/obligations/new" className="btn btn-primary" style={{ textDecoration: 'none', height: '48px', display: 'flex', alignItems: 'center', borderRadius: '1.25rem' }}>
                             {t('add_obligation')}
                         </Link>

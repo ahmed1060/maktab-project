@@ -14,7 +14,6 @@ export default async function TasksPage(props: { searchParams: Promise<{ company
     const searchParams = await props.searchParams
 
     const session = await getServerSession(authOptions)
-    const role = (session?.user as any)?.role
     const page = parseInt(searchParams.page || '1')
     const limit = 10
     const skip = (page - 1) * limit
@@ -63,7 +62,7 @@ export default async function TasksPage(props: { searchParams: Promise<{ company
         }
     } else if (scope === 'COMPANY') {
         // An Admin still sees all company tasks
-        if (!userCompanyId) return <TasksClient tasks={[]} total={0} page={page} totalPages={0} role={role} currentUserId={userId} view={view} />
+        if (!userCompanyId) return <TasksClient tasks={[]} total={0} page={page} totalPages={0} currentUserId={userId} view={view} />
         whereClause.companyId = userCompanyId
     } else {
         // Super Admin can filter by company or see everything
@@ -148,7 +147,7 @@ export default async function TasksPage(props: { searchParams: Promise<{ company
             total={total}
             page={page}
             totalPages={Math.ceil(total / limit)}
-            role={role}
+           
             currentUserId={userId}
             view={view}
         />

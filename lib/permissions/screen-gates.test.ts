@@ -1,7 +1,9 @@
 import { describe, it, expect } from "vitest"
-import { readFileSync } from "node:fs"
+import { readFileSync, readdirSync, statSync } from "node:fs"
+import { join } from "node:path"
 import { stripComments } from "@/lib/strip-comments"
 import { permissionsOf, type Can } from "@/lib/useCan"
+import { withGrants } from "./test-actors"
 
 /**
  * Every role check a screen made, and the permission question that replaced it.
@@ -25,11 +27,11 @@ import { permissionsOf, type Can } from "@/lib/useCan"
 
 type Role = "SUPER_ADMIN" | "ADMIN" | "TEAM_LEADER" | "EMPLOYEE"
 const ROLES: Role[] = ["SUPER_ADMIN", "ADMIN", "TEAM_LEADER", "EMPLOYEE"]
-const ACTOR: Record<Role, { role: Role; id: string; companyId: string | null }> = {
+const ACTOR: Record<Role, { role: Role; id: string; companyId: string | null; grants?: string }> = {
     SUPER_ADMIN: { role: "SUPER_ADMIN", id: "sa", companyId: null },
-    ADMIN: { role: "ADMIN", id: "admin", companyId: "c1" },
-    TEAM_LEADER: { role: "TEAM_LEADER", id: "tl", companyId: "c1" },
-    EMPLOYEE: { role: "EMPLOYEE", id: "emp", companyId: "c1" },
+    ADMIN: withGrants({ role: "ADMIN", id: "admin", companyId: "c1" }),
+    TEAM_LEADER: withGrants({ role: "TEAM_LEADER", id: "tl", companyId: "c1" }),
+    EMPLOYEE: withGrants({ role: "EMPLOYEE", id: "emp", companyId: "c1" }),
 }
 
 type Gate = {
@@ -64,8 +66,8 @@ const GATES: Gate[] = [
     { what: "name changes: header counter", file: "components/DashboardHeader.tsx", uses: "permissionsOf(currentUser as any).can('profile_requests.review')", before: admins, now: p => p.can("profile_requests.review") },
     { what: "request card: who raised it", file: "components/requests/RequestCard.tsx", uses: "const canSeeWho = can('requests.view')", before: managers, now: p => p.can("requests.view") },
     { what: "request card: change status", file: "components/requests/RequestCard.tsx", uses: "const canReview = can('requests.review')", before: managers, now: p => p.can("requests.review") },
-    { what: "request modal: change status", file: "components/requests/ViewRequestModal.tsx", uses: "const canReview = permissionsOf({ role: userRole }).can('requests.review')", before: managers, now: p => p.can("requests.review") },
-    { what: "requests: employee filters", file: ["components/requests/RequestsSection.tsx", D + "requests/history/RequestsHistoryClient.tsx"], uses: "isEmployee={!permissionsOf({ role: userRole }).can('requests.view')}", before: r => r === "EMPLOYEE", now: p => !p.can("requests.view") },
+    { what: "request modal: change status", file: "components/requests/ViewRequestModal.tsx", uses: "const canReview = useCan().can('requests.review')", before: managers, now: p => p.can("requests.review") },
+    { what: "requests: employee filters", file: ["components/requests/RequestsSection.tsx", D + "requests/history/RequestsHistoryClient.tsx"], uses: "const seesOthersRequests = useCan().can('requests.view')", before: r => r === "EMPLOYEE", now: p => !p.can("requests.view") },
 
     // --- Sidebar and dashboard --------------------------------------------------
     { what: "sidebar: costs", file: "components/DashboardShell.tsx", uses: "costs: 'tasks.pay'", before: managers, now: p => p.can("tasks.pay") },
@@ -132,17 +134,17 @@ const GATES: Gate[] = [
         now: (p, on) => p.can(perm) && (p.scope(perm) === "TEAM" || !on),
     })),
     { what: "task: remove an attachment (flag: uploaded it)", file: TASK, uses: "(att.uploadedById === userId || can('tasks.edit'))", before: (r, mine) => mine || managers(r), now: (p, mine) => mine || p.can("tasks.edit") },
-    { what: "task: remove a note (flag: wrote it)", file: TASK, uses: "(log.authorId === userId || permissionsOf({ role: userRole }).can('tasks.edit'))", before: (r, mine) => mine || managers(r), now: (p, mine) => mine || p.can("tasks.edit") },
-    { what: "task: remove a cost (flag: added it)", file: "components/TaskCostsSection.tsx", uses: "(c.authorId === userId || permissionsOf({ role: userRole }).can('tasks.edit'))", before: (r, mine) => mine || managers(r), now: (p, mine) => mine || p.can("tasks.edit") },
-    { what: "task: individual settlements", file: "components/TaskCostsSection.tsx", uses: "permissionsOf({ role: userRole }).can('tasks.pay') && !['PENDING', 'IN_PROGRESS']", before: managers, now: p => p.can("tasks.pay") },
-    { what: "task: penalty", file: "components/TaskLocationHistorySection.tsx", uses: "permissionsOf({ role: userRole }).can('tasks.penalize')", before: managers, now: p => p.can("tasks.penalize") },
-    { what: "task: verify a location", file: "components/TaskLocationHistorySection.tsx", uses: "const canVerify = permissionsOf({ role: userRole }).can('tasks.review')", before: managers, now: p => p.can("tasks.review") },
-    { what: "task: delete a location (flag: on the task)", file: "components/TaskLocationHistorySection.tsx", uses: "(!permissionsOf({ role: userRole }).can('tasks.view') || task.assignees", before: (r, on) => r === "EMPLOYEE" || on, now: (p, on) => !p.can("tasks.view") || on },
-    { what: "task: delete a location entry (flag: added it)", file: "components/TaskLocationHistorySection.tsx", uses: "(loc.authorId === userId || permissionsOf({ role: userRole }).can('tasks.edit'))", before: (r, mine) => mine || managers(r), now: (p, mine) => mine || p.can("tasks.edit") },
+    { what: "task: remove a note (flag: wrote it)", file: TASK, uses: "(log.authorId === userId || canEditTask)", before: (r, mine) => mine || managers(r), now: (p, mine) => mine || p.can("tasks.edit") },
+    { what: "task: remove a cost (flag: added it)", file: "components/TaskCostsSection.tsx", uses: "(c.authorId === userId || can('tasks.edit'))", before: (r, mine) => mine || managers(r), now: (p, mine) => mine || p.can("tasks.edit") },
+    { what: "task: individual settlements", file: "components/TaskCostsSection.tsx", uses: "can('tasks.pay') && !['PENDING', 'IN_PROGRESS']", before: managers, now: p => p.can("tasks.pay") },
+    { what: "task: penalty", file: "components/TaskLocationHistorySection.tsx", uses: "can('tasks.penalize') && !['PENDING', 'IN_PROGRESS']", before: managers, now: p => p.can("tasks.penalize") },
+    { what: "task: verify a location", file: "components/TaskLocationHistorySection.tsx", uses: "const canVerify = can('tasks.review')", before: managers, now: p => p.can("tasks.review") },
+    { what: "task: delete a location (flag: on the task)", file: "components/TaskLocationHistorySection.tsx", uses: "(!can('tasks.view') || task.assignees", before: (r, on) => r === "EMPLOYEE" || on, now: (p, on) => !p.can("tasks.view") || on },
+    { what: "task: delete a location entry (flag: added it)", file: "components/TaskLocationHistorySection.tsx", uses: "(loc.authorId === userId || can('tasks.edit'))", before: (r, mine) => mine || managers(r), now: (p, mine) => mine || p.can("tasks.edit") },
 
     // --- Obligations -------------------------------------------------------------
-    { what: "obligations: create", file: D + "obligations/ObligationsClient.tsx", uses: "permissionsOf({ role }).can('obligations.manage') && (", before: managers, now: p => p.can("obligations.manage") },
-    { what: "obligations: employee filters", file: D + "obligations/ObligationsClient.tsx", uses: "isEmployee={!permissionsOf({ role }).can('obligations.view')}", before: r => r === "EMPLOYEE", now: p => !p.can("obligations.view") },
+    { what: "obligations: create", file: D + "obligations/ObligationsClient.tsx", uses: "permissions.can('obligations.manage') && (", before: managers, now: p => p.can("obligations.manage") },
+    { what: "obligations: employee filters", file: D + "obligations/ObligationsClient.tsx", uses: "isEmployee={!permissions.can('obligations.view')}", before: r => r === "EMPLOYEE", now: p => !p.can("obligations.view") },
     { what: "new obligation: team-only picker", file: D + "obligations/new/page.tsx", uses: "permissions.can('obligations.manage') && !permissions.companyWide('obligations.manage')", before: r => r === "TEAM_LEADER", now: p => p.can("obligations.manage") && !p.companyWide("obligations.manage") },
     { what: "obligation: overdue lock (flag: on it)", file: OBL, uses: "const isRestrictedRole = !seesOthers || (teamReach && isUserAssignee)", before: (r, on) => r === "EMPLOYEE" || (r === "TEAM_LEADER" && on), now: (p, on) => !p.can("obligations.view") || (p.scope("obligations.view") === "TEAM" && on) },
     { what: "obligation: acts as assignee", file: OBL, uses: "{!seesOthers && !['PENDING_CONFIRMATION'", before: r => r === "EMPLOYEE", now: p => !p.can("obligations.view") },
@@ -152,11 +154,31 @@ const GATES: Gate[] = [
     { what: "obligation: team-only picker", file: OBL, uses: "canManage && !companyWide('obligations.manage') ?", before: r => r === "TEAM_LEADER", now: p => p.can("obligations.manage") && !p.companyWide("obligations.manage") },
 ]
 
+function walk(dir: string, out: string[] = []): string[] {
+    for (const entry of readdirSync(dir)) {
+        const full = join(dir, entry)
+        if (statSync(full).isDirectory()) walk(full, out)
+        else if (/\.tsx?$/.test(entry) && !/\.test\.tsx?$/.test(entry)) out.push(full)
+    }
+    return out
+}
+
 const sources = new Map<string, string>()
 const source = (path: string) => {
     if (!sources.has(path)) sources.set(path, stripComments(readFileSync(path, "utf8")))
     return sources.get(path)!
 }
+
+describe("no screen rebuilds a viewer from a role name", () => {
+    // A role's name says nothing about what it holds once roles are data:
+    // permissionsOf({ role }) would answer every custom role as nobody. The
+    // viewer comes from useCan() — the session, or the layout's copy of it.
+    it("never passes permissionsOf an actor built from a role", () => {
+        const screens = ["app", "components"].flatMap(dir => walk(dir))
+        const offenders = screens.filter(file => /permissionsOf\(\s*\{\s*role\b/.test(source(file)))
+        expect(offenders).toEqual([])
+    })
+})
 
 describe("each screen gate asks what it replaced", () => {
     for (const gate of GATES) {

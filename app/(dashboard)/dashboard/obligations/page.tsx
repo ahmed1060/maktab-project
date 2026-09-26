@@ -12,7 +12,6 @@ export default async function ObligationsPage(props: { searchParams: Promise<{ c
     const searchParams = await props.searchParams
 
     const session = await getServerSession(authOptions)
-    const role = (session?.user as any)?.role
     const page = parseInt(searchParams.page || '1')
     const limit = 10
     const skip = (page - 1) * limit
@@ -41,7 +40,7 @@ export default async function ObligationsPage(props: { searchParams: Promise<{ c
         }
     } else {
         if (!userCompanyId) {
-            return <ObligationsClient obligations={[]} total={0} page={1} totalPages={0} role={role} />
+            return <ObligationsClient obligations={[]} total={0} page={1} totalPages={0} />
         }
         whereClause.companyId = userCompanyId
         // A Team Leader sees their team's obligations — the rule
@@ -93,7 +92,7 @@ export default async function ObligationsPage(props: { searchParams: Promise<{ c
             total={total}
             page={page}
             totalPages={Math.ceil(total / limit)}
-            role={role}
+           
         />
     )
 }
