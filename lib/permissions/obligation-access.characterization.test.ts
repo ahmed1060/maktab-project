@@ -21,8 +21,8 @@ vi.setConfig({ testTimeout: 120_000 })
  *   delete is Admins only, DELETE /obligations/[id] also lets Team Leaders
  *   delete within their team. (Fixed since recording: the second path did not
  *   check the team, so a Team Leader could delete outside it.)
- * - Reassigning an obligation to someone in another company is refused with an
- *   unmapped 500.
+ * - (Fixed since recording: reassigning to someone in another company was
+ *   refused with an unmapped 500; it answers 403.)
  *
  * Reassigning as an Employee answers 200 and changes nothing: assignees are only
  * changed for managers.
@@ -79,7 +79,7 @@ const EXPECTED: Record<string, Record<string, Row>> = {
     "o-other": {
         "mark completed":      [200, 403, 200, 403, 403],
         "approve":             [200, 403, 200, 403, 403],
-        "reassign":            [200, 403, 500, 403, 403],   // 'loner' is not in c2: refused, unmapped
+        "reassign":            [200, 403, 403, 403, 403],   // 'loner' is not in c2
         "delete":              [200, 403, 200, 403, 403],
         "delete (Admin path)": [200, 403, 200, 403, 403],
         "revert":              [200, 403, 403, 403, 403],

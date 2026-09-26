@@ -22,6 +22,10 @@ export const PUT = withStandardHandler(async (req, session, json, { params }) =>
         if (error.message === 'ONLY_MANAGERS_DECIDE') return ApiResponse.forbidden("Only managers can approve or reject obligations")
         if (error.message === 'SELF_APPROVAL_FORBIDDEN') return ApiResponse.forbidden("Admins cannot approve/reject their own obligations")
         if (error.message === 'UNAUTHORIZED_ATTACHMENT_REMOVAL') return ApiResponse.forbidden("Unauthorized to remove these attachments")
+        // Reassigning to somebody who does not exist or is in another company.
+        // Unmapped, both refusals escaped as a 500.
+        if (error.message === 'ASSIGNEE_NOT_FOUND') return ApiResponse.notFound("One or more assignees not found")
+        if (error.message === 'CROSS_COMPANY_ASSIGNMENT_FORBIDDEN') return ApiResponse.forbidden("An obligation cannot be assigned outside its company")
         if (error.message === 'TL_CANNOT_REASSIGN_TO_ADMIN') return ApiResponse.forbidden("Team Leaders cannot reassign to Admins")
         if (error.message === 'TL_CANNOT_REASSIGN_OUTSIDE_TEAM') return ApiResponse.forbidden("Team Leaders can only reassign within their own team")
         throw error
