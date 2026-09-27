@@ -5,11 +5,15 @@ import useSWR from "swr"
 import { fetcher } from "@/lib/swr-fetcher"
 import { useRouter } from "next/navigation"
 import { useLanguage } from "@/context/LanguageContext"
+import { renderNotice, type NoticeParam } from "@/lib/notice"
+import type { TranslationKey } from "@/lib/translations"
 
 interface Notification {
     id: string
     type: string
     message: string
+    messageKey?: string | null
+    messageParams?: Record<string, NoticeParam> | null
     read: boolean
     // Null when the notification is addressed to a SuperAdmin instead of a
     // User. Only the employee-scoped routes below dereference it, and those
@@ -27,6 +31,12 @@ export default function NotificationBell({ initialUnreadCount = 0 }: { initialUn
     const dropdownRef = useRef<HTMLDivElement>(null)
     const router = useRouter()
     const { t, locale } = useLanguage()
+    // In the reader's language (lib/notice.ts). A row written before keys, or
+    // with a key this version does not know, shows the English it was written with.
+    const text = (n: Notification) => {
+        if (!n.messageKey || !t(n.messageKey as TranslationKey)) return n.message
+        return renderNotice({ key: n.messageKey as TranslationKey, params: n.messageParams ?? {} }, t, iso => new Date(iso).toLocaleDateString(locale, { timeZone: 'UTC' }))
+    }
 
     // Polled every five minutes while the tab is visible (SWR skips hidden
     // tabs by default, which is what the visibility check here used to do).
@@ -224,7 +234,7 @@ export default function NotificationBell({ initialUnreadCount = 0 }: { initialUn
                                     e.currentTarget.style.background = notification.read ? 'white' : 'var(--info-bg-sky)'
                                 }}
                             >
-                                <div style={{ fontSize: '0.875rem' }}>{notification.message}</div>
+                                <div style={{ fontSize: '0.875rem' }}>{text(notification)}</div>
                                 <div style={{ fontSize: '0.75rem', color: 'var(--grey-600)', marginTop: '0.25rem' }}>
                                     {new Date(notification.createdAt).toLocaleString()}
                                 </div>

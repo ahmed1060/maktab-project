@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma"
+import { roleParam } from "@/lib/notice"
 import { can } from "@/lib/permissions/can"
 import { holdersOf } from "@/lib/permissions/holders"
 import { personTarget } from "@/lib/security"
@@ -106,7 +107,7 @@ export class RoleRequestService {
         await NotificationService.notifyMany(
             await deciders(target.companyId, [actor.id, target.id]),
             "ROLE_CHANGE_ASKED",
-            `${name(request.requestedBy)} asks to give ${name(request.user)} the role ${request.role.name}.`,
+            { key: "notice_role_request_asked", params: { by: name(request.requestedBy), person: name(request.user), role: roleParam(request.role) } },
             link(request.id),
         )
         return request
@@ -176,12 +177,12 @@ export class RoleRequestService {
             request.requestedById,
             input.approve ? "ROLE_CHANGE_APPROVED" : "ROLE_CHANGE_REJECTED",
             input.approve
-                ? `${name(request.user)} now has the role ${request.role.name}.`
-                : `Your request to give ${name(request.user)} the role ${request.role.name} was declined: ${input.note!.trim()}`,
+                ? { key: "notice_role_request_approved", params: { person: name(request.user), role: roleParam(request.role) } }
+                : { key: "notice_role_request_declined", params: { person: name(request.user), role: roleParam(request.role), note: input.note!.trim() } },
             link(id),
         )
         if (input.approve) {
-            await NotificationService.notify(request.userId, "ROLE_CHANGE_APPROVED", `Your role is now ${request.role.name}.`, link(id))
+            await NotificationService.notify(request.userId, "ROLE_CHANGE_APPROVED", { key: "notice_role_now", params: { role: roleParam(request.role) } }, link(id))
         }
         return RoleRequestService.get(id)
     }
@@ -234,7 +235,7 @@ export class RoleRequestService {
                 id: true, companyId: true, createdAt: true, remindedAt: true, requestedById: true, userId: true,
                 company: { select: { timezone: true } },
                 user: { select: { firstName: true, lastName: true } },
-                role: { select: { name: true } },
+                role: { select: { name: true, builtIn: true } },
             },
         })
         const { NotificationService } = await import("./notification.service")
@@ -245,7 +246,7 @@ export class RoleRequestService {
             await NotificationService.notifyMany(
                 await deciders(r.companyId, [r.requestedById, r.userId]),
                 "ROLE_CHANGE_WAITING",
-                `Still waiting for a decision: ${name(r.user)} for the role ${r.role.name}.`,
+                { key: "notice_role_request_waiting", params: { person: name(r.user), role: roleParam(r.role) } },
                 link(r.id),
             )
             await prisma.roleRequest.update({ where: { id: r.id }, data: { remindedAt: now } })

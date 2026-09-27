@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma"
+import { roleParam } from "@/lib/notice"
 import { can } from "@/lib/permissions/can"
 import type { Prisma } from "@prisma/client"
 
@@ -46,7 +47,7 @@ export class RoleChangeRequestService {
         await NotificationService.notifySuperAdmins(
             superAdmins.map(s => s.id),
             "ROLE_CHANGE_FOR_SUPER_ADMIN",
-            `${request.company.name} asks for a change to ${request.role ? `the role ${request.role.name}` : "its roles"}.`,
+            { key: "notice_role_change_asked", params: { company: request.company.name, what: request.role ? { key: "notice_the_role", params: { role: roleParam(request.role) } } : { key: "notice_its_roles" } } },
             `/dashboard/role-change-requests?highlight=${request.id}`,
         )
         return request
@@ -87,8 +88,8 @@ export class RoleChangeRequestService {
             request!.requestedById,
             input.status === "DONE" ? "ROLE_CHANGE_DONE" : "ROLE_CHANGE_DECLINED",
             input.status === "DONE"
-                ? `Your request for a role change has been done.${request!.response ? ` ${request!.response}` : ""}`
-                : `Your request for a role change was declined: ${request!.response}`,
+                ? { key: "notice_role_change_done", params: { response: request!.response ? ` ${request!.response}` : "" } }
+                : { key: "notice_role_change_declined", params: { response: request!.response ?? "" } },
             `/dashboard/role-requests?tab=changes&highlight=${id}`,
         )
         return request

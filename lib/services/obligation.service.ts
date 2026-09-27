@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma"
+import { noticeRow } from "@/lib/notice-row"
 import { can, canCompanyWide } from "@/lib/permissions/can"
 import { checkAssignees } from "./assignee-guard"
 import { nextOccurrence } from "@/lib/recurrence"
@@ -195,7 +196,7 @@ export class ObligationService {
                 await NotificationService.notifyMany(
                     updated.assignees.map((a: any) => a.id),
                     status === 'APPROVED' ? 'OBLIGATION_APPROVED' : 'OBLIGATION_REJECTED',
-                    `Your obligation "${updated.title}" has been ${status === 'APPROVED' ? 'approved' : 'rejected'}.`,
+                    { key: status === 'APPROVED' ? 'notice_obligation_approved' : 'notice_obligation_rejected', params: { title: updated.title } },
                     id,
                     tx
                 )
@@ -333,7 +334,7 @@ export class ObligationService {
                 data: obligation.assignees.map((a: any) => ({
                     userId: a.id,
                     type: 'OBLIGATION_REVERTED',
-                    message: `Super Admin has reverted obligation "${obligation.title}" back to In Progress.`,
+                    ...noticeRow({ key: 'notice_obligation_reverted', params: { title: obligation.title } }),
                     relatedId: obligation.id
                 }))
             })
@@ -422,7 +423,7 @@ export class ObligationService {
                 await NotificationService.notifyMany(
                     obl.assignees.map(a => a.id),
                     'OBLIGATION_ASSIGNED',
-                    `New recurrent instance of "${obl.title}" has been created.`,
+                    { key: 'notice_obligation_recurred', params: { title: obl.title } },
                     newObl.id
                 )
 

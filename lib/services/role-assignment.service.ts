@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma"
+import { roleParam } from "@/lib/notice"
 import { isBuiltInRole } from "@/lib/permissions/built-in"
 import { isPermission } from "@/lib/permissions/catalogue"
 import { decodeGrants, type Grants } from "@/lib/permissions/grants"
@@ -186,7 +187,7 @@ export class RoleAssignmentService {
             select: {
                 id: true, role: true, roleId: true, companyId: true, status: true, teamLeaderId: true,
                 firstName: true, lastName: true, returnRoleId: true,
-                assignedRole: { select: { name: true } },
+                assignedRole: { select: { name: true, builtIn: true } },
                 returnRole: { select: { id: true, baseRole: true, name: true } },
             },
         })
@@ -218,7 +219,7 @@ export class RoleAssignmentService {
                 await NotificationService.notifyMany(
                     deciders.map(d => d.id),
                     "ROLE_ACTING_HELD",
-                    `${person.firstName} ${person.lastName}'s acting role has ended, but they cannot return yet: ${error.message === "LAST_ADMIN" ? "they are the company's only Admin at work" : "people still report to them"}.`,
+                    { key: "notice_acting_held", params: { name: `${person.firstName} ${person.lastName}`, reason: { key: error.message === "LAST_ADMIN" ? "notice_acting_held_last_admin" : "notice_acting_held_reports" } } },
                     `/dashboard/employees/${person.id}`,
                 )
                 continue
@@ -242,7 +243,7 @@ export class RoleAssignmentService {
             await NotificationService.notify(
                 person.id,
                 "ROLE_ACTING_ENDED",
-                `Your acting role ${person.assignedRole?.name ?? ""} has ended.`,
+                { key: "notice_acting_ended", params: { role: roleParam(person.assignedRole) } },
                 `/dashboard/employees/${person.id}`,
             )
             returned++

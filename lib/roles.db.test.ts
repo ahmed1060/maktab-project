@@ -37,6 +37,7 @@ const ACTING = "20260930000000_acting_roles"
 const CHANGES = "20261001000000_role_change_requests"
 const STEP_UP = "20261002000000_step_up"
 const REVIEWS = "20261003000000_access_reviews"
+const NOTICE_KEYS = "20261004000000_notification_keys"
 const sql = (name: string) => readFileSync(`prisma/migrations/${name}/migration.sql`, "utf8")
 
 const BEFORE_ROLES = `
@@ -73,6 +74,7 @@ describe.skipIf(!ADMIN_URL)("roles as data, in Postgres", () => {
         await db.query(sql(CHANGES))
         await db.query(sql(STEP_UP))
         await db.query(sql(REVIEWS))
+        await db.query(sql(NOTICE_KEYS))
         prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: url.toString() }) })
         // The services that manage roles use the application's client; point it
         // here before its first use (it is built lazily).
@@ -781,6 +783,13 @@ describe.skipIf(!ADMIN_URL)("roles as data, in Postgres", () => {
             // Only people in this company.
             expect(review.lines.every(l => !["e2"].includes(l.userId))).toBe(true)
             expect((await db.query(`SELECT count(*)::int AS n FROM "Notification" WHERE "userId" = 'a1b' AND type = 'ROLE_ACCESS_REVIEW'`)).rows[0].n).toBe(1)
+            // Stored as a key and its details, for the reader's language, with its English.
+            const [row] = (await db.query(`SELECT message, "messageKey", "messageParams" FROM "Notification" WHERE "userId" = 'a1b' AND type = 'ROLE_ACCESS_REVIEW'`)).rows
+            expect(row).toEqual({
+                message: `An access review is ready: ${review.lines.length} lines to confirm.`,
+                messageKey: "notice_access_review_ready",
+                messageParams: { count: review.lines.length },
+            })
         })
 
         it("is answered line by line, never for one's own access, and a change goes to the Super Admin", async () => {

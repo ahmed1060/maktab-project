@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma"
+import { noticeRow } from "@/lib/notice-row"
 import { NoteInput } from "../validations/note.schema"
 import { supabase } from "@/lib/storage"
 import { startOfDayIn } from "@/lib/time"
@@ -186,7 +187,7 @@ export class NoteService {
                     data: {
                         userId: note.createdById,
                         type: 'NOTE_EXPIRING',
-                        message: `Note "${note.content.substring(0, 20)}..." in ${note.section.client.name} expires today!`,
+                        ...noticeRow({ key: 'notice_note_expiring_today', params: { snippet: note.content.substring(0, 20), client: note.section.client.name } }),
                         relatedId: `/dashboard/clients/${note.section.clientId}/sections/${note.sectionId}?highlight=${note.id}`
                     }
                 })
@@ -218,7 +219,7 @@ export class NoteService {
                         data: {
                             userId: note.createdById,
                             type: 'NOTE_REMINDER',
-                            message: `Note "${note.content.substring(0, 20)}..." in ${note.section.client.name} is expiring in ${note.reminderDays} days!`,
+                            ...noticeRow({ key: 'notice_note_expiring', params: { snippet: note.content.substring(0, 20), client: note.section.client.name, days: note.reminderDays } }),
                             relatedId: `/dashboard/clients/${note.section.clientId}/sections/${note.sectionId}?highlight=${note.id}`
                         }
                     })

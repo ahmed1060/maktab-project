@@ -1,4 +1,6 @@
 import { prisma } from "@/lib/prisma"
+import { noticeRow } from "@/lib/notice-row"
+import { roleKindParam } from "@/lib/notice"
 import { can, canCompanyWide } from "@/lib/permissions/can"
 import { scopesToTeam, assignedToTeamWhere, and } from "@/lib/team-scope"
 import { checkAssignees } from "./assignee-guard"
@@ -106,7 +108,7 @@ export class TaskService {
                 data: assigneeIds.map(id => ({
                     userId: id,
                     type: 'TASK_ASSIGNED',
-                    message: `You have been assigned a new task: ${input.title}`,
+                    ...noticeRow({ key: 'notice_task_assigned', params: { title: input.title } }),
                     relatedId: task.id
                 }))
             })
@@ -235,7 +237,7 @@ export class TaskService {
                     data: assigneeIds.map((uid: string) => ({
                         userId: uid,
                         type: 'TASK_UPDATED',
-                        message: `Task "${title || existingTask.title}" updated by ${userRole} ${userName}.`,
+                        ...noticeRow({ key: 'notice_task_updated', params: { title: title || existingTask.title, role: roleKindParam(userRole), name: userName } }),
                         relatedId: id
                     }))
                 })
@@ -374,7 +376,7 @@ export class TaskService {
 
             if (!isDraft && task.createdBy) {
                 await tx.notification.create({
-                    data: { userId: task.createdBy, type: 'TASK_SUBMITTED', message: `Task "${task.title}" has been submitted by ${session.user.name}`, relatedId: id }
+                    data: { userId: task.createdBy, type: 'TASK_SUBMITTED', ...noticeRow({ key: 'notice_task_submitted', params: { title: task.title, name: session.user.name ?? '' } }), relatedId: id }
                 })
             }
 
@@ -634,7 +636,7 @@ export class TaskService {
                     data: addedIds.map((id: string) => ({
                         userId: id,
                         type: 'TASK_ASSIGNED',
-                        message: `You have been assigned a transferred task: ${newTask.title}`,
+                        ...noticeRow({ key: 'notice_task_transferred', params: { title: newTask.title } }),
                         relatedId: newTask.id
                     }))
                 })
@@ -786,7 +788,7 @@ export class TaskService {
                 data: task.assignees.map((a: any) => ({
                     userId: a.id,
                     type: 'TASK_REVERTED',
-                    message: `Super Admin has reverted task "${task.title}" back to In Progress.`,
+                    ...noticeRow({ key: 'notice_task_reverted', params: { title: task.title } }),
                     relatedId: task.id
                 }))
             })
@@ -1070,7 +1072,7 @@ export class TaskService {
                     notificationsData.push({
                         userId: aid,
                         type: "TASK_ASSIGNED",
-                        message: `New task assigned: ${task.title}`,
+                        ...noticeRow({ key: 'notice_task_imported', params: { title: task.title } }),
                         relatedId: createdTask.id
                     })
                 }

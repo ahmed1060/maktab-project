@@ -556,7 +556,13 @@ model Notification {
   userId       String?
   superAdminId String?
   type         String
+  /// The English text, as written. Kept for rows written before messageKey,
+  /// and for anything that reads the text itself.
   message      String
+  /// What the message says, as a translation key and its details, so the bell
+  /// shows it in the reader's language (lib/notice.ts). Null on older rows.
+  messageKey    String?
+  messageParams Json?
   read         Boolean     @default(false)
   relatedId    String?
   createdAt    DateTime    @default(now())

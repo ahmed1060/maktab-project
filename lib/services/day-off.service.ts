@@ -1,4 +1,6 @@
 import { prisma } from "@/lib/prisma"
+import { noticeRow } from "@/lib/notice-row"
+import { optional } from "@/lib/notice"
 import { can, type Target } from "@/lib/permissions/can"
 import { holdersOf } from "@/lib/permissions/holders"
 import { CreateDayOffInput, AdminUpdateDayOffInput } from "../validations/day-off.schema"
@@ -83,16 +85,17 @@ export class DayOffService {
                 select: { id: true }
             })
 
-            const dateDisplay = finalEndDateStr === requestDateStr
-                ? new Date(requestDateStr).toLocaleDateString()
-                : `${new Date(requestDateStr).toLocaleDateString()} to ${new Date(finalEndDateStr).toLocaleDateString()}`
+            const from = { date: new Date(requestDateStr).toISOString() }
+            const when = finalEndDateStr === requestDateStr
+                ? from
+                : { key: 'notice_date_range' as const, params: { from, to: { date: new Date(finalEndDateStr).toISOString() } } }
 
             // Notify Admins (Centralized)
             const { NotificationService } = await import("./notification.service")
             await NotificationService.notifyMany(
                 admins.map(admin => admin.id),
                 'DAY_OFF_REQUEST',
-                `${userName} has requested a ${input.type.toLowerCase()} day off on ${dateDisplay}.`,
+                { key: 'notice_dayoff_requested', params: { name: userName, type: { key: `notice_dayoff_type_${input.type}` }, when } },
                 newRequest.id,
                 tx
             )
@@ -188,7 +191,7 @@ export class DayOffService {
             await NotificationService.notify(
                 requestToUpdate.userId,
                 'DAY_OFF_RESULT',
-                `Your day off request for ${new Date(requestToUpdate.date).toLocaleDateString()} has been approved${input.deductionType === 'SALARY' ? ' (deducted from salary)' : ''}.`,
+                { key: 'notice_dayoff_approved', params: { date: { date: new Date(requestToUpdate.date).toISOString() }, salary: optional('notice_dayoff_from_salary', {}, input.deductionType === 'SALARY') } },
                 id,
                 tx
             )
@@ -236,7 +239,7 @@ export class DayOffService {
             data: {
                 userId: requestToUpdate.userId,
                 type: 'DAY_OFF_RESULT',
-                message: `Your day off request for ${new Date(requestToUpdate.date).toLocaleDateString()} has been rejected.${trimmedReason ? ` Reason: ${trimmedReason}` : ''}`,
+                ...noticeRow({ key: 'notice_dayoff_rejected', params: { date: { date: new Date(requestToUpdate.date).toISOString() }, reason: optional('notice_reason_suffix', { reason: trimmedReason ?? '' }, trimmedReason) } }),
                 relatedId: id
             }
         })
@@ -340,7 +343,7 @@ export class DayOffService {
                 data: {
                     userId: requestToUpdate.userId,
                     type: 'DAY_OFF_REEVALUATE',
-                    message: `Your day off request for ${new Date(requestToUpdate.date).toLocaleDateString()} has been re-evaluated. Adjusted from ${oldDays} to ${newDays} days.`,
+                    ...noticeRow({ key: 'notice_dayoff_reevaluated', params: { date: { date: new Date(requestToUpdate.date).toISOString() }, from: oldDays, to: newDays } }),
                     relatedId: id
                 }
             })

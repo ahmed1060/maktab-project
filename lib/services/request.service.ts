@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma"
+import { roleKindParam } from "@/lib/notice"
 import { can } from "@/lib/permissions/can"
 import { holdersOf } from "@/lib/permissions/holders"
 import { scopesToTeam } from "@/lib/team-scope"
@@ -90,7 +91,7 @@ export class RequestService {
                     await NotificationService.notifyMany(
                         admins.map(admin => admin.id),
                         'NEW_REQUEST',
-                        `New request from ${userFirstName}: ${input.title}`,
+                        { key: 'notice_request_new', params: { name: userFirstName, title: input.title } },
                         request.id,
                         tx
                     )
@@ -170,13 +171,12 @@ export class RequestService {
             })
 
             // Notify user (Centralized)
-            const updaterRole = userRole.replace(/_/g, ' ')
-            const statusText = status.replace(/_/g, ' ')
+            const STATUS_LABEL = { PENDING: 'status_pending', IN_PROGRESS: 'status_in_progress', COMPLETED: 'status_completed' } as const
             const { NotificationService } = await import("./notification.service")
             await NotificationService.notify(
                 request.userId,
                 'REQUEST_STATUS_UPDATED',
-                `Your request "${request.title}" is ${statusText}. (Done by ${updaterRole} ${updaterName})`,
+                { key: 'notice_request_status', params: { title: request.title, status: { key: STATUS_LABEL[status as keyof typeof STATUS_LABEL] }, role: roleKindParam(userRole), name: updaterName } },
                 id,
                 tx
             )

@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma"
+import { optional } from "@/lib/notice"
 import { can } from "@/lib/permissions/can"
 import { CreateProfileRequestInput } from "../validations/profile.schema"
 
@@ -85,7 +86,7 @@ export class ProfileService {
             await NotificationService.notify(
                 request.userId,
                 'PROFILE_UPDATE',
-                `Your name change request has been approved! Your name is now ${request.newFirstName} ${request.newLastName}.`,
+                { key: 'notice_name_change_approved', params: { name: `${request.newFirstName} ${request.newLastName}` } },
                 request.userId,
                 tx
             )
@@ -126,7 +127,7 @@ export class ProfileService {
             await NotificationService.notify(
                 request.userId,
                 'PROFILE_UPDATE_REJECTED',
-                `Your name change request has been rejected.${adminNote ? ` Note: ${adminNote}` : ''}`,
+                { key: 'notice_name_change_rejected', params: { note: optional('notice_note_suffix', { note: adminNote ?? '' }, adminNote) } },
                 request.userId,
                 tx
             )

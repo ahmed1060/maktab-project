@@ -31,9 +31,12 @@ beforeEach(() => {
     vi.clearAllMocks()
 })
 
+// Any message will do here; these are about which column the recipient lands in.
+const M = { key: "notice_someone" } as const
+
 describe("NotificationService recipient columns", () => {
     it("notifyMany writes userId and never superAdminId", async () => {
-        await NotificationService.notifyMany(["u-1", "u-2"], "T", "m", "r")
+        await NotificationService.notifyMany(["u-1", "u-2"], "T", M, "r")
 
         const rows = prismaMock.notification.createMany.mock.calls[0][0].data
         expect(rows.map((r: any) => r.userId)).toEqual(["u-1", "u-2"])
@@ -41,7 +44,7 @@ describe("NotificationService recipient columns", () => {
     })
 
     it("notifySuperAdmins writes superAdminId and never userId", async () => {
-        await NotificationService.notifySuperAdmins(["sa-1", "sa-2"], "T", "m", "r")
+        await NotificationService.notifySuperAdmins(["sa-1", "sa-2"], "T", M, "r")
 
         const rows = prismaMock.notification.createMany.mock.calls[0][0].data
         expect(rows.map((r: any) => r.superAdminId)).toEqual(["sa-1", "sa-2"])
@@ -49,8 +52,8 @@ describe("NotificationService recipient columns", () => {
     })
 
     it("neither writes anything for an empty recipient list", async () => {
-        await NotificationService.notifyMany([], "T", "m")
-        await NotificationService.notifySuperAdmins([], "T", "m")
+        await NotificationService.notifyMany([], "T", M)
+        await NotificationService.notifySuperAdmins([], "T", M)
         expect(prismaMock.notification.createMany).not.toHaveBeenCalled()
     })
 

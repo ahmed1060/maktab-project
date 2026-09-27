@@ -118,7 +118,7 @@ export class AccessReviewService {
             await NotificationService.notifyMany(
                 deciders.map(d => d.id),
                 "ROLE_ACCESS_REVIEW",
-                `An access review is ready: ${lines.length} lines to confirm.`,
+                { key: "notice_access_review_ready", params: { count: lines.length } },
                 `/dashboard/role-requests?tab=reviews&highlight=${review.id}`,
             )
         }

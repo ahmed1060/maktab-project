@@ -4,7 +4,7 @@ import { NotificationService } from "./notification.service"
 import { RoleService } from "./role.service"
 import { computePeriodStart, computePeriodEnd, isSubscriptionType, daysUntil } from "@/lib/billing/period"
 import { decideReminder, REMINDER_RUNGS } from "@/lib/billing/reminders"
-import { decideLifecycleNotices, NOTICE_AUDIENCE, lifecycleEmailCopy, lifecycleOperatorMessage } from "@/lib/billing/lifecycle"
+import { decideLifecycleNotices, NOTICE_AUDIENCE, lifecycleEmailCopy, lifecycleOperatorNotice } from "@/lib/billing/lifecycle"
 import { sendPlainEmail } from "@/lib/email"
 import { resolveSubscriptionState, needsAttention, computeTrialEnd, DEFAULT_TRIAL_PRESET } from "@/lib/billing/state"
 import { VerificationService } from "./verification.service"
@@ -147,7 +147,7 @@ export class CompanyService {
                 await NotificationService.notifySuperAdmins(
                     superAdminIds,
                     'SUBSCRIPTION_LIFECYCLE',
-                    lifecycleOperatorMessage(notice, company.name),
+                    lifecycleOperatorNotice(notice, company.name),
                     `/dashboard/companies/${company.id}/payments`
                 )
                 notificationsSent += superAdminIds.length
@@ -160,7 +160,7 @@ export class CompanyService {
                 await NotificationService.notifySuperAdmins(
                     superAdminIds,
                     'SUBSCRIPTION_LIFECYCLE',
-                    lifecycleOperatorMessage('LOCKED', company.name),
+                    lifecycleOperatorNotice('LOCKED', company.name),
                     `/dashboard/companies/${company.id}/payments`
                 )
                 notificationsSent += superAdminIds.length
@@ -755,9 +755,9 @@ export class CompanyService {
                 continue
             }
 
-            const endsOn = payment.endDate!.toLocaleDateString()
-            const operatorMessage = `Subscription for ${payment.company.name} will expire in ${decision.send} day(s) (${endsOn}).`
-            const customerMessage = `Your subscription expires in ${decision.send} day(s) (${endsOn}). Please renew to avoid interruption.`
+            const endsOn = { date: payment.endDate!.toISOString() }
+            const operatorMessage = { key: 'notice_subscription_expiring_operator' as const, params: { company: payment.company.name, days: decision.send, date: endsOn } }
+            const customerMessage = { key: 'notice_subscription_expiring' as const, params: { days: decision.send, date: endsOn } }
 
             // relatedId carries a dashboard path rather than the payment id. The
             // bell has to reach that company's billing page, which needs the
