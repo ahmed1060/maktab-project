@@ -660,7 +660,9 @@ describe.skipIf(!ADMIN_URL)("roles as data, in Postgres", () => {
         })
 
         it("copies a company's roles as independent copies, never over one it has", async () => {
-            const template = await RoleTemplateService.create({ name: "Auditor", baseRole: "EMPLOYEE", grants: [{ permission: "audit.view", scope: "COMPANY" }] }, sa)
+            // (Built on audit.view until it was reserved — nothing checks it yet —
+            // and saving a role or template with it is refused.)
+            const template = await RoleTemplateService.create({ name: "Auditor", baseRole: "EMPLOYEE", grants: [{ permission: "debts.view", scope: "COMPANY" }] }, sa)
             const auditor = await RoleService.create({ companyId: "c7", name: "Auditor", fromTemplateId: template.id }, sa)
             const trainee = await RoleService.create({ companyId: "c7", name: "Trainee", baseRole: "EMPLOYEE", grants: [{ permission: "tasks.view", scope: "TEAM" }] }, sa)
             await RoleService.create({ companyId: "c8", name: "trainee", baseRole: "EMPLOYEE", grants: [] }, sa)
