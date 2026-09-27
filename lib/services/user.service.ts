@@ -263,6 +263,9 @@ export class UserService {
                 // an authorization check.
                 if (isSelf) throw new Error("EMAIL_CHANGE_REQUIRES_VERIFICATION")
                 if (superAdminUser?.isProtected) throw new Error("TARGET_PROTECTED")
+                // An email is the way into an account (forgot-password), so
+                // changing it is taking the account over.
+                if (regularUser) await RoleAssignmentService.mayTakeOver(session.user, regularUser)
                 updateData.email = email
             }
         }
@@ -270,6 +273,9 @@ export class UserService {
             // Setting somebody else's password is its own permission: a role
             // may edit profiles without being able to take over accounts.
             if (person && !isSelf && !can(session.user, "employees.reset_password", person)) throw new Error("FORBIDDEN_PASSWORD_RESET")
+            // And only for someone who could have given them their role:
+            // whoever sets the password holds the account's access.
+            if (regularUser && !isSelf) await RoleAssignmentService.mayTakeOver(session.user, regularUser)
             // WAVE 10: Security Gate for Admin Password Resets
             const targetRole = regularUser?.role || 'SUPER_ADMIN'
             if (['ADMIN', 'SUPER_ADMIN'].includes(targetRole) && !isSelf && userRole === 'SUPER_ADMIN') {
@@ -833,7 +839,7 @@ export class UserService {
      * resetting a SuperAdmin's own credentials is out of scope here; see
      * the MFA/reset-flow enhancement (F-27) for that.
      */
-    static async resetPassword(targetUserId: string, actingUser: { id: string; role: string }, confirmPassword: string) {
+    static async resetPassword(targetUserId: string, actingUser: { id: string; role: string; grants?: string | null }, confirmPassword: string) {
         // 1. Verify the acting admin's own password before letting them
         // reset someone else's — the acting user may be a SuperAdmin or a
         // company ADMIN, so check whichever table they actually live in.
@@ -849,6 +855,9 @@ export class UserService {
         // 2. Locate the target
         const target = await prisma.user.findUnique({ where: { id: targetUserId } })
         if (!target) throw new Error("TARGET_USER_NOT_FOUND")
+        // Whoever holds the new password holds the account's access: only
+        // someone who could have given the person their role may issue one.
+        if (target.id !== actingUser.id) await RoleAssignmentService.mayTakeOver(actingUser, target)
 
         // 3. Generate, hash, and store — the plaintext is returned once and never persisted.
         const tempPassword = generateTempPassword()

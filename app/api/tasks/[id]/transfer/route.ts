@@ -5,7 +5,7 @@ import { verifyResourceAccess } from "@/lib/security"
 
 export const POST = withStandardHandler(async (req, session, json, { params }) => {
     // Company Isolation Check
-    const hasAccess = await verifyResourceAccess(session, params.id, 'TASK')
+    const hasAccess = await verifyResourceAccess(session, params.id, 'TASK', "tasks.transfer")
     if (!hasAccess) return ApiResponse.forbidden("Access Denied")
 
     const { newAssigneeIds } = json
