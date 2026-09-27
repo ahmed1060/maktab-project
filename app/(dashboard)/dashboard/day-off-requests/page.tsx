@@ -47,6 +47,7 @@ interface DayOffRequest {
         firstName: string
         lastName: string
         dayOffCredit: number
+        teamLeaderId?: string | null
     }
 }
 
@@ -564,7 +565,7 @@ export default function DayOffRequestsPage() {
                                     </div>
 
                                     {/* Card Actions (Admin only) */}
-                                    {canDecide && req.status === 'PENDING' && canFor('dayoff.approve', req.userId) && (
+                                    {canDecide && req.status === 'PENDING' && canFor('dayoff.approve', req.userId, req.user?.teamLeaderId) && (
                                         <div style={{ display: 'flex', gap: '0.75rem', marginTop: 'auto', paddingTop: '1rem', borderTop: '1px dashed var(--border)' }}>
                                             <button
                                                 onClick={() => handleAction(req.id, 'APPROVED')}

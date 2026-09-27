@@ -44,7 +44,10 @@ export const GET = withStandardHandler(async (req, session) => {
                             lastName: true,
                             email: true,
                             role: true,
-                            dayOffCredit: true
+                            dayOffCredit: true,
+                            // Who leads them: the screen offers Approve to a
+                            // team-scoped approver for their own team only.
+                            teamLeaderId: true
                         }
                     }
                 },

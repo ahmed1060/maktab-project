@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from "vitest"
 import { state, prismaMock, url } from "./employee-access.harness"
 import { encodeGrants, type Grants } from "./grants"
 import { stepUpConfirmed } from "./test-actors"
+import { permissionsOf } from "@/lib/useCan"
 
 vi.setConfig({ testTimeout: 60_000 })
 
@@ -70,5 +71,18 @@ describe("the leave requests list", () => {
 
     it("held for the company, lists the company's", async () => {
         expect(await listedWhere({ "dayoff.view": "COMPANY" })).toEqual({ user: { companyId: "c1" } })
+    })
+})
+
+describe("a screen asking about somebody (canFor)", () => {
+    const approver = permissionsOf({ id: "tl", role: "EMPLOYEE", companyId: "c1", grants: encodeGrants({ "dayoff.approve": "TEAM" }) })
+
+    it("offers a team-scoped approver their team's requests", () => {
+        expect(approver.canFor("dayoff.approve", "emp", "tl")).toBe(true)
+    })
+
+    it("and not the rest of the company's, nor their own", () => {
+        expect(approver.canFor("dayoff.approve", "loner", null)).toBe(false)
+        expect(approver.canFor("dayoff.approve", "tl", null)).toBe(false)
     })
 })

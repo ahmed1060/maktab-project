@@ -82,7 +82,7 @@ const GATES: Gate[] = [
     { what: "day off: the company's requests", file: D + "day-off-requests/page.tsx", uses: "const managesRequests = can('dayoff.view')", before: admins, now: p => p.can("dayoff.view") },
     { what: "day off: decide", file: D + "day-off-requests/page.tsx", uses: "const canDecide = can('dayoff.approve')", before: admins, now: p => p.can("dayoff.approve") },
     // Added in Part B: the buttons on one request, never one's own.
-    { what: "day off: decide this one (flag: one's own)", file: D + "day-off-requests/page.tsx", uses: "canFor('dayoff.approve', req.userId)", before: (r, own) => admins(r) && !own, now: (p, own, role) => p.canFor("dayoff.approve", own ? ACTOR[role].id : "someone-else") },
+    { what: "day off: decide this one (flag: one's own)", file: D + "day-off-requests/page.tsx", uses: "canFor('dayoff.approve', req.userId, req.user?.teamLeaderId)", before: (r, own) => admins(r) && !own, now: (p, own, role) => p.canFor("dayoff.approve", own ? ACTOR[role].id : "someone-else") },
     { what: "name changes: decide this one (flag: one's own)", file: D + "profile-requests/page.tsx", uses: "permissions.canFor('profile_requests.review', req.userId)", before: (r, own) => admins(r) && !own, now: (p, own, role) => p.canFor("profile_requests.review", own ? ACTOR[role].id : "someone-else") },
     { what: "payroll: save draft", file: D + "payroll/page.tsx", uses: "const canPrepare = can('payroll.prepare')", before: admins, now: p => p.can("payroll.prepare") },
     { what: "payroll: approve", file: D + "payroll/page.tsx", uses: "const canApprove = can('payroll.approve')", before: admins, now: p => p.can("payroll.approve") },

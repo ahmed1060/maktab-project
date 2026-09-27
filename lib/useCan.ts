@@ -28,9 +28,11 @@ export type Can = {
     /**
      * Whether they may do this to the person with this id in their own
      * company — for a decision about somebody, where who it is matters: nobody
-     * approves their own leave or sets their own pay.
+     * approves their own leave or sets their own pay. Pass who leads them for
+     * a permission that can be held for a team, or a team-scoped grant can
+     * only ever match the viewer themselves.
      */
-    canFor: (permission: Permission, userId: string | null | undefined) => boolean
+    canFor: (permission: Permission, userId: string | null | undefined, teamLeaderId?: string | null) => boolean
 }
 
 /**
@@ -44,7 +46,7 @@ export function permissionsOf(actor: Actor | null | undefined): Can {
         can: (permission, target) => !!who && can(who, permission, target),
         companyWide: permission => !!who && canCompanyWide(who, permission),
         scope: permission => who ? grantFor(who, permission) : null,
-        canFor: (permission, userId) => !!who && !!userId && can(who, permission, { companyId: who.companyId, userId }),
+        canFor: (permission, userId, teamLeaderId) => !!who && !!userId && can(who, permission, { companyId: who.companyId, userId, teamLeaderId: teamLeaderId ?? null }),
     }
 }
 
