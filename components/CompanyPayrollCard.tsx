@@ -5,6 +5,7 @@ import { useLanguage } from '@/context/LanguageContext'
 import { useToast } from '@/context/ToastContext'
 import { MAX_PAYROLL_DAY } from '@/lib/payday'
 import { FULL_RECOVERY_PERCENT } from '@/lib/debt-recovery'
+import { useReportUnsaved } from '@/lib/useUnsavedChanges'
 
 /**
  * The three payroll settings a company actually has.
@@ -53,6 +54,7 @@ export default function CompanyPayrollCard({ companyId, payrollDay, payslipsVisi
     const [saving, setSaving] = useState(false)
 
     const dirty = day !== payrollDay || visible !== payslipsVisible || zone !== timezone || cap !== debtRecoveryPercent
+    useReportUnsaved('payroll', dirty)
 
     const save = async () => {
         setSaving(true)
