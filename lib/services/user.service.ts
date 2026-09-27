@@ -9,7 +9,7 @@ import { generateUsername } from "@/lib/username"
 import { generateTempPassword } from "@/lib/generate-password"
 
 import { CreateUserInput, UpdateUserInput } from "../validations/user.schema"
-import { calendarMonth, calendarYear } from "@/lib/time"
+import { calendarMonth, calendarYear, DEFAULT_TIME_ZONE } from "@/lib/time"
 import { effectiveFromChoice } from "@/lib/salary-history"
 import { checkTeamAssignment, clearsOwnLeader, stripsLeadership } from "@/lib/team-assignment"
 import { notifyTeamMoves } from "./team-notify.service"
@@ -196,7 +196,7 @@ export class UserService {
 
     static async update(input: UpdateUserInput, session: any) {
         const userRole = session.user.role
-        const { id, firstName, lastName, email, password, role, roleId, gender, salary, companyId, avatar, dayOffCredit, baseDayOffCredit, username, status, teamLeaderId, reassignReportsTo } = input
+        const { id, firstName, lastName, email, password, role, roleId, actingUntil, gender, salary, companyId, avatar, dayOffCredit, baseDayOffCredit, username, status, teamLeaderId, reassignReportsTo } = input
 
         const regularUser = await prisma.user.findUnique({ where: { id } })
         const superAdminUser = !regularUser ? await prisma.superAdmin.findUnique({ where: { id } }) : null
@@ -417,6 +417,29 @@ export class UserService {
                 Object.assign(updateData, updateData.role !== undefined && next.roleId
                     ? await RoleAssignmentService.chosen(prisma, session.user, next.roleId, { companyId: nextCompanyId, userId: id })
                     : next)
+            }
+
+            // An acting role (ROLES_PLAN.md §6.13): a role given until a date,
+            // then back to the one they had. Given with a role change; alone,
+            // it moves the end of a cover already running (null keeps the
+            // cover role for good). A move to another company ends it — the role they
+            // would return to is not one of that company's.
+            const roleChanging = updateData.roleId !== undefined && updateData.roleId !== regularUser.roleId
+            const companyChanging = updateData.companyId !== undefined && updateData.companyId !== regularUser.companyId
+            if (actingUntil !== undefined && !can(session.user, "employees.assign_role", person)) throw new Error("FORBIDDEN_ROLE_ASSIGNMENT")
+            // A date from the form, or an instant a request already worked out.
+            const until = actingUntil as string | Date | null | undefined
+            const returnOn: Date | null | undefined = until
+                ? RoleAssignmentService.returnOn(until, (await prisma.company.findUnique({ where: { id: regularUser.companyId! }, select: { timezone: true } }))?.timezone ?? DEFAULT_TIME_ZONE)
+                : until === null ? null : undefined
+            if (roleChanging || companyChanging) {
+                if (actingUntil && companyChanging) throw new Error("ACTING_ACROSS_COMPANIES")
+                Object.assign(updateData, RoleAssignmentService.acting(regularUser, returnOn))
+            } else if (actingUntil !== undefined) {
+                if (!regularUser.actingUntil) throw new Error("ACTING_NEEDS_ROLE")
+                Object.assign(updateData, returnOn
+                    ? { actingUntil: RoleAssignmentService.acting(regularUser, returnOn).actingUntil }
+                    : { actingUntil: null, returnRoleId: null })
             }
 
             // Never the company's last Admin at work (ROLES_PLAN.md §4.2, rule 8).

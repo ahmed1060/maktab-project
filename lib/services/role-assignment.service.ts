@@ -3,6 +3,7 @@ import { isBuiltInRole } from "@/lib/permissions/built-in"
 import { isPermission } from "@/lib/permissions/catalogue"
 import { decodeGrants, type Grants } from "@/lib/permissions/grants"
 import { covers } from "@/lib/permissions/grant-rules"
+import { startOfDayIn } from "@/lib/time"
 import { RoleService } from "./role.service"
 import type { UserRole } from "@prisma/client"
 
@@ -138,6 +139,115 @@ export class RoleAssignmentService {
         return roles
             .filter(role => !refusal(actor, role))
             .map(role => ({ id: role.id, name: role.name, baseRole: role.baseRole, builtIn: role.builtIn, isDefault: role.id === defaultId }))
+    }
+
+    /**
+     * What to write for an acting role (ROLES_PLAN.md §6.13) given along with
+     * `next`, the role being given: held until `until`, then back to what
+     * they hold now — or, if they are already acting, to what they held
+     * before that, so covering twice never strands anyone on a cover role.
+     * Without `until`, the change is permanent and any acting ends with it.
+     */
+    /**
+     * The instant somebody is back on their own role. A screen sends a return
+     * date, "YYYY-MM-DD", and "back on the 5th" means from the first moment of
+     * the 5th in the company's calendar, not in UTC's. An instant — one
+     * already worked out, as a request stores it — is used as it is: reading
+     * it again as a date would move it by the zone's offset.
+     */
+    static returnOn(value: string | Date, timeZone: string): Date {
+        if (value instanceof Date) return value
+        const [y, m, d] = value.split("-").map(Number)
+        return startOfDayIn(new Date(Date.UTC(y, m - 1, d, 12)), timeZone)
+    }
+
+    static acting(
+        current: { roleId: string | null; actingUntil: Date | null; returnRoleId: string | null },
+        until: Date | null | undefined,
+        now: Date = new Date(),
+    ): { actingUntil?: Date | null; returnRoleId?: string | null } {
+        // Permanent: ends a cover if there is one, and writes nothing if not.
+        if (!until) return current.actingUntil ? { actingUntil: null, returnRoleId: null } : {}
+        if (until <= now) throw new Error("ACTING_END_IN_PAST")
+        return { actingUntil: until, returnRoleId: current.actingUntil ? current.returnRoleId : current.roleId }
+    }
+
+    /**
+     * Returns everybody whose acting role has run out to the role they had
+     * (§6.13) — the nightly job. A return the rules would refuse is held, and
+     * the company's deciders told, as the employment job holds an event: a
+     * Team Leader returning to a role that leads nobody while people still
+     * report to them, or the company's last Admin at work. A return role that
+     * no longer exists sends them to the company's default instead.
+     */
+    static async endActing(now: Date = new Date()) {
+        const due = await prisma.user.findMany({
+            where: { actingUntil: { lte: now }, companyId: { not: null } },
+            select: {
+                id: true, role: true, roleId: true, companyId: true, status: true, teamLeaderId: true,
+                firstName: true, lastName: true, returnRoleId: true,
+                assignedRole: { select: { name: true } },
+                returnRole: { select: { id: true, baseRole: true, name: true } },
+            },
+        })
+        const { stripsLeadership } = await import("@/lib/team-assignment")
+        const { TeamHandOff } = await import("./team-handoff.service")
+        const { NotificationService } = await import("./notification.service")
+        const { AuditLogService } = await import("./audit-log.service")
+        const { holdersOf } = await import("@/lib/permissions/holders")
+        let returned = 0
+        const held: string[] = []
+
+        for (const person of due) {
+            const companyId = person.companyId!
+            const next = person.returnRole
+                ? { role: person.returnRole.baseRole, roleId: person.returnRole.id }
+                : await RoleAssignmentService.defaultFor(prisma, companyId)
+            try {
+                if (stripsLeadership(person, { role: next.role })) {
+                    await TeamHandOff.plan({ id: person.id, companyId }, undefined)
+                }
+                await RoleAssignmentService.keepsAnAdmin(prisma, person.id, { roleId: next.roleId })
+            } catch (error: any) {
+                if (error?.message !== "LEADER_HAS_REPORTS" && error?.message !== "LAST_ADMIN") throw error
+                held.push(person.id)
+                const deciders = await prisma.user.findMany({
+                    where: { companyId, status: { in: [...AT_WORK] }, id: { not: person.id }, ...holdersOf("employees.assign_role") },
+                    select: { id: true },
+                })
+                await NotificationService.notifyMany(
+                    deciders.map(d => d.id),
+                    "ROLE_ACTING_HELD",
+                    `${person.firstName} ${person.lastName}'s acting role has ended, but they cannot return yet: ${error.message === "LAST_ADMIN" ? "they are the company's only Admin at work" : "people still report to them"}.`,
+                    `/dashboard/employees/${person.id}`,
+                )
+                continue
+            }
+
+            await prisma.$transaction(async tx => {
+                await tx.user.update({
+                    where: { id: person.id },
+                    data: {
+                        ...next, actingUntil: null, returnRoleId: null,
+                        // Only an employee has a leader.
+                        ...(next.role !== "EMPLOYEE" ? { teamLeaderId: null } : {}),
+                        // Their permissions change: the session reloads them.
+                    },
+                })
+                await AuditLogService.log("END_ACTING_ROLE", "USER", person.id, {
+                    tx, userId: null, superAdminId: null,
+                    details: { from: person.roleId, to: next.roleId, returnedToDefault: !person.returnRole },
+                })
+            })
+            await NotificationService.notify(
+                person.id,
+                "ROLE_ACTING_ENDED",
+                `Your acting role ${person.assignedRole?.name ?? ""} has ended.`,
+                `/dashboard/employees/${person.id}`,
+            )
+            returned++
+        }
+        return { due: due.length, returned, held: held.length }
     }
 
     /**

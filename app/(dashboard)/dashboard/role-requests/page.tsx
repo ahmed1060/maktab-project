@@ -26,6 +26,7 @@ type RoleRequest = {
     id: string
     status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED'
     note: string | null
+    actingUntil: string | null
     decisionNote: string | null
     createdAt: string
     user: Person & { assignedRole: { id: string; name: string } | null }
@@ -114,6 +115,11 @@ export default function RoleRequestsPage() {
                                         <td style={cell}>{nameOf(r.user)}</td>
                                         <td style={cell}>
                                             {r.user.assignedRole?.name ?? '—'} → <strong>{r.role.name}</strong>
+                                            {r.actingUntil && (
+                                                <div style={{ fontSize: '0.8rem', color: 'var(--text-soft)' }}>
+                                                    {t('acting_now').replace('{date}', new Date(r.actingUntil).toLocaleDateString(locale)).replace('{role}', r.user.assignedRole?.name ?? '—')}
+                                                </div>
+                                            )}
                                             {r.note && <div style={{ fontSize: '0.8rem', color: 'var(--text-soft)' }}>{r.note}</div>}
                                         </td>
                                         <td style={cell}>

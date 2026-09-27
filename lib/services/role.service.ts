@@ -206,8 +206,10 @@ export class RoleService {
     static async delete(id: string, session: any) {
         const role = await RoleService.getById(id)
         if (role.builtIn) throw new Error("ROLE_BUILT_IN_FIXED")
-        // Nobody is ever left without a role (§4.3): reassign them first.
+        // Nobody is ever left without a role (§4.3): reassign them first —
+        // including anybody acting elsewhere who is due back to it (§6.13).
         if (role.holders > 0) throw new Error("ROLE_HELD")
+        if (await prisma.user.count({ where: { returnRoleId: id } }) > 0) throw new Error("ROLE_HELD")
         if (role.isDefault) throw new Error("ROLE_IS_DEFAULT")
         await prisma.$transaction(async (tx) => {
             await tx.role.delete({ where: { id } })

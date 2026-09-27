@@ -439,6 +439,11 @@ model User {
   /// belong to.
   roleId                     String?
   assignedRole               Role?                   @relation(fields: [roleId], references: [id], onDelete: NoAction)
+  /// An acting role (ROLES_PLAN.md §6.13): until this instant they hold roleId
+  /// for somebody else, then return to returnRoleId. Both set, or neither.
+  actingUntil                DateTime?
+  returnRoleId               String?
+  returnRole                 Role?                   @relation("ActingReturn", fields: [returnRoleId], references: [id], onDelete: NoAction)
   roleRequestsFor            RoleRequest[]           @relation("RoleRequestFor")
   roleRequestsMade           RoleRequest[]           @relation("RoleRequestBy")
   roleRequestsDecided        RoleRequest[]           @relation("RoleRequestDecidedBy")
@@ -451,6 +456,7 @@ model User {
   @@index([teamLeaderId])
   // "Who holds this role" — every role edit counts its holders first.
   @@index([roleId])
+  @@index([actingUntil])
 }
 
 model Task {
@@ -1280,6 +1286,7 @@ model Role {
   grants               RoleGrant[]
   users                User[]
   requests             RoleRequest[]
+  returners            User[]      @relation("ActingReturn")
   createdAt            DateTime    @default(now())
   updatedAt            DateTime    @updatedAt
 
@@ -1338,6 +1345,8 @@ model RoleRequest {
   requestedById String
   requestedBy   User              @relation("RoleRequestBy", fields: [requestedById], references: [id], onDelete: Cascade)
   note          String?
+  /// Asked for as an acting role, until this instant (§6.13).
+  actingUntil   DateTime?
   status        RoleRequestStatus @default(PENDING)
   decidedById   String?
   decidedBy     User?             @relation("RoleRequestDecidedBy", fields: [decidedById], references: [id], onDelete: SetNull)

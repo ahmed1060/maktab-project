@@ -9,6 +9,8 @@ const createSchema = z.object({
     userId: z.string().min(1),
     roleId: z.string().min(1),
     note: z.string().trim().max(500).optional().nullable(),
+    // Asked for as an acting role, until then (ROLES_PLAN.md §6.13).
+    actingUntil: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "A date, YYYY-MM-DD").optional().nullable(),
 })
 
 /**

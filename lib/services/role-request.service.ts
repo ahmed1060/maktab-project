@@ -3,6 +3,7 @@ import { can } from "@/lib/permissions/can"
 import { holdersOf } from "@/lib/permissions/holders"
 import { personTarget } from "@/lib/security"
 import { addWorkingDays } from "@/lib/working-days"
+import { DEFAULT_TIME_ZONE } from "@/lib/time"
 import { RoleAssignmentService } from "./role-assignment.service"
 import { RoleService } from "./role.service"
 import type { Prisma } from "@prisma/client"
@@ -35,7 +36,7 @@ const link = (id: string) => `/dashboard/role-requests?highlight=${id}`
 const name = (u: { firstName: string; lastName: string }) => `${u.firstName} ${u.lastName}`
 
 const SHAPE = {
-    id: true, companyId: true, status: true, note: true, decisionNote: true, createdAt: true, decidedAt: true,
+    id: true, companyId: true, status: true, note: true, decisionNote: true, createdAt: true, decidedAt: true, actingUntil: true,
     user: { select: { id: true, firstName: true, lastName: true, assignedRole: { select: { id: true, name: true } } } },
     role: { select: { id: true, name: true, baseRole: true } },
     requestedBy: { select: { id: true, firstName: true, lastName: true } },
@@ -62,7 +63,7 @@ function audit(action: string, id: string, session: Session, details: Record<str
 
 export class RoleRequestService {
     /** Ask for `roleId` for `userId`. Throws the assignment rules' refusals. */
-    static async create(input: { userId: string; roleId: string; note?: string | null }, session: Session) {
+    static async create(input: { userId: string; roleId: string; note?: string | null; actingUntil?: string | Date | null }, session: Session) {
         const actor = session.user
         if (input.userId === actor.id) throw new Error("OWN_ROLE")
         const person = await personTarget(input.userId)
@@ -75,6 +76,10 @@ export class RoleRequestService {
         })
         if (!target?.companyId) throw new Error("USER_NOT_FOUND")
         if (target.roleId === input.roleId) throw new Error("SAME_ROLE")
+        const actingUntil = input.actingUntil
+            ? RoleAssignmentService.returnOn(input.actingUntil, (await prisma.company.findUnique({ where: { id: target.companyId }, select: { timezone: true } }))?.timezone ?? DEFAULT_TIME_ZONE)
+            : null
+        if (actingUntil && actingUntil <= new Date()) throw new Error("ACTING_END_IN_PAST")
         // Asking to change an Admin is asking to act on one (§4.2, rule 7).
         RoleAssignmentService.onlySuperAdminActsOnAdmins(actor, target)
         // Rules 1-4, for the one asking.
@@ -82,7 +87,10 @@ export class RoleRequestService {
 
         const request = await prisma.$transaction(async tx => {
             const created = await tx.roleRequest.create({
-                data: { companyId: target.companyId!, userId: target.id, roleId: input.roleId, requestedById: actor.id, note: input.note || null },
+                data: {
+                    companyId: target.companyId!, userId: target.id, roleId: input.roleId, requestedById: actor.id,
+                    note: input.note || null, actingUntil,
+                },
                 select: SHAPE,
             }).catch(error => {
                 if (error?.code === "P2002") throw new Error("ALREADY_PENDING")
@@ -115,7 +123,7 @@ export class RoleRequestService {
         session: Session,
     ) {
         const actor = session.user
-        const request = await prisma.roleRequest.findUnique({ where: { id }, select: { ...SHAPE, userId: true, roleId: true, requestedById: true } })
+        const request = await prisma.roleRequest.findUnique({ where: { id }, select: { ...SHAPE, userId: true, roleId: true, requestedById: true, actingUntil: true } })
         if (!request) throw new Error("REQUEST_NOT_FOUND")
         const person = await personTarget(request.userId)
         if (!person || !can(actor, "employees.assign_role", person)) throw new Error("FORBIDDEN")
@@ -145,7 +153,11 @@ export class RoleRequestService {
                     companyId: request.companyId, userId: request.userId,
                 })
                 const { UserService } = await import("./user.service")
-                await UserService.update({ id: request.userId, roleId: request.roleId, reassignReportsTo: input.reassignReportsTo } as any, session)
+                await UserService.update({
+                    id: request.userId, roleId: request.roleId, reassignReportsTo: input.reassignReportsTo,
+                    // An acting role asked for stays one (§6.13).
+                    ...(request.actingUntil ? { actingUntil: request.actingUntil } : {}),
+                } as any, session)
             } catch (error) {
                 // Not applied, so not decided: it goes back to waiting.
                 await prisma.roleRequest.update({

@@ -38,6 +38,9 @@ export function assignmentRefusal(error: any) {
         case "FORBIDDEN_ROLE_ASSIGNMENT": return ApiResponse.forbidden("You cannot give that role")
         case "ROLE_NOT_IN_COMPANY": return ApiResponse.badRequest("That role is not one of this company's")
         case "ROLE_EXCEEDS_YOURS": return ApiResponse.forbidden("That role holds access you do not have, so you cannot give it")
+        case "ACTING_END_IN_PAST": return ApiResponse.badRequest("An acting role must end in the future")
+        case "ACTING_NEEDS_ROLE": return ApiResponse.badRequest("Choose the acting role as well as when it ends")
+        case "ACTING_ACROSS_COMPANIES": return ApiResponse.badRequest("An acting role cannot be given while moving somebody to another company")
     }
     return null
 }

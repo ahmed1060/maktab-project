@@ -1425,5 +1425,8 @@ export const ar = {
         role_requests_ask: "طلب هذا الدور",
         role_requests_pending_for: "بانتظار الموافقة: {role}",
         role_requests_will_ask: "يبدأ الحساب بالدور الافتراضي للشركة، ويُرسل الدور الذي تختاره إلى المدير للموافقة.",
-        role_requests_filter_all: "الكل"
+        role_requests_filter_all: "الكل",
+        acting_until_label: "بالإنابة حتى (اختياري)",
+        acting_until_hint: "اتركه فارغاً للتغيير الدائم. في هذا التاريخ يعود إلى دوره الحالي.",
+        acting_now: "بالإنابة حتى {date}، ثم يعود إلى {role}"
 };

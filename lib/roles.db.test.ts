@@ -31,6 +31,7 @@ const MIGRATIONS = ["0_init", "20260920000000_team_leader"]
 const ROLES = "20260927000000_roles"
 const TEMPLATES = "20260928000000_role_templates"
 const REQUESTS = "20260929000000_role_requests"
+const ACTING = "20260930000000_acting_roles"
 const sql = (name: string) => readFileSync(`prisma/migrations/${name}/migration.sql`, "utf8")
 
 const BEFORE_ROLES = `
@@ -63,6 +64,7 @@ describe.skipIf(!ADMIN_URL)("roles as data, in Postgres", () => {
         await db.query(sql(ROLES))
         await db.query(sql(TEMPLATES))
         await db.query(sql(REQUESTS))
+        await db.query(sql(ACTING))
         prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: url.toString() }) })
         // The services that manage roles use the application's client; point it
         // here before its first use (it is built lazily).
@@ -521,5 +523,105 @@ describe.skipIf(!ADMIN_URL)("roles as data, in Postgres", () => {
         it("refuses in the database a request across companies", () =>
             refused(`INSERT INTO "RoleRequest"(id, "companyId", "userId", "roleId", "requestedById", "updatedAt")
                 VALUES ('rr-x', 'c2', 'new1', (SELECT id FROM "Role" WHERE "companyId" = 'c2' AND "builtIn" = 'EMPLOYEE'), 'hr1', now())`))
+    })
+    describe("acting roles (B4, §6.13)", () => {
+        const sa = { user: { id: "sa", role: "SUPER_ADMIN" } }
+        const admin = { user: { id: "a1", role: "ADMIN", companyId: "c1", grants: builtInGrantsToken("ADMIN") } }
+        const inAWeek = () => new Date(Date.now() + 7 * 86400000)
+        const row = async (id: string) => (await db.query(`SELECT role, "roleId", "actingUntil", "returnRoleId", "teamLeaderId" FROM "User" WHERE id = $1`, [id])).rows[0]
+        const builtIn = async (kind: string) => (await db.query(`SELECT id FROM "Role" WHERE "companyId" = 'c1' AND "builtIn" = $1`, [kind])).rows[0].id
+        let cover: string, employee: string, leader: string
+
+        beforeAll(async () => {
+            await db.query(`INSERT INTO "SuperAdmin" (id, email, password, "firstName", "lastName", username, "updatedAt")
+                VALUES ('sa', 'sa@test', 'x', 'Super', 'Admin', 'sa', now()) ON CONFLICT DO NOTHING`)
+            cover = (await RoleService.create({ companyId: "c1", name: "Branch cover", baseRole: "EMPLOYEE", grants: [{ permission: "dayoff.approve", scope: "COMPANY" }] }, sa)).id
+            employee = await builtIn("EMPLOYEE")
+            leader = await builtIn("TEAM_LEADER")
+            await db.query(`INSERT INTO "User"(id, email, password, "firstName", "lastName", role, "roleId", "lastDayOffResetYear", username, "companyId")
+                VALUES ('act1', 'act1@x', 'p', 'Act', 'One', 'EMPLOYEE', $1, 2026, 'act1', 'c1'),
+                       ('act2', 'act2@x', 'p', 'Act', 'Two', 'EMPLOYEE', $1, 2026, 'act2', 'c1'),
+                       ('rep1', 'rep1@x', 'p', 'Rep', 'One', 'EMPLOYEE', $1, 2026, 'rep1', 'c1')`, [employee])
+        })
+
+        it("holds the role until the date, then returns them — and says so", async () => {
+            const { UserService } = await import("@/lib/services/user.service")
+            const until = inAWeek()
+            await UserService.update({ id: "act1", roleId: cover, actingUntil: until } as any, admin)
+            expect(await row("act1")).toMatchObject({ roleId: cover, returnRoleId: employee })
+            // Not yet.
+            expect(await RoleAssignmentService.endActing(new Date())).toMatchObject({ returned: 0 })
+            expect((await row("act1")).roleId).toBe(cover)
+            // The day comes.
+            expect(await RoleAssignmentService.endActing(new Date(until.getTime() + 1000))).toMatchObject({ returned: 1 })
+            expect(await row("act1")).toMatchObject({ roleId: employee, actingUntil: null, returnRoleId: null })
+            const audit = (await db.query(`SELECT details FROM "AuditLog" WHERE action = 'END_ACTING_ROLE' AND "entityId" = 'act1'`)).rows
+            expect(audit[0].details).toMatchObject({ from: cover, to: employee })
+        })
+
+        it("returns them to their own role, however many covers in between", async () => {
+            const { UserService } = await import("@/lib/services/user.service")
+            await UserService.update({ id: "act2", roleId: cover, actingUntil: inAWeek() } as any, admin)
+            await UserService.update({ id: "act2", roleId: leader, actingUntil: inAWeek() } as any, admin)
+            expect(await row("act2")).toMatchObject({ roleId: leader, returnRoleId: employee })
+            // A permanent change ends the cover.
+            await UserService.update({ id: "act2", roleId: cover } as any, admin)
+            expect(await row("act2")).toMatchObject({ roleId: cover, actingUntil: null, returnRoleId: null })
+            await UserService.update({ id: "act2", roleId: employee } as any, admin)
+        })
+
+        it("takes a return date as the start of that day in the company's calendar", async () => {
+            const { UserService } = await import("@/lib/services/user.service")
+            const day = new Date(Date.now() + 10 * 86400000).toISOString().slice(0, 10)
+            await UserService.update({ id: "act1", roleId: cover, actingUntil: day } as any, admin)
+            const until: Date = (await row("act1")).actingUntil
+            // Midnight in Cairo, which is the evening before in UTC.
+            const cairo = new Intl.DateTimeFormat("en-CA", { timeZone: "Africa/Cairo", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false }).format(until)
+            expect(cairo).toBe(`${day}, 00:00`)
+            await UserService.update({ id: "act1", roleId: employee } as any, admin)
+        })
+
+        it("refuses an end in the past, or a date with no role to act in", async () => {
+            const { UserService } = await import("@/lib/services/user.service")
+            await expect(UserService.update({ id: "act1", roleId: cover, actingUntil: new Date(Date.now() - 1000) } as any, admin)).rejects.toThrow("ACTING_END_IN_PAST")
+            await expect(UserService.update({ id: "act1", actingUntil: inAWeek() } as any, admin)).rejects.toThrow("ACTING_NEEDS_ROLE")
+        })
+
+        it("holds a return the rules would refuse, and tells the company", async () => {
+            const { UserService } = await import("@/lib/services/user.service")
+            const until = inAWeek()
+            await UserService.update({ id: "act2", roleId: leader, actingUntil: until } as any, admin)
+            await UserService.update({ id: "rep1", teamLeaderId: "act2" } as any, admin)
+            const result = await RoleAssignmentService.endActing(new Date(until.getTime() + 1000))
+            expect(result).toMatchObject({ held: 1 })
+            expect((await row("act2")).roleId).toBe(leader)
+            const told = (await db.query(`SELECT count(*)::int AS n FROM "Notification" WHERE "userId" = 'a1' AND type = 'ROLE_ACTING_HELD'`)).rows[0].n
+            expect(told).toBeGreaterThan(0)
+            // Once their team is elsewhere, they return.
+            await UserService.update({ id: "rep1", teamLeaderId: null } as any, admin)
+            expect(await RoleAssignmentService.endActing(new Date(until.getTime() + 1000))).toMatchObject({ returned: 1 })
+            expect((await row("act2")).roleId).toBe(employee)
+        })
+
+        it("keeps a role somebody will return to from being deleted", async () => {
+            const { UserService } = await import("@/lib/services/user.service")
+            const spare = (await RoleService.create({ companyId: "c1", name: "Spare", baseRole: "EMPLOYEE", grants: [] }, sa)).id
+            await UserService.update({ id: "act1", roleId: spare } as any, admin)
+            await UserService.update({ id: "act1", roleId: cover, actingUntil: inAWeek() } as any, admin)
+            await expect(RoleService.delete(spare, sa)).rejects.toThrow("ROLE_HELD")
+            await UserService.update({ id: "act1", roleId: employee } as any, admin)
+        })
+
+        it("carries the end date through a request", async () => {
+            const hr = { user: { id: "hr1", role: "EMPLOYEE", companyId: "c1", grants: encodeGrants({ "employees.view": "COMPANY", "employees.request_role": "COMPANY", "dayoff.view": "COMPANY", "dayoff.approve": "COMPANY" }) } }
+            const until = inAWeek()
+            const request = await RoleRequestService.create({ userId: "act1", roleId: cover, actingUntil: until }, hr)
+            await RoleRequestService.decide(request.id, { approve: true }, admin)
+            expect(await row("act1")).toMatchObject({ roleId: cover, returnRoleId: employee })
+            expect((await row("act1")).actingUntil.getTime()).toBe(until.getTime())
+        })
+
+        it("refuses in the database an end date with nowhere to return to", () =>
+            refused(`UPDATE "User" SET "actingUntil" = now() WHERE id = 'rep1'`))
     })
 })

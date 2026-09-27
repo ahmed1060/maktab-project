@@ -57,6 +57,8 @@ export const GET = withStandardHandler(async (req, session) => {
                 // viewer may not be allowed to give it and so not have it
                 // in their list.
                 roleId: true, assignedRole: { select: { name: true } },
+                // A cover in progress (§6.13): until when, and back to what.
+                actingUntil: true, returnRole: { select: { name: true } },
                 // The name, so somebody can be told who manages them. Selected
                 // fields rather than the relation, for the same reason the
                 // list does it: a leader is a User, and `teamLeader: true`

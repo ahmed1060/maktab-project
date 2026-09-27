@@ -1430,5 +1430,8 @@ export const en = {
         role_requests_ask: "Request this role",
         role_requests_pending_for: "Waiting for approval: {role}",
         role_requests_will_ask: "The account starts on the company's default role. The role you pick is sent to an Admin for approval.",
-        role_requests_filter_all: "All"
+        role_requests_filter_all: "All",
+        acting_until_label: "Acting until (optional)",
+        acting_until_hint: "Leave empty for a permanent change. On this date they return to their current role.",
+        acting_now: "Acting until {date}, then back to {role}"
 };

@@ -49,6 +49,10 @@ export const updateUserSchema = partialWithoutDefaults(createUserSchema).extend(
     // change is refused; null means unassign them; an id means move them to
     // that leader.
     reassignReportsTo: z.string().min(1).nullable().optional(),
+    // With a role change, the role is held until this instant and then they
+    // return to the one they had (ROLES_PLAN.md §6.13). Null keeps a cover
+    // role for good — nothing returns them; absent leaves it alone.
+    actingUntil: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "A date, YYYY-MM-DD").nullable().optional(),
 })
 
 export type CreateUserInput = z.infer<typeof createUserSchema>
