@@ -236,7 +236,7 @@ export default function NotificationBell({ initialUnreadCount = 0 }: { initialUn
                             >
                                 <div style={{ fontSize: '0.875rem' }}>{text(notification)}</div>
                                 <div style={{ fontSize: '0.75rem', color: 'var(--grey-600)', marginTop: '0.25rem' }}>
-                                    {new Date(notification.createdAt).toLocaleString()}
+                                    {new Date(notification.createdAt).toLocaleString(locale)}
                                 </div>
                             </div>
                         ))
