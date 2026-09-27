@@ -1433,5 +1433,21 @@ export const en = {
         role_requests_filter_all: "All",
         acting_until_label: "Acting until (optional)",
         acting_until_hint: "Leave empty for a permanent change. On this date they return to their current role.",
-        acting_now: "Acting until {date}, then back to {role}"
+        acting_now: "Acting until {date}, then back to {role}",
+        roles_copy_from: "Copy roles from…",
+        roles_copy_title: "Copy roles from another company",
+        roles_copy_hint: "Each role is copied as an independent role. A role whose name this company already uses is skipped.",
+        roles_copy_include_built_in: "Also copy the Team Leader and Employee permissions",
+        roles_copy_confirm: "Copy",
+        roles_copy_done: "Copied: {copied}. Skipped: {skipped}.",
+        template_offer: "Offer this change",
+        template_offer_title: "Offer the template to its companies",
+        template_offer_hint: "Company roles copied from this template, and what applying it would change. Nothing changes unless you pick it.",
+        template_offer_none: "No company role was copied from this template.",
+        template_offer_same: "Same as the template",
+        template_offer_apply: "Apply to selected",
+        template_offer_applied: "Template applied",
+        template_offer_added: "Adds: {list}",
+        template_offer_removed: "Removes: {list}",
+        template_offer_rescoped: "Changes scope: {list}"
 };

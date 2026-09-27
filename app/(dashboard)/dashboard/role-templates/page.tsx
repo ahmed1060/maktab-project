@@ -6,6 +6,7 @@ import { useSession } from 'next-auth/react'
 import AccessDenied from '@/components/AccessDenied'
 import ConfirmModal from '@/components/ConfirmModal'
 import LoadingSpinner from '@/components/LoadingSpinner'
+import TemplateOfferModal from '@/components/TemplateOfferModal'
 import RoleEditorModal, { type BaseRole, type RoleSubmission, type Template } from '@/components/RoleEditorModal'
 import { refusalOf } from '@/components/CompanyRolesCard'
 import { useToast } from '@/context/ToastContext'
@@ -32,6 +33,7 @@ export default function RoleTemplatesPage() {
     const templates: Template[] = data?.data ?? []
     const [editing, setEditing] = useState<Template | 'new' | null>(null)
     const [deleting, setDeleting] = useState<Template | null>(null)
+    const [offering, setOffering] = useState<string | null>(null)
 
     useEffect(() => {
         setTitle(t('role_templates_title'))
@@ -87,6 +89,7 @@ export default function RoleTemplatesPage() {
                             </div>
                             <div style={{ display: 'flex', gap: '1rem', marginTop: 'auto' }}>
                                 <button type="button" style={linkButton} onClick={() => setEditing(template)}>{t('roles_edit')}</button>
+                                <button type="button" style={linkButton} onClick={() => setOffering(template.id)}>{t('template_offer')}</button>
                                 <button type="button" style={{ ...linkButton, color: 'var(--danger-solid)' }} onClick={() => setDeleting(template)}>{t('roles_delete')}</button>
                             </div>
                         </div>
@@ -101,6 +104,8 @@ export default function RoleTemplatesPage() {
                 role={editing === 'new' ? null : editing}
                 onSubmit={save}
             />
+
+            <TemplateOfferModal templateId={offering} onClose={() => setOffering(null)} />
 
             <ConfirmModal
                 isOpen={!!deleting}

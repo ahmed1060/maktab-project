@@ -624,4 +624,54 @@ describe.skipIf(!ADMIN_URL)("roles as data, in Postgres", () => {
         it("refuses in the database an end date with nowhere to return to", () =>
             refused(`UPDATE "User" SET "actingUntil" = now() WHERE id = 'rep1'`))
     })
+    describe("copying roles, and offering a template change (B4, §6.7-6.8)", () => {
+        const sa = { user: { id: "sa", role: "SUPER_ADMIN" } }
+        const names = async (companyId: string) => (await RoleService.listForCompany(companyId)).map(r => r.name).sort()
+
+        beforeAll(async () => {
+            await db.query(`INSERT INTO "SuperAdmin" (id, email, password, "firstName", "lastName", username, "updatedAt")
+                VALUES ('sa', 'sa@test', 'x', 'Super', 'Admin', 'sa', now()) ON CONFLICT DO NOTHING`)
+            await db.query(`INSERT INTO "Company"(id, name, "updatedAt") VALUES ('c7', 'Seven', now()), ('c8', 'Eight', now())`)
+            await RoleService.seedBuiltInRoles(prisma as any, "c7")
+            await RoleService.seedBuiltInRoles(prisma as any, "c8")
+        })
+
+        it("copies a company's roles as independent copies, never over one it has", async () => {
+            const template = await RoleTemplateService.create({ name: "Auditor", baseRole: "EMPLOYEE", grants: [{ permission: "audit.view", scope: "COMPANY" }] }, sa)
+            const auditor = await RoleService.create({ companyId: "c7", name: "Auditor", fromTemplateId: template.id }, sa)
+            const trainee = await RoleService.create({ companyId: "c7", name: "Trainee", baseRole: "EMPLOYEE", grants: [{ permission: "tasks.view", scope: "TEAM" }] }, sa)
+            await RoleService.create({ companyId: "c8", name: "trainee", baseRole: "EMPLOYEE", grants: [] }, sa)
+            await RoleService.setDefault("c7", trainee.id, sa)
+            const employee7 = (await RoleService.listForCompany("c7")).find(r => r.builtIn === "EMPLOYEE")!
+            await RoleService.update({ id: employee7.id, grants: [{ permission: "clients.view", scope: "COMPANY" }] }, sa)
+
+            const result = await RoleService.copyFrom("c8", "c7", { includeBuiltIn: true }, sa)
+            expect(result).toEqual({ copied: ["Auditor"], skipped: ["Trainee"], builtInsUpdated: ["Employee"], defaultRole: null })
+            expect(await names("c8")).toEqual(["Admin", "Auditor", "Employee", "Team Leader", "trainee"])
+            const copy = (await RoleService.listForCompany("c8")).find(r => r.name === "Auditor")!
+            expect(copy).toMatchObject({ copiedFromTemplateId: template.id, grants: auditor.grants })
+            expect((await RoleService.listForCompany("c8")).find(r => r.builtIn === "EMPLOYEE")!.grants).toEqual([{ permission: "clients.view", scope: "COMPANY" }])
+            // A copy: changing the source changes nothing here.
+            await RoleService.update({ id: auditor.id, grants: [] }, sa)
+            expect((await RoleService.getById(copy.id)).grants).toEqual(auditor.grants)
+            await expect(RoleService.copyFrom("c8", "c8", {}, sa)).rejects.toThrow("SAME_COMPANY")
+        })
+
+        it("offers a template change with each role's difference, and applies it only where picked", async () => {
+            const template = await RoleTemplateService.create({ name: "Cashier", baseRole: "EMPLOYEE", grants: [{ permission: "costs.view", scope: "COMPANY" }] }, sa)
+            const in7 = await RoleService.create({ companyId: "c7", name: "Cashier", fromTemplateId: template.id }, sa)
+            const in8 = await RoleService.create({ companyId: "c8", name: "Cashier", fromTemplateId: template.id }, sa)
+            await RoleTemplateService.update({ id: template.id, grants: [{ permission: "costs.view", scope: "COMPANY" }, { permission: "vendors.view", scope: "COMPANY" }] }, sa)
+
+            const offer = await RoleTemplateService.offers(template.id)
+            expect(offer.roles.map(r => [r.companyName, r.difference.added])).toEqual([["Eight", ["vendors.view"]], ["Seven", ["vendors.view"]]])
+            await RoleTemplateService.applyTo(template.id, [in7.id], {}, sa)
+            expect((await RoleService.getById(in7.id)).grants.map(g => g.permission).sort()).toEqual(["costs.view", "vendors.view"])
+            expect((await RoleService.getById(in7.id)).version).toBe(in7.version + 1)
+            expect((await RoleService.getById(in8.id)).grants.map(g => g.permission)).toEqual(["costs.view"])
+            // Only its own copies.
+            const other = await RoleService.create({ companyId: "c8", name: "Other", baseRole: "EMPLOYEE", grants: [] }, sa)
+            await expect(RoleTemplateService.applyTo(template.id, [other.id], {}, sa)).rejects.toThrow("NOT_FROM_TEMPLATE")
+        })
+    })
 })

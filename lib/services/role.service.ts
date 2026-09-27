@@ -223,6 +223,66 @@ export class RoleService {
     }
 
     /**
+     * Copy another company's roles into this one (ROLES_PLAN.md §6.7), as
+     * independent copies: nothing links them afterwards. Each copy is an
+     * ordinary creation, checked and audited as one.
+     *
+     * - A role whose name the company already uses is skipped, never
+     *   overwritten, and reported.
+     * - With `includeBuiltIn`, the source's Team Leader and Employee grants
+     *   replace this company's (the built-in Admin is locked everywhere).
+     * - If the source's default for new accounts is one of the roles copied,
+     *   the copy becomes this company's default.
+     */
+    static async copyFrom(targetCompanyId: string, sourceCompanyId: string, options: { includeBuiltIn?: boolean }, session: any) {
+        if (targetCompanyId === sourceCompanyId) throw new Error("SAME_COMPANY")
+        const [source, target, sourceCompany] = await Promise.all([
+            RoleService.listForCompany(sourceCompanyId),
+            RoleService.listForCompany(targetCompanyId),
+            prisma.company.findUnique({ where: { id: sourceCompanyId }, select: { defaultRoleId: true } }),
+        ])
+        if (!sourceCompany) throw new Error("COMPANY_NOT_FOUND")
+        if (!(await prisma.company.findUnique({ where: { id: targetCompanyId }, select: { id: true } }))) throw new Error("COMPANY_NOT_FOUND")
+
+        const taken = new Set(target.map(r => r.name.toLowerCase()))
+        const copied: { from: string; to: string; name: string }[] = []
+        const skipped: string[] = []
+        for (const role of source.filter(r => !r.builtIn)) {
+            if (taken.has(role.name.toLowerCase())) { skipped.push(role.name); continue }
+            const templateExists = role.copiedFromTemplateId
+                && await prisma.roleTemplate.findUnique({ where: { id: role.copiedFromTemplateId }, select: { id: true } })
+            const created = await RoleService.create({
+                companyId: targetCompanyId, name: role.name, description: role.description,
+                baseRole: role.baseRole as any, grants: role.grants,
+                ...(templateExists ? { fromTemplateId: role.copiedFromTemplateId! } : {}),
+            }, session)
+            copied.push({ from: role.id, to: created.id, name: role.name })
+        }
+
+        const builtInsUpdated: string[] = []
+        if (options.includeBuiltIn) {
+            for (const kind of ["TEAM_LEADER", "EMPLOYEE"] as const) {
+                const from = source.find(r => r.builtIn === kind)
+                const to = target.find(r => r.builtIn === kind)
+                if (from && to && !sameGrants(from.grants, to.grants)) {
+                    await RoleService.update({ id: to.id, grants: from.grants }, session)
+                    builtInsUpdated.push(to.name)
+                }
+            }
+        }
+
+        const defaultCopy = copied.find(c => c.from === sourceCompany.defaultRoleId)
+        if (defaultCopy) await RoleService.setDefault(targetCompanyId, defaultCopy.to, session)
+
+        const { AuditLogService } = await import("./audit-log.service")
+        await AuditLogService.log("COPY_ROLES", "COMPANY", targetCompanyId, {
+            superAdminId: session.user.id,
+            details: { sourceCompanyId, copied: copied.map(c => c.name), skipped, builtInsUpdated, defaultRole: defaultCopy?.name ?? null },
+        })
+        return { copied: copied.map(c => c.name), skipped, builtInsUpdated, defaultRole: defaultCopy?.name ?? null }
+    }
+
+    /**
      * Which modules the company's package holds, for the permission matrix to
      * grey out the rest (ROLES_PLAN.md §6.3). A grant in a module the company
      * has not bought is allowed — the package may change — but does nothing

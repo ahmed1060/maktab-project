@@ -17,6 +17,8 @@ export function roleErrorResponse(error: any) {
         case "ROLE_HELD": return ApiResponse.badRequest("People hold this role. Move them to another role first.")
         case "ROLE_IS_DEFAULT": return ApiResponse.badRequest("This is the company's default role for new accounts. Choose another default first.")
         case "DEFAULT_ROLE_ADMIN": return ApiResponse.badRequest("The company's default role cannot be Admin-based")
+        case "SAME_COMPANY": return ApiResponse.badRequest("Choose a different company to copy from")
+        case "NOT_FROM_TEMPLATE": return ApiResponse.badRequest("Only roles copied from this template can be updated from it")
     }
     // A duplicate name: roles are unique per company, templates overall.
     if (error?.code === "P2002") return ApiResponse.badRequest("That name is already taken")

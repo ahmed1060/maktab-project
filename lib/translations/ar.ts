@@ -1428,5 +1428,21 @@ export const ar = {
         role_requests_filter_all: "الكل",
         acting_until_label: "بالإنابة حتى (اختياري)",
         acting_until_hint: "اتركه فارغاً للتغيير الدائم. في هذا التاريخ يعود إلى دوره الحالي.",
-        acting_now: "بالإنابة حتى {date}، ثم يعود إلى {role}"
+        acting_now: "بالإنابة حتى {date}، ثم يعود إلى {role}",
+        roles_copy_from: "نسخ الأدوار من…",
+        roles_copy_title: "نسخ الأدوار من شركة أخرى",
+        roles_copy_hint: "يُنسخ كل دور كدور مستقل. يتم تخطي أي دور يحمل اسماً مستخدماً بالفعل في هذه الشركة.",
+        roles_copy_include_built_in: "نسخ صلاحيات قائد الفريق والموظف أيضاً",
+        roles_copy_confirm: "نسخ",
+        roles_copy_done: "تم النسخ: {copied}. تم التخطي: {skipped}.",
+        template_offer: "عرض هذا التغيير",
+        template_offer_title: "عرض القالب على الشركات",
+        template_offer_hint: "أدوار الشركات المنسوخة من هذا القالب وما سيتغير عند تطبيقه. لا يتغير شيء إلا ما تختاره.",
+        template_offer_none: "لم يُنسخ أي دور شركة من هذا القالب.",
+        template_offer_same: "مطابق للقالب",
+        template_offer_apply: "تطبيق على المحدد",
+        template_offer_applied: "تم تطبيق القالب",
+        template_offer_added: "يضيف: {list}",
+        template_offer_removed: "يزيل: {list}",
+        template_offer_rescoped: "يغير النطاق: {list}"
 };

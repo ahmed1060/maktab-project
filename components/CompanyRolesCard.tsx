@@ -6,6 +6,7 @@ import { fetcher } from '@/lib/swr-fetcher'
 import { useLanguage } from '@/context/LanguageContext'
 import { useToast } from '@/context/ToastContext'
 import ConfirmModal from '@/components/ConfirmModal'
+import CopyRolesModal from '@/components/CopyRolesModal'
 import RoleEditorModal, { type BaseRole, type EditableRole, type RoleSubmission, type Template } from '@/components/RoleEditorModal'
 import type { SerializedAccess } from '@/lib/features/bundles'
 
@@ -39,6 +40,7 @@ export default function CompanyRolesCard({ companyId }: { companyId: string }) {
 
     const [editing, setEditing] = useState<Role | 'new' | null>(null)
     const [deleting, setDeleting] = useState<Role | null>(null)
+    const [copying, setCopying] = useState(false)
 
     const save = async (submission: RoleSubmission): Promise<boolean> => {
         const isNew = editing === 'new'
@@ -100,7 +102,10 @@ export default function CompanyRolesCard({ companyId }: { companyId: string }) {
                     <h3 style={{ margin: 0 }}>{t('roles_title')}</h3>
                     <p style={{ fontSize: '0.8rem', color: 'var(--text-soft)', marginTop: '0.25rem' }}>{t('roles_hint')}</p>
                 </div>
-                <button type="button" className="btn btn-primary" onClick={() => setEditing('new')}>{t('roles_new')}</button>
+                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                    <button type="button" className="btn" style={{ background: 'var(--border)', color: 'var(--text-strong)' }} onClick={() => setCopying(true)}>{t('roles_copy_from')}</button>
+                    <button type="button" className="btn btn-primary" onClick={() => setEditing('new')}>{t('roles_new')}</button>
+                </div>
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '1rem' }}>
@@ -137,6 +142,8 @@ export default function CompanyRolesCard({ companyId }: { companyId: string }) {
                 access={access}
                 onSubmit={save}
             />
+
+            <CopyRolesModal companyId={companyId} isOpen={copying} onClose={() => setCopying(false)} onCopied={() => mutate()} />
 
             <ConfirmModal
                 isOpen={!!deleting}

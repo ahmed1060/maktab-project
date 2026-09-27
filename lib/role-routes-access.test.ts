@@ -20,7 +20,7 @@ vi.mock("@/lib/services/role.service", () => {
     const record = (name: string) => async () => { state.calls.push(`role.${name}`); return {} }
     return {
         GrantsError: class extends Error {},
-        RoleService: { accessOf: async () => ({ unrestricted: true, bundles: [] }), setDefault: record("setDefault"), getById: record("getById"), listForCompany: record("listForCompany"), create: record("create"), update: record("update"), delete: record("delete") },
+        RoleService: { accessOf: async () => ({ unrestricted: true, bundles: [] }), copyFrom: record("copyFrom"), setDefault: record("setDefault"), getById: record("getById"), listForCompany: record("listForCompany"), create: record("create"), update: record("update"), delete: record("delete") },
     }
 })
 vi.mock("@/lib/prisma", () => ({ prisma: {} }))
@@ -41,13 +41,13 @@ vi.mock("@/lib/services/role-assignment.service", () => ({
 }))
 vi.mock("@/lib/services/role-template.service", () => {
     const record = (name: string) => async () => { state.calls.push(`template.${name}`); return {} }
-    return { RoleTemplateService: { list: record("list"), getById: record("getById"), create: record("create"), update: record("update"), delete: record("delete") } }
+    return { RoleTemplateService: { offers: record("offers"), applyTo: record("applyTo"), list: record("list"), getById: record("getById"), create: record("create"), update: record("update"), delete: record("delete") } }
 })
 
 const ROLE_BODY = { companyId: "c1", name: "Accountant", description: null, baseRole: "EMPLOYEE", grants: [] }
 const TEMPLATE_BODY = { name: "Accountant", description: null, baseRole: "EMPLOYEE", grants: [] }
 
-type Call = { route: "roles" | "role-templates" | "roles/default" | "roles/who-can"; method: "GET" | "POST" | "PUT" | "DELETE"; query?: string; body?: any }
+type Call = { route: "roles" | "role-templates" | "roles/default" | "roles/who-can" | "roles/copy" | "role-templates/push"; method: "GET" | "POST" | "PUT" | "DELETE"; query?: string; body?: any }
 
 const CALLS: Call[] = [
     { route: "roles", method: "GET", query: "?companyId=c1" },
@@ -62,12 +62,17 @@ const CALLS: Call[] = [
     { route: "roles/default", method: "PUT", body: { companyId: "c1", roleId: "r1" } },
     { route: "roles/who-can", method: "GET", query: "?companyId=c1&permission=payroll.approve" },
     { route: "roles/who-can", method: "GET", query: "?userId=u1" },
+    { route: "roles/copy", method: "POST", body: { targetCompanyId: "c1", sourceCompanyId: "c2" } },
+    { route: "role-templates/push", method: "GET", query: "?id=t1" },
+    { route: "role-templates/push", method: "POST", body: { templateId: "t1", roleIds: ["r1"] } },
 ]
 
 async function send({ route, method, query = "", body }: Call) {
     const handlers: any = route === "roles" ? await import("@/app/api/roles/route")
         : route === "roles/default" ? await import("@/app/api/roles/default/route")
         : route === "roles/who-can" ? await import("@/app/api/roles/who-can/route")
+        : route === "roles/copy" ? await import("@/app/api/roles/copy/route")
+        : route === "role-templates/push" ? await import("@/app/api/role-templates/push/route")
         : await import("@/app/api/role-templates/route")
     const init: RequestInit = { method, headers: { "content-type": "application/json" } }
     if (body) init.body = JSON.stringify(body)
