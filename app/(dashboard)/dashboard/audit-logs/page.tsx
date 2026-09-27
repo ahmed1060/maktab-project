@@ -12,6 +12,7 @@ import { useCompany } from '@/context/CompanyContext'
 import AuditLogFilter from '@/components/AuditLogFilter'
 import AccessDenied from '@/components/AccessDenied'
 import { fetcher } from '@/lib/swr-fetcher'
+import { describeDetails, type DetailLine } from '@/lib/audit-details'
 
 type AuditLog = {
     id: string
@@ -121,70 +122,28 @@ export default function AuditLogsPage() {
         }).format(date)
     }
 
-    // details arrives already parsed (F-12: AuditLog.details is Json, not a
-    // JSON-in-string column) — no JSON.parse needed here anymore.
-    const renderDetails = (details: any) => {
-        if (details === null || details === undefined) return '-'
-        try {
-            const parsed = details
-            if (typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)) {
-                const entries = Object.entries(parsed)
-                return (
-                    <div style={{
-                        background: 'var(--surface-subtle)',
-                        padding: '0.5rem',
-                        borderRadius: '0.5rem',
-                        border: '1px solid var(--border)',
-                        fontSize: '0.7rem',
-                        fontFamily: 'monospace',
-                        maxHeight: '120px',
-                        overflowY: 'auto'
-                    }}>
-                        <div style={{ color: 'var(--text-faint)', marginBottom: '4px' }}>{'{'}</div>
-                        {entries.map(([key, value], i) => (
-                            <div key={key} style={{
-                                display: 'flex',
-                                gap: '6px',
-                                paddingLeft: '0.75rem',
-                                marginBottom: i === entries.length - 1 ? '4px' : '2px'
-                            }}>
-                                <span style={{ color: 'var(--text-muted)', fontWeight: 'bold', whiteSpace: 'nowrap' }}>&quot;{key}&quot;:</span>
-                                <span style={{
-                                    color: 'var(--text-main)',
-                                    overflowWrap: 'anywhere',
-                                    flex: 1
-                                }}>
-                                    {typeof value === 'string' ? <>&quot;{value}&quot;</> : JSON.stringify(value).replace(/,/g, ', ')}
-                                    {i < entries.length - 1 ? ',' : ''}
-                                </span>
-                            </div>
-                        ))}
-                        <div style={{ color: 'var(--text-faint)' }}>{'}'}</div>
-                    </div>
-                )
-            }
-            return (
-                <div style={{ fontSize: '0.7rem' }}>
-                    <pre style={{
-                        margin: 0,
-                        whiteSpace: 'pre-wrap',
-                        fontFamily: 'monospace',
-                        maxHeight: '120px',
-                        overflowY: 'auto',
-                        background: 'var(--surface-subtle)',
-                        padding: '0.5rem',
-                        borderRadius: '0.5rem',
-                        border: '1px solid var(--border)',
-                        fontSize: '0.7rem',
-                        overflowWrap: 'break-word'
-                    }}>
-                        {JSON.stringify(parsed, null, 2)}
-                    </pre>
-                </div>
-            )
-        } catch {
-            return <span style={{ fontSize: '0.7rem', color: 'var(--text-faint)', overflowWrap: 'anywhere' }}>{String(details)}</span>
-        }
+    // In the reader's language (lib/audit-details.ts). The stored details are
+    // not changed, only how they read.
+    const box = {
+        background: 'var(--surface-subtle)',
+        padding: '0.5rem',
+        borderRadius: '0.5rem',
+        border: '1px solid var(--border)',
+        fontSize: '0.75rem',
+        maxHeight: '160px',
+        overflowY: 'auto' as const,
+    }
+    const renderLines = (lines: DetailLine[], depth = 0): React.ReactNode => lines.map((line, i) => (
+        <div key={i} style={{ paddingInlineStart: depth ? '0.75rem' : 0, marginBottom: '2px' }}>
+            {line.label && <span style={{ color: 'var(--text-muted)', fontWeight: 600 }}>{line.label}{line.lines ? '' : ': '}</span>}
+            {line.value !== undefined && <span style={{ color: 'var(--text-main)', overflowWrap: 'anywhere', whiteSpace: 'pre-wrap' }}>{line.value}</span>}
+            {line.lines && renderLines(line.lines, depth + 1)}
+        </div>
+    ))
+    const renderDetails = (details: unknown) => {
+        const lines = describeDetails(details, { t, locale })
+        if (lines.length === 0) return '-'
+        return <div style={box}>{renderLines(lines)}</div>
     }
 
     // UI-layer guard matching system-settings — the API route already
@@ -263,7 +222,7 @@ export default function AuditLogsPage() {
                                                     {log.superAdmin ? `${log.superAdmin.firstName} ${log.superAdmin.lastName}` : log.user ? `${log.user.firstName} ${log.user.lastName}` : (locale === 'ar' ? 'النظام' : 'System')}
                                                 </div>
                                                 <div style={{ color: 'var(--text-soft)', fontSize: '0.7rem' }}>
-                                                    {log.superAdmin ? (locale === 'ar' ? 'مسؤول عام' : 'Super Admin') : log.user ? log.user.role : (locale === 'ar' ? 'مهمة تلقائية' : 'Automated Task')}
+                                                    {log.superAdmin ? (locale === 'ar' ? 'مسؤول عام' : 'Super Admin') : log.user ? ((t as any)(`audit_value_${log.user.role}`) || log.user.role) : (locale === 'ar' ? 'مهمة تلقائية' : 'Automated Task')}
                                                 </div>
                                             </td>
                                             <td style={{ padding: '1rem', verticalAlign: 'top' }}>
