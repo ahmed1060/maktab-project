@@ -56,6 +56,9 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
         })
         .map(key => modules.entry(key))
     const canSeePayroll = permissions.can('payroll.view')
+    // Role requests (ROLES_PLAN.md §6.12): for whoever decides them, and
+    // whoever makes them.
+    const canSeeRoleRequests = user?.role !== 'SUPER_ADMIN' && (permissions.can('employees.assign_role') || permissions.can('employees.request_role'))
     // The mark follows the same scope as the names beside it — a Super Admin
     // looking at one company sees that company's logo, not a default mark over
     // that company's module names.
@@ -425,7 +428,7 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
                         )}
                     </Link>
 
-                    {(managementLinks.length > 0 || canSeePayroll) && (
+                    {(managementLinks.length > 0 || canSeePayroll || canSeeRoleRequests) && (
                         <>
                             {isCollapsed ? (
                                 <hr style={{ border: 'none', borderTop: '1px solid var(--veil-30)', margin: '1rem auto', width: '50%' }} />
@@ -522,6 +525,40 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
                                     {!isCollapsed && isLockedHref('/dashboard/payroll') && (
                                         <span style={{ fontSize: '0.75rem' }} title={t('module_locked_title' as any)}>🔒</span>
                                     )}
+                                </Link>
+                            )}
+                            {canSeeRoleRequests && (
+                                <Link
+                                    href="/dashboard/role-requests"
+                                    onClick={() => isMobile && setIsSidebarOpen(false)}
+                                    title={isCollapsed ? t('role_requests_title') : ''}
+                                    className="nav-link"
+                                    style={{
+                                        color: 'var(--sidebar-fg)',
+                                        textDecoration: 'none',
+                                        padding: '0.85rem 1rem',
+                                        borderRadius: '1rem',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: isCollapsed ? 'center' : 'flex-start',
+                                        gap: isCollapsed ? '0' : '1rem',
+                                        transition: 'all 0.2s',
+                                        fontSize: '0.95rem',
+                                        fontWeight: '500'
+                                    }}
+                                    onMouseOver={(e) => {
+                                        e.currentTarget.style.background = 'var(--veil-10)'
+                                        e.currentTarget.style.color = 'var(--sidebar-fg-strong)'
+                                        e.currentTarget.style.transform = isCollapsed ? 'scale(1.1)' : 'translateX(5px)'
+                                    }}
+                                    onMouseOut={(e) => {
+                                        e.currentTarget.style.background = 'transparent'
+                                        e.currentTarget.style.color = 'var(--sidebar-fg)'
+                                        e.currentTarget.style.transform = 'none'
+                                    }}
+                                >
+                                    <span style={{ fontSize: '1.4rem' }}>🪪</span>
+                                    {!isCollapsed && <span style={{ flex: 1 }}>{t('role_requests_title')}</span>}
                                 </Link>
                             )}
                         </>

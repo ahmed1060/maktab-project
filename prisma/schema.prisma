@@ -242,6 +242,7 @@ model Company {
   users                User[]
   vendors              Vendor[]
   roles                Role[]                @relation("CompanyRoles")
+  roleRequests         RoleRequest[]
   /// The role a new account starts on (ROLES_PLAN.md §6.4). Null means the
   /// company's built-in Employee role — every company has one, so nobody is
   /// ever created without a role, even while a request for another waits.
@@ -438,6 +439,9 @@ model User {
   /// belong to.
   roleId                     String?
   assignedRole               Role?                   @relation(fields: [roleId], references: [id], onDelete: NoAction)
+  roleRequestsFor            RoleRequest[]           @relation("RoleRequestFor")
+  roleRequestsMade           RoleRequest[]           @relation("RoleRequestBy")
+  roleRequestsDecided        RoleRequest[]           @relation("RoleRequestDecidedBy")
 
   @@index([email])
   @@index([companyId])
@@ -1275,6 +1279,7 @@ model Role {
   copiedFromTemplateId String?
   grants               RoleGrant[]
   users                User[]
+  requests             RoleRequest[]
   createdAt            DateTime    @default(now())
   updatedAt            DateTime    @updatedAt
 
@@ -1309,4 +1314,40 @@ model RoleTemplate {
   grants      Json
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+}
+
+enum RoleRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+/// A request to give somebody a role, made by someone who may only ask —
+/// typically HR — and decided by someone who may assign (ROLES_PLAN.md §6.12).
+/// The person keeps their role until it is decided. At most one pending per
+/// person (a partial unique index in the migration).
+model RoleRequest {
+  id            String            @id @default(uuid())
+  companyId     String
+  company       Company           @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  userId        String
+  user          User              @relation("RoleRequestFor", fields: [userId], references: [id], onDelete: Cascade)
+  roleId        String
+  role          Role              @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  requestedById String
+  requestedBy   User              @relation("RoleRequestBy", fields: [requestedById], references: [id], onDelete: Cascade)
+  note          String?
+  status        RoleRequestStatus @default(PENDING)
+  decidedById   String?
+  decidedBy     User?             @relation("RoleRequestDecidedBy", fields: [decidedById], references: [id], onDelete: SetNull)
+  decisionNote  String?
+  decidedAt     DateTime?
+  /// When the deciders were last reminded of it, if it waited (§6.12).
+  remindedAt    DateTime?
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  @@index([companyId, status])
+  @@index([userId])
 }

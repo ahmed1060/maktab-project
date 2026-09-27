@@ -118,7 +118,9 @@ const GATES: Gate[] = [
     { what: "profile: day-off credit shown (flag: own profile)", file: FORM, uses: "(can('dayoff.view') || userId === session?.user?.id)", before: (r, self) => admins(r) || self, now: (p, self) => p.can("dayoff.view") || self },
     { what: "profile: day-off credit editable", file: FORM, uses: "!can('dayoff.adjust_credit')", before: admins, now: p => p.can("dayoff.adjust_credit") },
     { what: "profile: reset password", file: FORM, uses: "can('employees.reset_password') && isViewMode", before: admins, now: p => p.can("employees.reset_password") },
-    { what: "profile: role", file: FORM, uses: "can('employees.assign_role') && userId", before: r => r === "SUPER_ADMIN" || r === "ADMIN", now: p => p.can("employees.assign_role") },
+    // B4: shown to whoever may ask for a role too (ROLES_PLAN.md §6.12). No
+    // built-in role may only ask, so who sees it is unchanged for them.
+    { what: "profile: role", file: FORM, uses: "(can('employees.assign_role') || can('employees.request_role')) && userId", before: r => r === "SUPER_ADMIN" || r === "ADMIN", now: p => p.can("employees.assign_role") || p.can("employees.request_role") },
     { what: "profile: status", file: FORM, uses: "can('employees.change_status') && userId", before: r => r === "SUPER_ADMIN" || r === "ADMIN", now: p => p.can("employees.change_status") },
 
     // --- Tasks ------------------------------------------------------------------

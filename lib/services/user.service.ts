@@ -58,10 +58,20 @@ export class UserService {
         // takes employees.assign_role, and only a role the creator could hand
         // out anyway. Without that, creating an account would be a way round
         // assigning one.
+        //
+        // Somebody who may only ask for a role — HR — gets the account on the
+        // default and a request for the role they picked (§6.12). The request's
+        // rules are checked first, so a refusal leaves no account behind.
+        let requestRoleId: string | null = null
         const assignment = await (async () => {
             if (!targetCompanyId || newUserRole === 'SUPER_ADMIN') return RoleAssignmentService.builtIn(prisma, newUserRole, targetCompanyId)
             if (!roleId && newUserRole === 'EMPLOYEE') return RoleAssignmentService.defaultFor(prisma, targetCompanyId)
-            if (!can(session.user, "employees.assign_role")) throw new Error("FORBIDDEN_ROLE_ASSIGNMENT")
+            if (!can(session.user, "employees.assign_role")) {
+                if (!roleId || !can(session.user, "employees.request_role")) throw new Error("FORBIDDEN_ROLE_ASSIGNMENT")
+                await RoleAssignmentService.chosen(prisma, session.user, roleId, { companyId: targetCompanyId })
+                requestRoleId = roleId
+                return RoleAssignmentService.defaultFor(prisma, targetCompanyId)
+            }
             const id = roleId ?? (await RoleAssignmentService.builtIn(prisma, newUserRole, targetCompanyId)).roleId!
             return RoleAssignmentService.chosen(prisma, session.user, id, { companyId: targetCompanyId })
         })()
@@ -176,6 +186,11 @@ export class UserService {
             details: { email: email, role: assignment.role, roleId: assignment.roleId, companyId: targetCompanyId }
         })
 
+        if (requestRoleId && requestRoleId !== assignment.roleId) {
+            const { RoleRequestService } = await import("./role-request.service")
+            const request = await RoleRequestService.create({ userId: user.id, roleId: requestRoleId }, session)
+            return { ...user, roleRequestId: request.id }
+        }
         return user
     }
 
@@ -416,6 +431,16 @@ export class UserService {
                     return tx.user.update({ where: { id }, data: updateData, select: writeSelect })
                 })
                 : await prisma.user.update({ where: { id }, data: updateData, select: writeSelect })
+            // A role given directly settles any request still waiting for this
+            // person (ROLES_PLAN.md §6.12): approving it later would undo the
+            // newer decision. Approving a request claims it first, so this
+            // never touches the one being approved.
+            if (updateData.roleId !== undefined && updateData.roleId !== regularUser.roleId) {
+                await prisma.roleRequest.updateMany({
+                    where: { userId: id, status: 'PENDING' },
+                    data: { status: 'CANCELLED', decidedAt: new Date(), decisionNote: 'Superseded by a direct role change' },
+                })
+            }
             // salary is a Prisma.Decimal (F-07); Decimal.toJSON() returns a
             // string, which would silently change this response field's type.
             const serializedUpdated = { ...updated, salary: Number(updated.salary) }

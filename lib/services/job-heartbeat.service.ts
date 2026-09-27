@@ -16,6 +16,7 @@ export const SCHEDULED_JOBS = [
     { job: "check-subscriptions", label: "Subscriptions", everyHours: 24 },
     { job: "prune", label: "Prune logs", everyHours: 24 },
     { job: "employment", label: "Employment dates", everyHours: 24 },
+    { job: "role-requests", label: "Role request reminders", everyHours: 24 },
     { job: "salary-init", label: "Salary records", everyHours: 24 * 31 },
     { job: "reset-day-off", label: "Leave reset", everyHours: 24 * 366 },
 ] as const

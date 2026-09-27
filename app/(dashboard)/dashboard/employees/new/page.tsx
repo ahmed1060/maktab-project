@@ -39,6 +39,9 @@ export default function NewEmployeePage() {
     const { can } = useCan()
     const canAssignTeam = can('employees.assign_team')
     const canAssignRole = can('employees.assign_role')
+    // Somebody who may only ask for a role — HR — picks one too; the account
+    // starts on the default and the pick goes to an Admin (ROLES_PLAN.md §6.12).
+    const canRequestRole = !canAssignRole && can('employees.request_role')
 
     useEffect(() => {
         if (userRole === 'SUPER_ADMIN') {
@@ -328,7 +331,7 @@ export default function NewEmployeePage() {
                     </div>
                 )}
 
-                {canAssignRole && (
+                {(canAssignRole || canRequestRole) && (
                     <div style={{ marginBottom: '1rem' }}>
                         <label style={{ display: 'block', marginBottom: '0.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('role_label')}</label>
                         <RoleSelect
@@ -338,6 +341,9 @@ export default function NewEmployeePage() {
                             onChange={(id, chosen) => { setRoleId(id); setRole(chosen?.baseRole ?? 'EMPLOYEE') }}
                             style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}
                         />
+                        {canRequestRole && roleId && (
+                            <p style={{ fontSize: '0.8rem', color: 'var(--text-soft)', marginTop: '0.35rem' }}>{t('role_requests_will_ask')}</p>
+                        )}
                     </div>
                 )}
                 {role === 'EMPLOYEE' && canAssignTeam && (

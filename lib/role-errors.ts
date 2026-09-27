@@ -41,3 +41,20 @@ export function assignmentRefusal(error: any) {
     }
     return null
 }
+
+/** Refusals of asking for, or deciding, a role request (ROLES_PLAN.md §6.12). */
+export function roleRequestRefusal(error: any) {
+    switch (error?.message) {
+        case "USER_NOT_FOUND": return ApiResponse.notFound("User not found")
+        case "REQUEST_NOT_FOUND": return ApiResponse.notFound("Request not found")
+        case "FORBIDDEN": return ApiResponse.forbidden("You cannot do that")
+        case "SAME_ROLE": return ApiResponse.badRequest("They already have that role")
+        case "ALREADY_PENDING": return ApiResponse.badRequest("A request for this person is already waiting")
+        case "ALREADY_DECIDED": return ApiResponse.badRequest("This request has already been decided")
+        case "OWN_REQUEST": return ApiResponse.forbidden("Somebody else must decide a request you made")
+        case "REASON_REQUIRED": return ApiResponse.badRequest("Say why it is declined")
+        case "ADMIN_IS_SUPER_ADMINS": return ApiResponse.forbidden("Only the Super Admin acts on an Admin")
+        case "LAST_ADMIN": return ApiResponse.badRequest("A company must keep at least one Admin at work. Give its Admin role to someone else first.")
+    }
+    return assignmentRefusal(error)
+}

@@ -77,8 +77,9 @@ describe("only RoleAssignmentService decides a person's role", () => {
         // Hiring (a Super Admin or company-less account, and a role asked for
         // by kind), and editing a role by kind or a company.
         expect(users.match(/RoleAssignmentService\.builtIn\(/g)).toHaveLength(3)
-        // A role asked for by id, on hiring and on editing; and the default.
-        expect(users.match(/RoleAssignmentService\.chosen\(/g)).toHaveLength(3)
+        // A role asked for by id, on hiring and on editing — and checked before
+        // hiring for a role that is only asked for (§6.12); and the default.
+        expect(users.match(/RoleAssignmentService\.chosen\(/g)).toHaveLength(4)
         expect(users).toContain("RoleAssignmentService.defaultFor(")
         expect(users).toContain("...assignment")
         expect(code("scripts/seed-payroll-demo.ts")).toContain("RoleAssignmentService.builtIn(")

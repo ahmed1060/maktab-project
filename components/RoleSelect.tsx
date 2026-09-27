@@ -11,8 +11,10 @@ import { useLanguage } from '@/context/LanguageContext'
  * server applies on saving (/api/roles/assignable), so it never offers a role
  * that would be refused.
  *
- * A person already on a role the viewer may not give — an Admin, seen by
- * another company Admin — shows it, and cannot change it.
+ * The role they hold now is shown even when the viewer could not give it:
+ * the rule is about what is handed out, not what is taken away (§4.2, rule
+ * 4). Whether it may be changed at all — an Admin's may not, but by the Super
+ * Admin (rule 7) — the caller says, with `locked`.
  */
 
 export type AssignableRole = { id: string; name: string; baseRole: 'ADMIN' | 'TEAM_LEADER' | 'EMPLOYEE'; builtIn: string | null; isDefault: boolean }
@@ -27,10 +29,12 @@ type Props = {
     disabled?: boolean
     /** For a new account: an empty choice meaning the company's default role. */
     allowDefault?: boolean
+    /** Shown but not changeable — somebody only the Super Admin acts on. */
+    locked?: boolean
     style?: React.CSSProperties
 }
 
-export default function RoleSelect({ companyId, value, current, onChange, disabled, allowDefault, style }: Props) {
+export default function RoleSelect({ companyId, value, current, onChange, disabled, allowDefault, locked, style }: Props) {
     const { t } = useLanguage()
     // Nothing until it is known who is asking: before the session loads, a
     // Super Admin would look like anyone else and ask without a company.
@@ -42,7 +46,6 @@ export default function RoleSelect({ companyId, value, current, onChange, disabl
     const { data } = useSWR(url, fetcher)
     const roles: AssignableRole[] = data?.data ?? []
     const offered = roles.some(r => r.id === value)
-    const locked = !!current && value === current.id && !offered && roles.length > 0
 
     return (
         <select

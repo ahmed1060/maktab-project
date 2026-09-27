@@ -6,6 +6,7 @@
     { "path": "/api/companies/check-subscriptions", "schedule": "0 7 * * *" },
     { "path": "/api/cron/prune", "schedule": "0 8 * * *" },
     { "path": "/api/cron/obligations", "schedule": "0 3 * * *" },
-    { "path": "/api/cron/employment", "schedule": "0 22 * * *" }
+    { "path": "/api/cron/employment", "schedule": "0 22 * * *" },
+    { "path": "/api/cron/role-requests", "schedule": "0 6 * * *" }
   ]
 }

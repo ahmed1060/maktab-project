@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { builtInGrantsToken } from "@/lib/permissions/built-in"
+import { encodeGrants } from "@/lib/permissions/grants"
 
 /**
  * Who may manage roles and role templates (ROLES_PLAN.md §4.1, §6).
@@ -23,6 +24,12 @@ vi.mock("@/lib/services/role.service", () => {
     }
 })
 vi.mock("@/lib/prisma", () => ({ prisma: {} }))
+vi.mock("@/lib/services/role-request.service", () => ({
+    RoleRequestService: {
+        list: async () => { state.calls.push("requests.list"); return [] },
+        create: async () => { state.calls.push("requests.create"); return {} },
+    },
+}))
 vi.mock("@/lib/services/access-report.service", () => ({
     AccessReportService: {
         whoCan: async () => { state.calls.push("whoCan"); return {} },
@@ -121,6 +128,45 @@ describe("listing the roles one may hand out", () => {
 
     it.each(["TEAM_LEADER", "EMPLOYEE"] as const)("a %s may not", async role => {
         state.session = { user: { id: "x", role, companyId: "c1", grants: builtInGrantsToken(role) } }
+        expect((await list()).status).toBe(403)
+        expect(state.calls).toEqual([])
+    })
+})
+
+/**
+ * Role requests (ROLES_PLAN.md §6.12): asked for by whoever holds
+ * employees.request_role — HR — and listed for them and for whoever decides.
+ * Who may decide which request is the service's (lib/roles.db.test.ts).
+ */
+describe("role requests", () => {
+    const hrGrants = encodeGrants({ "employees.view": "COMPANY", "employees.request_role": "COMPANY" })
+    const hr = { id: "hr", role: "EMPLOYEE", companyId: "c1", grants: hrGrants }
+    const requests = () => import("@/app/api/role-requests/route")
+    const ask = async () => (await requests()).POST(new Request("https://nizmo.test/api/role-requests", {
+        method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ userId: "e", roleId: "r1" }),
+    }))
+    const list = async () => (await requests()).GET(new Request("https://nizmo.test/api/role-requests"))
+    const assignable = async () => (await import("@/app/api/roles/assignable/route")).GET(new Request("https://nizmo.test/api/roles/assignable"))
+
+    it("HR may ask, see their requests, and see what they could ask for", async () => {
+        state.session = { user: hr }
+        expect((await ask()).status).toBe(201)
+        expect((await list()).status).toBe(200)
+        expect((await assignable()).status).toBe(200)
+        expect(state.calls).toEqual(["requests.create", "requests.list", "assignable:c1"])
+    })
+
+    // The built-in Admin gives roles directly; asking is for those who cannot.
+    it("an Admin sees the requests but does not ask", async () => {
+        state.session = { user: { id: "a", role: "ADMIN", companyId: "c1", grants: builtInGrantsToken("ADMIN") } }
+        expect((await list()).status).toBe(200)
+        expect((await ask()).status).toBe(403)
+        expect(state.calls).toEqual(["requests.list"])
+    })
+
+    it("an employee may do neither", async () => {
+        state.session = { user: { id: "x", role: "EMPLOYEE", companyId: "c1", grants: builtInGrantsToken("EMPLOYEE") } }
+        expect((await ask()).status).toBe(403)
         expect((await list()).status).toBe(403)
         expect(state.calls).toEqual([])
     })

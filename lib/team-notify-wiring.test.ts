@@ -33,6 +33,8 @@ vi.mock("@/lib/prisma", () => ({
         user: userModel,
         role: { findUnique: (args: any) => builtInRoleLookup(args) },
         superAdmin: { findUnique: async () => null },
+        // A role change settles any request waiting for the person.
+        roleRequest: { updateMany: async () => ({ count: 0 }) },
         $transaction: async (fn: any) => fn({ user: userModel, auditLog: { create: async () => ({}) } }),
     },
 }))

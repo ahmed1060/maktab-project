@@ -12,6 +12,7 @@ import EndContractModal from './EndContractModal'
 import TeamHandOffModal from './TeamHandOffModal'
 import { useCan } from '@/lib/useCan'
 import RoleSelect from '@/components/RoleSelect'
+import RoleRequestControl from '@/components/RoleRequestControl'
 
 type EmployeeProfileFormProps = {
     userId: string
@@ -937,11 +938,18 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                     )
                 }
                 {
-                    can('employees.assign_role') && userId !== session?.user?.id && (
+                    (can('employees.assign_role') || can('employees.request_role')) && userId !== session?.user?.id && (
                         <div style={{ marginBottom: '1rem' }}>
                             <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('role_label')}</label>
                             {role === 'SUPER_ADMIN' ? (
                                 <input className="input" value={t('super_admins')} disabled style={{ background: 'var(--surface-sunk)', color: 'var(--text-soft)', textAlign: locale === 'ar' ? 'right' : 'left' }} />
+                            ) : !can('employees.assign_role') ? (
+                                // May only ask (§6.12): a request, not a change.
+                                userId && !isViewMode ? (
+                                    <RoleRequestControl userId={userId} companyId={companyId} current={currentRole} locked={role === 'ADMIN'} style={{ textAlign: locale === 'ar' ? 'right' : 'left' }} />
+                                ) : (
+                                    <input className="input" value={currentRole?.name ?? ''} disabled style={{ background: 'var(--surface-sunk)', color: 'var(--text-soft)', textAlign: locale === 'ar' ? 'right' : 'left' }} />
+                                )
                             ) : (
                                 <RoleSelect
                                     companyId={companyId}
@@ -949,6 +957,8 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                                     // Moved to another company, their role there is chosen afresh.
                                     current={currentRole && currentRole.companyId === companyId ? currentRole : null}
                                     onChange={(id, chosen) => { setRoleId(id); if (chosen) setRole(chosen.baseRole) }}
+                                    // Only the Super Admin acts on an Admin (§4.2, rule 7).
+                                    locked={role === 'ADMIN' && userRole !== 'SUPER_ADMIN'}
                                     disabled={isViewMode}
                                     style={isViewMode ? { background: 'var(--surface-sunk)', cursor: 'not-allowed', color: 'var(--text-soft)', textAlign: locale === 'ar' ? 'right' : 'left' } : { textAlign: locale === 'ar' ? 'right' : 'left' }}
                                 />

@@ -9,6 +9,7 @@ import { RoleService } from "@/lib/services/role.service"
 import { RoleAssignmentService } from "@/lib/services/role-assignment.service"
 import { holdersOf } from "@/lib/permissions/holders"
 import { AccessReportService } from "@/lib/services/access-report.service"
+import { RoleRequestService } from "@/lib/services/role-request.service"
 import { RoleTemplateService } from "@/lib/services/role-template.service"
 
 /**
@@ -29,6 +30,7 @@ const ADMIN_URL = process.env.ROLES_TEST_DATABASE_URL
 const MIGRATIONS = ["0_init", "20260920000000_team_leader"]
 const ROLES = "20260927000000_roles"
 const TEMPLATES = "20260928000000_role_templates"
+const REQUESTS = "20260929000000_role_requests"
 const sql = (name: string) => readFileSync(`prisma/migrations/${name}/migration.sql`, "utf8")
 
 const BEFORE_ROLES = `
@@ -60,6 +62,7 @@ describe.skipIf(!ADMIN_URL)("roles as data, in Postgres", () => {
         await db.query(BEFORE_ROLES)
         await db.query(sql(ROLES))
         await db.query(sql(TEMPLATES))
+        await db.query(sql(REQUESTS))
         prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: url.toString() }) })
         // The services that manage roles use the application's client; point it
         // here before its first use (it is built lazily).
@@ -404,5 +407,119 @@ describe.skipIf(!ADMIN_URL)("roles as data, in Postgres", () => {
             await RoleService.setDefault("c1", null, sa)
             expect((await auditOf("c1")).filter(a => a.action === "SET_DEFAULT_ROLE").map(a => a.details.after)).toEqual([hr, null])
         })
+    })
+    describe("asking for a role (B4, §6.12)", () => {
+        const sa = { user: { id: "sa", role: "SUPER_ADMIN" } }
+        const admin = { user: { id: "a1", role: "ADMIN", companyId: "c1", grants: builtInGrantsToken("ADMIN") } }
+        // HR: may ask for a role, may not give one, and holds leave approval.
+        const hrGrants = { "employees.view": "COMPANY", "employees.request_role": "COMPANY", "dayoff.view": "COMPANY", "dayoff.approve": "COMPANY" } as const
+        const hr = { user: { id: "hr1", role: "EMPLOYEE", companyId: "c1", grants: encodeGrants(hrGrants) } }
+        let hrRole: string, leave: string, payroll: string
+        const roleOf1 = async (id: string) => (await db.query(`SELECT "roleId" FROM "User" WHERE id = $1`, [id])).rows[0].roleId
+        const notes = async (userId: string) => (await db.query(`SELECT type FROM "Notification" WHERE "userId" = $1 ORDER BY "createdAt"`, [userId])).rows.map(r => r.type)
+
+        beforeAll(async () => {
+            await db.query(`INSERT INTO "SuperAdmin" (id, email, password, "firstName", "lastName", username, "updatedAt")
+                VALUES ('sa', 'sa@test', 'x', 'Super', 'Admin', 'sa', now()) ON CONFLICT DO NOTHING`)
+            hrRole = (await RoleService.create({ companyId: "c1", name: "HR Desk", baseRole: "EMPLOYEE", grants: Object.entries(hrGrants).map(([permission, scope]) => ({ permission, scope })) }, sa)).id
+            leave = (await RoleService.create({ companyId: "c1", name: "Leave desk", baseRole: "EMPLOYEE", grants: [{ permission: "dayoff.approve", scope: "COMPANY" }] }, sa)).id
+            payroll = (await RoleService.create({ companyId: "c1", name: "Payroll desk", baseRole: "EMPLOYEE", grants: [{ permission: "payroll.approve", scope: "COMPANY" }] }, sa)).id
+            await db.query(`INSERT INTO "User"(id, email, password, "firstName", "lastName", role, "roleId", "lastDayOffResetYear", username, "companyId")
+                VALUES ('hr1', 'hr1@x', 'p', 'H', 'R', 'EMPLOYEE', $1, 2026, 'hr1', 'c1'),
+                       ('new1', 'new1@x', 'p', 'N', 'Ew', 'EMPLOYEE', (SELECT id FROM "Role" WHERE "companyId" = 'c1' AND "builtIn" = 'EMPLOYEE'), 2026, 'new1', 'c1'),
+                       ('new2', 'new2@x', 'p', 'N', 'Two', 'EMPLOYEE', (SELECT id FROM "Role" WHERE "companyId" = 'c1' AND "builtIn" = 'EMPLOYEE'), 2026, 'new2', 'c1')`, [hrRole])
+        })
+
+        it("asks, and the person keeps their role until it is decided", async () => {
+            const before = await roleOf1("new1")
+            const request = await RoleRequestService.create({ userId: "new1", roleId: leave, note: "New hire" }, hr)
+            expect(request).toMatchObject({ status: "PENDING", role: { name: "Leave desk" }, requestedBy: { id: "hr1" } })
+            expect(await roleOf1("new1")).toBe(before)
+            // Whoever may assign is told; the one who asked is not.
+            expect(await notes("a1")).toContain("ROLE_CHANGE_ASKED")
+            expect(await notes("hr1")).not.toContain("ROLE_CHANGE_ASKED")
+            // One waiting per person — the database says so too.
+            await expect(RoleRequestService.create({ userId: "new1", roleId: leave }, hr)).rejects.toThrow("ALREADY_PENDING")
+
+            // Somebody who only asks cannot decide, not even another's request.
+            await expect(RoleRequestService.decide(request.id, { approve: true }, hr)).rejects.toThrow("FORBIDDEN")
+            await expect(RoleRequestService.decide(request.id, { approve: false }, admin)).rejects.toThrow("REASON_REQUIRED")
+            const approved = await RoleRequestService.decide(request.id, { approve: true }, admin)
+            expect(approved).toMatchObject({ status: "APPROVED", decidedBy: { id: "a1" } })
+            expect(await roleOf1("new1")).toBe(leave)
+            expect(await notes("hr1")).toContain("ROLE_CHANGE_APPROVED")
+            await expect(RoleRequestService.decide(request.id, { approve: false, note: "no" }, admin)).rejects.toThrow("ALREADY_DECIDED")
+        })
+
+        it("asks only for what the asker could give (rules 1-4)", async () => {
+            await expect(RoleRequestService.create({ userId: "hr1", roleId: leave }, hr)).rejects.toThrow("OWN_ROLE")
+            await expect(RoleRequestService.create({ userId: "new1", roleId: payroll }, hr)).rejects.toThrow("ROLE_EXCEEDS_YOURS")
+            const deputy = (await db.query(`SELECT id FROM "Role" WHERE "companyId" = 'c1' AND name = 'Deputy Admin'`)).rows[0]?.id
+            if (deputy) await expect(RoleRequestService.create({ userId: "new1", roleId: deputy }, hr)).rejects.toThrow("FORBIDDEN_ROLE_ASSIGNMENT")
+            await expect(RoleRequestService.create({ userId: "new1", roleId: leave }, hr)).rejects.toThrow("SAME_ROLE")
+            // Changing an Admin is the Super Admin's (rule 7), asked or not.
+            await expect(RoleRequestService.create({ userId: "a1", roleId: leave }, hr)).rejects.toThrow("ADMIN_IS_SUPER_ADMINS")
+        })
+
+        it("is checked again for the asker when decided, with what they hold now", async () => {
+            const request = await RoleRequestService.create({ userId: "new2", roleId: leave }, hr)
+            // Meanwhile the asker's role loses leave approval.
+            await RoleService.update({ id: hrRole, grants: [{ permission: "employees.request_role", scope: "COMPANY" }] }, sa)
+            await expect(RoleRequestService.decide(request.id, { approve: true }, admin)).rejects.toThrow("ROLE_EXCEEDS_YOURS")
+            // Not applied, so still waiting, and they keep their role.
+            expect((await RoleRequestService.get(request.id)).status).toBe("PENDING")
+            expect(await roleOf1("new2")).not.toBe(leave)
+            await RoleRequestService.cancel(request.id, hr)
+            await RoleService.update({ id: hrRole, grants: Object.entries(hrGrants).map(([permission, scope]) => ({ permission, scope })) }, sa)
+        })
+
+        it("is settled by a direct change, so a later approval cannot undo it", async () => {
+            const request = await RoleRequestService.create({ userId: "new2", roleId: leave }, hr)
+            const { UserService } = await import("@/lib/services/user.service")
+            await UserService.update({ id: "new2", roleId: payroll } as any, admin)
+            expect((await RoleRequestService.get(request.id)).status).toBe("CANCELLED")
+            await expect(RoleRequestService.decide(request.id, { approve: true }, admin)).rejects.toThrow("ALREADY_DECIDED")
+            expect(await roleOf1("new2")).toBe(payroll)
+        })
+
+        it("nobody decides what they asked for, whatever else they hold", async () => {
+            const lead = { user: { ...hr.user, grants: encodeGrants({ ...hrGrants, "employees.assign_role": "COMPANY" }) } }
+            const request = await RoleRequestService.create({ userId: "new2", roleId: leave }, lead)
+            await expect(RoleRequestService.decide(request.id, { approve: true }, lead)).rejects.toThrow("OWN_REQUEST")
+            await RoleRequestService.decide(request.id, { approve: false, note: "Not now" }, admin)
+            expect(await RoleRequestService.get(request.id)).toMatchObject({ status: "REJECTED", decisionNote: "Not now" })
+            expect(await notes("hr1")).toContain("ROLE_CHANGE_REJECTED")
+        })
+
+        it("reminds the deciders after three working days, once per interval", async () => {
+            const request = await RoleRequestService.create({ userId: "new2", roleId: leave }, hr)
+            await db.query(`UPDATE "RoleRequest" SET "createdAt" = '2026-09-27T09:00:00Z' WHERE id = $1`, [request.id]) // a Sunday
+            // Wednesday morning: three working days have not passed yet.
+            expect((await RoleRequestService.remindStale(new Date("2026-09-30T08:00:00Z"))).reminded).toBe(0)
+            expect((await RoleRequestService.remindStale(new Date("2026-09-30T10:00:00Z"))).reminded).toBe(1)
+            // Not again until another three have.
+            expect((await RoleRequestService.remindStale(new Date("2026-10-01T10:00:00Z"))).reminded).toBe(0)
+            expect(await notes("a1")).toContain("ROLE_CHANGE_WAITING")
+            await RoleRequestService.cancel(request.id, hr)
+        })
+
+        it("hires on the default role, with a request for the one HR picked", async () => {
+            const hiring = { user: { ...hr.user, grants: encodeGrants({ ...hrGrants, "employees.create": "COMPANY" }) } }
+            const { UserService } = await import("@/lib/services/user.service")
+            // A role HR could not give is refused before any account exists.
+            await expect(UserService.create({ firstName: "No", lastName: "Body", email: "nobody@x.co", password: "a-long-password-123", role: "EMPLOYEE", roleId: payroll } as any, hiring))
+                .rejects.toThrow("ROLE_EXCEEDS_YOURS")
+            expect((await db.query(`SELECT count(*)::int AS n FROM "User" WHERE email = 'nobody@x.co'`)).rows[0].n).toBe(0)
+
+            const created: any = await UserService.create({ firstName: "Nour", lastName: "Hired", email: "nour@x.co", password: "a-long-password-123", role: "EMPLOYEE", roleId: leave } as any, hiring)
+            const employee = (await db.query(`SELECT id FROM "Role" WHERE "companyId" = 'c1' AND "builtIn" = 'EMPLOYEE'`)).rows[0].id
+            expect(await roleOf1(created.id)).toBe(employee)
+            expect(await RoleRequestService.get(created.roleRequestId)).toMatchObject({ status: "PENDING", role: { id: leave } })
+            await RoleRequestService.cancel(created.roleRequestId, hiring)
+        })
+
+        it("refuses in the database a request across companies", () =>
+            refused(`INSERT INTO "RoleRequest"(id, "companyId", "userId", "roleId", "requestedById", "updatedAt")
+                VALUES ('rr-x', 'c2', 'new1', (SELECT id FROM "Role" WHERE "companyId" = 'c2' AND "builtIn" = 'EMPLOYEE'), 'hr1', now())`))
     })
 })
