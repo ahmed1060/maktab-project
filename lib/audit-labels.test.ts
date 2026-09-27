@@ -4,6 +4,7 @@ import { join } from "node:path"
 import ts from "typescript"
 import { en } from "./translations/en"
 import { ar } from "./translations/ar"
+import { AUDIT_ACTIONS, AUDIT_ACTION_GROUPS, AUDIT_ENTITY_TYPES } from "./audit-codes"
 
 /**
  * Every action, entity type and detail the code writes to the audit log has
@@ -131,6 +132,15 @@ describe("the audit log's labels", () => {
 
     it("names every detail the code writes, in both languages", () => {
         expect(missing("audit_field_", details)).toEqual([])
+    })
+
+    it("offers exactly the labelled actions and entity types as filters", () => {
+        const labelled = (prefix: string) => Object.keys(en).filter(k => k.startsWith(prefix)).map(k => k.slice(prefix.length)).sort()
+        expect([...AUDIT_ACTION_GROUPS, ...AUDIT_ACTIONS].sort()).toEqual(labelled("audit_action_"))
+        expect([...AUDIT_ENTITY_TYPES].sort()).toEqual(labelled("audit_entity_"))
+        // And so everything the code writes can be filtered by.
+        expect([...actions].filter(a => !(AUDIT_ACTIONS as readonly string[]).includes(a))).toEqual([])
+        expect([...entities].filter(e => !(AUDIT_ENTITY_TYPES as readonly string[]).includes(e))).toEqual([])
     })
 
     it("labels every coded value in the schema, in both languages", () => {

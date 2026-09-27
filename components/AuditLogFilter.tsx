@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useState, useCallback } from 'react'
+import { AUDIT_ACTIONS, AUDIT_ACTION_GROUPS, AUDIT_ENTITY_TYPES } from '@/lib/audit-codes'
 import { useLanguage } from '@/context/LanguageContext'
 import SearchableSelect from './SearchableSelect'
 import DateRangePicker from './DateRangePicker'
@@ -24,9 +25,6 @@ interface AuditLogFilterProps {
     }
     totalCount: number
     users: { id: string, firstName: string, lastName: string, role: string }[]
-    entityTypes: string[]
-    actionGroups: string[]
-    specificActions: string[]
 }
 
 export default function AuditLogFilter({
@@ -34,11 +32,15 @@ export default function AuditLogFilter({
     filters,
     totalCount,
     users,
-    entityTypes,
-    actionGroups,
-    specificActions
 }: AuditLogFilterProps) {
     const { t, locale } = useLanguage()
+    // Every labelled action and entity type (lib/audit-codes.ts), in the
+    // reader's language and alphabetical in it, so a long list can be scanned.
+    const label = (prefix: string, code: string) => (t as any)(`${prefix}${code}`) || code
+    const sorted = (prefix: string, codes: readonly string[]) =>
+        codes.map(code => ({ code, name: label(prefix, code) })).sort((a, b) => a.name.localeCompare(b.name, locale))
+    const entityOptions = sorted('audit_entity_', AUDIT_ENTITY_TYPES)
+    const actionOptions = sorted('audit_action_', AUDIT_ACTIONS)
     const [isPopupOpen, setIsPopupOpen] = useState(false)
     const [isMobile, setIsMobile] = useState(false)
 
@@ -252,8 +254,8 @@ export default function AuditLogFilter({
                                             }}
                                         >
                                             <option value="">{t('all_entities')}</option>
-                                            {entityTypes.map(et => (
-                                                <option key={et} value={et}>{(t as any)(`audit_entity_${et}`)}</option>
+                                            {entityOptions.map(({ code, name }) => (
+                                                <option key={code} value={code}>{name}</option>
                                             ))}
                                         </select>
                                     </div>
@@ -279,13 +281,13 @@ export default function AuditLogFilter({
                                         >
                                             <option value="">{t('all_actions')}</option>
                                             <optgroup label={locale === 'ar' ? 'الفئات' : 'Groups'}>
-                                                {actionGroups.map(g => (
-                                                    <option key={g} value={g}>{(t as any)(`audit_action_${g}`)}</option>
+                                                {AUDIT_ACTION_GROUPS.map(g => (
+                                                    <option key={g} value={g}>{label('audit_action_', g)}</option>
                                                 ))}
                                             </optgroup>
                                             <optgroup label={locale === 'ar' ? 'إجراءات' : 'Actions'}>
-                                                {specificActions.map(a => (
-                                                    <option key={a} value={a}>{(t as any)(`audit_action_${a}`)}</option>
+                                                {actionOptions.map(({ code, name }) => (
+                                                    <option key={code} value={code}>{name}</option>
                                                 ))}
                                             </optgroup>
                                         </select>

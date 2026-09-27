@@ -63,26 +63,6 @@ export default function AuditLogsPage() {
     const { data: usersResult } = useSWR('/api/users?limit=1000', fetcher)
     const users: { id: string, firstName: string, lastName: string, role: string }[] = usersResult?.data?.data || []
 
-    const entityTypes = [
-        'USER', 'TASK', 'SUPER_ADMIN', 'SECTION', 'SALARY',
-        'REQUEST', 'OBLIGATION', 'NOTE', 'SYSTEM',
-        'DAY_OFF_REQUEST', 'COMPANY', 'COMPANY_PAYMENT', 'CLIENT'
-    ]
-    const actionGroups = ['CREATE', 'UPDATE', 'DELETE', 'SYSTEM']
-    const specificActions = [
-        'LOGIN', 'LOGIN_FAILURE', 'APPROVE_PROFILE_UPDATE', 'REJECT_PROFILE_UPDATE',
-        'APPROVE_DAY_OFF_REQUEST', 'REJECT_DAY_OFF_REQUEST', 'REEVALUATE_DAY_OFF_REQUEST',
-        'CONFIRM_COMPANY_PAYMENT', 'CREATE_DAY_OFF', 'CREATE_DAY_OFF_REQUEST',
-        'BULK_CREATE_TASK', 'BULK_CREATE_TASKS', 'BULK_UPDATE_PAYMENT', 'BULK_UPDATE_PAYMENT_STATUS',
-        'UPDATE_PAYMENT_STATUS', 'UPDATE_TASK_DETAILS', 'UPDATE_OBLIGATION', 'UPDATE_REQUEST_STATUS',
-        'DELETE_TASK_ITEM', 'VERIFY_LOCATION', 'ACKNOWLEDGE_TASK_EDIT',
-        'REVEAL_PASSWORD', 'ADMIN_UNBLOCK_RATE_LIMIT',
-        'UPDATE_TASK_PROGRESS', 'UPDATE_OBLIGATION_PROGRESS',
-        'UPDATE_USER_STATUS', 'RESET_USER_POINTS', 'RESET_ALL_POINTS',
-        'SUBMIT_TASK', 'REVIEW_TASK', 'TRANSFER_TASK', 'REVERT_TASK', 'REVERT_OBLIGATION',
-        'APPLY_TASK_PENALTY', 'ADD_BONUS', 'ADD_DEDUCTION', 'ROLLBACK_SALARY_ADJUSTMENT'
-    ]
-
     useEffect(() => {
         setTitle(t('audit_logs'))
         setSubtitle(t('audit_logs_subtitle'))
@@ -160,9 +140,6 @@ export default function AuditLogsPage() {
                 onFilterChange={handleFilterChange}
                 totalCount={logs.length > 0 ? (totalPages * limit) : 0} // Approximate total for UI badge
                 users={users}
-                entityTypes={entityTypes}
-                actionGroups={actionGroups}
-                specificActions={specificActions}
             />
 
             {loading ? (
