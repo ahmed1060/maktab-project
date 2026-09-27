@@ -262,6 +262,9 @@ export class RoleService {
         if (role.holders > 0) throw new Error("ROLE_HELD")
         if (await prisma.user.count({ where: { returnRoleId: id } }) > 0) throw new Error("ROLE_HELD")
         if (role.isDefault) throw new Error("ROLE_IS_DEFAULT")
+        // Somebody has asked for it: deleting the role would delete their
+        // request with it, unseen. Decide or cancel the requests first.
+        if (await prisma.roleRequest.count({ where: { roleId: id, status: "PENDING" } }) > 0) throw new Error("ROLE_REQUESTED")
         await prisma.$transaction(async (tx) => {
             await tx.role.delete({ where: { id } })
             const { AuditLogService } = await import("./audit-log.service")

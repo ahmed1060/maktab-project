@@ -18,6 +18,7 @@ export function roleErrorResponse(error: any) {
         case "ROLE_BUILT_IN_FIXED": return ApiResponse.badRequest("A built-in role keeps its name and base role, and cannot be deleted")
         case "ROLE_HELD": return ApiResponse.badRequest("People hold this role. Move them to another role first.")
         case "ROLE_IS_DEFAULT": return ApiResponse.badRequest("This is the company's default role for new accounts. Choose another default first.")
+        case "ROLE_REQUESTED": return ApiResponse.badRequest("Somebody has asked for this role. Decide or cancel their request first.")
         case "DEFAULT_ROLE_ADMIN": return ApiResponse.badRequest("The company's default role cannot be Admin-based")
         case "SAME_COMPANY": return ApiResponse.badRequest("Choose a different company to copy from")
         case "NOT_FROM_TEMPLATE": return ApiResponse.badRequest("Only roles copied from this template can be updated from it")

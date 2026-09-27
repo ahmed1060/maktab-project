@@ -316,6 +316,16 @@ describe.skipIf(!ADMIN_URL)("roles as data, in Postgres", () => {
             await expect(RoleService.getById(role.id)).rejects.toThrow("ROLE_NOT_FOUND")
         })
 
+        it("refuses deleting a role somebody has asked for, until the request is settled", async () => {
+            const role = await RoleService.create({ companyId: "c2", name: "Asked for", baseRole: "EMPLOYEE", grants: [] }, sa)
+            const request = await prisma.roleRequest.create({ data: { companyId: "c2", userId: "e2", roleId: role.id, requestedById: "e2" } })
+            await expect(RoleService.delete(role.id, sa)).rejects.toThrow("ROLE_REQUESTED")
+            expect(await prisma.roleRequest.count({ where: { id: request.id } })).toBe(1)
+            await prisma.roleRequest.update({ where: { id: request.id }, data: { status: "CANCELLED" } })
+            await RoleService.delete(role.id, sa)
+            await expect(RoleService.getById(role.id)).rejects.toThrow("ROLE_NOT_FOUND")
+        })
+
         it("keeps a company's default role its own, and not Admin-based", async () => {
             const role = await RoleService.create({ companyId: "c2", name: "Trainee", baseRole: "EMPLOYEE", grants: [] }, sa)
             await db.query(`UPDATE "Company" SET "defaultRoleId" = $1 WHERE id = 'c2'`, [role.id])
