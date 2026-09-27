@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { refusalOf } from '@/components/CompanyRolesCard'
 import { useLanguage } from '@/context/LanguageContext'
 import { useToast } from '@/context/ToastContext'
+import { useReportUnsaved } from '@/lib/useUnsavedChanges'
 
 /**
  * The company's periodic access review switch (ROLES_PLAN.md §6.14): off by
@@ -19,6 +20,7 @@ export default function AccessReviewSetting({ companyId, setting, onSaved }: { c
     const [months, setMonths] = useState(setting.accessReviewMonths)
     const [saving, setSaving] = useState(false)
     const dirty = enabled !== setting.accessReviewEnabled || months !== setting.accessReviewMonths
+    useReportUnsaved('access-review', dirty)
 
     const save = async () => {
         setSaving(true)

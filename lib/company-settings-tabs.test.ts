@@ -55,6 +55,8 @@ describe("the company settings tabs", () => {
         expect(readFileSync("components/CompanyPayrollCard.tsx", "utf8")).toContain("useReportUnsaved('payroll', dirty)")
         expect(readFileSync("components/CompanyModulesCard.tsx", "utf8")).toContain("useReportUnsaved('modules', isDirty)")
         expect(readFileSync("components/CompanySettingsAccessCard.tsx", "utf8")).toContain("useReportUnsaved('access', dirty)")
+        // The access review switch, on the Roles tab.
+        expect(readFileSync("components/AccessReviewSetting.tsx", "utf8")).toContain("useReportUnsaved('access-review', dirty)")
         expect(TABS).toContain("if (dirty) setLeavingFor({ tab: next })")
     })
 
