@@ -134,3 +134,14 @@ export async function personTarget(userId: string): Promise<Target | null> {
     })
     return person ? { companyId: person.companyId, userId: person.id, teamLeaderId: person.teamLeaderId } : null
 }
+
+/**
+ * Which table the signed-in id belongs to: SUPER_ADMIN for a SuperAdmin row,
+ * anything else for a User row. Not the same as session.user.role while the
+ * Super Admin previews a role (ROLES_PLAN.md §6.6) — that presents the
+ * previewed role, for access, while the id is still the Super Admin's.
+ * Anything that looks a person up, or attributes something to them, asks this.
+ */
+export function accountKind(user: { role?: string | null; preview?: unknown }): string | undefined {
+    return user.preview ? 'SUPER_ADMIN' : user.role ?? undefined
+}

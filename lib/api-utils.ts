@@ -10,6 +10,7 @@ import { isNextInternalError } from "./next-internal-error"
 import * as Sentry from "@sentry/nextjs"
 import { can } from "@/lib/permissions/can"
 import type { Permission } from "@/lib/permissions/catalogue"
+import { accountKind } from "@/lib/security"
 
 type HandlerOptions = {
     allowedRoles?: string[]
@@ -135,6 +136,8 @@ export function withStandardHandler(
         // even if the failure happened after these were set.
         let userId: string | null = null
         let userRole: string | undefined
+        // For attributing a logged error to the right table (accountKind).
+        let kind: string | undefined
         try {
             const session = await getServerSession(authOptions)
             if (!session) {
@@ -142,6 +145,7 @@ export function withStandardHandler(
             }
 
             userRole = (session.user as any).role
+            kind = accountKind(session.user as any)
             userId = (session.user as any).id
 
             // Rate Limiting
@@ -326,8 +330,8 @@ export function withStandardHandler(
                         action: options.audit.action,
                         entityType: options.audit.entityType,
                         entityId: (entityId as unknown as string) || 'N/A',
-                        userId: userRole !== 'SUPER_ADMIN' ? userId : null,
-                        superAdminId: userRole === 'SUPER_ADMIN' ? userId : null,
+                        userId: kind !== 'SUPER_ADMIN' ? userId : null,
+                        superAdminId: kind === 'SUPER_ADMIN' ? userId : null,
                         details: sanitizedBody ?? undefined
                     }
                 })
@@ -346,8 +350,8 @@ export function withStandardHandler(
                 error,
                 route: new URL(req.url).pathname,
                 method: req.method,
-                userId: userRole !== 'SUPER_ADMIN' ? userId : null,
-                superAdminId: userRole === 'SUPER_ADMIN' ? userId : null,
+                userId: kind !== 'SUPER_ADMIN' ? userId : null,
+                superAdminId: kind === 'SUPER_ADMIN' ? userId : null,
             })
             // Caught here, so Sentry would never see it on its own. Tagged
             // with the same reference the person was shown, so the code an
