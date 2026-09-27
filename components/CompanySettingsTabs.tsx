@@ -12,14 +12,14 @@ import CompanyModulesCard from '@/components/CompanyModulesCard'
 import CompanySettingsAccessCard from '@/components/CompanySettingsAccessCard'
 import { useLanguage } from '@/context/LanguageContext'
 import { COMPANY_SETTINGS_TABS, type CompanySettingsTabKey } from '@/lib/company-settings-tabs'
-import { UnsavedChangesProvider, useUnsavedState } from '@/lib/useUnsavedChanges'
+import { UnsavedChangesProvider, useGuardLinks, useUnsavedState } from '@/lib/useUnsavedChanges'
 import type { ModuleOverrides } from '@/lib/modules'
 
 /**
  * A company's settings, one tab per category (ATTENDANCE_PLAN.md §5.1). The
  * tabs come from lib/company-settings-tabs.ts; the open one is in the URL
  * (?tab=payroll), so a link or a reload lands on it. Leaving a tab, or the
- * page, with unsaved edits asks first.
+ * page by a link or a reload, with unsaved edits asks first.
  *
  * One set of tabs, two entry points (§5.2): the Super Admin's, from the
  * company list, with every tab; and a company's own, at /dashboard/settings,
@@ -56,7 +56,9 @@ export default function CompanySettingsTabs({ company, onSaved, tabs: shown, rea
     const pathname = usePathname()
     const searchParams = useSearchParams()
     const { dirty, setDirty } = useUnsavedState()
-    const [leavingFor, setLeavingFor] = useState<CompanySettingsTabKey | null>(null)
+    // Where unsaved edits were about to be left for: another tab, or a page.
+    const [leavingFor, setLeavingFor] = useState<{ tab: CompanySettingsTabKey } | { href: string } | null>(null)
+    useGuardLinks(dirty, href => setLeavingFor({ href }))
 
     const tabs = COMPANY_SETTINGS_TABS.filter(x => shown.includes(x.key))
     const asked = searchParams.get('tab')
@@ -69,7 +71,7 @@ export default function CompanySettingsTabs({ company, onSaved, tabs: shown, rea
     }
     const choose = (next: CompanySettingsTabKey) => {
         if (next === tab) return
-        if (dirty) setLeavingFor(next)
+        if (dirty) setLeavingFor({ tab: next })
         else open(next)
     }
 
@@ -144,7 +146,14 @@ export default function CompanySettingsTabs({ company, onSaved, tabs: shown, rea
                 message={t('settings_unsaved_message')}
                 confirmText={t('settings_unsaved_discard')}
                 variant="warning"
-                onConfirm={() => { const next = leavingFor; setLeavingFor(null); if (next) { setDirty(false); open(next) } }}
+                onConfirm={() => {
+                    const next = leavingFor
+                    setLeavingFor(null)
+                    if (!next) return
+                    setDirty(false)
+                    if ('tab' in next) open(next.tab)
+                    else router.push(next.href)
+                }}
                 onCancel={() => setLeavingFor(null)}
             />
         </div>

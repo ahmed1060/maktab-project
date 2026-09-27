@@ -2,7 +2,8 @@
 
 import useSWR from 'swr'
 import { fetcher } from '@/lib/swr-fetcher'
-import { useParams, useRouter } from 'next/navigation'
+import Link from 'next/link'
+import { useParams } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import AccessDenied from '@/components/AccessDenied'
 import { useToast } from '@/context/ToastContext'
@@ -12,7 +13,6 @@ import { COMPANY_SETTINGS_TABS } from '@/lib/company-settings-tabs'
 
 export default function CompanySettingsPage() {
     const params = useParams()
-    const router = useRouter()
     const { id: companyId } = params as { id: string }
     const { data: session } = useSession()
     const { showToast } = useToast()
@@ -35,8 +35,9 @@ export default function CompanySettingsPage() {
     return (
         <div className="animate-in fade-in duration-500" style={{ direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
             <div style={{ marginBottom: '2rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
-                <button
-                    onClick={() => router.push('/dashboard/companies')}
+                {/* A link, so leaving with unsaved edits asks first like any other. */}
+                <Link
+                    href="/dashboard/companies"
                     className="glass"
                     style={{
                         width: '40px',
@@ -51,7 +52,8 @@ export default function CompanySettingsPage() {
                         border: '1px solid var(--veil-40)',
                         transform: `translateY(-2px)${locale === 'ar' ? ' scaleX(-1)' : ''}`,
                         float: locale === 'ar' ? 'right' : 'left',
-                        cursor: 'pointer'
+                        cursor: 'pointer',
+                        boxSizing: 'border-box'
                     }}
                     onMouseOver={(e) => {
                         e.currentTarget.style.transform = `translateY(-4px)${locale === 'ar' ? ' scaleX(-1)' : ''}`
@@ -67,7 +69,7 @@ export default function CompanySettingsPage() {
                         <line x1="19" y1="12" x2="5" y2="12"></line>
                         <polyline points="12 19 5 12 12 5"></polyline>
                     </svg>
-                </button>
+                </Link>
                 <div style={{ clear: 'both' }}></div>
                 {/* The company is the heading, not a strong tag in the line
                     under it. This page is the only answer to "whose settings am

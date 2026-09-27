@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs"
 import { en } from "./translations/en"
 import { ar } from "./translations/ar"
 import { COMPANY_SETTINGS_TABS, settingsTab } from "./company-settings-tabs"
+import { leavingHref } from "./useUnsavedChanges"
 
 /**
  * The company settings tabs (ATTENDANCE_PLAN.md §5.1): one registry, and a
@@ -50,9 +51,37 @@ describe("the company settings tabs", () => {
     })
 
     it("ask before leaving unsaved edits", () => {
-        // The two cards with a Save button say when they hold edits.
+        // Every card with a Save button says when it holds edits.
         expect(readFileSync("components/CompanyPayrollCard.tsx", "utf8")).toContain("useReportUnsaved('payroll', dirty)")
         expect(readFileSync("components/CompanyModulesCard.tsx", "utf8")).toContain("useReportUnsaved('modules', isDirty)")
-        expect(TABS).toContain("if (dirty) setLeavingFor(next)")
+        expect(readFileSync("components/CompanySettingsAccessCard.tsx", "utf8")).toContain("useReportUnsaved('access', dirty)")
+        expect(TABS).toContain("if (dirty) setLeavingFor({ tab: next })")
+    })
+
+    describe("and before leaving the page by a link", () => {
+        const here = "https://nizmo.test/dashboard/companies/c1/settings?tab=payroll"
+        const click = { button: 0, metaKey: false, ctrlKey: false, shiftKey: false, altKey: false, defaultPrevented: false }
+        const link = (href: string, extra: object = {}) => ({ href: new URL(href, here).href, ...extra })
+
+        it("asks about a link to another page of the site: the sidebar, the back link", () => {
+            expect(leavingHref(link("/dashboard/tasks"), click, here)).toBe("/dashboard/tasks")
+            expect(leavingHref(link("/dashboard/companies"), click, here)).toBe("/dashboard/companies")
+            expect(leavingHref(link("?tab=modules"), click, here)).toBe("/dashboard/companies/c1/settings?tab=modules")
+        })
+
+        it("not about one that leaves nothing behind", () => {
+            expect(leavingHref(null, click, here)).toBeNull()
+            expect(leavingHref(link("https://example.com/x"), click, here)).toBeNull()
+            expect(leavingHref(link("/dashboard/tasks", { target: "_blank" }), click, here)).toBeNull()
+            expect(leavingHref(link("/api/roles/export", { download: true }), click, here)).toBeNull()
+            expect(leavingHref(link("/dashboard/tasks"), { ...click, ctrlKey: true }, here)).toBeNull()
+            expect(leavingHref(link("/dashboard/tasks"), { ...click, button: 1 }, here)).toBeNull()
+            expect(leavingHref(link("#top"), click, here)).toBeNull()
+        })
+
+        it("is wired to the tabs, and the back link is a link", () => {
+            expect(TABS).toContain("useGuardLinks(dirty, href => setLeavingFor({ href }))")
+            expect(PAGE).toMatch(/<Link\s+href="\/dashboard\/companies"/)
+        })
     })
 })
