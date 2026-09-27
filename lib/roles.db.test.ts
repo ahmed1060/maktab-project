@@ -10,6 +10,7 @@ import { RoleAssignmentService } from "@/lib/services/role-assignment.service"
 import { holdersOf } from "@/lib/permissions/holders"
 import { AccessReportService } from "@/lib/services/access-report.service"
 import { RoleRequestService } from "@/lib/services/role-request.service"
+import { RoleChangeRequestService } from "@/lib/services/role-change-request.service"
 import { RoleTemplateService } from "@/lib/services/role-template.service"
 
 /**
@@ -32,6 +33,7 @@ const ROLES = "20260927000000_roles"
 const TEMPLATES = "20260928000000_role_templates"
 const REQUESTS = "20260929000000_role_requests"
 const ACTING = "20260930000000_acting_roles"
+const CHANGES = "20261001000000_role_change_requests"
 const sql = (name: string) => readFileSync(`prisma/migrations/${name}/migration.sql`, "utf8")
 
 const BEFORE_ROLES = `
@@ -65,6 +67,7 @@ describe.skipIf(!ADMIN_URL)("roles as data, in Postgres", () => {
         await db.query(sql(TEMPLATES))
         await db.query(sql(REQUESTS))
         await db.query(sql(ACTING))
+        await db.query(sql(CHANGES))
         prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: url.toString() }) })
         // The services that manage roles use the application's client; point it
         // here before its first use (it is built lazily).
@@ -672,6 +675,42 @@ describe.skipIf(!ADMIN_URL)("roles as data, in Postgres", () => {
             // Only its own copies.
             const other = await RoleService.create({ companyId: "c8", name: "Other", baseRole: "EMPLOYEE", grants: [] }, sa)
             await expect(RoleTemplateService.applyTo(template.id, [other.id], {}, sa)).rejects.toThrow("NOT_FROM_TEMPLATE")
+        })
+    })
+    describe("asking the Super Admin for a role change (B4, §6.9)", () => {
+        const sa = { user: { id: "sa", role: "SUPER_ADMIN" } }
+        const admin = { user: { id: "a1", role: "ADMIN", companyId: "c1", grants: builtInGrantsToken("ADMIN") } }
+        const employee = { user: { id: "e1", role: "EMPLOYEE", companyId: "c1", grants: builtInGrantsToken("EMPLOYEE") } }
+
+        beforeAll(async () => {
+            await db.query(`INSERT INTO "SuperAdmin" (id, email, password, "firstName", "lastName", username, "updatedAt")
+                VALUES ('sa', 'sa@test', 'x', 'Super', 'Admin', 'sa', now()) ON CONFLICT DO NOTHING`)
+        })
+
+        it("is asked by the company's Admins, about their own roles, and the Super Admin is told", async () => {
+            const leader = (await RoleService.listForCompany("c1")).find(r => r.builtIn === "TEAM_LEADER")!
+            const request = await RoleChangeRequestService.create({ roleId: leader.id, description: "Team Leaders should approve leave" }, admin)
+            expect(request).toMatchObject({ status: "OPEN", role: { name: "Team Leader" }, company: { name: "One" } })
+            const told = (await db.query(`SELECT type FROM "Notification" WHERE "superAdminId" = 'sa'`)).rows.map(r => r.type)
+            expect(told).toContain("ROLE_CHANGE_FOR_SUPER_ADMIN")
+
+            await expect(RoleChangeRequestService.create({ description: "Please" }, employee)).rejects.toThrow("FORBIDDEN")
+            const other = (await RoleService.listForCompany("c2")).find(r => r.builtIn === "EMPLOYEE")!
+            await expect(RoleChangeRequestService.create({ roleId: other.id, description: "Not ours" }, admin)).rejects.toThrow("ROLE_NOT_IN_COMPANY")
+            // A company sees its own; the Super Admin sees everyone's.
+            expect((await RoleChangeRequestService.list(admin, {})).every(r => r.companyId === "c1")).toBe(true)
+            expect((await RoleChangeRequestService.list(sa, { status: "OPEN" })).map(r => r.id)).toContain(request.id)
+        })
+
+        it("is answered by the Super Admin alone, once, and the Admin is told", async () => {
+            const request = await RoleChangeRequestService.create({ description: "A role for our auditors" }, admin)
+            await expect(RoleChangeRequestService.respond(request.id, { status: "DONE" }, admin)).rejects.toThrow("FORBIDDEN")
+            await expect(RoleChangeRequestService.respond(request.id, { status: "DECLINED" }, sa)).rejects.toThrow("REASON_REQUIRED")
+            const answered = await RoleChangeRequestService.respond(request.id, { status: "DONE", response: "Added an Auditor role" }, sa)
+            expect(answered).toMatchObject({ status: "DONE", response: "Added an Auditor role", respondedBy: { firstName: "Super" } })
+            await expect(RoleChangeRequestService.respond(request.id, { status: "DECLINED", response: "no" }, sa)).rejects.toThrow("ALREADY_DECIDED")
+            const told = (await db.query(`SELECT type FROM "Notification" WHERE "userId" = 'a1'`)).rows.map(r => r.type)
+            expect(told).toContain("ROLE_CHANGE_DONE")
         })
     })
 })

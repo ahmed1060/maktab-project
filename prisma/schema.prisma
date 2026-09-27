@@ -243,6 +243,7 @@ model Company {
   vendors              Vendor[]
   roles                Role[]                @relation("CompanyRoles")
   roleRequests         RoleRequest[]
+  roleChangeRequests   RoleChangeRequest[]
   /// The role a new account starts on (ROLES_PLAN.md §6.4). Null means the
   /// company's built-in Employee role — every company has one, so nobody is
   /// ever created without a role, even while a request for another waits.
@@ -340,6 +341,7 @@ model SuperAdmin {
   emailVerifiedAt    DateTime?
   auditLogs          AuditLog[]
   notifications      Notification[]
+  roleChangeAnswers  RoleChangeRequest[]
   trustedDevices     TrustedDevice[]
   verificationCodes  VerificationCode[]
 }
@@ -447,6 +449,7 @@ model User {
   roleRequestsFor            RoleRequest[]           @relation("RoleRequestFor")
   roleRequestsMade           RoleRequest[]           @relation("RoleRequestBy")
   roleRequestsDecided        RoleRequest[]           @relation("RoleRequestDecidedBy")
+  roleChangeRequests         RoleChangeRequest[]
 
   @@index([email])
   @@index([companyId])
@@ -1287,6 +1290,7 @@ model Role {
   users                User[]
   requests             RoleRequest[]
   returners            User[]      @relation("ActingReturn")
+  changeRequests       RoleChangeRequest[]
   createdAt            DateTime    @default(now())
   updatedAt            DateTime    @updatedAt
 
@@ -1359,4 +1363,35 @@ model RoleRequest {
 
   @@index([companyId, status])
   @@index([userId])
+}
+
+enum RoleChangeRequestStatus {
+  OPEN
+  DONE
+  DECLINED
+}
+
+/// A company asking the Super Admin to change one of its roles, or make a new
+/// one (ROLES_PLAN.md §6.9). Only the Super Admin edits roles; this is the
+/// channel, so the request lives somewhere with a status both sides can see.
+model RoleChangeRequest {
+  id                String                  @id @default(uuid())
+  companyId         String
+  company           Company                 @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  /// The role it is about, or null for a new one.
+  roleId            String?
+  role              Role?                   @relation(fields: [roleId], references: [id], onDelete: SetNull)
+  requestedById     String
+  requestedBy       User                    @relation(fields: [requestedById], references: [id], onDelete: Cascade)
+  description       String
+  status            RoleChangeRequestStatus @default(OPEN)
+  response          String?
+  respondedById     String?
+  respondedBy       SuperAdmin?             @relation(fields: [respondedById], references: [id], onDelete: SetNull)
+  respondedAt       DateTime?
+  createdAt         DateTime                @default(now())
+  updatedAt         DateTime                @updatedAt
+
+  @@index([status])
+  @@index([companyId])
 }

@@ -9,6 +9,8 @@ import LoadingSpinner from '@/components/LoadingSpinner'
 import ConfirmModal from '@/components/ConfirmModal'
 import SafeDate from '@/components/SafeDate'
 import { refusalOf } from '@/components/CompanyRolesCard'
+import RoleChangeRequests from '@/components/RoleChangeRequests'
+import SegmentedToggle from '@/components/SegmentedToggle'
 import { useToast } from '@/context/ToastContext'
 import { useLanguage } from '@/context/LanguageContext'
 import { useHeader } from '@/context/HeaderContext'
@@ -45,7 +47,11 @@ export default function RoleRequestsPage() {
     const { showToast } = useToast()
     const { data: session } = useSession()
     const { can } = useCan()
-    const highlight = useSearchParams().get('highlight')
+    const searchParams = useSearchParams()
+    const highlight = searchParams.get('highlight')
+    // Asking the Super Admin to change a role (§6.9) is for whoever gives
+    // roles here; the second tab is theirs.
+    const [tab, setTab] = useState<'assign' | 'changes'>(searchParams.get('tab') === 'changes' ? 'changes' : 'assign')
     const mayDecide = can('employees.assign_role')
     const maySee = mayDecide || can('employees.request_role')
 
@@ -82,8 +88,29 @@ export default function RoleRequestsPage() {
     const cell = { padding: '0.75rem', borderTop: '1px solid var(--veil-40)', textAlign: (isRtl ? 'right' : 'left') as 'right' | 'left', verticalAlign: 'top' as const }
     const linkButton = { background: 'none', border: 'none', color: 'var(--primary)', cursor: 'pointer', padding: 0, font: 'inherit', fontSize: '0.85rem' }
 
+    const tabs = mayDecide && (
+        <SegmentedToggle
+            value={tab}
+            onChange={(next: 'assign' | 'changes') => setTab(next)}
+            ariaLabel={t('role_requests_title')}
+            options={[
+                { value: 'assign', label: t('role_changes_tab_assign') },
+                { value: 'changes', label: t('role_changes_tab_changes') },
+            ]}
+        />
+    )
+    if (tab === 'changes' && mayDecide) {
+        return (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                {tabs}
+                <RoleChangeRequests side="company" highlight={highlight} />
+            </div>
+        )
+    }
+
     return (
         <div style={{ direction: isRtl ? 'rtl' : 'ltr', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            {tabs}
             <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                 {[...STATUSES, ''].map(s => (
                     <button key={s || 'all'} type="button" onClick={() => setStatus(s)} className="badge"

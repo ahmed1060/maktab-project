@@ -29,12 +29,14 @@ type Props = {
     disabled?: boolean
     /** For a new account: an empty choice meaning the company's default role. */
     allowDefault?: boolean
+    /** What the empty choice says, where it means something else. */
+    emptyLabel?: string
     /** Shown but not changeable — somebody only the Super Admin acts on. */
     locked?: boolean
     style?: React.CSSProperties
 }
 
-export default function RoleSelect({ companyId, value, current, onChange, disabled, allowDefault, locked, style }: Props) {
+export default function RoleSelect({ companyId, value, current, onChange, disabled, allowDefault, emptyLabel, locked, style }: Props) {
     const { t } = useLanguage()
     // Nothing until it is known who is asking: before the session loads, a
     // Super Admin would look like anyone else and ask without a company.
@@ -57,7 +59,7 @@ export default function RoleSelect({ companyId, value, current, onChange, disabl
         >
             {allowDefault && (
                 <option value="">
-                    {t('roles_select_default')}{roles.find(r => r.isDefault) ? ` (${roles.find(r => r.isDefault)!.name})` : ''}
+                    {emptyLabel ?? `${t('roles_select_default')}${roles.find(r => r.isDefault) ? ` (${roles.find(r => r.isDefault)!.name})` : ''}`}
                 </option>
             )}
             {current && !offered && <option value={current.id}>{current.name}</option>}
