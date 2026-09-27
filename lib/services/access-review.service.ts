@@ -2,7 +2,7 @@ import { prisma } from "@/lib/prisma"
 import { can } from "@/lib/permissions/can"
 import { holdersOf } from "@/lib/permissions/holders"
 import type { Permission } from "@/lib/permissions/catalogue"
-import type { Prisma } from "@prisma/client"
+import type { Prisma, UserRole } from "@prisma/client"
 
 /**
  * Periodic access review (ROLES_PLAN.md §6.14). Access that was right a year
@@ -44,7 +44,9 @@ const SHAPE = {
  * never changes and no other role in its company can take it, so the name
  * says which one it was.
  */
-async function withBuiltIn<R extends { companyId: string; lines: { roleName: string }[] }>(reviews: R[]) {
+type WithBuiltIn<R extends { lines: unknown[] }> = Omit<R, "lines"> & { lines: (R["lines"][number] & { roleBuiltIn: UserRole | null })[] }
+
+async function withBuiltIn<R extends { companyId: string; lines: { roleName: string }[] }>(reviews: R[]): Promise<WithBuiltIn<R>[]> {
     const builtIns = await prisma.role.findMany({
         where: { companyId: { in: [...new Set(reviews.map(r => r.companyId))] }, builtIn: { not: null } },
         select: { companyId: true, name: true, builtIn: true },
