@@ -663,6 +663,10 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
             {/* Main Content Wrapper */}
             <main style={{
                 flex: 1,
+                // A flex item is never narrower than its content by default,
+                // and a header subtitle that cuts off with an ellipsis still
+                // counts at full length: a long one widened the whole page.
+                minWidth: 0,
                 display: 'flex',
                 flexDirection: 'column',
                 [isRtl ? 'marginRight' : 'marginLeft']: (!isMobile) ? sidebarWidth : '0', // Dynamic margin based on collapse state
