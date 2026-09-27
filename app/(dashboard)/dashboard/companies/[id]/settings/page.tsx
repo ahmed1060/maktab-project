@@ -11,6 +11,7 @@ import { useLanguage } from '@/context/LanguageContext'
 import CompanyModulesCard from '@/components/CompanyModulesCard'
 import CompanyLogoCard from '@/components/CompanyLogoCard'
 import CompanyPayrollCard from '@/components/CompanyPayrollCard'
+import CompanyRolesCard from '@/components/CompanyRolesCard'
 import type { ModuleOverrides } from '@/lib/modules'
 
 type Company = {
@@ -165,6 +166,9 @@ export default function CompanySettingsPage() {
                             onSaved={next => setCompany({ ...company, ...next })}
                         />
                     )}
+
+                    {/* Who may do what here (ROLES_PLAN.md §6.2). */}
+                    {company && <CompanyRolesCard companyId={companyId} />}
 
                     {/* Replaces the Vendors-only rename this screen used to
                         carry: every module can be renamed now, and Vendors is

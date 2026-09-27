@@ -5,6 +5,7 @@ import { isPermission, type Scope } from "@/lib/permissions/catalogue"
 import { normalizeGrants, grantRows, type GrantInput } from "@/lib/permissions/grant-rules"
 import type { CreateRoleInput, UpdateRoleInput } from "@/lib/validations/role.schema"
 import type { UserRole } from "@prisma/client"
+import { resolveBundles, serializeAccess, type SerializedAccess } from "@/lib/features/bundles"
 
 type Client = Pick<typeof prisma, "role" | "user">
 
@@ -217,6 +218,21 @@ export class RoleService {
             })
         })
         return { id }
+    }
+
+    /**
+     * Which modules the company's package holds, for the permission matrix to
+     * grey out the rest (ROLES_PLAN.md §6.3). A grant in a module the company
+     * has not bought is allowed — the package may change — but does nothing
+     * until it does, and the screen should say so.
+     */
+    static async accessOf(companyId: string): Promise<SerializedAccess> {
+        const company = await prisma.company.findUnique({
+            where: { id: companyId },
+            select: { package: { select: { hasCompanyManagement: true, hasHR: true } } },
+        })
+        if (!company) throw new Error("COMPANY_NOT_FOUND")
+        return serializeAccess(resolveBundles(company.package))
     }
 
     /**

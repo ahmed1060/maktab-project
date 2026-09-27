@@ -52,6 +52,11 @@ export const GET = withStandardHandler(async (req, session) => {
                 role: true, gender: true, salary: true, companyId: true,
                 totalDifficultyPoints: true, avatar: true, dayOffCredit: true,
                 baseDayOffCredit: true, username: true, teamLeaderId: true,
+                // Which of the company's roles they hold, for the Role
+                // dropdown (ROLES_PLAN.md §6.4) — its name too, since the
+                // viewer may not be allowed to give it and so not have it
+                // in their list.
+                roleId: true, assignedRole: { select: { name: true } },
                 // The name, so somebody can be told who manages them. Selected
                 // fields rather than the relation, for the same reason the
                 // list does it: a leader is a User, and `teamLeader: true`

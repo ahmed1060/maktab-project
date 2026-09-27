@@ -19,7 +19,7 @@ vi.mock("@/lib/services/role.service", () => {
     const record = (name: string) => async () => { state.calls.push(`role.${name}`); return {} }
     return {
         GrantsError: class extends Error {},
-        RoleService: { setDefault: record("setDefault"), getById: record("getById"), listForCompany: record("listForCompany"), create: record("create"), update: record("update"), delete: record("delete") },
+        RoleService: { accessOf: async () => ({ unrestricted: true, bundles: [] }), setDefault: record("setDefault"), getById: record("getById"), listForCompany: record("listForCompany"), create: record("create"), update: record("update"), delete: record("delete") },
     }
 })
 vi.mock("@/lib/prisma", () => ({ prisma: {} }))

@@ -11,6 +11,7 @@ import LoadingSpinner from './LoadingSpinner'
 import EndContractModal from './EndContractModal'
 import TeamHandOffModal from './TeamHandOffModal'
 import { useCan } from '@/lib/useCan'
+import RoleSelect from '@/components/RoleSelect'
 
 type EmployeeProfileFormProps = {
     userId: string
@@ -25,6 +26,10 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
     const [role, setRole] = useState('')
+    // Which of the company's roles they hold (ROLES_PLAN.md §6.4); `role` is
+    // its kind, which the rest of the form still reads.
+    const [roleId, setRoleId] = useState('')
+    const [currentRole, setCurrentRole] = useState<{ id: string; name: string; companyId: string } | null>(null)
     const [gender, setGender] = useState('MALE')
     const [salary, setSalary] = useState<string>('')
     const [baseDayOffCredit, setBaseDayOffCredit] = useState<string>('')
@@ -131,6 +136,8 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                 const cleanEmail = employee.email?.split('_DELETED_')[0] || employee.email
                 setEmail(cleanEmail)
                 setRole(employee.role)
+                setRoleId(employee.roleId || '')
+                setCurrentRole(employee.roleId ? { id: employee.roleId, name: employee.assignedRole?.name ?? '', companyId: employee.companyId } : null)
                 setGender(employee.gender || 'MALE')
                 setSalary(employee.salary !== undefined && employee.salary !== null ? employee.salary.toString() : '')
                 setBaseDayOffCredit(employee.baseDayOffCredit !== undefined && employee.baseDayOffCredit !== null ? employee.baseDayOffCredit.toString() : '0')
@@ -317,6 +324,9 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                     email,
                     password: password || undefined,
                     role,
+                    // Only a different role is a change; the server refuses
+                    // what the dropdown would not have offered.
+                    roleId: roleId && roleId !== currentRole?.id ? roleId : undefined,
                     gender,
                     avatar: avatarUrl,
                     companyId: userRole === 'SUPER_ADMIN' ? companyId : undefined,
@@ -930,19 +940,19 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                     can('employees.assign_role') && userId !== session?.user?.id && (
                         <div style={{ marginBottom: '1rem' }}>
                             <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('role_label')}</label>
-                            <select
-                                className="input"
-                                value={role}
-                                onChange={e => setRole(e.target.value)}
-                                required
-                                disabled={isViewMode || userId === session?.user?.id || role === 'SUPER_ADMIN'}
-                                style={(isViewMode || userId === session?.user?.id || role === 'SUPER_ADMIN') ? { background: 'var(--surface-sunk)', cursor: 'not-allowed', color: 'var(--text-soft)', textAlign: locale === 'ar' ? 'right' : 'left' } : { textAlign: locale === 'ar' ? 'right' : 'left' }}
-                            >
-                                <option value="EMPLOYEE">{t('role_employee')}</option>
-                                <option value="TEAM_LEADER">{t('role_team_leader')}</option>
-                                {(userRole === 'SUPER_ADMIN' || role === 'ADMIN') && <option value="ADMIN">{t('role_admin')}</option>}
-                                {role === 'SUPER_ADMIN' && <option value="SUPER_ADMIN">{t('super_admins')}</option>}
-                            </select>
+                            {role === 'SUPER_ADMIN' ? (
+                                <input className="input" value={t('super_admins')} disabled style={{ background: 'var(--surface-sunk)', color: 'var(--text-soft)', textAlign: locale === 'ar' ? 'right' : 'left' }} />
+                            ) : (
+                                <RoleSelect
+                                    companyId={companyId}
+                                    value={roleId}
+                                    // Moved to another company, their role there is chosen afresh.
+                                    current={currentRole && currentRole.companyId === companyId ? currentRole : null}
+                                    onChange={(id, chosen) => { setRoleId(id); if (chosen) setRole(chosen.baseRole) }}
+                                    disabled={isViewMode}
+                                    style={isViewMode ? { background: 'var(--surface-sunk)', cursor: 'not-allowed', color: 'var(--text-soft)', textAlign: locale === 'ar' ? 'right' : 'left' } : { textAlign: locale === 'ar' ? 'right' : 'left' }}
+                                />
+                            )}
                         </div>
                     )
                 }

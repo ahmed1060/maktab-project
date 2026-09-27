@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { useLanguage } from '@/context/LanguageContext'
 import { useCan } from '@/lib/useCan'
+import RoleSelect from '@/components/RoleSelect'
 
 type Company = {
     id: string
@@ -19,6 +20,9 @@ export default function NewEmployeePage() {
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
     const [role, setRole] = useState('EMPLOYEE')
+    // Empty: the company's default role (ROLES_PLAN.md §6.4). `role` is the
+    // chosen role's kind, which decides whether there is a team to join.
+    const [roleId, setRoleId] = useState('')
     const [companyId, setCompanyId] = useState('')
     const [salary, setSalary] = useState('')
     const [dayOffCredit, setDayOffCredit] = useState('0')
@@ -88,7 +92,7 @@ export default function NewEmployeePage() {
         }
 
         try {
-            const body: any = { firstName, lastName, email, password, role }
+            const body: any = { firstName, lastName, email, password, role: roleId ? role : 'EMPLOYEE', ...(roleId ? { roleId } : {}) }
             if (userRole === 'SUPER_ADMIN' && companyId) {
                 body.companyId = companyId
             }
@@ -312,7 +316,7 @@ export default function NewEmployeePage() {
                         <select
                             className="input"
                             value={companyId}
-                            onChange={e => setCompanyId(e.target.value)}
+                            onChange={e => { setCompanyId(e.target.value); setRoleId(''); setRole('EMPLOYEE') }}
                             required
                             style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}
                         >
@@ -327,17 +331,13 @@ export default function NewEmployeePage() {
                 {canAssignRole && (
                     <div style={{ marginBottom: '1rem' }}>
                         <label style={{ display: 'block', marginBottom: '0.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('role_label')}</label>
-                        <select
-                            className="input"
-                            value={role}
-                            onChange={e => setRole(e.target.value)}
-                            required
+                        <RoleSelect
+                            companyId={companyId}
+                            value={roleId}
+                            allowDefault
+                            onChange={(id, chosen) => { setRoleId(id); setRole(chosen?.baseRole ?? 'EMPLOYEE') }}
                             style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}
-                        >
-                            <option value="EMPLOYEE">{t('role_employee')}</option>
-                            <option value="TEAM_LEADER">{t('role_team_leader')}</option>
-                            {userRole === 'SUPER_ADMIN' && <option value="ADMIN">{t('role_admin')}</option>}
-                        </select>
+                        />
                     </div>
                 )}
                 {role === 'EMPLOYEE' && canAssignTeam && (

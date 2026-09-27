@@ -18,7 +18,9 @@ export const GET = withStandardHandler(async (req, session) => {
         if (id) return ApiResponse.success(await RoleService.getById(id))
         const companyId = searchParams.get("companyId")
         if (!companyId) return ApiResponse.badRequest("companyId is required")
-        return ApiResponse.success(await RoleService.listForCompany(companyId))
+        // With the company's package, so the matrix can grey what it has not bought.
+        const [roles, access] = await Promise.all([RoleService.listForCompany(companyId), RoleService.accessOf(companyId)])
+        return ApiResponse.success({ roles, access })
     } catch (error) {
         return roleErrorResponse(error) ?? Promise.reject(error)
     }
