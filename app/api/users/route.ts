@@ -231,6 +231,7 @@ export const PUT = withStandardHandler(async (req, session, json) => {
         // error, and shown to the Admin as the app failing rather than as no.
         if (error.message === 'CROSS_COMPANY_ACCESS_FORBIDDEN') return ApiResponse.forbidden("Access denied")
         if (error.message === 'NAME_CHANGE_REQUIRES_ADMIN') return ApiResponse.forbidden("Name changes require admin approval")
+        if (error.message === 'FORBIDDEN') return ApiResponse.forbidden()
         const refusedRole = assignmentRefusal(error)
         if (refusedRole) return refusedRole
         // Team refusals, including the hand-off question, in the one shape
