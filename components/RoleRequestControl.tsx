@@ -32,6 +32,7 @@ export default function RoleRequestControl({ userId, companyId, current, locked,
     const [sending, setSending] = useState(false)
     // Asked for as an acting role until this date (§6.13), or permanent.
     const [actingDate, setActingDate] = useState('')
+    const [tomorrow] = useState(() => new Date(Date.now() + 86400000).toISOString().slice(0, 10))
     const { data, mutate } = useSWR(`/api/role-requests?userId=${userId}&status=PENDING`, fetcher)
     const pending: Pending | undefined = data?.data?.[0]
 
@@ -72,7 +73,7 @@ export default function RoleRequestControl({ userId, companyId, current, locked,
             {choice && choice !== current?.id && (
                 <div style={{ marginTop: '0.75rem' }}>
                     <label style={{ display: 'block', marginBottom: '0.35rem', fontSize: '0.8rem' }}>{t('acting_until_label')}</label>
-                    <input type="date" className="input" value={actingDate} min={new Date(Date.now() + 86400000).toISOString().slice(0, 10)} onChange={e => setActingDate(e.target.value)} />
+                    <input type="date" className="input" value={actingDate} min={tomorrow} onChange={e => setActingDate(e.target.value)} />
                     <p style={{ fontSize: '0.75rem', color: 'var(--text-soft)', margin: '0.25rem 0 0' }}>{t('acting_until_hint')}</p>
                 </div>
             )}

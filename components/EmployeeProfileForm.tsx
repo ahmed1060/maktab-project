@@ -34,6 +34,9 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
     // An acting role (§6.13): the return date for a new one, and the cover
     // already running, if any.
     const [actingDate, setActingDate] = useState('')
+    // The earliest return date the picker offers: tomorrow. Worked out once,
+    // not on every render.
+    const [tomorrow] = useState(() => new Date(Date.now() + 86400000).toISOString().slice(0, 10))
     const [acting, setActing] = useState<{ until: string; returnTo: string } | null>(null)
     const [gender, setGender] = useState('MALE')
     const [salary, setSalary] = useState<string>('')
@@ -977,7 +980,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                             {can('employees.assign_role') && !isViewMode && roleId && roleId !== currentRole?.id && (
                                 <div style={{ marginTop: '0.75rem' }}>
                                     <label style={{ display: 'block', marginBottom: '0.35rem', fontSize: '0.8rem' }}>{t('acting_until_label')}</label>
-                                    <input type="date" className="input" value={actingDate} min={new Date(Date.now() + 86400000).toISOString().slice(0, 10)} onChange={e => setActingDate(e.target.value)} />
+                                    <input type="date" className="input" value={actingDate} min={tomorrow} onChange={e => setActingDate(e.target.value)} />
                                     <p style={{ fontSize: '0.75rem', color: 'var(--text-soft)', margin: '0.25rem 0 0' }}>{t('acting_until_hint')}</p>
                                 </div>
                             )}
