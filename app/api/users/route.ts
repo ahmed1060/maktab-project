@@ -232,6 +232,7 @@ export const PUT = withStandardHandler(async (req, session, json) => {
         if (error.message === 'CROSS_COMPANY_ACCESS_FORBIDDEN') return ApiResponse.forbidden("Access denied")
         if (error.message === 'NAME_CHANGE_REQUIRES_ADMIN') return ApiResponse.forbidden("Name changes require admin approval")
         if (error.message === 'FORBIDDEN') return ApiResponse.forbidden()
+        if (error.message === 'FORBIDDEN_PASSWORD_RESET') return ApiResponse.forbidden("Changing somebody else's password needs the reset-password permission")
         const refusedRole = assignmentRefusal(error)
         if (refusedRole) return refusedRole
         // Team refusals, including the hand-off question, in the one shape

@@ -221,6 +221,14 @@ export class UserService {
         // password.
         if (superAdminUser && !isSelf && userRole !== 'SUPER_ADMIN') throw new Error("FORBIDDEN")
 
+        // The person being edited: a grant's scope, and the rule that nobody
+        // decides their own role, pay or allowance (ROLES_PLAN.md §4.2, rules
+        // 1 and 5), are checked against them. A team-scoped editor edits their
+        // team, not the rest of the company; the route could only ask whether
+        // they may edit anyone at all.
+        const person = regularUser ? { companyId: regularUser.companyId, userId: regularUser.id, teamLeaderId: regularUser.teamLeaderId } : null
+        if (person && !isSelf && !can(session.user, "employees.edit", person)) throw new Error("FORBIDDEN")
+
         // 1. Name Change Restrictions
         if (isSelf && regularUser && ['EMPLOYEE', 'TEAM_LEADER'].includes(regularUser.role)) {
             if ((firstName && firstName !== regularUser.firstName) || (lastName && lastName !== regularUser.lastName)) {
@@ -250,6 +258,9 @@ export class UserService {
             }
         }
         if (password) {
+            // Setting somebody else's password is its own permission: a role
+            // may edit profiles without being able to take over accounts.
+            if (person && !isSelf && !can(session.user, "employees.reset_password", person)) throw new Error("FORBIDDEN_PASSWORD_RESET")
             // WAVE 10: Security Gate for Admin Password Resets
             const targetRole = regularUser?.role || 'SUPER_ADMIN'
             if (['ADMIN', 'SUPER_ADMIN'].includes(targetRole) && !isSelf && userRole === 'SUPER_ADMIN') {
@@ -279,11 +290,7 @@ export class UserService {
         }
 
         // 4. Role & Privileged Fields
-        if (regularUser) {
-            // The person being edited: a grant's scope, and the rule that
-            // nobody decides their own role, pay or allowance (ROLES_PLAN.md
-            // §4.2, rules 1 and 5), are checked against them.
-            const person = { companyId: regularUser.companyId, userId: regularUser.id, teamLeaderId: regularUser.teamLeaderId }
+        if (regularUser && person) {
             if (roleId !== undefined && roleId !== regularUser.roleId) {
                 // A role of the company's, by id (ROLES_PLAN.md §6.4), through
                 // the rules for handing one out. The company is the one they

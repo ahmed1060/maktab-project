@@ -43,6 +43,42 @@ beforeEach(() => {
     prismaMock.superAdmin.update = async ({ data }: any) => { state.written.push({ ...data }); return { ...SA_ROW, ...data } }
 })
 
+describe("a team-scoped editor", () => {
+    const teamEditor = { "employees.view": "TEAM", "employees.edit": "TEAM" } as const
+
+    it("edits their team", async () => {
+        onRole(teamEditor)
+        expect((await put({ id: "emp", gender: "FEMALE" })).status).toBe(200)
+        expect(fieldsWritten()).toEqual(["gender"])
+    })
+
+    it("does not edit the rest of the company", async () => {
+        onRole(teamEditor)
+        expect((await put({ id: "loner", gender: "FEMALE", firstName: "X" })).status).toBe(403)
+        expect(fieldsWritten()).toEqual([])
+    })
+})
+
+describe("setting somebody else's password", () => {
+    it("needs the reset-password permission, not just profile editing", async () => {
+        onRole({ "employees.view": "COMPANY", "employees.edit": "COMPANY" })
+        expect((await put({ id: "emp", password: "a-new-password-123" })).status).toBe(403)
+        expect(fieldsWritten()).toEqual([])
+    })
+
+    it("is allowed with it", async () => {
+        onRole({ "employees.view": "COMPANY", "employees.edit": "COMPANY", "employees.reset_password": "COMPANY" })
+        expect((await put({ id: "emp", password: "a-new-password-123" })).status).toBe(200)
+        expect(fieldsWritten()).toEqual(["mustChangePassword", "password"])
+    })
+
+    it("of one's own account needs neither", async () => {
+        onRole({}, { id: "emp", role: "EMPLOYEE", companyId: "c1" })
+        expect((await put({ id: "emp", password: "a-new-password-123" })).status).toBe(200)
+        expect(fieldsWritten()).toEqual(["mustChangePassword", "password"])
+    })
+})
+
 describe("a Super Admin's account", () => {
     it("is not a company Admin's to edit, password or otherwise", async () => {
         onRole({ "employees.view": "COMPANY", "employees.edit": "COMPANY", "employees.reset_password": "COMPANY" }, { id: "admin", role: "ADMIN", companyId: "c1" })
