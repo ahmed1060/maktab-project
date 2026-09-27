@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useSession } from 'next-auth/react'
 import Modal from '@/components/Modal'
+import { stepUpWaiting } from '@/lib/step-up-waiting'
 import { useLanguage } from '@/context/LanguageContext'
 
 /**
@@ -19,12 +20,14 @@ import { useLanguage } from '@/context/LanguageContext'
  * set up two-factor authentication first.
  */
 
-type Ask = { kind: 'code' | 'enrol'; minutes: number; resolve: (confirmed: boolean) => void }
+type Ask = { kind: 'code' | 'enrol'; minutes: number }
 
 export default function StepUpInterceptor() {
     const { t } = useLanguage()
     const { data: current, update } = useSession()
     const [ask, setAsk] = useState<Ask | null>(null)
+    // Every request waiting on the prompt, settled together by its answer.
+    const [waiting] = useState(stepUpWaiting)
     const [code, setCode] = useState('')
     const [wrong, setWrong] = useState(false)
     const [checking, setChecking] = useState(false)
@@ -38,8 +41,7 @@ export default function StepUpInterceptor() {
 
     useEffect(() => {
         const { fetch: inner } = window
-        const waitFor = (kind: Ask['kind'], minutes: number) =>
-            new Promise<boolean>(resolve => setAsk({ kind, minutes, resolve }))
+        const waitFor = (kind: Ask['kind'], minutes: number) => waiting.wait(() => setAsk({ kind, minutes }))
 
         window.fetch = async (input, init) => {
             // A Request's body can be read once; keep a copy to send again.
@@ -56,10 +58,10 @@ export default function StepUpInterceptor() {
             return confirmed ? inner(again, init) : res
         }
         return () => { window.fetch = inner }
-    }, [])
+    }, [waiting])
 
     const close = (confirmed: boolean) => {
-        ask?.resolve(confirmed)
+        waiting.settle(confirmed)
         setAsk(null)
         setCode('')
         setWrong(false)
