@@ -244,6 +244,14 @@ model Company {
   roles                Role[]                @relation("CompanyRoles")
   roleRequests         RoleRequest[]
   roleChangeRequests   RoleChangeRequest[]
+  /// Periodic access review (ROLES_PLAN.md §6.14): off unless the Super Admin
+  /// switches it on as part of the company's contract. Every
+  /// accessReviewMonths the company's Admins review who holds sensitive
+  /// permissions. Turning it off stops future reviews and keeps past ones.
+  accessReviewEnabled  Boolean               @default(false)
+  accessReviewMonths   Int                   @default(3)
+  accessReviewNextAt   DateTime?
+  accessReviews        AccessReview[]
   /// The role a new account starts on (ROLES_PLAN.md §6.4). Null means the
   /// company's built-in Employee role — every company has one, so nobody is
   /// ever created without a role, even while a request for another waits.
@@ -347,6 +355,7 @@ model SuperAdmin {
   auditLogs          AuditLog[]
   notifications      Notification[]
   roleChangeAnswers  RoleChangeRequest[]
+  accessReviewAnswers AccessReviewLine[]
   trustedDevices     TrustedDevice[]
   verificationCodes  VerificationCode[]
 }
@@ -455,6 +464,8 @@ model User {
   roleRequestsMade           RoleRequest[]           @relation("RoleRequestBy")
   roleRequestsDecided        RoleRequest[]           @relation("RoleRequestDecidedBy")
   roleChangeRequests         RoleChangeRequest[]
+  accessReviewLines          AccessReviewLine[]      @relation("AccessReviewLineFor")
+  accessReviewAnswers        AccessReviewLine[]      @relation("AccessReviewLineAnsweredBy")
 
   @@index([email])
   @@index([companyId])
@@ -1399,4 +1410,52 @@ model RoleChangeRequest {
 
   @@index([status])
   @@index([companyId])
+}
+
+enum AccessReviewStatus {
+  OPEN
+  COMPLETED
+}
+
+enum AccessReviewDecision {
+  CONFIRMED
+  CHANGE_REQUESTED
+}
+
+/// One round of a company's periodic access review (ROLES_PLAN.md §6.14): who
+/// held each sensitive permission when it was opened, a line each, for the
+/// company's Admins to confirm or ask to change. Kept after it is done — the
+/// record an auditor asks for.
+model AccessReview {
+  id          String             @id @default(uuid())
+  companyId   String
+  company     Company            @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  status      AccessReviewStatus @default(OPEN)
+  lines       AccessReviewLine[]
+  createdAt   DateTime           @default(now())
+  completedAt DateTime?
+
+  @@index([companyId, status])
+  @@index([status])
+}
+
+model AccessReviewLine {
+  id                    String                @id @default(uuid())
+  reviewId              String
+  review                AccessReview          @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  userId                String
+  user                  User                  @relation("AccessReviewLineFor", fields: [userId], references: [id], onDelete: Cascade)
+  permission            String
+  scope                 String
+  /// The role it came through, by name, as it was when the review opened.
+  roleName              String
+  decision              AccessReviewDecision?
+  note                  String?
+  answeredById          String?
+  answeredBy            User?                 @relation("AccessReviewLineAnsweredBy", fields: [answeredById], references: [id], onDelete: SetNull)
+  answeredBySuperAdminId String?
+  answeredBySuperAdmin  SuperAdmin?           @relation(fields: [answeredBySuperAdminId], references: [id], onDelete: SetNull)
+  answeredAt            DateTime?
+
+  @@index([reviewId])
 }

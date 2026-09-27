@@ -24,6 +24,9 @@ vi.mock("@/lib/services/role.service", () => {
     }
 })
 vi.mock("@/lib/prisma", () => ({ prisma: { company: { findUnique: async () => ({ name: "One" }) } } }))
+vi.mock("@/lib/services/access-review.service", () => ({
+    AccessReviewService: { configure: async () => { state.calls.push("reviews.configure"); return {} } },
+}))
 vi.mock("@/lib/services/role-request.service", () => ({
     RoleRequestService: {
         list: async () => { state.calls.push("requests.list"); return [] },
@@ -47,7 +50,7 @@ vi.mock("@/lib/services/role-template.service", () => {
 const ROLE_BODY = { companyId: "c1", name: "Accountant", description: null, baseRole: "EMPLOYEE", grants: [] }
 const TEMPLATE_BODY = { name: "Accountant", description: null, baseRole: "EMPLOYEE", grants: [] }
 
-type Call = { route: "roles" | "role-templates" | "roles/default" | "roles/who-can" | "roles/copy" | "role-templates/push" | "roles/export"; method: "GET" | "POST" | "PUT" | "DELETE"; query?: string; body?: any }
+type Call = { route: "roles" | "role-templates" | "roles/default" | "roles/who-can" | "roles/copy" | "role-templates/push" | "roles/export" | "access-reviews/settings"; method: "GET" | "POST" | "PUT" | "DELETE"; query?: string; body?: any }
 
 const CALLS: Call[] = [
     { route: "roles", method: "GET", query: "?companyId=c1" },
@@ -66,6 +69,7 @@ const CALLS: Call[] = [
     { route: "role-templates/push", method: "GET", query: "?id=t1" },
     { route: "role-templates/push", method: "POST", body: { templateId: "t1", roleIds: ["r1"] } },
     { route: "roles/export", method: "GET", query: "?companyId=c1" },
+    { route: "access-reviews/settings", method: "PUT", body: { companyId: "c1", enabled: true, months: 3 } },
 ]
 
 async function send({ route, method, query = "", body }: Call) {
@@ -74,6 +78,7 @@ async function send({ route, method, query = "", body }: Call) {
         : route === "roles/who-can" ? await import("@/app/api/roles/who-can/route")
         : route === "roles/copy" ? await import("@/app/api/roles/copy/route")
         : route === "roles/export" ? await import("@/app/api/roles/export/route")
+        : route === "access-reviews/settings" ? await import("@/app/api/access-reviews/settings/route")
         : route === "role-templates/push" ? await import("@/app/api/role-templates/push/route")
         : await import("@/app/api/role-templates/route")
     const init: RequestInit = { method, headers: { "content-type": "application/json" } }

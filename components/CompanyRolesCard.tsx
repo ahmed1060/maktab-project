@@ -9,6 +9,7 @@ import { useLanguage } from '@/context/LanguageContext'
 import { useToast } from '@/context/ToastContext'
 import ConfirmModal from '@/components/ConfirmModal'
 import CopyRolesModal from '@/components/CopyRolesModal'
+import AccessReviewSetting, { type ReviewSetting } from '@/components/AccessReviewSetting'
 import RoleEditorModal, { type BaseRole, type EditableRole, type RoleSubmission, type Template } from '@/components/RoleEditorModal'
 import type { SerializedAccess } from '@/lib/features/bundles'
 
@@ -38,6 +39,7 @@ export default function CompanyRolesCard({ companyId }: { companyId: string }) {
     const { data: templatesData } = useSWR('/api/role-templates', fetcher)
     const roles: Role[] = data?.data?.roles ?? []
     const access: SerializedAccess | null = data?.data?.access ?? null
+    const review: ReviewSetting | null = data?.data?.review ?? null
     const templates: Template[] = templatesData?.data ?? []
 
     const [editing, setEditing] = useState<Role | 'new' | null>(null)
@@ -158,6 +160,16 @@ export default function CompanyRolesCard({ companyId }: { companyId: string }) {
                 access={access}
                 onSubmit={save}
             />
+
+            {/* Remounted when the saved setting changes, so it starts from it. */}
+            {review && (
+                <AccessReviewSetting
+                    key={`${review.accessReviewEnabled}-${review.accessReviewMonths}`}
+                    companyId={companyId}
+                    setting={review}
+                    onSaved={() => mutate()}
+                />
+            )}
 
             <CopyRolesModal companyId={companyId} isOpen={copying} onClose={() => setCopying(false)} onCopied={() => mutate()} />
 

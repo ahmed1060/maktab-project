@@ -58,6 +58,8 @@ describe("every high-risk action asks", () => {
         "lib/services/client.service.ts": "called by DELETE /api/clients, which asks",
         "lib/services/section.service.ts": "called by DELETE /api/clients/[id]/sections, which asks",
         "lib/services/note.service.ts": "called by DELETE …/notes, which asks",
+        // Names them as what a review lists, not to let anybody act.
+        "lib/services/access-review.service.ts": "the permissions an access review lists",
     }
     const uses = (source: string, p: string) => new RegExp(`["']${p.replace(".", "\\.")}["']`).test(source)
 

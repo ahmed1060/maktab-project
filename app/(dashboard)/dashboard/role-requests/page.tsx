@@ -10,6 +10,7 @@ import ConfirmModal from '@/components/ConfirmModal'
 import SafeDate from '@/components/SafeDate'
 import { refusalOf } from '@/components/CompanyRolesCard'
 import RoleChangeRequests from '@/components/RoleChangeRequests'
+import AccessReviews from '@/components/AccessReviews'
 import SegmentedToggle from '@/components/SegmentedToggle'
 import { useToast } from '@/context/ToastContext'
 import { useLanguage } from '@/context/LanguageContext'
@@ -51,7 +52,9 @@ export default function RoleRequestsPage() {
     const highlight = searchParams.get('highlight')
     // Asking the Super Admin to change a role (§6.9) is for whoever gives
     // roles here; the second tab is theirs.
-    const [tab, setTab] = useState<'assign' | 'changes'>(searchParams.get('tab') === 'changes' ? 'changes' : 'assign')
+    const [tab, setTab] = useState<'assign' | 'changes' | 'reviews'>(
+        searchParams.get('tab') === 'changes' ? 'changes' : searchParams.get('tab') === 'reviews' ? 'reviews' : 'assign',
+    )
     const mayDecide = can('employees.assign_role')
     const maySee = mayDecide || can('employees.request_role')
 
@@ -91,14 +94,24 @@ export default function RoleRequestsPage() {
     const tabs = mayDecide && (
         <SegmentedToggle
             value={tab}
-            onChange={(next: 'assign' | 'changes') => setTab(next)}
+            onChange={(next: 'assign' | 'changes' | 'reviews') => setTab(next)}
             ariaLabel={t('role_requests_title')}
             options={[
                 { value: 'assign', label: t('role_changes_tab_assign') },
                 { value: 'changes', label: t('role_changes_tab_changes') },
+                // Periodic access review (§6.14), when the company has it.
+                { value: 'reviews', label: t('access_review_tab') },
             ]}
         />
     )
+    if (tab === 'reviews' && mayDecide) {
+        return (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                {tabs}
+                <AccessReviews side="company" highlight={highlight} />
+            </div>
+        )
+    }
     if (tab === 'changes' && mayDecide) {
         return (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>

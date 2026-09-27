@@ -1,5 +1,6 @@
 import { withStandardHandler } from "@/lib/api-utils"
 import { ApiResponse } from "@/lib/api-response"
+import { prisma } from "@/lib/prisma"
 import { RoleService } from "@/lib/services/role.service"
 import { createRoleSchema, updateRoleSchema } from "@/lib/validations/role.schema"
 import { roleErrorResponse, denyUnlessSuperAdmin } from "@/lib/role-errors"
@@ -19,8 +20,13 @@ export const GET = withStandardHandler(async (req, session) => {
         const companyId = searchParams.get("companyId")
         if (!companyId) return ApiResponse.badRequest("companyId is required")
         // With the company's package, so the matrix can grey what it has not bought.
-        const [roles, access] = await Promise.all([RoleService.listForCompany(companyId), RoleService.accessOf(companyId)])
-        return ApiResponse.success({ roles, access })
+        const [roles, access, review] = await Promise.all([
+            RoleService.listForCompany(companyId),
+            RoleService.accessOf(companyId),
+            // The periodic access review setting sits with the roles (§6.14).
+            prisma.company.findUnique({ where: { id: companyId }, select: { accessReviewEnabled: true, accessReviewMonths: true, accessReviewNextAt: true } }),
+        ])
+        return ApiResponse.success({ roles, access, review })
     } catch (error) {
         return roleErrorResponse(error) ?? Promise.reject(error)
     }

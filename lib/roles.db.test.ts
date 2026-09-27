@@ -11,6 +11,7 @@ import { holdersOf } from "@/lib/permissions/holders"
 import { AccessReportService } from "@/lib/services/access-report.service"
 import { RoleRequestService } from "@/lib/services/role-request.service"
 import { RoleChangeRequestService } from "@/lib/services/role-change-request.service"
+import { AccessReviewService } from "@/lib/services/access-review.service"
 import { RoleTemplateService } from "@/lib/services/role-template.service"
 
 /**
@@ -34,6 +35,8 @@ const TEMPLATES = "20260928000000_role_templates"
 const REQUESTS = "20260929000000_role_requests"
 const ACTING = "20260930000000_acting_roles"
 const CHANGES = "20261001000000_role_change_requests"
+const STEP_UP = "20261002000000_step_up"
+const REVIEWS = "20261003000000_access_reviews"
 const sql = (name: string) => readFileSync(`prisma/migrations/${name}/migration.sql`, "utf8")
 
 const BEFORE_ROLES = `
@@ -68,6 +71,8 @@ describe.skipIf(!ADMIN_URL)("roles as data, in Postgres", () => {
         await db.query(sql(REQUESTS))
         await db.query(sql(ACTING))
         await db.query(sql(CHANGES))
+        await db.query(sql(STEP_UP))
+        await db.query(sql(REVIEWS))
         prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: url.toString() }) })
         // The services that manage roles use the application's client; point it
         // here before its first use (it is built lazily).
@@ -736,6 +741,70 @@ describe.skipIf(!ADMIN_URL)("roles as data, in Postgres", () => {
         it("asks of templates too", async () => {
             await expect(RoleTemplateService.create({ name: "Payroll all", baseRole: "EMPLOYEE", grants: both }, sa)).rejects.toThrow("SEPARATION_UNACKNOWLEDGED")
             await RoleTemplateService.create({ name: "Payroll all", baseRole: "EMPLOYEE", grants: both, acknowledgeConflicts: true }, sa)
+        })
+    })
+    describe("periodic access review (B5, §6.14)", () => {
+        const sa = { user: { id: "sa", role: "SUPER_ADMIN" } }
+        const admin = { user: { id: "a1", role: "ADMIN", companyId: "c1", grants: builtInGrantsToken("ADMIN") } }
+        const otherAdmin = { user: { id: "a1b", role: "ADMIN", companyId: "c1", grants: builtInGrantsToken("ADMIN") } }
+
+        beforeAll(async () => {
+            await db.query(`INSERT INTO "SuperAdmin" (id, email, password, "firstName", "lastName", username, "updatedAt")
+                VALUES ('sa', 'sa@test', 'x', 'Super', 'Admin', 'sa', now()) ON CONFLICT DO NOTHING`)
+            // Two Admins at work, so each can review the other (the last-Admin
+            // test left the second suspended).
+            await db.query(`UPDATE "User" SET status = 'ACTIVE' WHERE id = 'a1b'`)
+        })
+
+        it("is off until the Super Admin switches it on, and then opens when due", async () => {
+            expect((await AccessReviewService.runDue()).opened).toBe(0)
+            await expect(AccessReviewService.configure("c1", { enabled: true, months: 3 }, admin)).rejects.toThrow("FORBIDDEN")
+            await AccessReviewService.configure("c1", { enabled: true, months: 3 }, sa)
+            expect((await AccessReviewService.runDue()).opened).toBe(1)
+            // Scheduled three months on, not again today.
+            expect((await AccessReviewService.runDue()).opened).toBe(0)
+            const next = (await db.query(`SELECT "accessReviewNextAt" AS at FROM "Company" WHERE id = 'c1'`)).rows[0].at
+            expect(next.getTime() - Date.now()).toBeGreaterThan(80 * 86400000)
+        })
+
+        it("lists who holds each reviewed permission, through which role, and tells the Admins", async () => {
+            const [review] = await AccessReviewService.list(admin, { status: "OPEN" })
+            const lines = review.lines.map(l => `${l.userId}:${l.permission}`)
+            expect(lines).toContain("a1:payroll.approve")
+            expect(lines).toContain("a1:employees.assign_role")
+            // Only people in this company.
+            expect(review.lines.every(l => !["e2"].includes(l.userId))).toBe(true)
+            expect((await db.query(`SELECT count(*)::int AS n FROM "Notification" WHERE "userId" = 'a1b' AND type = 'ROLE_ACCESS_REVIEW'`)).rows[0].n).toBe(1)
+        })
+
+        it("is answered line by line, never for one's own access, and a change goes to the Super Admin", async () => {
+            const [review] = await AccessReviewService.list(admin, { status: "OPEN" })
+            const own = review.lines.find(l => l.userId === "a1")!
+            await expect(AccessReviewService.answer(own.id, { decision: "CONFIRMED" }, admin)).rejects.toThrow("OWN_LINE")
+            await AccessReviewService.answer(own.id, { decision: "CONFIRMED" }, otherAdmin)
+            await expect(AccessReviewService.answer(own.id, { decision: "CONFIRMED" }, otherAdmin)).rejects.toThrow("ALREADY_ANSWERED")
+
+            const another = review.lines.find(l => l.userId !== "a1" && l.userId !== "a1b")!
+            await expect(AccessReviewService.answer(another.id, { decision: "CHANGE_REQUESTED" }, admin)).rejects.toThrow("REASON_REQUIRED")
+            await AccessReviewService.answer(another.id, { decision: "CHANGE_REQUESTED", note: "No longer needs payroll" }, admin)
+            const asked = (await db.query(`SELECT description FROM "RoleChangeRequest" WHERE description LIKE 'Access review:%'`)).rows
+            expect(asked.at(-1).description).toContain("No longer needs payroll")
+        })
+
+        it("is done when every line is answered, and the Super Admin sees which are not", async () => {
+            const [review] = await AccessReviewService.list(sa, { status: "OPEN", companyId: "c1" })
+            for (const line of review.lines.filter(l => !l.decision)) await AccessReviewService.answer(line.id, { decision: "CONFIRMED" }, sa)
+            expect((await AccessReviewService.list(sa, { status: "OPEN", companyId: "c1" }))).toEqual([])
+            const [done] = await AccessReviewService.list(sa, { companyId: "c1" })
+            expect(done).toMatchObject({ status: "COMPLETED" })
+            expect(done.completedAt).not.toBeNull()
+        })
+
+        it("stops when switched off, and keeps what was reviewed", async () => {
+            await AccessReviewService.configure("c1", { enabled: false, months: 3 }, sa)
+            await db.query(`UPDATE "Company" SET "accessReviewNextAt" = NULL WHERE id = 'c1'`)
+            expect((await AccessReviewService.runDue(new Date(Date.now() + 400 * 86400000))).opened).toBe(0)
+            expect((await AccessReviewService.list(sa, { companyId: "c1" })).length).toBe(1)
         })
     })
 })
