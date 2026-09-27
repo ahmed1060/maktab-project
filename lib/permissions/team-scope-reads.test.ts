@@ -53,3 +53,22 @@ describe("a grant held for a team", () => {
         })
     }
 })
+
+describe("the leave requests list", () => {
+    async function listedWhere(grants: Grants) {
+        onRole(grants)
+        let where: any = null
+        prismaMock.dayOffRequest.findMany = async (args: any) => { where = args.where; return [] }
+        const { GET } = await import("@/app/api/admin/day-off-requests/route")
+        expect((await GET(get("/api/admin/day-off-requests"))).status).toBe(200)
+        return where
+    }
+
+    it("held for a team, lists the team's requests and one's own", async () => {
+        expect(await listedWhere({ "dayoff.view": "TEAM" })).toEqual({ user: { companyId: "c1", OR: [{ teamLeaderId: "tl" }, { id: "tl" }] } })
+    })
+
+    it("held for the company, lists the company's", async () => {
+        expect(await listedWhere({ "dayoff.view": "COMPANY" })).toEqual({ user: { companyId: "c1" } })
+    })
+})

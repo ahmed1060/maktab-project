@@ -4,6 +4,7 @@ import { withStandardHandler } from "@/lib/api-utils"
 import { ApiResponse } from "@/lib/api-response"
 import { prisma } from "@/lib/prisma"
 import { can } from "@/lib/permissions/can"
+import { scopesToTeam, teamMemberWhere } from "@/lib/team-scope"
 
 export const GET = withStandardHandler(async (req, session) => {
     const { searchParams } = new URL(req.url)
@@ -19,6 +20,10 @@ export const GET = withStandardHandler(async (req, session) => {
         if (companyId) {
             where.user = { companyId }
         }
+    } else if (scopesToTeam(session.user, "dayoff.view")) {
+        // Held for a team, it shows the team's requests (and their own), not
+        // the company's: dates, reasons and balances are the team's business.
+        where.user = { companyId: session.user.companyId, ...teamMemberWhere(session.user.id) }
     } else {
         where.user = { companyId: session.user.companyId }
     }
