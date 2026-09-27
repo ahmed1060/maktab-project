@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
-import { withGrants } from "./test-actors"
+import { withGrants, stepUpConfirmed } from "./test-actors"
 
 /**
  * Which tasks bulk "mark paid" reaches.
@@ -62,7 +62,8 @@ vi.mock("@/lib/prisma", () => {
             updateMany: async ({ where }: any) => { seen.paid.push(...(where.id?.in ?? [])); return { count: 0 } },
         },
     }
-    return { prisma: { ...tx, rateLimit: { upsert: async () => ({ count: 1 }) }, $transaction: async (fn: any) => fn(tx) } }
+    // No settings row: step-up (§6.15) uses its default interval.
+    return { prisma: { ...tx, rateLimit: { upsert: async () => ({ count: 1 }) }, systemSettings: { findUnique: async () => null }, $transaction: async (fn: any) => fn(tx) } }
 })
 
 const ACTORS = {
@@ -71,7 +72,7 @@ const ACTORS = {
 }
 
 async function pay(actor: keyof typeof ACTORS, body: object) {
-    state.session = { user: ACTORS[actor] }
+    state.session = { user: stepUpConfirmed(ACTORS[actor]) }
     seen.paid = []
     const { POST } = await import("@/app/api/tasks/payment/bulk/route")
     await POST(new Request("https://nizmo.test/api/tasks/payment/bulk", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }))

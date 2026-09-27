@@ -4,6 +4,7 @@ import { ApiResponse } from "@/lib/api-response"
 import { createClientSchema, updateClientSchema } from "@/lib/validations/client.schema"
 import { ClientService } from "@/lib/services/client.service"
 import { can } from "@/lib/permissions/can"
+import { assertStepUp } from "@/lib/step-up"
 
 export const GET = withStandardHandler(async (req, session) => {
     const { searchParams } = new URL(req.url)
@@ -114,6 +115,8 @@ export const PUT = withStandardHandler(async (req, session, json) => {
 
 export const DELETE = withStandardHandler(async (req, session) => {
     if (!can(session.user, "clients.delete")) return ApiResponse.forbidden()
+    // A high-risk action: confirmed with a code within the hour (ROLES_PLAN.md §6.15).
+    await assertStepUp(session, "clients.delete")
 
     const { searchParams } = new URL(req.url)
     const id = searchParams.get('id')

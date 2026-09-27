@@ -4,6 +4,7 @@ import { noteSchema } from "@/lib/validations/note.schema"
 import { NoteService } from "@/lib/services/note.service"
 import { prisma } from "@/lib/prisma"
 import { can } from "@/lib/permissions/can"
+import { assertStepUp } from "@/lib/step-up"
 
 export const GET = withStandardHandler(async (req, session, _body, { params }) => {
     const { sectionId } = params
@@ -123,6 +124,8 @@ export const DELETE = withStandardHandler(async (req, session) => {
         if (!can(session.user, "clients.delete", { companyId: note.section.client.companyId })) {
             return ApiResponse.forbidden("Access denied")
         }
+        // A high-risk action: confirmed with a code within the hour (ROLES_PLAN.md §6.15).
+        await assertStepUp(session, "clients.delete")
 
         // 2. Service
         await NoteService.delete(noteId, session)

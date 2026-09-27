@@ -4,6 +4,7 @@ import { can } from "@/lib/permissions/can"
 import { prisma } from "@/lib/prisma"
 import { TaskService } from "@/lib/services/task.service"
 import { scopesToTeam, assignedToTeamWhere } from "@/lib/team-scope"
+import { assertStepUp } from "@/lib/step-up"
 
 export const POST = withStandardHandler(async (req, session, json) => {
     const userRole = session.user.role
@@ -12,6 +13,8 @@ export const POST = withStandardHandler(async (req, session, json) => {
     if (!can(session.user, "tasks.pay")) {
         return ApiResponse.forbidden()
     }
+    // A high-risk action: confirmed with a code within the hour (ROLES_PLAN.md §6.15).
+    await assertStepUp(session, "tasks.pay")
 
     const teamOnly = scopesToTeam(session.user, "tasks.pay")
     const { taskIds, filters } = json

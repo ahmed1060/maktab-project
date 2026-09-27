@@ -13,6 +13,9 @@ declare module "next-auth" {
             // The Super Admin previewing a role (ROLES_PLAN.md §6.6): the
             // session presents that role, and every write is refused.
             preview?: { roleId: string; roleName: string; companyId: string; companyName: string } | null
+            // When this session last entered a step-up code (ROLES_PLAN.md
+            // §6.15), in ms; set only by the jwt() callback after checking it.
+            stepUpAt?: number | null
             firstName: string
             lastName: string
             gender?: string
@@ -117,6 +120,7 @@ declare module "next-auth/jwt" {
         roleVersion?: number
         grants?: string
         preview?: import("@/lib/services/role.service").RolePreview | null
+        stepUpAt?: number | null
         firstName: string
         lastName: string
         gender?: string

@@ -4,6 +4,7 @@ import { can } from "@/lib/permissions/can"
 import { TaskService } from "@/lib/services/task.service"
 import { verifyResourceAccess } from "@/lib/security"
 import { shapeTask } from "@/lib/permissions/shape"
+import { assertStepUp } from "@/lib/step-up"
 
 export const PUT = withStandardHandler(async (req, session, json, { params }) => {
     const taskId = params.id
@@ -14,6 +15,8 @@ export const PUT = withStandardHandler(async (req, session, json, { params }) =>
 
     const hasAccess = await verifyResourceAccess(session, taskId, 'TASK')
     if (!hasAccess) return ApiResponse.forbidden("Access denied")
+    // A high-risk action: confirmed with a code within the hour (ROLES_PLAN.md §6.15).
+    await assertStepUp(session, "tasks.pay")
 
     try {
         const task = await TaskService.updatePayment(taskId, session, json)

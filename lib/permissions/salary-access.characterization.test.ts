@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest"
-import { withGrants } from "./test-actors"
+import { withGrants, stepUpConfirmed } from "./test-actors"
 
 vi.setConfig({ testTimeout: 30_000 })
 
@@ -29,6 +29,8 @@ vi.mock("next-auth", () => ({ getServerSession: async () => state.session }))
 vi.mock("@/lib/auth", () => ({ authOptions: {} }))
 vi.mock("@/lib/prisma", () => ({
     prisma: {
+        // No settings row: step-up (§6.15) uses its default interval.
+        systemSettings: { findUnique: async () => null },
         rateLimit: { findUnique: async () => null, upsert: async () => ({ count: 1 }) },
         user: { findUnique: async ({ where }: any) => USERS[where.id] ?? null },
     },
@@ -128,7 +130,7 @@ describe("salaries and adjustments — recorded access", () => {
     for (const c of CASES) {
         for (const actor of Object.keys(ACTORS) as ActorName[]) {
             it(`${c.name} as ${actor}`, async () => {
-                state.session = { user: withGrants({ ...ACTORS[actor] }) }
+                state.session = { user: stepUpConfirmed(withGrants({ ...ACTORS[actor] })) }
                 const res = await c.run()
                 expect(res.status).toBe(c.expected[actor])
             })

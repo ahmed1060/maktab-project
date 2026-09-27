@@ -9,6 +9,7 @@ import { toMajor } from "@/lib/payroll"
 import { calendarMonth } from "@/lib/time"
 import { prisma } from "@/lib/prisma"
 import { RoleAssignmentService } from "@/lib/services/role-assignment.service"
+import { assertStepUp } from "@/lib/step-up"
 
 const ONLY_SUPER_ADMIN = "Only the Super Admin acts on an Admin"
 
@@ -92,6 +93,8 @@ export const POST = withStandardHandler(async (req, session, json, { params }) =
     } catch {
         return ApiResponse.forbidden(ONLY_SUPER_ADMIN)
     }
+    // A high-risk action: confirmed with a code within the hour (ROLES_PLAN.md §6.15).
+    await assertStepUp(session, "employees.end_contract")
 
     const { action, lastWorkingDay, reason } = json ?? {}
     // Three states, as everywhere in team assignment: absent means nobody has

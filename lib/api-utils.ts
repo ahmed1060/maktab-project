@@ -11,6 +11,7 @@ import * as Sentry from "@sentry/nextjs"
 import { can } from "@/lib/permissions/can"
 import type { Permission } from "@/lib/permissions/catalogue"
 import { accountKind } from "@/lib/security"
+import { StepUpError } from "@/lib/step-up"
 
 type HandlerOptions = {
     allowedRoles?: string[]
@@ -340,6 +341,14 @@ export function withStandardHandler(
             return response
         } catch (error: any) {
             if (isNextInternalError(error)) throw error
+            // A high-risk action waiting for the person to confirm it is them
+            // (ROLES_PLAN.md §6.15): not a failure, an answer the screens know
+            // — StepUpInterceptor asks for the code and tries again.
+            if (error instanceof StepUpError) {
+                return NextResponse.json({ success: false, error: error.code === "MFA_ENROL_REQUIRED"
+                    ? "This action needs two-factor authentication. Set it up in Security settings first."
+                    : "Confirm it's you with your authenticator code.", code: error.code, minutes: error.minutes }, { status: 403 })
+            }
             console.error("API Standard Handler Error:", error)
             // Never echo the raw exception to the client — it can be a
             // Prisma/Supabase/network error with internal detail in it.

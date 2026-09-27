@@ -302,6 +302,11 @@ model SystemSettings {
   /// constant in lib/time.ts, so the fallback is never re-improvised at a call
   /// site.
   defaultTimezone            String   @default("Africa/Cairo")
+  /// How long a step-up MFA confirmation lasts (ROLES_PLAN.md §6.15): a
+  /// high-risk action asks for a code unless one was entered this long ago
+  /// or less, counted from when it was entered. A setting, so it can be
+  /// tuned without a release.
+  stepUpMinutes              Int      @default(60)
   updatedAt                  DateTime @updatedAt
 }
 

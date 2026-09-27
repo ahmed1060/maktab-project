@@ -11,6 +11,7 @@ const db = {
     users: {} as Record<string, any>,
     superAdmins: {} as Record<string, any>,
     audit: [] as string[],
+    limits: {} as Record<string, { count: number; resetAt: Date }>,
 }
 
 vi.mock("@/lib/prisma", () => ({
@@ -19,7 +20,16 @@ vi.mock("@/lib/prisma", () => ({
         user: { findUnique: async ({ where }: any) => db.users[where.id] ?? null },
         superAdmin: { findUnique: async ({ where }: any) => db.superAdmins[where.id] ?? null },
         systemSettings: { findUnique: async () => null },
+        rateLimit: {
+            findUnique: async ({ where }: any) => db.limits[where.key] ?? null,
+            upsert: async ({ where, create }: any) => (db.limits[where.key] = { count: create.count, resetAt: create.resetAt }),
+            update: async ({ where }: any) => { db.limits[where.key].count++; return db.limits[where.key] },
+        },
     },
+}))
+// The authenticator itself: "123456" is right, anything else is not.
+vi.mock("@/lib/services/mfa.service", () => ({
+    MfaService: { verifyStoredCode: async (_secret: string, code: string) => code === "123456" },
 }))
 vi.mock("@/lib/services/audit-log.service", () => ({
     AuditLogService: { log: async (action: string) => { db.audit.push(action) }, logSystemError: async () => "ref" },
@@ -39,6 +49,7 @@ beforeEach(() => {
     }
     db.users = {}
     db.superAdmins = {}
+    db.limits = {}
 })
 
 describe("previewing a role (ROLES_PLAN.md §6.6)", () => {
@@ -107,5 +118,42 @@ describe("a client updating its own session", () => {
     it("still takes what is only shown: names, picture, language", async () => {
         const token = await jwt({ token: fresh({ sub: "e1", role: "EMPLOYEE" }), trigger: "update", session: { firstName: "Nour", language: "ar", avatar: "a.png" } })
         expect(token).toMatchObject({ firstName: "Nour", language: "ar", avatar: "a.png" })
+    })
+})
+
+/**
+ * Step-up (ROLES_PLAN.md §6.15): the code is checked by the server against the
+ * account's own secret, and only a right code writes the time into the token.
+ */
+describe("confirming a high-risk action with a code", () => {
+    const withMfa = { email: "a@x.co", emailVerifiedAt: new Date(), mfaEnabled: true, mfaSecret: "sealed", mustChangePassword: false }
+    const ask = (code: string, token: Record<string, unknown> = {}) =>
+        jwt({ token: fresh({ sub: "a1", role: "ADMIN", companyId: "c1", ...token }), trigger: "update", session: { stepUpCode: code } })
+
+    it("a right code records when, in the token and the session", async () => {
+        db.users.a1 = withMfa
+        const before = Date.now()
+        const token = await ask("123456")
+        expect(token.stepUpAt).toBeGreaterThanOrEqual(before)
+        expect((await session(token)).user.stepUpAt).toBe(token.stepUpAt)
+    })
+
+    it("a wrong code, or no two-factor set up, records nothing", async () => {
+        db.users.a1 = withMfa
+        expect((await ask("000000")).stepUpAt).toBeUndefined()
+        db.users.a1 = { ...withMfa, mfaEnabled: false }
+        expect((await ask("123456")).stepUpAt).toBeUndefined()
+    })
+
+    it("the browser cannot write the time itself", async () => {
+        db.users.a1 = withMfa
+        const token = await jwt({ token: fresh({ sub: "a1", role: "ADMIN" }), trigger: "update", session: { stepUpAt: Date.now() } })
+        expect(token.stepUpAt).toBeUndefined()
+    })
+
+    it("stops checking codes after five tries in fifteen minutes, even a right one", async () => {
+        db.users.a1 = withMfa
+        for (let i = 0; i < 5; i++) await ask("000000")
+        expect((await ask("123456")).stepUpAt).toBeUndefined()
     })
 })

@@ -60,3 +60,13 @@ export async function builtInRoleLookup({ where }: { where: any }) {
     const grants = Object.entries(BUILT_IN_GRANTS[kind]).map(([permission, scope]) => ({ permission, scope }))
     return { id: `${companyId}:${kind}`, companyId, baseRole: kind, builtIn: kind, grants }
 }
+
+/**
+ * A session that confirmed a high-risk action with its authenticator code a
+ * moment ago (ROLES_PLAN.md §6.15). The access records are about who may do
+ * what; step-up is a separate rule with its own tests (lib/step-up.test.ts),
+ * so the records sign their people in as having confirmed.
+ */
+export function stepUpConfirmed<T extends object>(user: T): T & { mfaEnabled: true; stepUpAt: number } {
+    return { ...user, mfaEnabled: true, stepUpAt: Date.now() }
+}

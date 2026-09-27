@@ -7,7 +7,7 @@
  * Kept in its own module so the record file reads as the record.
  */
 
-import { withGrants, builtInRoleLookup } from "./test-actors"
+import { withGrants, builtInRoleLookup, stepUpConfirmed } from "./test-actors"
 
 export const state = { session: null as any, written: [] as Record<string, unknown>[], created: [] as any[] }
 
@@ -87,7 +87,7 @@ export type ActorName = keyof typeof ACTORS
 export const ACTOR_NAMES = Object.keys(ACTORS) as ActorName[]
 
 export function as(name: ActorName) {
-    state.session = { user: withGrants({ ...ACTORS[name] }) }
+    state.session = { user: stepUpConfirmed(withGrants({ ...ACTORS[name] })) }
     state.written = []
     state.created = []
 }

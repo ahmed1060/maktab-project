@@ -4,6 +4,7 @@ import { can } from "@/lib/permissions/can"
 import { TaskService } from "@/lib/services/task.service"
 import { verifyResourceAccess } from "@/lib/security"
 import { shapeTask } from "@/lib/permissions/shape"
+import { assertStepUp } from "@/lib/step-up"
 
 export const POST = withStandardHandler(async (req, session, json, { params }) => {
     if (!can(session.user, "tasks.penalize")) {
@@ -13,6 +14,8 @@ export const POST = withStandardHandler(async (req, session, json, { params }) =
     // Company Isolation Check
     const hasAccess = await verifyResourceAccess(session, params.id, 'TASK')
     if (!hasAccess) return ApiResponse.forbidden("Access Denied")
+    // A high-risk action: confirmed with a code within the hour (ROLES_PLAN.md §6.15).
+    await assertStepUp(session, "tasks.penalize")
 
     const { amount, userId } = json
     if (!amount || !userId) return ApiResponse.badRequest("Missing amount or userId")

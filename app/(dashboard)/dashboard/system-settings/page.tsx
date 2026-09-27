@@ -14,6 +14,7 @@ type SystemSettings = {
     showPoweredBy: boolean
     poweredByName: string
     defaultTimezone: string
+    stepUpMinutes: number
     updatedAt: string
 }
 
@@ -28,10 +29,11 @@ export default function SystemSettingsPage() {
     const [showPoweredBy, setShowPoweredBy] = useState(true)
     const [poweredByName, setPoweredByName] = useState('')
     const [defaultTimezone, setDefaultTimezone] = useState('Africa/Cairo')
+    const [stepUpInput, setStepUpInput] = useState('60')
     const [loading, setLoading] = useState(true)
     // One per card. A single flag would disable both Save buttons whenever
     // either was in flight, which reads as the page having frozen.
-    const [savingSection, setSavingSection] = useState<null | 'location' | 'calendar' | 'branding'>(null)
+    const [savingSection, setSavingSection] = useState<null | 'location' | 'calendar' | 'branding' | 'stepUp'>(null)
 
     useEffect(() => {
         setTitle(t('system_settings') || 'System Settings')
@@ -50,6 +52,7 @@ export default function SystemSettingsPage() {
         setShowPoweredBy(data.showPoweredBy ?? true)
         setPoweredByName(data.poweredByName ?? '')
         setDefaultTimezone(data.defaultTimezone ?? 'Africa/Cairo')
+        setStepUpInput(String(data.stepUpMinutes ?? 60))
     }, [])
 
     useEffect(() => {
@@ -75,7 +78,7 @@ export default function SystemSettingsPage() {
      * from either would let a stale value in the card you did not touch
      * overwrite a change somebody else just made from the other.
      */
-    const persist = async (section: 'location' | 'calendar' | 'branding', patch: Record<string, unknown>) => {
+    const persist = async (section: 'location' | 'calendar' | 'branding' | 'stepUp', patch: Record<string, unknown>) => {
         setSavingSection(section)
         try {
             const res = await fetch('/api/system-settings', {
@@ -121,6 +124,18 @@ export default function SystemSettingsPage() {
         e.preventDefault()
         if (!settings) return
         await persist('calendar', { defaultTimezone })
+    }
+
+    // How long a step-up confirmation lasts (ROLES_PLAN.md §6.15).
+    const handleSaveStepUp = async (e: React.FormEvent) => {
+        e.preventDefault()
+        if (!settings) return
+        const minutes = parseInt(stepUpInput, 10)
+        if (!Number.isFinite(minutes) || minutes < 5 || minutes > 480) {
+            showToast(t('step_up_minutes_invalid'), 'error')
+            return
+        }
+        await persist('stepUp', { stepUpMinutes: minutes })
     }
 
     const handleSaveBranding = async (e: React.FormEvent) => {
@@ -216,6 +231,33 @@ export default function SystemSettingsPage() {
                         <div>
                             <button type="submit" className="btn btn-primary" disabled={savingSection !== null}>
                                 {savingSection === 'calendar' ? t('saving') : t('save_changes_button')}
+                            </button>
+                        </div>
+                    </form>
+
+                    <form
+                        onSubmit={handleSaveStepUp}
+                        className="glass"
+                        style={{ padding: '1.5rem', borderRadius: '1rem', display: 'flex', flexDirection: 'column' }}
+                    >
+                        <h3 style={{ margin: '0 0 0.35rem' }}>{t('step_up_minutes_label')}</h3>
+                        <p style={{ fontSize: '0.8rem', color: 'var(--text-soft)', margin: '0 0 1.25rem' }}>
+                            {t('step_up_minutes_hint')}
+                        </p>
+                        <input
+                            id="step-up-minutes"
+                            className="input"
+                            type="number"
+                            min={5}
+                            max={480}
+                            value={stepUpInput}
+                            onChange={e => setStepUpInput(e.target.value)}
+                            disabled={savingSection === 'stepUp'}
+                            style={{ maxWidth: '8rem', marginBottom: '1rem' }}
+                        />
+                        <div>
+                            <button type="submit" className="btn btn-primary" disabled={savingSection !== null}>
+                                {savingSection === 'stepUp' ? t('saving') : t('save_changes_button')}
                             </button>
                         </div>
                     </form>

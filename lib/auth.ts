@@ -366,6 +366,8 @@ export const authOptions: NextAuthOptions = {
                 session.user.logoUrl = token.logoUrl as string | null | undefined
                 session.user.featureAccess = token.featureAccess as any
                 session.user.subscription = token.subscription as any
+                // When this session last confirmed a high-risk action (§6.15).
+                session.user.stepUpAt = token.stepUpAt ?? null
 
                 // Previewing a role (ROLES_PLAN.md §6.6): the Super Admin is
                 // presented as a holder of it in its company — its kind, its
@@ -635,9 +637,29 @@ export const authOptions: NextAuthOptions = {
                 }
             }
 
+            // Step-up confirmation (ROLES_PLAN.md §6.15): the code is checked
+            // here, against the account's own secret, and only then is the
+            // time written into the signed token — the browser can ask, never
+            // tell. Fixed from this moment; nothing else extends it. Attempts
+            // are limited in the database, not the token, since an older
+            // cookie could be replayed to reset a count kept in it.
+            if (trigger === 'update' && session && typeof session.stepUpCode === 'string' && token.sub) {
+                const { limited } = await RateLimiter.getLimitData(`step-up:${token.sub}`, 5, 15 * 60 * 1000)
+                if (!limited) {
+                    const select = { mfaEnabled: true, mfaSecret: true } as const
+                    const row = token.role === 'SUPER_ADMIN'
+                        ? await prisma.superAdmin.findUnique({ where: { id: token.sub as string }, select })
+                        : await prisma.user.findUnique({ where: { id: token.sub as string }, select })
+                    if (row?.mfaEnabled && row.mfaSecret && await MfaService.verifyStoredCode(row.mfaSecret, session.stepUpCode)) {
+                        token.stepUpAt = Date.now()
+                    }
+                }
+            }
+
             // On session update (client-side update() call)
             if (trigger === 'update' && session) {
-                console.log('JWT Update Triggered:', session)
+                // Which fields, not their values: a step-up code rides in here.
+                console.log('JWT Update Triggered:', Object.keys(session))
                 if (session.firstName !== undefined) token.firstName = session.firstName
                 if (session.lastName !== undefined) token.lastName = session.lastName
                 if (session.gender !== undefined) token.gender = session.gender

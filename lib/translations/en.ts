@@ -1478,5 +1478,16 @@ export const en = {
         sod_acknowledge: "I understand, keep both",
         roles_preview: "Preview",
         preview_banner: "Previewing {role} at {company}. Read-only: nothing can be changed while previewing.",
-        preview_exit: "Exit preview"
+        preview_exit: "Exit preview",
+        step_up_minutes_label: "High-risk confirmation (minutes)",
+        step_up_minutes_hint: "Paying, approving payroll, waiving debts and other high-risk actions ask for an authenticator code unless one was entered within this many minutes. Counted from when the code was entered, per session.",
+        step_up_minutes_invalid: "Enter between 5 and 480 minutes",
+        step_up_title: "Confirm it's you",
+        step_up_hint: "This action moves money or cannot be undone. Enter the code from your authenticator app. You won't be asked again for {minutes} minutes on this device.",
+        step_up_code: "Authenticator code",
+        step_up_confirm: "Confirm",
+        step_up_wrong: "That code is not right",
+        step_up_enrol_title: "Two-factor authentication needed",
+        step_up_enrol_hint: "This action moves money or cannot be undone, so it needs two-factor authentication. Set it up in Security settings, then try again.",
+        step_up_enrol_go: "Open Security settings"
 };

@@ -3,6 +3,7 @@ import { ApiResponse } from "@/lib/api-response"
 import { SalaryService } from "@/lib/services/salary.service"
 import { verifyResourceAccess, personTarget } from "@/lib/security"
 import { can } from "@/lib/permissions/can"
+import { assertStepUp } from "@/lib/step-up"
 
 /**
  * Undo an adjustment that was correct when it was made.
@@ -26,6 +27,8 @@ export const POST = withStandardHandler(async (req, session, json, { params }) =
     if (!person || !can(session.user, "salary_adjustments.manage", person)) {
         return ApiResponse.forbidden("You cannot adjust your own pay")
     }
+    // A high-risk action: confirmed with a code within the hour (ROLES_PLAN.md §6.15).
+    await assertStepUp(session, "salary_adjustments.manage")
 
     const reason = typeof json?.reason === 'string' ? json.reason : undefined
 

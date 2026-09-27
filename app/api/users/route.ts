@@ -11,6 +11,7 @@ import { verifyResourceAccess } from "@/lib/security"
 import { can } from "@/lib/permissions/can"
 import { shapeUser } from "@/lib/permissions/shape"
 import { assignmentRefusal } from "@/lib/role-errors"
+import { assertStepUp } from "@/lib/step-up"
 
 // F-13: role/status are now Postgres enums, not free text — a query-param
 // value that isn't a real enum member makes Postgres reject the whole
@@ -246,6 +247,8 @@ export const PUT = withStandardHandler(async (req, session, json) => {
 
 export const DELETE = withStandardHandler(async (req, session) => {
     if (!can(session.user, "employees.delete")) return ApiResponse.forbidden()
+    // A high-risk action: confirmed with a code within the hour (ROLES_PLAN.md §6.15).
+    await assertStepUp(session, "employees.delete")
 
     const { searchParams } = new URL(req.url)
     const id = searchParams.get('id')

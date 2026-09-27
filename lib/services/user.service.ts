@@ -14,6 +14,7 @@ import { effectiveFromChoice } from "@/lib/salary-history"
 import { checkTeamAssignment, clearsOwnLeader, stripsLeadership } from "@/lib/team-assignment"
 import { notifyTeamMoves } from "./team-notify.service"
 import { TeamHandOff, type Rehome } from "./team-handoff.service"
+import { assertStepUp } from "@/lib/step-up"
 
 /**
  * The account statuses a status write may set. ARCHIVED and DELETED come only
@@ -308,6 +309,9 @@ export class UserService {
             // leave balance are different acts, and in Part B a company can give
             // them to different people.
             if (salary !== undefined && can(session.user, "salary.edit", person)) {
+                // Changing somebody's pay is high-risk (ROLES_PLAN.md §6.15); the
+                // form sends the salary with every save, so only a new figure asks.
+                if (Number(salary) !== Number(regularUser.salary)) await assertStepUp(session, "salary.edit")
                 // Deliberately not written here. A salary change is an
                 // effective-dated fact, not a field edit: it has to land in
                 // SalaryChange as well, and the two have to move together or a
