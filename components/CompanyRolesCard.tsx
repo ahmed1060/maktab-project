@@ -2,6 +2,8 @@
 
 import { useState } from 'react'
 import useSWR from 'swr'
+import { useSession } from 'next-auth/react'
+import { useRouter } from 'next/navigation'
 import { fetcher } from '@/lib/swr-fetcher'
 import { useLanguage } from '@/context/LanguageContext'
 import { useToast } from '@/context/ToastContext'
@@ -41,6 +43,17 @@ export default function CompanyRolesCard({ companyId }: { companyId: string }) {
     const [editing, setEditing] = useState<Role | 'new' | null>(null)
     const [deleting, setDeleting] = useState<Role | null>(null)
     const [copying, setCopying] = useState(false)
+    const { update } = useSession()
+    const router = useRouter()
+
+    // See the dashboard as a holder of this role would (§6.6). Read-only;
+    // the banner on every screen is the way out.
+    const preview = async (role: Role) => {
+        await update({ previewRoleId: role.id })
+        // Refreshed, so the layout reads the session as the preview presents it.
+        router.push('/dashboard')
+        router.refresh()
+    }
 
     const save = async (submission: RoleSubmission): Promise<boolean> => {
         const isNew = editing === 'new'
@@ -125,6 +138,7 @@ export default function CompanyRolesCard({ companyId }: { companyId: string }) {
                             </div>
                         </div>
                         <button type="button" style={linkButton} onClick={() => setEditing(role)}>{t('roles_edit')}</button>
+                        <button type="button" style={linkButton} onClick={() => preview(role)}>{t('roles_preview')}</button>
                         {!role.isDefault && role.baseRole !== 'ADMIN' && (
                             <button type="button" style={linkButton} onClick={() => makeDefault(role)}>{t('roles_make_default')}</button>
                         )}

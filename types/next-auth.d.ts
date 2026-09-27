@@ -10,6 +10,9 @@ declare module "next-auth" {
             // the jwt() callback within a minute of the role changing.
             roleId?: string | null
             grants?: string
+            // The Super Admin previewing a role (ROLES_PLAN.md §6.6): the
+            // session presents that role, and every write is refused.
+            preview?: { roleId: string; roleName: string; companyId: string; companyName: string } | null
             firstName: string
             lastName: string
             gender?: string
@@ -113,6 +116,7 @@ declare module "next-auth/jwt" {
         roleId?: string | null
         roleVersion?: number
         grants?: string
+        preview?: import("@/lib/services/role.service").RolePreview | null
         firstName: string
         lastName: string
         gender?: string

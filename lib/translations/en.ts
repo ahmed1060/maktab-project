@@ -1475,5 +1475,8 @@ export const en = {
         sod_create_employee_salary: "Adding employees and changing salaries: the same person could add someone and set their pay unseen.",
         sod_title: "Separation of duties",
         sod_hint: "This role holds both sides of a pair auditors look for. It is allowed; the decision is recorded.",
-        sod_acknowledge: "I understand, keep both"
+        sod_acknowledge: "I understand, keep both",
+        roles_preview: "Preview",
+        preview_banner: "Previewing {role} at {company}. Read-only: nothing can be changed while previewing.",
+        preview_exit: "Exit preview"
 };

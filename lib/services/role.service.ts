@@ -20,6 +20,25 @@ export const BUILT_IN_ROLES: readonly { builtIn: BuiltInRole; name: string }[] =
 /** What a session token carries about the person's role (ROLES_PLAN.md §4.4). */
 export type RoleForToken = { roleId: string | null; roleVersion: number; grants: string }
 
+/**
+ * A role previewed by the Super Admin (ROLES_PLAN.md §6.6): what the session
+ * presents while it lasts — that role's grants, in that company, under its
+ * package. It previews a role, not a person.
+ */
+export type RolePreview = {
+    roleId: string
+    roleName: string
+    baseRole: UserRole
+    companyId: string
+    companyName: string
+    grants: string
+    featureAccess: SerializedAccess
+    startedAt: number
+}
+
+/** How long a preview lasts before it ends by itself, if nobody ends it. */
+export const PREVIEW_LASTS_MS = 60 * 60 * 1000
+
 export class RoleService {
     /**
      * A new company's Admin, Team Leader and Employee roles, with the grants in
@@ -46,6 +65,28 @@ export class RoleService {
      * role — a Super Admin, or an account with no company — holds nothing
      * through one; can() answers the Super Admin before it reads grants.
      */
+    /** The preview of a role, for the Super Admin's session (§6.6). */
+    static async previewOf(roleId: string): Promise<RolePreview> {
+        const role = await prisma.role.findUnique({
+            where: { id: roleId },
+            select: {
+                id: true, name: true, baseRole: true, companyId: true,
+                company: { select: { name: true, package: { select: { hasCompanyManagement: true, hasHR: true } } } },
+                grants: { select: { permission: true, scope: true } },
+            },
+        })
+        if (!role) throw new Error("ROLE_NOT_FOUND")
+        const grants: Grants = {}
+        for (const g of role.grants) if (isPermission(g.permission)) grants[g.permission] = g.scope
+        return {
+            roleId: role.id, roleName: role.name, baseRole: role.baseRole,
+            companyId: role.companyId, companyName: role.company.name,
+            grants: encodeGrants(grants),
+            featureAccess: serializeAccess(resolveBundles(role.company.package)),
+            startedAt: Date.now(),
+        }
+    }
+
     static async forToken(userId: string, client: Pick<typeof prisma, "user"> = prisma): Promise<RoleForToken> {
         const user = await client.user.findUnique({
             where: { id: userId },

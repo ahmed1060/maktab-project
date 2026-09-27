@@ -39,3 +39,25 @@ describe("withStandardHandler({ permission })", () => {
         expect(await call("EMPLOYEE")).toEqual({ status: 403, ran: false })
     })
 })
+
+/**
+ * Previewing a role (ROLES_PLAN.md §6.6) is read-only: whatever the previewed
+ * role holds, every write is refused while it lasts — reads answer as they
+ * would for a holder.
+ */
+describe("while the Super Admin previews a role", () => {
+    const open = withStandardHandler(async () => { state.ran = true; return ApiResponse.success({}) })
+    const previewing = () => ({ user: { ...withGrants({ id: "sa", role: "ADMIN", companyId: "c1" }), preview: { roleId: "r1", roleName: "Admin", companyId: "c1", companyName: "One" } } })
+
+    it("reads answer", async () => {
+        state.session = previewing(); state.ran = false
+        expect((await open(new Request("https://nizmo.test/api/anything"))).status).toBe(200)
+        expect(state.ran).toBe(true)
+    })
+
+    it.each(["POST", "PUT", "PATCH", "DELETE"])("%s is refused before the handler runs", async method => {
+        state.session = previewing(); state.ran = false
+        expect((await open(new Request("https://nizmo.test/api/anything", { method }))).status).toBe(403)
+        expect(state.ran).toBe(false)
+    })
+})

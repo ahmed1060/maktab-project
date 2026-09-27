@@ -15,6 +15,7 @@ import DashboardHeader from './DashboardHeader'
 import { useLanguage } from '@/context/LanguageContext'
 import { permissionsOf } from '@/lib/useCan'
 import type { Permission } from '@/lib/permissions/catalogue'
+import PreviewBanner from '@/components/PreviewBanner'
 
 interface DashboardShellProps {
     children: React.ReactNode
@@ -700,6 +701,7 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
                         renders nothing at all when the subscription is simply
                         working — there is no dismiss control because grace is
                         not something a customer should be able to dismiss. */}
+                    <PreviewBanner preview={user?.preview} />
                     <SubscriptionBanner />
                     {children}
                 </div>

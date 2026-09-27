@@ -5,7 +5,7 @@ import { isBlockedBySubscription } from "@/lib/billing/state"
 import { parseModuleIcons, parseModuleOverrides } from "@/lib/modules"
 import { parseTheme } from "@/lib/theme"
 import CredentialsProvider from "next-auth/providers/credentials"
-import { RoleService } from "@/lib/services/role.service"
+import { RoleService, PREVIEW_LASTS_MS } from "@/lib/services/role.service"
 import { prisma } from "@/lib/prisma"
 import bcrypt from "bcryptjs"
 import { v4 as uuidv4 } from 'uuid'
@@ -366,6 +366,23 @@ export const authOptions: NextAuthOptions = {
                 session.user.logoUrl = token.logoUrl as string | null | undefined
                 session.user.featureAccess = token.featureAccess as any
                 session.user.subscription = token.subscription as any
+
+                // Previewing a role (ROLES_PLAN.md §6.6): the Super Admin is
+                // presented as a holder of it in its company — its kind, its
+                // grants, the company's package — so every screen and route
+                // answers as it would for them. The real identity stays in the
+                // token; withStandardHandler refuses every write meanwhile.
+                const preview = token.role === 'SUPER_ADMIN' ? token.preview : null
+                session.user.preview = preview ? { roleId: preview.roleId, roleName: preview.roleName, companyId: preview.companyId, companyName: preview.companyName } : null
+                if (preview) {
+                    session.user.role = preview.baseRole
+                    session.user.roleId = preview.roleId
+                    session.user.grants = preview.grants
+                    session.user.companyId = preview.companyId
+                    session.user.companyName = preview.companyName
+                    session.user.featureAccess = preview.featureAccess as any
+                    session.user.subscription = null as any
+                }
             }
             return session
         },
@@ -486,6 +503,14 @@ export const authOptions: NextAuthOptions = {
                                 select: { sessionVersion: true, isProtected: true, emailVerifiedAt: true, mfaEnabled: true }
                             })
                             dbVersion = sa?.sessionVersion || 0
+                            // A preview follows the role as it is edited, and
+                            // ends with it if it is deleted.
+                            if (token.preview) {
+                                const startedAt = token.preview.startedAt
+                                token.preview = await RoleService.previewOf(token.preview.roleId)
+                                    .then(p => ({ ...p, startedAt }))
+                                    .catch(() => null)
+                            }
                             token.isProtected = sa?.isProtected || false
                             token.emailVerified = !!sa?.emailVerifiedAt
                             token.mfaEnabled = sa?.mfaEnabled || false
@@ -582,6 +607,30 @@ export const authOptions: NextAuthOptions = {
                         // unhappy was itself a way to defeat revocation.
                         console.error("[AUTH] Revocation/suspension check failed — revoking session", e)
                         return {} as any
+                    }
+                }
+            }
+
+            // A preview nobody ended ends by itself.
+            if (token.preview && Date.now() - token.preview.startedAt > PREVIEW_LASTS_MS) token.preview = null
+
+            // Start or end previewing a role (§6.6). The Super Admin's alone:
+            // the real role in the token decides, never what the client sends.
+            if (trigger === 'update' && session && 'previewRoleId' in session && token.role === 'SUPER_ADMIN' && token.sub) {
+                const { AuditLogService } = await import("./services/audit-log.service")
+                if (token.preview) {
+                    await AuditLogService.log('END_ROLE_PREVIEW', 'ROLE', token.preview.roleId, { superAdminId: token.sub, details: {} })
+                    token.preview = null
+                }
+                if (typeof session.previewRoleId === 'string') {
+                    try {
+                        token.preview = await RoleService.previewOf(session.previewRoleId)
+                        await AuditLogService.log('START_ROLE_PREVIEW', 'ROLE', token.preview.roleId, {
+                            superAdminId: token.sub,
+                            details: { companyId: token.preview.companyId, roleName: token.preview.roleName },
+                        })
+                    } catch {
+                        token.preview = null
                     }
                 }
             }

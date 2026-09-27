@@ -187,6 +187,13 @@ export function withStandardHandler(
             // event, and never signed itself out. It just sat on whatever
             // page was already loaded, indefinitely.
             const isHeartbeat = new URL(req.url).pathname === '/api/user/activity'
+
+            // Previewing a role is read-only (ROLES_PLAN.md §6.6): it shows the
+            // Super Admin what a holder sees, and must not become a way to act
+            // as one. Every write is refused while it lasts.
+            if ((session.user as any).preview && req.method !== 'GET' && req.method !== 'HEAD' && !isHeartbeat) {
+                return ApiResponse.forbidden("Previewing a role is read-only. Exit the preview to make changes.")
+            }
             // Subscription lockout rides the same path as a company ban rather
             // than getting a second, untested blocking mechanism: it inherits
             // the heartbeat exemption and the emergency-save carve-out below,
