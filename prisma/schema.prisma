@@ -1313,6 +1313,7 @@ model Role {
   requests             RoleRequest[]
   returners            User[]      @relation("ActingReturn")
   changeRequests       RoleChangeRequest[]
+  accessReviewLines    AccessReviewLine[]
   createdAt            DateTime    @default(now())
   updatedAt            DateTime    @updatedAt
 
@@ -1449,12 +1450,20 @@ model AccessReviewLine {
   id                    String                @id @default(uuid())
   reviewId              String
   review                AccessReview          @relation(fields: [reviewId], references: [id], onDelete: Cascade)
-  userId                String
-  user                  User                  @relation("AccessReviewLineFor", fields: [userId], references: [id], onDelete: Cascade)
+  /// Who holds it. A review is kept as evidence, so a line outlives the
+  /// person's account: deleting them clears this and keeps userName.
+  userId                String?
+  user                  User?                 @relation("AccessReviewLineFor", fields: [userId], references: [id], onDelete: SetNull)
+  /// Their name as it was when the review opened.
+  userName              String
   permission            String
   scope                 String
-  /// The role it came through, by name, as it was when the review opened.
+  /// The role it came through, as it was when the review opened: its name,
+  /// and the role itself while it exists — what a change request is about,
+  /// whatever role the person holds by the time the line is answered.
   roleName              String
+  roleId                String?
+  role                  Role?                 @relation(fields: [roleId], references: [id], onDelete: SetNull)
   decision              AccessReviewDecision?
   note                  String?
   answeredById          String?

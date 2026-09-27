@@ -29,8 +29,7 @@ const SHAPE = {
     company: { select: { name: true } },
     lines: {
         select: {
-            id: true, userId: true, permission: true, scope: true, roleName: true, decision: true, note: true, answeredAt: true,
-            user: { select: { firstName: true, lastName: true } },
+            id: true, userId: true, userName: true, permission: true, scope: true, roleName: true, decision: true, note: true, answeredAt: true,
             answeredBy: { select: { firstName: true, lastName: true } },
             answeredBySuperAdmin: { select: { firstName: true, lastName: true } },
         },
@@ -93,12 +92,15 @@ export class AccessReviewService {
         const people = await prisma.user.findMany({
             where: { companyId, status: { in: [...AT_WORK] }, OR: REVIEWED.map(p => holdersOf(p)) },
             select: {
-                id: true,
-                assignedRole: { select: { name: true, grants: { where: { permission: { in: [...REVIEWED] } }, select: { permission: true, scope: true } } } },
+                id: true, firstName: true, lastName: true,
+                assignedRole: { select: { id: true, name: true, grants: { where: { permission: { in: [...REVIEWED] } }, select: { permission: true, scope: true } } } },
             },
         })
+        // What was reviewed, kept on the line: it is evidence, and outlives
+        // the person's account and the role.
         const lines = people.flatMap(p => (p.assignedRole?.grants ?? []).map(g => ({
-            userId: p.id, permission: g.permission, scope: g.scope, roleName: p.assignedRole!.name,
+            userId: p.id, userName: `${p.firstName} ${p.lastName}`.trim(),
+            permission: g.permission, scope: g.scope, roleName: p.assignedRole!.name, roleId: p.assignedRole!.id,
         })))
         const review = await prisma.accessReview.create({
             data: {
@@ -164,9 +166,8 @@ export class AccessReviewService {
         const line = await prisma.accessReviewLine.findUnique({
             where: { id: lineId },
             select: {
-                id: true, reviewId: true, userId: true, permission: true, roleName: true, decision: true,
+                id: true, reviewId: true, userId: true, userName: true, permission: true, roleName: true, roleId: true, decision: true,
                 review: { select: { companyId: true, status: true } },
-                user: { select: { firstName: true, lastName: true, roleId: true } },
             },
         })
         if (!line) throw new Error("LINE_NOT_FOUND")
@@ -189,8 +190,10 @@ export class AccessReviewService {
             const { RoleChangeRequestService } = await import("./role-change-request.service")
             try {
                 await RoleChangeRequestService.create({
-                    roleId: line.user.roleId,
-                    description: `Access review: ${line.user.firstName} ${line.user.lastName} holds ${line.permission} through ${line.roleName}. ${input.note!.trim()}`,
+                    // The role that was reviewed, not whatever the person holds
+                    // now; gone since, it is a request about the company's roles.
+                    roleId: line.roleId,
+                    description: `Access review: ${line.userName} holds ${line.permission} through ${line.roleName}. ${input.note!.trim()}`,
                 }, session)
             } catch (error) {
                 // No request filed, so not answered: it waits again.

@@ -21,9 +21,9 @@ import { roleLabel } from '@/lib/role-label'
 
 type Person = { firstName: string; lastName: string }
 type Line = {
-    id: string; userId: string; permission: string; scope: string; roleName: string; roleBuiltIn: string | null
+    id: string; userId: string | null; userName: string; permission: string; scope: string; roleName: string; roleBuiltIn: string | null
     decision: 'CONFIRMED' | 'CHANGE_REQUESTED' | null; note: string | null
-    user: Person; answeredBy: Person | null; answeredBySuperAdmin: Person | null
+    answeredBy: Person | null; answeredBySuperAdmin: Person | null
 }
 type Review = { id: string; status: 'OPEN' | 'COMPLETED'; createdAt: string; company: { name: string }; lines: Line[] }
 
@@ -85,7 +85,7 @@ export default function AccessReviews({ side, highlight }: { side: 'company' | '
                             <tbody>
                                 {review.lines.map(line => (
                                     <tr key={line.id}>
-                                        <td style={cell}>{name(line.user)}</td>
+                                        <td style={cell}>{line.userName}</td>
                                         <td style={cell}>{label(line.permission)}<div style={{ fontSize: '0.75rem', color: 'var(--text-soft)' }}>{t(scopeLabelKey(line.scope as any))}</div></td>
                                         <td style={cell}>{role(line)}</td>
                                         <td style={{ ...cell, whiteSpace: 'nowrap' }}>
@@ -115,7 +115,7 @@ export default function AccessReviews({ side, highlight }: { side: 'company' | '
             <ConfirmModal
                 isOpen={!!changing}
                 title={t('access_review_change')}
-                message={changing ? `${name(changing.user)} · ${label(changing.permission)} · ${role(changing)}` : ''}
+                message={changing ? `${changing.userName} · ${label(changing.permission)} · ${role(changing)}` : ''}
                 variant="warning"
                 reason={{ label: t('access_review_change_reason') }}
                 onConfirm={(reason) => { const line = changing; setChanging(null); if (line) answer(line, 'CHANGE_REQUESTED', reason) }}

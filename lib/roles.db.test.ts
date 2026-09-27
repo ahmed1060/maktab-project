@@ -38,6 +38,7 @@ const CHANGES = "20261001000000_role_change_requests"
 const STEP_UP = "20261002000000_step_up"
 const REVIEWS = "20261003000000_access_reviews"
 const NOTICE_KEYS = "20261004000000_notification_keys"
+const REVIEW_SNAPSHOTS = "20261005000000_access_review_snapshots"
 const sql = (name: string) => readFileSync(`prisma/migrations/${name}/migration.sql`, "utf8")
 
 const BEFORE_ROLES = `
@@ -75,6 +76,7 @@ describe.skipIf(!ADMIN_URL)("roles as data, in Postgres", () => {
         await db.query(sql(STEP_UP))
         await db.query(sql(REVIEWS))
         await db.query(sql(NOTICE_KEYS))
+        await db.query(sql(REVIEW_SNAPSHOTS))
         prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: url.toString() }) })
         // The services that manage roles use the application's client; point it
         // here before its first use (it is built lazily).
@@ -781,7 +783,7 @@ describe.skipIf(!ADMIN_URL)("roles as data, in Postgres", () => {
             for (const l of review.lines) expect(l.roleBuiltIn).toBe(kinds.find(k => k.name === l.roleName)?.builtIn ?? null)
             expect(review.lines.find(l => l.userId === "a1")!.roleBuiltIn).toBe("ADMIN")
             // Only people in this company.
-            expect(review.lines.every(l => !["e2"].includes(l.userId))).toBe(true)
+            expect(review.lines.every(l => !["e2"].includes(l.userId ?? ""))).toBe(true)
             expect((await db.query(`SELECT count(*)::int AS n FROM "Notification" WHERE "userId" = 'a1b' AND type = 'ROLE_ACCESS_REVIEW'`)).rows[0].n).toBe(1)
             // Stored as a key and its details, for the reader's language, with its English.
             const [row] = (await db.query(`SELECT message, "messageKey", "messageParams" FROM "Notification" WHERE "userId" = 'a1b' AND type = 'ROLE_ACCESS_REVIEW'`)).rows
@@ -801,9 +803,30 @@ describe.skipIf(!ADMIN_URL)("roles as data, in Postgres", () => {
 
             const another = review.lines.find(l => l.userId !== "a1" && l.userId !== "a1b")!
             await expect(AccessReviewService.answer(another.id, { decision: "CHANGE_REQUESTED" }, admin)).rejects.toThrow("REASON_REQUIRED")
+            // The person has moved to another role since the review opened: the
+            // request is about the role that was reviewed, not their new one.
+            const { userId: who, roleId: reviewed } = (await db.query(`SELECT "userId", "roleId" FROM "AccessReviewLine" WHERE id = $1`, [another.id])).rows[0]
+            expect(reviewed).toBeTruthy()
+            const { baseRole } = (await db.query(`SELECT "baseRole" FROM "Role" WHERE id = $1`, [reviewed])).rows[0]
+            await db.query(`INSERT INTO "Role"(id, "companyId", name, "baseRole", "updatedAt") VALUES ('r-moved', 'c1', 'Moved since', $1, now())`, [baseRole])
+            await db.query(`UPDATE "User" SET "roleId" = 'r-moved' WHERE id = $1`, [who])
             await AccessReviewService.answer(another.id, { decision: "CHANGE_REQUESTED", note: "No longer needs payroll" }, admin)
-            const asked = (await db.query(`SELECT description FROM "RoleChangeRequest" WHERE description LIKE 'Access review:%'`)).rows
+            const asked = (await db.query(`SELECT description, "roleId" FROM "RoleChangeRequest" WHERE description LIKE 'Access review:%' ORDER BY "createdAt"`)).rows
             expect(asked.at(-1).description).toContain("No longer needs payroll")
+            expect(asked.at(-1).roleId).toBe(reviewed)
+            await db.query(`UPDATE "User" SET "roleId" = $1 WHERE id = $2`, [reviewed, who])
+            await db.query(`DELETE FROM "Role" WHERE id = 'r-moved'`)
+        })
+
+        it("keeps its lines as evidence when the person or the role is deleted", async () => {
+            // Deleting clears the link and keeps the line, with the name it had.
+            const rules = (await db.query(`SELECT conname, confdeltype FROM pg_constraint WHERE conname IN ('AccessReviewLine_userId_fkey', 'AccessReviewLine_roleId_fkey') ORDER BY conname`)).rows
+            expect(rules).toEqual([
+                { conname: "AccessReviewLine_roleId_fkey", confdeltype: "n" },
+                { conname: "AccessReviewLine_userId_fkey", confdeltype: "n" },
+            ])
+            const [review] = await AccessReviewService.list(sa, { companyId: "c1" })
+            expect(review.lines.every(l => l.userName.length > 0)).toBe(true)
         })
 
         it("is done when every line is answered, and the Super Admin sees which are not", async () => {
