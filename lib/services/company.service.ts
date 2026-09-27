@@ -20,6 +20,15 @@ function serializeCompanyPayment<T extends { cost: Prisma.Decimal }>(payment: T)
     return { ...payment, cost: Number(payment.cost) }
 }
 
+/**
+ * Who a settings change is audited as. A company's own people change the tabs
+ * the Super Admin shows them (ATTENDANCE_PLAN.md §5.2), and are named as
+ * themselves, so a Super Admin can see who changed what.
+ */
+function settingsAuthor(session: any): { superAdminId: string } | { userId: string } {
+    return session.user.role === 'SUPER_ADMIN' ? { superAdminId: session.user.id } : { userId: session.user.id }
+}
+
 export class CompanyService {
     static async create(input: CreateCompanyInput, session: any) {
         // Defaulted here rather than in the database, so the choice is visible
@@ -222,7 +231,7 @@ export class CompanyService {
     }
 
     static async update(input: UpdateCompanyInput, session: any) {
-        const { id, name, isBanned, autoVerifyLocation, moduleLabels, moduleIcons, payrollDay, payslipsVisible, timezone, debtRecoveryPercent } = input
+        const { id, name, isBanned, autoVerifyLocation, moduleLabels, moduleIcons, payrollDay, payslipsVisible, timezone, debtRecoveryPercent, adminSettingsEnabled, adminSettingsTabs } = input
         const existing = await prisma.company.findUnique({ where: { id } })
         if (!existing) throw new Error("COMPANY_NOT_FOUND")
 
@@ -250,7 +259,10 @@ export class CompanyService {
                 ...(payrollDay !== undefined && { payrollDay }),
                 ...(payslipsVisible !== undefined && { payslipsVisible }),
                 ...(timezone !== undefined && { timezone }),
-                ...(debtRecoveryPercent !== undefined && { debtRecoveryPercent })
+                ...(debtRecoveryPercent !== undefined && { debtRecoveryPercent }),
+                // Which of its settings the company's own people see (§5.2).
+                ...(adminSettingsEnabled !== undefined && { adminSettingsEnabled }),
+                ...(adminSettingsTabs !== undefined && { adminSettingsTabs })
             }
         })
 
@@ -285,10 +297,17 @@ export class CompanyService {
             changes.debtRecoveryPercent = { old: existing.debtRecoveryPercent, new: debtRecoveryPercent }
         }
 
+        if (adminSettingsEnabled !== undefined && adminSettingsEnabled !== existing.adminSettingsEnabled) {
+            changes.adminSettingsEnabled = { old: existing.adminSettingsEnabled, new: adminSettingsEnabled }
+        }
+        if (adminSettingsTabs !== undefined && [...adminSettingsTabs].sort().join() !== [...existing.adminSettingsTabs].sort().join()) {
+            changes.adminSettingsTabs = { old: existing.adminSettingsTabs, new: adminSettingsTabs }
+        }
+
         if (Object.keys(changes).length > 0) {
             const { AuditLogService } = await import("./audit-log.service")
             await AuditLogService.log('UPDATE_COMPANY', 'COMPANY', id, {
-                superAdminId: session.user.id,
+                ...settingsAuthor(session),
                 details: changes
             })
         }
@@ -312,6 +331,14 @@ export class CompanyService {
      * a deleted company falls back to the defaults rather than erroring on a
      * page load.
      */
+    /** What a company's own people are shown of its settings (lib/company-settings-access.ts). */
+    static async settingsExposure(companyId: string) {
+        return prisma.company.findUnique({
+            where: { id: companyId },
+            select: { id: true, adminSettingsEnabled: true, adminSettingsTabs: true },
+        })
+    }
+
     static async getBranding(companyId: string): Promise<CompanyBranding | null> {
         const company = await prisma.company.findUnique({
             where: { id: companyId },
@@ -353,7 +380,7 @@ export class CompanyService {
 
         const { AuditLogService } = await import("./audit-log.service")
         await AuditLogService.log('UPDATE_COMPANY', 'COMPANY', companyId, {
-            superAdminId: session.user.id,
+            ...settingsAuthor(session),
             details: {
                 companyName: existing.name,
                 logoUrl: { old: existing.logoUrl, new: url },
@@ -379,7 +406,7 @@ export class CompanyService {
 
         const { AuditLogService } = await import("./audit-log.service")
         await AuditLogService.log('UPDATE_COMPANY', 'COMPANY', companyId, {
-            superAdminId: session.user.id,
+            ...settingsAuthor(session),
             details: { companyName: existing.name, logoUrl: { old: existing.logoUrl, new: null } },
         })
 

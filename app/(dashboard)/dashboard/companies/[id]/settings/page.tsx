@@ -8,6 +8,7 @@ import AccessDenied from '@/components/AccessDenied'
 import { useToast } from '@/context/ToastContext'
 import { useLanguage } from '@/context/LanguageContext'
 import CompanySettingsTabs, { type CompanySettings } from '@/components/CompanySettingsTabs'
+import { COMPANY_SETTINGS_TABS } from '@/lib/company-settings-tabs'
 
 export default function CompanySettingsPage() {
     const params = useParams()
@@ -81,7 +82,12 @@ export default function CompanySettingsPage() {
                     <p style={{ color: 'var(--text-soft)' }}>{t('loading_data')}</p>
                 </div>
             ) : company && (
-                <CompanySettingsTabs company={company} onSaved={next => setCompany({ ...company, ...next })} />
+                <CompanySettingsTabs
+                    company={company}
+                    onSaved={next => setCompany({ ...company, ...next })}
+                    tabs={COMPANY_SETTINGS_TABS.map(x => x.key)}
+                    superAdmin
+                />
             )}
         </div>
     )

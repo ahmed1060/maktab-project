@@ -252,6 +252,11 @@ model Company {
   accessReviewMonths   Int                   @default(3)
   accessReviewNextAt   DateTime?
   accessReviews        AccessReview[]
+  /// A company's own people seeing its settings (ATTENDANCE_PLAN.md §5.2): off
+  /// unless the Super Admin switches it on, and then only the tabs listed here
+  /// (keys from lib/company-settings-tabs.ts), to whoever holds settings.view.
+  adminSettingsEnabled Boolean               @default(false)
+  adminSettingsTabs    String[]              @default([])
   /// The role a new account starts on (ROLES_PLAN.md §6.4). Null means the
   /// company's built-in Employee role — every company has one, so nobody is
   /// ever created without a role, even while a request for another waits.

@@ -9,8 +9,9 @@ import CompanyLogoCard from '@/components/CompanyLogoCard'
 import CompanyPayrollCard from '@/components/CompanyPayrollCard'
 import CompanyRolesCard from '@/components/CompanyRolesCard'
 import CompanyModulesCard from '@/components/CompanyModulesCard'
+import CompanySettingsAccessCard from '@/components/CompanySettingsAccessCard'
 import { useLanguage } from '@/context/LanguageContext'
-import { COMPANY_SETTINGS_TABS, DEFAULT_SETTINGS_TAB, type CompanySettingsTabKey } from '@/lib/company-settings-tabs'
+import { COMPANY_SETTINGS_TABS, type CompanySettingsTabKey } from '@/lib/company-settings-tabs'
 import { UnsavedChangesProvider, useUnsavedState } from '@/lib/useUnsavedChanges'
 import type { ModuleOverrides } from '@/lib/modules'
 
@@ -19,6 +20,10 @@ import type { ModuleOverrides } from '@/lib/modules'
  * tabs come from lib/company-settings-tabs.ts; the open one is in the URL
  * (?tab=payroll), so a link or a reload lands on it. Leaving a tab, or the
  * page, with unsaved edits asks first.
+ *
+ * One set of tabs, two entry points (§5.2): the Super Admin's, from the
+ * company list, with every tab; and a company's own, at /dashboard/settings,
+ * with the tabs the Super Admin shows it. The server decides both.
  */
 
 export type CompanySettings = {
@@ -32,12 +37,19 @@ export type CompanySettings = {
     payslipsVisible: boolean
     timezone: string
     debtRecoveryPercent: number
+    adminSettingsEnabled?: boolean
+    adminSettingsTabs?: string[]
 }
 
-export default function CompanySettingsTabs({ company, onSaved }: {
+export default function CompanySettingsTabs({ company, onSaved, tabs: shown, readOnly = false, superAdmin }: {
     company: CompanySettings
     /** What a tab saved, merged into the page's copy without asking the server again. */
     onSaved: (next: Partial<CompanySettings>) => void
+    /** The tabs this viewer sees, as the server says. */
+    tabs: readonly CompanySettingsTabKey[]
+    /** Holds settings.view without settings.edit. */
+    readOnly?: boolean
+    superAdmin: boolean
 }) {
     const { t } = useLanguage()
     const router = useRouter()
@@ -46,9 +58,9 @@ export default function CompanySettingsTabs({ company, onSaved }: {
     const { dirty, setDirty } = useUnsavedState()
     const [leavingFor, setLeavingFor] = useState<CompanySettingsTabKey | null>(null)
 
-    const tabs = COMPANY_SETTINGS_TABS
+    const tabs = COMPANY_SETTINGS_TABS.filter(x => shown.includes(x.key))
     const asked = searchParams.get('tab')
-    const tab: CompanySettingsTabKey = tabs.find(x => x.key === asked)?.key ?? DEFAULT_SETTINGS_TAB
+    const tab: CompanySettingsTabKey | undefined = tabs.find(x => x.key === asked)?.key ?? tabs[0]?.key
 
     const open = (next: CompanySettingsTabKey) => {
         const query = new URLSearchParams(searchParams.toString())
@@ -64,16 +76,16 @@ export default function CompanySettingsTabs({ company, onSaved }: {
     const companyId = company.id
     return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', maxWidth: '40rem' }}>
-            <SegmentedToggle
+            {tab && <SegmentedToggle
                 value={tab}
                 onChange={choose}
                 ariaLabel={t('company_settings_title')}
                 options={tabs.map(x => ({ value: x.key, label: t(x.labelKey as any) }))}
-            />
+            />}
 
             <UnsavedChangesProvider onChange={setDirty}>
                 {tab === 'general' && (
-                    <CompanyGeneralCard companyId={companyId} autoVerifyLocation={company.autoVerifyLocation} onSaved={onSaved} />
+                    <CompanyGeneralCard companyId={companyId} autoVerifyLocation={company.autoVerifyLocation} onSaved={onSaved} readOnly={readOnly} />
                 )}
 
                 {tab === 'branding' && (
@@ -82,6 +94,7 @@ export default function CompanySettingsTabs({ company, onSaved }: {
                         companyName={company.name}
                         logoUrl={company.logoUrl}
                         onChanged={(logoUrl: string | null) => onSaved({ logoUrl })}
+                        readOnly={readOnly}
                     />
                 )}
 
@@ -93,6 +106,8 @@ export default function CompanySettingsTabs({ company, onSaved }: {
                         timezone={company.timezone}
                         debtRecoveryPercent={company.debtRecoveryPercent}
                         onSaved={onSaved}
+                        readOnly={readOnly}
+                        debtRecoveryEditable={superAdmin}
                     />
                 )}
 
@@ -110,6 +125,15 @@ export default function CompanySettingsTabs({ company, onSaved }: {
                         onSaved={(labels: ModuleOverrides | null, icons: ModuleOverrides | null) =>
                             onSaved({ moduleLabels: labels, moduleIcons: icons })
                         }
+                    />
+                )}
+
+                {tab === 'access' && (
+                    <CompanySettingsAccessCard
+                        companyId={companyId}
+                        enabled={!!company.adminSettingsEnabled}
+                        tabs={company.adminSettingsTabs ?? []}
+                        onSaved={onSaved}
                     />
                 )}
             </UnsavedChangesProvider>

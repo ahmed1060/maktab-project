@@ -39,6 +39,7 @@ const STEP_UP = "20261002000000_step_up"
 const REVIEWS = "20261003000000_access_reviews"
 const NOTICE_KEYS = "20261004000000_notification_keys"
 const REVIEW_SNAPSHOTS = "20261005000000_access_review_snapshots"
+const ADMIN_SETTINGS = "20261006000000_admin_settings"
 const sql = (name: string) => readFileSync(`prisma/migrations/${name}/migration.sql`, "utf8")
 
 const BEFORE_ROLES = `
@@ -77,6 +78,7 @@ describe.skipIf(!ADMIN_URL)("roles as data, in Postgres", () => {
         await db.query(sql(REVIEWS))
         await db.query(sql(NOTICE_KEYS))
         await db.query(sql(REVIEW_SNAPSHOTS))
+        await db.query(sql(ADMIN_SETTINGS))
         prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: url.toString() }) })
         // The services that manage roles use the application's client; point it
         // here before its first use (it is built lazily).
@@ -112,6 +114,17 @@ describe.skipIf(!ADMIN_URL)("roles as data, in Postgres", () => {
                     expect(grants, `${company} ${builtIn}`).toEqual(BUILT_IN_GRANTS[builtIn])
                 }
             }
+        })
+
+        it("later gives the built-in Admin role the settings permissions, has its holders reload, and shows no company its settings", async () => {
+            // ATTENDANCE_PLAN.md §5.2: the grants open nothing while the switch is off.
+            const { rows: roles } = await db.query(`SELECT "companyId", "builtIn", version FROM "Role" ORDER BY "companyId", "builtIn"`)
+            for (const role of roles) expect(role.version, `${role.companyId} ${role.builtIn}`).toBe(role.builtIn === "ADMIN" ? 2 : 1)
+            const { rows: companies } = await db.query(`SELECT "adminSettingsEnabled", "adminSettingsTabs" FROM "Company"`)
+            expect(companies).toEqual([
+                { adminSettingsEnabled: false, adminSettingsTabs: [] },
+                { adminSettingsEnabled: false, adminSettingsTabs: [] },
+            ])
         })
 
         it("puts everyone on the built-in role matching theirs, and the Super Admin and company-less on none", async () => {

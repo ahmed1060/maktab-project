@@ -5,17 +5,24 @@ import { isPermission } from "@/lib/permissions/catalogue"
 
 /**
  * The migration that made roles data seeds every company's built-in roles
- * from a list written into its SQL. That list must be lib/permissions/
- * built-in.ts exactly — it is what nobody's access changing rests on — so it is
- * read back out of the file and compared, both ways.
+ * from a list written into its SQL; a later one that gives the built-in roles
+ * a new permission adds to that list the same way. Together they must be
+ * lib/permissions/built-in.ts exactly — it is what nobody's access changing
+ * rests on — so they are read back out of the files and compared, both ways.
  */
 const SQL = readFileSync("prisma/migrations/20260927000000_roles/migration.sql", "utf8")
+const LATER = [
+    // The built-in Admin role's settings.view and settings.edit (ATTENDANCE_PLAN.md §5.2).
+    "prisma/migrations/20261006000000_admin_settings/migration.sql",
+].map(path => readFileSync(path, "utf8"))
 
 function seeded(): Record<string, Record<string, string>> {
-    const block = SQL.slice(SQL.indexOf('INSERT INTO "RoleGrant"'), SQL.indexOf('AS g("builtIn"'))
     const out: Record<string, Record<string, string>> = {}
-    for (const [, role, permission, scope] of block.matchAll(/\('(\w+)', '([\w.]+)', '(\w+)'\)/g)) {
-        ;(out[role] ??= {})[permission] = scope
+    for (const sql of [SQL, ...LATER]) {
+        const block = sql.slice(sql.indexOf('INSERT INTO "RoleGrant"'), sql.indexOf('AS g("builtIn"'))
+        for (const [, role, permission, scope] of block.matchAll(/\('(\w+)', '([\w.]+)', '(\w+)'\)/g)) {
+            ;(out[role] ??= {})[permission] = scope
+        }
     }
     return out
 }

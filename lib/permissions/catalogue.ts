@@ -137,9 +137,11 @@ export const PERMISSIONS = {
     "debts.waive":              { code: 45, module: "PAYROLL", scopes: COMPANY, implies: ["debts.view"], highRisk: MOVES_MONEY },
 
     // --- Settings and audit --------------------------------------------------
-    // Reserved: company settings and the audit log are the Super Admin's pages.
-    "settings.view":            { code: 46, module: null, scopes: COMPANY, reserved: true },
-    "settings.edit":            { code: 47, module: null, scopes: COMPANY, implies: ["settings.view"], reserved: true },
+    // A company's settings, the tabs the Super Admin shows it
+    // (ATTENDANCE_PLAN.md §5.2, lib/company-settings-access.ts). Reserved:
+    // the audit log is the Super Admin's page.
+    "settings.view":            { code: 46, module: null, scopes: COMPANY },
+    "settings.edit":            { code: 47, module: null, scopes: COMPANY, implies: ["settings.view"] },
     "audit.view":               { code: 48, module: null, scopes: COMPANY, reserved: true },
 } as const satisfies Record<string, PermissionDefinition>
 

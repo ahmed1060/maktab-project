@@ -2,6 +2,7 @@ import { z } from "zod"
 import { MAX_MODULE_LABEL_LENGTH, isModuleKey, isValidModuleIcon } from "@/lib/modules"
 import { MAX_PAYROLL_DAY } from "@/lib/payday"
 import { checkTimeZone } from "@/lib/timezone"
+import { ELIGIBLE_SETTINGS_TABS } from "@/lib/company-settings-access"
 
 // Mirrors the TrialPreset database enum. Declared here rather than imported
 // from @prisma/client so this module stays usable anywhere, including the
@@ -91,6 +92,17 @@ export const updateCompanySchema = z.object({
                 ctx.addIssue({ code: z.ZodIssueCode.custom, message: verdict.reason ?? "Unsupported time zone" })
             }
         })
+        .optional(),
+
+    // Which of its settings the company's own people see (ATTENDANCE_PLAN.md
+    // §5.2). Only tabs that may ever be shown: the rest are the Super Admin's.
+    adminSettingsEnabled: z.boolean().optional(),
+    adminSettingsTabs: z
+        .array(z.string())
+        .refine((tabs) => tabs.every((tab) => (ELIGIBLE_SETTINGS_TABS as string[]).includes(tab)), {
+            message: "That tab cannot be shown to a company",
+        })
+        .refine((tabs) => new Set(tabs).size === tabs.length, { message: "A tab is listed twice" })
         .optional(),
 
     // Trial extension, in days, added on top of whichever preset was chosen.

@@ -36,11 +36,11 @@ export const COMPANY_SETTINGS_TABS = [
     },
     { key: "roles", labelKey: "settings_tab_roles", adminEligible: false, fields: [] },
     { key: "modules", labelKey: "settings_tab_modules", adminEligible: false, fields: [] },
+    // Which of these the company's own people see: the Super Admin's switch.
+    { key: "access", labelKey: "settings_tab_access", adminEligible: false, fields: [] },
 ] as const satisfies readonly CompanySettingsTab[]
 
 export type CompanySettingsTabKey = (typeof COMPANY_SETTINGS_TABS)[number]["key"]
-
-export const DEFAULT_SETTINGS_TAB: CompanySettingsTabKey = "general"
 
 export function settingsTab(key: string | null | undefined): CompanySettingsTab | undefined {
     return (COMPANY_SETTINGS_TABS as readonly CompanySettingsTab[]).find(t => t.key === key)

@@ -10,9 +10,11 @@ type Props = {
     companyName: string
     logoUrl: string | null
     onChanged: (logoUrl: string | null) => void
+    /** Shown, not changed: someone who holds settings.view without settings.edit. */
+    readOnly?: boolean
 }
 
-export default function CompanyLogoCard({ companyId, companyName, logoUrl, onChanged }: Props) {
+export default function CompanyLogoCard({ companyId, companyName, logoUrl, onChanged, readOnly = false }: Props) {
     const { t, locale } = useLanguage()
     const { showToast } = useToast()
     const isRtl = locale === 'ar'
@@ -130,7 +132,7 @@ export default function CompanyLogoCard({ companyId, companyName, logoUrl, onCha
                 }}
             />
 
-            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem', justifyContent: isRtl ? 'flex-start' : 'flex-end' }}>
+            {!readOnly && <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem', justifyContent: isRtl ? 'flex-start' : 'flex-end' }}>
                 {logoUrl && (
                     <button type="button" className="btn" onClick={handleRemove} disabled={busy}>
                         {t('company_logo_remove')}
@@ -139,7 +141,7 @@ export default function CompanyLogoCard({ companyId, companyName, logoUrl, onCha
                 <button type="button" className="btn btn-primary" onClick={() => inputRef.current?.click()} disabled={busy}>
                     {busy ? t('saving') : (logoUrl ? t('company_logo_replace') : t('company_logo_upload'))}
                 </button>
-            </div>
+            </div>}
         </div>
     )
 }

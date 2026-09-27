@@ -109,6 +109,12 @@ export const BUILT_IN_GRANTS: Record<BuiltInRole, Grants> = {
         "vendors.view": "COMPANY",
         "vendors.manage": "COMPANY",
         "costs.view": "COMPANY",
+
+        // Settings: the company's own settings, but only the tabs the Super
+        // Admin chooses to show it, and none until they switch that on
+        // (ATTENDANCE_PLAN.md §5.2). Added by migration 20261006000000.
+        "settings.view": "COMPANY",
+        "settings.edit": "COMPANY",
     },
     // A Team Leader sees their team in the employee list and can look each of
     // them up — TEAM scope, enforced by buildUserWhereClause and

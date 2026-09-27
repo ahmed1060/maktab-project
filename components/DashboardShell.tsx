@@ -27,6 +27,9 @@ interface DashboardShellProps {
     // The name shown in that mark. Falls back to the default rather than to an
     // empty string: "Powered by" with nothing after it reads as a bug.
     poweredByName?: string
+    // Whether this person sees their company's settings: resolved in the
+    // layout from the company's switch and their role (ATTENDANCE_PLAN.md §5.2).
+    showCompanySettings?: boolean
 }
 
 /**
@@ -40,7 +43,7 @@ const MANAGEMENT_PERMISSION: Partial<Record<ModuleKey, Permission>> = {
     vendors: 'vendors.view',
 }
 
-export default function DashboardShell({ children, user, showPoweredBy = true, poweredByName }: DashboardShellProps) {
+export default function DashboardShell({ children, user, showPoweredBy = true, poweredByName, showCompanySettings = false }: DashboardShellProps) {
     const [isSidebarOpen, setIsSidebarOpen] = useState(false)
     const [isMobile, setIsMobile] = useState(false)
     const [isCollapsed, setIsCollapsed] = useState(false) // New State for Desktop Collapse
@@ -429,7 +432,7 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
                         )}
                     </Link>
 
-                    {(managementLinks.length > 0 || canSeePayroll || canSeeRoleRequests) && (
+                    {(managementLinks.length > 0 || canSeePayroll || canSeeRoleRequests || showCompanySettings) && (
                         <>
                             {isCollapsed ? (
                                 <hr style={{ border: 'none', borderTop: '1px solid var(--veil-30)', margin: '1rem auto', width: '50%' }} />
@@ -560,6 +563,40 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
                                 >
                                     <span style={{ fontSize: '1.4rem' }}>🪪</span>
                                     {!isCollapsed && <span style={{ flex: 1 }}>{t('role_requests_title')}</span>}
+                                </Link>
+                            )}
+                            {showCompanySettings && (
+                                <Link
+                                    href="/dashboard/settings"
+                                    onClick={() => isMobile && setIsSidebarOpen(false)}
+                                    title={isCollapsed ? t('company_settings_title') : ''}
+                                    className="nav-link"
+                                    style={{
+                                        color: 'var(--sidebar-fg)',
+                                        textDecoration: 'none',
+                                        padding: '0.85rem 1rem',
+                                        borderRadius: '1rem',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: isCollapsed ? 'center' : 'flex-start',
+                                        gap: isCollapsed ? '0' : '1rem',
+                                        transition: 'all 0.2s',
+                                        fontSize: '0.95rem',
+                                        fontWeight: '500'
+                                    }}
+                                    onMouseOver={(e) => {
+                                        e.currentTarget.style.background = 'var(--veil-10)'
+                                        e.currentTarget.style.color = 'var(--sidebar-fg-strong)'
+                                        e.currentTarget.style.transform = isCollapsed ? 'scale(1.1)' : 'translateX(5px)'
+                                    }}
+                                    onMouseOut={(e) => {
+                                        e.currentTarget.style.background = 'transparent'
+                                        e.currentTarget.style.color = 'var(--sidebar-fg)'
+                                        e.currentTarget.style.transform = 'none'
+                                    }}
+                                >
+                                    <span style={{ fontSize: '1.4rem' }}>⚙️</span>
+                                    {!isCollapsed && <span style={{ flex: 1 }}>{t('company_settings_title')}</span>}
                                 </Link>
                             )}
                         </>

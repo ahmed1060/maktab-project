@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest"
 import { readFileSync } from "node:fs"
 import { en } from "./translations/en"
 import { ar } from "./translations/ar"
-import { COMPANY_SETTINGS_TABS, DEFAULT_SETTINGS_TAB, settingsTab } from "./company-settings-tabs"
+import { COMPANY_SETTINGS_TABS, settingsTab } from "./company-settings-tabs"
 
 /**
  * The company settings tabs (ATTENDANCE_PLAN.md §5.1): one registry, and a
@@ -41,8 +41,9 @@ describe("the company settings tabs", () => {
         }
     })
 
-    it("open on General, from the URL otherwise", () => {
-        expect(DEFAULT_SETTINGS_TAB).toBe("general")
+    it("open on the first tab shown, from the URL otherwise", () => {
+        expect(COMPANY_SETTINGS_TABS[0].key).toBe("general")
+        expect(TABS).toContain("?? tabs[0]?.key")
         expect(settingsTab("payroll")?.key).toBe("payroll")
         expect(settingsTab("nonsense")).toBeUndefined()
         expect(TABS).toContain("searchParams.get('tab')")
