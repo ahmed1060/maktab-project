@@ -525,6 +525,7 @@ export const authOptions: NextAuthOptions = {
                                     select: {
                                         sessionVersion: true, status: true, emailVerifiedAt: true, mfaEnabled: true,
                                         role: true, roleId: true, assignedRole: { select: { version: true } },
+                                        actingUntil: true,
                                         company: {
                                             select: {
                                                 isBanned: true,
@@ -582,9 +583,15 @@ export const authOptions: NextAuthOptions = {
                             // may do, without signing them out. Both are compared —
                             // every role starts at version 1, so a move between
                             // two unedited roles changes only the id (§4.4).
-                            if (u && ((u.roleId ?? null) !== (token.roleId ?? null) || (u.assignedRole?.version ?? 0) !== (token.roleVersion ?? 0))) {
-                                Object.assign(token, await RoleService.forToken(userId))
-                                token.role = u.role
+                            //
+                            // And once an acting role is over (§6.13): the grants
+                            // of the role they return to, from then on, rather
+                            // than whenever the nightly job moves them back.
+                            const actingOver = !!u?.actingUntil && u.actingUntil <= new Date() && !token.actingEnded
+                            if (u && ((u.roleId ?? null) !== (token.roleId ?? null) || (u.assignedRole?.version ?? 0) !== (token.roleVersion ?? 0) || actingOver)) {
+                                const loaded = await RoleService.forToken(userId)
+                                Object.assign(token, loaded)
+                                token.role = loaded.role ?? u.role
                             }
                         }
 

@@ -575,6 +575,14 @@ describe.skipIf(!ADMIN_URL)("roles as data, in Postgres", () => {
             // Not yet.
             expect(await RoleAssignmentService.endActing(new Date())).toMatchObject({ returned: 0 })
             expect((await row("act1")).roleId).toBe(cover)
+            // The session carries the acting role until the date, and the role
+            // returned to from then on, before the nightly job has moved them.
+            const acting = await RoleService.forToken("act1", prisma, new Date())
+            expect(acting).toMatchObject({ roleId: cover, actingEnded: undefined })
+            expect(decodeGrants(acting.grants)).toMatchObject({ "dayoff.approve": "COMPANY" })
+            const over = await RoleService.forToken("act1", prisma, new Date(until.getTime() + 1000))
+            expect(over).toMatchObject({ roleId: cover, role: "EMPLOYEE", actingEnded: true })
+            expect(decodeGrants(over.grants)).toEqual(BUILT_IN_GRANTS.EMPLOYEE)
             // The day comes.
             expect(await RoleAssignmentService.endActing(new Date(until.getTime() + 1000))).toMatchObject({ returned: 1 })
             expect(await row("act1")).toMatchObject({ roleId: employee, actingUntil: null, returnRoleId: null })
@@ -615,6 +623,8 @@ describe.skipIf(!ADMIN_URL)("roles as data, in Postgres", () => {
             const until = inAWeek()
             await UserService.update({ id: "act2", roleId: leader, actingUntil: until } as any, admin)
             await UserService.update({ id: "rep1", teamLeaderId: "act2" } as any, admin)
+            // Held, the session keeps the acting access too.
+            expect(await RoleService.forToken("act2", prisma, new Date(until.getTime() + 1000))).toMatchObject({ roleId: leader, actingEnded: undefined })
             const result = await RoleAssignmentService.endActing(new Date(until.getTime() + 1000))
             expect(result).toMatchObject({ held: 1 })
             expect((await row("act2")).roleId).toBe(leader)

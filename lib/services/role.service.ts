@@ -18,7 +18,15 @@ export const BUILT_IN_ROLES: readonly { builtIn: BuiltInRole; name: string }[] =
 ]
 
 /** What a session token carries about the person's role (ROLES_PLAN.md §4.4). */
-export type RoleForToken = { roleId: string | null; roleVersion: number; grants: string }
+export type RoleForToken = {
+    roleId: string | null; roleVersion: number; grants: string
+    /**
+     * Set once an acting role is over and the person's return is due: the base
+     * role they return to, whose grants `grants` then holds (§6.13). The row
+     * still names the acting role until the nightly job moves them back.
+     */
+    role?: UserRole; actingEnded?: true
+}
 
 /**
  * A role previewed by the Super Admin (ROLES_PLAN.md §6.6): what the session
@@ -39,6 +47,17 @@ export type RolePreview = {
 }
 
 /** How long a preview lasts before it ends by itself, if nobody ends it. */
+/**
+ * A role's grants rows as grants. A grant for a permission no longer in the
+ * catalogue is skipped rather than trusted: it cannot be encoded, and it gates
+ * nothing.
+ */
+function grantsOf(rows: { permission: string; scope: Scope }[]): Grants {
+    const grants: Grants = {}
+    for (const g of rows) if (isPermission(g.permission)) grants[g.permission] = g.scope
+    return grants
+}
+
 export const PREVIEW_LASTS_MS = 60 * 60 * 1000
 
 export class RoleService {
@@ -89,21 +108,38 @@ export class RoleService {
         }
     }
 
-    static async forToken(userId: string, client: Pick<typeof prisma, "user"> = prisma): Promise<RoleForToken> {
+    static async forToken(userId: string, client: Pick<typeof prisma, "user"> = prisma, now: Date = new Date()): Promise<RoleForToken> {
         const user = await client.user.findUnique({
             where: { id: userId },
             select: {
-                roleId: true,
+                id: true, role: true, companyId: true, roleId: true, actingUntil: true,
+                returnRole: { select: { id: true, baseRole: true } },
                 assignedRole: { select: { version: true, grants: { select: { permission: true, scope: true } } } },
             },
         })
         const role = user?.assignedRole
         if (!user?.roleId || !role) return { roleId: null, roleVersion: 0, grants: "" }
-        const grants: Grants = {}
-        // A grant for a permission no longer in the catalogue is skipped rather
-        // than trusted: it cannot be encoded, and it gates nothing.
-        for (const g of role.grants) if (isPermission(g.permission)) grants[g.permission] = g.scope
-        return { roleId: user.roleId, roleVersion: role.version, grants: encodeGrants(grants) }
+        const held = { roleId: user.roleId, roleVersion: role.version }
+
+        // An acting role ends at midnight in the company's calendar (§6.13), but
+        // the job that moves people back runs once a day. The session stops the
+        // acting role's access on time instead: once the return is due, it
+        // carries the grants of the role they return to. A return the rules
+        // would refuse (the last Admin, a team still reporting) waits, as the
+        // job's does, and so does the acting access.
+        if (user.actingUntil && user.actingUntil <= now && user.companyId) {
+            const { RoleAssignmentService } = await import("./role-assignment.service")
+            const next = await RoleAssignmentService.returnFor(user).catch((error: Error) => {
+                if (error.message === "LEADER_HAS_REPORTS" || error.message === "LAST_ADMIN") return null
+                throw error
+            })
+            if (next?.roleId) {
+                const back = await prisma.role.findUnique({ where: { id: next.roleId }, select: { grants: { select: { permission: true, scope: true } } } })
+                if (back) return { ...held, grants: encodeGrants(grantsOf(back.grants)), role: next.role, actingEnded: true }
+            }
+        }
+        // actingEnded cleared explicitly: the token keeps whatever it is not told.
+        return { ...held, grants: encodeGrants(grantsOf(role.grants)), actingEnded: undefined }
     }
 
     /** The version of a role, for the session's minute-by-minute check. */

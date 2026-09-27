@@ -181,6 +181,30 @@ export class RoleAssignmentService {
      * report to them, or the company's last Admin at work. A return role that
      * no longer exists sends them to the company's default instead.
      */
+    /**
+     * Where somebody whose acting role is over goes back to: the role they had,
+     * or the company's default if it no longer exists. Throws LEADER_HAS_REPORTS
+     * or LAST_ADMIN when the rules would refuse the return, which then waits.
+     * Only reads: the nightly job makes the change, and the session uses it to
+     * stop the acting role's access on time (lib/auth.ts).
+     */
+    static async returnFor(person: {
+        id: string; role: UserRole; companyId: string | null
+        returnRole: { id: string; baseRole: UserRole } | null
+    }): Promise<{ role: UserRole; roleId: string | null }> {
+        const companyId = person.companyId!
+        const next = person.returnRole
+            ? { role: person.returnRole.baseRole, roleId: person.returnRole.id }
+            : await RoleAssignmentService.defaultFor(prisma, companyId)
+        const { stripsLeadership } = await import("@/lib/team-assignment")
+        if (stripsLeadership(person, { role: next.role })) {
+            const { TeamHandOff } = await import("./team-handoff.service")
+            await TeamHandOff.plan({ id: person.id, companyId }, undefined)
+        }
+        await RoleAssignmentService.keepsAnAdmin(prisma, person.id, { roleId: next.roleId })
+        return next
+    }
+
     static async endActing(now: Date = new Date()) {
         const due = await prisma.user.findMany({
             where: { actingUntil: { lte: now }, companyId: { not: null } },
@@ -191,8 +215,6 @@ export class RoleAssignmentService {
                 returnRole: { select: { id: true, baseRole: true, name: true } },
             },
         })
-        const { stripsLeadership } = await import("@/lib/team-assignment")
-        const { TeamHandOff } = await import("./team-handoff.service")
         const { NotificationService } = await import("./notification.service")
         const { AuditLogService } = await import("./audit-log.service")
         const { holdersOf } = await import("@/lib/permissions/holders")
@@ -201,14 +223,9 @@ export class RoleAssignmentService {
 
         for (const person of due) {
             const companyId = person.companyId!
-            const next = person.returnRole
-                ? { role: person.returnRole.baseRole, roleId: person.returnRole.id }
-                : await RoleAssignmentService.defaultFor(prisma, companyId)
+            let next: { role: UserRole; roleId: string | null }
             try {
-                if (stripsLeadership(person, { role: next.role })) {
-                    await TeamHandOff.plan({ id: person.id, companyId }, undefined)
-                }
-                await RoleAssignmentService.keepsAnAdmin(prisma, person.id, { roleId: next.roleId })
+                next = await RoleAssignmentService.returnFor(person)
             } catch (error: any) {
                 if (error?.message !== "LEADER_HAS_REPORTS" && error?.message !== "LAST_ADMIN") throw error
                 held.push(person.id)
