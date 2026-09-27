@@ -103,6 +103,7 @@ export default function CompanyRolesCard({ companyId }: { companyId: string }) {
                     <p style={{ fontSize: '0.8rem', color: 'var(--text-soft)', marginTop: '0.25rem' }}>{t('roles_hint')}</p>
                 </div>
                 <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                    <a className="btn" style={{ background: 'var(--border)', color: 'var(--text-strong)', textDecoration: 'none' }} href={`/api/roles/export?companyId=${companyId}&locale=${locale}`} download>{t('roles_export')}</a>
                     <button type="button" className="btn" style={{ background: 'var(--border)', color: 'var(--text-strong)' }} onClick={() => setCopying(true)}>{t('roles_copy_from')}</button>
                     <button type="button" className="btn btn-primary" onClick={() => setEditing('new')}>{t('roles_new')}</button>
                 </div>

@@ -1468,5 +1468,6 @@ export const en = {
         role_changes_done: "Mark done",
         role_changes_decline: "Decline",
         role_changes_response: "Response",
-        role_changes_answered: "Answered"
+        role_changes_answered: "Answered",
+        roles_export: "Export for the contract"
 };

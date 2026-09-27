@@ -1463,5 +1463,6 @@ export const ar = {
         role_changes_done: "تعليم كمنجز",
         role_changes_decline: "رفض",
         role_changes_response: "الرد",
-        role_changes_answered: "تم الرد"
+        role_changes_answered: "تم الرد",
+        roles_export: "تصدير للعقد"
 };
