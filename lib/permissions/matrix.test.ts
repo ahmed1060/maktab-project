@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest"
-import { PERMISSIONS, type Permission } from "./catalogue"
+import { PERMISSIONS, isReserved, type Permission } from "./catalogue"
+import { normalizeGrants } from "./grant-rules"
 import { en } from "@/lib/translations/en"
 import { ar } from "@/lib/translations/ar"
 import { PERMISSION_GROUPS, permissionLabelKey, groupLabelKey, scopeLabelKey, riskLabelKey, setGrant, neededBy, drift, widestScope } from "./matrix"
@@ -7,10 +8,17 @@ import { PERMISSION_GROUPS, permissionLabelKey, groupLabelKey, scopeLabelKey, ri
 const ALL = Object.keys(PERMISSIONS) as Permission[]
 
 describe("the permission matrix", () => {
-    it("shows every permission, once", () => {
+    it("shows every permission, once, but those nothing checks yet", () => {
         const shown = PERMISSION_GROUPS.flatMap(g => g.permissions)
-        expect(shown.sort()).toEqual([...ALL].sort())
+        // Reserved ones are left out, so no role promises access it does not
+        // give (catalogue.ts): company settings and the audit log.
+        expect(shown.sort()).toEqual(ALL.filter(p => !isReserved(p)).sort())
+        expect(ALL.filter(isReserved).sort()).toEqual(["audit.view", "settings.edit", "settings.view"])
         expect(PERMISSION_GROUPS.every(g => g.permissions.length > 0)).toBe(true)
+    })
+
+    it("refuses saving a role or template with one nothing checks yet", () => {
+        expect(normalizeGrants([{ permission: "audit.view", scope: "COMPANY" }])).toEqual({ ok: false, errors: ["audit.view is not available yet"] })
     })
 
     // A row labelled with its raw key would look like a bug to the Super Admin

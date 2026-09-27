@@ -1,4 +1,4 @@
-import { PERMISSIONS, isPermission, type Permission, type Scope } from "./catalogue"
+import { PERMISSIONS, isPermission, isReserved, type Permission, type Scope } from "./catalogue"
 import type { Grants } from "./grants"
 
 /**
@@ -27,6 +27,9 @@ export function normalizeGrants(input: readonly GrantInput[]): GrantsVerdict {
 
     for (const { permission, scope } of input) {
         if (!isPermission(permission)) { errors.push(`Unknown permission: ${permission}`); continue }
+        // Nothing checks it yet: a role holding it would promise access it
+        // does not give (catalogue.ts, `reserved`).
+        if (isReserved(permission)) { errors.push(`${permission} is not available yet`); continue }
         if (!(PERMISSIONS[permission].scopes as readonly string[]).includes(scope)) {
             errors.push(`${permission} cannot be granted at ${scope} scope`); continue
         }

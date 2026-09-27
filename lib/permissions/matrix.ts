@@ -1,4 +1,4 @@
-import { PERMISSIONS, type Permission, type Scope } from "./catalogue"
+import { PERMISSIONS, isReserved, type Permission, type Scope } from "./catalogue"
 import type { Grants } from "./grants"
 import { normalizeGrants } from "./grant-rules"
 import type { TranslationKey } from "@/lib/translations"
@@ -21,7 +21,6 @@ export const PERMISSION_GROUPS: { key: string; permissions: Permission[] }[] = [
     { key: "dayoff", permissions: [] },
     { key: "salaries", permissions: [] },
     { key: "payroll", permissions: [] },
-    { key: "settings", permissions: [] },
 ]
 
 /** The group of a permission, by the area its key names. */
@@ -30,10 +29,10 @@ const GROUP_OF_AREA: Record<string, string> = {
     tasks: "tasks", obligations: "obligations", clients: "clients", vendors: "vendors", costs: "costs",
     dayoff: "dayoff", salary: "salaries", salary_adjustments: "salaries",
     payroll: "payroll", settlements: "payroll", debts: "payroll",
-    settings: "settings", audit: "settings",
 }
 
-for (const permission of Object.keys(PERMISSIONS) as Permission[]) {
+// A reserved permission is not offered: nothing checks it yet (catalogue.ts).
+for (const permission of (Object.keys(PERMISSIONS) as Permission[]).filter(p => !isReserved(p))) {
     const group = PERMISSION_GROUPS.find(g => g.key === GROUP_OF_AREA[permission.split(".")[0]])
     // A permission in an area with no group would be a row nobody can tick;
     // fail loudly, at import, rather than leave it out.

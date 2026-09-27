@@ -44,6 +44,13 @@ type PermissionDefinition = {
     code: number
     module: Module | null
     scopes: readonly Scope[]
+    /**
+     * Planned, but nothing checks it yet: the screens and routes it would open
+     * are the Super Admin's alone. Not offered in the permission matrix, and
+     * refused when a role or template is saved, so no role promises access it
+     * does not give. Remove when a route asks for it.
+     */
+    reserved?: true
     highRisk?: string
     implies?: readonly string[]
     /**
@@ -130,9 +137,10 @@ export const PERMISSIONS = {
     "debts.waive":              { code: 45, module: "PAYROLL", scopes: COMPANY, implies: ["debts.view"], highRisk: MOVES_MONEY },
 
     // --- Settings and audit --------------------------------------------------
-    "settings.view":            { code: 46, module: null, scopes: COMPANY },
-    "settings.edit":            { code: 47, module: null, scopes: COMPANY, implies: ["settings.view"] },
-    "audit.view":               { code: 48, module: null, scopes: COMPANY },
+    // Reserved: company settings and the audit log are the Super Admin's pages.
+    "settings.view":            { code: 46, module: null, scopes: COMPANY, reserved: true },
+    "settings.edit":            { code: 47, module: null, scopes: COMPANY, implies: ["settings.view"], reserved: true },
+    "audit.view":               { code: 48, module: null, scopes: COMPANY, reserved: true },
 } as const satisfies Record<string, PermissionDefinition>
 
 export type Permission = keyof typeof PERMISSIONS
@@ -153,6 +161,11 @@ export const ALL_PERMISSIONS = Object.keys(PERMISSIONS) as Permission[]
 
 export function isPermission(value: string): value is Permission {
     return Object.prototype.hasOwnProperty.call(PERMISSIONS, value)
+}
+
+/** Whether a permission is planned but not yet checked anywhere (see `reserved`). */
+export function isReserved(permission: Permission): boolean {
+    return (PERMISSIONS[permission] as PermissionDefinition).reserved === true
 }
 
 export function definitionOf(permission: Permission): PermissionDefinition {
