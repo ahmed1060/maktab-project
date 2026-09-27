@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
+import { readFileSync } from "node:fs"
 import { state, prismaMock, withBody, url, as } from "./permissions/employee-access.harness"
 import { encodeGrants } from "./permissions/grants"
 import { stepUpConfirmed } from "./permissions/test-actors"
@@ -198,5 +199,28 @@ describe("the Super Admin's switch", () => {
             adminSettingsEnabled: { old: true, new: false },
             adminSettingsTabs: { old: ["general", "payroll"], new: ["general"] },
         })
+    })
+})
+
+describe("the menu entry", () => {
+    const visible = async () => (await (await import("@/app/api/company-settings/visible/route")).GET(new Request(url("/api/company-settings/visible")))).json()
+    const SHELL = readFileSync("components/DashboardShell.tsx", "utf8")
+
+    it("is offered by the same rule, asked afresh", async () => {
+        as("admin")
+        expect((await visible()).data).toEqual({ visible: true })
+        company.adminSettingsEnabled = false
+        expect((await visible()).data).toEqual({ visible: false })
+        company.adminSettingsEnabled = true
+        as("employee")
+        expect((await visible()).data).toEqual({ visible: false })
+        as("superAdmin")
+        expect((await visible()).data).toEqual({ visible: false })
+    })
+
+    it("is asked again as the person moves around, since the layout does not re-render", () => {
+        // The dashboard layout persists across client navigation.
+        expect(SHELL).toContain("'/api/company-settings/visible'")
+        expect(SHELL).toContain("useEffect(() => { recheckSettings() }, [pathname, recheckSettings])")
     })
 })

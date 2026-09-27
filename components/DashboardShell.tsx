@@ -10,7 +10,9 @@ import { useModules } from '@/lib/useModules'
 import { useCompanyBranding } from '@/context/CompanyBrandingContext'
 import { DEFAULT_POWERED_BY_NAME } from '@/lib/branding-defaults'
 import Link from 'next/link'
-import { useSearchParams } from 'next/navigation'
+import { usePathname, useSearchParams } from 'next/navigation'
+import useSWR from 'swr'
+import { fetcher } from '@/lib/swr-fetcher'
 import DashboardHeader from './DashboardHeader'
 import { useLanguage } from '@/context/LanguageContext'
 import { permissionsOf } from '@/lib/useCan'
@@ -43,7 +45,7 @@ const MANAGEMENT_PERMISSION: Partial<Record<ModuleKey, Permission>> = {
     vendors: 'vendors.view',
 }
 
-export default function DashboardShell({ children, user, showPoweredBy = true, poweredByName, showCompanySettings = false }: DashboardShellProps) {
+export default function DashboardShell({ children, user, showPoweredBy = true, poweredByName, showCompanySettings: settingsOnFirstPaint = false }: DashboardShellProps) {
     const [isSidebarOpen, setIsSidebarOpen] = useState(false)
     const [isMobile, setIsMobile] = useState(false)
     const [isCollapsed, setIsCollapsed] = useState(false) // New State for Desktop Collapse
@@ -60,6 +62,18 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
         })
         .map(key => modules.entry(key))
     const canSeePayroll = permissions.can('payroll.view')
+    // Company settings (ATTENDANCE_PLAN.md §5.2): the layout's answer for the
+    // first paint, then asked again on every page and on focus. The layout
+    // persists across client navigation, so without this the Super Admin's
+    // switch would reach an open dashboard only on a full reload.
+    const pathname = usePathname()
+    const { data: settingsEntry, mutate: recheckSettings } = useSWR(
+        user?.role && user.role !== 'SUPER_ADMIN' ? '/api/company-settings/visible' : null,
+        fetcher,
+        { fallbackData: { data: { visible: settingsOnFirstPaint } }, revalidateOnMount: false },
+    )
+    useEffect(() => { recheckSettings() }, [pathname, recheckSettings])
+    const showCompanySettings = !!settingsEntry?.data?.visible
     // Role requests (ROLES_PLAN.md §6.12): for whoever decides them, and
     // whoever makes them.
     const canSeeRoleRequests = user?.role !== 'SUPER_ADMIN' && (permissions.can('employees.assign_role') || permissions.can('employees.request_role'))
