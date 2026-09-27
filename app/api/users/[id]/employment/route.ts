@@ -3,7 +3,7 @@ import { ApiResponse } from "@/lib/api-response"
 import { teamRefusalResponse } from "@/lib/team-handoff-response"
 import { EmploymentService } from "@/lib/services/employment.service"
 import { SettlementService } from "@/lib/services/settlement.service"
-import { verifyResourceAccess } from "@/lib/security"
+import { verifyResourceAccess, personTarget } from "@/lib/security"
 import { can } from "@/lib/permissions/can"
 import { toMajor } from "@/lib/payroll"
 import { calendarMonth } from "@/lib/time"
@@ -32,6 +32,9 @@ export const GET = withStandardHandler(async (req, session, _json, { params }) =
     // a settlement preview is the first step of ending a contract.
     const needed = lastWorkingDay ? "employees.end_contract" : "employees.edit"
     if (!can(session.user, needed)) return ApiResponse.forbidden("Managers only")
+    // employees.edit may be held for a team: it reaches that team.
+    const person = await personTarget(userId)
+    if (!person || !can(session.user, needed, person)) return ApiResponse.forbidden("Access denied")
     if (!(await verifyResourceAccess(session, userId, 'USER'))) return ApiResponse.forbidden("Access denied")
 
     const now = new Date()
