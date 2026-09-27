@@ -650,10 +650,30 @@ export const authOptions: NextAuthOptions = {
                     token.picture = newAvatar
                 }
                 if (session.language !== undefined) token.language = session.language
-                if (session.mustChangePassword !== undefined) token.mustChangePassword = session.mustChangePassword
-                if (session.emailVerified !== undefined) token.emailVerified = session.emailVerified
-                if (session.email !== undefined) token.email = session.email
-                if (session.mfaEnabled !== undefined) token.mfaEnabled = session.mfaEnabled
+
+                // The flags the dashboard is gated on — a forced password
+                // reset, a verified email, MFA — and the address itself are
+                // never taken from the client. `session` is whatever the
+                // browser passes to update(), so trusting it let anybody call
+                // update({ emailVerified: true, mustChangePassword: false })
+                // from the console and walk past both gates in proxy.ts. The
+                // callers ask only after the server has changed the row
+                // (email confirmed, MFA set up or removed, password changed),
+                // so re-reading it gives them the new value; a client claiming
+                // otherwise gets the database's answer.
+                const asksAboutSecurity = ['mustChangePassword', 'emailVerified', 'email', 'mfaEnabled'].some(key => session[key] !== undefined)
+                if (asksAboutSecurity && token.sub) {
+                    const select = { email: true, emailVerifiedAt: true, mfaEnabled: true, mustChangePassword: true } as const
+                    const row = token.role === 'SUPER_ADMIN'
+                        ? await prisma.superAdmin.findUnique({ where: { id: token.sub as string }, select })
+                        : await prisma.user.findUnique({ where: { id: token.sub as string }, select })
+                    if (row) {
+                        token.mustChangePassword = row.mustChangePassword
+                        token.emailVerified = !!row.emailVerifiedAt
+                        token.email = row.email
+                        token.mfaEnabled = row.mfaEnabled
+                    }
+                }
             }
             return token
         }

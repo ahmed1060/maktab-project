@@ -70,3 +70,42 @@ describe("previewing a role (ROLES_PLAN.md §6.6)", () => {
         expect((await jwt({ token: old })).preview).toBeNull()
     })
 })
+
+/**
+ * update() is the browser's to call, with whatever it likes. The flags the
+ * dashboard is gated on (proxy.ts) come from the database, never from it.
+ */
+describe("a client updating its own session", () => {
+    const row = (overrides: Record<string, unknown> = {}) => ({ email: "e1@x.co", emailVerifiedAt: null, mfaEnabled: false, mustChangePassword: true, ...overrides })
+
+    it("cannot claim a verified email or a finished password reset the database disagrees with", async () => {
+        db.users.e1 = row()
+        const token = await jwt({
+            token: fresh({ sub: "e1", role: "EMPLOYEE", emailVerified: false, mustChangePassword: true, mfaEnabled: false }),
+            trigger: "update",
+            session: { emailVerified: true, mustChangePassword: false, mfaEnabled: true, email: "someone-else@x.co" },
+        })
+        expect(token).toMatchObject({ emailVerified: false, mustChangePassword: true, mfaEnabled: false, email: "e1@x.co" })
+    })
+
+    it("gets the new values once the server has changed the row", async () => {
+        db.users.e1 = row({ emailVerifiedAt: new Date(), mustChangePassword: false, mfaEnabled: true, email: "new@x.co" })
+        const token = await jwt({
+            token: fresh({ sub: "e1", role: "EMPLOYEE", emailVerified: false, mustChangePassword: true, mfaEnabled: false }),
+            trigger: "update",
+            session: { emailVerified: true, mustChangePassword: false },
+        })
+        expect(token).toMatchObject({ emailVerified: true, mustChangePassword: false, mfaEnabled: true, email: "new@x.co" })
+    })
+
+    it("reads a Super Admin's own row", async () => {
+        db.superAdmins.sa = row({ email: "sa@x.co", emailVerifiedAt: null })
+        const token = await jwt({ token: fresh({ sub: "sa", role: "SUPER_ADMIN", emailVerified: false }), trigger: "update", session: { emailVerified: true } })
+        expect(token.emailVerified).toBe(false)
+    })
+
+    it("still takes what is only shown: names, picture, language", async () => {
+        const token = await jwt({ token: fresh({ sub: "e1", role: "EMPLOYEE" }), trigger: "update", session: { firstName: "Nour", language: "ar", avatar: "a.png" } })
+        expect(token).toMatchObject({ firstName: "Nour", language: "ar", avatar: "a.png" })
+    })
+})
