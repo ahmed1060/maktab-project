@@ -16,7 +16,7 @@ type Session = { user: { id: string; role: string; companyId?: string | null; gr
 const SHAPE = {
     id: true, companyId: true, description: true, status: true, response: true, createdAt: true, respondedAt: true,
     company: { select: { name: true } },
-    role: { select: { id: true, name: true } },
+    role: { select: { id: true, name: true, builtIn: true } },
     requestedBy: { select: { id: true, firstName: true, lastName: true } },
     respondedBy: { select: { firstName: true, lastName: true } },
 } satisfies Prisma.RoleChangeRequestSelect

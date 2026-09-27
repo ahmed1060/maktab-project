@@ -3,6 +3,7 @@ import { en } from "@/lib/translations/en"
 import { ar } from "@/lib/translations/ar"
 import type { Locale, TranslationKey } from "@/lib/translations"
 import { isPermission, type Permission, type Scope } from "@/lib/permissions/catalogue"
+import { BUILT_IN_LABEL, roleLabel } from "@/lib/role-label"
 import { PERMISSION_GROUPS, permissionLabelKey, groupLabelKey, scopeLabelKey, riskLabelKey } from "@/lib/permissions/matrix"
 
 /**
@@ -17,13 +18,13 @@ import { PERMISSION_GROUPS, permissionLabelKey, groupLabelKey, scopeLabelKey, ri
 
 export type ExportRole = {
     name: string
+    builtIn?: string | null
     baseRole: string
     description: string | null
     holders: number
     grants: { permission: string; scope: string }[]
 }
 
-const BASE_LABEL: Record<string, TranslationKey> = { ADMIN: "role_admin", TEAM_LEADER: "role_team_leader", EMPLOYEE: "role_employee" }
 const FIRST_ROLE_COLUMN = 3 // A: permission, B: risk
 
 export async function buildRoleMatrix(input: { companyName: string; roles: ExportRole[]; locale: Locale; at: Date }): Promise<Buffer> {
@@ -41,9 +42,10 @@ export async function buildRoleMatrix(input: { companyName: string; roles: Expor
     sheet.getCell(4, 1).value = t("who_can_permission")
     input.roles.forEach((role, i) => {
         const column = FIRST_ROLE_COLUMN + i
-        sheet.getCell(4, column).value = role.name
-        sheet.getCell(5, column).value = `${t(BASE_LABEL[role.baseRole] ?? "role_employee")} · ${t("roles_holders").replace("{count}", String(role.holders))}`
-        sheet.getColumn(column).width = Math.max(14, role.name.length + 4)
+        const name = roleLabel(role, t)
+        sheet.getCell(4, column).value = name
+        sheet.getCell(5, column).value = `${t(BUILT_IN_LABEL[role.baseRole as keyof typeof BUILT_IN_LABEL] ?? "role_employee")} · ${t("roles_holders").replace("{count}", String(role.holders))}`
+        sheet.getColumn(column).width = Math.max(14, name.length + 4)
     })
     sheet.getRow(4).font = { bold: true }
     sheet.getColumn(1).width = 42
@@ -72,7 +74,7 @@ export async function buildRoleMatrix(input: { companyName: string; roles: Expor
     // Each role's description under the matrix, for what a name leaves out.
     row++
     for (const role of input.roles.filter(r => r.description)) {
-        sheet.getCell(row, 1).value = role.name
+        sheet.getCell(row, 1).value = roleLabel(role, t)
         sheet.getCell(row, 1).font = { bold: true }
         sheet.getCell(row, 2).value = role.description
         row++

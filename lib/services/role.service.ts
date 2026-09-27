@@ -28,6 +28,8 @@ export type RoleForToken = { roleId: string | null; roleVersion: number; grants:
 export type RolePreview = {
     roleId: string
     roleName: string
+    /** Which built-in role, if one, so the banner can name it in the viewer's language. */
+    roleBuiltIn?: UserRole | null
     baseRole: UserRole
     companyId: string
     companyName: string
@@ -70,7 +72,7 @@ export class RoleService {
         const role = await prisma.role.findUnique({
             where: { id: roleId },
             select: {
-                id: true, name: true, baseRole: true, companyId: true,
+                id: true, name: true, builtIn: true, baseRole: true, companyId: true,
                 company: { select: { name: true, package: { select: { hasCompanyManagement: true, hasHR: true } } } },
                 grants: { select: { permission: true, scope: true } },
             },
@@ -79,7 +81,7 @@ export class RoleService {
         const grants: Grants = {}
         for (const g of role.grants) if (isPermission(g.permission)) grants[g.permission] = g.scope
         return {
-            roleId: role.id, roleName: role.name, baseRole: role.baseRole,
+            roleId: role.id, roleName: role.name, roleBuiltIn: role.builtIn, baseRole: role.baseRole,
             companyId: role.companyId, companyName: role.company.name,
             grants: encodeGrants(grants),
             featureAccess: serializeAccess(resolveBundles(role.company.package)),

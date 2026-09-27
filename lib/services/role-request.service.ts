@@ -37,8 +37,8 @@ const name = (u: { firstName: string; lastName: string }) => `${u.firstName} ${u
 
 const SHAPE = {
     id: true, companyId: true, status: true, note: true, decisionNote: true, createdAt: true, decidedAt: true, actingUntil: true,
-    user: { select: { id: true, firstName: true, lastName: true, assignedRole: { select: { id: true, name: true } } } },
-    role: { select: { id: true, name: true, baseRole: true } },
+    user: { select: { id: true, firstName: true, lastName: true, assignedRole: { select: { id: true, name: true, builtIn: true } } } },
+    role: { select: { id: true, name: true, baseRole: true, builtIn: true } },
     requestedBy: { select: { id: true, firstName: true, lastName: true } },
     decidedBy: { select: { id: true, firstName: true, lastName: true } },
 } satisfies Prisma.RoleRequestSelect

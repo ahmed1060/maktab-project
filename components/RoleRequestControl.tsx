@@ -6,6 +6,7 @@ import Link from 'next/link'
 import RoleSelect from '@/components/RoleSelect'
 import { refusalOf } from '@/components/CompanyRolesCard'
 import { useLanguage } from '@/context/LanguageContext'
+import { roleLabel } from '@/lib/role-label'
 import { useToast } from '@/context/ToastContext'
 import { fetcher } from '@/lib/swr-fetcher'
 
@@ -17,13 +18,13 @@ import { fetcher } from '@/lib/swr-fetcher'
 type Props = {
     userId: string
     companyId: string
-    current: { id: string; name: string } | null
+    current: { id: string; name: string; builtIn?: string | null } | null
     /** Somebody only the Super Admin acts on (§4.2, rule 7). */
     locked?: boolean
     style?: React.CSSProperties
 }
 
-type Pending = { id: string; role: { name: string } }
+type Pending = { id: string; role: { name: string; builtIn?: string | null } }
 
 export default function RoleRequestControl({ userId, companyId, current, locked, style }: Props) {
     const { t } = useLanguage()
@@ -55,7 +56,7 @@ export default function RoleRequestControl({ userId, companyId, current, locked,
     if (pending) {
         return (
             <div style={{ padding: '0.6rem 0.75rem', borderRadius: '0.75rem', background: 'var(--warn-bg)', border: '1px solid var(--warn-border)', fontSize: '0.9rem' }}>
-                {current?.name ?? '—'} · <Link href={`/dashboard/role-requests?highlight=${pending.id}`}>{t('role_requests_pending_for').replace('{role}', pending.role.name)}</Link>
+                {roleLabel(current, t)} · <Link href={`/dashboard/role-requests?highlight=${pending.id}`}>{t('role_requests_pending_for').replace('{role}', roleLabel(pending.role, t))}</Link>
             </div>
         )
     }

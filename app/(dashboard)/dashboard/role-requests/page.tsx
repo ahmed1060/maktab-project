@@ -17,6 +17,7 @@ import { useLanguage } from '@/context/LanguageContext'
 import { useHeader } from '@/context/HeaderContext'
 import { useCan } from '@/lib/useCan'
 import { fetcher } from '@/lib/swr-fetcher'
+import { roleLabel } from '@/lib/role-label'
 
 /**
  * Role requests (ROLES_PLAN.md §6.12): the queue for whoever decides them, and
@@ -32,8 +33,8 @@ type RoleRequest = {
     actingUntil: string | null
     decisionNote: string | null
     createdAt: string
-    user: Person & { assignedRole: { id: string; name: string } | null }
-    role: { id: string; name: string }
+    user: Person & { assignedRole: { id: string; name: string; builtIn: string | null } | null }
+    role: { id: string; name: string; builtIn: string | null }
     requestedBy: Person
     decidedBy: Person | null
 }
@@ -154,10 +155,10 @@ export default function RoleRequestsPage() {
                                     <tr key={r.id} style={r.id === highlight ? { background: 'var(--warn-bg-yellow-subtle)' } : undefined}>
                                         <td style={cell}>{nameOf(r.user)}</td>
                                         <td style={cell}>
-                                            {r.user.assignedRole?.name ?? '—'} → <strong>{r.role.name}</strong>
+                                            {roleLabel(r.user.assignedRole, t)} → <strong>{roleLabel(r.role, t)}</strong>
                                             {r.actingUntil && (
                                                 <div style={{ fontSize: '0.8rem', color: 'var(--text-soft)' }}>
-                                                    {t('acting_now').replace('{date}', new Date(r.actingUntil).toLocaleDateString(locale)).replace('{role}', r.user.assignedRole?.name ?? '—')}
+                                                    {t('acting_now').replace('{date}', new Date(r.actingUntil).toLocaleDateString(locale)).replace('{role}', roleLabel(r.user.assignedRole, t))}
                                                 </div>
                                             )}
                                             {r.note && <div style={{ fontSize: '0.8rem', color: 'var(--text-soft)' }}>{r.note}</div>}
@@ -197,7 +198,7 @@ export default function RoleRequestsPage() {
             <ConfirmModal
                 isOpen={!!declining}
                 title={t('role_requests_reject')}
-                message={declining ? `${nameOf(declining.user)} → ${declining.role.name}` : ''}
+                message={declining ? `${nameOf(declining.user)} → ${roleLabel(declining.role, t)}` : ''}
                 variant="danger"
                 reason={{ label: t('role_requests_reason') }}
                 onConfirm={(reason) => { const r = declining; setDeclining(null); if (r) act(r, 'REJECT', reason) }}

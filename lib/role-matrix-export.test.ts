@@ -16,7 +16,7 @@ async function read(buffer: Buffer) {
 
 const roles = [
     { name: "HR Officer", baseRole: "EMPLOYEE", description: "Leave and people", holders: 2, grants: [{ permission: "dayoff.approve", scope: "COMPANY" }, { permission: "dayoff.view", scope: "COMPANY" }] },
-    { name: "Team Leader", baseRole: "TEAM_LEADER", description: null, holders: 5, grants: [{ permission: "dayoff.approve", scope: "TEAM" }] },
+    { name: "Team Leader", builtIn: "TEAM_LEADER", baseRole: "TEAM_LEADER", description: null, holders: 5, grants: [{ permission: "dayoff.approve", scope: "TEAM" }] },
 ]
 
 describe("the role matrix for the contract", () => {
@@ -43,5 +43,10 @@ describe("the role matrix for the contract", () => {
         const { sheet, rows } = await read(await buildRoleMatrix({ companyName: "Acme", roles, locale: "ar", at: new Date() }))
         expect(sheet.views[0].rightToLeft).toBe(true)
         expect(rows.find(r => r[0] === "الموافقة على الإجازات")!.slice(2, 4)).toEqual(["الشركة كاملة", "فريقه"])
+    })
+
+    it("names a built-in role in the sheet's language, and any other as it was named", async () => {
+        const { rows } = await read(await buildRoleMatrix({ companyName: "Acme", roles, locale: "ar", at: new Date() }))
+        expect(rows[3].slice(2, 4)).toEqual(["HR Officer", "قائد فريق"])
     })
 })

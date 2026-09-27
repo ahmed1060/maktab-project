@@ -57,9 +57,9 @@ export const GET = withStandardHandler(async (req, session) => {
                 // dropdown (ROLES_PLAN.md §6.4) — its name too, since the
                 // viewer may not be allowed to give it and so not have it
                 // in their list.
-                roleId: true, assignedRole: { select: { name: true } },
+                roleId: true, assignedRole: { select: { name: true, builtIn: true } },
                 // A cover in progress (§6.13): until when, and back to what.
-                actingUntil: true, returnRole: { select: { name: true } },
+                actingUntil: true, returnRole: { select: { name: true, builtIn: true } },
                 // The name, so somebody can be told who manages them. Selected
                 // fields rather than the relation, for the same reason the
                 // list does it: a leader is a User, and `teamLeader: true`

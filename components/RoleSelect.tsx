@@ -4,6 +4,7 @@ import useSWR from 'swr'
 import { useSession } from 'next-auth/react'
 import { fetcher } from '@/lib/swr-fetcher'
 import { useLanguage } from '@/context/LanguageContext'
+import { roleLabel } from '@/lib/role-label'
 
 /**
  * The Role dropdown (ROLES_PLAN.md §6.4): that company's roles, only those the
@@ -24,7 +25,7 @@ type Props = {
     companyId?: string | null
     value: string
     /** The role they hold now, by name, for when the viewer may not give it. */
-    current?: { id: string; name: string } | null
+    current?: { id: string; name: string; builtIn?: string | null } | null
     onChange: (roleId: string, role: AssignableRole | null) => void
     disabled?: boolean
     /** For a new account: an empty choice meaning the company's default role. */
@@ -59,11 +60,11 @@ export default function RoleSelect({ companyId, value, current, onChange, disabl
         >
             {allowDefault && (
                 <option value="">
-                    {emptyLabel ?? `${t('roles_select_default')}${roles.find(r => r.isDefault) ? ` (${roles.find(r => r.isDefault)!.name})` : ''}`}
+                    {emptyLabel ?? `${t('roles_select_default')}${roles.find(r => r.isDefault) ? ` (${roleLabel(roles.find(r => r.isDefault), t)})` : ''}`}
                 </option>
             )}
-            {current && !offered && <option value={current.id}>{current.name}</option>}
-            {roles.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+            {current && !offered && <option value={current.id}>{roleLabel(current, t)}</option>}
+            {roles.map(r => <option key={r.id} value={r.id}>{roleLabel(r, t)}</option>)}
         </select>
     )
 }

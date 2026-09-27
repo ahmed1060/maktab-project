@@ -399,7 +399,8 @@ describe.skipIf(!ADMIN_URL)("roles as data, in Postgres", () => {
             await expect(AccessReportService.whoCan("c1", "no.such")).rejects.toThrow("UNKNOWN_PERMISSION")
 
             const what = await AccessReportService.whatCan("e1")
-            expect(what.role).toEqual({ id: hr, name: "HR Officer", baseRole: "EMPLOYEE" })
+            // builtIn too, so screens name a built-in role in the reader's language.
+            expect(what.role).toEqual({ id: hr, name: "HR Officer", builtIn: null, baseRole: "EMPLOYEE" })
             expect(what.grants).toEqual([
                 { permission: "dayoff.view", module: expect.any(String), scope: "COMPANY" },
                 { permission: "dayoff.approve", module: expect.any(String), scope: "COMPANY" },
@@ -772,6 +773,11 @@ describe.skipIf(!ADMIN_URL)("roles as data, in Postgres", () => {
             const lines = review.lines.map(l => `${l.userId}:${l.permission}`)
             expect(lines).toContain("a1:payroll.approve")
             expect(lines).toContain("a1:employees.assign_role")
+            // Which built-in role a line names, so screens can translate it;
+            // the line keeps only the name.
+            const kinds = (await db.query(`SELECT name, "builtIn" FROM "Role" WHERE "companyId" = 'c1'`)).rows
+            for (const l of review.lines) expect(l.roleBuiltIn).toBe(kinds.find(k => k.name === l.roleName)?.builtIn ?? null)
+            expect(review.lines.find(l => l.userId === "a1")!.roleBuiltIn).toBe("ADMIN")
             // Only people in this company.
             expect(review.lines.every(l => !["e2"].includes(l.userId))).toBe(true)
             expect((await db.query(`SELECT count(*)::int AS n FROM "Notification" WHERE "userId" = 'a1b' AND type = 'ROLE_ACCESS_REVIEW'`)).rows[0].n).toBe(1)
@@ -805,6 +811,21 @@ describe.skipIf(!ADMIN_URL)("roles as data, in Postgres", () => {
             await db.query(`UPDATE "Company" SET "accessReviewNextAt" = NULL WHERE id = 'c1'`)
             expect((await AccessReviewService.runDue(new Date(Date.now() + 400 * 86400000))).opened).toBe(0)
             expect((await AccessReviewService.list(sa, { companyId: "c1" })).length).toBe(1)
+        })
+    })
+
+    describe("built-in role names in the reader's language", () => {
+        it("the preview says which built-in role it is, and a made one is not", async () => {
+            const admin = (await db.query(`SELECT id FROM "Role" WHERE "companyId" = 'c1' AND "builtIn" = 'ADMIN'`)).rows[0].id
+            expect(await RoleService.previewOf(admin)).toMatchObject({ roleName: "Admin", roleBuiltIn: "ADMIN" })
+            await db.query(`INSERT INTO "Role"(id, "companyId", name, "baseRole", "updatedAt") VALUES ('r-label', 'c1', 'Label check', 'EMPLOYEE', now())`)
+            expect(await RoleService.previewOf("r-label")).toMatchObject({ roleName: "Label check", roleBuiltIn: null })
+        })
+
+        it("\"who can do this?\" says which built-in role, both ways", async () => {
+            const who = await AccessReportService.whoCan("c1", "payroll.approve")
+            expect(who.holders.find(h => h.user.id === "a1")!.role.builtIn).toBe("ADMIN")
+            expect((await AccessReportService.whatCan("a1")).role!.builtIn).toBe("ADMIN")
         })
     })
 })

@@ -10,6 +10,7 @@ import { useToast } from '@/context/ToastContext'
 import { fetcher } from '@/lib/swr-fetcher'
 import { isPermission } from '@/lib/permissions/catalogue'
 import { permissionLabelKey, scopeLabelKey } from '@/lib/permissions/matrix'
+import { roleLabel } from '@/lib/role-label'
 
 /**
  * Periodic access reviews (ROLES_PLAN.md §6.14): each review's lines — who
@@ -20,7 +21,7 @@ import { permissionLabelKey, scopeLabelKey } from '@/lib/permissions/matrix'
 
 type Person = { firstName: string; lastName: string }
 type Line = {
-    id: string; userId: string; permission: string; scope: string; roleName: string
+    id: string; userId: string; permission: string; scope: string; roleName: string; roleBuiltIn: string | null
     decision: 'CONFIRMED' | 'CHANGE_REQUESTED' | null; note: string | null
     user: Person; answeredBy: Person | null; answeredBySuperAdmin: Person | null
 }
@@ -38,6 +39,7 @@ export default function AccessReviews({ side, highlight }: { side: 'company' | '
 
     const name = (p: Person | null) => p ? `${p.firstName} ${p.lastName}` : ''
     const label = (p: string) => isPermission(p) ? t(permissionLabelKey(p)) : p
+    const role = (l: Line) => roleLabel({ name: l.roleName, builtIn: l.roleBuiltIn }, t)
 
     const answer = async (line: Line, decision: 'CONFIRMED' | 'CHANGE_REQUESTED', note?: string) => {
         const res = await fetch(`/api/access-reviews/lines/${line.id}`, {
@@ -85,7 +87,7 @@ export default function AccessReviews({ side, highlight }: { side: 'company' | '
                                     <tr key={line.id}>
                                         <td style={cell}>{name(line.user)}</td>
                                         <td style={cell}>{label(line.permission)}<div style={{ fontSize: '0.75rem', color: 'var(--text-soft)' }}>{t(scopeLabelKey(line.scope as any))}</div></td>
-                                        <td style={cell}>{line.roleName}</td>
+                                        <td style={cell}>{role(line)}</td>
                                         <td style={{ ...cell, whiteSpace: 'nowrap' }}>
                                             {line.decision ? (
                                                 <span style={{ fontSize: '0.85rem' }}>
@@ -113,7 +115,7 @@ export default function AccessReviews({ side, highlight }: { side: 'company' | '
             <ConfirmModal
                 isOpen={!!changing}
                 title={t('access_review_change')}
-                message={changing ? `${name(changing.user)} · ${label(changing.permission)} · ${changing.roleName}` : ''}
+                message={changing ? `${name(changing.user)} · ${label(changing.permission)} · ${role(changing)}` : ''}
                 variant="warning"
                 reason={{ label: t('access_review_change_reason') }}
                 onConfirm={(reason) => { const line = changing; setChanging(null); if (line) answer(line, 'CHANGE_REQUESTED', reason) }}

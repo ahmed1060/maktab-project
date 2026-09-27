@@ -7,6 +7,7 @@ import ConfirmModal from '@/components/ConfirmModal'
 import RoleSelect from '@/components/RoleSelect'
 import { refusalOf } from '@/components/CompanyRolesCard'
 import { useLanguage } from '@/context/LanguageContext'
+import { roleLabel } from '@/lib/role-label'
 import { useToast } from '@/context/ToastContext'
 import { fetcher } from '@/lib/swr-fetcher'
 
@@ -100,7 +101,7 @@ export default function RoleChangeRequests({ side, highlight }: { side: 'company
                 {requests.length === 0 ? <p style={{ margin: 0, color: 'var(--text-soft)' }}>{t('role_changes_empty')}</p> : requests.map(r => (
                     <div key={r.id} style={{ padding: '0.75rem', borderRadius: '0.75rem', border: '1px solid var(--veil-40)', background: r.id === highlight ? 'var(--warn-bg-yellow-subtle)' : undefined }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
-                            <strong>{side === 'superAdmin' ? `${r.company.name} · ` : ''}{r.role?.name ?? t('role_changes_new_role')}</strong>
+                            <strong>{side === 'superAdmin' ? `${r.company.name} · ` : ''}{roleLabel(r.role, t, t('role_changes_new_role'))}</strong>
                             <span className="badge">{t(`role_change_${r.status}` as any)}</span>
                         </div>
                         <p style={{ margin: '0.4rem 0', whiteSpace: 'pre-wrap' }}>{r.description}</p>

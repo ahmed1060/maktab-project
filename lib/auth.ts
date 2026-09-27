@@ -375,7 +375,7 @@ export const authOptions: NextAuthOptions = {
                 // answers as it would for them. The real identity stays in the
                 // token; withStandardHandler refuses every write meanwhile.
                 const preview = token.role === 'SUPER_ADMIN' ? token.preview : null
-                session.user.preview = preview ? { roleId: preview.roleId, roleName: preview.roleName, companyId: preview.companyId, companyName: preview.companyName } : null
+                session.user.preview = preview ? { roleId: preview.roleId, roleName: preview.roleName, roleBuiltIn: preview.roleBuiltIn ?? null, companyId: preview.companyId, companyName: preview.companyName } : null
                 if (preview) {
                     session.user.role = preview.baseRole
                     session.user.roleId = preview.roleId

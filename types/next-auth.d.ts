@@ -12,7 +12,7 @@ declare module "next-auth" {
             grants?: string
             // The Super Admin previewing a role (ROLES_PLAN.md §6.6): the
             // session presents that role, and every write is refused.
-            preview?: { roleId: string; roleName: string; companyId: string; companyName: string } | null
+            preview?: { roleId: string; roleName: string; roleBuiltIn?: string | null; companyId: string; companyName: string } | null
             // When this session last entered a step-up code (ROLES_PLAN.md
             // §6.15), in ms; set only by the jwt() callback after checking it.
             stepUpAt?: number | null

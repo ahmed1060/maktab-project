@@ -12,6 +12,7 @@ import CopyRolesModal from '@/components/CopyRolesModal'
 import AccessReviewSetting, { type ReviewSetting } from '@/components/AccessReviewSetting'
 import RoleEditorModal, { type BaseRole, type EditableRole, type RoleSubmission, type Template } from '@/components/RoleEditorModal'
 import type { SerializedAccess } from '@/lib/features/bundles'
+import { BUILT_IN_LABEL, roleLabel } from '@/lib/role-label'
 
 /**
  * A company's roles, in its settings (ROLES_PLAN.md §6.2): how many people hold
@@ -20,8 +21,6 @@ import type { SerializedAccess } from '@/lib/features/bundles'
  */
 
 type Role = EditableRole & { id: string; companyId: string; version: number; isDefault: boolean; holders: number; locked: boolean; builtIn: BaseRole | null }
-
-const BASE_LABEL: Record<BaseRole, string> = { ADMIN: 'role_admin', TEAM_LEADER: 'role_team_leader', EMPLOYEE: 'role_employee' }
 
 /** The refusal the server gave, with every reason a grant was refused. */
 export async function refusalOf(res: Response, fallback: string): Promise<string> {
@@ -130,13 +129,13 @@ export default function CompanyRolesCard({ companyId }: { companyId: string }) {
                     <div key={role.id} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.75rem', borderRadius: '0.75rem', border: '1px solid var(--veil-40)', flexWrap: 'wrap', flexDirection: isRtl ? 'row-reverse' : 'row' }}>
                         <div style={{ flex: 1, minWidth: '12rem' }}>
                             <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                                <strong>{role.name}</strong>
+                                <strong>{roleLabel(role, t)}</strong>
                                 {role.builtIn && badge(t('roles_built_in'))}
                                 {role.locked && badge(t('roles_locked'))}
                                 {role.isDefault && badge(t('roles_default'))}
                             </div>
                             <div style={{ fontSize: '0.8rem', color: 'var(--text-soft)' }}>
-                                {t(BASE_LABEL[role.baseRole] as any)} · {t('roles_holders').replace('{count}', String(role.holders))} · {t('roles_selected').replace('{count}', String(role.grants.length))}
+                                {t(BUILT_IN_LABEL[role.baseRole])} · {t('roles_holders').replace('{count}', String(role.holders))} · {t('roles_selected').replace('{count}', String(role.grants.length))}
                             </div>
                         </div>
                         <button type="button" style={linkButton} onClick={() => setEditing(role)}>{t('roles_edit')}</button>
@@ -176,7 +175,7 @@ export default function CompanyRolesCard({ companyId }: { companyId: string }) {
             <ConfirmModal
                 isOpen={!!deleting}
                 title={t('roles_delete')}
-                message={t('roles_delete_confirm').replace('{name}', deleting?.name ?? '')}
+                message={t('roles_delete_confirm').replace('{name}', deleting ? roleLabel(deleting, t) : '')}
                 variant="danger"
                 onConfirm={() => deleting && remove(deleting)}
                 onCancel={() => setDeleting(null)}

@@ -7,6 +7,7 @@ import AccessDenied from '@/components/AccessDenied'
 import LoadingSpinner from '@/components/LoadingSpinner'
 import SegmentedToggle from '@/components/SegmentedToggle'
 import { useLanguage } from '@/context/LanguageContext'
+import { roleLabel } from '@/lib/role-label'
 import { useHeader } from '@/context/HeaderContext'
 import { fetcher } from '@/lib/swr-fetcher'
 import type { Permission, Scope } from '@/lib/permissions/catalogue'
@@ -138,7 +139,7 @@ export default function WhoCanPage() {
                                 {holders.map(h => (
                                     <tr key={h.user.id}>
                                         <td style={cell}>{h.user.name}</td>
-                                        <td style={cell}>{h.role.name}</td>
+                                        <td style={cell}>{roleLabel(h.role, t)}</td>
                                         <td style={cell}>{t(scopeLabelKey(h.scope))}</td>
                                     </tr>
                                 ))}
@@ -152,7 +153,7 @@ export default function WhoCanPage() {
                         <div>
                             <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap', marginBottom: '0.75rem' }}>
                                 <strong>{person.user.name}</strong>
-                                {person.role && <span style={{ color: 'var(--text-soft)' }}>{t('who_can_through').replace('{role}', person.role.name)}</span>}
+                                {person.role && <span style={{ color: 'var(--text-soft)' }}>{t('who_can_through').replace('{role}', roleLabel(person.role, t))}</span>}
                                 <button type="button" onClick={() => setUserId('')} style={{ background: 'none', border: 'none', color: 'var(--primary)', cursor: 'pointer' }}>✕</button>
                             </div>
                             {person.grants.length === 0 ? <p style={{ margin: 0 }}>{t('who_can_holds_nothing')}</p> : (

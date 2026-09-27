@@ -13,6 +13,7 @@ import TeamHandOffModal from './TeamHandOffModal'
 import { useCan } from '@/lib/useCan'
 import RoleSelect from '@/components/RoleSelect'
 import RoleRequestControl from '@/components/RoleRequestControl'
+import { roleLabel } from '@/lib/role-label'
 
 type EmployeeProfileFormProps = {
     userId: string
@@ -30,14 +31,14 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
     // Which of the company's roles they hold (ROLES_PLAN.md §6.4); `role` is
     // its kind, which the rest of the form still reads.
     const [roleId, setRoleId] = useState('')
-    const [currentRole, setCurrentRole] = useState<{ id: string; name: string; companyId: string } | null>(null)
+    const [currentRole, setCurrentRole] = useState<{ id: string; name: string; builtIn?: string | null; companyId: string } | null>(null)
     // An acting role (§6.13): the return date for a new one, and the cover
     // already running, if any.
     const [actingDate, setActingDate] = useState('')
     // The earliest return date the picker offers: tomorrow. Worked out once,
     // not on every render.
     const [tomorrow] = useState(() => new Date(Date.now() + 86400000).toISOString().slice(0, 10))
-    const [acting, setActing] = useState<{ until: string; returnTo: string } | null>(null)
+    const [acting, setActing] = useState<{ until: string; returnTo: { name: string; builtIn?: string | null } | null } | null>(null)
     const [gender, setGender] = useState('MALE')
     const [salary, setSalary] = useState<string>('')
     const [baseDayOffCredit, setBaseDayOffCredit] = useState<string>('')
@@ -145,8 +146,8 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                 setEmail(cleanEmail)
                 setRole(employee.role)
                 setRoleId(employee.roleId || '')
-                setCurrentRole(employee.roleId ? { id: employee.roleId, name: employee.assignedRole?.name ?? '', companyId: employee.companyId } : null)
-                setActing(employee.actingUntil ? { until: employee.actingUntil, returnTo: employee.returnRole?.name ?? '' } : null)
+                setCurrentRole(employee.roleId ? { id: employee.roleId, name: employee.assignedRole?.name ?? '', builtIn: employee.assignedRole?.builtIn ?? null, companyId: employee.companyId } : null)
+                setActing(employee.actingUntil ? { until: employee.actingUntil, returnTo: employee.returnRole ?? null } : null)
                 setGender(employee.gender || 'MALE')
                 setSalary(employee.salary !== undefined && employee.salary !== null ? employee.salary.toString() : '')
                 setBaseDayOffCredit(employee.baseDayOffCredit !== undefined && employee.baseDayOffCredit !== null ? employee.baseDayOffCredit.toString() : '0')
@@ -957,7 +958,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                                 userId && !isViewMode ? (
                                     <RoleRequestControl userId={userId} companyId={companyId} current={currentRole} locked={role === 'ADMIN'} style={{ textAlign: locale === 'ar' ? 'right' : 'left' }} />
                                 ) : (
-                                    <input className="input" value={currentRole?.name ?? ''} disabled style={{ background: 'var(--surface-sunk)', color: 'var(--text-soft)', textAlign: locale === 'ar' ? 'right' : 'left' }} />
+                                    <input className="input" value={currentRole ? roleLabel(currentRole, t) : ''} disabled style={{ background: 'var(--surface-sunk)', color: 'var(--text-soft)', textAlign: locale === 'ar' ? 'right' : 'left' }} />
                                 )
                             ) : (
                                 <RoleSelect
@@ -974,7 +975,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                             )}
                             {acting && (
                                 <p style={{ fontSize: '0.8rem', color: 'var(--text-soft)', margin: '0.35rem 0 0' }}>
-                                    {t('acting_now').replace('{date}', new Date(acting.until).toLocaleDateString(locale)).replace('{role}', acting.returnTo)}
+                                    {t('acting_now').replace('{date}', new Date(acting.until).toLocaleDateString(locale)).replace('{role}', roleLabel(acting.returnTo, t))}
                                 </p>
                             )}
                             {can('employees.assign_role') && !isViewMode && roleId && roleId !== currentRole?.id && (

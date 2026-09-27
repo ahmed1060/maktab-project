@@ -18,7 +18,7 @@ export class AccessReportService {
             where: { companyId, status: { not: "DELETED" }, ...holdersOf(permission) },
             select: {
                 id: true, firstName: true, lastName: true, status: true,
-                assignedRole: { select: { id: true, name: true, grants: { where: { permission }, select: { scope: true } } } },
+                assignedRole: { select: { id: true, name: true, builtIn: true, grants: { where: { permission }, select: { scope: true } } } },
             },
             orderBy: [{ firstName: "asc" }, { lastName: "asc" }],
         })
@@ -27,7 +27,7 @@ export class AccessReportService {
             module: PERMISSIONS[permission].module,
             holders: people.map(p => ({
                 user: { id: p.id, name: `${p.firstName} ${p.lastName}`, status: p.status },
-                role: { id: p.assignedRole!.id, name: p.assignedRole!.name },
+                role: { id: p.assignedRole!.id, name: p.assignedRole!.name, builtIn: p.assignedRole!.builtIn },
                 scope: p.assignedRole!.grants[0]?.scope as Scope,
             })),
         }
@@ -38,7 +38,7 @@ export class AccessReportService {
             where: { id: userId },
             select: {
                 id: true, firstName: true, lastName: true, status: true, companyId: true,
-                assignedRole: { select: { id: true, name: true, baseRole: true, grants: { select: { permission: true, scope: true } } } },
+                assignedRole: { select: { id: true, name: true, builtIn: true, baseRole: true, grants: { select: { permission: true, scope: true } } } },
             },
         })
         if (!user) throw new Error("USER_NOT_FOUND")
@@ -51,7 +51,7 @@ export class AccessReportService {
             .map(g => ({ permission: g.permission, module: PERMISSIONS[g.permission].module, scope: g.scope }))
         return {
             user: { id: user.id, name: `${user.firstName} ${user.lastName}`, status: user.status, companyId: user.companyId },
-            role: role ? { id: role.id, name: role.name, baseRole: role.baseRole } : null,
+            role: role ? { id: role.id, name: role.name, builtIn: role.builtIn, baseRole: role.baseRole } : null,
             grants,
         }
     }

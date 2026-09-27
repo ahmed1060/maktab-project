@@ -38,6 +38,21 @@ const SHAPE = {
     },
 } satisfies Prisma.AccessReviewSelect
 
+/**
+ * Which lines name a built-in role, so screens can show it in the reader's
+ * language. A line keeps the role's name as it was; a built-in role's name
+ * never changes and no other role in its company can take it, so the name
+ * says which one it was.
+ */
+async function withBuiltIn<R extends { companyId: string; lines: { roleName: string }[] }>(reviews: R[]) {
+    const builtIns = await prisma.role.findMany({
+        where: { companyId: { in: [...new Set(reviews.map(r => r.companyId))] }, builtIn: { not: null } },
+        select: { companyId: true, name: true, builtIn: true },
+    })
+    const kind = new Map(builtIns.map(r => [`${r.companyId}/${r.name}`, r.builtIn]))
+    return reviews.map(r => ({ ...r, lines: r.lines.map(l => ({ ...l, roleBuiltIn: kind.get(`${r.companyId}/${l.roleName}`) ?? null })) }))
+}
+
 function addMonths(at: Date, months: number): Date {
     const next = new Date(at)
     next.setUTCMonth(next.getUTCMonth() + months)
@@ -134,7 +149,7 @@ export class AccessReviewService {
             if (!session.user.companyId || !can(session.user, "employees.assign_role")) throw new Error("FORBIDDEN")
             where.companyId = session.user.companyId
         }
-        return prisma.accessReview.findMany({ where, select: SHAPE, orderBy: { createdAt: "desc" }, take: 50 })
+        return withBuiltIn(await prisma.accessReview.findMany({ where, select: SHAPE, orderBy: { createdAt: "desc" }, take: 50 }))
     }
 
     /**
@@ -194,6 +209,7 @@ export class AccessReviewService {
             userId: superAdmin ? null : actor.id, superAdminId: superAdmin ? actor.id : null,
             details: { lineId, userId: line.userId, permission: line.permission, decision: input.decision, note: input.note?.trim() || null },
         })
-        return prisma.accessReview.findUnique({ where: { id: line.reviewId }, select: SHAPE })
+        const review = await prisma.accessReview.findUniqueOrThrow({ where: { id: line.reviewId }, select: SHAPE })
+        return (await withBuiltIn([review]))[0]
     }
 }

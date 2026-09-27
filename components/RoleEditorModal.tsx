@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import Modal from '@/components/Modal'
 import PermissionMatrix from '@/components/PermissionMatrix'
+import { roleLabel } from '@/lib/role-label'
 import { useLanguage } from '@/context/LanguageContext'
 import type { Grants } from '@/lib/permissions/grants'
 import type { SerializedAccess } from '@/lib/features/bundles'
@@ -118,7 +119,7 @@ function Editor({ isOpen, onClose, kind, role, templates = [], access, onSubmit 
     const field = { display: 'flex', flexDirection: 'column' as const, gap: '0.3rem', marginBottom: '0.9rem' }
     const title = kind === 'template'
         ? (isNew ? t('role_templates_new') : role!.name)
-        : (isNew ? t('roles_new') : role!.name)
+        : (isNew ? t('roles_new') : roleLabel(role, t))
 
     return (
         <Modal isOpen={isOpen} onClose={onClose} title={title}>
@@ -139,7 +140,7 @@ function Editor({ isOpen, onClose, kind, role, templates = [], access, onSubmit 
 
                 <div style={field}>
                     <label htmlFor="role-name">{t('roles_name')}</label>
-                    <input id="role-name" className="input" value={name} maxLength={60} disabled={builtIn} onChange={e => setName(e.target.value)} />
+                    <input id="role-name" className="input" value={builtIn ? roleLabel(role, t) : name} maxLength={60} disabled={builtIn} onChange={e => setName(e.target.value)} />
                 </div>
                 <div style={field}>
                     <label htmlFor="role-description">{t('roles_description')}</label>
