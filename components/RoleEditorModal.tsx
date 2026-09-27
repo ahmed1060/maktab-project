@@ -7,6 +7,7 @@ import { useLanguage } from '@/context/LanguageContext'
 import type { Grants } from '@/lib/permissions/grants'
 import type { SerializedAccess } from '@/lib/features/bundles'
 import { fromRows, toRows } from '@/lib/permissions/matrix'
+import { conflictsIn, newConflicts } from '@/lib/permissions/separation'
 
 /**
  * Creating or editing a company's role, or a role template — the same form:
@@ -38,6 +39,7 @@ export type RoleSubmission = {
     grants: Rows
     fromTemplateId?: string
     applyNow?: boolean
+    acknowledgeConflicts?: boolean
 }
 
 type Props = {
@@ -71,6 +73,7 @@ function Editor({ isOpen, onClose, kind, role, templates = [], access, onSubmit 
     const [grants, setGrants] = useState<Grants>(fromRows(role?.grants ?? []))
     const [templateId, setTemplateId] = useState('')
     const [applyNow, setApplyNow] = useState(false)
+    const [acknowledged, setAcknowledged] = useState(false)
     const [saving, setSaving] = useState(false)
 
     const locked = !!role?.locked
@@ -81,6 +84,10 @@ function Editor({ isOpen, onClose, kind, role, templates = [], access, onSubmit 
     const original = fromRows(role?.grants ?? [])
     const grantsChanged = JSON.stringify(Object.entries(grants).sort()) !== JSON.stringify(Object.entries(original).sort())
     const reachesHolders = !isNew && holders > 0 && (grantsChanged || baseRole !== role?.baseRole)
+    // Separation of duties (§6.11): every pair it holds is shown; one it did
+    // not hold before must be acknowledged, and the decision is recorded.
+    const pairs = conflictsIn(grants)
+    const addedPairs = newConflicts(original, grants)
     const compareWith = role?.copiedFromTemplateId ? templates.find(tp => tp.id === role.copiedFromTemplateId) : null
 
     const startFrom = (id: string) => {
@@ -100,6 +107,7 @@ function Editor({ isOpen, onClose, kind, role, templates = [], access, onSubmit 
                 name: name.trim(), description: description.trim() || null, baseRole, grants: toRows(grants),
                 ...(isNew && templateId ? { fromTemplateId: templateId } : {}),
                 ...(reachesHolders && applyNow ? { applyNow: true } : {}),
+                ...(addedPairs.length && acknowledged ? { acknowledgeConflicts: true } : {}),
             })
             if (ok) onClose()
         } finally {
@@ -153,6 +161,22 @@ function Editor({ isOpen, onClose, kind, role, templates = [], access, onSubmit 
                     template={compareWith ? fromRows(compareWith.grants) : null}
                 />
 
+                {pairs.length > 0 && (
+                    <div style={{ marginTop: '1rem', padding: '0.75rem', borderRadius: '0.5rem', background: 'var(--danger-bg-subtle)', border: '1px solid var(--danger-border)' }}>
+                        <strong>{t('sod_title')}</strong>
+                        <div style={{ fontSize: '0.8rem', color: 'var(--text-soft)', margin: '0.25rem 0 0.5rem' }}>{t('sod_hint')}</div>
+                        <ul style={{ margin: 0, paddingInlineStart: '1.2rem', fontSize: '0.85rem' }}>
+                            {pairs.map(key => <li key={key}>{t(`sod_${key}` as any)}</li>)}
+                        </ul>
+                        {addedPairs.length > 0 && (
+                            <label style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginTop: '0.5rem', cursor: 'pointer' }}>
+                                <input type="checkbox" checked={acknowledged} onChange={e => setAcknowledged(e.target.checked)} />
+                                {t('sod_acknowledge')}
+                            </label>
+                        )}
+                    </div>
+                )}
+
                 {reachesHolders && (
                     <div style={{ marginTop: '1rem', padding: '0.75rem', borderRadius: '0.5rem', background: 'var(--warn-bg)', border: '1px solid var(--warn-border)' }}>
                         <strong>{t('roles_affects').replace('{count}', String(holders))}</strong>
@@ -167,7 +191,7 @@ function Editor({ isOpen, onClose, kind, role, templates = [], access, onSubmit 
 
             <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', marginTop: '1rem', flexDirection: isRtl ? 'row-reverse' : 'row' }}>
                 <button type="button" className="btn" style={{ background: 'var(--border)', color: 'var(--text-strong)' }} onClick={onClose} disabled={saving}>{t('roles_cancel')}</button>
-                <button type="button" className="btn btn-primary" onClick={submit} disabled={saving || locked || !name.trim()}>
+                <button type="button" className="btn btn-primary" onClick={submit} disabled={saving || locked || !name.trim() || (addedPairs.length > 0 && !acknowledged)}>
                     {saving ? '…' : t('roles_save')}
                 </button>
             </div>

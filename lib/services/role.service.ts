@@ -6,6 +6,7 @@ import { normalizeGrants, grantRows, type GrantInput } from "@/lib/permissions/g
 import type { CreateRoleInput, UpdateRoleInput } from "@/lib/validations/role.schema"
 import type { UserRole } from "@prisma/client"
 import { resolveBundles, serializeAccess, type SerializedAccess } from "@/lib/features/bundles"
+import { newConflicts } from "@/lib/permissions/separation"
 
 type Client = Pick<typeof prisma, "role" | "user">
 
@@ -117,6 +118,7 @@ export class RoleService {
         if (!baseRole) throw new Error("BASE_ROLE_REQUIRED")
         const verdict = normalizeGrants(input.grants ?? (template?.grants as GrantInput[] | undefined) ?? [])
         if (!verdict.ok) throw new GrantsError(verdict.errors)
+        const conflicts = checkSeparation({}, verdict.grants, input.acknowledgeConflicts)
 
         const role = await prisma.$transaction(async (tx) => {
             const created = await tx.role.create({
@@ -129,7 +131,10 @@ export class RoleService {
             const { AuditLogService } = await import("./audit-log.service")
             await AuditLogService.log("CREATE_ROLE", "ROLE", created.id, {
                 tx, superAdminId: session.user.id,
-                details: { companyId: input.companyId, after: { name: input.name, baseRole, grants: grantRows(verdict.grants) }, fromTemplateId: template?.id ?? null },
+                details: {
+                    companyId: input.companyId, after: { name: input.name, baseRole, grants: grantRows(verdict.grants) }, fromTemplateId: template?.id ?? null,
+                    ...(conflicts.length ? { separationOfDuties: { pairs: conflicts, acknowledged: true } } : {}),
+                },
             })
             return created
         })
@@ -156,10 +161,12 @@ export class RoleService {
         if (rebases && input.baseRole === "ADMIN" && before.isDefault) throw new Error("DEFAULT_ROLE_ADMIN")
 
         let grants = null as ReturnType<typeof grantRows> | null
+        let conflicts: string[] = []
         if (regrants) {
             const verdict = normalizeGrants(input.grants!)
             if (!verdict.ok) throw new GrantsError(verdict.errors)
             grants = grantRows(verdict.grants)
+            conflicts = checkSeparation(grantsOfRows(before.grants), verdict.grants, input.acknowledgeConflicts)
         }
         // What a session carries changed: bump the version so holders reload
         // within a minute (§4.4).
@@ -197,6 +204,7 @@ export class RoleService {
                     },
                     holders: before.holders,
                     appliedNow: !!(input.applyNow && accessChanged),
+                    ...(conflicts.length ? { separationOfDuties: { pairs: conflicts, acknowledged: true } } : {}),
                 },
             })
         })
@@ -255,6 +263,8 @@ export class RoleService {
                 companyId: targetCompanyId, name: role.name, description: role.description,
                 baseRole: role.baseRole as any, grants: role.grants,
                 ...(templateExists ? { fromTemplateId: role.copiedFromTemplateId! } : {}),
+                // Decided when the source role was saved.
+                acknowledgeConflicts: true,
             }, session)
             copied.push({ from: role.id, to: created.id, name: role.name })
         }
@@ -265,7 +275,7 @@ export class RoleService {
                 const from = source.find(r => r.builtIn === kind)
                 const to = target.find(r => r.builtIn === kind)
                 if (from && to && !sameGrants(from.grants, to.grants)) {
-                    await RoleService.update({ id: to.id, grants: from.grants }, session)
+                    await RoleService.update({ id: to.id, grants: from.grants, acknowledgeConflicts: true }, session)
                     builtInsUpdated.push(to.name)
                 }
             }
@@ -356,3 +366,28 @@ function sameGrants(a: { permission: string; scope: string }[], b: { permission:
     return key(a) === key(b)
 }
 
+
+/** Grants as the catalogue knows them, from rows. */
+function grantsOfRows(rows: { permission: string; scope: string }[]): Grants {
+    const grants: Grants = {}
+    for (const g of rows) if (isPermission(g.permission)) grants[g.permission] = g.scope as Scope
+    return grants
+}
+
+/**
+ * Separation of duties (§6.11): the pairs a save newly brings into a role or
+ * template. Allowed, but only on purpose — refused until acknowledged, and
+ * the caller records the pairs with the decision. Returns them.
+ */
+export function checkSeparation(before: Grants, after: Grants, acknowledged: boolean | undefined): string[] {
+    const added = newConflicts(before, after)
+    if (added.length && !acknowledged) throw new SeparationError(added)
+    return added
+}
+
+/** A save that newly holds both sides of a pair, not yet acknowledged. */
+export class SeparationError extends Error {
+    constructor(public readonly pairs: string[]) {
+        super("SEPARATION_UNACKNOWLEDGED")
+    }
+}

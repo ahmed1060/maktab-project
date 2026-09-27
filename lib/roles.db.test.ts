@@ -713,4 +713,29 @@ describe.skipIf(!ADMIN_URL)("roles as data, in Postgres", () => {
             expect(told).toContain("ROLE_CHANGE_DONE")
         })
     })
+    describe("separation of duties (B4, §6.11)", () => {
+        const sa = { user: { id: "sa", role: "SUPER_ADMIN" } }
+        const both = [{ permission: "payroll.prepare", scope: "COMPANY" }, { permission: "payroll.approve", scope: "COMPANY" }]
+
+        beforeAll(async () => {
+            await db.query(`INSERT INTO "SuperAdmin" (id, email, password, "firstName", "lastName", username, "updatedAt")
+                VALUES ('sa', 'sa@test', 'x', 'Super', 'Admin', 'sa', now()) ON CONFLICT DO NOTHING`)
+        })
+
+        it("asks before a role holds both sides of a pair, and records the answer", async () => {
+            await expect(RoleService.create({ companyId: "c2", name: "Payroll all", baseRole: "EMPLOYEE", grants: both }, sa)).rejects.toThrow("SEPARATION_UNACKNOWLEDGED")
+            const role = await RoleService.create({ companyId: "c2", name: "Payroll all", baseRole: "EMPLOYEE", grants: both, acknowledgeConflicts: true }, sa)
+            const [audit] = (await db.query(`SELECT details FROM "AuditLog" WHERE action = 'CREATE_ROLE' AND "entityId" = $1`, [role.id])).rows
+            expect(audit.details.separationOfDuties).toEqual({ pairs: ["prepare_approve_payroll"], acknowledged: true })
+            // Held already: editing something else does not ask again…
+            await RoleService.update({ id: role.id, grants: [...both, { permission: "clients.view", scope: "COMPANY" }] }, sa)
+            // …a new pair does.
+            await expect(RoleService.update({ id: role.id, grants: [...both, { permission: "salary.edit", scope: "COMPANY" }] }, sa)).rejects.toThrow("SEPARATION_UNACKNOWLEDGED")
+        })
+
+        it("asks of templates too", async () => {
+            await expect(RoleTemplateService.create({ name: "Payroll all", baseRole: "EMPLOYEE", grants: both }, sa)).rejects.toThrow("SEPARATION_UNACKNOWLEDGED")
+            await RoleTemplateService.create({ name: "Payroll all", baseRole: "EMPLOYEE", grants: both, acknowledgeConflicts: true }, sa)
+        })
+    })
 })

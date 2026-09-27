@@ -1469,5 +1469,11 @@ export const en = {
         role_changes_decline: "Decline",
         role_changes_response: "Response",
         role_changes_answered: "Answered",
-        roles_export: "Export for the contract"
+        roles_export: "Export for the contract",
+        sod_prepare_approve_payroll: "Preparing and approving payroll: the same person could make a payroll and sign it off.",
+        sod_salary_approve_payroll: "Changing salaries and approving payroll: the same person could raise a salary and approve paying it.",
+        sod_create_employee_salary: "Adding employees and changing salaries: the same person could add someone and set their pay unseen.",
+        sod_title: "Separation of duties",
+        sod_hint: "This role holds both sides of a pair auditors look for. It is allowed; the decision is recorded.",
+        sod_acknowledge: "I understand, keep both"
 };

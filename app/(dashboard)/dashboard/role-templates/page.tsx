@@ -45,11 +45,13 @@ export default function RoleTemplatesPage() {
 
     const save = async (submission: RoleSubmission): Promise<boolean> => {
         const isNew = editing === 'new'
-        const { name, description, baseRole, grants } = submission
+        const { name, description, baseRole, grants, acknowledgeConflicts } = submission
         const res = await fetch('/api/role-templates', {
             method: isNew ? 'POST' : 'PUT',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(isNew ? { name, description, baseRole, grants } : { id: (editing as Template).id, name, description, baseRole, grants }),
+            body: JSON.stringify(isNew
+                ? { name, description, baseRole, grants, acknowledgeConflicts }
+                : { id: (editing as Template).id, name, description, baseRole, grants, acknowledgeConflicts }),
         })
         if (!res.ok) {
             showToast(await refusalOf(res, t('error_generic')), 'error')

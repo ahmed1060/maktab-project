@@ -9,6 +9,12 @@ const name = z.string().trim().min(2, "Name must be at least 2 characters").max(
 const description = z.string().trim().max(500).optional().nullable()
 /** Never SUPER_ADMIN: the Super Admin is outside the role system. */
 const baseRole = z.enum(["ADMIN", "TEAM_LEADER", "EMPLOYEE"])
+/**
+ * The Super Admin's "keep both" for a separation-of-duties pair the grants
+ * newly hold (ROLES_PLAN.md §6.11). Without it such a save is refused, so the
+ * decision is always made on purpose and recorded.
+ */
+const acknowledgeConflicts = z.boolean().optional()
 
 export const createRoleSchema = z.object({
     companyId: z.string().min(1),
@@ -19,6 +25,7 @@ export const createRoleSchema = z.object({
     fromTemplateId: z.string().min(1).optional(),
     baseRole: baseRole.optional(),
     grants: z.array(grant).max(200).optional(),
+    acknowledgeConflicts,
 })
 
 export const updateRoleSchema = z.object({
@@ -30,6 +37,7 @@ export const updateRoleSchema = z.object({
     // Sign everyone holding it out now, rather than letting the change reach
     // them within a minute (§4.4). For a removal that must be instant.
     applyNow: z.boolean().optional(),
+    acknowledgeConflicts,
 })
 
 export const createTemplateSchema = z.object({
@@ -37,6 +45,7 @@ export const createTemplateSchema = z.object({
     description,
     baseRole,
     grants: z.array(grant).max(200),
+    acknowledgeConflicts,
 })
 
 export const updateTemplateSchema = z.object({
@@ -45,6 +54,7 @@ export const updateTemplateSchema = z.object({
     description,
     baseRole: baseRole.optional(),
     grants: z.array(grant).max(200).optional(),
+    acknowledgeConflicts,
 })
 
 export type CreateRoleInput = z.infer<typeof createRoleSchema>

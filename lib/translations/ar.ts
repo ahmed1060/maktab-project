@@ -1464,5 +1464,11 @@ export const ar = {
         role_changes_decline: "رفض",
         role_changes_response: "الرد",
         role_changes_answered: "تم الرد",
-        roles_export: "تصدير للعقد"
+        roles_export: "تصدير للعقد",
+        sod_prepare_approve_payroll: "إعداد واعتماد كشوف الرواتب: يستطيع الشخص نفسه إعداد كشف الرواتب واعتماده.",
+        sod_salary_approve_payroll: "تعديل الرواتب واعتماد كشوفها: يستطيع الشخص نفسه رفع راتب واعتماد صرفه.",
+        sod_create_employee_salary: "إضافة الموظفين وتعديل الرواتب: يستطيع الشخص نفسه إضافة موظف وتحديد راتبه دون رقابة.",
+        sod_title: "الفصل بين المهام",
+        sod_hint: "يجمع هذا الدور طرفي مهام يتحقق منها المدققون. هذا مسموح، ويتم تسجيل القرار.",
+        sod_acknowledge: "أفهم ذلك، أبقِ الاثنين"
 };

@@ -56,6 +56,7 @@ export default function CompanyRolesCard({ companyId }: { companyId: string }) {
                 ...(submission.baseRole !== role!.baseRole ? { baseRole: submission.baseRole } : {}),
                 grants: submission.grants,
                 ...(submission.applyNow ? { applyNow: true } : {}),
+                ...(submission.acknowledgeConflicts ? { acknowledgeConflicts: true } : {}),
             }
         const res = await fetch('/api/roles', {
             method: isNew ? 'POST' : 'PUT',
