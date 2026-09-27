@@ -97,6 +97,8 @@ const ALLOWED: [file: string, line: string, why: string][] = [
     ["lib/services/role-assignment.service.ts", "if (!user?.roleId || user.assignedRole?.builtIn !== \"ADMIN\") return", ADMIN_ROLE],
     // …and only the Super Admin acts on an Admin (role, status, contract, deletion)
     ["lib/services/role-assignment.service.ts", "if (target.role === \"ADMIN\" && actor.role !== \"SUPER_ADMIN\") throw new Error(\"ADMIN_IS_SUPER_ADMINS\")", ADMIN_ROLE],
+    // …and nobody but the Super Admin takes over an Admin's account (mayTakeOver)
+    ["lib/services/role-assignment.service.ts", "if (target.role === \"ADMIN\" || target.role === \"SUPER_ADMIN\") throw new Error(\"ADMIN_IS_SUPER_ADMINS\")", ADMIN_ROLE],
     // returning from an acting role: only an employee has a team leader
     ["lib/services/role-assignment.service.ts", "...(next.role !== \"EMPLOYEE\" ? { teamLeaderId: null } : {}),", THE_PERSON],
     // rule 2: only the Super Admin hands out an ADMIN-based role

@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { state, prismaMock, withBody, fieldsWritten } from "./employee-access.harness"
 import { encodeGrants, type Grants } from "./grants"
-import { stepUpConfirmed } from "./test-actors"
+import { stepUpConfirmed, withGrants } from "./test-actors"
 
 vi.setConfig({ testTimeout: 60_000 })
 
@@ -68,7 +68,9 @@ describe("setting somebody else's password", () => {
     })
 
     it("is allowed with it", async () => {
-        onRole({ "employees.view": "COMPANY", "employees.edit": "COMPANY", "employees.reset_password": "COMPANY" })
+        // With the Employee role's own grants too: setting a password takes the
+        // account over, so it needs everything the person's role holds (below).
+        onRole({ "employees.view": "COMPANY", "employees.edit": "COMPANY", "employees.reset_password": "COMPANY", "clients.view": "COMPANY", "clients.contribute": "COMPANY" })
         expect((await put({ id: "emp", password: "a-new-password-123" })).status).toBe(200)
         expect(fieldsWritten()).toEqual(["mustChangePassword", "password"])
     })
@@ -108,5 +110,61 @@ describe("creating an account", () => {
         onRole({ "employees.view": "COMPANY", "employees.create": "COMPANY", "salary.edit": "COMPANY", "dayoff.adjust_credit": "COMPANY", "employees.assign_team": "COMPANY" })
         expect((await post(body)).status).toBe(201)
         expect(state.created[0]).toMatchObject({ salary: 9000, dayOffCredit: 40, baseDayOffCredit: 40, teamLeaderId: "tl" })
+    })
+})
+
+describe("taking over somebody else's account", () => {
+    // An HR Officer on an Employee-based role, allowed to edit people and set
+    // their passwords company-wide. Whoever controls an account holds its
+    // role's access, so they may do it only to someone whose role they could
+    // have given: never an Admin, and nobody whose role holds more than theirs.
+    const hr = { "employees.view": "COMPANY", "employees.edit": "COMPANY", "employees.reset_password": "COMPANY", "clients.view": "COMPANY", "clients.contribute": "COMPANY" } as const
+    const asHr = () => onRole(hr, { id: "hr", role: "EMPLOYEE", companyId: "c1" })
+
+    it("is not an HR Officer's to do to the Admin: password or email", async () => {
+        asHr()
+        expect((await put({ id: "admin", password: "a-new-password-123" })).status).toBe(403)
+        expect((await put({ id: "admin", email: "attacker@evil.test" })).status).toBe(403)
+        expect(fieldsWritten()).toEqual([])
+    })
+
+    it("nor to a Team Leader, whose role holds access theirs does not", async () => {
+        asHr()
+        expect((await put({ id: "tl", password: "a-new-password-123" })).status).toBe(403)
+        expect((await put({ id: "tl", email: "attacker@evil.test" })).status).toBe(403)
+        expect(fieldsWritten()).toEqual([])
+    })
+
+    it("is theirs to do to an Employee, whose role they hold all of", async () => {
+        asHr()
+        expect((await put({ id: "emp", password: "a-new-password-123" })).status).toBe(200)
+        expect((await put({ id: "emp", email: "emp.new@c1.test" })).status).toBe(200)
+        expect(fieldsWritten()).toEqual(["email", "mustChangePassword", "password"])
+    })
+
+    it("the temporary password route asks the same", async () => {
+        asHr()
+        const bcrypt = (await import("bcryptjs")).default
+        const own = await bcrypt.hash("hr-own-password", 4)
+        const findUnique = prismaMock.user.findUnique
+        prismaMock.user.findUnique = async (args: any) => args.where.id === "hr" ? { id: "hr", password: own } : findUnique(args)
+        const { POST } = await import("@/app/api/users/[id]/reset-password/route")
+        const reset = (id: string) => POST(withBody("POST", `/api/users/${id}/reset-password`, { confirmPassword: "hr-own-password" }), { params: Promise.resolve({ id }) } as any)
+        try {
+            expect((await reset("admin")).status).toBe(403)
+            expect((await reset("tl")).status).toBe(403)
+            expect(fieldsWritten()).toEqual([])
+            expect((await reset("emp")).status).toBe(200)
+            expect(fieldsWritten()).toEqual(["mustChangePassword", "password"])
+        } finally {
+            prismaMock.user.findUnique = findUnique
+        }
+    })
+
+    it("stays the built-in Admin's to do to their own people", async () => {
+        onRole({}, { id: "admin", role: "ADMIN", companyId: "c1" })
+        state.session.user = stepUpConfirmed(withGrants({ id: "admin", role: "ADMIN", companyId: "c1" }))
+        expect((await put({ id: "tl", password: "a-new-password-123" })).status).toBe(200)
+        expect((await put({ id: "emp", email: "emp.new@c1.test" })).status).toBe(200)
     })
 })
