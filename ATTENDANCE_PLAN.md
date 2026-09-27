@@ -1,7 +1,9 @@
 # Attendance & Time Tracking — Implementation Plan
 
-Status: **approved plan, deferred.** Nothing here is built. Implementation
-starts only once the current website is complete and stable. Until then this
+Status: **approved plan. Foundation built** (§20): roles and permissions in #2
+and #3, the Company Options tabs and Admin settings exposure in #5. Phase 0
+onwards is not built, and starts only once the current website is complete and
+stable. Until then this
 document is the agreed design: what we will build, in what order, and which
 decisions are already settled so that the person who picks it up is not
 re-arguing them.
@@ -121,8 +123,9 @@ by then, and this plan names real models and files that may have changed.
 ## 1. Where this system actually stands
 
 **What exists.** `Company` is the tenant boundary and carries its own
-`timezone`. `User` has a hardcoded role — `SUPER_ADMIN`, `ADMIN`,
-`TEAM_LEADER`, `EMPLOYEE` — checked by string comparison in roughly fifty files.
+`timezone`. Roles are data (§4, built): each person holds one of their
+company's roles, and every check asks a permission of it through `can()`
+(`lib/permissions/`); a test fails on a new check by role name.
 Payroll is finished: `PayrollRun` (DRAFT → APPROVED → PAID), `Payslip`,
 `PayslipLine`, `SalaryChange` (effective-dated), `SalaryAdjustment` (in days,
 with `source`/`sourceId`), `FinalSettlement`, `Debt`. Leave is finished:
@@ -132,12 +135,17 @@ limiter, a package-based feature gate (`lib/features/`), a trusted-device
 mechanism for MFA (`TrustedDevice`), file storage behind `/api/upload`, and task
 location verification against one system-wide radius.
 
-The company settings page (`/dashboard/companies/[id]/settings`) is Super Admin
-only and is a single page of stacked cards.
+The company settings page (`/dashboard/companies/[id]/settings`) is tabbed,
+from a registry (`lib/company-settings-tabs.ts`), and the Super Admin can show
+a company chosen tabs at `/dashboard/settings` (§5, built).
 
 **What does not exist.** Any notion of when someone was supposed to be at work —
-no schedule, working week, holiday calendar, work location or timesheet — and
-no way to define a role other than the four in the enum.
+no schedule, working week, holiday calendar, work location or timesheet.
+
+*Checked against the code on 27 September 2026, after #3 and #5 (§21 step 1):
+the models and files named here and in §21 exist and mean what this says.
+`SalaryAdjustment.amount` is in days; its `source` is a string (`MANUAL`,
+`TASK_PENALTY`, `DAY_OFF`, `SETTLEMENT`), so `ATTENDANCE` needs no migration.*
 
 ---
 
@@ -247,6 +255,12 @@ exists and refers to permissions by name.
 ---
 
 ## 5. Company Options page
+
+**Built in #5.** The tabs are General, Branding, Payroll, Roles, Modules and
+Admin access; Attendance is added as one registry entry when Phase 0 needs it.
+Settled while building it: a company may be shown General, Branding and
+Payroll; in Payroll the debt recovery percent stays the Super Admin's (shown,
+not editable, refused by the server), a one-line change in the registry.
 
 ### 5.1 Structure
 
@@ -1276,11 +1290,13 @@ One left, deliberately deferred to implementation:
 Starts after the current website is complete and stable. Each phase is
 independently shippable.
 
-### Foundation
+### Foundation — built
 
 - **Roles and permissions** (§4), including role templates and the "who can do
   this?" view. Migrates the four built-in roles with no change in anyone's access.
-- **Company Options tabs** (§5.1) and **Admin settings exposure** (§5.2).
+  Built in #2 and #3.
+- **Company Options tabs** (§5.1) and **Admin settings exposure** (§5.2). Built
+  in #5.
 
 Both are useful to the website on their own and are the natural first step.
 
@@ -1343,9 +1359,10 @@ picked up later. Before the first line of implementation:
    `source` values, `DayOffRequest`, `JobHeartbeat`, `lib/features/bundles.ts`,
    `lib/features/routes.ts`, `lib/modules.ts`, `lib/time.ts`, the company
    settings page. Update this document where they changed.
+   *Done 27 September 2026 (§1). Redo it if Phase 0 starts much later.*
 2. **Nothing legal blocks the build.** Face verification ships switched off; the
    protected Super Admin enables it after their consultation (§10).
 3. **The roles project has its own plan** in [`ROLES_PLAN.md`](ROLES_PLAN.md). It
-   lands first and touches the whole product.
+   lands first and touches the whole product. *Built (#2, #3).*
 4. **Pick one pilot tenant** for the Phase 0 exit criterion before building
    Phase 0, so the month of real data is ready when the engine is.

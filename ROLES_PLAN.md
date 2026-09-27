@@ -1,14 +1,19 @@
 # Roles & Permissions — Implementation Plan
 
-Status: **approved plan, not scheduled.** Nothing here is built. It is the first
-item of the attendance plan's Foundation phase
-([`ATTENDANCE_PLAN.md` §4](ATTENDANCE_PLAN.md#4-prerequisite-roles-and-permissions)),
-but it stands on its own and is useful to the website without attendance — so it
-can be built whenever the Super Admin decides, including as part of making the
-current website stable.
+Status: **built.** Part A (steps 1–2) is #2, Part B (steps 3–5 and every
+screen in §6) is #3. It is the first item of the attendance plan's Foundation
+phase ([`ATTENDANCE_PLAN.md` §4](ATTENDANCE_PLAN.md#4-prerequisite-roles-and-permissions)).
 
-Like the attendance plan, it names real files and models. **Re-check §2 against
-the code before starting**; the numbers there are a snapshot.
+Where the build settled something this plan left open, the PRs say so:
+- Acting roles end in the session at the return date, whatever the company's
+  time zone; the nightly job then moves the person back (§6.13).
+- Step-up confirmation covers the 11 high-risk permissions; nobody is made to
+  enrol at sign-in, only when they first use one (§6.15).
+- `settings.view` and `settings.edit` open a company's own settings, the tabs
+  the Super Admin shows it (attendance plan §5.2, #5); the built-in Admin role
+  holds both. `audit.view` is still reserved: nothing checks it yet.
+
+§2 is the snapshot the work started from, kept as the record of what changed.
 
 ---
 
