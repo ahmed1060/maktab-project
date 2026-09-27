@@ -58,8 +58,11 @@ describe("the resource gate narrows to the team, not just the company", () => {
     const security = body("lib/security.ts")
 
     it("checks the team for people and for work", () => {
+        // teamOnly: the view permission's scope, or the scope of the one
+        // being used (lib/security.ts), each asked with scopesToTeam.
+        expect(security).toContain("const teamOnly = (view: Permission) => scopesToTeam(session.user, view) || (!!acting && scopesToTeam(session.user, acting))")
         for (const kind of ["'USER'", "'TASK'", "'OBLIGATION'"]) {
-            expect(blockAt(security, `case ${kind}:`)).toContain("scopesToTeam")
+            expect(blockAt(security, `case ${kind}:`)).toContain("teamOnly(")
         }
     })
 
@@ -68,6 +71,7 @@ describe("the resource gate narrows to the team, not just the company", () => {
         // Narrowing them to a team protects no one and just stops leaders
         // using the screen they are given.
         for (const kind of ["'CLIENT'", "'SECTION'", "'NOTE'"]) {
+            expect(blockAt(security, `case ${kind}:`)).not.toContain("teamOnly(")
             expect(blockAt(security, `case ${kind}:`)).not.toContain("scopesToTeam")
         }
     })

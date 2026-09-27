@@ -11,7 +11,7 @@ export const PUT = withStandardHandler(async (req, session, json, { params }) =>
         return ApiResponse.forbidden()
     }
 
-    const hasAccess = await verifyResourceAccess(session, params.id, 'TASK')
+    const hasAccess = await verifyResourceAccess(session, params.id, 'TASK', "tasks.edit")
     if (!hasAccess) return ApiResponse.forbidden("Access Denied")
 
     // 1. Validation

@@ -12,7 +12,7 @@ export const POST = withStandardHandler(async (req, session, json, { params }) =
     }
 
     // Company Isolation Check
-    const hasAccess = await verifyResourceAccess(session, params.id, 'TASK')
+    const hasAccess = await verifyResourceAccess(session, params.id, 'TASK', "tasks.penalize")
     if (!hasAccess) return ApiResponse.forbidden("Access Denied")
     // A high-risk action: confirmed with a code within the hour (ROLES_PLAN.md §6.15).
     await assertStepUp(session, "tasks.penalize")

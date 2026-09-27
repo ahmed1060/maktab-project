@@ -15,7 +15,7 @@ export const PUT = withStandardHandler(async (req, session, json, { params }) =>
         return ApiResponse.forbidden("Only managers can verify locations")
     }
 
-    const hasAccess = await verifyResourceAccess(session, taskId, 'TASK')
+    const hasAccess = await verifyResourceAccess(session, taskId, 'TASK', "tasks.review")
     if (!hasAccess) return ApiResponse.forbidden("Access denied")
 
     const { timestamp, action, verificationStatus } = json
