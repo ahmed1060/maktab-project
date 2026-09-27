@@ -1504,5 +1504,6 @@ export const ar = {
         access_review_change_reason: "ما الذي يجب تغييره، ولماذا؟",
         access_review_confirmed: "مؤكد",
         access_review_change_requested: "طُلب تغيير",
-        access_review_answered: "تم الرد"
+        access_review_answered: "تم الرد",
+        access_review_own_line: "صلاحياتك أنت — يجيب عنها شخص آخر"
 };

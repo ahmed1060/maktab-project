@@ -1509,5 +1509,6 @@ export const en = {
         access_review_change_reason: "What should change, and why?",
         access_review_confirmed: "Confirmed",
         access_review_change_requested: "Change requested",
-        access_review_answered: "Answered"
+        access_review_answered: "Answered",
+        access_review_own_line: "Your own access — someone else answers this"
 };

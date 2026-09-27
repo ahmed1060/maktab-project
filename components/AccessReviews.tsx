@@ -98,7 +98,9 @@ export default function AccessReviews({ side, highlight }: { side: 'company' | '
                                                     <button type="button" style={linkButton} onClick={() => answer(line, 'CONFIRMED')}>{t('access_review_confirm')}</button>
                                                     <button type="button" style={{ ...linkButton, color: 'var(--danger-solid)' }} onClick={() => setChanging(line)}>{t('access_review_change')}</button>
                                                 </span>
-                                            ) : null}
+                                            ) : (
+                                                <span style={{ fontSize: '0.8rem', color: 'var(--text-soft)', whiteSpace: 'normal' }}>{t('access_review_own_line')}</span>
+                                            )}
                                         </td>
                                     </tr>
                                 ))}
