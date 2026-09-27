@@ -25,7 +25,16 @@ const SETTABLE_STATUSES = ["ACTIVE", "OFFLINE", "SUSPENDED"] as const
 export class UserService {
     static async create(input: CreateUserInput, session: any) {
         const userRole = session.user.role
-        const { firstName, lastName, email, password, role, roleId, gender, companyId, salary, dayOffCredit, baseDayOffCredit, username, teamLeaderId } = input
+        const { firstName, lastName, email, password, role, roleId, gender, companyId, username } = input
+        // Each of these is its own permission, as it is when editing somebody
+        // (update() below): creating an account is not a way round them. What
+        // the creator may not set is not written, as an edit leaves it; the
+        // form does not offer those fields to them.
+        const salary = can(session.user, "salary.edit") ? input.salary : undefined
+        const canCredit = can(session.user, "dayoff.adjust_credit")
+        const dayOffCredit = canCredit ? input.dayOffCredit : undefined
+        const baseDayOffCredit = canCredit ? input.baseDayOffCredit : undefined
+        const teamLeaderId = can(session.user, "employees.assign_team") ? input.teamLeaderId : undefined
 
         // 1. Role Restrictions
         //

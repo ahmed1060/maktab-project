@@ -29,6 +29,7 @@ vi.mock("@/lib/services/settlement.service", () => ({ SettlementService: { previ
 
 const users = () => import("@/app/api/users/route")
 const put = async (body: unknown) => (await users()).PUT(withBody("PUT", "/api/users", body))
+const post = async (body: unknown) => (await users()).POST(withBody("POST", "/api/users", body))
 
 function onRole(grants: Grants, who: { id: string; role: string; companyId: string | null } = { id: "tl", role: "EMPLOYEE", companyId: "c1" }) {
     state.session = { user: stepUpConfirmed({ ...who, grants: encodeGrants(grants) }) }
@@ -91,5 +92,21 @@ describe("a Super Admin's account", () => {
         onRole({}, { id: "sa", role: "SUPER_ADMIN", companyId: null })
         expect((await put({ id: "sa-row", firstName: "Sam" })).status).toBe(200)
         expect(fieldsWritten()).toEqual(["firstName"])
+    })
+})
+
+describe("creating an account", () => {
+    const body = { firstName: "N", lastName: "U", email: "new@c1.test", password: "a-long-password-123", salary: 9000, baseDayOffCredit: 40, teamLeaderId: "tl" }
+
+    it("writes only the fields the creator may set", async () => {
+        onRole({ "employees.view": "COMPANY", "employees.create": "COMPANY" })
+        expect((await post(body)).status).toBe(201)
+        expect(state.created[0]).toMatchObject({ salary: 0, dayOffCredit: 0, baseDayOffCredit: 0, teamLeaderId: null })
+    })
+
+    it("writes them for a creator who holds each", async () => {
+        onRole({ "employees.view": "COMPANY", "employees.create": "COMPANY", "salary.edit": "COMPANY", "dayoff.adjust_credit": "COMPANY", "employees.assign_team": "COMPANY" })
+        expect((await post(body)).status).toBe(201)
+        expect(state.created[0]).toMatchObject({ salary: 9000, dayOffCredit: 40, baseDayOffCredit: 40, teamLeaderId: "tl" })
     })
 })
