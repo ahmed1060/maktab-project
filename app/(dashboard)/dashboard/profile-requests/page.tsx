@@ -173,7 +173,7 @@ export default function ProfileRequestsPage() {
                                     <td style={{ padding: '1rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
                                         <div style={{ fontWeight: '600' }}>{req.user.firstName} {req.user.lastName}</div>
                                         <div style={{ fontSize: '0.8rem', color: 'var(--text-soft)' }}>{req.user.email} • {t(getRoleKey(req.user.role) as any)}</div>
-                                        {req.user.company && <div style={{ fontSize: '0.75rem', color: 'var(--brand-primary)' }}>{req.user.company.name}</div>}
+                                        {req.user.company && <div style={{ fontSize: '0.75rem', color: 'var(--brand-primary-text)' }}>{req.user.company.name}</div>}
                                     </td>
                                     <td style={{ padding: '1rem', color: 'var(--text-soft)', textAlign: locale === 'ar' ? 'right' : 'left' }}>{req.oldFirstName} {req.oldLastName}</td>
                                     <td style={{ padding: '1rem', fontWeight: 'bold', color: 'var(--ok-fg)', textAlign: locale === 'ar' ? 'right' : 'left' }}>{req.newFirstName} {req.newLastName}</td>

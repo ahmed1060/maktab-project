@@ -606,7 +606,7 @@ export default function PayrollRegisterPage() {
                                         {view?.payslipIds?.[entry.userId] && !entry.excluded && (
                                             <a
                                                 href={`/dashboard/documents/payslip/${view.payslipIds[entry.userId]}`}
-                                                style={{ fontSize: '0.78rem', fontWeight: 500, color: 'var(--primary)' }}
+                                                style={{ fontSize: '0.78rem', fontWeight: 500, color: 'var(--brand-primary-text)' }}
                                                 onClick={e => e.stopPropagation()}
                                             >
                                                 {t('payroll_view_payslip')}

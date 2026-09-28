@@ -282,7 +282,7 @@ export default function EmployeeHistoryPage() {
                         alignItems: 'center',
                         justifyContent: 'center',
                         marginBottom: '0.75rem',
-                        color: 'var(--primary)',
+                        color: 'var(--brand-primary-text)',
                         textDecoration: 'none',
                         transition: 'all 0.3s ease',
                         border: '1px solid var(--veil-40)',
@@ -522,7 +522,7 @@ export default function EmployeeHistoryPage() {
                                                 ) : (
                                                     <a
                                                         href={`/dashboard/documents/payslip/${figure!.source === 'PAYSLIP' ? figure!.payslipId : ''}`}
-                                                        style={{ display: 'block', fontSize: '0.7rem', fontWeight: 400, color: 'var(--primary)' }}
+                                                        style={{ display: 'block', fontSize: '0.7rem', fontWeight: 400, color: 'var(--brand-primary-text)' }}
                                                     >
                                                         {t('salary_figure_payslip')}
                                                     </a>

@@ -160,6 +160,10 @@
   --brand-primary: var(--primary);
   --brand-primary-hover: var(--primary-hover);
   --brand-accent: var(--accent);
+  /* The brand colour as text. The same indigo in the light theme; in the dark
+     one it is too dark to read on the dark surfaces (2.8:1), and --primary
+     itself can't lighten there, because white text sits on it in buttons. */
+  --brand-primary-text: var(--primary);
 
   /* The login hero gradient. Its own pair rather than reusing the brand tokens,
      because it is a decorative statement on the sign-in page and D2 may well
@@ -824,7 +828,7 @@ html[dir="rtl"] select.input {
 }
 
 .modal-close:hover {
-  color: var(--primary);
+  color: var(--brand-primary-text);
 }
 
 @keyframes fadeIn {
@@ -987,7 +991,10 @@ input::-webkit-credentials-auto-fill-button {
     --accent-solid: #a86ef0;
     --accent-solid-deep: #9457e0;
     --accent-deep: #7c6ae0;
-    --accent-deepest: #6a5ad0;
+    /* Text on the dark surfaces (the audit log's action names): #6a5ad0 read
+       at 2.85:1 there. */
+    --accent-deepest: #b3a6f2;
+    --brand-primary-text: #a5b4fc;
 
     --grey-100: #21262d;
     --grey-200: #30363d;
@@ -1112,7 +1119,7 @@ input::-webkit-credentials-auto-fill-button {
 
 .legal strong { color: var(--text-strong); font-weight: 600; }
 
-.legal a { color: var(--primary); }
+.legal a { color: var(--brand-primary-text); }
 
 /* Definition rows — "what we collect" and "who we share it with" are both
    term/description pairs, and a table would scroll sideways on a phone. */

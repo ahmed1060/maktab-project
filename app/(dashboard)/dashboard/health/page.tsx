@@ -352,7 +352,7 @@ export default function SystemHealthPage() {
                             <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>{t('total_assets' as any)}</p>
                         </div>
                     </div>
-                    <div style={{ fontSize: '2.5rem', fontWeight: '800', color: 'var(--brand-primary)', textAlign: 'center', margin: '1rem 0' }}>
+                    <div style={{ fontSize: '2.5rem', fontWeight: '800', color: 'var(--brand-primary-text)', textAlign: 'center', margin: '1rem 0' }}>
                         {metrics?.storage.reachable === false ? '—' : metrics?.storage.totalFiles}
                     </div>
                     {metrics?.storage.reachable === false && (

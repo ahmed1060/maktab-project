@@ -247,7 +247,7 @@ export default function ClientDetailsPage() {
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            color: 'var(--primary)',
+                            color: 'var(--brand-primary-text)',
                             textDecoration: 'none',
                             transition: 'all 0.3s ease',
                             border: '1px solid var(--veil-40)',

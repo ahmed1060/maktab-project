@@ -130,7 +130,7 @@ export default function RequestsHistoryClient({ userRole }: { userRole: string }
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        color: 'var(--brand-primary)',
+                        color: 'var(--brand-primary-text)',
                         textDecoration: 'none',
                         transition: 'all 0.3s ease',
                         border: '1px solid var(--veil-40)',

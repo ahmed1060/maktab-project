@@ -683,7 +683,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                             </button>
                         </div>
                         {uploadingAvatar && (
-                            <div style={{ marginTop: '1rem', color: 'var(--brand-primary)', fontSize: '0.875rem', fontWeight: 'bold' }}>
+                            <div style={{ marginTop: '1rem', color: 'var(--brand-primary-text)', fontSize: '0.875rem', fontWeight: 'bold' }}>
                                 {t('uploading_in_progress')}
                             </div>
                         )}
@@ -1090,7 +1090,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                                     style={{
                                         marginTop: '0.75rem',
                                         background: 'transparent',
-                                        color: status === 'ARCHIVED' ? 'var(--primary)' : 'var(--danger-solid)',
+                                        color: status === 'ARCHIVED' ? 'var(--brand-primary-text)' : 'var(--danger-solid)',
                                         border: `1px solid ${status === 'ARCHIVED' ? 'var(--primary)' : 'var(--danger-border)'}`,
                                         fontSize: '0.85rem',
                                     }}
@@ -1174,7 +1174,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                                     alignItems: 'center',
                                     justifyContent: 'center',
                                     margin: '0 auto 1.5rem',
-                                    color: 'var(--primary)'
+                                    color: 'var(--brand-primary-text)'
                                 }}>
                                     <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                         <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>

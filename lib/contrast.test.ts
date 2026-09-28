@@ -166,3 +166,29 @@ describe("the two themes are actually different", () => {
         expect(missing, `tokens with no dark value:\n${missing.join("\n")}`).toEqual([])
     })
 })
+
+describe("dark: brand-coloured text meets AA 4.5:1 on its surfaces", () => {
+    // Found by measuring every page's text in the dark theme. The brand indigo
+    // (--primary, #6366f1) was used as text there unchanged, 2.8:1 on the dark
+    // surfaces, and the audit log's action names (--accent-deepest) 2.85:1.
+    // --primary itself can't lighten in the dark theme, because white text sits
+    // on it in buttons, so text uses --brand-primary-text.
+    for (const fg of ["--brand-primary-text", "--accent-deepest"]) {
+        for (const bg of ["--surface", "--surface-sunk"]) {
+            it(`${fg} on ${bg}`, () => {
+                const r = ratio(DARK[fg], DARK[bg])
+                expect(r, `${fg} ${DARK[fg]} on ${bg} ${DARK[bg]} is ${r.toFixed(2)}:1`).toBeGreaterThanOrEqual(4.5)
+            })
+        }
+    }
+
+    it("and screens colour brand text with it, not with the button colour", () => {
+        const { readdirSync } = require("node:fs") as typeof import("node:fs")
+        const { join } = require("node:path") as typeof import("node:path")
+        const files = (dir: string): string[] => readdirSync(dir, { withFileTypes: true }).flatMap(e =>
+            e.isDirectory() ? files(join(dir, e.name)) : e.name.endsWith(".tsx") ? [join(dir, e.name)] : [])
+        const offenders = [...files("app"), ...files("components")].filter(f =>
+            /color: (?:[^,}]*\? )?'var\(--(?:brand-primary|primary)\)'/.test(readFileSync(f, "utf8")))
+        expect(offenders).toEqual([])
+    })
+})

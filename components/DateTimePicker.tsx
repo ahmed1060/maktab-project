@@ -190,7 +190,7 @@ export default function DateTimePicker({ value, onChange, label, min, customTrig
                     <span style={{ color: value ? 'var(--text-main)' : 'var(--text-faint)', fontWeight: value ? '600' : '400' }}>
                         {selectedDate ? `${formatDate(selectedDate)} - ${formatTime(selectedDate)}` : t('select_deadline')}
                     </span>
-                    <span style={{ color: 'var(--brand-primary)', fontSize: '1.2rem' }}>📅</span>
+                    <span style={{ color: 'var(--brand-primary-text)', fontSize: '1.2rem' }}>📅</span>
                 </div>
             )}
 

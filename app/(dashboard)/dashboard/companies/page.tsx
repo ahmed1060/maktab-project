@@ -335,7 +335,7 @@ export default function CompaniesPage() {
                                                 className="btn"
                                                 style={{
                                                     background: 'color-mix(in srgb, var(--primary) 10%, transparent)',
-                                                    color: 'var(--brand-primary)',
+                                                    color: 'var(--brand-primary-text)',
                                                     padding: '0.4rem 0.8rem',
                                                     fontSize: '0.8rem',
                                                     border: '1px solid color-mix(in srgb, var(--primary) 20%, transparent)'

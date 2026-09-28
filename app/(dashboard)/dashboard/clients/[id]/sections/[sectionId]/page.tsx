@@ -389,7 +389,7 @@ export default function SectionNotesPage() {
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            color: 'var(--primary)',
+                            color: 'var(--brand-primary-text)',
                             textDecoration: 'none',
                             transition: 'all 0.3s ease',
                             border: '1px solid var(--veil-40)',
@@ -538,7 +538,7 @@ export default function SectionNotesPage() {
                                                     rel="noopener noreferrer"
                                                     className="hover:scale-110 transition-transform"
                                                     style={{
-                                                        color: 'var(--primary)',
+                                                        color: 'var(--brand-primary-text)',
                                                         display: 'flex',
                                                         alignItems: 'center',
                                                         gap: '0.25rem',
