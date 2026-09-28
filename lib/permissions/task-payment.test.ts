@@ -103,3 +103,19 @@ describe("penalising a task", () => {
         expect(JSON.stringify(await (await penalise({ userId: "emp", amount: 5000 })).json())).toContain("1000")
     })
 })
+
+const submit = async () => (await import("@/app/api/tasks/[id]/submit/route")).PUT(withBody("PUT", "/api/tasks/t-emp/submit", { note: "Done again" }), { params: { id: "t-emp" } } as any)
+
+describe("submitting a task", () => {
+    it("is not done again once it is decided, which counted its points twice", async () => {
+        as("employee")
+        for (const status of ["APPROVED", "COMPLETED"]) {
+            taskState.status = status
+            expect((await submit()).status, status).toBe(400)
+        }
+        for (const status of ["IN_PROGRESS", "REJECTED"]) {
+            taskState.status = status
+            expect((await submit()).status, status).toBe(200)
+        }
+    })
+})

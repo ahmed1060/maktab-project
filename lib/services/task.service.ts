@@ -275,6 +275,11 @@ export class TaskService {
             // Your own task, or one you may edit — a manager submitting on
             // someone's behalf.
             if (!isAssignee && !can(session.user, "tasks.edit")) throw new Error("ACCESS_DENIED")
+            // A decided task is not submitted again: it went back to awaiting
+            // confirmation with its points still held, so approving it again
+            // added them a second time, and new costs changed what a paid
+            // task owes. A rejected one is redone and submitted, as before.
+            if (['APPROVED', 'COMPLETED'].includes(currentTask.status)) throw new Error("TASK_ALREADY_DECIDED")
 
             // Handle Attachments
             let finalAttachments: any[] = []
