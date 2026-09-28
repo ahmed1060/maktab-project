@@ -14,6 +14,7 @@ import { useCan } from '@/lib/useCan'
 import RoleSelect from '@/components/RoleSelect'
 import RoleRequestControl from '@/components/RoleRequestControl'
 import { roleLabel } from '@/lib/role-label'
+import { apiErrorText } from "@/lib/api-error-text"
 
 type EmployeeProfileFormProps = {
     userId: string
@@ -315,7 +316,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
 
                 if (!reqRes.ok) {
                     const text = await reqRes.text()
-                    throw new Error(text || t('error_generic'))
+                    throw new Error(apiErrorText(text, t('error_generic')))
                 }
 
                 showToast(t('name_change_submitted'), 'success')
@@ -371,7 +372,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                 if (text.includes("Username already in use")) {
                     throw new Error(locale === 'ar' ? 'اسم المستخدم مستخدم بالفعل' : 'Username already in use')
                 }
-                throw new Error(text || t('error_generic'))
+                throw new Error(apiErrorText(text, t('error_generic')))
             }
 
             setHandoff(null)

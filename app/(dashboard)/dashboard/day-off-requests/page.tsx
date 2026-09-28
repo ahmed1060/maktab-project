@@ -17,6 +17,7 @@ import Pagination from '@/components/Pagination'
 import { fetcher } from '@/lib/swr-fetcher'
 import { useFadingHighlight } from '@/lib/useFadingHighlight'
 import { useCan } from '@/lib/useCan'
+import { apiErrorText } from "@/lib/api-error-text"
 
 // Badge color + translation key per type, keyed once here rather than as a
 // chained ternary — REGULAR/CASUAL/SICK are reachable from the request
@@ -192,7 +193,7 @@ export default function DayOffRequestsPage() {
                 setReqReason('')
             } else {
                 const err = await res.text()
-                showAlert('error', err || t('failed_submit_request' as any))
+                showAlert('error', apiErrorText(err, t('failed_submit_request' as any)))
             }
         } catch {
             showAlert('error', t('error_generic'))

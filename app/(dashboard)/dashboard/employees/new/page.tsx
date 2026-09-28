@@ -5,6 +5,7 @@ import { useSession } from 'next-auth/react'
 import { useLanguage } from '@/context/LanguageContext'
 import { useCan } from '@/lib/useCan'
 import RoleSelect from '@/components/RoleSelect'
+import { apiErrorText } from "@/lib/api-error-text"
 
 type Company = {
     id: string
@@ -123,7 +124,7 @@ export default function NewEmployeePage() {
                 if (text.includes("Username already in use")) {
                     setError(locale === 'ar' ? 'اسم المستخدم مستخدم بالفعل' : 'Username already in use')
                 } else {
-                    setError(text || 'Failed to create user')
+                    setError(apiErrorText(text, 'Failed to create user'))
                 }
                 setLoading(false)
                 return

@@ -10,6 +10,7 @@ import SafeDate from '@/components/SafeDate'
 import Link from 'next/link'
 import { useFadingHighlight } from '@/lib/useFadingHighlight'
 import { useCan } from '@/lib/useCan'
+import { apiErrorText } from "@/lib/api-error-text"
 
 
 interface SalaryRecord {
@@ -241,7 +242,7 @@ export default function EmployeeHistoryPage() {
                 setIsReevaluateModalOpen(false)
             } else {
                 const err = await res.text()
-                setAlert({ type: 'error', message: err || t('update_failed' as any) })
+                setAlert({ type: 'error', message: apiErrorText(err, t('update_failed' as any)) })
             }
         } catch {
             setAlert({ type: 'error', message: t('update_failed' as any) })

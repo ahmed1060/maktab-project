@@ -12,6 +12,7 @@ import LoadingSpinner from '@/components/LoadingSpinner'
 import { useHeader } from '@/context/HeaderContext'
 import { fetcher } from '@/lib/swr-fetcher'
 import { useAdjustOnChange } from '@/lib/useAdjustOnChange'
+import { apiErrorText } from "@/lib/api-error-text"
 
 type User = {
     id: string
@@ -209,7 +210,7 @@ export default function AllUsersPage() {
                 setErrorModal({
                     isOpen: true,
                     title: locale === 'ar' ? 'خطأ' : 'Error',
-                    message: errorText || t('error_generic')
+                    message: apiErrorText(errorText, t('error_generic'))
                 })
             }
         } catch (error) {
