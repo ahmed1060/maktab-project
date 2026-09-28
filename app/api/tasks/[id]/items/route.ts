@@ -17,8 +17,9 @@ export const DELETE = withStandardHandler(async (req, session, json, { params })
         if (error.message === 'TASK_NOT_IN_PROGRESS') return ApiResponse.badRequest("Items can only be deleted when task is IN_PROGRESS")
         if (error.message === 'UNAUTHORIZED_ITEM_DELETE') return ApiResponse.forbidden("Not authorized to delete this item")
         if (error.message === 'ITEM_NOT_FOUND') return ApiResponse.notFound("Item not found")
-        console.error("Item deletion error:", error)
-        return ApiResponse.error("Failed to delete item")
+        // Anything else goes to the handler: a known refusal is answered
+        // there, and a fault is logged with a reference.
+        throw error
     }
 }, {
     audit: {

@@ -3,6 +3,7 @@ import { authOptions } from "@/lib/auth"
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { ApiResponse } from "./api-response"
+import { knownRefusal } from "./api-errors"
 import { moduleForApiPath, requireFeature } from "@/lib/features"
 import { isBlockedBySubscription } from "@/lib/billing/state"
 import { AuditLogService } from "./services/audit-log.service"
@@ -373,6 +374,10 @@ export function withStandardHandler(
                     ? "This action needs two-factor authentication. Set it up in Security settings first."
                     : "Confirm it's you with your authenticator code.", code: error.code, minutes: error.minutes }, { status: 403 })
             }
+            // An ordinary refusal no route answered: say what it is, with the
+            // status it deserves, rather than a 500 and an error reference.
+            const refusal = knownRefusal(error)
+            if (refusal) return NextResponse.json({ success: false, error: refusal.message }, { status: refusal.status })
             console.error("API Standard Handler Error:", error)
             // Never echo the raw exception to the client — it can be a
             // Prisma/Supabase/network error with internal detail in it.
