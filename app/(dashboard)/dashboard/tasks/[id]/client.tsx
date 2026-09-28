@@ -997,7 +997,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
             <div style={{ marginTop: '2rem', borderTop: '1px solid var(--border)', paddingTop: '1.5rem' }}>
                 <h3 style={{ marginBottom: '1rem' }}>{t('attachments_optional_label').split(' ')[0]}</h3>
                 {existingAttachments.length > 0 ? (
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '1rem' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(220px, 100%), 1fr))', gap: '1rem' }}>
                         {existingAttachments.map((att: any, idx: number) => (
                             <div key={idx} style={{ position: 'relative' }}>
                                 <a href={att.url} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.75rem', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '0.5rem', textDecoration: 'none', color: 'var(--text-body)', transition: 'all 0.2s', flexDirection: 'row' }}>

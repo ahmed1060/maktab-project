@@ -334,7 +334,7 @@ export default function SystemHealthPage() {
                 </div>
             )}
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(300px, 100%), 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
 
                 {/* Jobs Card — first, because it is the one card here that
                     reports something nobody would otherwise find out. The rest

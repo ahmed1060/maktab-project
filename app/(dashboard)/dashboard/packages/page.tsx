@@ -157,7 +157,7 @@ export default function PackagesPage() {
                     {t('no_packages_yet' as any)}
                 </div>
             ) : (
-                <div style={{ display: 'grid', gap: '1rem', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))' }}>
+                <div style={{ display: 'grid', gap: '1rem', gridTemplateColumns: 'repeat(auto-fill, minmax(min(320px, 100%), 1fr))' }}>
                     {packages.map(pkg => {
                         const companies = pkg._count?.companies ?? 0
                         return (
@@ -255,7 +255,7 @@ export default function PackagesPage() {
                         />
                     </div>
 
-                    <div style={{ display: 'grid', gap: '0.75rem', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))' }}>
+                    <div style={{ display: 'grid', gap: '0.75rem', gridTemplateColumns: 'repeat(auto-fit, minmax(min(140px, 100%), 1fr))' }}>
                         <div>
                             <label className="label">{t('price_monthly' as any)}</label>
                             <input className="input" type="number" min="0" step="0.01" value={form.priceMonthly} onChange={e => setForm({ ...form, priceMonthly: e.target.value })} required />

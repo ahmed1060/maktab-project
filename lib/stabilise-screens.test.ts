@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest"
-import { readFileSync } from "node:fs"
+import { readFileSync, readdirSync } from "node:fs"
+import { join } from "node:path"
 
 /**
  * Found by visiting every page as each kind of user, in both languages
@@ -64,5 +65,17 @@ describe("at phone width", () => {
         // and the two small figures stack when two don't fit
         expect(page).not.toContain("gridTemplateColumns: '1fr 1fr'")
         expect(page).toContain("repeat(auto-fit, minmax(min(10rem, 100%), 1fr))")
+    })
+
+    it("no grid on any screen asks for a column wider than the screen has", () => {
+        // A fixed minimum of 350px put the Employees, Day off and Requests
+        // cards 350px wide in a 326px space, their right edge cut off.
+        // min(Npx, 100%) is the same on a wide screen and gives way on a
+        // narrow one.
+        const screens = (dir: string): string[] => readdirSync(dir, { withFileTypes: true }).flatMap(e =>
+            e.isDirectory() ? screens(join(dir, e.name)) : e.name.endsWith(".tsx") ? [join(dir, e.name)] : [])
+        const fixed = [...screens("app"), ...screens("components")]
+            .filter(f => /minmax\(\d+px, *1fr\)/.test(readFileSync(f, "utf8")))
+        expect(fixed).toEqual([])
     })
 })

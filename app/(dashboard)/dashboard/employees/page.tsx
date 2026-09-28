@@ -389,7 +389,7 @@ export default function EmployeesPage() {
 
             <div style={{
                 display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))',
+                gridTemplateColumns: 'repeat(auto-fill, minmax(min(350px, 100%), 1fr))',
                 gap: '1rem',
                 marginBottom: '2rem',
                 opacity: loading ? 0.6 : 1,

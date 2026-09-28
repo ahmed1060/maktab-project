@@ -418,7 +418,7 @@ export default function DayOffRequestsPage() {
                             </p>
                         </div>
                     ) : (
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: '1rem' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(350px, 100%), 1fr))', gap: '1rem' }}>
                             {filteredRequests.map((req, index) => (
                                 <div
                                     key={req.id}

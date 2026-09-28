@@ -234,7 +234,7 @@ export default function CostsClient({ tasksWithCosts, total, page, totalPages }:
             ) : (
                 <div style={{
                     display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
+                    gridTemplateColumns: 'repeat(auto-fill, minmax(min(300px, 100%), 1fr))',
                     gap: '1.5rem'
                 }}>
                     {sortedEntries.map((entry, index) => (

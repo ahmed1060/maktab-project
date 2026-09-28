@@ -184,7 +184,7 @@ export default function RequestsHistoryClient({ userRole }: { userRole: string }
                     {t('no_requests_found')}
                 </div>
             ) : (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: '1.25rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(350px, 100%), 1fr))', gap: '1.25rem' }}>
                     {requests.map(req => (
                         <RequestCard
                             key={req.id}
