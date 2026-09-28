@@ -4,8 +4,8 @@ import { state, prismaMock, taskState, as, withBody } from "./task-access.harnes
 vi.setConfig({ testTimeout: 60_000 })
 
 /**
- * Recording a task's payment takes a real status, on reviewed work, for one
- * of its people. Found by running the task flow in the app: anything else was
+ * Reviewing a task takes a real decision; recording its payment takes a real
+ * status, on reviewed work, for one of its people. Found by running the task flow in the app: anything else was
  * taken as "not paid", which put a paid, completed task back to Approved with
  * every assignee unpaid; and a task still in progress could be marked paid,
  * which completed it without a review.
@@ -44,5 +44,27 @@ describe("recording a task's payment", () => {
     it("for one of the task's own people", async () => {
         expect((await pay({ paymentStatus: "PAID", targetUserId: "loner" })).status).toBe(400)
         expect((await pay({ paymentStatus: "PAID", targetUserId: "emp" })).status).toBe(200)
+    })
+})
+
+const review = async (body: unknown) => (await import("@/app/api/tasks/[id]/review/route")).POST(withBody("POST", "/api/tasks/t-emp/review", body), { params: { id: "t-emp" } } as any)
+
+describe("reviewing a task", () => {
+    beforeEach(() => { taskState.status = "SUBMITTED" })
+
+    it("takes approved, rejected or completed, never a rejection by default", async () => {
+        // An empty or mistyped request used to reject the task and take its
+        // points away.
+        expect((await review({})).status).toBe(400)
+        expect((await review({ status: "APPROVE" })).status).toBe(400)
+        expect((await review({ action: "REJECTED" })).status).toBe(200)
+        expect((await review({ status: "COMPLETED", difficulty: 3 })).status).toBe(200)
+    })
+
+    it("with a difficulty from 0 to 10, as a new task has", async () => {
+        expect((await review({ status: "COMPLETED", difficulty: -5 })).status).toBe(400)
+        expect((await review({ status: "COMPLETED", difficulty: 1000000 })).status).toBe(400)
+        expect((await review({ status: "COMPLETED", difficulty: "3" })).status).toBe(400)
+        expect((await review({ status: "COMPLETED", difficulty: 10 })).status).toBe(200)
     })
 })

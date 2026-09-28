@@ -388,10 +388,19 @@ export class TaskService {
      * Reviews a task submission.
      */
     static async review(id: string, session: any, data: any) {
-        const { status: statusProp, action, difficulty } = data
+        const { status: statusProp, action, difficulty } = data ?? {}
         const status = statusProp || action
         const userId = session.user.id
         const userRole = session.user.role
+        // A decision the reviewer made, not a default: anything else used to
+        // be read as a rejection, so an empty or mistyped request rejected the
+        // task and took its points away.
+        if (!['APPROVED', 'REJECTED', 'COMPLETED'].includes(status)) throw new Error("INVALID_REVIEW_STATUS")
+        // Added to every assignee's points, so bounded as a task's is when it
+        // is created (lib/validations/task.schema.ts).
+        if (difficulty !== undefined && difficulty !== null && (typeof difficulty !== 'number' || !Number.isFinite(difficulty) || difficulty < 0 || difficulty > 10)) {
+            throw new Error("INVALID_DIFFICULTY")
+        }
 
         return await prisma.$transaction(async (tx) => {
             const oldTask = await tx.task.findUnique({
@@ -414,7 +423,7 @@ export class TaskService {
                 throw new Error("SELF_REVIEW_FORBIDDEN")
             }
 
-            let newStatus = ['APPROVED', 'REJECTED', 'COMPLETED'].includes(status) ? status : 'REJECTED'
+            let newStatus = status
             if (newStatus === 'APPROVED' && oldTask.totalCost.isZero()) newStatus = 'COMPLETED'
 
             const newDifficulty = (typeof difficulty === 'number') ? difficulty : oldTask.difficulty
