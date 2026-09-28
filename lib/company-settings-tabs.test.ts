@@ -86,4 +86,13 @@ describe("the company settings tabs", () => {
             expect(PAGE).toMatch(/<Link\s+href="\/dashboard\/companies"/)
         })
     })
+
+    it("the General tab's checkbox has a name a screen reader can say", () => {
+        // Found by running axe on every page: it sat beside its text without
+        // a label, so it was announced as an unnamed checkbox.
+        const card = readFileSync("components/CompanyGeneralCard.tsx", "utf8")
+        expect(card).toContain("aria-label={t('auto_verify_location_label') || 'Auto-verify submitted task locations'}")
+        expect(card).toContain('aria-describedby="auto-verify-location-hint"')
+        expect(card).toContain('id="auto-verify-location-hint"')
+    })
 })

@@ -35,9 +35,11 @@ type Props = {
     /** Shown but not changeable — somebody only the Super Admin acts on. */
     locked?: boolean
     style?: React.CSSProperties
+    /** What a screen reader calls it. "Role" unless the form's own label says otherwise. */
+    ariaLabel?: string
 }
 
-export default function RoleSelect({ companyId, value, current, onChange, disabled, allowDefault, emptyLabel, locked, style }: Props) {
+export default function RoleSelect({ companyId, value, current, onChange, disabled, allowDefault, emptyLabel, locked, style, ariaLabel }: Props) {
     const { t } = useLanguage()
     // Nothing until it is known who is asking: before the session loads, a
     // Super Admin would look like anyone else and ask without a company.
@@ -52,6 +54,7 @@ export default function RoleSelect({ companyId, value, current, onChange, disabl
 
     return (
         <select
+            aria-label={ariaLabel ?? t('role_label')}
             className="input"
             value={value}
             disabled={disabled || locked}
