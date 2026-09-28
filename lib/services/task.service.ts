@@ -483,8 +483,13 @@ export class TaskService {
         const now = new Date()
 
         return await prisma.$transaction(async (tx) => {
-            const task = await tx.task.findUnique({ where: { id } })
+            const task = await tx.task.findUnique({ where: { id }, include: { assignees: { select: { id: true } } } })
             if (!task) throw new Error("TASK_NOT_FOUND")
+            // A task's penalty falls on one of its own people. The id came
+            // from the request and was never checked against the task: anyone
+            // allowed to penalise one task could take pay from any account,
+            // in any company, by naming it.
+            if (!task.assignees.some(a => a.id === targetUserId)) throw new Error("NOT_AN_ASSIGNEE")
 
             // Through SalaryService, not a second hand-rolled find-or-create.
             // This block used to compute its own days-in-month and read its own
