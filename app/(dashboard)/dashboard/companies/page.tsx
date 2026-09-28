@@ -440,7 +440,7 @@ export default function CompaniesPage() {
                         <form onSubmit={handleSubmit}>
                             <div style={{ marginBottom: '1.5rem' }}>
                                 <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem' }}>{t('company_name_label')}</label>
-                                <input
+                                <input aria-label={t('company_name_label')}
                                     className="input"
                                     required
                                     value={formData.name}
@@ -455,7 +455,7 @@ export default function CompaniesPage() {
                             {!editingCompany && (
                                 <div style={{ marginBottom: '1.5rem' }}>
                                     <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem' }}>{t('trial_length' as any)}</label>
-                                    <select
+                                    <select aria-label={t('trial_length' as any)}
                                         className="input"
                                         value={formData.trialPreset}
                                         onChange={e => setFormData({ ...formData, trialPreset: e.target.value as TrialPreset })}
@@ -485,7 +485,7 @@ export default function CompaniesPage() {
 
                             <div style={{ marginBottom: '1.5rem' }}>
                                 <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem' }}>{t('package_label' as any)}</label>
-                                <select
+                                <select aria-label={t('package_label' as any)}
                                     className="input"
                                     value={formData.packageId}
                                     onChange={e => setFormData({ ...formData, packageId: e.target.value })}
@@ -532,7 +532,7 @@ export default function CompaniesPage() {
                         <form onSubmit={handleDelete}>
                             <div style={{ marginBottom: '1.5rem' }}>
                                 <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem' }}>{t('enter_passcode_label')}</label>
-                                <input
+                                <input aria-label={t('enter_passcode_label')}
                                     type="password"
                                     className="input"
                                     required

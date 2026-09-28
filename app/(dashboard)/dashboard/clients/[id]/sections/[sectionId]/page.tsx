@@ -682,7 +682,7 @@ export default function SectionNotesPage() {
                                         <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', color: 'var(--text-soft)', textAlign: locale === 'ar' ? 'right' : 'left' }}>
                                             {t('note_content_label' as any)}
                                         </label>
-                                        <textarea
+                                        <textarea aria-label={t('note_content_label' as any)}
                                             value={newNoteContent}
                                             onChange={(e) => setNewNoteContent(e.target.value)}
                                             className="input"
@@ -759,7 +759,7 @@ export default function SectionNotesPage() {
                                             <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', color: 'var(--text-soft)', textAlign: locale === 'ar' ? 'right' : 'left' }}>
                                                 {t('reminder_days_label' as any)}
                                             </label>
-                                            <input
+                                            <input aria-label={t('reminder_days_label' as any)}
                                                 type="number"
                                                 value={reminderDays}
                                                 onChange={(e) => setReminderDays(e.target.value)}
@@ -834,7 +834,7 @@ export default function SectionNotesPage() {
                             <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', color: 'var(--text-soft)', textAlign: locale === 'ar' ? 'right' : 'left' }}>
                                 {t('section_title_label' as any)}
                             </label>
-                            <input
+                            <input aria-label={t('section_title_label' as any)}
                                 type="text"
                                 value={editSectionTitle}
                                 onChange={(e) => setEditSectionTitle(e.target.value)}
@@ -902,7 +902,7 @@ export default function SectionNotesPage() {
                                         <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', color: 'var(--text-soft)', textAlign: locale === 'ar' ? 'right' : 'left' }}>
                                             {t('note_content_label' as any)}
                                         </label>
-                                        <textarea
+                                        <textarea aria-label={t('note_content_label' as any)}
                                             value={editNoteContent}
                                             onChange={(e) => setEditNoteContent(e.target.value)}
                                             className="input"
@@ -1000,7 +1000,7 @@ export default function SectionNotesPage() {
                                             <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', color: 'var(--text-soft)', textAlign: locale === 'ar' ? 'right' : 'left' }}>
                                                 {t('reminder_days_label' as any)}
                                             </label>
-                                            <input
+                                            <input aria-label={t('reminder_days_label' as any)}
                                                 type="number"
                                                 value={editReminderDays}
                                                 onChange={(e) => setEditReminderDays(e.target.value)}

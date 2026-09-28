@@ -75,7 +75,7 @@ export default function ChangePasswordPage() {
                         <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>
                             {isAr ? 'كلمة المرور الجديدة' : 'New password'}
                         </label>
-                        <input
+                        <input aria-label={isAr ? 'كلمة المرور الجديدة' : 'New password'}
                             type="password"
                             className="input"
                             value={newPassword}
@@ -90,7 +90,7 @@ export default function ChangePasswordPage() {
                         <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>
                             {isAr ? 'تأكيد كلمة المرور' : 'Confirm password'}
                         </label>
-                        <input
+                        <input aria-label={isAr ? 'تأكيد كلمة المرور' : 'Confirm password'}
                             type="password"
                             className="input"
                             value={confirmPassword}

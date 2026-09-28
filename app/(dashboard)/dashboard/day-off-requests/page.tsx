@@ -654,7 +654,7 @@ export default function DayOffRequestsPage() {
                         <form onSubmit={handleSubmitRequest}>
                             <div style={{ marginBottom: '1rem' }}>
                                 <label style={{ display: 'block', marginBottom: '0.5rem' }}>{t('day_off_type' as any)}</label>
-                                <select className="input" value={reqType} onChange={e => {
+                                <select aria-label={t('day_off_type' as any)} className="input" value={reqType} onChange={e => {
                                     setReqType(e.target.value as any);
                                     setReqDate('');
                                     setReqEndDate('');
@@ -690,7 +690,7 @@ export default function DayOffRequestsPage() {
                             )}
                             <div style={{ marginBottom: '1.5rem' }}>
                                 <label style={{ display: 'block', marginBottom: '0.5rem' }}>{t('reason_label' as any)}</label>
-                                <textarea
+                                <textarea aria-label={t('reason_label' as any)}
                                     className="input"
                                     style={{ height: '80px', resize: 'none' }}
                                     placeholder={t('reason_placeholder' as any)}
@@ -730,7 +730,7 @@ export default function DayOffRequestsPage() {
                         </p>
                         <div style={{ marginBottom: '1.5rem' }}>
                             <label style={{ display: 'block', marginBottom: '0.5rem' }}>{t('days_to_deduct_label' as any)}</label>
-                            <input
+                            <input aria-label={t('days_to_deduct_label' as any)}
                                 type="number"
                                 className="input"
                                 value={daysToDeduct}

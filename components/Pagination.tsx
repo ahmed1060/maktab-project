@@ -10,7 +10,7 @@ interface PaginationProps {
 }
 
 export default function Pagination({ currentPage, totalPages, onPageChange }: PaginationProps) {
-    const { locale } = useLanguage()
+    const { locale, t } = useLanguage()
     const [jumpPage, setJumpPage] = useState('')
 
     if (totalPages <= 1) return null
@@ -87,6 +87,7 @@ export default function Pagination({ currentPage, totalPages, onPageChange }: Pa
                 direction: 'ltr'
             }}>
                 <button
+                    aria-label={t('previous_page' as any)}
                     disabled={currentPage === 1}
                     onClick={() => onPageChange(currentPage - 1)}
                     style={{
@@ -109,6 +110,7 @@ export default function Pagination({ currentPage, totalPages, onPageChange }: Pa
                 </div>
 
                 <button
+                    aria-label={t('next_page' as any)}
                     disabled={currentPage === totalPages}
                     onClick={() => onPageChange(currentPage + 1)}
                     style={{

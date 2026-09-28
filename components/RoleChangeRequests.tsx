@@ -81,7 +81,7 @@ export default function RoleChangeRequests({ side, highlight }: { side: 'company
                     <label style={{ fontSize: '0.85rem' }}>{t('role_changes_role')}</label>
                     <RoleSelect value={roleId} allowDefault emptyLabel={t('role_changes_new_role')} onChange={id => setRoleId(id)} />
                     <label style={{ fontSize: '0.85rem' }}>{t('role_changes_description')}</label>
-                    <textarea className="input" rows={3} maxLength={2000} value={description} onChange={e => setDescription(e.target.value)} />
+                    <textarea aria-label={t('role_changes_description')} className="input" rows={3} maxLength={2000} value={description} onChange={e => setDescription(e.target.value)} />
                     <div>
                         <button type="button" className="btn btn-primary" onClick={ask} disabled={sending || description.trim().length < 5}>{t('role_changes_send')}</button>
                     </div>

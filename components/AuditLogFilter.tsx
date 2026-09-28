@@ -239,7 +239,7 @@ export default function AuditLogFilter({
                                 <div>
                                     <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '700', fontSize: '0.875rem' }}>{t('entity')}</label>
                                     <div style={{ position: 'relative' }}>
-                                        <select
+                                        <select aria-label={t('entity')}
                                             value={localFilters.entityType}
                                             onChange={(e) => setLocalFilters(f => ({ ...f, entityType: e.target.value }))}
                                             className="input"
@@ -265,7 +265,7 @@ export default function AuditLogFilter({
                                 <div>
                                     <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '700', fontSize: '0.875rem' }}>{t('action')}</label>
                                     <div style={{ position: 'relative' }}>
-                                        <select
+                                        <select aria-label={t('action')}
                                             value={localFilters.action}
                                             onChange={(e) => setLocalFilters(f => ({ ...f, action: e.target.value }))}
                                             className="input"

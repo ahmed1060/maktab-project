@@ -121,6 +121,7 @@ export default function ProfileRequestsPage() {
         <div className="animate-in fade-in duration-500" style={{ direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
             <div style={{ marginBottom: '2rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
                 <button
+                    aria-label={t('go_back' as any)}
                     onClick={() => router.back()}
                     style={{
                         background: 'var(--veil-50)',

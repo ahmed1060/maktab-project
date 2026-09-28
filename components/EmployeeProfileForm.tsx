@@ -732,7 +732,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                 <div style={{ display: 'grid', gridTemplateColumns: locale === 'ar' ? '1fr 1fr' : '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
                     <div>
                         <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('first_name_label')}</label>
-                        <input
+                        <input aria-label={t('first_name_label')}
                             className="input"
                             value={firstName}
                             onChange={e => setFirstName(e.target.value)}
@@ -743,7 +743,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                     </div>
                     <div>
                         <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('last_name_label')}</label>
-                        <input
+                        <input aria-label={t('last_name_label')}
                             className="input"
                             value={lastName}
                             onChange={e => setLastName(e.target.value)}
@@ -756,7 +756,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
 
                 <div style={{ marginBottom: '1rem' }}>
                     <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('gender_label')}</label>
-                    <select
+                    <select aria-label={t('gender_label')}
                         className="input"
                         value={gender}
                         onChange={e => setGender(e.target.value)}
@@ -773,7 +773,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                     <div style={{ marginBottom: '1rem' }}>
                         <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('company_label')}</label>
                         {role === 'SUPER_ADMIN' ? (
-                            <input
+                            <input aria-label={t('company_label')}
                                 className="input"
                                 value="SHSD"
                                 disabled
@@ -799,7 +799,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
 
                 <div style={{ marginBottom: '1rem' }}>
                     <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('email')}</label>
-                    <input
+                    <input aria-label={t('email')}
                         type="email"
                         className="input"
                         value={email}
@@ -812,7 +812,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
 
                 <div style={{ marginBottom: '1rem' }}>
                     <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('username_label' as any) || 'Username'}</label>
-                    <input
+                    <input aria-label={t('username_label' as any) || 'Username'}
                         className="input"
                         value={username}
                         onChange={e => setUsername(e.target.value)}
@@ -827,7 +827,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                     (can('salary.view') || userId === session?.user?.id) && !['ADMIN', 'SUPER_ADMIN'].includes(role) && role !== '' && (
                         <div style={{ marginBottom: '1rem' }}>
                             <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('monthly_base_salary_label')}</label>
-                            <input
+                            <input aria-label={t('monthly_base_salary_label')}
                                 type="number"
                                 className="input"
                                 value={salary}
@@ -847,7 +847,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                         <>
                             <div style={{ marginBottom: '1rem' }}>
                                 <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('day_off_credit_assigned')}</label>
-                                <input
+                                <input aria-label={t('day_off_credit_assigned')}
                                     type="number"
                                     className="input"
                                     value={baseDayOffCredit}
@@ -866,7 +866,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                         <div style={{ marginBottom: '1rem' }}>
                             <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('new_password_optional_label')}</label>
                             <div style={{ position: 'relative' }}>
-                                <input
+                                <input aria-label={t('new_password_optional_label')}
                                     type={showNewPassword ? "text" : "password"}
                                     className="input"
                                     value={password}
@@ -881,6 +881,8 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                                 />
                                 <button
                                     type="button"
+                                    aria-label={showNewPassword ? t('hide_password' as any) : t('show_password' as any)}
+                                    aria-pressed={showNewPassword}
                                     onClick={() => setShowNewPassword(!showNewPassword)}
                                     style={{
                                         position: 'absolute',
@@ -922,7 +924,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                             <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('password')}</label>
                             {issuedTempPassword ? (
                                 <div>
-                                    <input
+                                    <input aria-label={t('password')}
                                         type="text"
                                         className="input"
                                         value={issuedTempPassword}
@@ -953,7 +955,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                         <div style={{ marginBottom: '1rem' }}>
                             <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('role_label')}</label>
                             {role === 'SUPER_ADMIN' ? (
-                                <input className="input" value={t('super_admins')} disabled style={{ background: 'var(--surface-sunk)', color: 'var(--text-soft)', textAlign: locale === 'ar' ? 'right' : 'left' }} />
+                                <input aria-label={t('role_label')} className="input" value={t('super_admins')} disabled style={{ background: 'var(--surface-sunk)', color: 'var(--text-soft)', textAlign: locale === 'ar' ? 'right' : 'left' }} />
                             ) : !can('employees.assign_role') ? (
                                 // May only ask (§6.12): a request, not a change.
                                 userId && !isViewMode ? (
@@ -982,7 +984,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                             {can('employees.assign_role') && !isViewMode && roleId && roleId !== currentRole?.id && (
                                 <div style={{ marginTop: '0.75rem' }}>
                                     <label style={{ display: 'block', marginBottom: '0.35rem', fontSize: '0.8rem' }}>{t('acting_until_label')}</label>
-                                    <input type="date" className="input" value={actingDate} min={tomorrow} onChange={e => setActingDate(e.target.value)} />
+                                    <input aria-label={t('acting_until_label')} type="date" className="input" value={actingDate} min={tomorrow} onChange={e => setActingDate(e.target.value)} />
                                     <p style={{ fontSize: '0.75rem', color: 'var(--text-soft)', margin: '0.25rem 0 0' }}>{t('acting_until_hint')}</p>
                                 </div>
                             )}
@@ -1023,7 +1025,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                         && role === 'EMPLOYEE' && (
                         <div style={{ marginBottom: '1rem' }}>
                             <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('team_leader_label')}</label>
-                            <select
+                            <select aria-label={t('team_leader_label')}
                                 className="input"
                                 value={teamLeaderId}
                                 onChange={e => setTeamLeaderId(e.target.value)}
@@ -1044,7 +1046,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                     can('employees.change_status') && userId !== session?.user?.id && (
                         <div style={{ marginBottom: '1rem' }}>
                             <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('status_label' as any) || (locale === 'ar' ? 'الحالة' : 'Status')}</label>
-                            <select
+                            <select aria-label={t('status_label' as any) || (locale === 'ar' ? 'الحالة' : 'Status')}
                                 className="input"
                                 value={status}
                                 onChange={e => setStatus(e.target.value)}
@@ -1215,6 +1217,8 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                                     />
                                     <button
                                         type="button"
+                                        aria-label={showVerificationPassword ? t('hide_password' as any) : t('show_password' as any)}
+                                        aria-pressed={showVerificationPassword}
                                         onClick={() => setShowVerificationPassword(!showVerificationPassword)}
                                         style={{
                                             position: 'absolute',

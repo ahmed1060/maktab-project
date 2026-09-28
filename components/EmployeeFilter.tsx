@@ -445,7 +445,7 @@ export default function EmployeeFilter({
                                             <label style={{ display: 'block', marginBottom: '0.75rem', fontWeight: '800', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--text-soft)', letterSpacing: '0.05em' }}>{t('sort_by')}</label>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: 1 }}>
                                                 <div style={{ position: 'relative', flex: 1 }}>
-                                                    <select
+                                                    <select aria-label={t('sort_by')}
                                                         value={localSortBy}
                                                         onChange={(e) => setLocalSortBy(e.target.value)}
                                                         className="input"
@@ -515,7 +515,7 @@ export default function EmployeeFilter({
                                         <div>
                                             <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '700', fontSize: '0.875rem' }}>{t('role_label') || 'Role'}</label>
                                             <div style={{ position: 'relative' }}>
-                                                <select
+                                                <select aria-label={t('role_label') || 'Role'}
                                                     value={localRole}
                                                     onChange={(e) => setLocalRole(e.target.value)}
                                                     className="input"
@@ -556,7 +556,7 @@ export default function EmployeeFilter({
                                         <div>
                                             <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '700', fontSize: '0.875rem' }}>{t('team_column')}</label>
                                             <div style={{ position: 'relative' }}>
-                                                <select
+                                                <select aria-label={t('team_column')}
                                                     value={localTeam}
                                                     onChange={(e) => setLocalTeam(e.target.value)}
                                                     className="input"
@@ -597,7 +597,7 @@ export default function EmployeeFilter({
                                         <div>
                                             <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '700', fontSize: '0.875rem' }}>{t('company_label')}</label>
                                             <div style={{ position: 'relative' }}>
-                                                <select
+                                                <select aria-label={t('company_label')}
                                                     value={localCompanyId}
                                                     onChange={(e) => setLocalCompanyId(e.target.value)}
                                                     className="input"
@@ -634,7 +634,7 @@ export default function EmployeeFilter({
                                         <div>
                                             <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '700', fontSize: '0.875rem' }}>{t('filter_by_status')}</label>
                                             <div style={{ position: 'relative' }}>
-                                                <select
+                                                <select aria-label={t('filter_by_status')}
                                                     value={localStatus}
                                                     onChange={(e) => setLocalStatus(e.target.value)}
                                                     className="input"

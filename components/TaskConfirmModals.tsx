@@ -85,7 +85,7 @@ export default function TaskConfirmModals({
                     {isTransferredTask() && (
                         <div style={{ marginBottom: '1.5rem' }}>
                             <label className="label">{t('points_label')}</label>
-                            <input type="number" className="input" value={reviewDifficulty} onChange={e => setReviewDifficulty(parseInt(e.target.value) || 0)} min={0} max={100} style={{ width: '100%' }} />
+                            <input aria-label={t('points_label')} type="number" className="input" value={reviewDifficulty} onChange={e => setReviewDifficulty(parseInt(e.target.value) || 0)} min={0} max={100} style={{ width: '100%' }} />
                         </div>
                     )}
                     <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', flexDirection: 'row' }}>

@@ -520,7 +520,7 @@ export default function NewTaskPage() {
             <form onSubmit={handleSubmit}>
                 <div id="field-title" style={{ marginBottom: '1.25rem' }}>
                     <label style={{ display: 'block', marginBottom: '0.5rem' }}>{t('title_label' as any)}</label>
-                    <input
+                    <input aria-label={t('title_label' as any)}
                         className="input"
                         value={title}
                         onChange={e => {
@@ -542,7 +542,7 @@ export default function NewTaskPage() {
                 </div>
                 <div id="field-description" style={{ marginBottom: '1.25rem' }}>
                     <label style={{ display: 'block', marginBottom: '0.5rem' }}>{t('description_label' as any)}</label>
-                    <textarea
+                    <textarea aria-label={t('description_label' as any)}
                         className="input"
                         value={description}
                         onChange={e => {
@@ -616,7 +616,7 @@ export default function NewTaskPage() {
                             <label style={{ display: 'block', marginBottom: '0.5rem' }}>
                                 {vendorsName}
                             </label>
-                            <select
+                            <select aria-label={vendorsName}
                                 value={vendorId}
                                 onChange={(e) => setVendorId(e.target.value)}
                                 className="input"
@@ -643,7 +643,7 @@ export default function NewTaskPage() {
                 </div>
                 <div id="field-assigneeIds" style={{ marginBottom: '1.25rem' }}>
                     <label style={{ display: 'block', marginBottom: '0.5rem' }}>{t('assignee_label')}</label>
-                    <input
+                    <input aria-label={t('assignee_label')}
                         type="text"
                         className="input"
                         placeholder={t('search_placeholder')}
@@ -713,7 +713,7 @@ export default function NewTaskPage() {
                 </div>
                 <div style={{ marginBottom: '1.5rem' }}>
                     <label style={{ display: 'block', marginBottom: '0.5rem' }}>{t('difficulty')}</label>
-                    <input
+                    <input aria-label={t('difficulty')}
                         type="number"
                         className="input"
                         value={difficulty}

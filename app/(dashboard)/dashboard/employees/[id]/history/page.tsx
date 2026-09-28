@@ -837,7 +837,7 @@ export default function EmployeeHistoryPage() {
                         <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.4rem' }}>
                             {t('reverse_reason' as any)}
                         </label>
-                        <textarea
+                        <textarea aria-label={t('reverse_reason' as any)}
                             className="input"
                             rows={2}
                             value={reverseReason}
@@ -900,7 +900,7 @@ export default function EmployeeHistoryPage() {
                             <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>
                                 {t('days_label')}
                             </label>
-                            <input
+                            <input aria-label={t('days_label')}
                                 type="number"
                                 step="0.5"
                                 value={reevaluateValue}

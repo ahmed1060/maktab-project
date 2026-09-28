@@ -202,7 +202,7 @@ export default function EndContractModal({ userId, name, status, onClose, onDone
                             <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.875rem' }}>
                                 {t('last_working_day')}
                             </label>
-                            <input
+                            <input aria-label={t('last_working_day')}
                                 type="date"
                                 className="input"
                                 value={lastWorkingDay}
@@ -293,7 +293,7 @@ export default function EndContractModal({ userId, name, status, onClose, onDone
                             <label style={{ display: 'block', margin: '0.5rem 0 0.4rem', fontSize: '0.875rem' }}>
                                 {t('end_contract_reason')}
                             </label>
-                            <textarea
+                            <textarea aria-label={t('end_contract_reason')}
                                 className="input"
                                 rows={2}
                                 value={reason}

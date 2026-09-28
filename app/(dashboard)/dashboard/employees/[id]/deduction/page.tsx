@@ -79,7 +79,7 @@ export default function AddDeductionPage() {
             <form onSubmit={handleSubmit}>
                 <div style={{ marginBottom: '1.5rem' }}>
                     <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>{t('deduction_days_label' as any)}</label>
-                    <input
+                    <input aria-label={t('deduction_days_label' as any)}
                         type="number"
                         className="input"
                         value={amount}
@@ -104,7 +104,7 @@ export default function AddDeductionPage() {
 
                 <div style={{ marginBottom: '1.5rem' }}>
                     <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>{t('reason_label')}</label>
-                    <textarea
+                    <textarea aria-label={t('reason_label')}
                         className="input"
                         value={reason}
                         onChange={e => setReason(e.target.value)}

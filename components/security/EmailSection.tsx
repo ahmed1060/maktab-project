@@ -148,7 +148,7 @@ export default function EmailSection() {
                             <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>
                                 {isAr ? 'عنوان البريد الإلكتروني' : 'Email address'}
                             </label>
-                            <input
+                            <input aria-label={isAr ? 'عنوان البريد الإلكتروني' : 'Email address'}
                                 type="email"
                                 className="input"
                                 value={email}
@@ -168,7 +168,7 @@ export default function EmailSection() {
                             <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>
                                 {isAr ? 'رمز التحقق' : 'Verification code'}
                             </label>
-                            <input
+                            <input aria-label={isAr ? 'رمز التحقق' : 'Verification code'}
                                 type="text"
                                 inputMode="numeric"
                                 className="input"

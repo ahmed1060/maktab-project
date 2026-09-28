@@ -158,7 +158,7 @@ export default function NewEmployeePage() {
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
                     <div>
                         <label style={{ display: 'block', marginBottom: '0.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('first_name_label')}</label>
-                        <input
+                        <input aria-label={t('first_name_label')}
                             className="input"
                             value={firstName}
                             onChange={e => {
@@ -181,7 +181,7 @@ export default function NewEmployeePage() {
                     </div>
                     <div>
                         <label style={{ display: 'block', marginBottom: '0.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('last_name_label')}</label>
-                        <input
+                        <input aria-label={t('last_name_label')}
                             className="input"
                             value={lastName}
                             onChange={e => {
@@ -205,7 +205,7 @@ export default function NewEmployeePage() {
                 </div>
                 <div>
                     <label style={{ display: 'block', marginBottom: '0.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('email')}</label>
-                    <input
+                    <input aria-label={t('email')}
                         type="email"
                         className="input"
                         value={email}
@@ -229,7 +229,7 @@ export default function NewEmployeePage() {
 
                 <div style={{ position: 'relative' }}>
                     <label style={{ display: 'block', marginBottom: '0.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('password')}</label>
-                    <input
+                    <input aria-label={t('password')}
                         type={showPassword ? "text" : "password"}
                         className="input"
                         value={password}
@@ -250,6 +250,8 @@ export default function NewEmployeePage() {
                     />
                     <button
                         type="button"
+                        aria-label={showPassword ? t('hide_password' as any) : t('show_password' as any)}
+                        aria-pressed={showPassword}
                         onClick={() => setShowPassword(!showPassword)}
                         style={{
                             position: 'absolute',
@@ -286,7 +288,7 @@ export default function NewEmployeePage() {
                 {!['ADMIN', 'SUPER_ADMIN'].includes(role) && role !== '' && (
                     <div style={{ marginBottom: '1rem' }}>
                         <label style={{ display: 'block', marginBottom: '0.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('monthly_base_salary_label')}</label>
-                        <input
+                        <input aria-label={t('monthly_base_salary_label')}
                             type="number"
                             className="input"
                             value={salary}
@@ -301,7 +303,7 @@ export default function NewEmployeePage() {
                 {(role === 'EMPLOYEE' || role === 'TEAM_LEADER') && (
                     <div style={{ marginBottom: '1rem' }}>
                         <label style={{ display: 'block', marginBottom: '0.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('day_off_credit')}</label>
-                        <input
+                        <input aria-label={t('day_off_credit')}
                             type="number"
                             className="input"
                             value={dayOffCredit}
@@ -317,7 +319,7 @@ export default function NewEmployeePage() {
                 {userRole === 'SUPER_ADMIN' && (
                     <div style={{ marginBottom: '1rem' }}>
                         <label style={{ display: 'block', marginBottom: '0.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('company_label')}</label>
-                        <select
+                        <select aria-label={t('company_label')}
                             className="input"
                             value={companyId}
                             onChange={e => { setCompanyId(e.target.value); setRoleId(''); setRole('EMPLOYEE') }}
@@ -350,7 +352,7 @@ export default function NewEmployeePage() {
                 {role === 'EMPLOYEE' && canAssignTeam && (
                     <div style={{ marginBottom: '1rem' }}>
                         <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('team_leader_label')}</label>
-                        <select
+                        <select aria-label={t('team_leader_label')}
                             className="input"
                             value={teamLeaderId}
                             onChange={e => setTeamLeaderId(e.target.value)}

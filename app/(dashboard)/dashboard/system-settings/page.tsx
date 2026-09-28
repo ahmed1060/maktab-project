@@ -191,7 +191,7 @@ export default function SystemSettingsPage() {
                         <label style={{ display: 'block', marginBottom: '0.4rem', fontWeight: 500 }}>
                             {t('location_verify_radius_label') || 'Auto-verify distance (meters)'}
                         </label>
-                        <input
+                        <input aria-label={t('location_verify_radius_label') || 'Auto-verify distance (meters)'}
                             type="number"
                             min={1}
                             max={10000}
@@ -286,7 +286,7 @@ export default function SystemSettingsPage() {
                         <label style={{ display: 'block', marginBottom: '0.4rem', fontWeight: 500, opacity: showPoweredBy ? 1 : 0.5 }}>
                             {t('powered_by_name_label' as any)}
                         </label>
-                        <input
+                        <input aria-label={t('powered_by_name_label' as any)}
                             type="text"
                             maxLength={40}
                             value={poweredByName}

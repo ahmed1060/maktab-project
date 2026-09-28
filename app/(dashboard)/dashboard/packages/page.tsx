@@ -241,12 +241,12 @@ export default function PackagesPage() {
 
                     <div>
                         <label className="label">{t('package_name' as any)}</label>
-                        <input className="input" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} required maxLength={80} />
+                        <input aria-label={t('package_name' as any)} className="input" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} required maxLength={80} />
                     </div>
 
                     <div>
                         <label className="label">{t('package_description' as any)}</label>
-                        <textarea
+                        <textarea aria-label={t('package_description' as any)}
                             className="input"
                             style={{ height: '70px', resize: 'none', lineHeight: 1.4 }}
                             value={form.description}
@@ -258,15 +258,15 @@ export default function PackagesPage() {
                     <div style={{ display: 'grid', gap: '0.75rem', gridTemplateColumns: 'repeat(auto-fit, minmax(min(140px, 100%), 1fr))' }}>
                         <div>
                             <label className="label">{t('price_monthly' as any)}</label>
-                            <input className="input" type="number" min="0" step="0.01" value={form.priceMonthly} onChange={e => setForm({ ...form, priceMonthly: e.target.value })} required />
+                            <input aria-label={t('price_monthly' as any)} className="input" type="number" min="0" step="0.01" value={form.priceMonthly} onChange={e => setForm({ ...form, priceMonthly: e.target.value })} required />
                         </div>
                         <div>
                             <label className="label">{t('price_annual' as any)}</label>
-                            <input className="input" type="number" min="0" step="0.01" value={form.priceAnnual} onChange={e => setForm({ ...form, priceAnnual: e.target.value })} required />
+                            <input aria-label={t('price_annual' as any)} className="input" type="number" min="0" step="0.01" value={form.priceAnnual} onChange={e => setForm({ ...form, priceAnnual: e.target.value })} required />
                         </div>
                         <div>
                             <label className="label">{t('price_lifetime' as any)}</label>
-                            <input className="input" type="number" min="0" step="0.01" placeholder={t('not_sold_as_lifetime' as any)} value={form.priceLifetime} onChange={e => setForm({ ...form, priceLifetime: e.target.value })} />
+                            <input aria-label={t('price_lifetime' as any)} className="input" type="number" min="0" step="0.01" placeholder={t('not_sold_as_lifetime' as any)} value={form.priceLifetime} onChange={e => setForm({ ...form, priceLifetime: e.target.value })} />
                         </div>
                     </div>
 
