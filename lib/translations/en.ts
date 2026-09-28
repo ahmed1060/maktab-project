@@ -1171,6 +1171,7 @@ export const en = {
         auditing_header: "Auditing & Logs",
         system_activity: "System Activity",
         total_assets: "Total Assets",
+        storage_unreachable: "File storage can't be reached right now.",
         prunable_logs: "Prunable Logs",
         prunable_notifications: "Prunable Notifications",
         trigger_cleanup: "Trigger Cleanup",

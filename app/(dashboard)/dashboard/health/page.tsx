@@ -23,7 +23,8 @@ type HealthMetrics = {
         retentionDays: number
     }
     storage: {
-        totalFiles: number
+        totalFiles: number | null
+        reachable: boolean
     }
 }
 
@@ -352,8 +353,13 @@ export default function SystemHealthPage() {
                         </div>
                     </div>
                     <div style={{ fontSize: '2.5rem', fontWeight: '800', color: 'var(--brand-primary)', textAlign: 'center', margin: '1rem 0' }}>
-                        {metrics?.storage.totalFiles}
+                        {metrics?.storage.reachable === false ? '—' : metrics?.storage.totalFiles}
                     </div>
+                    {metrics?.storage.reachable === false && (
+                        <p role="status" style={{ margin: 0, textAlign: 'center', fontSize: '0.85rem', color: 'var(--danger-fg)' }}>
+                            {t('storage_unreachable' as any)}
+                        </p>
+                    )}
                     <button
                         onClick={() => setPendingAction('CLEANUP_ASSETS')}
                         disabled={!!processing}

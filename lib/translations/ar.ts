@@ -1170,6 +1170,7 @@ export const ar = {
         auditing_header: "المراجعة والسجلات",
         system_activity: "نشاط النظام",
         total_assets: "إجمالي الملفات",
+        storage_unreachable: "تعذّر الوصول إلى مساحة تخزين الملفات حاليًا.",
         prunable_logs: "سجلات قابلة للحذف",
         prunable_notifications: "تنبيهات قابلة للحذف",
         trigger_cleanup: "بدء التنظيف",
