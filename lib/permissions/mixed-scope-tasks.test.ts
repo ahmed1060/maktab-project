@@ -26,7 +26,7 @@ const ACTIONS: [string, "tasks.edit" | "tasks.delete" | "tasks.review" | "tasks.
     ["edit details",    "tasks.edit",     async t => (await import("@/app/api/tasks/[id]/details/route")).PUT(withBody("PUT", `/api/tasks/${t}/details`, { id: t, title: "Renamed task" }), P(t))],
     ["delete",          "tasks.delete",   async t => (await import("@/app/api/tasks/[id]/delete/route")).DELETE(new Request(url(`/api/tasks/${t}/delete`), { method: "DELETE" }), P(t))],
     ["review",          "tasks.review",   async t => (await import("@/app/api/tasks/[id]/review/route")).POST(withBody("POST", `/api/tasks/${t}/review`, { status: "COMPLETED", difficulty: 3 }), P(t))],
-    ["record payment",  "tasks.pay",      async t => (await import("@/app/api/tasks/[id]/payment/route")).PUT(withBody("PUT", `/api/tasks/${t}/payment`, { isPaid: true }), P(t))],
+    ["record payment",  "tasks.pay",      async t => { taskState.status = "APPROVED"; return (await import("@/app/api/tasks/[id]/payment/route")).PUT(withBody("PUT", `/api/tasks/${t}/payment`, { paymentStatus: "PAID" }), P(t)) }],
     ["apply a penalty", "tasks.penalize", async t => (await import("@/app/api/tasks/[id]/penalty/route")).POST(withBody("POST", `/api/tasks/${t}/penalty`, { userId: ASSIGNEE[t], amount: 1 }), P(t))],
     ["transfer",        "tasks.transfer", async t => (await import("@/app/api/tasks/[id]/transfer/route")).POST(withBody("POST", `/api/tasks/${t}/transfer`, { newAssigneeIds: ["emp"] }), P(t))],
 ]

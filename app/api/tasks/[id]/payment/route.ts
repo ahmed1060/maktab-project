@@ -23,6 +23,9 @@ export const PUT = withStandardHandler(async (req, session, json, { params }) =>
         return ApiResponse.success({ success: true, task: shapeTask(session.user, task) })
     } catch (error: any) {
         if (error.message === 'TASK_NOT_FOUND') return ApiResponse.notFound("Task not found")
+        if (error.message === 'INVALID_PAYMENT_STATUS') return ApiResponse.badRequest("paymentStatus must be PAID or PENDING_PAYMENT")
+        if (error.message === 'TASK_NOT_REVIEWED') return ApiResponse.badRequest("Only a reviewed task can be paid for")
+        if (error.message === 'NOT_AN_ASSIGNEE') return ApiResponse.badRequest("That person is not on this task")
         console.error("Payment update API error:", error)
         return ApiResponse.error("Failed to update payment status")
     }

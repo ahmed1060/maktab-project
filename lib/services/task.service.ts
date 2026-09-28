@@ -811,9 +811,13 @@ export class TaskService {
      * Updates task payment status.
      */
     static async updatePayment(id: string, session: any, data: any) {
-        const { paymentStatus, targetUserId } = data
+        const { paymentStatus, targetUserId } = data ?? {}
         const userRole = session.user.role
         const userId = session.user.id
+        // Paid or not, nothing else. Anything else used to be taken as "not
+        // paid": the task went back to Approved and every assignee to unpaid,
+        // under an audit entry saying the payment had changed.
+        if (paymentStatus !== 'PAID' && paymentStatus !== 'PENDING_PAYMENT') throw new Error("INVALID_PAYMENT_STATUS")
 
         return await prisma.$transaction(async (tx) => {
             const task = await tx.task.findUnique({
@@ -829,6 +833,12 @@ export class TaskService {
                     throw new Error("ACCESS_DENIED")
                 }
             }
+
+            // Only reviewed work is paid for, as the bulk route already holds:
+            // paying a task still in progress marked it Completed, skipping
+            // its review. And a per-person payment is for one of its people.
+            if (!['APPROVED', 'COMPLETED', 'REJECTED'].includes(task.status)) throw new Error("TASK_NOT_REVIEWED")
+            if (targetUserId && !task.assignees.some(a => a.id === targetUserId)) throw new Error("NOT_AN_ASSIGNEE")
 
             const updateData: any = {}
             const memberPayments: Record<string, string> = (task.memberPaymentStatus as any) || {}
