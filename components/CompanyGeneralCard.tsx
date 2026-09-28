@@ -47,6 +47,10 @@ export default function CompanyGeneralCard({ companyId, autoVerifyLocation, onSa
                 by accident. Only the checkbox itself is interactive. */}
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
                 <input
+                    // Named by its own text, without a <label> around the row
+                    // (see above), and described by the hint under it.
+                    aria-label={t('auto_verify_location_label') || 'Auto-verify submitted task locations'}
+                    aria-describedby="auto-verify-location-hint"
                     type="checkbox"
                     checked={autoVerifyLocation}
                     disabled={saving || readOnly}
@@ -55,7 +59,7 @@ export default function CompanyGeneralCard({ companyId, autoVerifyLocation, onSa
                 />
                 <div>
                     <div style={{ fontWeight: 500 }}>{t('auto_verify_location_label') || 'Auto-verify submitted task locations'}</div>
-                    <div style={{ fontSize: '0.8rem', color: 'var(--text-soft)', marginTop: '0.15rem' }}>
+                    <div id="auto-verify-location-hint" style={{ fontSize: '0.8rem', color: 'var(--text-soft)', marginTop: '0.15rem' }}>
                         {t('auto_verify_location_hint') || 'When on, a location submitted within the system’s distance setting is marked correct automatically. When off, every submitted location needs manual review.'}
                     </div>
                 </div>
