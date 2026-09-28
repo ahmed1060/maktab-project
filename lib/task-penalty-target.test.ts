@@ -13,7 +13,8 @@ import { describe, it, expect, vi, beforeEach } from "vitest"
 
 const session = { value: null as any }
 const deducted: { userId: string; amount: number }[] = []
-const TASK = { id: "task-1", companyId: "co-1", comments: [], assignees: [{ id: "emp-1", teamLeaderId: null }] }
+// Shared by the Team Leader's report (emp-1) and someone on another team (emp-2).
+const TASK = { id: "task-1", companyId: "co-1", comments: [], assignees: [{ id: "emp-1", teamLeaderId: "tl-1" }, { id: "emp-2", teamLeaderId: "tl-2" }] }
 
 vi.mock("next-auth", () => ({ getServerSession: async () => session.value }))
 vi.mock("@/lib/auth", () => ({ authOptions: {} }))
@@ -65,5 +66,18 @@ describe("a task's penalty", () => {
     it("refuses an amount out of range plainly, not as a server error", async () => {
         expect((await penalise({ userId: "emp-1", amount: -3 })).status).toBe(400)
         expect(deducted).toEqual([])
+    })
+
+    it("from a Team Leader, falls only on their own team, even on a shared task", async () => {
+        session.value = { user: { id: "tl-1", role: "TEAM_LEADER", companyId: "co-1" } }
+        expect((await penalise({ userId: "emp-2", amount: 3 })).status).toBe(403)
+        expect(deducted).toEqual([])
+        expect((await penalise({ userId: "emp-1", amount: 3 })).status).toBe(200)
+        expect(deducted).toEqual([{ userId: "emp-1", amount: 3 }])
+    })
+
+    it("says what the allowed amount is when it refuses one", async () => {
+        const body = await (await penalise({ userId: "emp-1", amount: 5000 })).json()
+        expect(JSON.stringify(body)).toContain("1000")
     })
 })

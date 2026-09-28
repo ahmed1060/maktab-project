@@ -22,7 +22,8 @@ export const POST = withStandardHandler(async (req, session, json, { params }) =
     } catch (error: any) {
         if (error.message === 'TASK_NOT_FOUND') return ApiResponse.notFound("Task not found")
         if (error.message === 'NOT_AN_ASSIGNEE') return ApiResponse.badRequest("A task's penalty falls on one of its own people")
-        if (error.message === 'INVALID_ADJUSTMENT_AMOUNT') return ApiResponse.badRequest("The penalty must be a number of days above 0")
+        if (error.message === 'OUTSIDE_TEAM') return ApiResponse.forbidden("A Team Leader penalises only their own team")
+        if (error.message === 'INVALID_ADJUSTMENT_AMOUNT') return ApiResponse.badRequest("The penalty must be more than 0 and at most 1000 days")
         console.error("Penalty API error:", error)
         throw error
     }
