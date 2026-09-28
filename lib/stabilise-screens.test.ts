@@ -29,7 +29,16 @@ describe("the menu", () => {
     it("and while the Super Admin previews a role, shows it as the role would see it without asking for their payslips", () => {
         const page = readFileSync("app/(dashboard)/dashboard/documents/page.tsx", "utf8")
         expect(page).toContain("const previewing = !!(session?.user as any)?.preview")
-        expect(page).toContain("useSWR(userId && !previewing ? `/api/users/${userId}/payslips` : null, fetcher)")
+        expect(page).toContain("const nobodysEmployee = previewing || (session?.user as any)?.role === 'SUPER_ADMIN'")
+        expect(page).toContain("useSWR(userId && !nobodysEmployee ? `/api/users/${userId}/payslips` : null, fetcher)")
+    })
+
+    it("and the Super Admin reaching it by its address isn't sent looking for payslips they don't have", () => {
+        // The menu no longer offers it, but the address still opened the page,
+        // which asked for the Super Admin's payslips and got a 404.
+        const page = readFileSync("app/(dashboard)/dashboard/documents/page.tsx", "utf8")
+        expect(page).toContain("(session?.user as any)?.role === 'SUPER_ADMIN'")
+        expect(page).toContain("error || nobodysEmployee ? [] : null")
     })
 })
 
