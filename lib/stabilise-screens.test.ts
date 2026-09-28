@@ -47,4 +47,11 @@ describe("at phone width", () => {
         // and the chosen tab is kept in sight when the row scrolls
         expect(toggle).toContain("box.scrollBy(")
     })
+
+    it("the task list's cards fit the screen", () => {
+        // The list is a grid whose one column was sized to its widest card's
+        // content: 380px of cards in a 326px space.
+        const list = readFileSync("app/(dashboard)/dashboard/tasks/TasksClient.tsx", "utf8")
+        expect(list).toContain("display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: '1rem'")
+    })
 })
