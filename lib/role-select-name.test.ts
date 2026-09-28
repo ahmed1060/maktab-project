@@ -12,4 +12,8 @@ describe("RoleSelect", () => {
         expect(select).toContain("aria-label={ariaLabel ?? t('role_label')}")
         expect(readFileSync("components/RoleChangeRequests.tsx", "utf8")).toContain("ariaLabel={t('role_changes_role')}")
     })
+
+    it("and the access review's interval says what it is", () => {
+        expect(readFileSync("components/AccessReviewSetting.tsx", "utf8")).toContain("<select aria-label={`${t('access_review_setting')}: ${t('access_review_every')}`}")
+    })
 })

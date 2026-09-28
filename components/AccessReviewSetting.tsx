@@ -47,7 +47,7 @@ export default function AccessReviewSetting({ companyId, setting, onSaved }: { c
             <p style={{ fontSize: '0.8rem', color: 'var(--text-soft)', margin: '0.35rem 0 0.75rem' }}>{t('access_review_setting_hint')}</p>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
                 <span>{t('access_review_every')}</span>
-                <select className="input" value={months} disabled={!enabled} onChange={e => setMonths(Number(e.target.value))} style={{ maxWidth: '10rem' }}>
+                <select aria-label={`${t('access_review_setting')}: ${t('access_review_every')}`} className="input" value={months} disabled={!enabled} onChange={e => setMonths(Number(e.target.value))} style={{ maxWidth: '10rem' }}>
                     {[1, 2, 3, 4, 6, 12].map(m => <option key={m} value={m}>{t('access_review_months').replace('{count}', String(m))}</option>)}
                 </select>
                 <button type="button" className="btn btn-primary" onClick={save} disabled={!dirty || saving}>{t('roles_save')}</button>
