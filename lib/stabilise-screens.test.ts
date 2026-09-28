@@ -54,4 +54,15 @@ describe("at phone width", () => {
         const list = readFileSync("app/(dashboard)/dashboard/tasks/TasksClient.tsx", "utf8")
         expect(list).toContain("display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: '1rem'")
     })
+
+    it("the dashboard's grids never ask for more than the screen has", () => {
+        // Their columns had fixed minimums up to 400px, so the Obligations
+        // section on an Employee's dashboard was 400px in a 326px space.
+        const page = readFileSync("app/(dashboard)/dashboard/page.tsx", "utf8")
+        expect(page).not.toMatch(/minmax\(\d+px, 1fr\)/)
+        expect(page).toContain("repeat(auto-fit, minmax(min(400px, 100%), 1fr))")
+        // and the two small figures stack when two don't fit
+        expect(page).not.toContain("gridTemplateColumns: '1fr 1fr'")
+        expect(page).toContain("repeat(auto-fit, minmax(min(10rem, 100%), 1fr))")
+    })
 })
