@@ -97,3 +97,19 @@ describe("at phone width", () => {
         expect(phone.slice(0, 200)).toContain(".dashboard-stats-block {\n    grid-template-columns: minmax(0, 1fr);")
     })
 })
+
+/**
+ * Found by visiting every page in the dark theme as each kind of user and
+ * measuring the contrast of every piece of text against what is behind it.
+ */
+describe("in the dark theme", () => {
+    it("the audit log's total uses the chip every other list's total does", () => {
+        // It was white on --text-strong: near-white in the dark theme, 1.04:1.
+        const filter = readFileSync("components/AuditLogFilter.tsx", "utf8")
+        const chip = filter.slice(filter.indexOf("{/* Total Count */}"))
+        expect(chip).toContain("background: 'var(--chip-solid-bg)'")
+        expect(chip).toContain("color: 'var(--chip-solid-fg)'")
+        expect(chip).not.toContain("var(--text-strong)")
+    })
+})
+
