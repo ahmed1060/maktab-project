@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma"
+import { RoleChangeRequestStatus } from "@prisma/client"
 import { roleParam } from "@/lib/notice"
 import { can } from "@/lib/permissions/can"
 import type { Prisma } from "@prisma/client"
@@ -56,7 +57,9 @@ export class RoleChangeRequestService {
     /** The Super Admin's queue, or a company's own requests. */
     static async list(session: Session, filter: { status?: string | null; companyId?: string | null }) {
         const where: Prisma.RoleChangeRequestWhereInput = {}
-        if (filter.status) where.status = filter.status as any
+        // A status that isn't one matches nothing, rather than reaching the
+        // database as an enum value it can't read (a 500).
+        if (filter.status) where.status = (Object.values(RoleChangeRequestStatus) as string[]).includes(filter.status) ? filter.status as RoleChangeRequestStatus : { in: [] }
         if (session.user.role === "SUPER_ADMIN") {
             if (filter.companyId) where.companyId = filter.companyId
         } else {
