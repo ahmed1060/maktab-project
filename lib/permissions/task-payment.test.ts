@@ -41,6 +41,18 @@ describe("recording a task's payment", () => {
         }
     })
 
+    it("for one of the team's people, when paying is held for a team, even on a shared task", async () => {
+        const before = TASKS["t-emp"].assignees
+        TASKS["t-emp"].assignees = [{ ...PEOPLE.emp }, { ...PEOPLE.loner }]
+        try {
+            as("leader")
+            expect((await pay({ paymentStatus: "PAID", targetUserId: "loner" })).status).toBe(403)
+            expect((await pay({ paymentStatus: "PAID", targetUserId: "emp" })).status).toBe(200)
+        } finally {
+            TASKS["t-emp"].assignees = before
+        }
+    })
+
     it("for one of the task's own people", async () => {
         expect((await pay({ paymentStatus: "PAID", targetUserId: "loner" })).status).toBe(400)
         expect((await pay({ paymentStatus: "PAID", targetUserId: "emp" })).status).toBe(200)

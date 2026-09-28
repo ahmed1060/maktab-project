@@ -26,6 +26,7 @@ export const PUT = withStandardHandler(async (req, session, json, { params }) =>
         if (error.message === 'INVALID_PAYMENT_STATUS') return ApiResponse.badRequest("paymentStatus must be PAID or PENDING_PAYMENT")
         if (error.message === 'TASK_NOT_REVIEWED') return ApiResponse.badRequest("Only a reviewed task can be paid for")
         if (error.message === 'NOT_AN_ASSIGNEE') return ApiResponse.badRequest("That person is not on this task")
+        if (error.message === 'OUTSIDE_TEAM') return ApiResponse.forbidden("You may record payments only for the people your role reaches")
         console.error("Payment update API error:", error)
         return ApiResponse.error("Failed to update payment status")
     }

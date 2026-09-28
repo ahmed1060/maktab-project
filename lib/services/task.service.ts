@@ -848,7 +848,7 @@ export class TaskService {
         return await prisma.$transaction(async (tx) => {
             const task = await tx.task.findUnique({
                 where: { id },
-                include: { assignees: { select: { id: true, companyId: true } } }
+                include: { assignees: { select: { id: true, companyId: true, teamLeaderId: true } } }
             })
             if (!task) throw new Error("TASK_NOT_FOUND")
 
@@ -864,7 +864,14 @@ export class TaskService {
             // paying a task still in progress marked it Completed, skipping
             // its review. And a per-person payment is for one of its people.
             if (!['APPROVED', 'COMPLETED', 'REJECTED'].includes(task.status)) throw new Error("TASK_NOT_REVIEWED")
-            if (targetUserId && !task.assignees.some(a => a.id === targetUserId)) throw new Error("NOT_AN_ASSIGNEE")
+            if (targetUserId) {
+                const member = task.assignees.find(a => a.id === targetUserId)
+                if (!member) throw new Error("NOT_AN_ASSIGNEE")
+                // Within the scope the caller pays at, as a penalty is: on a
+                // task shared with someone outside a team payer's team, that
+                // person's payment is not theirs to record.
+                if (!can(session.user, "tasks.pay", { companyId: task.companyId, userId: member.id, teamLeaderId: member.teamLeaderId })) throw new Error("OUTSIDE_TEAM")
+            }
 
             const updateData: any = {}
             const memberPayments: Record<string, string> = (task.memberPaymentStatus as any) || {}
