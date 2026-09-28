@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react'
 import useSWR from 'swr'
+import { useSession } from 'next-auth/react'
 import AccessDenied from '@/components/AccessDenied'
 import CompanySettingsTabs, { type CompanySettings } from '@/components/CompanySettingsTabs'
 import { useLanguage } from '@/context/LanguageContext'
@@ -17,7 +18,11 @@ import type { CompanySettingsTabKey } from '@/lib/company-settings-tabs'
 export default function CompanyOwnSettingsPage() {
     const { t, locale } = useLanguage()
     const { setTitle, setSubtitle } = useHeader()
-    const { data, error, isLoading, mutate } = useSWR('/api/company-settings', fetcher, { shouldRetryOnError: false })
+    const { data: session } = useSession()
+    // The Super Admin has no company of their own: they reach every company's
+    // settings from the company list, so there is nothing to ask for here.
+    const superAdmin = session?.user?.role === 'SUPER_ADMIN'
+    const { data, error, isLoading, mutate } = useSWR(session && !superAdmin ? '/api/company-settings' : null, fetcher, { shouldRetryOnError: false })
 
     useEffect(() => {
         setTitle(t('company_settings_title'))
@@ -25,7 +30,7 @@ export default function CompanyOwnSettingsPage() {
         return () => { setTitle(null); setSubtitle(null) }
     }, [t, setTitle, setSubtitle])
 
-    if (error) return <AccessDenied />
+    if (error || superAdmin) return <AccessDenied />
     if (isLoading || !data?.data) {
         return <p style={{ padding: '4rem', textAlign: 'center', color: 'var(--text-soft)' }}>{t('loading_data')}</p>
     }
