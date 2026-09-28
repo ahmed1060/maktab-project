@@ -718,6 +718,7 @@ export default function SectionNotesPage() {
                                             style={{ border: `2px dashed ${isDragging ? 'var(--info-solid)' : 'var(--border-firm)'}`, borderRadius: '0.75rem', padding: '1.5rem', textAlign: 'center', background: isDragging ? 'var(--info-bg-subtle)' : 'var(--surface-subtle)', transition: 'all 0.2s', cursor: 'pointer', position: 'relative' }}
                                         >
                                             <input
+                                                aria-label={t('attachments_label' as any)}
                                                 type="file"
                                                 multiple
                                                 accept=".jpg,.jpeg,.png,.gif,.webp,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx"
@@ -959,6 +960,7 @@ export default function SectionNotesPage() {
                                             style={{ border: `2px dashed ${isDragging ? 'var(--info-solid)' : 'var(--border-firm)'}`, borderRadius: '0.75rem', padding: '1.5rem', textAlign: 'center', background: isDragging ? 'var(--info-bg-subtle)' : 'var(--surface-subtle)', transition: 'all 0.2s', cursor: 'pointer', position: 'relative' }}
                                         >
                                             <input
+                                                aria-label={t('attachments_label' as any)}
                                                 type="file"
                                                 multiple
                                                 accept=".jpg,.jpeg,.png,.gif,.webp,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx"

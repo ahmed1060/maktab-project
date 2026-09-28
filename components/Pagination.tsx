@@ -143,6 +143,7 @@ export default function Pagination({ currentPage, totalPages, onPageChange }: Pa
             >
                 <span>{locale === 'ar' ? 'الذهاب إلى' : 'Go to'}</span>
                 <input
+                    aria-label={t('go_to_page' as any)}
                     type="number"
                     min="1"
                     max={totalPages}

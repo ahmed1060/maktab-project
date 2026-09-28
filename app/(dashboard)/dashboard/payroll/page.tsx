@@ -316,14 +316,14 @@ export default function PayrollRegisterPage() {
                             {companies.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                         </select>
                     )}
-                    <select className="input" value={month} onChange={e => setMonth(Number(e.target.value))} style={{ width: 'auto' }}>
+                    <select aria-label={t('payroll_month' as any)} className="input" value={month} onChange={e => setMonth(Number(e.target.value))} style={{ width: 'auto' }}>
                         {Array.from({ length: 12 }, (_, i) => (
                             <option key={i + 1} value={i + 1}>
                                 {new Date(2000, i).toLocaleString(isRtl ? 'ar-EG' : 'en-US', { month: 'long' })}
                             </option>
                         ))}
                     </select>
-                    <select className="input" value={year} onChange={e => setYear(Number(e.target.value))} style={{ width: 'auto' }}>
+                    <select aria-label={t('payroll_year' as any)} className="input" value={year} onChange={e => setYear(Number(e.target.value))} style={{ width: 'auto' }}>
                         {Array.from({ length: 5 }, (_, i) => now.getFullYear() - 2 + i).map(y => (
                             <option key={y} value={y}>{y}</option>
                         ))}

@@ -57,3 +57,41 @@ describe("icon-only buttons", () => {
         expect(toggles.filter(t => !t.named).map(t => t.at)).toEqual([])
     })
 })
+
+describe("dropdowns and file pickers", () => {
+    it("every one has a name, or sits inside a label", () => {
+        // A second axe run found the ones with no label beside them at all:
+        // the payroll month and year, the list's "go to page" box, the sort
+        // order, the profile's company, the upload pickers.
+        const tagAttrs = (s: string, i: number) => {
+            let depth = 0, quote = ""
+            for (let j = i; j < s.length; j++) {
+                const c = s[j]
+                if (quote) { if (c === quote) quote = ""; continue }
+                if (depth === 0 && (c === '"' || c === "'" || c === "`")) quote = c
+                else if (c === "{") depth++
+                else if (c === "}") depth--
+                else if (c === ">" && depth === 0) return s.slice(i, j)
+            }
+            return s.slice(i)
+        }
+        const unnamed: string[] = []
+        for (const f of SCREENS) {
+            const s = readFileSync(f, "utf8")
+            for (const m of s.matchAll(/<(select|input)\b/g)) {
+                const attrs = tagAttrs(s, m.index! + m[0].length)
+                if (m[1] === "input" && !attrs.includes('type="file"')) continue
+                if (/\b(aria-label|aria-labelledby|id)=/.test(attrs)) continue
+                if (/display: ?'none'/.test(attrs) || attrs.includes("aria-hidden")) continue
+                const before = s.slice(Math.max(0, m.index! - 600), m.index!)
+                if (before.lastIndexOf("<label") > before.lastIndexOf("</label>")) continue
+                unnamed.push(`${f}:${s.slice(0, m.index!).split("\n").length} ${m[1]}`)
+            }
+        }
+        expect(unnamed).toEqual([])
+    })
+
+    it("the page box under every list says what it's for", () => {
+        expect(readFileSync("components/Pagination.tsx", "utf8")).toContain("aria-label={t('go_to_page' as any)}")
+    })
+})

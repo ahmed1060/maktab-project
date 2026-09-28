@@ -368,6 +368,7 @@ export default function EmployeesPage() {
                         {t('bulk_selected').replace('{count}', String(picked.size))}
                     </strong>
                     <select
+                        aria-label={t('team_leader_label')}
                         className="input"
                         value={bulkLeaderId}
                         onChange={e => setBulkLeaderId(e.target.value)}

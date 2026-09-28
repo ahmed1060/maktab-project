@@ -123,6 +123,7 @@ export default function CompanyLogoCard({ companyId, companyName, logoUrl, onCha
 
             <input
                 ref={inputRef}
+                aria-label={t('company_logo_setting')}
                 type="file"
                 accept="image/png,image/jpeg,image/webp"
                 hidden

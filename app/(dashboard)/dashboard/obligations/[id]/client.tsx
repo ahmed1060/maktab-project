@@ -631,6 +631,7 @@ export default function ObligationDetailClient({ obligation, userRole, userId, u
                     >
                         <input
                             key={inputKey}
+                            aria-label={t('attachments_label' as any)}
                             type="file"
                             multiple
                             accept=".jpg,.jpeg,.png,.gif,.webp,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx"

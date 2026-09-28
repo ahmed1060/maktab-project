@@ -624,6 +624,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                             >
                                 {avatarUrl ? t('change_button') : t('upload_button')}
                                 <input
+                                    aria-label={t('profile_picture_label' as any)}
                                     type="file"
                                     hidden
                                     accept="image/*"
@@ -782,6 +783,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                             />
                         ) : (
                             <select
+                                aria-label={t('company_label')}
                                 className="input"
                                 value={companyId}
                                 onChange={e => setCompanyId(e.target.value)}
