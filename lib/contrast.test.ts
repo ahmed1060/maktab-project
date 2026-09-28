@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest"
-import { readFileSync } from "node:fs"
+import { readFileSync, readdirSync } from "node:fs"
+import { join } from "node:path"
 
 /**
  * WCAG contrast for every foreground/background pair the palette declares, in
@@ -183,8 +184,6 @@ describe("dark: brand-coloured text meets AA 4.5:1 on its surfaces", () => {
     }
 
     it("and screens colour brand text with it, not with the button colour", () => {
-        const { readdirSync } = require("node:fs") as typeof import("node:fs")
-        const { join } = require("node:path") as typeof import("node:path")
         const files = (dir: string): string[] => readdirSync(dir, { withFileTypes: true }).flatMap(e =>
             e.isDirectory() ? files(join(dir, e.name)) : e.name.endsWith(".tsx") ? [join(dir, e.name)] : [])
         const offenders = [...files("app"), ...files("components")].filter(f =>
