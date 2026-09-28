@@ -500,13 +500,20 @@ export class TaskService {
         const now = new Date()
 
         return await prisma.$transaction(async (tx) => {
-            const task = await tx.task.findUnique({ where: { id }, include: { assignees: { select: { id: true } } } })
+            const task = await tx.task.findUnique({ where: { id }, include: { assignees: { select: { id: true, teamLeaderId: true } } } })
             if (!task) throw new Error("TASK_NOT_FOUND")
             // A task's penalty falls on one of its own people. The id came
             // from the request and was never checked against the task: anyone
             // allowed to penalise one task could take pay from any account,
             // in any company, by naming it.
-            if (!task.assignees.some(a => a.id === targetUserId)) throw new Error("NOT_AN_ASSIGNEE")
+            const target = task.assignees.find(a => a.id === targetUserId)
+            if (!target) throw new Error("NOT_AN_ASSIGNEE")
+            // And within the scope the caller penalises at: held for a team,
+            // a task shared with someone outside it is theirs to open, but
+            // that person's pay is not theirs to cut.
+            if (!can(session.user, "tasks.penalize", { companyId: task.companyId, userId: target.id, teamLeaderId: target.teamLeaderId })) {
+                throw new Error("OUTSIDE_TEAM")
+            }
 
             // Through SalaryService, not a second hand-rolled find-or-create.
             // This block used to compute its own days-in-month and read its own

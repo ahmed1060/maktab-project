@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
-import { state, prismaMock, taskState, as, withBody } from "./task-access.harness"
+import { state, prismaMock, taskState, as, withBody, TASKS, PEOPLE } from "./task-access.harness"
 
 vi.setConfig({ testTimeout: 60_000 })
 
@@ -83,5 +83,23 @@ describe("penalising a task", () => {
     it("by a number of days above 0, refused plainly rather than as a server error", async () => {
         expect((await penalise({ userId: "emp", amount: -3 })).status).toBe(400)
         expect((await penalise({ userId: "emp", amount: 1e9 })).status).toBe(400)
+    })
+
+    it("from someone whose role reaches only a team, falls only on that team, even on a shared task", async () => {
+        // t-emp shared by "emp" (the Team Leader's report) and "loner" (no
+        // team): the leader can open it, but only emp's pay is theirs to cut.
+        const before = TASKS["t-emp"].assignees
+        TASKS["t-emp"].assignees = [{ ...PEOPLE.emp }, { ...PEOPLE.loner }]
+        try {
+            as("leader")
+            expect((await penalise({ userId: "loner", amount: 1 })).status).toBe(403)
+            expect((await penalise({ userId: "emp", amount: 1 })).status).toBe(200)
+        } finally {
+            TASKS["t-emp"].assignees = before
+        }
+    })
+
+    it("says what the allowed amount is when it refuses one", async () => {
+        expect(JSON.stringify(await (await penalise({ userId: "emp", amount: 5000 })).json())).toContain("1000")
     })
 })
