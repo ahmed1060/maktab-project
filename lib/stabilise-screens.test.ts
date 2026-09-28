@@ -24,4 +24,10 @@ describe("the menu", () => {
         const at = shell.indexOf('href="/dashboard/documents"')
         expect(shell.slice(at - 200, at)).toContain("user?.role !== 'SUPER_ADMIN' && (")
     })
+
+    it("and while the Super Admin previews a role, shows it as the role would see it without asking for their payslips", () => {
+        const page = readFileSync("app/(dashboard)/dashboard/documents/page.tsx", "utf8")
+        expect(page).toContain("const previewing = !!(session?.user as any)?.preview")
+        expect(page).toContain("useSWR(userId && !previewing ? `/api/users/${userId}/payslips` : null, fetcher)")
+    })
 })

@@ -408,7 +408,8 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
                         the rest of the PAYROLL module; the page itself explains
                         the case where a company has payslips switched off.
                         Not for the Super Admin, who is nobody's employee and
-                        has no payslips. */}
+                        has no payslips. While they preview a role it is shown,
+                        as the role would see it, and the page asks for none. */}
                     {user?.role !== 'SUPER_ADMIN' && (
                     <Link
                         href="/dashboard/documents"
