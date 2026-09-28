@@ -31,3 +31,20 @@ describe("the menu", () => {
         expect(page).toContain("useSWR(userId && !previewing ? `/api/users/${userId}/payslips` : null, fetcher)")
     })
 })
+
+/**
+ * Found by visiting every page at phone width (390px) as each kind of user,
+ * in both languages, and measuring what made the page scroll sideways.
+ */
+describe("at phone width", () => {
+    it("a row of tabs scrolls by itself, not the whole page", () => {
+        // The company settings tabs and the role-requests tabs ran past the
+        // screen's edge, so the page could be dragged sideways.
+        const toggle = readFileSync("components/SegmentedToggle.tsx", "utf8")
+        expect(toggle).toContain("maxWidth: '100%',")
+        expect(toggle).toContain("overflowX: 'auto',")
+        expect(toggle).toContain("flexShrink: 0,")
+        // and the chosen tab is kept in sight when the row scrolls
+        expect(toggle).toContain("box.scrollBy(")
+    })
+})
