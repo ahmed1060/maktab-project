@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma"
+import { AccessReviewStatus } from "@prisma/client"
 import { can } from "@/lib/permissions/can"
 import { holdersOf } from "@/lib/permissions/holders"
 import type { Permission } from "@/lib/permissions/catalogue"
@@ -146,7 +147,9 @@ export class AccessReviewService {
     /** A company's reviews for its Admins; every company's for the Super Admin. */
     static async list(session: Session, filter: { status?: string | null; companyId?: string | null }) {
         const where: Prisma.AccessReviewWhereInput = {}
-        if (filter.status) where.status = filter.status as any
+        // A status that isn't one matches nothing, rather than reaching the
+        // database as an enum value it can't read (a 500).
+        if (filter.status) where.status = (Object.values(AccessReviewStatus) as string[]).includes(filter.status) ? filter.status as AccessReviewStatus : { in: [] }
         if (session.user.role === "SUPER_ADMIN") {
             if (filter.companyId) where.companyId = filter.companyId
         } else {

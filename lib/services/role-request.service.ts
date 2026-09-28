@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma"
+import { RoleRequestStatus } from "@prisma/client"
 import { roleParam } from "@/lib/notice"
 import { can } from "@/lib/permissions/can"
 import { holdersOf } from "@/lib/permissions/holders"
@@ -214,7 +215,9 @@ export class RoleRequestService {
         const companyId = actor.role === "SUPER_ADMIN" ? filter.companyId : actor.companyId
         if (!companyId) return []
         const where: Prisma.RoleRequestWhereInput = { companyId }
-        if (filter.status) where.status = filter.status as any
+        // A status that isn't one matches nothing, rather than reaching the
+        // database as an enum value it can't read (a 500).
+        if (filter.status) where.status = (Object.values(RoleRequestStatus) as string[]).includes(filter.status) ? filter.status as RoleRequestStatus : { in: [] }
         if (filter.userId) where.userId = filter.userId
         if (actor.role !== "SUPER_ADMIN" && !can(actor, "employees.assign_role")) {
             if (!can(actor, "employees.request_role")) return []

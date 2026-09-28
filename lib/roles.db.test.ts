@@ -895,4 +895,19 @@ describe.skipIf(!ADMIN_URL)("roles as data, in Postgres", () => {
             expect((await AccessReportService.whatCan("a1")).role!.builtIn).toBe("ADMIN")
         })
     })
+
+    describe("a status filter the lists don't know", () => {
+        // ?status=NOPE reached the database as an enum value it can't read,
+        // and came back as a 500. It matches nothing, as on the other lists.
+        const sa = { user: { id: "sa", role: "SUPER_ADMIN" } }
+        it("matches nothing, on each of the three lists", async () => {
+            expect(await AccessReviewService.list(sa as any, { status: "NOPE" })).toEqual([])
+            expect(await RoleRequestService.list(sa as any, { status: "NOPE" })).toEqual([])
+            expect(await RoleChangeRequestService.list(sa as any, { status: "NOPE" })).toEqual([])
+        })
+
+        it("and a real status still filters", async () => {
+            expect((await AccessReviewService.list(sa as any, { status: "COMPLETED", companyId: "c1" })).length).toBe(1)
+        })
+    })
 })
