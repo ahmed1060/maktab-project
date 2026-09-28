@@ -486,7 +486,7 @@ body::before {
    is unchanged. */
 .dashboard-stats-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr));
   gap: 2rem;
   margin-bottom: 3rem;
 }
@@ -501,6 +501,15 @@ body::before {
 @media (max-width: 700px) {
   .dashboard-stats-block {
     grid-column: auto;
+  }
+}
+
+/* On a phone two tiles side by side need more than the ~326px there is, so
+   the block came out wider than its column and the right-hand tiles were cut
+   off. One tile to a row there. */
+@media (max-width: 480px) {
+  .dashboard-stats-block {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 

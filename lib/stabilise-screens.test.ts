@@ -78,4 +78,13 @@ describe("at phone width", () => {
             .filter(f => /minmax\(\d+px, *1fr\)/.test(readFileSync(f, "utf8")))
         expect(fixed).toEqual([])
     })
+
+    it("the Super Admin's four figures stack rather than run off the screen", () => {
+        // Two to a row needed ~336px in a 326px column: the right-hand
+        // tiles were cut off.
+        const css = readFileSync("app/globals.css", "utf8")
+        expect(css).not.toMatch(/minmax\(\d+px, *1fr\)/)
+        const phone = css.slice(css.indexOf("@media (max-width: 480px)"))
+        expect(phone.slice(0, 200)).toContain(".dashboard-stats-block {\n    grid-template-columns: minmax(0, 1fr);")
+    })
 })
