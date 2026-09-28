@@ -189,7 +189,7 @@ export default function MfaSection() {
                                 <button type="button" className="btn" onClick={() => { setDisabling(false); setPassword(''); setError('') }} style={{ flex: 1, background: 'transparent', border: '1px solid var(--border)' }}>
                                     {isAr ? 'رجوع' : 'Back'}
                                 </button>
-                                <button type="submit" className="btn" disabled={submittingDisable} style={{ flex: 1, background: 'var(--danger-solid)' }}>
+                                <button type="submit" className="btn" disabled={submittingDisable} style={{ flex: 1, background: 'var(--danger-fill)' }}>
                                     {submittingDisable ? (isAr ? 'جارٍ الإيقاف...' : 'Disabling...') : (isAr ? 'إيقاف' : 'Disable')}
                                 </button>
                             </div>

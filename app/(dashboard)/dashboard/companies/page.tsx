@@ -547,7 +547,7 @@ export default function CompaniesPage() {
                                 <button type="button" onClick={() => setShowDeleteModal(false)} className="btn" style={{ background: 'var(--border)', color: 'var(--text-strong)' }}>
                                     {t('cancel')}
                                 </button>
-                                <button type="submit" className="btn" disabled={isDeleting} style={{ background: 'var(--danger-solid-hover)', color: 'var(--text-on-accent)', padding: '0.75rem 1.5rem', borderRadius: '0.5rem', border: 'none', cursor: 'pointer' }}>
+                                <button type="submit" className="btn" disabled={isDeleting} style={{ background: 'var(--danger-fill-hover)', color: 'var(--text-on-accent)', padding: '0.75rem 1.5rem', borderRadius: '0.5rem', border: 'none', cursor: 'pointer' }}>
                                     {isDeleting ? t('deleting') : t('delete_permanently')}
                                 </button>
                             </div>

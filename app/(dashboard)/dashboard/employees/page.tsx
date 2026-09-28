@@ -434,7 +434,7 @@ export default function EmployeesPage() {
                                             width: '12px',
                                             height: '12px',
                                             borderRadius: '50%',
-                                            background: emp.status === 'SUSPENDED' ? 'var(--danger-solid)' : emp.status === 'ACTIVE' ? 'var(--ok-solid-alt)' : emp.status === 'OFFLINE' ? 'var(--warn-solid)' : 'var(--text-faint)',
+                                            background: emp.status === 'SUSPENDED' ? 'var(--danger-fill)' : emp.status === 'ACTIVE' ? 'var(--ok-fill-alt)' : emp.status === 'OFFLINE' ? 'var(--warn-fill)' : 'var(--text-faint)',
                                             cursor: userRole === 'SUPER_ADMIN' ? 'pointer' : 'default',
                                             flexShrink: 0,
                                             boxShadow: `0 0 0 2px ${emp.status === 'SUSPENDED' ? 'var(--danger-border)' : emp.status === 'ACTIVE' ? 'var(--ok-bg-strong)' : emp.status === 'OFFLINE' ? 'var(--warn-bg-yellow)' : 'var(--border)'}`
@@ -704,7 +704,7 @@ export default function EmployeesPage() {
                         <button
                             onClick={confirmDelete}
                             className="btn"
-                            style={{ background: 'var(--danger-solid-hover)', color: 'var(--text-on-accent)' }}
+                            style={{ background: 'var(--danger-fill-hover)', color: 'var(--text-on-accent)' }}
                         >
                             {t('delete_employee')}
                         </button>

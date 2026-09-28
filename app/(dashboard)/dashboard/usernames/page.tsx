@@ -119,7 +119,7 @@ export default function UsernamesPage() {
                     className="btn"
                     title={t('download_excel')}
                     style={{
-                        background: 'var(--ok-solid)',
+                        background: 'var(--ok-fill)',
                         color: 'var(--text-on-accent)',
                         fontWeight: '600',
                         display: 'flex',

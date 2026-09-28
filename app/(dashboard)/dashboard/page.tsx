@@ -457,7 +457,7 @@ export default async function DashboardPage(props: { searchParams: Promise<{ com
                                                     <span style={{
                                                         padding: '0.15rem 0.5rem',
                                                         borderRadius: '0.5rem',
-                                                        background: 'var(--info-solid)',
+                                                        background: 'var(--info-fill)',
                                                         color: 'var(--text-on-accent)',
                                                         fontWeight: 'bold',
                                                         fontSize: '0.7rem'
@@ -533,7 +533,7 @@ export default async function DashboardPage(props: { searchParams: Promise<{ com
                                                     <span style={{
                                                         padding: '0.1rem 0.4rem',
                                                         borderRadius: '0.4rem',
-                                                        background: 'var(--info-solid)',
+                                                        background: 'var(--info-fill)',
                                                         color: 'var(--text-on-accent)',
                                                         fontWeight: 'bold',
                                                         fontSize: '0.65rem'

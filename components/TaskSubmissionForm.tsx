@@ -127,7 +127,7 @@ export default function TaskSubmissionForm({
             <div style={{ marginBottom: '2rem' }}>
                 <label style={{ display: 'block', fontWeight: '600', marginBottom: '0.75rem' }}>{t('current_location_label')}</label>
                 <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexDirection: 'row' }}>
-                    <button onClick={onCaptureLocation} disabled={capturingLocation || uploading} className="btn" style={{ background: capturingLocation ? 'var(--border)' : 'var(--info-solid)', color: capturingLocation ? 'var(--text-soft)' : 'var(--surface)', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+                    <button onClick={onCaptureLocation} disabled={capturingLocation || uploading} className="btn" style={{ background: capturingLocation ? 'var(--border)' : 'var(--info-fill)', color: capturingLocation ? 'var(--text-soft)' : 'var(--surface)', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
                         {capturingLocation ? t('capturing_location_button').replace('📍', '') : t('capture_location_button').replace('📍', '')}
                     </button>
                     <span style={{ fontSize: '0.875rem', fontWeight: '500', color: locationStatus.includes('✓') ? 'var(--ok-solid-hover)' : locationStatus.includes('Failed') ? 'var(--danger-solid-hover)' : 'var(--text-soft)' }}>{locationStatus}</span>

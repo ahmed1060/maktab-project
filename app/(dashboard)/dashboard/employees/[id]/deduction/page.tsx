@@ -121,7 +121,7 @@ export default function AddDeductionPage() {
                     >
                         {t('cancel')}
                     </Link>
-                    <button type="submit" className="btn btn-danger" disabled={loading} style={{ flex: 1, background: 'var(--danger-solid)', color: 'var(--text-on-accent)' }}>
+                    <button type="submit" className="btn btn-danger" disabled={loading} style={{ flex: 1, background: 'var(--danger-fill)', color: 'var(--text-on-accent)' }}>
                         {loading ? t('adding' as any) : t('add_deduction')}
                     </button>
                 </div>

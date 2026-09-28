@@ -176,7 +176,7 @@ export default function NotificationBell({ initialUnreadCount = 0 }: { initialUn
                         position: 'absolute',
                         top: -5,
                         right: -5,
-                        background: 'var(--danger-solid)',
+                        background: 'var(--danger-fill)',
                         color: 'var(--text-on-accent)',
                         borderRadius: '50%',
                         width: '20px',

@@ -717,7 +717,7 @@ export default function EmployeeHistoryPage() {
                                                 left: '-5px',
                                                 right: '-5px',
                                                 height: '2px',
-                                                background: 'var(--danger-solid)',
+                                                background: 'var(--danger-fill)',
                                                 transform: 'rotate(-2deg)',
                                                 zIndex: 5,
                                                 opacity: 0.8,
@@ -855,7 +855,7 @@ export default function EmployeeHistoryPage() {
                             <button
                                 type="button"
                                 className="btn"
-                                style={{ background: 'var(--danger-solid)', color: 'var(--text-on-accent)' }}
+                                style={{ background: 'var(--danger-fill)', color: 'var(--text-on-accent)' }}
                                 disabled={!!rollbackLoading}
                                 onClick={async () => {
                                     const target = reversing

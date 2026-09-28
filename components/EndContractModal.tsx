@@ -316,7 +316,7 @@ export default function EndContractModal({ userId, name, status, onClose, onDone
                     <button
                         type="button"
                         className="btn"
-                        style={{ background: isArchived ? 'var(--primary)' : 'var(--danger-solid)', color: 'var(--text-on-accent)' }}
+                        style={{ background: isArchived ? 'var(--primary)' : 'var(--danger-fill)', color: 'var(--text-on-accent)' }}
                         disabled={submitting || (!isArchived && !preview)}
                         onClick={() => submit(isArchived ? 'REINSTATE' : 'END_CONTRACT')}
                     >

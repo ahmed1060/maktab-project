@@ -172,7 +172,7 @@ export default function AuditLogFilter({
                                 position: 'absolute',
                                 top: '-4px',
                                 [locale === 'ar' ? 'left' : 'right']: '-4px',
-                                background: 'var(--info-solid)',
+                                background: 'var(--info-fill)',
                                 color: 'var(--text-on-accent)',
                                 width: '20px',
                                 height: '20px',
@@ -315,7 +315,7 @@ export default function AuditLogFilter({
                                         onClick={handleApplyFilters}
                                         style={{
                                             flex: 1, height: '48px', borderRadius: '1.25rem', border: 'none',
-                                            background: 'linear-gradient(135deg, var(--brand-primary) 0%, var(--accent-solid) 100%)',
+                                            background: 'linear-gradient(135deg, var(--brand-primary) 0%, var(--accent-fill) 100%)',
                                             color: 'var(--text-on-accent)', fontWeight: '700', cursor: 'pointer', fontSize: '0.875rem'
                                         }}
                                     >

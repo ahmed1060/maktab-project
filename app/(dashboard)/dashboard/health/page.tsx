@@ -404,7 +404,7 @@ export default function SystemHealthPage() {
                                             onClick={() => setOrphanReport(null)} disabled={deletingOrphans}>
                                             {t('cancel')}
                                         </button>
-                                        <button className="btn" style={{ flex: 1, background: 'var(--danger-solid)', color: 'var(--text-on-accent)' }}
+                                        <button className="btn" style={{ flex: 1, background: 'var(--danger-fill)', color: 'var(--text-on-accent)' }}
                                             onClick={() => setPendingAction('DELETE_ORPHANS')} disabled={deletingOrphans}>
                                             {deletingOrphans ? t('saving') : t('orphan_report_delete' as any)}
                                         </button>

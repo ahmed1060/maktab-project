@@ -376,7 +376,7 @@ export default function EmployeeFilter({
                                     position: 'absolute',
                                     top: '-4px',
                                     [locale === 'ar' ? 'left' : 'right']: '-4px',
-                                    background: 'var(--info-solid)',
+                                    background: 'var(--info-fill)',
                                     color: 'var(--text-on-accent)',
                                     width: '20px',
                                     height: '20px',
@@ -717,7 +717,7 @@ export default function EmployeeFilter({
                                                 height: '48px',
                                                 borderRadius: '1.25rem',
                                                 border: 'none',
-                                                background: 'linear-gradient(135deg, var(--brand-primary) 0%, var(--accent-solid) 100%)',
+                                                background: 'linear-gradient(135deg, var(--brand-primary) 0%, var(--accent-fill) 100%)',
                                                 color: 'var(--text-on-accent)',
                                                 fontWeight: '700',
                                                 cursor: 'pointer',
@@ -780,7 +780,7 @@ export default function EmployeeFilter({
                         gap: '0.5rem',
                         boxShadow: '0 2px 4px color-mix(in srgb, var(--warn-solid-warm) 5%, transparent)'
                     }}>
-                        <div style={{ background: 'var(--warn-solid-warm)', color: 'var(--text-on-accent)', padding: '0.25rem', borderRadius: '0.5rem', display: 'flex' }}>
+                        <div style={{ background: 'var(--warn-fill-warm)', color: 'var(--text-on-accent)', padding: '0.25rem', borderRadius: '0.5rem', display: 'flex' }}>
                             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
                                 <line x1="12" y1="1" x2="12" y2="23"></line>
                                 <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>

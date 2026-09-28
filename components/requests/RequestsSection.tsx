@@ -209,7 +209,7 @@ export default function RequestsSection({ userRole }: { userRole: string }) {
                             fontSize: '0.95rem',
                             fontWeight: '800',
                             borderRadius: '1.25rem',
-                            background: 'linear-gradient(135deg, var(--brand-primary) 0%, var(--accent-solid) 100%)',
+                            background: 'linear-gradient(135deg, var(--brand-primary) 0%, var(--accent-fill) 100%)',
                             border: 'none',
                             color: 'var(--text-on-accent)',
                             boxShadow: '0 4px 15px color-mix(in srgb, var(--primary) 30%, transparent)',

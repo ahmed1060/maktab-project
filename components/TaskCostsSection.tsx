@@ -74,7 +74,7 @@ function TaskCostsSectionBody({
                             const myStatus = mPaymentStatus[userId] || 'PENDING_PAYMENT'
                             return (
                                 <div style={{ display: 'flex', gap: '1rem', marginBottom: '0.5rem', flexDirection: 'row', flexWrap: 'wrap' }}>
-                                    <div style={{ flex: 1, minWidth: '150px', background: 'var(--info-solid)', color: 'var(--text-on-accent)', padding: '1.25rem', borderRadius: '1rem', textAlign: 'center', boxShadow: '0 4px 6px -1px var(--shadow-weak)', position: 'relative' }}>
+                                    <div style={{ flex: 1, minWidth: '150px', background: 'var(--info-fill)', color: 'var(--text-on-accent)', padding: '1.25rem', borderRadius: '1rem', textAlign: 'center', boxShadow: '0 4px 6px -1px var(--shadow-weak)', position: 'relative' }}>
                                         <div style={{ fontSize: '0.875rem', fontWeight: '600', opacity: 0.9 }}>{t('my_total_cost' as any)}</div>
                                         <div style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>{(getMemberCosts(task)[userId] || 0).toFixed(2)} {t('egp')}</div>
                                         <div style={{
@@ -91,7 +91,7 @@ function TaskCostsSectionBody({
                                             {myStatus === 'PAID' ? t('payment_status_paid' as any) || 'PAID' : t('payment_status_pending' as any) || 'PENDING'}
                                         </div>
                                     </div>
-                                    <div style={{ flex: 1, minWidth: '150px', background: 'var(--warn-solid)', color: 'var(--text-on-accent)', padding: '1.25rem', borderRadius: '1rem', textAlign: 'center', boxShadow: '0 4px 6px -1px var(--shadow-weak)' }}>
+                                    <div style={{ flex: 1, minWidth: '150px', background: 'var(--warn-fill)', color: 'var(--text-on-accent)', padding: '1.25rem', borderRadius: '1rem', textAlign: 'center', boxShadow: '0 4px 6px -1px var(--shadow-weak)' }}>
                                         <div style={{ fontSize: '0.875rem', fontWeight: '600', opacity: 0.9 }}>{t('grand_total_cost' as any)}</div>
                                         <div style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>{(task.totalCost || 0).toFixed(2)} {t('egp')}</div>
                                         <div style={{
@@ -113,7 +113,7 @@ function TaskCostsSectionBody({
                         }
 
                         return (
-                            <div style={{ background: 'var(--warn-solid)', color: 'var(--text-on-accent)', padding: '1.25rem', borderRadius: '1rem', textAlign: 'center', boxShadow: '0 4px 6px -1px var(--shadow-weak)' }}>
+                            <div style={{ background: 'var(--warn-fill)', color: 'var(--text-on-accent)', padding: '1.25rem', borderRadius: '1rem', textAlign: 'center', boxShadow: '0 4px 6px -1px var(--shadow-weak)' }}>
                                 <div style={{ fontSize: '0.875rem', fontWeight: '600', opacity: 0.9 }}>{t('total_cost')}</div>
                                 <div style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>{(task.totalCost || 0).toFixed(2)} {t('egp')}</div>
                                 <div style={{
@@ -171,7 +171,7 @@ function TaskCostsSectionBody({
                                                 <button
                                                     onClick={() => onPaymentStatusChange(isPaid ? 'PENDING_PAYMENT' : 'PAID', uid)}
                                                     style={{
-                                                        background: isPaid ? 'var(--surface-sunk)' : 'var(--ok-solid)',
+                                                        background: isPaid ? 'var(--surface-sunk)' : 'var(--ok-fill)',
                                                         color: isPaid ? 'var(--text-soft)' : 'var(--text-on-accent)',
                                                         padding: '0.4rem 0.8rem',
                                                         fontSize: '0.75rem',

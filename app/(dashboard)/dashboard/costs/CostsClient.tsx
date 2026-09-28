@@ -202,7 +202,7 @@ export default function CostsClient({ tasksWithCosts, total, page, totalPages }:
                             onClick={handleMarkAllAsPaid}
                             disabled={isUpdating}
                             style={{
-                                background: 'var(--ok-solid)',
+                                background: 'var(--ok-fill)',
                                 color: 'var(--text-on-accent)',
                                 border: 'none',
                                 borderRadius: '1.25rem',
