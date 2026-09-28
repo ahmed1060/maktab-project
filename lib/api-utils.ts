@@ -127,6 +127,19 @@ export class RateLimiter {
     }
 }
 
+/**
+ * The request's form, for the routes that take a file upload; null when the
+ * body isn't one (sent as JSON, say, or already read), so the route can answer
+ * 400 rather than throw a 500.
+ */
+export async function readForm(req: Request): Promise<FormData | null> {
+    try {
+        return await req.formData()
+    } catch {
+        return null
+    }
+}
+
 export function withStandardHandler(
     handler: (req: Request, session: any, body?: any, context?: any) => Promise<NextResponse>,
     options: HandlerOptions = {}
@@ -281,13 +294,24 @@ export function withStandardHandler(
             // multipart/form-data request consumes the body stream, which then
             // makes a later req.formData() call in the handler throw. Handlers
             // that need multipart data read it themselves via req.formData().
+            //
+            // An empty body is null, as before. A body that isn't JSON, or is
+            // JSON but not an object or list (`null`, `"x"`, `5`), is refused
+            // here with a 400: it used to reach the handler as null, where
+            // reading a field from it was a 500 on every route that takes one.
             let body: any = null
             const contentType = req.headers.get('content-type') || ''
             if (['POST', 'PATCH', 'PUT', 'DELETE'].includes(req.method) && contentType.includes('application/json')) {
-                try {
-                    body = await req.json()
-                } catch {
-                    // Fallback for empty bodies or malformed JSON
+                const text = await req.text().catch(() => '')
+                if (text.trim()) {
+                    try {
+                        body = JSON.parse(text)
+                    } catch {
+                        return ApiResponse.badRequest("The request body isn't valid JSON.")
+                    }
+                    if (body === null || typeof body !== 'object') {
+                        return ApiResponse.badRequest("The request body must be a JSON object.")
+                    }
                 }
             }
 
