@@ -5,6 +5,7 @@ import { createClientSchema, updateClientSchema } from "@/lib/validations/client
 import { ClientService } from "@/lib/services/client.service"
 import { can } from "@/lib/permissions/can"
 import { assertStepUp } from "@/lib/step-up"
+import { parsePaging } from "@/lib/pagination"
 
 export const GET = withStandardHandler(async (req, session) => {
     const { searchParams } = new URL(req.url)
@@ -40,9 +41,7 @@ export const GET = withStandardHandler(async (req, session) => {
         where.companyId = userCompanyId
     }
 
-    const page = parseInt(searchParams.get('page') || '1')
-    const limit = parseInt(searchParams.get('limit') || '10')
-    const skip = (page - 1) * limit
+    const { page, limit, skip } = parsePaging(searchParams, 10)
 
     const [clients, total] = await Promise.all([
         prisma.businessClient.findMany({

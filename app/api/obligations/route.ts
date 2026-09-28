@@ -5,6 +5,7 @@ import { createObligationSchema } from "@/lib/validations/obligation.schema"
 import { ObligationService } from "@/lib/services/obligation.service"
 import { assignedToTeamWhere, and } from "@/lib/team-scope"
 import { grantFor } from "@/lib/permissions/can"
+import { parsePaging } from "@/lib/pagination"
 
 export const GET = withStandardHandler(async (req, session) => {
     const userId = (session.user as any).id
@@ -71,9 +72,7 @@ export const GET = withStandardHandler(async (req, session) => {
         }
     }
 
-    const page = parseInt(searchParams.get('page') || '1')
-    const limit = parseInt(searchParams.get('limit') || '10')
-    const skip = (page - 1) * limit
+    const { page, limit, skip } = parsePaging(searchParams, 10)
 
     const [obligations, total] = await Promise.all([
         prisma.obligation.findMany({

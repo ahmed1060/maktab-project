@@ -5,6 +5,7 @@ import { ApiResponse } from "@/lib/api-response"
 import { prisma } from "@/lib/prisma"
 import { can } from "@/lib/permissions/can"
 import { scopesToTeam, teamMemberWhere } from "@/lib/team-scope"
+import { parsePaging } from "@/lib/pagination"
 
 export const GET = withStandardHandler(async (req, session) => {
     const { searchParams } = new URL(req.url)
@@ -28,9 +29,7 @@ export const GET = withStandardHandler(async (req, session) => {
         where.user = { companyId: session.user.companyId }
     }
 
-    const page = parseInt(searchParams.get('page') || '1')
-    const limit = parseInt(searchParams.get('limit') || '10')
-    const skip = (page - 1) * limit
+    const { page, limit, skip } = parsePaging(searchParams, 10)
 
     try {
         const [requests, total] = await Promise.all([
