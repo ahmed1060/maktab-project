@@ -17,3 +17,11 @@ describe("a page reached by typing its address", () => {
         expect(page).toContain("result?.data?.data || []")
     })
 })
+
+describe("the menu", () => {
+    it("offers My payslips to people, not to the Super Admin, who has none", () => {
+        const shell = readFileSync("components/DashboardShell.tsx", "utf8")
+        const at = shell.indexOf('href="/dashboard/documents"')
+        expect(shell.slice(at - 200, at)).toContain("user?.role !== 'SUPER_ADMIN' && (")
+    })
+})

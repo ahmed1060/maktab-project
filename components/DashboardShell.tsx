@@ -406,7 +406,10 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
                         everyone, not just managers, which is why it sits in the
                         main menu rather than beside Payroll below. Locked with
                         the rest of the PAYROLL module; the page itself explains
-                        the case where a company has payslips switched off. */}
+                        the case where a company has payslips switched off.
+                        Not for the Super Admin, who is nobody's employee and
+                        has no payslips. */}
+                    {user?.role !== 'SUPER_ADMIN' && (
                     <Link
                         href="/dashboard/documents"
                         onClick={() => isMobile && setIsSidebarOpen(false)}
@@ -445,6 +448,7 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
                             </span>
                         )}
                     </Link>
+                    )}
 
                     {(managementLinks.length > 0 || canSeePayroll || canSeeRoleRequests || showCompanySettings) && (
                         <>
