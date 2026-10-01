@@ -196,7 +196,7 @@ export type PricedDay = MeasuredDay & {
     /** Days deducted in all: lateness + early leave + absence. */
     deductionDays: number
     deductionMinor: number
-    overtimeStatus: "NONE" | "PENDING" | "APPROVED" | "NOT_COUNTED"
+    overtimeStatus: "NONE" | "PENDING" | "APPROVED" | "REJECTED" | "NOT_COUNTED"
     overtimeMinor: number
     /** Why nothing was priced, when nothing could be. */
     unpriced: "NO_POLICY" | "NO_SALARY" | "INCOMPLETE" | null
@@ -212,8 +212,11 @@ export type PricingInput = {
     daysInMonth: number
     /** The shift's paid minutes, which an hour of overtime is a fraction of. */
     paidMinutes: number
-    /** Overtime minutes somebody approved (P0.6). */
-    approvedOvertimeMinutes?: number
+    /**
+     * Somebody's decision on the day's overtime (P0.6): approved for some
+     * minutes, or rejected. Read only when the policy requires approval.
+     */
+    overtimeDecision?: { status: "APPROVED" | "REJECTED"; minutes: number } | null
 }
 
 const roundHalfUp = (v: number) => Math.sign(v) * Math.round(Math.abs(v))
@@ -276,8 +279,9 @@ export function priceMonth(days: readonly PricingInput[]): PricedDay[] {
         const countable = ot.enabled && day.overtimeMinutes > 0 && day.overtimeMinutes >= ot.minimumMinutes
         const overtimeStatus: PricedDay["overtimeStatus"] = day.overtimeMinutes === 0 ? "NONE"
             : !countable ? "NOT_COUNTED"
-                : ot.requiresApproval ? ((input.approvedOvertimeMinutes ?? 0) > 0 ? "APPROVED" : "PENDING") : "APPROVED"
-        const pricedOvertime = !countable ? 0 : ot.requiresApproval ? Math.min(day.overtimeMinutes, input.approvedOvertimeMinutes ?? 0) : day.overtimeMinutes
+                : ot.requiresApproval ? (input.overtimeDecision?.status ?? "PENDING") : "APPROVED"
+        const approved = input.overtimeDecision?.status === "APPROVED" ? input.overtimeDecision.minutes : 0
+        const pricedOvertime = !countable ? 0 : ot.requiresApproval ? Math.min(day.overtimeMinutes, approved) : day.overtimeMinutes
         const multiplier = day.status === "WORKED_HOLIDAY" ? ot.multipliers.holiday : day.status === "WORKED_REST_DAY" ? ot.multipliers.restDay : ot.multipliers.workday
 
         if (monthlyMinor === null) {

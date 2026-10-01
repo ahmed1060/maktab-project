@@ -241,6 +241,9 @@ model Company {
   attendanceImports    AttendanceImport[]
   attendanceCodes      AttendanceCode[]
   attendanceDays       AttendanceDay[]
+  permissionRequests   PermissionRequest[]
+  overtimeApprovals    OvertimeApproval[]
+  missingPunchRequests MissingPunchRequest[]
   companyHolidays      CompanyHoliday[]
   holidayExclusions    CompanyHolidayExclusion[]
   finalSettlements     FinalSettlement[]
@@ -489,6 +492,9 @@ model User {
   attendancePunches          AttendancePunch[]
   attendanceCodes            AttendanceCode[]
   attendanceDays             AttendanceDay[]
+  permissionRequests         PermissionRequest[]
+  overtimeApprovals          OvertimeApproval[]
+  missingPunchRequests       MissingPunchRequest[]
 
   @@index([email])
   @@index([companyId])
@@ -1862,4 +1868,87 @@ model AttendanceDay {
 
   @@unique([companyId, userId, date])
   @@index([companyId, date])
+}
+
+// --- Attendance: requests (ATTENDANCE_PLAN.md §6.4, §6.6, §8.4) --------------
+
+enum AttendanceRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+enum PermissionType {
+  LATE_ARRIVAL
+  EARLY_LEAVE
+  MIDDAY
+}
+
+/// Permission hours (إذن): time off within the day, drawn from the month's
+/// allowance. Approved minutes are excused from lateness or early leave.
+model PermissionRequest {
+  id              String                  @id @default(uuid())
+  companyId       String
+  userId          String
+  date            DateTime                @db.Date
+  type            PermissionType
+  /// Minutes from the day's midnight, like the schedule's hours.
+  startMinutes    Int
+  endMinutes      Int
+  minutes         Int
+  reason          String
+  status          AttendanceRequestStatus @default(PENDING)
+  createdAt       DateTime                @default(now())
+  reviewedById    String?
+  reviewedAt      DateTime?
+  rejectionReason String?
+  company         Company                 @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  user            User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([companyId, status])
+  @@index([userId, date])
+}
+
+/// A decision on one person's overtime on one date: ahead of it, or after
+/// it. Approved minutes are paid, up to what was worked; rejected, none.
+model OvertimeApproval {
+  id              String                  @id @default(uuid())
+  companyId       String
+  userId          String
+  date            DateTime                @db.Date
+  status          AttendanceRequestStatus
+  approvedMinutes Int                     @default(0)
+  note            String?
+  decidedById     String
+  decidedAt       DateTime                @default(now())
+  company         Company                 @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  user            User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date])
+  @@index([companyId, date])
+}
+
+/// "I forgot to punch": the time claimed, and why. Approving it adds the
+/// punch, by hand, in the approver's name.
+model MissingPunchRequest {
+  id              String                  @id @default(uuid())
+  companyId       String
+  userId          String
+  date            DateTime                @db.Date
+  /// The wall-clock time claimed, as a punch would be.
+  claimedAt       DateTime                @db.Timestamp(0)
+  direction       PunchDirection?
+  reason          String
+  status          AttendanceRequestStatus @default(PENDING)
+  punchId         String?
+  createdAt       DateTime                @default(now())
+  reviewedById    String?
+  reviewedAt      DateTime?
+  rejectionReason String?
+  company         Company                 @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  user            User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([companyId, status])
+  @@index([userId, date])
 }

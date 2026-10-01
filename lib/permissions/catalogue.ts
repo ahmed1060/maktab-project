@@ -154,6 +154,11 @@ export const PERMISSIONS = {
     // through it.
     "attendance.view_team":     { code: 49, module: "ATTENDANCE", scopes: TEAM_OR_COMPANY },
     "attendance.correct":       { code: 50, module: "ATTENDANCE", scopes: TEAM_OR_COMPANY, implies: ["attendance.view_team"], notOnOwn: true },
+    // Deciding requests (§6.4, §6.6): overtime — after the fact or ahead of
+    // it — and permission hours (إذن). A missing punch is a correction, so it
+    // is attendance.correct's to decide. Never one's own.
+    "attendance.approve_overtime":    { code: 51, module: "ATTENDANCE", scopes: TEAM_OR_COMPANY, implies: ["attendance.view_team"], notOnOwn: true },
+    "attendance.approve_permissions": { code: 52, module: "ATTENDANCE", scopes: TEAM_OR_COMPANY, implies: ["attendance.view_team"], notOnOwn: true },
 } as const satisfies Record<string, PermissionDefinition>
 
 export type Permission = keyof typeof PERMISSIONS

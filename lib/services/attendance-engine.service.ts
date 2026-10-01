@@ -90,7 +90,7 @@ export class AttendanceEngineService {
 
             // A day either side, for night shifts that start before the month or end after it.
             const loadFrom = addDays(from, -1), loadTo = addDays(through, 1)
-            const [schedules, assignments, defaults, people, central, exclusions, own, punches, leave] = await Promise.all([
+            const [schedules, assignments, defaults, people, central, exclusions, own, punches, leave, permissions, decisions] = await Promise.all([
                 tx.workSchedule.findMany({ where: { companyId }, include: SCHEDULE_INCLUDE }),
                 tx.userSchedule.findMany({ where: { schedule: { companyId }, ...scope }, select: { userId: true, scheduleId: true, effectiveFrom: true } }),
                 tx.scheduleDefault.findMany({ where: { companyId }, select: { scheduleId: true, effectiveFrom: true } }),
@@ -115,6 +115,15 @@ export class AttendanceEngineService {
                 tx.dayOffRequest.findMany({
                     where: { status: "APPROVED", user: { companyId }, ...scope, date: { lte: wallClock(`${loadTo}T23:59:59`) } },
                     select: { userId: true, date: true, endDate: true },
+                }),
+                // Approved permission hours excuse lateness or early leave (§6.6).
+                tx.permissionRequest.findMany({
+                    where: { companyId, status: "APPROVED", ...scope, date: { gte: wallClock(`${from}T00:00:00`), lte: wallClock(`${through}T00:00:00`) } },
+                    select: { userId: true, date: true, type: true, minutes: true },
+                }),
+                tx.overtimeApproval.findMany({
+                    where: { companyId, ...scope, date: { gte: wallClock(`${from}T00:00:00`), lte: wallClock(`${through}T00:00:00`) } },
+                    select: { userId: true, date: true, status: true, approvedMinutes: true },
                 }),
             ])
             const policies = await AttendancePolicyService.versions(companyId)
@@ -169,10 +178,17 @@ export class AttendanceEngineService {
                     // Before their first day or after their last, a person has no attendance.
                     if (person.EmploymentEvent.length > 0 && !employed.some(touches)) continue
                     const plan = plans.get(date)!
+                        const excused = { late: 0, early: 0 }
+                    for (const p of permissions) {
+                        if (p.userId !== person.id || toDateString(p.date) !== date) continue
+                        if (p.type === "LATE_ARRIVAL") excused.late += p.minutes
+                        if (p.type === "EARLY_LEAVE") excused.early += p.minutes
+                    }
                     const day = measureDay({
                         date, expected: plan.expected, punches: grouped.get(date) ?? [],
-                        onLeave: leaveDays.has(date), suspended: suspended.some(covers),
+                        onLeave: leaveDays.has(date), suspended: suspended.some(covers), excused,
                     })
+                    const decision = decisions.find(o => o.userId === person.id && toDateString(o.date) === date)
                     const policy = policyOn(policies, date)
                     const rate = rateAt(person.SalaryChange as any, noon)
                     const base = plan.schedule ? versionOn(plan.schedule.versions, date) : null
@@ -182,6 +198,8 @@ export class AttendanceEngineService {
                         monthlyMinor: rate ? toMinor(Number(rate.monthlyAmount)) : null,
                         daysInMonth: daysInMonth(Number(date.slice(0, 4)), Number(date.slice(5, 7))),
                         paidMinutes: paidMinutesOf(plan.expected, base),
+                        overtimeDecision: decision && decision.status !== "PENDING" && decision.status !== "CANCELLED"
+                            ? { status: decision.status, minutes: decision.approvedMinutes } : null,
                     })
                 }
 

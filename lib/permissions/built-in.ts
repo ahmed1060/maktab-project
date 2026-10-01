@@ -122,6 +122,9 @@ export const BUILT_IN_GRANTS: Record<BuiltInRole, Grants> = {
         // 20261010000000.
         "attendance.view_team": "COMPANY",
         "attendance.correct": "COMPANY",
+        // Deciding overtime and permission hours: added by migration 20261012000000.
+        "attendance.approve_overtime": "COMPANY",
+        "attendance.approve_permissions": "COMPANY",
     },
     // A Team Leader sees their team in the employee list and can look each of
     // them up — TEAM scope, enforced by buildUserWhereClause and

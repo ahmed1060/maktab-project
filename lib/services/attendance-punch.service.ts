@@ -54,6 +54,30 @@ function visibleWhere(v: Visibility): Prisma.AttendancePunchWhereInput {
     return { userId: v.userId }
 }
 
+/**
+ * Writes one punch added by hand, and its audit entry, inside the caller's
+ * transaction — which has taken the month's lock and checked it is open.
+ * Shared with an approved report of a missing punch (P0.6).
+ */
+export async function insertManualPunch(
+    tx: Prisma.TransactionClient,
+    input: { companyId: string; timezone: string; userId: string; local: string; direction: "IN" | "OUT" | null; note: string; actorId: string },
+): Promise<string> {
+    const id = randomUUID()
+    await tx.attendancePunch.create({
+        data: {
+            id, companyId: input.companyId, userId: input.userId, source: "MANUAL", sourceKey: id,
+            punchAtLocal: wallClock(input.local), punchAt: localToInstant(input.local, input.timezone), resolvedWithTimeZone: input.timezone,
+            direction: input.direction, note: input.note, createdById: input.actorId,
+        },
+    })
+    await AuditLogService.log("ADD_ATTENDANCE_PUNCH", "ATTENDANCE_PUNCH", id, {
+        tx, ...(await actorOf(tx, input.actorId)),
+        details: { companyId: input.companyId, userId: input.userId, at: input.local, direction: input.direction, reason: input.note },
+    })
+    return id
+}
+
 export type ImportOptions = { dateOrder: DateOrder; columns?: ColumnMap | null }
 
 export type ImportReport = {
@@ -287,18 +311,7 @@ export class AttendancePunchService {
             const company = await tx.company.findUnique({ where: { id: companyId }, select: { timezone: true } }) ?? fail("COMPANY_NOT_FOUND")
             await lockMonths(tx, companyId, [monthOf(local)])
             if ((await lockedMonths(tx, companyId, [monthOf(local)])).size > 0) fail("PAYROLL_MONTH_LOCKED")
-            const id = randomUUID()
-            await tx.attendancePunch.create({
-                data: {
-                    id, companyId, userId: person.id, source: "MANUAL", sourceKey: id,
-                    punchAtLocal: wallClock(local), punchAt: localToInstant(local, company.timezone), resolvedWithTimeZone: company.timezone,
-                    direction: input.direction, note: input.note.trim(), createdById: actorId,
-                },
-            })
-            await AuditLogService.log("ADD_ATTENDANCE_PUNCH", "ATTENDANCE_PUNCH", id, {
-                tx, ...(await actorOf(tx, actorId)),
-                details: { companyId, userId: person.id, at: local, direction: input.direction, reason: input.note.trim() },
-            })
+            const id = await insertManualPunch(tx, { companyId, timezone: company.timezone, userId: person.id, local, direction: input.direction, note: input.note.trim(), actorId })
             return { id }
         })
         // From the day before: a punch after midnight may close the night before's shift.

@@ -128,7 +128,7 @@ describe("pricing a month", () => {
     it("holds overtime that needs approval at zero until approved, and prices it by the kind of day", () => {
         const [pending] = priceMonth([input(day("2026-10-04", { overtimeMinutes: 60 }))])
         expect(pending).toMatchObject({ overtimeStatus: "PENDING", overtimeMinor: 0 })
-        const [approved] = priceMonth([input(day("2026-10-04", { overtimeMinutes: 60 }), { approvedOvertimeMinutes: 60 })])
+        const [approved] = priceMonth([input(day("2026-10-04", { overtimeMinutes: 60 }), { overtimeDecision: { status: "APPROVED", minutes: 60 } })])
         // An hour of a 420-minute paid day at 300.00 a day, times 1.35.
         expect(approved).toMatchObject({ overtimeStatus: "APPROVED", overtimeMinor: Math.round(30000 * 60 / 420 * 1.35) })
         const noApproval: PolicyBody = { ...STANDARD_OFFICE, overtime: { ...STANDARD_OFFICE.overtime, requiresApproval: false } }
@@ -136,6 +136,15 @@ describe("pricing a month", () => {
         expect(holiday.overtimeMinor).toBe(Math.round(30000 * 120 / 420 * 3))
         const [short] = priceMonth([input(day("2026-10-04", { overtimeMinutes: 20 }), { policy: noApproval })])
         expect(short).toMatchObject({ overtimeStatus: "NOT_COUNTED", overtimeMinor: 0 })
+    })
+
+    it("pays approved overtime only up to what was worked, and rejected overtime not at all (P0.6)", () => {
+        const [part] = priceMonth([input(day("2026-10-04", { overtimeMinutes: 90 }), { overtimeDecision: { status: "APPROVED", minutes: 30 } })])
+        expect(part).toMatchObject({ overtimeStatus: "APPROVED", overtimeMinor: Math.round(30000 * 30 / 420 * 1.35) })
+        const [more] = priceMonth([input(day("2026-10-04", { overtimeMinutes: 60 }), { overtimeDecision: { status: "APPROVED", minutes: 240 } })])
+        expect(more.overtimeMinor).toBe(Math.round(30000 * 60 / 420 * 1.35))
+        const [rejected] = priceMonth([input(day("2026-10-04", { overtimeMinutes: 60 }), { overtimeDecision: { status: "REJECTED", minutes: 0 } })])
+        expect(rejected).toMatchObject({ overtimeStatus: "REJECTED", overtimeMinor: 0 })
     })
 
     it("prices nothing on an incomplete day, before a policy, or without a salary — and says which", () => {
