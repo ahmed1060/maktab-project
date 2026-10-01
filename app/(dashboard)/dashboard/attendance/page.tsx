@@ -12,6 +12,7 @@ import { useToast } from '@/context/ToastContext'
 import { send, json } from './send'
 import RequestsTab, { AskPermissionModal, ReportMissingModal } from './RequestsTab'
 import AddPunchModal from './AddPunchModal'
+import { checkoutDate } from '@/lib/attendance/checkout-date'
 import ExceptionsTab from './ExceptionsTab'
 import LoadingSpinner from '@/components/LoadingSpinner'
 import ConfirmModal from '@/components/ConfirmModal'
@@ -248,7 +249,7 @@ function DaysTab({ q, companyId, today }: { q: string; companyId: string | null;
                                                 {oneself && (
                                                     <td style={{ textAlign: 'end' }}>
                                                         {d.userId === me && askFor(d) && <button type="button" className="btn btn-secondary" style={{ fontSize: '0.75rem', padding: '0.2rem 0.5rem', whiteSpace: 'nowrap' }} onClick={() => setAsking(askFor(d) || null)}>{t('req_ask_permission')}</button>}
-                                                        {d.userId === me && d.status === 'INCOMPLETE' && <button type="button" className="btn btn-secondary" style={{ fontSize: '0.75rem', padding: '0.2rem 0.5rem', whiteSpace: 'nowrap' }} onClick={() => setReporting(d.date)}>{t('req_report_missing')}</button>}
+                                                        {d.userId === me && d.status === 'INCOMPLETE' && <button type="button" className="btn btn-secondary" style={{ fontSize: '0.75rem', padding: '0.2rem 0.5rem', whiteSpace: 'nowrap' }} onClick={() => setReporting(checkoutDate(d.date, d.expectedEndMinutes))}>{t('req_report_missing')}</button>}
                                                     </td>
                                                 )}
                                             </tr>

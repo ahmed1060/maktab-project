@@ -1412,6 +1412,7 @@ export const en = {
         sim_run: "Preview on last month",
         sim_stale: "The rules have changed since this preview. Run it again to see them.",
         sim_summary: "Under these rules, {month} would have cost {then} in deductions instead of {now} ({diff}).",
+        sim_summary_days: "Under these rules, {month} would have deducted {then} instead of {now}. (Money is shown only to those who may see salaries.)",
         sim_overtime: "Overtime pay {diff}.",
         sim_no_days: "No days were measured in that month, so there is nothing to compare.",
         sim_no_change: "Nobody's deductions or overtime would change.",

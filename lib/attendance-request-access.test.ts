@@ -52,7 +52,8 @@ vi.mock("@/lib/services/attendance-exception.service", () => ({
     AttendanceExceptionService: {
         list: async (companyId: string, _q: any, visible: any, waiting: any) => {
             reached.push(`exceptions:${companyId}:${visible.kind}:${waiting.permissions?.kind ?? "-"}:${waiting.missing?.kind ?? "-"}:${waiting.unmatched}`)
-            return {}
+            const day = (userId: string) => ({ userId, teamLeaderId: null, deductionMinor: 15000, overtimeMinor: 2000 })
+            return { late: [day("emp"), day("hr")], early: [], absent: [day("emp")], incomplete: [], overtime: [day("emp")], decided: [], counts: {} }
         },
         decide: async (companyId: string, input: any) => { reached.push(`dayDecision:${companyId}:${input.userId}:${input.subject}:${input.outcome}`); return {} },
         decisionOf: async (id: string) => REQUESTS[id] ?? null,
@@ -231,6 +232,18 @@ describe("daily exceptions (§13.1)", () => {
         employee()
         expect((await exceptions()).status).toBe(403)
         expect(reached).toEqual(["exceptions:c1:COMPANY:COMPANY:COMPANY:true", "exceptions:c1:TEAM:-:TEAM:false"])
+    })
+
+    it("show what a day cost only to whoever may see that person's pay (review on #15)", async () => {
+        const money = async () => {
+            const body = (await (await exceptions()).json()).data
+            return [...body.late, ...body.absent, ...body.overtime].map((d: any) => [d.userId, d.deductionMinor, d.overtimeMinor])
+        }
+        admin()
+        expect(await money()).toEqual([["emp", 15000, 2000], ["hr", 15000, 2000], ["emp", 15000, 2000], ["emp", 15000, 2000]])
+        // Attendance at company scope, but no salary.view: minutes, not money — except one's own.
+        signIn({ id: "hr", role: "EMPLOYEE", companyId: "c1", grants: { "attendance.view_team": "COMPANY", "attendance.correct": "COMPANY" } })
+        expect(await money()).toEqual([["emp", null, null], ["hr", 15000, 2000], ["emp", null, null], ["emp", null, null]])
     })
 
     it("ask for real dates, in order, and at most two months", async () => {

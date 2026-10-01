@@ -467,8 +467,9 @@ export function PolicyEditor({ companyId, start, defaultFrom, today, weekday, fr
     )
 }
 
-type Sum = { deductionDays: number; deductionMinor: number; overtimeMinor: number; days: number }
-type Simulation = { month: string; people: { userId: string; name: string; current: Sum; draft: Sum }[]; totals: { current: Sum; draft: Sum } }
+type Sum = { deductionDays: number; deductionMinor: number | null; overtimeMinor: number | null; days: number }
+/** Money is null for whoever may not see salaries: then the preview is in days. */
+type Simulation = { month: string; moneyHidden?: boolean; people: { userId: string; name: string; current: Sum; draft: Sum }[]; totals: { current: Sum; draft: Sum } }
 
 /**
  * "Under this rule, last month would have been…" (§6.7): the draft replayed
@@ -495,7 +496,10 @@ function SimulationPreview({ companyId, draft }: { companyId: string; draft: Pol
     }
 
     const data = result?.data
-    const changed = data?.people.filter(x => x.current.deductionMinor !== x.draft.deductionMinor || x.current.overtimeMinor !== x.draft.overtimeMinor) ?? []
+    const hidden = !!data?.moneyHidden
+    const changed = data?.people.filter(x => x.current.deductionDays !== x.draft.deductionDays || x.current.deductionMinor !== x.draft.deductionMinor || x.current.overtimeMinor !== x.draft.overtimeMinor) ?? []
+    const days = (n: number) => t('day_days').replace('{n}', String(n))
+    const signedDays = (n: number) => `${n > 0 ? '+' : n < 0 ? '−' : ''}${days(Math.round(Math.abs(n) * 10_000) / 10_000)}`
     return (
         <fieldset style={{ border: '1px solid var(--border)', borderRadius: '0.75rem', padding: '0.85rem', margin: 0, display: 'grid', gap: '0.6rem' }}>
             <legend style={{ fontWeight: 600, padding: '0 0.35rem' }}>{t('sim_title')}</legend>
@@ -507,13 +511,18 @@ function SimulationPreview({ companyId, draft }: { companyId: string; draft: Pol
                 <>
                     {result.for !== key && <p role="status" style={{ margin: 0, color: 'var(--warn-fg)', fontSize: '0.82rem' }}>{t('sim_stale')}</p>}
                     <p style={{ margin: 0, fontSize: '0.88rem' }}>
-                        {t('sim_summary')
-                            .replace('{month}', data.month)
-                            .replace('{now}', money(data.totals.current.deductionMinor))
-                            .replace('{then}', money(data.totals.draft.deductionMinor))
-                            .replace('{diff}', signed(data.totals.draft.deductionMinor - data.totals.current.deductionMinor))}
-                        {data.totals.current.overtimeMinor !== data.totals.draft.overtimeMinor && (
-                            <> {t('sim_overtime').replace('{diff}', signed(data.totals.draft.overtimeMinor - data.totals.current.overtimeMinor))}</>
+                        {hidden
+                            ? t('sim_summary_days')
+                                .replace('{month}', data.month)
+                                .replace('{now}', days(data.totals.current.deductionDays))
+                                .replace('{then}', days(data.totals.draft.deductionDays))
+                            : t('sim_summary')
+                                .replace('{month}', data.month)
+                                .replace('{now}', money(data.totals.current.deductionMinor ?? 0))
+                                .replace('{then}', money(data.totals.draft.deductionMinor ?? 0))
+                                .replace('{diff}', signed((data.totals.draft.deductionMinor ?? 0) - (data.totals.current.deductionMinor ?? 0)))}
+                        {!hidden && data.totals.current.overtimeMinor !== data.totals.draft.overtimeMinor && (
+                            <> {t('sim_overtime').replace('{diff}', signed((data.totals.draft.overtimeMinor ?? 0) - (data.totals.current.overtimeMinor ?? 0)))}</>
                         )}
                     </p>
                     {data.totals.current.days === 0 ? <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--text-soft)' }}>{t('sim_no_days')}</p>
@@ -526,12 +535,12 @@ function SimulationPreview({ companyId, draft }: { companyId: string; draft: Pol
                                             {changed.map(x => (
                                                 <tr key={x.userId}>
                                                     <td>{x.name}</td>
-                                                    <td><bdi>{money(x.current.deductionMinor)}</bdi><div style={{ color: 'var(--text-soft)', fontSize: '0.75rem' }}>{t('day_days').replace('{n}', String(x.current.deductionDays))}</div></td>
-                                                    <td><bdi>{money(x.draft.deductionMinor)}</bdi><div style={{ color: 'var(--text-soft)', fontSize: '0.75rem' }}>{t('day_days').replace('{n}', String(x.draft.deductionDays))}</div></td>
+                                                    <td>{hidden ? days(x.current.deductionDays) : <><bdi>{money(x.current.deductionMinor ?? 0)}</bdi><div style={{ color: 'var(--text-soft)', fontSize: '0.75rem' }}>{days(x.current.deductionDays)}</div></>}</td>
+                                                    <td>{hidden ? days(x.draft.deductionDays) : <><bdi>{money(x.draft.deductionMinor ?? 0)}</bdi><div style={{ color: 'var(--text-soft)', fontSize: '0.75rem' }}>{days(x.draft.deductionDays)}</div></>}</td>
                                                     <td style={{ fontWeight: 600 }}>
-                                                        <bdi>{signed(x.draft.deductionMinor - x.current.deductionMinor)}</bdi>
-                                                        {x.current.overtimeMinor !== x.draft.overtimeMinor && (
-                                                            <div style={{ color: 'var(--text-soft)', fontSize: '0.75rem', fontWeight: 400 }}>{t('sim_overtime').replace('{diff}', signed(x.draft.overtimeMinor - x.current.overtimeMinor))}</div>
+                                                        <bdi>{hidden ? signedDays(x.draft.deductionDays - x.current.deductionDays) : signed((x.draft.deductionMinor ?? 0) - (x.current.deductionMinor ?? 0))}</bdi>
+                                                        {!hidden && x.current.overtimeMinor !== x.draft.overtimeMinor && (
+                                                            <div style={{ color: 'var(--text-soft)', fontSize: '0.75rem', fontWeight: 400 }}>{t('sim_overtime').replace('{diff}', signed((x.draft.overtimeMinor ?? 0) - (x.current.overtimeMinor ?? 0)))}</div>
                                                         )}
                                                     </td>
                                                 </tr>

@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation"
 import { useLanguage } from "@/context/LanguageContext"
 import { renderNotice, type NoticeParam } from "@/lib/notice"
 import type { TranslationKey } from "@/lib/translations"
+import { attendanceNoticeTarget } from "@/lib/attendance-notice-target"
 
 interface Notification {
     id: string
@@ -90,9 +91,13 @@ export default function NotificationBell({ initialUnreadCount = 0 }: { initialUn
             // Normalize type - handle subtypes like TASK_ASSIGNED, TASK_COMPLETED, etc.
             const type = notification.type.toUpperCase()
 
-            // First: a role request's type must not fall through to the
-            // REQUEST branch below, which reads an internal request's id.
-            if (type.startsWith('ROLE_')) {
+            // First: neither an attendance notification nor a role request's
+            // may fall through to the REQUEST branch below, which reads an
+            // internal request's id.
+            const attendance = attendanceNoticeTarget(type, notification.relatedId)
+            if (attendance) {
+                router.push(attendance)
+            } else if (type.startsWith('ROLE_')) {
                 if (notification.relatedId.startsWith('/')) router.push(notification.relatedId)
             } else if (type.includes('SUBSCRIPTION')) {
                 // The first notification type a Super Admin can receive. Its

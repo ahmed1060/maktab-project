@@ -103,6 +103,7 @@ export const KNOWN_REFUSALS: Record<string, { status: 400 | 403 | 404 | 409; mes
     ATTENDANCE_PAYROLL_MONTH_PAID: { status: 409, message: "That month's payroll is already approved. Choose a month after the last approved payroll." },
     DISCREPANCY_NOT_FOUND: { status: 404, message: "Not found." },
     DISCREPANCY_ALREADY_RESOLVED: { status: 409, message: "That has already been marked resolved." },
+    NOTHING_TO_DECIDE: { status: 409, message: "That day has nothing of that kind to decide: it isn't late, early or absent as measured." },
     SOME_TASKS_NOT_FOUND_OR_ACCESS_DENIED: { status: 403, message: "Some of these tasks don't exist, or aren't yours to pay." },
 }
 

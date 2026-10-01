@@ -91,6 +91,13 @@ describe.skipIf(!ADMIN_URL)("daily exceptions, in Postgres", () => {
         expect(out.counts).toMatchObject({ late: 3, early: 0, incomplete: 1, overtime: 1, permissions: null, missing: null, unmatched: null })
     })
 
+    it("reads each kind with a bounded query, and says when there are more than it shows (review on #15)", async () => {
+        const out = await Exceptions.list("c1", { from: "2026-10-01", to: "2026-10-19" }, ALL, NONE, 2)
+        expect(dates(out.late)).toEqual(["2026-10-07", "2026-10-08"])
+        expect(out.capped).toMatchObject({ late: true, incomplete: false, overtime: false })
+        expect(out.counts.late).toBe(2)
+    })
+
     it("excuses lateness with a reason: not charged, recorded as excused, off the list", async () => {
         expect(await day("2026-10-08")).toMatchObject({ lateMinutes: 60, deductionMinor: 15000 })
         await expect(Exceptions.decide("c1", { userId: "e1", date: "2026-10-08", subject: "LATENESS", outcome: "EXCUSED" }, "a1")).rejects.toEqual(refusal("REASON_REQUIRED"))
@@ -108,6 +115,16 @@ describe.skipIf(!ADMIN_URL)("daily exceptions, in Postgres", () => {
         await Exceptions.decide("c1", { userId: "e1", date: "2026-10-14", subject: "ABSENCE", outcome: "ACCEPTED" }, "a1")
         expect(await day("2026-10-14")).toMatchObject({ status: "ABSENT", deductionMinor: 30000 })
         expect(dates((await list()).absent)).toEqual(["2026-10-15", "2026-10-18", "2026-10-19"])
+    })
+
+    it("decides only an exception that is there: not a day in advance, not lateness that wasn't (review on #15)", async () => {
+        await expect(Exceptions.decide("c1", { userId: "e1", date: "2026-10-27", subject: "ABSENCE", outcome: "EXCUSED", reason: "In advance" }, "a1")).rejects.toEqual(refusal("NOTHING_TO_DECIDE"))
+        // The 1st was on time: no lateness to excuse, and not an absence either.
+        await expect(Exceptions.decide("c1", { userId: "e1", date: "2026-10-01", subject: "LATENESS", outcome: "EXCUSED", reason: "x" }, "a1")).rejects.toEqual(refusal("NOTHING_TO_DECIDE"))
+        await expect(Exceptions.decide("c1", { userId: "e1", date: "2026-10-01", subject: "ABSENCE", outcome: "ACCEPTED" }, "a1")).rejects.toEqual(refusal("NOTHING_TO_DECIDE"))
+        // A decision already made can be changed: the 13th's excuse, accepted instead.
+        await Exceptions.decide("c1", { userId: "e1", date: "2026-10-13", subject: "ABSENCE", outcome: "ACCEPTED" }, "a1")
+        await Exceptions.decide("c1", { userId: "e1", date: "2026-10-13", subject: "ABSENCE", outcome: "EXCUSED", reason: "Hospital, note seen" }, "a1")
     })
 
     it("can be withdrawn: the day is charged as measured, and listed again", async () => {
