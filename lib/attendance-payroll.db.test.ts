@@ -198,7 +198,7 @@ describe.skipIf(!ADMIN_URL)("attendance in payroll, in Postgres", () => {
         // Leave approved for Ehab's absence on the 8th, after the month was paid.
         await prisma.dayOffRequest.create({ data: { id: "late-leave", userId: "e1", type: "REGULAR", status: "APPROVED", date: new Date("2026-09-08T00:00:00Z") } })
         expect(await Engine.recomputeMonth("c1", "2026-09")).toMatchObject({ locked: true, discrepancies: 1 })
-        const [d] = await Discrepancies.list("c1")
+        const [d] = (await Discrepancies.list("c1")).open
         expect(d).toMatchObject({ userId: "e1", date: "2026-09-08", paidDeductionMinor: 31000, nowDeductionMinor: 0, paidStatus: "ABSENT", nowStatus: "LEAVE", differenceMinor: 31000, resolvedAt: null })
         // Listed on the register even once attendance has stopped reaching payroll (review on #16).
         await db.query(`UPDATE "Company" SET "attendancePayrollFrom" = NULL WHERE id = 'c1'`)
@@ -210,21 +210,43 @@ describe.skipIf(!ADMIN_URL)("attendance in payroll, in Postgres", () => {
         // Withdrawn before anybody acted: nothing left to settle.
         await prisma.dayOffRequest.delete({ where: { id: "late-leave" } })
         await Engine.recomputeMonth("c1", "2026-09")
-        expect(await Discrepancies.list("c1")).toEqual([])
+        expect(await Discrepancies.list("c1")).toMatchObject({ open: [], openCount: 0, resolved: [] })
 
         // Approved again, settled, then changed again: open once more.
         await prisma.dayOffRequest.create({ data: { id: "late-leave", userId: "e1", type: "REGULAR", status: "APPROVED", date: new Date("2026-09-08T00:00:00Z") } })
         await Engine.recomputeMonth("c1", "2026-09")
-        const [open] = await Discrepancies.list("c1")
+        const [open] = (await Discrepancies.list("c1")).open
         await expect(Discrepancies.resolve(open.id, " ", "a1", false)).rejects.toThrow("REASON_REQUIRED")
         await Discrepancies.resolve(open.id, "Refunded 310.00 in October", "a1", false)
         await expect(Discrepancies.resolve(open.id, "again", "a1", false)).rejects.toThrow("DISCREPANCY_ALREADY_RESOLVED")
-        expect((await Discrepancies.list("c1"))[0]).toMatchObject({ resolution: "Refunded 310.00 in October", resolvedById: "a1" })
+        expect((await Discrepancies.list("c1")).resolved[0]).toMatchObject({ resolution: "Refunded 310.00 in October", resolvedById: "a1" })
         await Engine.recomputeMonth("c1", "2026-09")
-        expect((await Discrepancies.list("c1"))[0].resolvedAt).not.toBeNull()
+        expect((await Discrepancies.list("c1")).resolved[0].resolvedAt).not.toBeNull()
         await prisma.salaryChange.create({ data: { id: "back", userId: "e1", monthlyAmount: 12000, effectiveFrom: new Date("2026-08-31T21:00:00Z") } })
         await Engine.recomputeMonth("c1", "2026-09")
         const after = await Discrepancies.list("c1")
-        expect(after.filter(x => !x.resolvedAt).length).toBeGreaterThan(0)
+        expect(after.open.length).toBeGreaterThan(0)
+    })
+
+    it("lists every open difference a page at a time, none cut off (review on #16)", async () => {
+        const { AttendanceDiscrepancyService: Discrepancies } = await import("@/lib/services/attendance-discrepancy.service")
+        const { rows: [run] } = await db.query(`SELECT id FROM "PayrollRun" WHERE "companyId" = 'c1'`)
+        for (const day of ["01", "02", "03", "06", "07"]) {
+            await db.query(`INSERT INTO "AttendanceDiscrepancy"(id, "companyId", "userId", date, "payrollRunId", "paidDeductionMinor", "paidOvertimeMinor", "nowDeductionMinor", "nowOvertimeMinor", "paidStatus", "nowStatus", "updatedAt")
+                VALUES ($1, 'c1', 'a1', $2, $3, 100, 0, 0, 0, 'ABSENT', 'PRESENT', now())`, [`page-${day}`, `2026-09-${day}`, run.id])
+        }
+        const all = (await Discrepancies.list("c1", { limit: 1000 })).open.map(d => d.id)
+        const seen: string[] = []
+        let page = await Discrepancies.list("c1", { limit: 2 })
+        expect(page.openCount).toBe(all.length)
+        seen.push(...page.open.map(d => d.id))
+        while (page.nextCursor) {
+            page = await Discrepancies.list("c1", { limit: 2, after: page.nextCursor })
+            expect(page.resolved).toEqual([])
+            seen.push(...page.open.map(d => d.id))
+        }
+        expect(seen).toEqual(all)
+        expect(all.length).toBeGreaterThan(5)
+        await expect(Discrepancies.list("c1", { after: "yesterday" })).rejects.toThrow("INVALID_CURSOR")
     })
 })

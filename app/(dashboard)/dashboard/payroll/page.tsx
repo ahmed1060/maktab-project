@@ -1,6 +1,7 @@
 'use client'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import useSWR from 'swr'
+import useSWRInfinite from 'swr/infinite'
 import { fetcher, SWRError } from '@/lib/swr-fetcher'
 import { useSession } from 'next-auth/react'
 import { useLanguage } from '@/context/LanguageContext'
@@ -150,9 +151,20 @@ export default function PayrollRegisterPage() {
     const loading = !session || isLoading
     // Attendance changed after a payroll was approved (§12.3): whenever any is
     // open, whatever the switch says now.
-    const { data: discrepancyBody, mutate: reloadDiscrepancies } = useSWR(
-        view?.attendance?.discrepanciesOpen ? `/api/attendance/discrepancies${companyId ? `?companyId=${encodeURIComponent(companyId)}` : ''}` : null, fetcher)
-    const discrepancies: Discrepancy[] = discrepancyBody?.data?.discrepancies ?? []
+    // A page at a time: every open one is money owed, so none is cut off.
+    type DiscrepancyPage = { data?: { open: Discrepancy[]; openCount: number; nextCursor: string | null } }
+    const { data: discrepancyPages, mutate: reloadDiscrepancies, size: discrepancyPageCount, setSize: setDiscrepancyPageCount } = useSWRInfinite<DiscrepancyPage>(
+        (i, previous: DiscrepancyPage | null) => {
+            if (!view?.attendance?.discrepanciesOpen) return null
+            if (i > 0 && !previous?.data?.nextCursor) return null
+            const q = new URLSearchParams()
+            if (companyId) q.set('companyId', companyId)
+            if (i > 0) q.set('after', previous!.data!.nextCursor!)
+            return `/api/attendance/discrepancies${q.size ? `?${q}` : ''}`
+        }, fetcher)
+    const discrepancies: Discrepancy[] = (discrepancyPages ?? []).flatMap(p => p.data?.open ?? [])
+    const discrepanciesOpen = discrepancyPages?.[0]?.data?.openCount ?? 0
+    const moreDiscrepancies = !!discrepancyPages?.[discrepancyPages.length - 1]?.data?.nextCursor
     const [resolving, setResolving] = useState<Discrepancy | null>(null)
     const resolve = async (reason?: string) => {
         const target = resolving
@@ -616,11 +628,11 @@ export default function PayrollRegisterPage() {
                     </>, 'warn')
             })()}
 
-            {discrepancies.some(d => !d.resolvedAt) && card(
+            {discrepancies.length > 0 && card(
                 <>
-                    <h2 style={{ margin: '0 0 0.35rem', fontSize: '1.05rem' }}>{t('attpay_changed_title')}</h2>
+                    <h2 style={{ margin: '0 0 0.35rem', fontSize: '1.05rem' }}>{t('attpay_changed_title')} ({discrepanciesOpen})</h2>
                     <p style={{ margin: '0 0 0.75rem', fontSize: '0.85rem' }}>{t('attpay_changed_msg')}</p>
-                    {discrepancies.filter(d => !d.resolvedAt).map(d => (
+                    {discrepancies.map(d => (
                         <div key={d.id} style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', alignItems: 'center', fontSize: '0.88rem', flexWrap: 'wrap', padding: '0.3rem 0' }}>
                             <span>
                                 <bdi>{d.date}</bdi> · {d.name}
@@ -636,6 +648,7 @@ export default function PayrollRegisterPage() {
                             </span>
                         </div>
                     ))}
+                    {moreDiscrepancies && <button className="btn btn-secondary" style={{ marginTop: '0.5rem' }} onClick={() => setDiscrepancyPageCount(discrepancyPageCount + 1)}>{t('attpay_show_more')}</button>}
                 </>, 'warn')}
 
             {register && card(

@@ -1353,6 +1353,7 @@ export const en = {
         attpay_dry_msg: "This month's attendance would deduct {deductions} and add {overtime} of overtime. Nothing is deducted until attendance is switched on in Company Settings → Attendance; this is to check the figures first.",
         attpay_changed_title: "Attendance changed after payroll",
         attpay_changed_msg: "These days changed after their month's payroll was approved. The paid month stays as it was; settle each with an adjustment in the current month, then mark it resolved.",
+        attpay_show_more: "Show more",
         attpay_owed_to: "{amount} owed to them",
         attpay_owed_by: "{amount} owed by them",
         attpay_resolve: "Mark resolved",

@@ -68,6 +68,7 @@ export const KNOWN_REFUSALS: Record<string, { status: 400 | 403 | 404 | 409; mes
     TEMPLATE_NAME_TAKEN: { status: 409, message: "There's already a template with that name." },
     // Punches (lib/services/attendance-punch.service.ts).
     INVALID_MONTH: { status: 400, message: "That isn't a month." },
+    INVALID_CURSOR: { status: 400, message: "That page marker isn't valid. Start from the first page." },
     REASON_REQUIRED: { status: 400, message: "Say why." },
     CANNOT_CORRECT_OWN: { status: 403, message: "Nobody can correct their own attendance." },
     USER_NOT_FOUND: { status: 404, message: "That person wasn't found in this company." },

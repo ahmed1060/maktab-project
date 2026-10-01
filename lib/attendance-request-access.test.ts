@@ -63,7 +63,7 @@ vi.mock("@/lib/services/attendance-exception.service", () => ({
 
 vi.mock("@/lib/services/attendance-discrepancy.service", () => ({
     AttendanceDiscrepancyService: {
-        list: async (companyId: string) => { reached.push(`discrepancies:${companyId}`); return [] },
+        list: async (companyId: string, page: { after?: string | null }) => { reached.push(`discrepancies:${companyId}${page.after ? `:${page.after}` : ""}`); return { open: [], openCount: 0, nextCursor: null, resolved: [] } },
         of: async (id: string) => ({ x1: { id: "x1", companyId: "c1", resolvedAt: null }, x2: { id: "x2", companyId: "c2", resolvedAt: null } } as any)[id] ?? null,
         resolve: async (id: string) => { reached.push(`resolve:${id}`) },
     },
@@ -281,6 +281,8 @@ describe("attendance changed after payroll (§12.3)", () => {
     it("is seen by whoever sees payroll, and settled by whoever prepares it, in their own company", async () => {
         admin()
         expect((await list()).status).toBe(200)
+        // The next page of open ones follows from the last (review on #16).
+        expect((await (await import("@/app/api/attendance/discrepancies/route")).GET(new Request(url("/api/attendance/discrepancies?after=2026-09-08_d1")))).status).toBe(200)
         expect((await resolve("x1")).status).toBe(200)
         expect((await resolve("x2")).status).toBe(404)
         expect((await resolve("nope")).status).toBe(404)
@@ -289,6 +291,6 @@ describe("attendance changed after payroll (§12.3)", () => {
         expect((await resolve("x1")).status).toBe(403)
         employee()
         expect((await list()).status).toBe(403)
-        expect(reached).toEqual(["discrepancies:c1", "resolve:x1", "discrepancies:c1"])
+        expect(reached).toEqual(["discrepancies:c1", "discrepancies:c1:2026-09-08_d1", "resolve:x1", "discrepancies:c1"])
     })
 })
