@@ -156,7 +156,7 @@ describe("page paths and their guards", () => {
         const gated = ALL_MODULES.filter(m => MODULE_BUNDLE[m] !== null)
         for (const mod of gated) {
             const reachable =
-                ['/dashboard/tasks', '/dashboard/obligations', '/dashboard/clients', '/dashboard/vendors', '/dashboard/costs', '/dashboard/day-off-requests']
+                ['/dashboard/tasks', '/dashboard/obligations', '/dashboard/clients', '/dashboard/vendors', '/dashboard/costs', '/dashboard/day-off-requests', '/dashboard/attendance']
                     .some(p => moduleForPagePath(p) === mod) ||
                 ['/api/tasks', '/api/obligations', '/api/clients', '/api/vendors', '/api/day-off-requests',
                  '/api/tasks/abc/penalty', '/api/users/abc/salary-history', '/api/tasks/payment/bulk']

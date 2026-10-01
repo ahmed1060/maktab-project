@@ -40,6 +40,7 @@ const REVIEWS = "20261003000000_access_reviews"
 const NOTICE_KEYS = "20261004000000_notification_keys"
 const REVIEW_SNAPSHOTS = "20261005000000_access_review_snapshots"
 const ADMIN_SETTINGS = "20261006000000_admin_settings"
+const ATTENDANCE_ADDONS = "20261007000000_attendance_addons"
 const sql = (name: string) => readFileSync(`prisma/migrations/${name}/migration.sql`, "utf8")
 
 const BEFORE_ROLES = `
@@ -79,6 +80,7 @@ describe.skipIf(!ADMIN_URL)("roles as data, in Postgres", () => {
         await db.query(sql(NOTICE_KEYS))
         await db.query(sql(REVIEW_SNAPSHOTS))
         await db.query(sql(ADMIN_SETTINGS))
+        await db.query(sql(ATTENDANCE_ADDONS))
         prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: url.toString() }) })
         // The services that manage roles use the application's client; point it
         // here before its first use (it is built lazily).

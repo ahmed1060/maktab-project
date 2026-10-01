@@ -37,6 +37,11 @@ const API_MODULE_ROUTES: ReadonlyArray<readonly [string, Module]> = [
     // collected out of the next month. Listed the moment the route existed,
     // rather than discovered by the next audit.
     ['/api/debts', 'PAYROLL'],
+
+    // --- Attendance (either add-on) ---
+    // Listed before any route exists under it, so the first one inherits the
+    // gate rather than being the one that ships without it.
+    ['/api/attendance', 'ATTENDANCE'],
 ] as const
 
 /**
@@ -110,6 +115,7 @@ const PAGE_MODULE_ROUTES: ReadonlyArray<readonly [string, Module]> = [
     ['/dashboard/day-off-requests', 'DAY_OFF'],
     ['/dashboard/payroll', 'PAYROLL'],
     ['/dashboard/documents', 'PAYROLL'],
+    ['/dashboard/attendance', 'ATTENDANCE'],
 ] as const
 
 const PAGES_BY_SPECIFICITY = [...PAGE_MODULE_ROUTES].sort((a, b) => b[0].length - a[0].length)

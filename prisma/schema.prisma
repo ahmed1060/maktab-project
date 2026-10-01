@@ -102,28 +102,33 @@ datasource db {
 // to enums) because it lets the compiler catch misuse. There are two of them,
 // not eight — see the bundles section of the plan.
 model Package {
-  id                   String    @id @default(uuid())
-  name                 String    @unique
-  description          String?
+  id                     String    @id @default(uuid())
+  name                   String    @unique
+  description            String?
   // Deactivated, never deleted. Setting isActive false removes a package from
   // the assignment dropdown while every company already on it keeps working.
   // A hard delete is unsafe: those companies' packageId would fall to null,
   // which in this design means grandfathered — silently handing paying
   // customers a free upgrade to everything. The FK below refuses it outright.
-  isActive             Boolean   @default(true)
+  isActive               Boolean   @default(true)
   // A bespoke per-contract package is assignable without appearing in the
   // standard catalogue.
-  isPublic             Boolean   @default(true)
-  priceMonthly         Decimal   @default(0) @db.Decimal(12, 2)
-  priceAnnual          Decimal   @default(0) @db.Decimal(12, 2)
+  isPublic               Boolean   @default(true)
+  priceMonthly           Decimal   @default(0) @db.Decimal(12, 2)
+  priceAnnual            Decimal   @default(0) @db.Decimal(12, 2)
   // Null means this package is not sold as a lifetime purchase at all, which is
   // different from being sold for nothing.
-  priceLifetime        Decimal?  @db.Decimal(12, 2)
-  hasCompanyManagement Boolean   @default(false)
-  hasHR                Boolean   @default(false)
-  createdAt            DateTime  @default(now())
-  updatedAt            DateTime  @updatedAt
-  companies            Company[]
+  priceLifetime          Decimal?  @db.Decimal(12, 2)
+  hasCompanyManagement   Boolean   @default(false)
+  hasHR                  Boolean   @default(false)
+  // The attendance add-ons (ATTENDANCE_PLAN.md §16), sold one or both, and
+  // only on top of HR: PackageService refuses either without it, and turning
+  // HR off turns both off.
+  hasAttendanceTerminals Boolean   @default(false)
+  hasAttendanceMobile    Boolean   @default(false)
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+  companies              Company[]
 
   @@index([isActive])
 }
@@ -324,45 +329,45 @@ model SystemSettings {
 }
 
 model SuperAdmin {
-  id                 String             @id @default(uuid())
-  email              String             @unique
-  password           String
-  firstName          String
-  lastName           String
-  avatar             String?
-  gender             String             @default("MALE")
-  createdAt          DateTime           @default(now())
-  updatedAt          DateTime           @updatedAt
-  language           String             @default("en")
+  id                  String              @id @default(uuid())
+  email               String              @unique
+  password            String
+  firstName           String
+  lastName            String
+  avatar              String?
+  gender              String              @default("MALE")
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+  language            String              @default("en")
   // Three states, not a boolean: "system" is the default and means follow the
   // operating system, which is what most people want and what every app they
   // already use does. A boolean cannot express it.
-  theme              String             @default("light")
-  username           String             @unique
-  sessionVersion     Int                @default(0)
-  mustChangePassword Boolean            @default(false)
+  theme               String              @default("light")
+  username            String              @unique
+  sessionVersion      Int                 @default(0)
+  mustChangePassword  Boolean             @default(false)
   // Founder-account protection: enforced by a DB trigger (see the
   // add_superadmin_protection migration), not just app code, since a
   // direct SQL DELETE bypasses application logic entirely. Deliberately a
   // per-row flag rather than hardcoded emails/IDs in application logic —
   // the same "magic identifier baked into code" pattern F-04 already
   // fixed once for credentials.
-  isProtected        Boolean            @default(false)
+  isProtected         Boolean             @default(false)
   // F-27 MFA. mfaEnabled is always true and locked on for a protected
   // SuperAdmin (enforced in app logic — see SuperAdminService); mfaSecret
   // is reversibly encrypted with MFA_ENCRYPTION_KEY, not hashed, since the
   // server has to read it back to compute the expected TOTP code on every
   // login. Distinct key from F-02's deleted ENCRYPTION_KEY — different
   // purpose, never to be confused with it.
-  mfaEnabled         Boolean            @default(false)
-  mfaSecret          String?
-  emailVerifiedAt    DateTime?
-  auditLogs          AuditLog[]
-  notifications      Notification[]
-  roleChangeAnswers  RoleChangeRequest[]
+  mfaEnabled          Boolean             @default(false)
+  mfaSecret           String?
+  emailVerifiedAt     DateTime?
+  auditLogs           AuditLog[]
+  notifications       Notification[]
+  roleChangeAnswers   RoleChangeRequest[]
   accessReviewAnswers AccessReviewLine[]
-  trustedDevices     TrustedDevice[]
-  verificationCodes  VerificationCode[]
+  trustedDevices      TrustedDevice[]
+  verificationCodes   VerificationCode[]
 }
 
 model User {
@@ -557,22 +562,22 @@ model Task {
 // supports a User row carrying role 'SUPER_ADMIN', whose notifications belong
 // under userId.
 model Notification {
-  id           String      @id @default(uuid())
-  userId       String?
-  superAdminId String?
-  type         String
+  id            String      @id @default(uuid())
+  userId        String?
+  superAdminId  String?
+  type          String
   /// The English text, as written. Kept for rows written before messageKey,
   /// and for anything that reads the text itself.
-  message      String
+  message       String
   /// What the message says, as a translation key and its details, so the bell
   /// shows it in the reader's language (lib/notice.ts). Null on older rows.
   messageKey    String?
   messageParams Json?
-  read         Boolean     @default(false)
-  relatedId    String?
-  createdAt    DateTime    @default(now())
-  user         User?       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  superAdmin   SuperAdmin? @relation(fields: [superAdminId], references: [id], onDelete: Cascade)
+  read          Boolean     @default(false)
+  relatedId     String?
+  createdAt     DateTime    @default(now())
+  user          User?       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  superAdmin    SuperAdmin? @relation(fields: [superAdminId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([read])
@@ -1190,43 +1195,43 @@ enum PayslipLineKind {
 /// the one thing a settlement must never be is ambiguous about which way it
 /// points.
 model FinalSettlement {
-  id             String           @id @default(uuid())
-  userId         String
-  companyId      String
+  id                  String           @id @default(uuid())
+  userId              String
+  companyId           String
   /// The last day they were employed. The contract ends at the start of the
   /// next one, matching EmploymentEvent's half-open convention.
-  lastWorkingDay DateTime
+  lastWorkingDay      DateTime
   /// What the final month's worked days were worth.
-  earnedAmount   Decimal          @db.Decimal(12, 2)
+  earnedAmount        Decimal          @db.Decimal(12, 2)
   /// What had already gone out for that month when the contract ended.
-  paidAmount     Decimal          @default(0) @db.Decimal(12, 2)
+  paidAmount          Decimal          @default(0) @db.Decimal(12, 2)
   /// earned − paid. Positive: the company owes. Negative: the person owes.
   ///
   /// Deliberately still just that, after debt netting arrived: the document
   /// shows earned, paid and their difference, and a net that quietly included
   /// something else would stop adding up in front of the person reading it.
-  netAmount      Decimal          @db.Decimal(12, 2)
+  netAmount           Decimal          @db.Decimal(12, 2)
   /// What this settlement took back against debts the person already owed.
   ///
   /// A separate line rather than folded into netAmount, and capped at netAmount
   /// so a settlement can never bill somebody on their way out. What it could
   /// not reach stays an OUTSTANDING debt — see I1.
-  debtRecoveredAmount Decimal     @default(0) @db.Decimal(12, 2)
-  status         SettlementStatus @default(PENDING)
+  debtRecoveredAmount Decimal          @default(0) @db.Decimal(12, 2)
+  status              SettlementStatus @default(PENDING)
   /// Defaults to the settlement date and is editable when something else is
   /// agreed, so the list of what is outstanding is a queue rather than a pile.
-  dueDate        DateTime
+  dueDate             DateTime
   /// Set when a payroll run picks this up to pay or collect it. Null while it
   /// is waiting for one.
-  payrollRunId   String?
-  reason         String?
-  emailedAt      DateTime?
-  createdById    String?
-  createdAt      DateTime         @default(now())
-  updatedAt      DateTime         @updatedAt
-  user           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  company        Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  payrollRun     PayrollRun?      @relation(fields: [payrollRunId], references: [id], onDelete: SetNull)
+  payrollRunId        String?
+  reason              String?
+  emailedAt           DateTime?
+  createdById         String?
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
+  user                User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  company             Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  payrollRun          PayrollRun?      @relation(fields: [payrollRunId], references: [id], onDelete: SetNull)
 
   @@index([companyId, status])
   @@index([userId])
@@ -1251,25 +1256,25 @@ enum SettlementStatus {
 /// it, so they are one table with a source rather than two lists that have to
 /// be merged and sorted by hand every time somebody asks what is outstanding.
 model Debt {
-  id        String     @id @default(uuid())
-  userId    String
-  companyId String
-  amount    Decimal    @db.Decimal(12, 2)
+  id              String     @id @default(uuid())
+  userId          String
+  companyId       String
+  amount          Decimal    @db.Decimal(12, 2)
   /// What payroll has taken back so far. Kept separate from `amount` rather
   /// than subtracted from it, because the original obligation is the thing
   /// somebody disputes and a column that shrinks cannot answer "how much was
   /// this to begin with".
-  recoveredAmount Decimal @default(0) @db.Decimal(12, 2)
+  recoveredAmount Decimal    @default(0) @db.Decimal(12, 2)
   /// PAYSLIP_CARRY or SETTLEMENT, and the row it came from.
-  source    String
-  sourceId  String?
-  status    DebtStatus @default(OUTSTANDING)
-  dueDate   DateTime
-  settledAt DateTime?
-  reason    String?
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
-  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  source          String
+  sourceId        String?
+  status          DebtStatus @default(OUTSTANDING)
+  dueDate         DateTime
+  settledAt       DateTime?
+  reason          String?
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+  user            User       @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([companyId, status, dueDate])
   @@index([userId])
@@ -1296,10 +1301,10 @@ enum PermissionScope {
 /// the migration and CompanyService create with the grants in
 /// lib/permissions/built-in.ts; the Super Admin adds others.
 model Role {
-  id                   String      @id @default(uuid())
+  id                   String              @id @default(uuid())
   companyId            String
-  company              Company     @relation("CompanyRoles", fields: [companyId], references: [id], onDelete: Cascade)
-  defaultFor           Company[]   @relation("CompanyDefaultRole")
+  company              Company             @relation("CompanyRoles", fields: [companyId], references: [id], onDelete: Cascade)
+  defaultFor           Company[]           @relation("CompanyDefaultRole")
   name                 String
   description          String?
   /// What kind of person holds it — team structure, subscription exemption,
@@ -1310,17 +1315,17 @@ model Role {
   builtIn              UserRole?
   /// Bumped on every change to the role or its grants, so sessions reload
   /// them within a minute (§4.4).
-  version              Int         @default(1)
+  version              Int                 @default(1)
   /// The template it was copied from — informational, never a live link.
   copiedFromTemplateId String?
   grants               RoleGrant[]
   users                User[]
   requests             RoleRequest[]
-  returners            User[]      @relation("ActingReturn")
+  returners            User[]              @relation("ActingReturn")
   changeRequests       RoleChangeRequest[]
   accessReviewLines    AccessReviewLine[]
-  createdAt            DateTime    @default(now())
-  updatedAt            DateTime    @updatedAt
+  createdAt            DateTime            @default(now())
+  updatedAt            DateTime            @updatedAt
 
   @@unique([companyId, name])
   @@unique([companyId, builtIn])
@@ -1403,22 +1408,22 @@ enum RoleChangeRequestStatus {
 /// one (ROLES_PLAN.md §6.9). Only the Super Admin edits roles; this is the
 /// channel, so the request lives somewhere with a status both sides can see.
 model RoleChangeRequest {
-  id                String                  @id @default(uuid())
-  companyId         String
-  company           Company                 @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  id            String                  @id @default(uuid())
+  companyId     String
+  company       Company                 @relation(fields: [companyId], references: [id], onDelete: Cascade)
   /// The role it is about, or null for a new one.
-  roleId            String?
-  role              Role?                   @relation(fields: [roleId], references: [id], onDelete: SetNull)
-  requestedById     String
-  requestedBy       User                    @relation(fields: [requestedById], references: [id], onDelete: Cascade)
-  description       String
-  status            RoleChangeRequestStatus @default(OPEN)
-  response          String?
-  respondedById     String?
-  respondedBy       SuperAdmin?             @relation(fields: [respondedById], references: [id], onDelete: SetNull)
-  respondedAt       DateTime?
-  createdAt         DateTime                @default(now())
-  updatedAt         DateTime                @updatedAt
+  roleId        String?
+  role          Role?                   @relation(fields: [roleId], references: [id], onDelete: SetNull)
+  requestedById String
+  requestedBy   User                    @relation(fields: [requestedById], references: [id], onDelete: Cascade)
+  description   String
+  status        RoleChangeRequestStatus @default(OPEN)
+  response      String?
+  respondedById String?
+  respondedBy   SuperAdmin?             @relation(fields: [respondedById], references: [id], onDelete: SetNull)
+  respondedAt   DateTime?
+  createdAt     DateTime                @default(now())
+  updatedAt     DateTime                @updatedAt
 
   @@index([status])
   @@index([companyId])
@@ -1452,30 +1457,30 @@ model AccessReview {
 }
 
 model AccessReviewLine {
-  id                    String                @id @default(uuid())
-  reviewId              String
-  review                AccessReview          @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  id                     String                @id @default(uuid())
+  reviewId               String
+  review                 AccessReview          @relation(fields: [reviewId], references: [id], onDelete: Cascade)
   /// Who holds it. A review is kept as evidence, so a line outlives the
   /// person's account: deleting them clears this and keeps userName.
-  userId                String?
-  user                  User?                 @relation("AccessReviewLineFor", fields: [userId], references: [id], onDelete: SetNull)
+  userId                 String?
+  user                   User?                 @relation("AccessReviewLineFor", fields: [userId], references: [id], onDelete: SetNull)
   /// Their name as it was when the review opened.
-  userName              String
-  permission            String
-  scope                 String
+  userName               String
+  permission             String
+  scope                  String
   /// The role it came through, as it was when the review opened: its name,
   /// and the role itself while it exists — what a change request is about,
   /// whatever role the person holds by the time the line is answered.
-  roleName              String
-  roleId                String?
-  role                  Role?                 @relation(fields: [roleId], references: [id], onDelete: SetNull)
-  decision              AccessReviewDecision?
-  note                  String?
-  answeredById          String?
-  answeredBy            User?                 @relation("AccessReviewLineAnsweredBy", fields: [answeredById], references: [id], onDelete: SetNull)
+  roleName               String
+  roleId                 String?
+  role                   Role?                 @relation(fields: [roleId], references: [id], onDelete: SetNull)
+  decision               AccessReviewDecision?
+  note                   String?
+  answeredById           String?
+  answeredBy             User?                 @relation("AccessReviewLineAnsweredBy", fields: [answeredById], references: [id], onDelete: SetNull)
   answeredBySuperAdminId String?
-  answeredBySuperAdmin  SuperAdmin?           @relation(fields: [answeredBySuperAdminId], references: [id], onDelete: SetNull)
-  answeredAt            DateTime?
+  answeredBySuperAdmin   SuperAdmin?           @relation(fields: [answeredBySuperAdminId], references: [id], onDelete: SetNull)
+  answeredAt             DateTime?
 
   @@index([reviewId])
 }

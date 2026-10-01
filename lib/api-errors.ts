@@ -22,6 +22,7 @@ export const KNOWN_REFUSALS: Record<string, { status: 400 | 403 | 404 | 409; mes
     SETTLEMENT_NOT_FOUND: { status: 404, message: "Settlement not found." },
     ONLY_PAID_SUPPORTED: { status: 400, message: "A payment can only be marked as paid." },
     UNKNOWN_SUBSCRIPTION_TYPE: { status: 400, message: "This payment's subscription type isn't one the system knows." },
+    ATTENDANCE_REQUIRES_HR: { status: 400, message: "The attendance add-ons need HR: attendance feeds payroll." },
     SOME_TASKS_NOT_FOUND_OR_ACCESS_DENIED: { status: 403, message: "Some of these tasks don't exist, or aren't yours to pay." },
 }
 

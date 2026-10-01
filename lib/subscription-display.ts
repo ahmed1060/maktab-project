@@ -35,10 +35,17 @@ export const TRIAL_PRESET_LABEL_KEY: Record<string, string> = {
 }
 
 /** The bundles a package grants, as label keys. Empty means Core only. */
-export function bundleLabelKeys(pkg: { hasCompanyManagement: boolean; hasHR: boolean } | null | undefined): string[] {
+export function bundleLabelKeys(pkg: {
+    hasCompanyManagement: boolean
+    hasHR: boolean
+    hasAttendanceTerminals?: boolean
+    hasAttendanceMobile?: boolean
+} | null | undefined): string[] {
     if (!pkg) return []
     const keys: string[] = []
     if (pkg.hasCompanyManagement) keys.push('bundle_company_management')
     if (pkg.hasHR) keys.push('bundle_hr')
+    if (pkg.hasAttendanceTerminals) keys.push('bundle_attendance_terminals')
+    if (pkg.hasAttendanceMobile) keys.push('bundle_attendance_mobile')
     return keys
 }

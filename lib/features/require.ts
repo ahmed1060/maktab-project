@@ -1,4 +1,4 @@
-import { deserializeAccess, hasModule, bundleFor, type FeatureAccess, type Module } from "./bundles"
+import { deserializeAccess, hasModule, bundlesFor, type Bundle, type FeatureAccess, type Module } from "./bundles"
 
 /**
  * The server-side gate. One helper, called from the API layer; gating logic
@@ -22,7 +22,8 @@ export type DenyTreatment = 'lock' | 'hide'
 export type FeatureDenial = {
     allowed: false
     module: Module
-    bundle: ReturnType<typeof bundleFor>
+    /** Any one of these would open it. */
+    bundles: readonly Bundle[]
     treatment: DenyTreatment
 }
 
@@ -40,7 +41,7 @@ export function requireFeature(
 ): FeatureDecision {
     const access = accessFromSession(session)
     if (hasModule(access, module)) return { allowed: true }
-    return { allowed: false, module, bundle: bundleFor(module), treatment: options.onDeny }
+    return { allowed: false, module, bundles: bundlesFor(module), treatment: options.onDeny }
 }
 
 /**
