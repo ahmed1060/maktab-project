@@ -243,15 +243,14 @@ async function deriveMonth(
  * paid (§12.3): every day whose money would now differ is recorded — opened,
  * kept current, reopened if it changes again after being settled — and a day
  * that has come back to what was paid closes its record. Nothing paid is
- * rewritten. Only for a month whose attendance reached payroll: before that,
+ * rewritten. Only for a month whose payslips carried attendance: otherwise
  * attendance took nothing from anybody, and there is nothing to settle.
  */
 async function recordDiscrepancies(tx: Prisma.TransactionClient, companyId: string, month: string, tz: string, today: string, userIds?: readonly string[]): Promise<number> {
-    const company = await tx.company.findUnique({ where: { id: companyId }, select: { attendancePayrollFrom: true } })
-    const from = company?.attendancePayrollFrom ? toDateString(company.attendancePayrollFrom) : null
-    if (!from || `${month}-01` < from) return 0
+    // Whether this month's payslips carried attendance, as approved — not
+    // today's setting, which may since have moved.
     const run = await tx.payrollRun.findFirst({
-        where: { companyId, year: Number(month.slice(0, 4)), month: Number(month.slice(5, 7)), status: { in: ["APPROVED", "PAID"] } },
+        where: { companyId, year: Number(month.slice(0, 4)), month: Number(month.slice(5, 7)), status: { in: ["APPROVED", "PAID"] }, attendanceIncluded: true },
         select: { id: true },
     })
     if (!run) return 0

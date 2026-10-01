@@ -144,8 +144,10 @@ describe("G3: a Super Admin can reach a register", () => {
         // company while the screen shows the right one.
         const calls = REGISTER.match(/companyId: companyId \|\| undefined/g) ?? []
         expect(calls.length).toBe(4)
+        // Read by URL: the register, the export, and attendance changed after
+        // payroll (ATTENDANCE_PLAN.md §12.3), whose resolve acts on one record by id.
         const urls = REGISTER.match(/companyId=\$\{encodeURIComponent\(companyId\)\}/g) ?? []
-        expect(urls.length).toBe(2)
+        expect(urls.length).toBe(3)
     })
 
     it("reloads when the company changes", () => {

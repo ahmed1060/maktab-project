@@ -1,6 +1,9 @@
 -- Changes after the lock (ATTENDANCE_PLAN.md §12.3): a paid day is never
 -- rewritten; what it would now be is recorded for an adjustment instead.
 
+-- AlterTable: which paid months carried attendance, as approved.
+ALTER TABLE "PayrollRun" ADD COLUMN "attendanceIncluded" BOOLEAN NOT NULL DEFAULT false;
+
 -- CreateTable
 CREATE TABLE "AttendanceDiscrepancy" (
     "id" TEXT NOT NULL,

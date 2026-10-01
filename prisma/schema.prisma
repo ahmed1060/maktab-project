@@ -1134,6 +1134,10 @@ model PayrollRun {
   payslips     Payslip[]
   settlements  FinalSettlement[]
   attendanceEntries AttendancePayrollEntry[]
+  /// Whether this month's attendance was on its payslips (ATTENDANCE_PLAN.md
+  /// §12): set at approval, so a later change of the company's chosen month
+  /// never restates which paid months carried attendance.
+  attendanceIncluded Boolean @default(false)
 
   /// One run per company per month. A second draft for a month that already has
   /// one is how two people approve different figures for the same payroll.

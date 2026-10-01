@@ -136,12 +136,24 @@ describe.skipIf(!ADMIN_URL)("attendance in payroll, in Postgres", () => {
         const { rows: [days] } = await db.query(`SELECT count(*)::int AS n, count(*) FILTER (WHERE "lockedByPayrollRunId" = $1)::int AS locked FROM "AttendanceDay" WHERE date BETWEEN '2026-09-01' AND '2026-09-30'`, [runId])
         expect(days.n).toBeGreaterThan(50)
         expect(days.locked).toBe(days.n)
-        expect((await db.query(`SELECT status FROM "PayrollRun" WHERE id = $1`, [runId])).rows[0].status).toBe("APPROVED")
+        expect((await db.query(`SELECT status, "attendanceIncluded" FROM "PayrollRun" WHERE id = $1`, [runId])).rows[0]).toEqual({ status: "APPROVED", attendanceIncluded: true })
     })
 
     it("then holds the month: nothing changes its attendance, and approving again is refused", async () => {
         await expect(Punches.addManual("c1", { userId: "e1", at: "2026-09-08T09:00", direction: "IN", note: "late correction" }, "a1")).rejects.toThrow("PAYROLL_MONTH_LOCKED")
         expect(await Payroll.approve("c1", 2026, 9, SESSION)).toHaveProperty("refusal")
+    })
+
+    it("lets the chosen month move only past the last approved payroll, never across a paid one", async () => {
+        const { AttendancePolicyService: P } = await import("@/lib/services/attendance-policy.service")
+        expect(await P.payrollFrom("c1")).toEqual({ from: "2026-09", earliest: "2026-10" })
+        await expect(P.setPayrollFrom("c1", "2026-09", "a1")).rejects.toThrow("ATTENDANCE_PAYROLL_MONTH_PAID")
+        await expect(P.setPayrollFrom("c1", "2026-08", "a1")).rejects.toThrow("ATTENDANCE_PAYROLL_MONTH_PAID")
+        expect(await P.setPayrollFrom("c1", "2026-11", "a1")).toEqual({ from: "2026-11", earliest: "2026-10" })
+        expect(await P.setPayrollFrom("c1", null, "a1")).toEqual({ from: null, earliest: "2026-10" })
+        // September stays a month that carried attendance, whatever the setting says now.
+        expect((await db.query(`SELECT "attendanceIncluded" FROM "PayrollRun" WHERE "companyId" = 'c1'`)).rows[0].attendanceIncluded).toBe(true)
+        await P.setPayrollFrom("c1", "2026-10", "a1")
     })
 
     it("reconciles entries rather than appending: writing the same again changes nothing, a category gone is removed", async () => {

@@ -9,6 +9,7 @@ import { useLanguage } from '@/context/LanguageContext'
 import { useToast } from '@/context/ToastContext'
 import Modal from '@/components/Modal'
 import AttendancePolicyPanel from '@/components/AttendancePolicyPanel'
+import AttendancePayrollPanel from '@/components/AttendancePayrollPanel'
 import ConfirmModal from '@/components/ConfirmModal'
 import { apiErrorText } from '@/lib/api-error-text'
 import {
@@ -196,6 +197,8 @@ export default function CompanyAttendanceCard({ companyId, readOnly = false }: {
                     {t('punch_open')} →
                 </Link>
             )}
+            {/* Whether any of this reaches anybody's pay yet (§12). */}
+            <AttendancePayrollPanel companyId={companyId} readOnly={!editable} />
             {/* The policy first: its work week is what the schedules inherit. */}
             <AttendancePolicyPanel companyId={companyId} readOnly={!editable} onChanged={load} />
             <SchedulesSection ctx={ctx} />

@@ -20,7 +20,9 @@ import { useCan } from '@/lib/useCan'
  * below a long table.
  */
 
-type Line = { kind: 'EARNING' | 'DEDUCTION'; label: string; amountMinor: number; source: string }
+type Line = { kind: 'EARNING' | 'DEDUCTION'; label: string; amountMinor: number; source: string; sourceId?: string | null }
+type AttendanceMoney = { lateness: number; earlyLeave: number; absence: number; overtime: number }
+type Discrepancy = { id: string; userId: string; name: string; date: string; paidStatus: string; nowStatus: string | null; differenceMinor: number; resolvedAt: string | null; resolution: string | null }
 type Entry = {
     userId: string
     name: string
@@ -57,6 +59,8 @@ type View = {
     sinceDraft: { deltaMinor: number; people: PersonVariance[] } | null
     draftSavedAt: string | null
     debts: { id: string; userId: string; name: string; amount: number; originalAmount: number; recoveredAmount: number; dueDate: string; source: string }[]
+    /** What attendance costs this month: on the payslips once it reaches payroll, else the dry run (ATTENDANCE_PLAN.md §12, §20). */
+    attendance?: { reachesPayroll: boolean; from: string | null; byPerson: Record<string, AttendanceMoney> }
 }
 
 export default function PayrollRegisterPage() {
@@ -144,6 +148,21 @@ export default function PayrollRegisterPage() {
     })
     const view: View | null = registerKey && !error ? (data?.data ?? null) : null
     const loading = !session || isLoading
+    // Attendance changed after a payroll was approved (§12.3), for a company
+    // whose attendance has reached payroll.
+    const { data: discrepancyBody, mutate: reloadDiscrepancies } = useSWR(
+        view?.attendance?.from ? `/api/attendance/discrepancies${companyId ? `?companyId=${encodeURIComponent(companyId)}` : ''}` : null, fetcher)
+    const discrepancies: Discrepancy[] = discrepancyBody?.data?.discrepancies ?? []
+    const [resolving, setResolving] = useState<Discrepancy | null>(null)
+    const resolve = async (reason?: string) => {
+        const target = resolving
+        setResolving(null)
+        if (!target) return
+        const res = await fetch(`/api/attendance/discrepancies/${target.id}/resolve`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ reason }) })
+        const body = await res.json().catch(() => null)
+        showToast(res.ok ? t('attpay_resolved') : (body?.error || t('error_generic')), res.ok ? 'success' : 'error')
+        if (res.ok) reloadDiscrepancies()
+    }
 
     const save = async () => {
         setSaving(true)
@@ -569,6 +588,56 @@ export default function PayrollRegisterPage() {
                     ))}
                 </>, 'danger')}
 
+            {view?.attendance && (() => {
+                const a = view.attendance
+                const rows = Object.entries(a.byPerson)
+                    .map(([userId, m]) => ({ userId, name: register?.entries.find(e => e.userId === userId)?.name ?? '', ...m, deductions: m.lateness + m.earlyLeave + m.absence }))
+                    .filter(r => r.name && (r.deductions > 0 || r.overtime > 0))
+                const fromText = a.from ? new Date(`${a.from}-01T00:00:00Z`).toLocaleDateString(isRtl ? 'ar-EG' : 'en-GB', { month: 'long', year: 'numeric', timeZone: 'UTC' }) : ''
+                if (a.reachesPayroll) return card(<p style={{ margin: 0, fontSize: '0.9rem' }}>{t('attpay_register_on').replace('{month}', fromText)}</p>)
+                if (rows.length === 0) return null
+                return card(
+                    <>
+                        <h2 style={{ margin: '0 0 0.35rem', fontSize: '1.05rem' }}>{t('attpay_dry_title')}</h2>
+                        <p style={{ margin: '0 0 0.75rem', fontSize: '0.85rem' }}>
+                            {t('attpay_dry_msg')
+                                .replace('{deductions}', money(rows.reduce((s, r) => s + r.deductions, 0)))
+                                .replace('{overtime}', money(rows.reduce((s, r) => s + r.overtime, 0)))}
+                        </p>
+                        {rows.map(r => (
+                            <div key={r.userId} style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', fontSize: '0.88rem', flexWrap: 'wrap' }}>
+                                <span>{r.name}</span>
+                                <span style={{ fontVariantNumeric: 'tabular-nums' }}>
+                                    {r.deductions > 0 && <span style={{ color: 'var(--danger-solid)' }}>−{money(r.deductions)}</span>}
+                                    {r.overtime > 0 && <span style={{ marginInlineStart: '0.6rem' }}>+{money(r.overtime)}</span>}
+                                </span>
+                            </div>
+                        ))}
+                    </>, 'warn')
+            })()}
+
+            {discrepancies.some(d => !d.resolvedAt) && card(
+                <>
+                    <h2 style={{ margin: '0 0 0.35rem', fontSize: '1.05rem' }}>{t('attpay_changed_title')}</h2>
+                    <p style={{ margin: '0 0 0.75rem', fontSize: '0.85rem' }}>{t('attpay_changed_msg')}</p>
+                    {discrepancies.filter(d => !d.resolvedAt).map(d => (
+                        <div key={d.id} style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', alignItems: 'center', fontSize: '0.88rem', flexWrap: 'wrap', padding: '0.3rem 0' }}>
+                            <span>
+                                <bdi>{d.date}</bdi> · {d.name}
+                                <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginInlineStart: '0.5rem' }}>
+                                    {t(`audit_value_${d.paidStatus}` as any)} → {d.nowStatus ? t(`audit_value_${d.nowStatus}` as any) : '—'}
+                                </span>
+                            </span>
+                            <span style={{ display: 'flex', gap: '0.6rem', alignItems: 'center' }}>
+                                <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>
+                                    {d.differenceMinor > 0 ? t('attpay_owed_to').replace('{amount}', money(d.differenceMinor)) : t('attpay_owed_by').replace('{amount}', money(-d.differenceMinor))}
+                                </span>
+                                {canPrepare && <button className="btn btn-secondary" style={{ fontSize: '0.78rem', padding: '0.25rem 0.6rem' }} onClick={() => setResolving(d)}>{t('attpay_resolve')}</button>}
+                            </span>
+                        </div>
+                    ))}
+                </>, 'warn')}
+
             {register && card(
                 register.entries.length === 0 ? (
                     <p style={{ margin: 0, color: 'var(--text-muted)' }}>{t('payroll_empty')}</p>
@@ -625,7 +694,7 @@ export default function PayrollRegisterPage() {
                                     <div style={{ marginTop: '0.5rem', paddingInlineStart: '1rem', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
                                         {entry.lines.map((line, i) => (
                                             <div key={i} style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                                                <span>{line.label}</span>
+                                                <span>{line.source === 'ATTENDANCE' && line.sourceId ? t(`attpay_line_${line.sourceId}` as any) : line.label}</span>
                                                 <span style={{ fontVariantNumeric: 'tabular-nums', color: line.kind === 'DEDUCTION' ? 'var(--danger-solid)' : 'inherit' }}>
                                                     {line.kind === 'DEDUCTION' ? '−' : ''}{money(line.amountMinor)}
                                                 </span>
@@ -639,6 +708,15 @@ export default function PayrollRegisterPage() {
                 )
             )}
 
+            <ConfirmModal
+                isOpen={!!resolving}
+                title={t('attpay_resolve')}
+                message={t('attpay_resolve_hint')}
+                confirmText={t('attpay_resolve')}
+                reason={{ label: t('attpay_resolution') }}
+                onConfirm={resolve}
+                onCancel={() => setResolving(null)}
+            />
             {/* One modal, told what it is asking by the state above. Approving
                 and marking paid are irreversible; writing off a debt is too, and
                 additionally needs to record why — so it is the same dialog with

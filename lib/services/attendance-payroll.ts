@@ -24,9 +24,8 @@ export function attendanceReaches(from: Date | null, year: number, month: number
 /**
  * Each person's attendance money for a month, from the days as derived: the
  * sum of each day's priced parts (§12.2). A day priced before the parts were
- * kept counts its deduction as absence when it was an absence, else as
- * lateness — and approval rebuilds every day first, so what is approved is
- * always exact.
+ * kept is split by the day-fractions each cause charged — and approval
+ * rebuilds every day first, so what is approved is always exact.
  */
 export async function attendanceMoney(db: Db, companyId: string, year: number, month: number): Promise<Map<string, AttendanceMoney>> {
     const days = await db.attendanceDay.findMany({
@@ -36,13 +35,28 @@ export async function attendanceMoney(db: Db, companyId: string, year: number, m
     const out = new Map<string, AttendanceMoney>()
     for (const d of days) {
         const sum = out.get(d.userId) ?? { lateness: 0, earlyLeave: 0, absence: 0, overtime: 0 }
-        const parts = (d.breakdown as { minor?: { lateness: number; earlyLeave: number; absence: number } } | null)?.minor
-        if (parts) {
-            sum.lateness += parts.lateness
-            sum.earlyLeave += parts.earlyLeave
-            sum.absence += parts.absence
-        } else if (d.status === "ABSENT") sum.absence += d.deductionMinor
-        else sum.lateness += d.deductionMinor
+        const b = (d.breakdown ?? {}) as {
+            minor?: { lateness: number; earlyLeave: number; absence: number }
+            lateness?: { days: number }; earlyLeave?: { days: number }; absenceDays?: number
+        }
+        if (b.minor) {
+            sum.lateness += b.minor.lateness
+            sum.earlyLeave += b.minor.earlyLeave
+            sum.absence += b.minor.absence
+        } else if (d.deductionMinor > 0) {
+            // Priced before the parts were kept: split by each cause's share of
+            // the day-fractions charged, the remainder to the last, so the
+            // parts still add up to the day.
+            const late = b.lateness?.days ?? 0, early = b.earlyLeave?.days ?? 0, absent = b.absenceDays ?? 0
+            const total = late + early + absent
+            if (total <= 0) sum.absence += d.deductionMinor
+            else {
+                const l = Math.round(d.deductionMinor * late / total), e = Math.round(d.deductionMinor * early / total)
+                sum.lateness += l
+                sum.earlyLeave += e
+                sum.absence += d.deductionMinor - l - e
+            }
+        }
         sum.overtime += d.overtimeMinor
         out.set(d.userId, sum)
     }

@@ -458,6 +458,7 @@ export class PayrollRunService {
                 where: { companyId_month_year: { companyId, month, year } },
                 data: {
                     status: "APPROVED",
+                    attendanceIncluded: reaches,
                     approvedAt: new Date(),
                     approvedById: session?.user?.id ?? null,
                 },
