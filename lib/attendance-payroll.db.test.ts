@@ -249,4 +249,16 @@ describe.skipIf(!ADMIN_URL)("attendance in payroll, in Postgres", () => {
         expect(all.length).toBeGreaterThan(5)
         await expect(Discrepancies.list("c1", { after: "yesterday" })).rejects.toThrow("INVALID_CURSOR")
     })
+
+    it("is resolved once, however many settle it at the same moment (review on #16)", async () => {
+        const { AttendanceDiscrepancyService: Discrepancies } = await import("@/lib/services/attendance-discrepancy.service")
+        const outcomes = await Promise.allSettled([
+            Discrepancies.resolve("page-01", "Refunded by bank transfer", "a1", false),
+            Discrepancies.resolve("page-01", "Added to October's payslip", "a1", false),
+        ])
+        expect(outcomes.map(o => o.status).sort()).toEqual(["fulfilled", "rejected"])
+        expect((outcomes.find(o => o.status === "rejected") as PromiseRejectedResult).reason.message).toBe("DISCREPANCY_ALREADY_RESOLVED")
+        const { rows: audits } = await db.query(`SELECT count(*)::int AS n FROM "AuditLog" WHERE action = 'RESOLVE_ATTENDANCE_DISCREPANCY' AND "entityId" = 'page-01'`)
+        expect(audits[0].n).toBe(1)
+    })
 })

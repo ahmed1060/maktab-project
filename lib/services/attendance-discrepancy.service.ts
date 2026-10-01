@@ -83,8 +83,13 @@ export class AttendanceDiscrepancyService {
         if (!resolution.trim()) fail("REASON_REQUIRED")
         await prisma.$transaction(async tx => {
             const d = await tx.attendanceDiscrepancy.findUnique({ where: { id } }) ?? fail("DISCREPANCY_NOT_FOUND")
-            if (d.resolvedAt) fail("DISCREPANCY_ALREADY_RESOLVED")
-            await tx.attendanceDiscrepancy.update({ where: { id }, data: { resolvedAt: new Date(), resolvedById: actorId, resolution: resolution.trim() } })
+            // Conditional, so two people settling it at once cannot both
+            // succeed: the second finds it already resolved (review on #16).
+            const { count } = await tx.attendanceDiscrepancy.updateMany({
+                where: { id, resolvedAt: null },
+                data: { resolvedAt: new Date(), resolvedById: actorId, resolution: resolution.trim() },
+            })
+            if (count === 0) fail("DISCREPANCY_ALREADY_RESOLVED")
             await AuditLogService.log("RESOLVE_ATTENDANCE_DISCREPANCY", "ATTENDANCE_DISCREPANCY", id, {
                 tx, ...(superAdmin ? { superAdminId: actorId } : { userId: actorId }),
                 details: { companyId: d.companyId, userId: d.userId, date: toDateString(d.date), reason: resolution.trim() },
