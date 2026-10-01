@@ -299,35 +299,47 @@ const { t } = useLanguage()
 }
 
 
-function PolicyEditor({ companyId, start, defaultFrom, today, weekday, fraction, onClose, onSave }: {
+/**
+ * The policy's rules, edited. For a company it asks "from when?" (§6.1) and
+ * can preview the draft on last month (§6.7); for a template (§6.8) it has
+ * neither — a template is a starting point — and shows its own fields above.
+ */
+export function PolicyEditor({ companyId, start, defaultFrom, today, weekday, fraction, title, header, canSave = true, onClose, onSave }: {
     /** The company whose days a draft is replayed over; none for a template. */
     companyId?: string
     start: PolicyBody
-    defaultFrom: string
-    today: string
+    /** "From when?" — left out for a template, which has no date. */
+    defaultFrom?: string
+    today?: string
     weekday: (d: number) => string
     fraction: (f: number) => string
+    title?: string
+    header?: React.ReactNode
+    canSave?: boolean
     onClose: () => void
     onSave: (effectiveFrom: string, policy: PolicyBody) => Promise<void>
 }) {
     const { t } = useLanguage()
     const [p, setP] = useState<PolicyBody>(structuredClone(start))
-    const [from, setFrom] = useState(defaultFrom)
+    const [from, setFrom] = useState(defaultFrom ?? '')
     const [saving, setSaving] = useState(false)
 
 
     const ph = p.permissionHours
     return (
-        <Modal isOpen onClose={onClose} title={t('attendance_change_policy')}>
+        <Modal isOpen onClose={onClose} title={title ?? t('attendance_change_policy')}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                <label style={field}>
-                    <span className="label">{t('attendance_from_when')}</span>
-                    <input className="input" type="date" value={from} onChange={e => setFrom(e.target.value)} />
-                    <span style={{ fontSize: '0.78rem', color: 'var(--text-soft)' }}>
-                        {t('attendance_policy_from_hint')}{' '}
-                        <button type="button" style={{ background: 'none', border: 'none', color: 'var(--brand-primary-text)', cursor: 'pointer', padding: 0 }} onClick={() => setFrom(today)}>{t('attendance_from_today')}</button>
-                    </span>
-                </label>
+                {header}
+                {defaultFrom !== undefined && (
+                    <label style={field}>
+                        <span className="label">{t('attendance_from_when')}</span>
+                        <input className="input" type="date" value={from} onChange={e => setFrom(e.target.value)} />
+                        <span style={{ fontSize: '0.78rem', color: 'var(--text-soft)' }}>
+                            {t('attendance_policy_from_hint')}{' '}
+                            {today && <button type="button" style={{ background: 'none', border: 'none', color: 'var(--brand-primary-text)', cursor: 'pointer', padding: 0 }} onClick={() => setFrom(today)}>{t('attendance_from_today')}</button>}
+                        </span>
+                    </label>
+                )}
 
                 <fieldset style={{ border: 'none', padding: 0, margin: 0 }}>
                     <legend className="label">{t('attendance_work_week')}</legend>
@@ -445,7 +457,7 @@ function PolicyEditor({ companyId, start, defaultFrom, today, weekday, fraction,
 
                 <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
                     <button className="btn btn-secondary" onClick={onClose}>{t('cancel')}</button>
-                    <button className="btn btn-primary" disabled={saving || p.workWeek.length === 0}
+                    <button className="btn btn-primary" disabled={saving || !canSave || p.workWeek.length === 0}
                         onClick={async () => { setSaving(true); try { await onSave(from, p) } finally { setSaving(false) } }}>
                         {t('save')}
                     </button>
