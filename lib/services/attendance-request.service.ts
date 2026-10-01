@@ -261,7 +261,8 @@ export class AttendanceRequestService {
     static async reportMissingPunch(companyId: string, userId: string, input: MissingPunchInput) {
         if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(input.at)) fail("INVALID_DATE")
         const local = `${input.at}:00`
-        if (wallClockText(wallClock(local)) !== local) fail("INVALID_DATE")
+        // A month 13 or a 25th hour is an invalid Date, which cannot be formatted (review on #14).
+        if (isNaN(wallClock(local).getTime()) || wallClockText(wallClock(local)) !== local) fail("INVALID_DATE")
         if (!input.reason.trim()) fail("REASON_REQUIRED")
         const date = local.slice(0, 10)
         const out = await prisma.$transaction(async tx => {

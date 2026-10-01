@@ -188,6 +188,12 @@ describe.skipIf(!ADMIN_URL)("attendance requests, in Postgres", () => {
     })
 
     describe("a missing punch", () => {
+        it("is a real time (review on #14)", async () => {
+            for (const at of ["2026-13-01T09:00", "2026-10-01T25:00", "2026-02-30T09:00"]) {
+                await expect(Requests.reportMissingPunch("c1", "e1", { at, direction: "IN", reason: "x" })).rejects.toEqual(refusal("INVALID_DATE"))
+            }
+        })
+
         it("is a time that has passed, reported once", async () => {
             await expect(Requests.reportMissingPunch("c1", "e1", { at: "2026-10-20T17:00", direction: "OUT", reason: "x" })).rejects.toEqual(refusal("PUNCH_IN_FUTURE"))
             const r = await Requests.reportMissingPunch("c1", "e1", { at: "2026-10-14T17:00", direction: "OUT", reason: "x" })
