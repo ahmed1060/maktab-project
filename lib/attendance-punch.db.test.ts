@@ -249,6 +249,13 @@ describe.skipIf(!ADMIN_URL)("punches, in Postgres", () => {
         })
     })
 
+    it("lets a person with punches added by hand be deleted permanently, taking their punches (review on #12)", async () => {
+        await db.query(`INSERT INTO "User"(id, email, password, "firstName", "lastName", role, "lastDayOffResetYear", username, "companyId", "roleId") SELECT 'gone', 'gone@x', 'p', 'Gone', 'Soon', 'EMPLOYEE', 2026, 'gone', 'c1', id FROM "Role" WHERE "companyId" = 'c1' AND "builtIn" = 'EMPLOYEE'`)
+        await db.query(`INSERT INTO "AttendancePunch"(id, "companyId", "userId", source, "sourceKey", "punchAtLocal", "punchAt", "resolvedWithTimeZone") VALUES ('byhand', 'c1', 'gone', 'MANUAL', 'byhand', '2026-10-02 09:00', now(), 'Africa/Cairo')`)
+        await db.query(`DELETE FROM "User" WHERE id = 'gone'`)
+        expect(await rows(`id = 'byhand'`)).toEqual([])
+    })
+
     it("writes every change to the audit log, as the person who made it", async () => {
         const { rows: log } = await db.query(`SELECT action, "entityType", "userId" FROM "AuditLog" WHERE "entityType" LIKE 'ATTENDANCE_%' AND "entityType" NOT IN ('ATTENDANCE_CALENDAR', 'ATTENDANCE_POLICY') ORDER BY "createdAt"`)
         expect(log.map(l => l.action)).toEqual([
