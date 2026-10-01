@@ -108,6 +108,11 @@ export const KNOWN_REFUSALS: Record<string, { status: 400 | 403 | 404 | 409; mes
     AGENT_NAME_REQUIRED: { status: 400, message: "Give the agent a name, such as the office it is in." },
     AGENT_NOT_FOUND: { status: 404, message: "Agent not found." },
     AGENT_REVOKED: { status: 409, message: "That agent has been revoked. Add a new one instead." },
+    DEVICE_NAME_REQUIRED: { status: 400, message: "Give the terminal a name, such as where it is mounted." },
+    DEVICE_NOT_FOUND: { status: 404, message: "Terminal not found." },
+    DEVICE_RETIRED: { status: 409, message: "That terminal is already retired." },
+    DEVICE_NOT_RETIRED: { status: 409, message: "That terminal is in use; there is nothing to restore." },
+    DEVICE_IN_USE_ELSEWHERE: { status: 409, message: "Another company is using that terminal now. It must be retired there before it can come back here." },
     ENROLMENT_CODE_INVALID: { status: 400, message: "That code isn't valid. It may have expired or already been used; ask for a new one." },
     SOME_TASKS_NOT_FOUND_OR_ACCESS_DENIED: { status: 403, message: "Some of these tasks don't exist, or aren't yours to pay." },
 }

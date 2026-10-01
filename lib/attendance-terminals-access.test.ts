@@ -45,6 +45,17 @@ vi.mock("@/lib/services/attendance-agent.service", () => ({
     },
 }))
 
+vi.mock("@/lib/services/attendance-device.service", () => ({
+    AttendanceDeviceService: {
+        list: async (companyId: string) => { reached.push(`devices:${companyId}`); return [] },
+        deviceOf: async (id: string) => ({ d1: { id: "d1", companyId: "c1" }, d2: { id: "d2", companyId: "c2" } } as any)[id] ?? null,
+        update: async (id: string, input: any) => { reached.push(`updateDevice:${id}:${input.mode ?? ""}`); return {} },
+        retire: async (id: string) => { reached.push(`retire:${id}`) },
+        restore: async (id: string) => { reached.push(`restore:${id}`) },
+        heartbeat: async (agent: { id: string; companyId: string }, beat: any) => { reached.push(`heartbeat:${agent.companyId}:${beat.devices.length}`); return { devices: [] } },
+    },
+}))
+
 type Pkg = { hasCompanyManagement: boolean; hasHR: boolean; hasAttendanceTerminals?: boolean; hasAttendanceMobile?: boolean } | null
 const TERMINALS: Pkg = { hasCompanyManagement: false, hasHR: true, hasAttendanceTerminals: true }
 const MOBILE_ONLY: Pkg = { hasCompanyManagement: false, hasHR: true, hasAttendanceMobile: true }
@@ -131,6 +142,42 @@ describe("on the website: the Attendance settings tab, with the Terminals add-on
     })
 })
 
+const devices = async () => (await import("@/app/api/attendance/devices/route")).GET(new Request(url("/api/attendance/devices")))
+const patchDevice = async (id: string, body: unknown) => (await import("@/app/api/attendance/devices/[id]/route")).PATCH(withBody("PATCH", `/api/attendance/devices/${id}`, body), params(id))
+const retire = async (id: string) => (await import("@/app/api/attendance/devices/[id]/route")).DELETE(new Request(url(`/api/attendance/devices/${id}`), { method: "DELETE" }), params(id))
+const restore = async (id: string) => (await import("@/app/api/attendance/devices/[id]/restore/route")).POST(new Request(url(`/api/attendance/devices/${id}/restore`), { method: "POST" }), params(id))
+
+describe("terminals on the website", () => {
+    it("are listed, renamed, given a mode, retired and restored by whoever may change the tab", async () => {
+        admin()
+        expect((await devices()).status).toBe(200)
+        expect((await patchDevice("d1", { name: "Front door", mode: "ENTRANCE" })).status).toBe(200)
+        expect((await patchDevice("d1", { mode: "SIDEWAYS" })).status).toBe(400)
+        expect((await retire("d1")).status).toBe(200)
+        expect((await restore("d1")).status).toBe(200)
+        expect(reached).toEqual(["devices:c1", "updateDevice:d1:ENTRANCE", "retire:d1", "restore:d1"])
+    })
+
+    it("are looked at, not changed, by whoever only sees settings; another company's are absent", async () => {
+        viewer()
+        expect((await devices()).status).toBe(200)
+        expect((await patchDevice("d1", { name: "Mine" })).status).toBe(403)
+        expect((await retire("d1")).status).toBe(403)
+        admin()
+        expect((await patchDevice("d2", { name: "Mine" })).status).toBe(404)
+        expect((await restore("d2")).status).toBe(404)
+        expect(reached).toEqual(["devices:c1"])
+    })
+
+    it("are closed to a company with attendance from the app only", async () => {
+        companies.c1.package = MOBILE_ONLY
+        admin(MOBILE_ONLY)
+        expect((await devices()).status).toBe(403)
+        expect((await retire("d1")).status).toBe(403)
+        expect(reached).toEqual([])
+    })
+})
+
 const agentCall = async (token: string | null, body: unknown = {}, extra: Record<string, string> = {}) =>
     (await import("@/app/api/agent/token/route")).POST(new Request(url("/api/agent/token"), {
         method: "POST",
@@ -173,6 +220,19 @@ describe("on the agent's side: the token is the identity", () => {
         expect(res.status).toBe(200)
         expect((await res.json()).data.token).toBe("mka_next")
         expect(reached).toEqual(["rotate:ag1"])
+    })
+
+    it("records a heartbeat for the agent's own company, and refuses one in the wrong shape", async () => {
+        const heartbeat = async (body: unknown) => (await import("@/app/api/agent/heartbeat/route")).POST(new Request(url("/api/agent/heartbeat"), {
+            method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer mka_good" }, body: JSON.stringify(body),
+        }))
+        const ok = { agentVersion: "1.0.0", queueDepth: 0, clock: "2026-10-01T08:00:00Z", devices: [{ serialNumber: "SN1", reachable: true }], companyId: "c2" }
+        expect((await heartbeat(ok)).status).toBe(200)
+        const bad = await heartbeat({ ...ok, queueDepth: -1 })
+        expect(bad.status).toBe(400)
+        expect((await bad.json()).code).toBe("INVALID_BODY")
+        // A company in the body is ignored: the agent's is c1.
+        expect(reached).toEqual(["heartbeat:c1:1"])
     })
 
     it("refuses a body that is not a JSON object, or too large", async () => {
