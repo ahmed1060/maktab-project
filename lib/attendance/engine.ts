@@ -224,6 +224,12 @@ export type PricedDay = MeasuredDay & {
     /** Days deducted in all: lateness + early leave + absence. */
     deductionDays: number
     deductionMinor: number
+    /**
+     * The deduction by what caused it, in minor units, each rounded on its own
+     * so payroll's lines (§12.2) are exact sums of the days and the day's
+     * deduction is exactly their sum.
+     */
+    deductionParts: { lateness: number; earlyLeave: number; absence: number }
     overtimeStatus: "NONE" | "PENDING" | "APPROVED" | "REJECTED" | "NOT_COUNTED"
     overtimeMinor: number
     /** Why nothing was priced, when nothing could be. */
@@ -292,6 +298,7 @@ export function priceMonth(days: readonly PricingInput[]): PricedDay[] {
         const { day, policy, monthlyMinor } = input
         const none: PricedDay = {
             ...day, lateness: NO_RULE, earlyLeave: NO_RULE, absenceDays: 0, deductionDays: 0, deductionMinor: 0,
+            deductionParts: { lateness: 0, earlyLeave: 0, absence: 0 },
             overtimeStatus: "NONE", overtimeMinor: 0, unpriced: null,
         }
         if (day.status === "INCOMPLETE") return { ...none, unpriced: "INCOMPLETE" }
@@ -316,10 +323,16 @@ export function priceMonth(days: readonly PricingInput[]): PricedDay[] {
             return { ...none, lateness, earlyLeave, absenceDays, deductionDays, overtimeStatus, unpriced: "NO_SALARY" }
         }
         const dayMinor = monthlyMinor / input.daysInMonth
+        const parts = {
+            lateness: roundHalfUp(dayMinor * lateness.days),
+            earlyLeave: roundHalfUp(dayMinor * earlyLeave.days),
+            absence: roundHalfUp(dayMinor * absenceDays),
+        }
         const paid = input.paidMinutes > 0 ? input.paidMinutes : FALLBACK_PAID_MINUTES
         return {
             ...none, lateness, earlyLeave, absenceDays, deductionDays, overtimeStatus,
-            deductionMinor: roundHalfUp(dayMinor * deductionDays),
+            deductionMinor: parts.lateness + parts.earlyLeave + parts.absence,
+            deductionParts: parts,
             overtimeMinor: roundHalfUp(dayMinor * (pricedOvertime / paid) * multiplier),
         }
     })

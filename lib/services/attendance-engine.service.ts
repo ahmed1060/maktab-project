@@ -225,6 +225,7 @@ async function deriveMonth(
                 breakdown: {
                     lateness: d.lateness, earlyLeave: d.earlyLeave, absenceDays: d.absenceDays, unpriced: d.unpriced,
                     excusedAbsence: d.excusedAbsence,
+                    minor: d.deductionParts,
                     holiday: e.kind === "HOLIDAY" ? e.holiday.name : null,
                 } as Prisma.InputJsonValue,
             }
