@@ -95,7 +95,7 @@ const WORKING = { notIn: ["ARCHIVED", "DELETED"] as ("ARCHIVED" | "DELETED")[] }
  * one company. A transaction-scoped Postgres advisory lock, released at
  * commit; the overlap and in-use checks run after it.
  */
-async function serialize(tx: Prisma.TransactionClient, key: string) {
+export async function serialize(tx: Prisma.TransactionClient, key: string) {
     await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${key}))::text`
 }
 

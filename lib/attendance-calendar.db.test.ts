@@ -324,6 +324,16 @@ describe.skipIf(!ADMIN_URL)("the attendance calendar, in Postgres", () => {
             await Policy.deleteVersion(versions[1].id, "a1")
             expect((await Policy.versions("c1")).length).toBe(1)
         })
+
+        it("refuses a version that starts in an open month but governs an approved one", async () => {
+            // September is approved and the next version starts on 1 October:
+            // a version from 1 August would be the one in force all September.
+            await expect(Policy.saveVersion("c1", { effectiveFrom: "2026-08-01", body: SIX_DAY_FACTORY }, "a1")).rejects.toEqual(refusal("PAYROLL_MONTH_LOCKED"))
+            // Withdrawing one hands its span to the version before, so the same holds.
+            await db.query(`INSERT INTO "AttendancePolicy" (id, "companyId", "effectiveFrom", body, "createdById") VALUES ('aug-policy', 'c1', '2026-08-01', $1, 'a1')`, [JSON.stringify(STANDARD_OFFICE)])
+            await expect(Policy.deleteVersion("aug-policy", "a1")).rejects.toEqual(refusal("PAYROLL_MONTH_LOCKED"))
+            await db.query(`DELETE FROM "AttendancePolicy" WHERE id = 'aug-policy'`)
+        })
     })
 
     it("writes every change to the audit log, as the person who made it", async () => {

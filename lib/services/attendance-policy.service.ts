@@ -1,8 +1,8 @@
 import { prisma } from "@/lib/prisma"
 import { Prisma } from "@prisma/client"
-import { isDateString, toDateString } from "@/lib/attendance/calendar"
+import { isDateString, spanOf, toDateString } from "@/lib/attendance/calendar"
 import { policyBodySchema, policyProblem, type PolicyBody, type PolicyVersion } from "@/lib/attendance/policy"
-import { AttendanceCalendarService } from "./attendance-calendar.service"
+import { AttendanceCalendarService, serialize } from "./attendance-calendar.service"
 import { AuditLogService } from "./audit-log.service"
 
 /**
@@ -11,9 +11,17 @@ import { AuditLogService } from "./audit-log.service"
  * company's Attendance settings tab for the policy, the Super Admin for
  * templates.
  *
- * The rule the calendar keeps applies here too: nothing takes effect inside a
- * month whose payroll is approved or paid.
+ * The rule the calendar keeps applies here too: nothing changes inside a
+ * month whose payroll is approved or paid, counting every month a version
+ * governs up to the next one, not just the month it starts in.
  */
+
+/** The dates of a company's other versions, read under the company's policy lock. */
+async function otherDates(tx: Prisma.TransactionClient, companyId: string, except: string) {
+    await serialize(tx, `policy:${companyId}`)
+    const rows = await tx.attendancePolicy.findMany({ where: { companyId }, select: { effectiveFrom: true } })
+    return rows.map(r => toDateString(r.effectiveFrom)).filter(d => d !== except)
+}
 
 const DATE_ONLY = (date: string) => new Date(`${date}T00:00:00Z`)
 
@@ -66,10 +74,11 @@ export class AttendancePolicyService {
     ) {
         if (!isDateString(input.effectiveFrom)) fail("INVALID_DATE")
         const body = checkBody(input.body)
-        await AttendanceCalendarService.assertUnlocked(companyId, [input.effectiveFrom])
         const today = await AttendanceCalendarService.today(companyId)
 
         return prisma.$transaction(async tx => {
+            const dates = await otherDates(tx, companyId, input.effectiveFrom)
+            await AttendanceCalendarService.assertSpanUnlocked(companyId, spanOf(dates, input.effectiveFrom), tx)
             const key = { companyId_effectiveFrom: { companyId, effectiveFrom: DATE_ONLY(input.effectiveFrom) } }
             const existing = await tx.attendancePolicy.findUnique({ where: key })
             if (existing && input.effectiveFrom <= today) fail("VERSION_DATE_TAKEN")
@@ -97,8 +106,10 @@ export class AttendancePolicyService {
     static async deleteVersion(versionId: string, actorId: string) {
         const version = await this.versionOf(versionId) ?? fail("VERSION_NOT_FOUND")
         const effectiveFrom = toDateString(version.effectiveFrom)
-        await AttendanceCalendarService.assertUnlocked(version.companyId, [effectiveFrom])
         await prisma.$transaction(async tx => {
+            // Withdrawing hands this version's span to the one before it.
+            const dates = await otherDates(tx, version.companyId, effectiveFrom)
+            await AttendanceCalendarService.assertSpanUnlocked(version.companyId, spanOf(dates, effectiveFrom), tx)
             await tx.attendancePolicy.delete({ where: { id: versionId } })
             await AuditLogService.log("DELETE_ATTENDANCE_POLICY", "ATTENDANCE_POLICY", versionId, {
                 tx, ...(await actorOf(tx, actorId)), details: { companyId: version.companyId, effectiveFrom },
