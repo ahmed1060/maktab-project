@@ -9,7 +9,8 @@ import { useCan } from '@/lib/useCan'
 import { useLanguage } from '@/context/LanguageContext'
 import { useHeader } from '@/context/HeaderContext'
 import { useToast } from '@/context/ToastContext'
-import { apiErrorText } from '@/lib/api-error-text'
+import { send, json } from './send'
+import RequestsTab from './RequestsTab'
 import LoadingSpinner from '@/components/LoadingSpinner'
 import Modal from '@/components/Modal'
 import ConfirmModal from '@/components/ConfirmModal'
@@ -44,18 +45,10 @@ type Report = {
 type ImportRow = { id: string; fileName: string; createdAt: string; rowCount: number; addedCount: number; duplicateCount: number; refusedCount: number; voidedAt: string | null; voidReason: string | null }
 type Codes = { mapped: { id: string; code: string; userId: string; name: string }[]; unmatched: { code: string; punches: number; from: string; to: string }[] }
 
-type Tab = 'days' | 'punches' | 'import' | 'numbers'
+type Tab = 'days' | 'punches' | 'requests' | 'import' | 'numbers'
 
 const pad = (n: number) => String(n).padStart(2, '0')
 const monthStart = (date: string) => `${date.slice(0, 8)}01`
-
-async function send(url: string, init: RequestInit, fallback: string): Promise<{ ok: true; body: any } | { ok: false; error: string }> {
-    const res = await fetch(url, init)
-    const text = await res.text()
-    if (!res.ok) return { ok: false, error: apiErrorText(text, fallback) }
-    try { return { ok: true, body: JSON.parse(text)?.data } } catch { return { ok: true, body: null } }
-}
-const json = (method: string, body: unknown): RequestInit => ({ method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
 
 export default function AttendancePage() {
     const { t } = useLanguage()
@@ -78,7 +71,7 @@ export default function AttendancePage() {
     // abroad, they differ, and every default date below starts from it (review on #12).
     const { data: peopleBody } = useSWR(!isSuperAdmin || companyId ? `/api/attendance/people?${q}` : null, fetcher)
     const today: string | undefined = peopleBody?.data?.today
-    const tabs: Tab[] = correctsCompany ? ['days', 'punches', 'import', 'numbers'] : ['days', 'punches']
+    const tabs: Tab[] = correctsCompany ? ['days', 'punches', 'requests', 'import', 'numbers'] : ['days', 'punches', 'requests']
     const [tab, setTab] = useState<Tab>('days')
 
     if (status === 'loading' || (!today && !(isSuperAdmin && !companyId))) return <LoadingSpinner />
@@ -86,7 +79,7 @@ export default function AttendancePage() {
         return <p style={{ color: 'var(--text-soft)' }}>{t('punch_pick_company')}</p>
     }
 
-    const label: Record<Tab, TranslationKey> = { days: 'day_tab_days', punches: 'punch_tab_punches', import: 'punch_tab_import', numbers: 'punch_tab_numbers' }
+    const label: Record<Tab, TranslationKey> = { days: 'day_tab_days', punches: 'punch_tab_punches', requests: 'req_tab', import: 'punch_tab_import', numbers: 'punch_tab_numbers' }
     return (
         <div style={{ display: 'grid', gap: '1rem' }}>
             {tabs.length > 1 && (
@@ -100,6 +93,7 @@ export default function AttendancePage() {
             )}
             {tab === 'days' && today && <DaysTab q={q} companyId={companyId} today={today} />}
             {tab === 'punches' && today && <PunchesTab q={q} companyId={companyId} today={today} />}
+            {tab === 'requests' && today && <RequestsTab q={q} companyId={companyId} today={today} />}
             {tab === 'import' && correctsCompany && <ImportTab q={q} companyId={companyId} />}
             {tab === 'numbers' && correctsCompany && <NumbersTab q={q} companyId={companyId} />}
         </div>
@@ -160,7 +154,7 @@ function DaysTab({ q, companyId, today }: { q: string; companyId: string | null;
         ruleNote('day_late', d.breakdown.lateness),
         ruleNote('day_early', d.breakdown.earlyLeave),
         d.breakdown.unpriced ? t(({ INCOMPLETE: 'day_unpriced_incomplete', NO_POLICY: 'day_unpriced_no_policy', NO_SALARY: 'day_unpriced_no_salary' } as Record<string, TranslationKey>)[d.breakdown.unpriced] ?? 'day_unpriced_no_policy') : null,
-        d.overtimeStatus === 'PENDING' ? t('day_overtime_pending') : d.overtimeStatus === 'NOT_COUNTED' ? t('day_overtime_short') : null,
+        d.overtimeStatus === 'PENDING' ? t('day_overtime_pending') : d.overtimeStatus === 'REJECTED' ? t('day_overtime_rejected') : d.overtimeStatus === 'NOT_COUNTED' ? t('day_overtime_short') : null,
         d.excusedMinutes > 0 ? t('day_excused').replace('{n}', String(d.excusedMinutes)) : null,
     ].filter(Boolean).join(' · ')
     const totalMinor = (days ?? []).reduce((sum, d) => sum + (d.deductionMinor ?? 0), 0)
