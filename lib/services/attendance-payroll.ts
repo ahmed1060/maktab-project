@@ -108,7 +108,7 @@ export async function reconcileEntries(
             const was = existing.find(e => e.userId === person.userId && e.category === category)
             if (was && was.amountMinor === amountMinor && was.payrollRunId === payrollRunId) continue
             await tx.attendancePayrollEntry.upsert({
-                where: { userId_year_month_category: { userId: person.userId, year, month, category } },
+                where: { companyId_userId_year_month_category: { companyId, userId: person.userId, year, month, category } },
                 create: { companyId, userId: person.userId, year, month, category, amountMinor, payrollRunId },
                 update: { amountMinor, payrollRunId },
             })

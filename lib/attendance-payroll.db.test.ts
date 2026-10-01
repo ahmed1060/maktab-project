@@ -191,6 +191,23 @@ describe.skipIf(!ADMIN_URL)("attendance in payroll, in Postgres", () => {
         expect((await db.query(`SELECT count(*)::int AS n FROM "AttendancePayrollEntry" WHERE "userId" = 'e1'`)).rows[0].n).toBe(1)
     })
 
+    it("keeps each company's entries its own, for somebody paid by two in one month (review on #16)", async () => {
+        const { prisma } = await import("@/lib/prisma")
+        const { rows: [run] } = await db.query(`SELECT id FROM "PayrollRun" WHERE "companyId" = 'c1'`)
+        await db.query(`INSERT INTO "Company"(id, name, "updatedAt") VALUES ('c2', 'Two', now())`)
+        await db.query(`INSERT INTO "PayrollRun"(id, "companyId", year, month, status, "payrollDay", "updatedAt") VALUES ('c2run', 'c2', 2026, 9, 'APPROVED', 25, now())`)
+        await db.query(`INSERT INTO "AttendancePayrollEntry"(id, "companyId", "userId", year, month, category, "amountMinor", "payrollRunId", "updatedAt") VALUES ('c2e', 'c2', 'e1', 2026, 9, 'ABSENCE', 5000, 'c2run', now())`)
+        const people = [{ userId: "e1", excluded: false, attendance: { lateness: 15500, earlyLeave: 0, absence: 31000, overtime: 0 } }]
+        expect(await prisma.$transaction(tx => reconcileEntries(tx, "c1", 2026, 9, run.id, people))).toEqual({ written: 1, removed: 0 })
+        const { rows } = await db.query(`SELECT "companyId", category, "amountMinor", "payrollRunId" FROM "AttendancePayrollEntry" WHERE "userId" = 'e1' ORDER BY "companyId", category`)
+        expect(rows).toEqual([
+            { companyId: "c1", category: "LATENESS", amountMinor: 15500, payrollRunId: run.id },
+            { companyId: "c1", category: "ABSENCE", amountMinor: 31000, payrollRunId: run.id },
+            { companyId: "c2", category: "ABSENCE", amountMinor: 5000, payrollRunId: "c2run" },
+        ])
+        await db.query(`DELETE FROM "Company" WHERE id = 'c2'`)
+    })
+
     it("is recorded beside what was paid, never rewritten, and closes if undone (§12.3)", async () => {
         const { AttendanceEngineService: Engine } = await import("@/lib/services/attendance-engine.service")
         const { AttendanceDiscrepancyService: Discrepancies } = await import("@/lib/services/attendance-discrepancy.service")

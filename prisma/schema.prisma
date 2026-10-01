@@ -2033,7 +2033,7 @@ model AttendancePayrollEntry {
   user         User               @relation(fields: [userId], references: [id], onDelete: Cascade)
   payrollRun   PayrollRun         @relation(fields: [payrollRunId], references: [id], onDelete: Cascade)
 
-  @@unique([userId, year, month, category])
+  @@unique([companyId, userId, year, month, category])
   @@index([companyId, year, month])
 }
 
@@ -2063,8 +2063,9 @@ model AttendanceDiscrepancy {
   company            Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
   user               User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  /// At most one open per person and day: a partial unique index in the
-  /// migration (20261016000000), which Prisma cannot express.
+  /// At most one open per company, person and day: a partial unique index
+  /// in the migrations (20261016000000, 20261017000000), which Prisma cannot
+  /// express.
   @@index([userId, date])
   @@index([companyId, resolvedAt])
 }
