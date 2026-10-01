@@ -114,6 +114,28 @@ export type MeasuredDay = {
     unpaidHoliday: boolean
 }
 
+export type PermissionSpan = { type: "LATE_ARRIVAL" | "EARLY_LEAVE" | "MIDDAY"; startMinutes: number; endMinutes: number }
+
+/**
+ * The minutes of a stretch of lateness or early leave that approved
+ * permissions of one kind cover: only where their times overlap it, so an
+ * hour approved for noon excuses nothing of a 09:00 lateness (review on #14).
+ * Overlapping permissions count once.
+ */
+function coveredMinutes(date: string, permissions: readonly PermissionSpan[], type: PermissionSpan["type"], from: number, to: number): number {
+    const base = dayNumber(date) * 86_400
+    const spans = permissions.filter(p => p.type === type)
+        .map(p => [Math.max(from, base + p.startMinutes * 60), Math.min(to, base + p.endMinutes * 60)] as const)
+        .filter(([a, b]) => b > a)
+        .sort((x, y) => x[0] - y[0])
+    let covered = 0, reach = from
+    for (const [a, b] of spans) {
+        const start = Math.max(a, reach)
+        if (b > start) { covered += b - start; reach = b }
+    }
+    return Math.floor(covered / 60)
+}
+
 /**
  * What one day was, from what it was meant to be and its punches.
  *
@@ -129,8 +151,8 @@ export function measureDay(input: {
     punches: readonly EnginePunch[]
     onLeave: boolean
     suspended: boolean
-    /** Approved permission minutes that day, by what they excuse (P0.6). */
-    excused?: { late: number; early: number }
+    /** Approved permission hours that day (P0.6), in minutes from the day's midnight. */
+    permissions?: readonly PermissionSpan[]
 }): MeasuredDay {
     const { date, expected } = input
     const punches = debounce(input.punches)
@@ -157,12 +179,12 @@ export function measureDay(input: {
 
     const shift = shiftOf(date, expected)!
     const lateRaw = Math.max(0, Math.floor((wallSeconds(firstIn!) - shift.start) / 60))
-    const excusedLate = Math.min(lateRaw, input.excused?.late ?? 0)
+    const excusedLate = Math.min(lateRaw, coveredMinutes(date, input.permissions ?? [], "LATE_ARRIVAL", shift.start, wallSeconds(firstIn!)))
     if (odd) return { ...base, status: "INCOMPLETE", lastOut: null, lateMinutes: lateRaw - excusedLate, excusedMinutes: excusedLate }
 
     const out = wallSeconds(lastOut!)
     const earlyRaw = Math.max(0, Math.floor((shift.end - out) / 60))
-    const excusedEarly = Math.min(earlyRaw, input.excused?.early ?? 0)
+    const excusedEarly = Math.min(earlyRaw, coveredMinutes(date, input.permissions ?? [], "EARLY_LEAVE", out, shift.end))
     return {
         ...base,
         status: "PRESENT",

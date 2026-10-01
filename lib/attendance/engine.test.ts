@@ -67,8 +67,23 @@ describe("measuring a day", () => {
     })
 
     it("subtracts approved permission minutes from lateness and early leave, and records them", () => {
-        const day = measure(work(), [p("2026-10-04T10:00:00"), p("2026-10-04T16:00:00")], { excused: { late: 45, early: 120 } })
+        const day = measure(work(), [p("2026-10-04T10:00:00"), p("2026-10-04T16:00:00")], {
+            permissions: [{ type: "LATE_ARRIVAL", startMinutes: 540, endMinutes: 585 }, { type: "EARLY_LEAVE", startMinutes: 900, endMinutes: 1020 }],
+        })
         expect(day).toMatchObject({ lateMinutes: 15, earlyLeaveMinutes: 0, excusedMinutes: 45 + 60 })
+    })
+
+    it("excuses only where a permission's time covers the lateness or early leave (review on #14)", () => {
+        const late = [p("2026-10-04T10:00:00"), p("2026-10-04T17:00:00")]
+        // An hour approved for noon covers nothing of a 09:00–10:00 lateness.
+        expect(measure(work(), late, { permissions: [{ type: "LATE_ARRIVAL", startMinutes: 720, endMinutes: 780 }] })).toMatchObject({ lateMinutes: 60, excusedMinutes: 0 })
+        // 09:30–10:30 covers its last half hour; two that overlap count once.
+        expect(measure(work(), late, { permissions: [{ type: "LATE_ARRIVAL", startMinutes: 570, endMinutes: 630 }] })).toMatchObject({ lateMinutes: 30, excusedMinutes: 30 })
+        expect(measure(work(), late, { permissions: [{ type: "LATE_ARRIVAL", startMinutes: 540, endMinutes: 580 }, { type: "LATE_ARRIVAL", startMinutes: 560, endMinutes: 590 }] }))
+            .toMatchObject({ lateMinutes: 10, excusedMinutes: 50 })
+        // The kind matters: leaving early is not excused by a late arrival's permission.
+        expect(measure(work(), [p("2026-10-04T09:00:00"), p("2026-10-04T16:00:00")], { permissions: [{ type: "LATE_ARRIVAL", startMinutes: 960, endMinutes: 1020 }] }))
+            .toMatchObject({ earlyLeaveMinutes: 60, excusedMinutes: 0 })
     })
 })
 

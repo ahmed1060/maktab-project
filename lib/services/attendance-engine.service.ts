@@ -119,7 +119,7 @@ export class AttendanceEngineService {
                 // Approved permission hours excuse lateness or early leave (§6.6).
                 tx.permissionRequest.findMany({
                     where: { companyId, status: "APPROVED", ...scope, date: { gte: wallClock(`${from}T00:00:00`), lte: wallClock(`${through}T00:00:00`) } },
-                    select: { userId: true, date: true, type: true, minutes: true },
+                    select: { userId: true, date: true, type: true, startMinutes: true, endMinutes: true },
                 }),
                 tx.overtimeApproval.findMany({
                     where: { companyId, ...scope, date: { gte: wallClock(`${from}T00:00:00`), lte: wallClock(`${through}T00:00:00`) } },
@@ -178,15 +178,10 @@ export class AttendanceEngineService {
                     // Before their first day or after their last, a person has no attendance.
                     if (person.EmploymentEvent.length > 0 && !employed.some(touches)) continue
                     const plan = plans.get(date)!
-                        const excused = { late: 0, early: 0 }
-                    for (const p of permissions) {
-                        if (p.userId !== person.id || toDateString(p.date) !== date) continue
-                        if (p.type === "LATE_ARRIVAL") excused.late += p.minutes
-                        if (p.type === "EARLY_LEAVE") excused.early += p.minutes
-                    }
-                    const day = measureDay({
+                        const day = measureDay({
                         date, expected: plan.expected, punches: grouped.get(date) ?? [],
-                        onLeave: leaveDays.has(date), suspended: suspended.some(covers), excused,
+                        onLeave: leaveDays.has(date), suspended: suspended.some(covers),
+                        permissions: permissions.filter(p => p.userId === person.id && toDateString(p.date) === date),
                     })
                     const decision = decisions.find(o => o.userId === person.id && toDateString(o.date) === date)
                     const policy = policyOn(policies, date)
