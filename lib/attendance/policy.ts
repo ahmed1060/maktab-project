@@ -17,11 +17,15 @@ import { DEFAULT_WORK_WEEK } from "./calendar"
 
 const minutes = z.number().int().min(0).max(24 * 60)
 
-/** One band: lateness in [fromMinutes, toMinutes] costs dayFraction of a day. toMinutes null is "and over". */
+/**
+ * One band: lateness in [fromMinutes, toMinutes] costs dayFraction of a day.
+ * toMinutes null is "and over". A band always charges something: grace and
+ * free occurrences are the ways to waive lateness, not a zero band.
+ */
 export const bandSchema = z.object({
     fromMinutes: minutes,
     toMinutes: minutes.nullable(),
-    dayFraction: z.number().min(0).max(1),
+    dayFraction: z.number().gt(0).max(1),
 })
 
 /**

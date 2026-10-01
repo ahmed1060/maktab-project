@@ -98,6 +98,12 @@ describe("the rest of the policy", () => {
         expect(policyBodySchema.safeParse({ ...STANDARD_OFFICE, overtime: { ...STANDARD_OFFICE.overtime, multipliers: { workday: 0.5, restDay: 2, holiday: 3 } } }).success).toBe(false)
         expect(policyBodySchema.safeParse({ ...STANDARD_OFFICE, lateness: undefined }).success).toBe(false)
     })
+
+    it("refuses a band that charges nothing, so every minute after grace costs something (review on #11)", () => {
+        const free = structuredClone(STANDARD_OFFICE)
+        free.lateness.bands[0].dayFraction = 0
+        expect(policyBodySchema.safeParse(free).success).toBe(false)
+    })
 })
 
 describe("effective dating (§6.1)", () => {
