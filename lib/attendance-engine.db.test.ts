@@ -120,7 +120,8 @@ describe.skipIf(!ADMIN_URL)("the attendance engine, a month in Postgres", () => 
 
     it("derived the month as the punches arrived and were mapped, from the first punch on", async () => {
         // Ehab, Eman and Amal, the Admin, 30 days each; Hessa from her first day, the 3rd.
-        expect((await db.query(`SELECT count(*)::int AS n FROM "AttendanceDay" WHERE "companyId" = 'c1'`)).rows[0].n).toBe(90 + 28)
+        // September's only: once 1 October is over, the next month has its own days (they run on the real clock).
+        expect((await db.query(`SELECT count(*)::int AS n FROM "AttendanceDay" WHERE "companyId" = 'c1' AND date < '2026-10-01'`)).rows[0].n).toBe(90 + 28)
         // Asked again, it finds nothing to change; a company with no punches has no days.
         expect(await Engine.recomputeMonth("c1", "2026-09")).toMatchObject({ locked: false, derived: 118, written: 0 })
         expect(await Engine.recomputeMonth("c2", "2026-09")).toMatchObject({ derived: 0, written: 0 })
