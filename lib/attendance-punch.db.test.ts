@@ -177,6 +177,24 @@ describe.skipIf(!ADMIN_URL)("punches, in Postgres", () => {
         })
     })
 
+    describe("a number mapped while a file goes in (review on #12)", () => {
+        it("reaches the file's rows: the import reads the mappings after the mapping commits", async () => {
+            // Another connection maps 555 under the numbers' lock, as mapCode does, finding nothing waiting yet.
+            const other = new Client({ connectionString: process.env.POSTGRES_PRISMA_URL })
+            await other.connect()
+            await other.query("BEGIN")
+            await other.query(`SELECT pg_advisory_xact_lock(hashtext('attendance-codes:c1'))`)
+            const imported = Punches.importRows("c1", file([FILE[0], ["555", "Ehab", "05/10/2026 08:00", "C/In"]], "hash-555"), { dateOrder: "DMY" }, "a1", true)
+                .then(r => r.added, (e: Error) => e.message)
+            await new Promise(r => setTimeout(r, 300))
+            await other.query(`INSERT INTO "AttendanceCode"(id, "companyId", code, "userId", "createdById") VALUES ('m555', 'c1', '555', 'e1', 'a1')`)
+            await other.query("COMMIT")
+            await other.end()
+            expect(await imported).toBe(1)
+            expect((await rows(`"hardwareUserId" = '555'`))[0].userId).toBe("e1")
+        })
+    })
+
     describe("payroll approval and a punch at the same moment (review on #12)", () => {
         it("makes the punch wait for the approval, then refuses it", async () => {
             // Another connection approves November while holding the month's lock, as approval does.
@@ -235,7 +253,8 @@ describe.skipIf(!ADMIN_URL)("punches, in Postgres", () => {
         const { rows: log } = await db.query(`SELECT action, "entityType", "userId" FROM "AuditLog" WHERE "entityType" LIKE 'ATTENDANCE_%' AND "entityType" NOT IN ('ATTENDANCE_CALENDAR', 'ATTENDANCE_POLICY') ORDER BY "createdAt"`)
         expect(log.map(l => l.action)).toEqual([
             "IMPORT_ATTENDANCE_PUNCHES", "MAP_ATTENDANCE_CODE", "IMPORT_ATTENDANCE_PUNCHES", "MAP_ATTENDANCE_CODE",
-            "UNMAP_ATTENDANCE_CODE", "MAP_ATTENDANCE_CODE", "ADD_ATTENDANCE_PUNCH", "VOID_ATTENDANCE_PUNCH", "VOID_ATTENDANCE_IMPORT",
+            "UNMAP_ATTENDANCE_CODE", "MAP_ATTENDANCE_CODE", "ADD_ATTENDANCE_PUNCH", "VOID_ATTENDANCE_PUNCH", "IMPORT_ATTENDANCE_PUNCHES",
+            "VOID_ATTENDANCE_IMPORT",
         ])
         expect(new Set(log.map(l => l.userId))).toEqual(new Set(["a1"]))
     })

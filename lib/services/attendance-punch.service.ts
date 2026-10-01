@@ -104,16 +104,23 @@ export class AttendancePunchService {
         const problems = parsed.flatMap(r => (r.ok ? [] : [{ row: r.row, code: r.code, error: r.error }]))
 
         const company = await prisma.company.findUnique({ where: { id: companyId }, select: { timezone: true } }) ?? fail("COMPANY_NOT_FOUND")
-        const mappings = await prisma.attendanceCode.findMany({
-            where: { companyId, code: { in: [...new Set(good.map(r => r.code))] } },
-            select: { code: true, userId: true, user: { select: { firstName: true, lastName: true } } },
-        })
-        const owner = new Map(mappings.map(m => [m.code, m]))
         const sourceKey = (row: number) => `${file.hash}:${row}`
 
         const run = async (tx: Prisma.TransactionClient) => {
             const months = new Set(good.map(r => monthOf(r.local)))
-            if (commit) await lockMonths(tx, companyId, months)
+            if (commit) {
+                // The mappings are read under the lock mapping takes, in the
+                // same order (numbers, then months), so a number mapped while
+                // this file goes in either reaches these rows or finds them
+                // waiting afterwards — never neither (review on #12).
+                await serialize(tx, `attendance-codes:${companyId}`)
+                await lockMonths(tx, companyId, months)
+            }
+            const mappings = await tx.attendanceCode.findMany({
+                where: { companyId, code: { in: [...new Set(good.map(r => r.code))] } },
+                select: { code: true, userId: true, user: { select: { firstName: true, lastName: true } } },
+            })
+            const owner = new Map(mappings.map(m => [m.code, m]))
             const locked = await lockedMonths(tx, companyId, months)
             const open = good.filter(r => !locked.has(monthOf(r.local)))
             const existing = await tx.attendancePunch.findMany({
