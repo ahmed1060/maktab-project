@@ -112,6 +112,8 @@ export type MeasuredDay = {
     excusedMinutes: number
     /** A company holiday it does not pay for: a day off, and a day's pay less (review on #13). */
     unpaidHoliday: boolean
+    /** An absence somebody excused (§13.1): measured as absent, never charged. */
+    excusedAbsence: boolean
 }
 
 export type PermissionSpan = { type: "LATE_ARRIVAL" | "EARLY_LEAVE" | "MIDDAY"; startMinutes: number; endMinutes: number }
@@ -153,6 +155,8 @@ export function measureDay(input: {
     suspended: boolean
     /** Approved permission hours that day (P0.6), in minutes from the day's midnight. */
     permissions?: readonly PermissionSpan[]
+    /** What somebody excused outright on the exceptions screen (§13.1), whatever its length. */
+    excused?: { lateness?: boolean; earlyLeave?: boolean; absence?: boolean }
 }): MeasuredDay {
     const { date, expected } = input
     const punches = debounce(input.punches)
@@ -161,7 +165,7 @@ export function measureDay(input: {
     const base: MeasuredDay = {
         date, status: "ABSENT", punchCount: punches.length, firstIn, lastOut,
         workedMinutes: 0, lateMinutes: 0, earlyLeaveMinutes: 0, overtimeMinutes: 0, excusedMinutes: 0,
-        unpaidHoliday: false,
+        unpaidHoliday: false, excusedAbsence: false,
     }
     const worked = pairs(punches).reduce((sum, [a, b]) => sum + (b - a), 0)
     const workedMinutes = Math.floor(worked / 60)
@@ -175,16 +179,18 @@ export function measureDay(input: {
         return { ...base, status: expected.kind === "REST" ? "WORKED_REST_DAY" : "WORKED_HOLIDAY", workedMinutes, overtimeMinutes: workedMinutes }
     }
     if (input.onLeave) return { ...base, status: "LEAVE" }
-    if (punches.length === 0) return base
+    if (punches.length === 0) return { ...base, excusedAbsence: !!input.excused?.absence }
 
     const shift = shiftOf(date, expected)!
     const lateRaw = Math.max(0, Math.floor((wallSeconds(firstIn!) - shift.start) / 60))
-    const excusedLate = Math.min(lateRaw, coveredMinutes(date, input.permissions ?? [], "LATE_ARRIVAL", shift.start, wallSeconds(firstIn!)))
+    const excusedLate = input.excused?.lateness ? lateRaw
+        : Math.min(lateRaw, coveredMinutes(date, input.permissions ?? [], "LATE_ARRIVAL", shift.start, wallSeconds(firstIn!)))
     if (odd) return { ...base, status: "INCOMPLETE", lastOut: null, lateMinutes: lateRaw - excusedLate, excusedMinutes: excusedLate }
 
     const out = wallSeconds(lastOut!)
     const earlyRaw = Math.max(0, Math.floor((shift.end - out) / 60))
-    const excusedEarly = Math.min(earlyRaw, coveredMinutes(date, input.permissions ?? [], "EARLY_LEAVE", out, shift.end))
+    const excusedEarly = input.excused?.earlyLeave ? earlyRaw
+        : Math.min(earlyRaw, coveredMinutes(date, input.permissions ?? [], "EARLY_LEAVE", out, shift.end))
     return {
         ...base,
         status: "PRESENT",
@@ -294,7 +300,7 @@ export function priceMonth(days: readonly PricingInput[]): PricedDay[] {
         const lateness = day.status === "PRESENT" ? applyRule(policy.lateness, day.lateMinutes, input.paidMinutes, lateTally) : NO_RULE
         const earlyLeave = day.status === "PRESENT" ? applyRule(policy.earlyLeave, day.earlyLeaveMinutes, input.paidMinutes, earlyTally) : NO_RULE
         // An absence costs the policy's multiplier; an unpaid holiday, one day.
-        const absenceDays = day.status === "ABSENT" ? policy.absence.multiplier : day.unpaidHoliday ? 1 : 0
+        const absenceDays = day.status === "ABSENT" ? (day.excusedAbsence ? 0 : policy.absence.multiplier) : day.unpaidHoliday ? 1 : 0
         const deductionDays = Math.round((lateness.days + earlyLeave.days + absenceDays) * 10_000) / 10_000
 
         const ot = policy.overtime

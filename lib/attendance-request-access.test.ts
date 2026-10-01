@@ -48,6 +48,18 @@ vi.mock("@/lib/services/attendance-request.service", () => ({
     },
 }))
 
+vi.mock("@/lib/services/attendance-exception.service", () => ({
+    AttendanceExceptionService: {
+        list: async (companyId: string, _q: any, visible: any, waiting: any) => {
+            reached.push(`exceptions:${companyId}:${visible.kind}:${waiting.permissions?.kind ?? "-"}:${waiting.missing?.kind ?? "-"}:${waiting.unmatched}`)
+            return {}
+        },
+        decide: async (companyId: string, input: any) => { reached.push(`dayDecision:${companyId}:${input.userId}:${input.subject}:${input.outcome}`); return {} },
+        decisionOf: async (id: string) => REQUESTS[id] ?? null,
+        withdraw: async (id: string) => { reached.push(`withdrawDay:${id}`) },
+    },
+}))
+
 type Pkg = { hasCompanyManagement: boolean; hasHR: boolean; hasAttendanceTerminals?: boolean } | null
 const ATTENDANCE: Pkg = { hasCompanyManagement: false, hasHR: true, hasAttendanceTerminals: true }
 const HR_ONLY: Pkg = { hasCompanyManagement: false, hasHR: true }
@@ -193,5 +205,48 @@ describe("deciding", () => {
         expect((await decideOvertime("emp", { companyId: "c1" })).status).toBe(200)
         expect((await decideOvertime("emp", { companyId: "c3" })).status).toBe(404)
         expect(reached).toEqual(["decide:r1:true", "overtime:c1:emp:APPROVED"])
+    })
+})
+
+describe("daily exceptions (§13.1)", () => {
+    const exceptions = async (query = "from=2026-10-01&to=2026-10-19") => (await import("@/app/api/attendance/exceptions/route")).GET(new Request(url(`/api/attendance/exceptions?${query}`)))
+    const decideDay = async (userId: string, extra: Record<string, unknown> = {}) =>
+        (await import("@/app/api/attendance/decisions/route")).POST(withBody("POST", "/api/attendance/decisions", { userId, date: "2026-10-07", subject: "LATENESS", outcome: "EXCUSED", reason: "Metro strike", ...extra }))
+    const withdrawDay = async (id: string) => (await import("@/app/api/attendance/decisions/[id]/route")).DELETE(withBody("DELETE", `/api/attendance/decisions/${id}`, {}), params(id))
+    const teamViewer = () => signIn({ id: "tl", role: "EMPLOYEE", companyId: "c1", grants: { "attendance.view_team": "TEAM", "attendance.correct": "TEAM" } })
+
+    it("are listed for whoever sees other people's attendance, at that scope, with what waits for them elsewhere", async () => {
+        admin()
+        expect((await exceptions()).status).toBe(200)
+        teamViewer()
+        expect((await exceptions()).status).toBe(200)
+        employee()
+        expect((await exceptions()).status).toBe(403)
+        expect(reached).toEqual(["exceptions:c1:COMPANY:COMPANY:COMPANY:true", "exceptions:c1:TEAM:-:TEAM:false"])
+    })
+
+    it("ask for real dates, in order, and at most two months", async () => {
+        admin()
+        expect((await exceptions("from=2026-10-19&to=2026-10-01")).status).toBe(400)
+        expect((await exceptions("from=2026-01-01&to=2026-12-31")).status).toBe(400)
+        expect(reached).toEqual([])
+    })
+
+    it("are decided by whoever corrects that person, never on their own day, never in another company", async () => {
+        admin()
+        expect((await decideDay("emp")).status).toBe(201)
+        expect((await decideDay("emp", { subject: "ABSENCE", outcome: "ACCEPTED", reason: null })).status).toBe(201)
+        expect((await decideDay("admin")).status).toBe(403)
+        expect((await decideDay("other")).status).toBe(404)
+        expect((await decideDay("emp", { subject: "LUNCH" })).status).toBe(400)
+        expect((await withdrawDay("r1")).status).toBe(200)
+        expect((await withdrawDay("rOwn")).status).toBe(403)
+        expect((await withdrawDay("rOther")).status).toBe(404)
+        teamViewer()
+        expect((await decideDay("emp")).status).toBe(201)
+        expect((await decideDay("loner")).status).toBe(403)
+        employee()
+        expect((await decideDay("loner")).status).toBe(403)
+        expect(reached).toEqual(["dayDecision:c1:emp:LATENESS:EXCUSED", "dayDecision:c1:emp:ABSENCE:ACCEPTED", "withdrawDay:r1", "dayDecision:c1:emp:LATENESS:EXCUSED"])
     })
 })

@@ -32,3 +32,12 @@ export const overtimeDecisionSchema = z.object({
     minutes: z.number().int().min(1).max(1440).nullable().optional(),
     note: z.string().max(500).nullable().optional(),
 })
+
+export const dayDecisionSchema = z.object({
+    companyId: z.string().optional(),
+    userId: z.string().min(1),
+    date,
+    subject: z.enum(["LATENESS", "EARLY_LEAVE", "ABSENCE"]),
+    outcome: z.enum(["EXCUSED", "ACCEPTED"]),
+    reason: z.string().max(500).nullable().optional(),
+})

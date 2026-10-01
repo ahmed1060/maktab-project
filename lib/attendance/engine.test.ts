@@ -87,10 +87,24 @@ describe("measuring a day", () => {
     })
 })
 
+describe("excused on the exceptions screen (§13.1)", () => {
+    it("excuses the whole lateness or early leave, and records it as excused", () => {
+        const day = measure(work(), [p("2026-10-04T10:30:00"), p("2026-10-04T15:00:00")], { excused: { lateness: true, earlyLeave: true } })
+        expect(day).toMatchObject({ lateMinutes: 0, earlyLeaveMinutes: 0, excusedMinutes: 90 + 120 })
+    })
+
+    it("charges nothing for an excused absence, which stays an absence", () => {
+        const absent = measure(work(), [], { excused: { absence: true } })
+        expect(absent).toMatchObject({ status: "ABSENT", excusedAbsence: true })
+        const [priced] = priceMonth([{ day: absent, policy: STANDARD_OFFICE, monthlyMinor: 930_000, daysInMonth: 31, paidMinutes: 420 }])
+        expect(priced).toMatchObject({ absenceDays: 0, deductionMinor: 0 })
+    })
+})
+
 describe("pricing a month", () => {
     const day = (date: string, m: Partial<MeasuredDay>): MeasuredDay => ({
         date, status: "PRESENT", punchCount: 2, firstIn: null, lastOut: null, workedMinutes: 480,
-        lateMinutes: 0, earlyLeaveMinutes: 0, overtimeMinutes: 0, excusedMinutes: 0, unpaidHoliday: false, ...m,
+        lateMinutes: 0, earlyLeaveMinutes: 0, overtimeMinutes: 0, excusedMinutes: 0, unpaidHoliday: false, excusedAbsence: false, ...m,
     })
     // 9,300.00 a month in a 31-day month: 300.00 a day, 30000 minor.
     const input = (d: MeasuredDay, extra: Partial<PricingInput> = {}): PricingInput =>

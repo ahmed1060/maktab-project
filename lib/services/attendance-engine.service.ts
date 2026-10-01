@@ -81,7 +81,7 @@ async function deriveMonth(
 
     // A day either side, for night shifts that start before the month or end after it.
     const loadFrom = addDays(from, -1), loadTo = addDays(through, 1)
-    const [schedules, assignments, defaults, people, central, exclusions, own, punches, leave, permissions, decisions] = await Promise.all([
+    const [schedules, assignments, defaults, people, central, exclusions, own, punches, leave, permissions, decisions, excuses] = await Promise.all([
         tx.workSchedule.findMany({ where: { companyId }, include: SCHEDULE_INCLUDE }),
         tx.userSchedule.findMany({ where: { schedule: { companyId }, ...scope }, select: { userId: true, scheduleId: true, effectiveFrom: true } }),
         tx.scheduleDefault.findMany({ where: { companyId }, select: { scheduleId: true, effectiveFrom: true } }),
@@ -116,6 +116,11 @@ async function deriveMonth(
             where: { companyId, ...scope, date: { gte: wallClock(`${from}T00:00:00`), lte: wallClock(`${through}T00:00:00`) } },
             select: { userId: true, date: true, status: true, approvedMinutes: true },
         }),
+        // What somebody excused on the exceptions screen (§13.1).
+        tx.attendanceDayDecision.findMany({
+            where: { companyId, outcome: "EXCUSED", ...scope, date: { gte: wallClock(`${from}T00:00:00`), lte: wallClock(`${through}T00:00:00`) } },
+            select: { userId: true, date: true, subject: true },
+        }),
     ])
     // A draft (the simulator, §6.7) stands in for every version.
     const policies = draft ? [{ id: "draft", effectiveFrom: "0000-01-01", body: draft }] : await AttendancePolicyService.versions(companyId)
@@ -133,6 +138,10 @@ async function deriveMonth(
     for (let d = loadFrom; d <= loadTo; d = addDays(d, 1)) dates.push(d)
 
     const out: DerivedDay[] = []
+    const excusedOn = (userId: string, day: string) => {
+        const mine = excuses.filter(x => x.userId === userId && toDateString(x.date) === day).map(x => x.subject)
+        return mine.length === 0 ? undefined : { lateness: mine.includes("LATENESS"), earlyLeave: mine.includes("EARLY_LEAVE"), absence: mine.includes("ABSENCE") }
+    }
     for (const person of people) {
         const mine = assignments.filter(a => a.userId === person.id).map(a => ({ scheduleId: a.scheduleId, effectiveFrom: toDateString(a.effectiveFrom) }))
         const plans = new Map<string, { expected: ExpectedDay; scheduleId: string | null; schedule: Schedule | null }>()
@@ -168,6 +177,7 @@ async function deriveMonth(
                 date, expected: plan.expected, punches: grouped.get(date) ?? [],
                 onLeave: leaveDays.has(date), suspended: suspended.some(covers),
                 permissions: permissions.filter(p => p.userId === person.id && toDateString(p.date) === date),
+                excused: excusedOn(person.id, date),
             })
             const decision = decisions.find(o => o.userId === person.id && toDateString(o.date) === date)
             const policy = policyOn(policies, date)
@@ -206,6 +216,7 @@ async function deriveMonth(
                 deductionMinor: d.deductionMinor, overtimeStatus: d.overtimeStatus, overtimeMinor: d.overtimeMinor,
                 breakdown: {
                     lateness: d.lateness, earlyLeave: d.earlyLeave, absenceDays: d.absenceDays, unpriced: d.unpriced,
+                    excusedAbsence: d.excusedAbsence,
                     holiday: e.kind === "HOLIDAY" ? e.holiday.name : null,
                 } as Prisma.InputJsonValue,
             }

@@ -244,6 +244,7 @@ model Company {
   permissionRequests   PermissionRequest[]
   overtimeApprovals    OvertimeApproval[]
   missingPunchRequests MissingPunchRequest[]
+  attendanceDecisions  AttendanceDayDecision[]
   companyHolidays      CompanyHoliday[]
   holidayExclusions    CompanyHolidayExclusion[]
   finalSettlements     FinalSettlement[]
@@ -495,6 +496,7 @@ model User {
   permissionRequests         PermissionRequest[]
   overtimeApprovals          OvertimeApproval[]
   missingPunchRequests       MissingPunchRequest[]
+  attendanceDecisions        AttendanceDayDecision[]
 
   @@index([email])
   @@index([companyId])
@@ -1951,4 +1953,39 @@ model MissingPunchRequest {
 
   @@index([companyId, status])
   @@index([userId, date])
+}
+
+// --- Attendance: decisions on a day (ATTENDANCE_PLAN.md §13.1) ---------------
+
+enum AttendanceSubject {
+  LATENESS
+  EARLY_LEAVE
+  ABSENCE
+}
+
+enum AttendanceDecisionOutcome {
+  /// Not charged, for the reason given.
+  EXCUSED
+  /// Looked at: the charge stands, and the day leaves the exceptions list.
+  ACCEPTED
+}
+
+/// Somebody's decision on one part of one person's day, from the exceptions
+/// screen. An excuse is applied when the day is priced; an acceptance only
+/// records that the charge was looked at.
+model AttendanceDayDecision {
+  id          String                    @id @default(uuid())
+  companyId   String
+  userId      String
+  date        DateTime                  @db.Date
+  subject     AttendanceSubject
+  outcome     AttendanceDecisionOutcome
+  reason      String?
+  decidedById String
+  decidedAt   DateTime                  @default(now())
+  company     Company                   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  user        User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date, subject])
+  @@index([companyId, date])
 }

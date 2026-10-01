@@ -11,8 +11,9 @@ import { useHeader } from '@/context/HeaderContext'
 import { useToast } from '@/context/ToastContext'
 import { send, json } from './send'
 import RequestsTab from './RequestsTab'
+import AddPunchModal from './AddPunchModal'
+import ExceptionsTab from './ExceptionsTab'
 import LoadingSpinner from '@/components/LoadingSpinner'
-import Modal from '@/components/Modal'
 import ConfirmModal from '@/components/ConfirmModal'
 import type { TranslationKey } from '@/lib/translations'
 
@@ -45,7 +46,7 @@ type Report = {
 type ImportRow = { id: string; fileName: string; createdAt: string; rowCount: number; addedCount: number; duplicateCount: number; refusedCount: number; voidedAt: string | null; voidReason: string | null }
 type Codes = { mapped: { id: string; code: string; userId: string; name: string }[]; unmatched: { code: string; punches: number; from: string; to: string }[] }
 
-type Tab = 'days' | 'punches' | 'requests' | 'import' | 'numbers'
+type Tab = 'exceptions' | 'days' | 'punches' | 'requests' | 'import' | 'numbers'
 
 const pad = (n: number) => String(n).padStart(2, '0')
 const monthStart = (date: string) => `${date.slice(0, 8)}01`
@@ -71,15 +72,22 @@ export default function AttendancePage() {
     // abroad, they differ, and every default date below starts from it (review on #12).
     const { data: peopleBody } = useSWR(!isSuperAdmin || companyId ? `/api/attendance/people?${q}` : null, fetcher)
     const today: string | undefined = peopleBody?.data?.today
-    const tabs: Tab[] = correctsCompany ? ['days', 'punches', 'requests', 'import', 'numbers'] : ['days', 'punches', 'requests']
-    const [tab, setTab] = useState<Tab>('days')
+    // Whoever sees other people's attendance starts on what needs a decision (§13.1).
+    const seesOthers = p.can('attendance.view_team')
+    const tabs: Tab[] = [
+        ...(seesOthers ? ['exceptions' as const] : []),
+        'days', 'punches', 'requests',
+        ...(correctsCompany ? ['import' as const, 'numbers' as const] : []),
+    ]
+    const [picked, setTab] = useState<Tab | null>(null)
+    const tab: Tab = picked ?? (seesOthers ? 'exceptions' : 'days')
 
     if (status === 'loading' || (!today && !(isSuperAdmin && !companyId))) return <LoadingSpinner />
     if (isSuperAdmin && !companyId) {
         return <p style={{ color: 'var(--text-soft)' }}>{t('punch_pick_company')}</p>
     }
 
-    const label: Record<Tab, TranslationKey> = { days: 'day_tab_days', punches: 'punch_tab_punches', requests: 'req_tab', import: 'punch_tab_import', numbers: 'punch_tab_numbers' }
+    const label: Record<Tab, TranslationKey> = { exceptions: 'exc_tab', days: 'day_tab_days', punches: 'punch_tab_punches', requests: 'req_tab', import: 'punch_tab_import', numbers: 'punch_tab_numbers' }
     return (
         <div style={{ display: 'grid', gap: '1rem' }}>
             {tabs.length > 1 && (
@@ -91,6 +99,7 @@ export default function AttendancePage() {
                     ))}
                 </div>
             )}
+            {tab === 'exceptions' && today && seesOthers && <ExceptionsTab q={q} companyId={companyId} today={today} onOpen={setTab} />}
             {tab === 'days' && today && <DaysTab q={q} companyId={companyId} today={today} />}
             {tab === 'punches' && today && <PunchesTab q={q} companyId={companyId} today={today} />}
             {tab === 'requests' && today && <RequestsTab q={q} companyId={companyId} today={today} />}
@@ -108,7 +117,7 @@ type Day = {
     firstIn: string | null; lastOut: string | null; workedMinutes: number
     lateMinutes: number; earlyLeaveMinutes: number; overtimeMinutes: number; excusedMinutes: number
     deductionDays: number; deductionMinor: number | null; overtimeStatus: string; overtimeMinor: number | null
-    breakdown: { lateness: RuleOutcome; earlyLeave: RuleOutcome; absenceDays: number; unpriced: string | null; holiday: string | null }
+    breakdown: { lateness: RuleOutcome; earlyLeave: RuleOutcome; absenceDays: number; unpriced: string | null; holiday: string | null; excusedAbsence?: boolean }
 }
 
 const STATUS_COLOR: Record<string, string> = {
@@ -156,6 +165,7 @@ function DaysTab({ q, companyId, today }: { q: string; companyId: string | null;
         d.breakdown.unpriced ? t(({ INCOMPLETE: 'day_unpriced_incomplete', NO_POLICY: 'day_unpriced_no_policy', NO_SALARY: 'day_unpriced_no_salary' } as Record<string, TranslationKey>)[d.breakdown.unpriced] ?? 'day_unpriced_no_policy') : null,
         d.overtimeStatus === 'PENDING' ? t('day_overtime_pending') : d.overtimeStatus === 'REJECTED' ? t('day_overtime_rejected') : d.overtimeStatus === 'NOT_COUNTED' ? t('day_overtime_short') : null,
         d.excusedMinutes > 0 ? t('day_excused').replace('{n}', String(d.excusedMinutes)) : null,
+        d.breakdown.excusedAbsence ? t('day_absence_excused') : null,
     ].filter(Boolean).join(' · ')
     const totalMinor = (days ?? []).reduce((sum, d) => sum + (d.deductionMinor ?? 0), 0)
     const showsMoney = (days ?? []).some(d => d.deductionMinor !== null)
@@ -371,69 +381,6 @@ function PunchesTab({ q, companyId, today }: { q: string; companyId: string | nu
                 onCancel={() => setWithdrawing(null)}
             />
         </section>
-    )
-}
-
-function AddPunchModal({ companyId, today, people, onClose, onAdded }: { companyId: string | null; today: string; people: Person[]; onClose: () => void; onAdded: () => void }) {
-    const { t } = useLanguage()
-    const { showToast } = useToast()
-    const [userId, setUserId] = useState('')
-    const [date, setDate] = useState(today)
-    const [time, setTime] = useState('')
-    const [direction, setDirection] = useState<'' | 'IN' | 'OUT'>('')
-    const [note, setNote] = useState('')
-    const [busy, setBusy] = useState(false)
-
-    const save = async () => {
-        setBusy(true)
-        try {
-            const r = await send('/api/attendance/punches', json('POST', {
-                ...(companyId ? { companyId } : {}), userId, at: `${date}T${time}`, direction: direction || null, note,
-            }), t('punch_failed'))
-            if (!r.ok) return showToast(r.error, 'error')
-            showToast(t('punch_added'), 'success')
-            onAdded()
-        } finally { setBusy(false) }
-    }
-
-    return (
-        <Modal isOpen onClose={onClose} title={t('punch_add')}>
-            <div style={{ display: 'grid', gap: '0.75rem' }}>
-                <label style={{ display: 'grid', gap: '0.25rem' }}>
-                    <span className="label">{t('punch_person')}</span>
-                    <select className="input" value={userId} onChange={e => setUserId(e.target.value)}>
-                        <option value="">{t('punch_choose_person')}</option>
-                        {people.map(x => <option key={x.id} value={x.id}>{x.name}</option>)}
-                    </select>
-                </label>
-                <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-                    <label style={{ display: 'grid', gap: '0.25rem' }}>
-                        <span className="label">{t('punch_date')}</span>
-                        <input className="input" type="date" value={date} onChange={e => setDate(e.target.value)} />
-                    </label>
-                    <label style={{ display: 'grid', gap: '0.25rem' }}>
-                        <span className="label">{t('punch_time')}</span>
-                        <input className="input" type="time" value={time} onChange={e => setTime(e.target.value)} />
-                    </label>
-                    <label style={{ display: 'grid', gap: '0.25rem' }}>
-                        <span className="label">{t('punch_direction')}</span>
-                        <select className="input" value={direction} onChange={e => setDirection(e.target.value as '' | 'IN' | 'OUT')}>
-                            <option value="">{t('punch_direction_unknown')}</option>
-                            <option value="IN">{t('punch_in')}</option>
-                            <option value="OUT">{t('punch_out')}</option>
-                        </select>
-                    </label>
-                </div>
-                <label style={{ display: 'grid', gap: '0.25rem' }}>
-                    <span className="label">{t('punch_reason')}</span>
-                    <textarea className="input" rows={2} value={note} onChange={e => setNote(e.target.value)} placeholder={t('punch_reason_example')} />
-                </label>
-                <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-                    <button className="btn btn-secondary" onClick={onClose}>{t('cancel')}</button>
-                    <button className="btn btn-primary" disabled={busy || !userId || !date || !time || !note.trim()} onClick={save}>{t('punch_add')}</button>
-                </div>
-            </div>
-        </Modal>
     )
 }
 
