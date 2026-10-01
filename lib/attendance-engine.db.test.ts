@@ -170,6 +170,19 @@ describe.skipIf(!ADMIN_URL)("the attendance engine, a month in Postgres", () => 
         expect(e.get("2026-09-02")!.status).toBe("ABSENT")
     })
 
+    it("rebuilds the night before when a file brings only a night shift's morning check-out (review on #13)", async () => {
+        // Eman's 30 September night, across the month's end: in by hand at 21:58,
+        // then a file with only the 06:01 check-out of 1 October.
+        await Punches.addManual("c1", { userId: "e3", at: "2026-09-30T21:58", direction: "IN", note: "Badge reader down" }, "a1")
+        expect((await days("e3")).get("2026-09-30")!.status).toBe("INCOMPLETE")
+        await Punches.importRows("c1", { name: "morning.csv", hash: "morning", rows: [["AC-No.", "Name", "Check Time", "State"], ["3", "Eman", "01/10/2026 06:01", "C/Out"]] }, { dateOrder: "DMY" }, "a1", true)
+        expect((await days("e3")).get("2026-09-30")).toMatchObject({ status: "PRESENT", workedMinutes: 483 })
+        // Withdrawing that file takes the night back to incomplete, the night before included.
+        const { rows: [imp] } = await db.query(`SELECT id FROM "AttendanceImport" WHERE "fileHash" = 'morning'`)
+        await Punches.voidImport(imp.id, "Wrong file", "a1")
+        expect((await days("e3")).get("2026-09-30")!.status).toBe("INCOMPLETE")
+    })
+
     it("rebuilds the day a correction touches, as part of the correction", async () => {
         await Punches.addManual("c1", { userId: "e1", at: "2026-09-07T17:00", direction: "OUT", note: "Forgot to punch out" }, "a1")
         expect((await days("e1")).get("2026-09-07")).toMatchObject({ status: "PRESENT", deductionMinor: 0 })

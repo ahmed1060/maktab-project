@@ -186,7 +186,8 @@ export class AttendancePunchService {
         if (!commit) return run(prisma as unknown as Prisma.TransactionClient)
         const report = await prisma.$transaction(run, { timeout: 60_000 })
         // The whole company: a file can move the first punch earlier, and with it the first derived day.
-        if (report.from) await recomputeAfter(companyId, report.from)
+        // From the day before its first punch: an early-morning check-out can close the night before's shift (review on #13).
+        if (report.from) await recomputeAfter(companyId, addDays(report.from, -1))
         return report
     }
 
@@ -221,9 +222,10 @@ export class AttendancePunchService {
             await AuditLogService.log("VOID_ATTENDANCE_IMPORT", "ATTENDANCE_IMPORT", id, {
                 tx, ...(await actorOf(tx, actorId)), details: { companyId: imp.companyId, fileName: imp.fileName, punches: voided.count, reason: reason.trim() },
             })
-            return { voided: voided.count, companyId: imp.companyId, from: months.sort()[0] ?? null }
+            const first = punches.map(p => wallClockText(p.punchAtLocal).slice(0, 10)).sort()[0] ?? null
+            return { voided: voided.count, companyId: imp.companyId, from: first }
         })
-        if (out.from) await recomputeAfter(out.companyId, `${out.from}-01`)
+        if (out.from) await recomputeAfter(out.companyId, addDays(out.from, -1))
         return { voided: out.voided }
     }
 
