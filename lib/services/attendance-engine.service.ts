@@ -50,6 +50,9 @@ function hashOf(value: unknown): string {
     return createHash("sha256").update(JSON.stringify(value)).digest("hex")
 }
 
+/** The most days one list returns; the route asks for one more, to know it stopped short. */
+export const DAY_LIST_LIMIT = 3000
+
 export type RecomputeResult = { month: string; locked: boolean; derived: number; written: number; removed: number }
 
 export class AttendanceEngineService {
@@ -298,7 +301,7 @@ export class AttendanceEngineService {
     }
 
     /** Days between two dates for the people the viewer sees. */
-    static async days(companyId: string, query: { from: string; to: string; userId?: string | null }, visible: import("./attendance-punch.service").Visibility) {
+    static async days(companyId: string, query: { from: string; to: string; userId?: string | null }, visible: import("./attendance-punch.service").Visibility, limit = DAY_LIST_LIMIT) {
         const rows = await prisma.attendanceDay.findMany({
             where: {
                 companyId,
@@ -306,8 +309,9 @@ export class AttendanceEngineService {
                 ...(query.userId ? { userId: query.userId } : {}),
                 ...(visible.kind === "TEAM" ? { user: { OR: [{ teamLeaderId: visible.leaderId }, { id: visible.leaderId }] } } : visible.kind === "OWN" ? { userId: visible.userId } : {}),
             },
-            orderBy: [{ date: "desc" }],
-            take: 3000,
+            // Date, then person: a list cut short always drops the same rows (review on #13).
+            orderBy: [{ date: "desc" }, { userId: "asc" }],
+            take: limit,
             omit: { inputsHash: true },
             include: { user: { select: { firstName: true, lastName: true, teamLeaderId: true } } },
         })

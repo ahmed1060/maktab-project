@@ -138,6 +138,7 @@ function DaysTab({ q, companyId, today }: { q: string; companyId: string | null;
     const url = month ? `/api/attendance/days?${q}from=${month}-01&to=${lastDayOf(month)}${who ? `&userId=${encodeURIComponent(who)}` : ''}` : null
     const { data: body, error, mutate } = useSWR(url, fetcher)
     const days: Day[] | null = body ? body.data?.days ?? [] : null
+    const daysTruncated: boolean = !!body?.data?.truncated
 
     const recompute = async () => {
         setBusy(true)
@@ -186,6 +187,7 @@ function DaysTab({ q, companyId, today }: { q: string; companyId: string | null;
                 {correctsCompany && <button className="btn btn-secondary" disabled={busy || !month} onClick={recompute}>{t('day_recompute')}</button>}
             </div>
             <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--text-soft)' }}>{t('day_hint')}</p>
+            {daysTruncated && <p role="status" style={{ margin: 0, color: 'var(--warn-fg)', fontSize: '0.86rem' }}>{t('day_truncated').replace('{n}', String(body?.data?.limit ?? ''))}</p>}
 
             {error ? <p style={{ color: 'var(--danger-fg)' }}>{t('punch_failed')}</p>
                 : days === null ? <LoadingSpinner />
@@ -224,7 +226,7 @@ function DaysTab({ q, companyId, today }: { q: string; companyId: string | null;
                                             </tr>
                                         ))}
                                     </tbody>
-                                    {showsMoney && (
+                                    {showsMoney && !daysTruncated && (
                                         <tfoot>
                                             <tr>
                                                 <td colSpan={seesOthers ? 8 : 7} style={{ textAlign: 'end', fontWeight: 600 }}>{t('day_total')}</td>

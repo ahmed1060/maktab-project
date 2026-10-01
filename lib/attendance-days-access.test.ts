@@ -26,8 +26,12 @@ const DAYS = [
     { id: "d2", userId: "hr", teamLeaderId: null, name: "Hr", date: "2026-09-08", deductionMinor: 15500, overtimeMinor: 0 },
 ]
 vi.mock("@/lib/services/attendance-engine.service", () => ({
+    DAY_LIST_LIMIT: 3000,
     AttendanceEngineService: {
-        days: async (companyId: string, _q: any, visible: any) => { reached.push(`days:${companyId}:${visible.kind}`); return DAYS.map(d => ({ ...d })) },
+        days: async (companyId: string, q: any, visible: any, limit: number) => {
+            reached.push(`days:${companyId}:${visible.kind}`)
+            return q.userId === "busy" ? Array.from({ length: limit }, (_, i) => ({ ...DAYS[0], id: `d${i}` })) : DAYS.map(d => ({ ...d }))
+        },
         recomputeMonth: async (companyId: string, month: string) => { reached.push(`recompute:${companyId}:${month}`); return { month, locked: false, derived: 0, written: 0, removed: 0 } },
     },
 }))
@@ -87,5 +91,15 @@ describe("rebuilding a month", () => {
         employee()
         expect((await recompute({ month: "2026-09" })).status).toBe(403)
         expect(reached).toEqual(["recompute:c1:2026-09", "recompute:c1:2026-09"])
+    })
+})
+
+describe("a long list of days (review on #13)", () => {
+    it("says it stopped short, so nobody reads a partial total as the month's", async () => {
+        admin()
+        const full = await (await days("from=2026-09-01&to=2026-09-30&userId=busy")).json()
+        expect(full.data).toMatchObject({ truncated: true, limit: 3000 })
+        expect(full.data.days).toHaveLength(3000)
+        expect((await (await days()).json()).data.truncated).toBe(false)
     })
 })

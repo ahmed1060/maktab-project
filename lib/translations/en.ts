@@ -1329,6 +1329,7 @@ export const en = {
         day_days: "{n} day(s)",
         day_total: "Total deductions",
         day_none: "No days measured in this month yet.",
+        day_truncated: "Showing the latest {n} days only, so there is no total. Choose a person to see their whole month.",
         day_hint: "Each day is worked out from the schedule, the policy and the punches, and rebuilt when any of them changes. Minutes are shown; a day is measured once it is over.",
         day_recompute: "Recalculate this month",
         day_recomputed: "Month recalculated",
