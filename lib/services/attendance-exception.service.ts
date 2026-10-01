@@ -124,6 +124,21 @@ export class AttendanceExceptionService {
             const person = await tx.user.findFirst({ where: { id: input.userId, companyId, status: { not: "DELETED" } }, select: { id: true } })
             if (!person) fail("USER_NOT_FOUND")
             await openMonth(tx, companyId, input.date)
+            // Only an exception that is there now can be decided — or a decision
+            // already made, changed. Otherwise a future day could be excused in
+            // advance and the waiver applied, unseen, when it came (review on #15).
+            const already = await tx.attendanceDayDecision.findUnique({ where: { userId_date_subject: { userId: input.userId, date, subject: input.subject } }, select: { id: true } })
+            if (!already) {
+                const day = await tx.attendanceDay.findUnique({
+                    where: { companyId_userId_date: { companyId, userId: input.userId, date } },
+                    select: { status: true, lateMinutes: true, earlyLeaveMinutes: true },
+                })
+                const fits = !!day && (
+                    input.subject === "LATENESS" ? day.status === "PRESENT" && day.lateMinutes > 0
+                        : input.subject === "EARLY_LEAVE" ? day.status === "PRESENT" && day.earlyLeaveMinutes > 0
+                            : day.status === "ABSENT")
+                if (!fits) fail("NOTHING_TO_DECIDE")
+            }
             const row = await tx.attendanceDayDecision.upsert({
                 where: { userId_date_subject: { userId: input.userId, date, subject: input.subject } },
                 create: { companyId, userId: input.userId, date, subject: input.subject, outcome: input.outcome, reason, decidedById: actorId },

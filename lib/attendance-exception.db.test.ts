@@ -110,6 +110,16 @@ describe.skipIf(!ADMIN_URL)("daily exceptions, in Postgres", () => {
         expect(dates((await list()).absent)).toEqual(["2026-10-15", "2026-10-18", "2026-10-19"])
     })
 
+    it("decides only an exception that is there: not a day in advance, not lateness that wasn't (review on #15)", async () => {
+        await expect(Exceptions.decide("c1", { userId: "e1", date: "2026-10-27", subject: "ABSENCE", outcome: "EXCUSED", reason: "In advance" }, "a1")).rejects.toEqual(refusal("NOTHING_TO_DECIDE"))
+        // The 1st was on time: no lateness to excuse, and not an absence either.
+        await expect(Exceptions.decide("c1", { userId: "e1", date: "2026-10-01", subject: "LATENESS", outcome: "EXCUSED", reason: "x" }, "a1")).rejects.toEqual(refusal("NOTHING_TO_DECIDE"))
+        await expect(Exceptions.decide("c1", { userId: "e1", date: "2026-10-01", subject: "ABSENCE", outcome: "ACCEPTED" }, "a1")).rejects.toEqual(refusal("NOTHING_TO_DECIDE"))
+        // A decision already made can be changed: the 13th's excuse, accepted instead.
+        await Exceptions.decide("c1", { userId: "e1", date: "2026-10-13", subject: "ABSENCE", outcome: "ACCEPTED" }, "a1")
+        await Exceptions.decide("c1", { userId: "e1", date: "2026-10-13", subject: "ABSENCE", outcome: "EXCUSED", reason: "Hospital, note seen" }, "a1")
+    })
+
     it("can be withdrawn: the day is charged as measured, and listed again", async () => {
         const { rows: [d] } = await db.query(`SELECT id FROM "AttendanceDayDecision" WHERE date = '2026-10-08'`)
         await expect(Exceptions.withdraw(d.id, "e1")).rejects.toEqual(refusal("CANNOT_CORRECT_OWN"))

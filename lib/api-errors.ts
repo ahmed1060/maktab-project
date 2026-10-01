@@ -100,6 +100,7 @@ export const KNOWN_REFUSALS: Record<string, { status: 400 | 403 | 404 | 409; mes
     OVERTIME_NEEDS_NO_APPROVAL: { status: 400, message: "The attendance policy pays overtime on that day without approval." },
     OVERTIME_MINUTES_REQUIRED: { status: 400, message: "Say how many minutes of overtime are approved." },
     DECISION_NOT_FOUND: { status: 404, message: "Decision not found." },
+    NOTHING_TO_DECIDE: { status: 409, message: "That day has nothing of that kind to decide: it isn't late, early or absent as measured." },
     SOME_TASKS_NOT_FOUND_OR_ACCESS_DENIED: { status: 403, message: "Some of these tasks don't exist, or aren't yours to pay." },
 }
 
