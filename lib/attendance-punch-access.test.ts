@@ -23,8 +23,12 @@ vi.mock("@/lib/services/audit-log.service", () => ({ AuditLogService: { log: asy
 const reached: string[] = []
 vi.mock("@/lib/services/attendance-calendar.service", () => ({ AttendanceCalendarService: { today: async (companyId: string) => companyId === "c1" ? "2026-10-01" : "2026-09-30" } }))
 vi.mock("@/lib/services/attendance-punch.service", () => ({
+    PUNCH_LIST_LIMIT: 2000,
     AttendancePunchService: {
-        list: async (companyId: string, query: any, visible: any) => { reached.push(`list:${companyId}:${visible.kind}${query.unmatched ? ":unmatched" : ""}`); return [] },
+        list: async (companyId: string, query: any, visible: any, limit: number) => {
+            reached.push(`list:${companyId}:${visible.kind}${query.unmatched ? ":unmatched" : ""}`)
+            return Array.from({ length: query.userId === "busy" ? limit : 1 }, (_, i) => ({ id: `p${i}` }))
+        },
         addManual: async (companyId: string, input: any) => { reached.push(`add:${companyId}:${input.userId}`); return { id: "p-new" } },
         punchOf: async (id: string) => ({
             p1: { id: "p1", companyId: "c1", userId: "emp", user: { teamLeaderId: "tl" } },
@@ -227,5 +231,17 @@ describe("the screen's dates (review on #12)", () => {
         const page = (await import("node:fs")).readFileSync("app/(dashboard)/dashboard/attendance/page.tsx", "utf8")
         expect(page).not.toMatch(/new Date\(\)\s*;\s*return\s*`\$\{d\.getFullYear\(\)/)
         expect(page).not.toMatch(/\.getDate\(\)/)
+    })
+})
+
+describe("a long list (review on #12)", () => {
+    it("says it stopped short rather than passing for the whole record", async () => {
+        admin()
+        const full = await (await list("from=2026-10-01&to=2026-10-31&userId=busy")).json()
+        expect(full.data).toMatchObject({ truncated: true, limit: 2000 })
+        expect(full.data.punches).toHaveLength(2000)
+        const short = await (await list()).json()
+        expect(short.data).toMatchObject({ truncated: false })
+        expect(short.data.punches).toHaveLength(1)
     })
 })

@@ -127,6 +127,7 @@ function PunchesTab({ q, companyId, today }: { q: string; companyId: string | nu
     const listUrl = `/api/attendance/punches?${q}from=${from}&to=${to}${waiting ? '&unmatched=1' : who ? `&userId=${encodeURIComponent(who)}` : ''}`
     const { data: body, error, mutate } = useSWR(from && to && from <= to ? listUrl : null, fetcher)
     const punches: Punch[] | null = body ? body.data?.punches ?? [] : null
+    const truncated: boolean = !!body?.data?.truncated
 
     const leaderOf = useMemo(() => new Map(people.map(x => [x.id, x.teamLeaderId])), [people])
     const mayCorrect = (punch: Punch) => !punch.voidedAt && (punch.userId
@@ -174,6 +175,7 @@ function PunchesTab({ q, companyId, today }: { q: string; companyId: string | nu
                 )}
             </div>
 
+            {truncated && <p role="status" style={{ margin: 0, color: 'var(--warn-fg)', fontSize: '0.86rem' }}>{t('punch_truncated').replace('{n}', String(body?.data?.limit ?? ''))}</p>}
             {error ? <p style={{ color: 'var(--danger-fg)' }}>{t('punch_failed')}</p>
                 : punches === null ? <LoadingSpinner />
                     : punches.length === 0 ? <p style={{ margin: 0, color: 'var(--text-soft)' }}>{t('punch_none')}</p>

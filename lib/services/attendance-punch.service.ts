@@ -23,6 +23,9 @@ import { MAX_ROWS } from "@/lib/attendance/punch-file"
 
 const PREVIEW_PROBLEMS = 50
 
+/** The most punches one list returns; the route asks for one more, to know it stopped short. */
+export const PUNCH_LIST_LIMIT = 2000
+
 function fail(code: string): never {
     throw new Error(code)
 }
@@ -219,7 +222,7 @@ export class AttendancePunchService {
     // --- one punch ------------------------------------------------------------
 
     /** Lists punches between two dates (inclusive), newest first, as far as the viewer sees. */
-    static async list(companyId: string, query: { from: string; to: string; userId?: string | null; unmatched?: boolean }, visible: Visibility) {
+    static async list(companyId: string, query: { from: string; to: string; userId?: string | null; unmatched?: boolean }, visible: Visibility, limit = PUNCH_LIST_LIMIT) {
         if (query.unmatched && visible.kind !== "COMPANY") return []
         const rows = await prisma.attendancePunch.findMany({
             where: {
@@ -229,7 +232,7 @@ export class AttendancePunchService {
                 ...visibleWhere(visible),
             },
             orderBy: [{ punchAtLocal: "desc" }],
-            take: 2000,
+            take: limit,
             select: {
                 id: true, userId: true, hardwareUserId: true, source: true, punchAtLocal: true, direction: true, status: true, note: true,
                 importId: true, receivedAt: true, voidedAt: true, voidReason: true,
