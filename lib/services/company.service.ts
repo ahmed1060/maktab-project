@@ -335,7 +335,11 @@ export class CompanyService {
     static async settingsExposure(companyId: string) {
         return prisma.company.findUnique({
             where: { id: companyId },
-            select: { id: true, adminSettingsEnabled: true, adminSettingsTabs: true },
+            select: {
+                id: true, adminSettingsEnabled: true, adminSettingsTabs: true,
+                // A tab tied to a module exists only for a company holding it.
+                package: { select: { hasCompanyManagement: true, hasHR: true, hasAttendanceTerminals: true, hasAttendanceMobile: true } },
+            },
         })
     }
 

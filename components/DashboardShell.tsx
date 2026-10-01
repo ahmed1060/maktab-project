@@ -634,6 +634,7 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
                                 { href: '/dashboard/super-admins', label: t('super_admins'), icon: '🛡️' },
                                 { href: '/dashboard/companies', label: t('companies'), icon: '🏢' },
                                 { href: '/dashboard/packages', label: t('packages'), icon: '📦' },
+                                { href: '/dashboard/public-holidays', label: t('public_holidays_title'), icon: '🗓️' },
                                 { href: '/dashboard/role-templates', label: t('role_templates_title'), icon: '🧩' },
                                 { href: '/dashboard/who-can', label: t('who_can_title'), icon: '🔎' },
                                 { href: '/dashboard/role-change-requests', label: t('role_changes_title'), icon: '📨' },

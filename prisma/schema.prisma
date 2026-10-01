@@ -134,16 +134,16 @@ model Package {
 }
 
 model Company {
-  id                   String                @id @default(uuid())
-  name                 String                @unique
-  isBanned             Boolean               @default(false)
+  id                   String                    @id @default(uuid())
+  name                 String                    @unique
+  isBanned             Boolean                   @default(false)
   // Company Settings: whether a submitted task location auto-verifies
   // against the task's target location at all, for any task belonging to
   // this company. The distance threshold itself is a system-wide setting
   // (SystemSettings.locationVerifyRadiusMeters) — this is deliberately
   // company policy only, not per-task, so one company can't quietly
   // change what another company's tasks do.
-  autoVerifyLocation   Boolean               @default(true)
+  autoVerifyLocation   Boolean                   @default(true)
   // Per-company module names and icons, keyed by the module keys in
   // lib/modules.ts. Null, or a missing key, falls through to the built-in
   // default, so every existing company is untouched.
@@ -185,7 +185,7 @@ model Company {
   // "give them another week" is how the request always arrives. Kept apart from
   // the preset so "how often do we extend, and by how much" is answerable
   // without reading an audit log.
-  trialExtensionDays   Int                   @default(0)
+  trialExtensionDays   Int                       @default(0)
   // Which lifecycle notices have already gone out for the current period:
   // TRIAL_ENDING_24H, GRACE_STARTED, GRACE_ENDING_24H, LOCKED.
   //
@@ -200,7 +200,7 @@ model Company {
   // because that starts a new period which deserves its notices again. Cleared
   // wholesale rather than selectively: sending one notice twice after an
   // extension is a much smaller failure than never sending it at all.
-  lifecycleNoticesSent String[]              @default([])
+  lifecycleNoticesSent String[]                  @default([])
   /// The day of the month this company pays on.
   ///
   /// Load-bearing rather than cosmetic: it is what decides which side of payday
@@ -211,13 +211,13 @@ model Company {
   /// February is a payroll day that silently moves, and "the 30th" meaning the
   /// 28th in one month out of twelve is the kind of rule nobody remembers when
   /// they are reading a payslip.
-  payrollDay           Int                   @default(25)
+  payrollDay           Int                       @default(25)
   /// Whether an employee can see their own payslip at all.
   ///
   /// Off by default, and deliberately so: turning payslips on is a decision a
   /// company makes once, knowingly. A default of "on" would publish pay records
   /// to every employee of every existing company on the deploy that adds them.
-  payslipsVisible      Boolean               @default(false)
+  payslipsVisible      Boolean                   @default(false)
   /// The most of one month's net that debt recovery may take, as a percentage.
   ///
   /// 100 is the agreed behaviour today: a debt is collected out of the next
@@ -226,19 +226,22 @@ model Company {
   /// uncapped recovery can take somebody's pay to zero twice running with
   /// nobody deciding it should, and most jurisdictions limit it for that
   /// reason. 0 switches recovery off without deleting anybody's debt.
-  debtRecoveryPercent  Int                   @default(100)
+  debtRecoveryPercent  Int                       @default(100)
   /// The calendar this company's months are measured in.
   ///
   /// Everything in lib/time.ts already takes a zone as an argument; this is
   /// where the argument finally comes from. Validated, not merely stored — see
   /// lib/timezone.ts for why the accepted set is narrower than the IANA list.
-  timezone             String                @default("Africa/Cairo")
+  timezone             String                    @default("Africa/Cairo")
   payrollRuns          PayrollRun[]
+  workSchedules        WorkSchedule[]
+  companyHolidays      CompanyHoliday[]
+  holidayExclusions    CompanyHolidayExclusion[]
   finalSettlements     FinalSettlement[]
-  createdAt            DateTime              @default(now())
-  updatedAt            DateTime              @updatedAt
+  createdAt            DateTime                  @default(now())
+  updatedAt            DateTime                  @updatedAt
   businessClients      BusinessClient[]
-  package              Package?              @relation(fields: [packageId], references: [id], onDelete: Restrict)
+  package              Package?                  @relation(fields: [packageId], references: [id], onDelete: Restrict)
   lockedAttempts       LockedModuleAttempt[]
   payments             CompanyPayment[]
   obligations          Obligation[]
@@ -246,27 +249,27 @@ model Company {
   tasks                Task[]
   users                User[]
   vendors              Vendor[]
-  roles                Role[]                @relation("CompanyRoles")
+  roles                Role[]                    @relation("CompanyRoles")
   roleRequests         RoleRequest[]
   roleChangeRequests   RoleChangeRequest[]
   /// Periodic access review (ROLES_PLAN.md §6.14): off unless the Super Admin
   /// switches it on as part of the company's contract. Every
   /// accessReviewMonths the company's Admins review who holds sensitive
   /// permissions. Turning it off stops future reviews and keeps past ones.
-  accessReviewEnabled  Boolean               @default(false)
-  accessReviewMonths   Int                   @default(3)
+  accessReviewEnabled  Boolean                   @default(false)
+  accessReviewMonths   Int                       @default(3)
   accessReviewNextAt   DateTime?
   accessReviews        AccessReview[]
   /// A company's own people seeing its settings (ATTENDANCE_PLAN.md §5.2): off
   /// unless the Super Admin switches it on, and then only the tabs listed here
   /// (keys from lib/company-settings-tabs.ts), to whoever holds settings.view.
-  adminSettingsEnabled Boolean               @default(false)
-  adminSettingsTabs    String[]              @default([])
+  adminSettingsEnabled Boolean                   @default(false)
+  adminSettingsTabs    String[]                  @default([])
   /// The role a new account starts on (ROLES_PLAN.md §6.4). Null means the
   /// company's built-in Employee role — every company has one, so nobody is
   /// ever created without a role, even while a request for another waits.
   defaultRoleId        String?
-  defaultRole          Role?                 @relation("CompanyDefaultRole", fields: [defaultRoleId], references: [id], onDelete: SetNull)
+  defaultRole          Role?                     @relation("CompanyDefaultRole", fields: [defaultRoleId], references: [id], onDelete: SetNull)
 }
 
 // System Settings: a single-row table (id is always "default") for
@@ -476,6 +479,7 @@ model User {
   roleChangeRequests         RoleChangeRequest[]
   accessReviewLines          AccessReviewLine[]      @relation("AccessReviewLineFor")
   accessReviewAnswers        AccessReviewLine[]      @relation("AccessReviewLineAnsweredBy")
+  scheduleAssignments        UserSchedule[]
 
   @@index([email])
   @@index([companyId])
@@ -1483,4 +1487,158 @@ model AccessReviewLine {
   answeredAt             DateTime?
 
   @@index([reviewId])
+}
+
+// ---------------------------------------------------------------------------
+// Attendance: the calendar (ATTENDANCE_PLAN.md §7, §8.3)
+//
+// When somebody was supposed to be at work. Dates here are calendar dates in
+// the company's timezone, stored as DATE: "the 3rd of March" for this company,
+// not an instant.
+// ---------------------------------------------------------------------------
+
+/// A named schedule: "Office", "Warehouse". The hours live in its versions.
+model WorkSchedule {
+  id          String             @id @default(uuid())
+  companyId   String
+  name        String
+  /// The schedule for anybody without an assignment. Exactly one per company
+  /// once it has any (lib/services/attendance-calendar.service.ts).
+  isDefault   Boolean            @default(false)
+  /// Retired, never deleted: past days were measured against it.
+  archivedAt  DateTime?
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+  company     Company            @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  versions    ScheduleVersion[]
+  overrides   ScheduleOverride[]
+  assignments UserSchedule[]
+
+  @@unique([companyId, name])
+  @@index([companyId])
+}
+
+/// The hours themselves, effective-dated (§6.1, §8.3). Editing a schedule adds
+/// a version from a date; earlier days keep being measured against the hours
+/// that applied then.
+model ScheduleVersion {
+  id            String        @id @default(uuid())
+  scheduleId    String
+  effectiveFrom DateTime      @db.Date
+  createdById   String
+  createdAt     DateTime      @default(now())
+  /// The day's hours, in minutes from midnight. A shift crossing midnight has
+  /// endMinutes past 1440 (§7.1); at most 24 hours long.
+  startMinutes  Int
+  endMinutes    Int
+  /// Unpaid break inside the shift.
+  breakMinutes  Int           @default(0)
+  /// Days worked, 0 = Sunday … 6 = Saturday. Empty means the company's work
+  /// week (§6.2, round 7): set only for a schedule that differs, like a
+  /// six-day warehouse.
+  workWeek      Int[]         @default([])
+  schedule      WorkSchedule  @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+  days          ScheduleDay[]
+
+  @@unique([scheduleId, effectiveFrom])
+}
+
+/// Different hours on one weekday of a version: a short Thursday.
+model ScheduleDay {
+  id           String          @id @default(uuid())
+  versionId    String
+  weekday      Int
+  startMinutes Int
+  endMinutes   Int
+  version      ScheduleVersion @relation(fields: [versionId], references: [id], onDelete: Cascade)
+
+  @@unique([versionId, weekday])
+}
+
+/// Dated hours laid over a schedule: Ramadan, summer hours (§7.1). The base is
+/// never edited; the override ends by itself.
+model ScheduleOverride {
+  id           String                @id @default(uuid())
+  scheduleId   String
+  name         String
+  startDate    DateTime              @db.Date
+  endDate      DateTime              @db.Date
+  startMinutes Int
+  endMinutes   Int
+  breakMinutes Int                   @default(0)
+  createdById  String
+  createdAt    DateTime              @default(now())
+  updatedAt    DateTime              @updatedAt
+  schedule     WorkSchedule          @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+  days         ScheduleOverrideDay[]
+
+  @@index([scheduleId, startDate])
+}
+
+model ScheduleOverrideDay {
+  id           String           @id @default(uuid())
+  overrideId   String
+  weekday      Int
+  startMinutes Int
+  endMinutes   Int
+  override     ScheduleOverride @relation(fields: [overrideId], references: [id], onDelete: Cascade)
+
+  @@unique([overrideId, weekday])
+}
+
+/// Which schedule a person works, from a date. Nobody assigned works the
+/// company's default schedule.
+model UserSchedule {
+  id            String       @id @default(uuid())
+  userId        String
+  scheduleId    String
+  effectiveFrom DateTime     @db.Date
+  createdById   String
+  createdAt     DateTime     @default(now())
+  user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  schedule      WorkSchedule @relation(fields: [scheduleId], references: [id], onDelete: Restrict)
+
+  @@unique([userId, effectiveFrom])
+  @@index([scheduleId])
+}
+
+/// The central calendar of public holidays, kept by the Super Admin (§7.2).
+/// Moving a holiday by decree is an edit to its date here, so every company
+/// that observes it follows and every company that opted out stays out.
+model PublicHoliday {
+  id         String                    @id @default(uuid())
+  country    String                    @default("EG")
+  date       DateTime                  @db.Date
+  name       String
+  nameAr     String?
+  createdAt  DateTime                  @default(now())
+  updatedAt  DateTime                  @updatedAt
+  exclusions CompanyHolidayExclusion[]
+
+  @@unique([country, date])
+}
+
+/// A company's own day off for everyone: an anniversary, a local holiday.
+model CompanyHoliday {
+  id        String   @id @default(uuid())
+  companyId String
+  date      DateTime @db.Date
+  name      String
+  isPaid    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@unique([companyId, date])
+}
+
+/// A central holiday this company works through. Stored against the holiday,
+/// not its date, so a moved holiday stays opted out.
+model CompanyHolidayExclusion {
+  companyId       String
+  publicHolidayId String
+  createdAt       DateTime      @default(now())
+  company         Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  publicHoliday   PublicHoliday @relation(fields: [publicHolidayId], references: [id], onDelete: Cascade)
+
+  @@id([companyId, publicHolidayId])
 }
