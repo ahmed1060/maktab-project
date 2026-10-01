@@ -4,7 +4,7 @@ import { Prisma } from "@prisma/client"
 import { AuditLogService } from "./audit-log.service"
 import { recomputeAfter } from "./attendance-recompute"
 import { serialize } from "./attendance-calendar.service"
-import { lockMonths, lockedMonths } from "./attendance-lock"
+import { lockMonths, lockedMonths, punchMonths } from "./attendance-lock"
 import { localToInstant, parseRows, detectColumns, type Cell, type ColumnMap, type DateOrder, type RowError } from "@/lib/attendance/punch-import"
 import { MAX_ROWS } from "@/lib/attendance/punch-file"
 import { addDays } from "@/lib/attendance/calendar"
@@ -309,8 +309,9 @@ export class AttendancePunchService {
             const person = await tx.user.findFirst({ where: { id: input.userId, companyId }, select: { id: true, status: true } }) ?? fail("USER_NOT_FOUND")
             if (person.status === "DELETED") fail("USER_NOT_FOUND")
             const company = await tx.company.findUnique({ where: { id: companyId }, select: { timezone: true } }) ?? fail("COMPANY_NOT_FOUND")
-            await lockMonths(tx, companyId, [monthOf(local)])
-            if ((await lockedMonths(tx, companyId, [monthOf(local)])).size > 0) fail("PAYROLL_MONTH_LOCKED")
+            const months = await punchMonths(tx, companyId, person.id, local)
+            await lockMonths(tx, companyId, months)
+            if ((await lockedMonths(tx, companyId, months)).size > 0) fail("PAYROLL_MONTH_LOCKED")
             const id = await insertManualPunch(tx, { companyId, timezone: company.timezone, userId: person.id, local, direction: input.direction, note: input.note.trim(), actorId })
             return { id }
         })
@@ -326,9 +327,10 @@ export class AttendancePunchService {
             const punch = await tx.attendancePunch.findUnique({ where: { id } }) ?? fail("PUNCH_NOT_FOUND")
             if (punch.voidedAt) fail("PUNCH_ALREADY_VOIDED")
             if (punch.userId && punch.userId === actorId) fail("CANNOT_CORRECT_OWN")
-            const month = monthOf(wallClockText(punch.punchAtLocal))
-            await lockMonths(tx, punch.companyId, [month])
-            if ((await lockedMonths(tx, punch.companyId, [month])).size > 0) fail("PAYROLL_MONTH_LOCKED")
+            const local = wallClockText(punch.punchAtLocal)
+            const months = punch.userId ? await punchMonths(tx, punch.companyId, punch.userId, local) : [monthOf(local)]
+            await lockMonths(tx, punch.companyId, months)
+            if ((await lockedMonths(tx, punch.companyId, months)).size > 0) fail("PAYROLL_MONTH_LOCKED")
             await tx.attendancePunch.update({ where: { id }, data: { voidedAt: new Date(), voidedById: actorId, voidReason: reason.trim() } })
             await AuditLogService.log("VOID_ATTENDANCE_PUNCH", "ATTENDANCE_PUNCH", id, {
                 tx, ...(await actorOf(tx, actorId)),
