@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import useSWR from 'swr'
@@ -319,33 +319,42 @@ function ImportTab({ q, companyId }: { q: string; companyId: string | null }) {
     const [file, setFile] = useState<File | null>(null)
     const [dateOrder, setDateOrder] = useState<'DMY' | 'MDY'>('DMY')
     const [columns, setColumns] = useState<Report['columns']>(null)
-    const [report, setReport] = useState<Report | null>(null)
+    // The report on screen, with the exact file and settings it was made from:
+    // importing sends those, never whatever the controls hold now (review on #12).
+    const [report, setReport] = useState<(Report & { made: { file: File; dateOrder: 'DMY' | 'MDY'; columns: Report['columns'] } }) | null>(null)
     const [busy, setBusy] = useState(false)
     const [withdrawing, setWithdrawing] = useState<ImportRow | null>(null)
     const { data: history, mutate } = useSWR(`/api/attendance/imports?${q}`, fetcher)
     const imports: ImportRow[] = history?.data?.imports ?? []
+    // Bumped by every change of file or settings and by every request, so a
+    // reply to an older request is dropped rather than shown over a newer one.
+    const generation = useRef(0)
+    const invalidate = () => { generation.current += 1; setReport(null) }
 
     const run = async (commit: boolean, chosen: Report['columns'] = columns) => {
-        if (!file) return
+        const made = commit && report ? report.made : file ? { file, dateOrder, columns: chosen } : null
+        if (!made) return
+        const mine = ++generation.current
         setBusy(true)
         try {
             const form = new FormData()
-            form.append('file', file)
-            form.append('dateOrder', dateOrder)
+            form.append('file', made.file)
+            form.append('dateOrder', made.dateOrder)
             if (companyId) form.append('companyId', companyId)
-            if (chosen) form.append('columns', JSON.stringify(chosen))
+            if (made.columns) form.append('columns', JSON.stringify(made.columns))
             if (commit) form.append('commit', 'true')
             const r = await send('/api/attendance/imports', { method: 'POST', body: form }, t('punch_failed'))
+            if (mine !== generation.current) return
             if (!r.ok) return showToast(r.error, 'error')
             if (commit) {
                 showToast(t('punch_imported').replace('{n}', String(r.body.added ?? 0)), 'success')
                 setFile(null); setReport(null); setColumns(null)
                 mutate()
             } else {
-                setReport(r.body)
+                setReport({ ...r.body, made: { ...made, columns: r.body.columns } })
                 setColumns(r.body.columns)
             }
-        } finally { setBusy(false) }
+        } finally { if (mine === generation.current) setBusy(false) }
     }
 
     const withdraw = async (reason?: string) => {
@@ -361,6 +370,7 @@ function ImportTab({ q, companyId }: { q: string; companyId: string | null }) {
         const base = columns ?? { code: 0, date: 1, time: null, direction: null }
         const next = { ...base, [field]: value === '' ? null : Number(value) }
         setColumns(next)
+        // run() starts a new generation, so a reply for the previous columns is dropped.
         run(false, next)
     }
 
@@ -371,11 +381,11 @@ function ImportTab({ q, companyId }: { q: string; companyId: string | null }) {
                 <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'flex-end' }}>
                     <label style={{ display: 'grid', gap: '0.25rem' }}>
                         <span className="label">{t('punch_file')}</span>
-                        <input className="input" type="file" accept=".xlsx,.csv,.txt" onChange={e => { setFile(e.target.files?.[0] ?? null); setReport(null); setColumns(null) }} />
+                        <input className="input" type="file" accept=".xlsx,.csv,.txt" disabled={busy} onChange={e => { setFile(e.target.files?.[0] ?? null); setColumns(null); invalidate() }} />
                     </label>
                     <label style={{ display: 'grid', gap: '0.25rem' }}>
                         <span className="label">{t('punch_date_order')}</span>
-                        <select className="input" value={dateOrder} onChange={e => { setDateOrder(e.target.value as 'DMY' | 'MDY'); setReport(null) }}>
+                        <select className="input" value={dateOrder} disabled={busy} onChange={e => { setDateOrder(e.target.value as 'DMY' | 'MDY'); invalidate() }}>
                             <option value="DMY">{t('punch_date_order_dmy')}</option>
                             <option value="MDY">{t('punch_date_order_mdy')}</option>
                         </select>
@@ -383,7 +393,7 @@ function ImportTab({ q, companyId }: { q: string; companyId: string | null }) {
                     <button className="btn btn-secondary" disabled={!file || busy} onClick={() => run(false)}>{t('punch_check_file')}</button>
                 </div>
 
-                {report && <ImportReportView report={report} onPick={pick} />}
+                {report && <ImportReportView report={report} onPick={pick} busy={busy} />}
 
                 {report && (
                     <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
@@ -426,12 +436,12 @@ function ImportTab({ q, companyId }: { q: string; companyId: string | null }) {
     )
 }
 
-function ImportReportView({ report, onPick }: { report: Report; onPick: (field: 'code' | 'date' | 'time' | 'direction', value: string) => void }) {
+function ImportReportView({ report, onPick, busy }: { report: Report; onPick: (field: 'code' | 'date' | 'time' | 'direction', value: string) => void; busy: boolean }) {
     const { t } = useLanguage()
     const columnSelect = (field: 'code' | 'date' | 'time' | 'direction', labelKey: TranslationKey, optional: boolean) => (
         <label style={{ display: 'grid', gap: '0.25rem' }}>
             <span className="label">{t(labelKey)}</span>
-            <select className="input" value={report.columns?.[field] ?? ''} onChange={e => onPick(field, e.target.value)}>
+            <select className="input" value={report.columns?.[field] ?? ''} disabled={busy} onChange={e => onPick(field, e.target.value)}>
                 {(optional || !report.columns) && <option value="">{optional ? t('punch_column_none') : t('punch_column_choose')}</option>}
                 {report.headers.map((h, i) => <option key={i} value={i}>{h || `#${i + 1}`}</option>)}
             </select>

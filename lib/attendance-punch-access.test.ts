@@ -245,3 +245,15 @@ describe("a long list (review on #12)", () => {
         expect(short.data.punches).toHaveLength(1)
     })
 })
+
+describe("the import preview (review on #12)", () => {
+    const page = () => require("node:fs").readFileSync("app/(dashboard)/dashboard/attendance/page.tsx", "utf8") as string
+    it("drops a reply to an older request instead of showing it over a newer one", () => {
+        expect(page()).toContain("const mine = ++generation.current")
+        expect(page()).toContain("if (mine !== generation.current) return")
+    })
+    it("imports the file and settings the report on screen was made from", () => {
+        expect(page()).toMatch(/const made = commit && report \? report\.made/)
+        expect(page()).toContain("form.append('file', made.file)")
+    })
+})
