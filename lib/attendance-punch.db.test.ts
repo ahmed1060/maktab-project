@@ -177,6 +177,23 @@ describe.skipIf(!ADMIN_URL)("punches, in Postgres", () => {
         })
     })
 
+    describe("payroll approval and a punch at the same moment (review on #12)", () => {
+        it("makes the punch wait for the approval, then refuses it", async () => {
+            // Another connection approves November while holding the month's lock, as approval does.
+            const other = new Client({ connectionString: process.env.POSTGRES_PRISMA_URL })
+            await other.connect()
+            await other.query("BEGIN")
+            await other.query(`SELECT pg_advisory_xact_lock(hashtext('attendance-month:c1:2026-11'))`)
+            const punch = Punches.addManual("c1", { userId: "e3", at: "2026-11-02T09:00", direction: "IN", note: "During approval" }, "a1")
+                .then(() => "added", (e: Error) => e.message)
+            await new Promise(r => setTimeout(r, 300))
+            await other.query(`INSERT INTO "PayrollRun"(id, "companyId", month, year, status, "payrollDay", "updatedAt") VALUES ('run11', 'c1', 11, 2026, 'APPROVED', 25, now())`)
+            await other.query("COMMIT")
+            await other.end()
+            expect(await punch).toBe("PAYROLL_MONTH_LOCKED")
+        })
+    })
+
     describe("seeing punches", () => {
         it("shows the company's, one's own, and the ones waiting for a person separately", async () => {
             const all = await Punches.list("c1", { from: "2026-10-01", to: "2026-10-31" }, { kind: "COMPANY" })

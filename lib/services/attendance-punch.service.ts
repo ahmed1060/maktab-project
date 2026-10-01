@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma"
 import { Prisma } from "@prisma/client"
 import { AuditLogService } from "./audit-log.service"
 import { serialize } from "./attendance-calendar.service"
+import { lockMonths, lockedMonths } from "./attendance-lock"
 import { localToInstant, parseRows, detectColumns, type Cell, type ColumnMap, type DateOrder, type RowError } from "@/lib/attendance/punch-import"
 import { MAX_ROWS } from "@/lib/attendance/punch-file"
 
@@ -37,28 +38,7 @@ const monthOf = (local: string) => local.slice(0, 7)
 const wallClock = (local: string) => new Date(`${local}Z`)
 const wallClockText = (d: Date) => d.toISOString().slice(0, 19)
 
-/**
- * Takes the company-month lock for each month, in order (§12.1). Payroll
- * approval takes the same lock, so a punch and the approval that freezes its
- * month happen one after the other, never across each other.
- */
-export async function lockMonths(tx: Prisma.TransactionClient, companyId: string, months: Iterable<string>) {
-    for (const month of [...new Set(months)].sort()) await serialize(tx, `attendance-month:${companyId}:${month}`)
-}
-
-/** Which of these months have an approved or paid payroll run. Read after the lock. */
-export async function lockedMonths(tx: Prisma.TransactionClient, companyId: string, months: Iterable<string>): Promise<Set<string>> {
-    const wanted = [...new Set(months)]
-    if (wanted.length === 0) return new Set()
-    const runs = await tx.payrollRun.findMany({
-        where: {
-            companyId, status: { in: ["APPROVED", "PAID"] },
-            OR: wanted.map(m => ({ year: Number(m.slice(0, 4)), month: Number(m.slice(5, 7)) })),
-        },
-        select: { year: true, month: true },
-    })
-    return new Set(runs.map(r => `${r.year}-${String(r.month).padStart(2, "0")}`))
-}
+export { lockMonths, lockedMonths } from "./attendance-lock"
 
 /** Whose punches a viewer sees: the company's, their team's, or their own. */
 export type Visibility = { kind: "COMPANY" } | { kind: "TEAM"; leaderId: string } | { kind: "OWN"; userId: string }
