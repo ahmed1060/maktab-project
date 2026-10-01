@@ -116,7 +116,15 @@ describe.skipIf(!ADMIN_URL)("attendance in payroll, in Postgres", () => {
 
     it("approves in one transaction: overtime nobody decided is rejected, the days rebuilt, priced, entered and locked", async () => {
         expect((await db.query(`SELECT "overtimeStatus" FROM "AttendanceDay" WHERE "userId" = 'e1' AND date = '2026-09-07'`)).rows[0].overtimeStatus).toBe("PENDING")
-        const result = await Payroll.approve("c1", 2026, 9, SESSION)
+        // The switch is being turned on, not yet committed, as approval starts:
+        // approval waits for it and uses it throughout (review on #16).
+        await db.query(`UPDATE "Company" SET "attendancePayrollFrom" = NULL WHERE id = 'c1'`)
+        await db.query("BEGIN")
+        await db.query(`UPDATE "Company" SET "attendancePayrollFrom" = '2026-09-01' WHERE id = 'c1'`)
+        const approving = Payroll.approve("c1", 2026, 9, SESSION)
+        await new Promise(r => setTimeout(r, 1500))
+        await db.query("COMMIT")
+        const result = await approving
         expect(result).toHaveProperty("runId")
         const runId = (result as { runId: string }).runId
 
@@ -151,6 +159,16 @@ describe.skipIf(!ADMIN_URL)("attendance in payroll, in Postgres", () => {
         await expect(P.setPayrollFrom("c1", "2026-08", "a1")).rejects.toThrow("ATTENDANCE_PAYROLL_MONTH_PAID")
         expect(await P.setPayrollFrom("c1", "2026-11", "a1")).toEqual({ from: "2026-11", earliest: "2026-10" })
         expect(await P.setPayrollFrom("c1", null, "a1")).toEqual({ from: null, earliest: "2026-10" })
+        // An approval of October in progress holds the company row: the change
+        // waits for it, then sees October approved (review on #16).
+        await db.query("BEGIN")
+        await db.query(`SELECT id FROM "Company" WHERE id = 'c1' FOR SHARE`)
+        await db.query(`INSERT INTO "PayrollRun"(id, "companyId", year, month, status, "payrollDay", "updatedAt") VALUES ('oct', 'c1', 2026, 10, 'APPROVED', 25, now())`)
+        const setting = P.setPayrollFrom("c1", "2026-10", "a1").then(() => "set", e => e.message)
+        await new Promise(r => setTimeout(r, 1000))
+        await db.query("COMMIT")
+        expect(await setting).toBe("ATTENDANCE_PAYROLL_MONTH_PAID")
+        await db.query(`DELETE FROM "PayrollRun" WHERE id = 'oct'`)
         // September stays a month that carried attendance, whatever the setting says now.
         expect((await db.query(`SELECT "attendanceIncluded" FROM "PayrollRun" WHERE "companyId" = 'c1'`)).rows[0].attendanceIncluded).toBe(true)
         await P.setPayrollFrom("c1", "2026-10", "a1")

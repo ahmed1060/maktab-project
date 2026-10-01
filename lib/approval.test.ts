@@ -121,7 +121,7 @@ describe("approving is its own act", () => {
         // attendance's last recompute (ATTENDANCE_PLAN.md §12.1): a draft
         // saved before the transaction could be out of date by the time it froze.
         const approve = service.slice(service.indexOf("static async approve"))
-        expect(approve).toContain("this.compute(companyId, year, month, tx)")
+        expect(approve).toContain("this.compute(companyId, year, month, tx, reaches)")
         expect(approve).toContain("this.writeDraft(tx, companyId, year, month, final, payrollDay)")
     })
 

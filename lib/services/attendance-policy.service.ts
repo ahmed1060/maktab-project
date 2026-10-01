@@ -142,6 +142,10 @@ export class AttendancePolicyService {
     static async setPayrollFrom(companyId: string, from: string | null, actorId: string) {
         if (from !== null && !/^\d{4}-(0[1-9]|1[0-2])$/.test(from)) fail("INVALID_MONTH")
         await prisma.$transaction(async tx => {
+            // The company row, locked first: an approval in progress holds it
+            // (FOR SHARE) until it commits, so the check below sees that month
+            // approved, and an approval starting now reads the new value.
+            await tx.$queryRaw`SELECT id FROM "Company" WHERE id = ${companyId} FOR UPDATE`
             const company = await tx.company.findUnique({ where: { id: companyId }, select: { attendancePayrollFrom: true } }) ?? fail("COMPANY_NOT_FOUND")
             const latest = await tx.payrollRun.findFirst({
                 where: { companyId, status: { in: ["APPROVED", "PAID"] } }, orderBy: [{ year: "desc" }, { month: "desc" }], select: { year: true, month: true },

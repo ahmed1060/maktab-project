@@ -26,9 +26,9 @@ import { checkApproval, type ApprovalRefusal } from "@/lib/approval"
  */
 export class PayrollRunService {
     /** The company's calendar and payroll day, resolved once per run. */
-    private static async policy(companyId: string) {
+    private static async policy(companyId: string, db: Prisma.TransactionClient = prisma) {
         const [company, settings] = await Promise.all([
-            prisma.company.findUnique({
+            db.company.findUnique({
                 where: { id: companyId },
                 select: { payrollDay: true, timezone: true, debtRecoveryPercent: true, attendancePayrollFrom: true },
             }),
@@ -74,13 +74,18 @@ export class PayrollRunService {
      * A read. It writes nothing, so opening the screen twice cannot produce two
      * runs, and a person looking at a draft is never the reason a row appears.
      */
-    static async compute(companyId: string, year: number, month: number, db: Prisma.TransactionClient = prisma) {
-        const { timeZone, payrollDay, debtRecoveryPercent, attendancePayrollFrom } = await this.policy(companyId)
+    static async compute(
+        companyId: string, year: number, month: number, db: Prisma.TransactionClient = prisma,
+        // Whether attendance is on the payslips, when the caller already knows:
+        // approval's own reading of the switch, or what an approved run recorded.
+        reaches?: boolean,
+    ) {
+        const { timeZone, payrollDay, debtRecoveryPercent, attendancePayrollFrom } = await this.policy(companyId, db)
         const people = await this.peopleFor(companyId)
         // Attendance as money (ATTENDANCE_PLAN.md §12.2), read through the
         // caller's transaction: approval's, after its own final recompute.
         // Before the company's chosen month it is shown, never deducted.
-        const attendanceReachesPayroll = attendanceReaches(attendancePayrollFrom, year, month)
+        const attendanceReachesPayroll = reaches ?? attendanceReaches(attendancePayrollFrom, year, month)
         const attendance = await attendanceMoney(db, companyId, year, month)
 
         // Everything still owed, and the moment after which a debt has not come
@@ -436,14 +441,18 @@ export class PayrollRunService {
             if (current && current.status !== "DRAFT") throw new Error("RUN_NOT_DRAFT")
 
             const approverId: string = session?.user?.id ?? "system"
-            const { attendancePayrollFrom } = await this.policy(companyId)
+            // The switch, read once and held (review on #16): FOR SHARE makes a
+            // concurrent change to it wait for this approval, and that change
+            // then sees the month approved. Everything below uses this reading.
+            const [{ attendancePayrollFrom }] = await tx.$queryRaw<{ attendancePayrollFrom: Date | null }[]>`
+                SELECT "attendancePayrollFrom" FROM "Company" WHERE id = ${companyId} FOR SHARE`
             const reaches = attendanceReaches(attendancePayrollFrom, year, month)
             let overtimeRejected = 0
             if (reaches) {
                 overtimeRejected = await rejectPendingOvertime(tx, companyId, year, month, approverId)
                 await AttendanceEngineService.recomputeMonthIn(tx, companyId, key, timeZone, calendarDateStr(new Date(), timeZone))
             }
-            const { register: final, payrollDay } = await this.compute(companyId, year, month, tx)
+            const { register: final, payrollDay } = await this.compute(companyId, year, month, tx, reaches)
             const draft = await this.writeDraft(tx, companyId, year, month, final, payrollDay)
             const entries = reaches
                 ? await reconcileEntries(tx, companyId, year, month, draft.id, final.entries.map(e => ({
