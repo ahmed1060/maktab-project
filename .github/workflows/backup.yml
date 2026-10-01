@@ -406,14 +406,22 @@ jobs:
             || { echo "Only $TABLES tables restored — the schema did not come back"; exit 1; }
 
           USERS=$(count 'SELECT count(*) FROM "User"')
+          SUPER_ADMINS=$(count 'SELECT count(*) FROM "SuperAdmin"')
           COMPANIES=$(count 'SELECT count(*) FROM "Company"')
           TASKS=$(count 'SELECT count(*) FROM "Task"')
-          echo "restored: $USERS users, $COMPANIES companies, $TASKS tasks"
-          echo "RESTORE_ROWS=$TABLES tables, $USERS users, $COMPANIES companies, $TASKS tasks" >> $GITHUB_ENV
+          echo "restored: $USERS users, $SUPER_ADMINS super admins, $COMPANIES companies, $TASKS tasks"
+          echo "RESTORE_ROWS=$TABLES tables, $USERS users, $SUPER_ADMINS super admins, $COMPANIES companies, $TASKS tasks" >> $GITHUB_ENV
 
           # A dump that applies cleanly into an empty database is the failure
           # nobody notices until somebody tries to sign in.
-          test "$USERS" -gt 0 || { echo "Dump restored but holds no users"; exit 1; }
+          #
+          # Anybody who can sign in, not only "User" rows. The Super Admin is
+          # in a table of its own, and a database holding only them is a real
+          # state: before release, and after test data is cleared, production
+          # is exactly that. Requiring a "User" failed every night from 21
+          # September on a backup that was complete and restored cleanly.
+          test $((USERS + SUPER_ADMINS)) -gt 0 \
+            || { echo "Dump restored but holds no users and no super admin: nobody could sign in"; exit 1; }
 
       - name: Prune old backups
         run: |
