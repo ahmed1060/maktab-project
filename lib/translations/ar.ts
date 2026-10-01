@@ -1198,6 +1198,7 @@ export const ar = {
         attendance_move_n: "نقل {n}",
         attendance_moved: "تم تعيين الجدول",
         attendance_none: "لا يوجد",
+        attendance_no_people: "لا يوجد موظفون في هذه الشركة بعد.",
         attendance_schedule_now: "الجدول الحالي",
         attendance_schedule_next: "التغيير القادم",
         attendance_next_move: "{name} اعتبارًا من {date}",

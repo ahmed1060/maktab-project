@@ -1199,6 +1199,7 @@ export const en = {
         attendance_move_n: "Move {n}",
         attendance_moved: "Schedule assigned",
         attendance_none: "None",
+        attendance_no_people: "Nobody works for this company yet.",
         attendance_schedule_now: "Schedule now",
         attendance_schedule_next: "Next change",
         attendance_next_move: "{name} from {date}",

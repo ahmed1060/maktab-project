@@ -399,6 +399,9 @@ function PeoplePanel({ ctx }: { ctx: Ctx }) {
                     </div>
                 )}
 
+                {rows.length === 0 ? (
+                    <p style={{ margin: 0, color: 'var(--text-soft)', fontSize: '0.85rem' }}>{t('attendance_no_people')}</p>
+                ) : (
                 <div style={{ overflowX: 'auto' }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.86rem' }}>
                         <thead>
@@ -443,6 +446,7 @@ function PeoplePanel({ ctx }: { ctx: Ctx }) {
                         </tbody>
                     </table>
                 </div>
+                )}
             </section>
         )
     }
@@ -464,9 +468,9 @@ function HolidaysPanel({ ctx }: { ctx: Ctx }) {
                         <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-soft)' }}>{t('attendance_holidays_hint')}</p>
                     </div>
                     <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
-                        <button className="btn btn-secondary" aria-label={t('previous_page')} onClick={() => setYear(h.year - 1)}>{isRtl ? '›' : '‹'}</button>
+                        <button className="btn btn-secondary" aria-label={t('previous_page')} onClick={() => setYear(h.year - 1)}>{'‹'}</button>
                         <strong>{h.year}</strong>
-                        <button className="btn btn-secondary" aria-label={t('next_page')} onClick={() => setYear(h.year + 1)}>{isRtl ? '‹' : '›'}</button>
+                        <button className="btn btn-secondary" aria-label={t('next_page')} onClick={() => setYear(h.year + 1)}>{'›'}</button>
                     </div>
                 </div>
 

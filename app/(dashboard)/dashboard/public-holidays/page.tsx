@@ -103,8 +103,8 @@ export default function PublicHolidaysPage() {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', marginBottom: '0.75rem' }}>
                     <h3 id="public-holiday-list" style={{ margin: 0, fontSize: '1rem' }}>{year}</h3>
                     <div style={{ display: 'flex', gap: '0.35rem' }}>
-                        <button className="btn btn-secondary" aria-label={t('previous_page')} onClick={() => setYear(year - 1)}>{isRtl ? '›' : '‹'}</button>
-                        <button className="btn btn-secondary" aria-label={t('next_page')} onClick={() => setYear(year + 1)}>{isRtl ? '‹' : '›'}</button>
+                        <button className="btn btn-secondary" aria-label={t('previous_page')} onClick={() => setYear(year - 1)}>{'‹'}</button>
+                        <button className="btn btn-secondary" aria-label={t('next_page')} onClick={() => setYear(year + 1)}>{'›'}</button>
                     </div>
                 </div>
                 {holidays === null ? <LoadingSpinner /> : holidays.length === 0 ? (
