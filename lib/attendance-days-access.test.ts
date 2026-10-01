@@ -36,6 +36,11 @@ vi.mock("@/lib/services/attendance-engine.service", () => ({
     },
 }))
 
+vi.mock("@/lib/services/attendance-policy.service", async () => {
+    const { STANDARD_OFFICE } = await import("@/lib/attendance/policy")
+    return { AttendancePolicyService: { versions: async () => [{ id: "p1", effectiveFrom: "2026-09-01", body: STANDARD_OFFICE }] } }
+})
+
 type Pkg = { hasCompanyManagement: boolean; hasHR: boolean; hasAttendanceTerminals?: boolean; hasAttendanceMobile?: boolean } | null
 const ATTENDANCE: Pkg = { hasCompanyManagement: false, hasHR: true, hasAttendanceMobile: true }
 
@@ -78,6 +83,14 @@ describe("derived days", () => {
         expect((await days("from=2026-09-30&to=2026-09-01")).status).toBe(400)
         expect((await days("from=2026-01-01&to=2026-12-31")).status).toBe(400)
         expect(reached).toEqual([])
+    })
+})
+
+describe("the month's rules (§13.3)", () => {
+    it("come with the days: how many lates and early leaves the period's policy lets go free", async () => {
+        employee()
+        const res = await days()
+        expect((await res.json()).data.rules).toEqual({ lateness: { enabled: true, freePerMonth: 2 }, earlyLeave: { enabled: true, freePerMonth: 0 } })
     })
 })
 

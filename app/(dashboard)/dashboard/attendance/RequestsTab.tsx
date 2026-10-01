@@ -166,17 +166,23 @@ function StatusText({ status, why }: { status: Status; why: string | null }) {
     )
 }
 
-function AskPermissionModal({ today, onClose, onDone }: { today: string; onClose: () => void; onDone: () => void }) {
+/** Asks for permission hours; from a day on the Days tab, with its times filled in (§13.3). */
+export function AskPermissionModal({ today, initial, onClose, onDone }: {
+    today: string
+    initial?: { date: string; type: 'LATE_ARRIVAL' | 'EARLY_LEAVE'; start: string; end: string }
+    onClose: () => void
+    onDone: () => void
+}) {
     const { t } = useLanguage()
     const { showToast } = useToast()
-    const [date, setDate] = useState(today)
+    const [date, setDate] = useState(initial?.date ?? today)
     // The rules and balance of the chosen day's month, under the policy in force that day (review on #14).
     const { data: balanceBody } = useSWR(/^\d{4}-\d{2}-\d{2}$/.test(date) ? `/api/attendance/permissions/balance?date=${date}` : null, fetcher)
     const balance: Balance | undefined = balanceBody?.data
-    const [picked, setType] = useState('')
+    const [picked, setType] = useState<string>(initial?.type ?? '')
     const type = balance?.types.includes(picked) ? picked : balance?.types[0] ?? ''
-    const [start, setStart] = useState('')
-    const [end, setEnd] = useState('')
+    const [start, setStart] = useState(initial?.start ?? '')
+    const [end, setEnd] = useState(initial?.end ?? '')
     const [reason, setReason] = useState('')
     const [busy, setBusy] = useState(false)
 
@@ -231,12 +237,18 @@ function AskPermissionModal({ today, onClose, onDone }: { today: string; onClose
     )
 }
 
-function ReportMissingModal({ today, onClose, onDone }: { today: string; onClose: () => void; onDone: () => void }) {
+/** Reports a punch one forgot; from a day on the Days tab, for that day (§13.3). */
+export function ReportMissingModal({ today, initial, onClose, onDone }: {
+    today: string
+    initial?: { date: string; direction?: 'IN' | 'OUT' }
+    onClose: () => void
+    onDone: () => void
+}) {
     const { t } = useLanguage()
     const { showToast } = useToast()
-    const [date, setDate] = useState(today)
+    const [date, setDate] = useState(initial?.date ?? today)
     const [time, setTime] = useState('')
-    const [direction, setDirection] = useState<'' | 'IN' | 'OUT'>('')
+    const [direction, setDirection] = useState<'' | 'IN' | 'OUT'>(initial?.direction ?? '')
     const [reason, setReason] = useState('')
     const [busy, setBusy] = useState(false)
 

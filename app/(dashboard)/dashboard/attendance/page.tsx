@@ -10,7 +10,7 @@ import { useLanguage } from '@/context/LanguageContext'
 import { useHeader } from '@/context/HeaderContext'
 import { useToast } from '@/context/ToastContext'
 import { send, json } from './send'
-import RequestsTab from './RequestsTab'
+import RequestsTab, { AskPermissionModal, ReportMissingModal } from './RequestsTab'
 import AddPunchModal from './AddPunchModal'
 import ExceptionsTab from './ExceptionsTab'
 import LoadingSpinner from '@/components/LoadingSpinner'
@@ -116,6 +116,7 @@ type Day = {
     id: string; userId: string; name: string; date: string; status: string
     firstIn: string | null; lastOut: string | null; workedMinutes: number
     lateMinutes: number; earlyLeaveMinutes: number; overtimeMinutes: number; excusedMinutes: number
+    expectedStartMinutes: number | null; expectedEndMinutes: number | null
     deductionDays: number; deductionMinor: number | null; overtimeStatus: string; overtimeMinor: number | null
     breakdown: { lateness: RuleOutcome; earlyLeave: RuleOutcome; absenceDays: number; unpriced: string | null; holiday: string | null; excusedAbsence?: boolean }
 }
@@ -142,6 +143,15 @@ function DaysTab({ q, companyId, today }: { q: string; companyId: string | null;
     const { data: body, error, mutate } = useSWR(url, fetcher)
     const days: Day[] | null = body ? body.data?.days ?? [] : null
     const daysTruncated: boolean = !!body?.data?.truncated
+    const rules: Rules | null = body?.data?.rules ?? null
+    const { data: session } = useSession()
+    const me = session?.user?.id
+    // One person's month — one's own, or the person picked — gets its summary (§13.3).
+    const onePerson = !seesOthers || !!who
+    const oneself = !seesOthers || who === me
+    const { data: balanceBody, mutate: refreshBalance } = useSWR(oneself && me && !companyId ? `/api/attendance/permissions/balance?month=${month}` : null, fetcher)
+    const [asking, setAsking] = useState<Parameters<typeof AskPermissionModal>[0]['initial'] | null>(null)
+    const [reporting, setReporting] = useState<string | null>(null)
 
     const recompute = async () => {
         setBusy(true)
@@ -170,6 +180,12 @@ function DaysTab({ q, companyId, today }: { q: string; companyId: string | null;
     const totalMinor = (days ?? []).reduce((sum, d) => sum + (d.deductionMinor ?? 0), 0)
     const showsMoney = (days ?? []).some(d => d.deductionMinor !== null)
     const mins = (n: number) => (n > 0 ? String(n) : '—')
+    const hhmm = (minutes: number) => `${pad(Math.floor(minutes / 60) % 24)}:${pad(minutes % 60)}`
+    const askFor = (d: Day) => d.status === 'PRESENT' && d.expectedStartMinutes !== null && d.expectedEndMinutes !== null && (
+        d.lateMinutes > 0 && d.firstIn ? { date: d.date, type: 'LATE_ARRIVAL' as const, start: hhmm(d.expectedStartMinutes), end: d.firstIn.slice(11, 16) }
+            : d.earlyLeaveMinutes > 0 && d.lastOut ? { date: d.date, type: 'EARLY_LEAVE' as const, start: d.lastOut.slice(11, 16), end: hhmm(d.expectedEndMinutes) }
+                : null
+    )
 
     return (
         <section className="glass" style={{ padding: '1.25rem', borderRadius: '1rem', display: 'grid', gap: '1rem' }}>
@@ -192,6 +208,7 @@ function DaysTab({ q, companyId, today }: { q: string; companyId: string | null;
             </div>
             <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--text-soft)' }}>{t('day_hint')}</p>
             {daysTruncated && <p role="status" style={{ margin: 0, color: 'var(--warn-fg)', fontSize: '0.86rem' }}>{t('day_truncated').replace('{n}', String(body?.data?.limit ?? ''))}</p>}
+            {onePerson && days && days.length > 0 && !daysTruncated && <MonthSummary days={days} rules={rules} balance={oneself ? balanceBody?.data ?? null : null} />}
 
             {error ? <p style={{ color: 'var(--danger-fg)' }}>{t('punch_failed')}</p>
                 : days === null ? <LoadingSpinner />
@@ -210,6 +227,7 @@ function DaysTab({ q, companyId, today }: { q: string; companyId: string | null;
                                             <th>{t('day_early')}</th>
                                             <th>{t('day_overtime')}</th>
                                             {showsMoney && <th>{t('day_deduction')}</th>}
+                                            {oneself && <th />}
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -227,6 +245,12 @@ function DaysTab({ q, companyId, today }: { q: string; companyId: string | null;
                                                 <td>{mins(d.earlyLeaveMinutes)}</td>
                                                 <td>{mins(d.overtimeMinutes)}</td>
                                                 {showsMoney && <td>{d.deductionMinor ? <bdi>{money(d.deductionMinor)}</bdi> : '—'}{d.deductionDays > 0 && <div style={{ color: 'var(--text-soft)', fontSize: '0.75rem' }}>{t('day_days').replace('{n}', String(d.deductionDays))}</div>}</td>}
+                                                {oneself && (
+                                                    <td style={{ textAlign: 'end' }}>
+                                                        {d.userId === me && askFor(d) && <button type="button" className="btn btn-secondary" style={{ fontSize: '0.75rem', padding: '0.2rem 0.5rem', whiteSpace: 'nowrap' }} onClick={() => setAsking(askFor(d) || null)}>{t('req_ask_permission')}</button>}
+                                                        {d.userId === me && d.status === 'INCOMPLETE' && <button type="button" className="btn btn-secondary" style={{ fontSize: '0.75rem', padding: '0.2rem 0.5rem', whiteSpace: 'nowrap' }} onClick={() => setReporting(d.date)}>{t('req_report_missing')}</button>}
+                                                    </td>
+                                                )}
                                             </tr>
                                         ))}
                                     </tbody>
@@ -235,13 +259,55 @@ function DaysTab({ q, companyId, today }: { q: string; companyId: string | null;
                                             <tr>
                                                 <td colSpan={seesOthers ? 8 : 7} style={{ textAlign: 'end', fontWeight: 600 }}>{t('day_total')}</td>
                                                 <td style={{ fontWeight: 600 }}><bdi>{money(totalMinor)}</bdi></td>
+                                                {oneself && <td />}
                                             </tr>
                                         </tfoot>
                                     )}
                                 </table>
                             </div>
                         )}
+            {asking && <AskPermissionModal today={today} initial={asking} onClose={() => setAsking(null)} onDone={() => { setAsking(null); refreshBalance() }} />}
+            {reporting && <ReportMissingModal today={today} initial={{ date: reporting, direction: 'OUT' }} onClose={() => setReporting(null)} onDone={() => setReporting(null)} />}
         </section>
+    )
+}
+
+type Rules = { lateness: { enabled: boolean; freePerMonth: number }; earlyLeave: { enabled: boolean; freePerMonth: number } }
+type Balance = { enabled: boolean; remainingMinutes: number; allowanceMinutes: number; carriedMinutes: number }
+const COUNTED = new Set(['FREE_OCCURRENCE', 'CHARGED', 'ESCALATED', 'CAPPED'])
+
+/**
+ * One person's month so far (§13.3): deductions to date, lateness and early
+ * leave against the free allowance, absences, overtime pay, and — for one's
+ * own — the permission hours left.
+ */
+function MonthSummary({ days, rules, balance }: { days: Day[]; rules: Rules | null; balance: Balance | null }) {
+    const { t } = useLanguage()
+    const deducted = days.reduce((s, d) => s + (d.deductionMinor ?? 0), 0)
+    const deductedDays = Math.round(days.reduce((s, d) => s + d.deductionDays, 0) * 10_000) / 10_000
+    const overtimeMinor = days.reduce((s, d) => s + (d.overtimeMinor ?? 0), 0)
+    const hidesMoney = days.every(d => d.deductionMinor === null)
+    const lates = days.filter(d => COUNTED.has(d.breakdown.lateness.note ?? ''))
+    const earlies = days.filter(d => COUNTED.has(d.breakdown.earlyLeave.note ?? ''))
+    const absences = days.filter(d => d.status === 'ABSENT' && !d.breakdown.excusedAbsence).length
+    const freeLine = (used: number, rule: { enabled: boolean; freePerMonth: number } | undefined) =>
+        rule?.enabled && rule.freePerMonth > 0 ? t('sum_free_used').replace('{used}', String(Math.min(used, rule.freePerMonth))).replace('{free}', String(rule.freePerMonth)) : null
+    const tile = (label: TranslationKey, value: string, note?: string | null) => (
+        <div style={{ border: '1px solid var(--border)', borderRadius: '0.75rem', padding: '0.6rem 0.8rem', minWidth: '9rem', flex: '1 1 9rem' }}>
+            <div className="label" style={{ fontSize: '0.75rem' }}>{t(label)}</div>
+            <div style={{ fontSize: '1.1rem', fontWeight: 600 }}><bdi>{value}</bdi></div>
+            {note && <div style={{ color: 'var(--text-soft)', fontSize: '0.75rem' }}>{note}</div>}
+        </div>
+    )
+    return (
+        <div role="group" aria-label={t('sum_title')} style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
+            {tile('sum_deductions', hidesMoney ? t('day_days').replace('{n}', String(deductedDays)) : money(deducted), hidesMoney ? null : t('day_days').replace('{n}', String(deductedDays)))}
+            {tile('sum_lates', String(lates.length), freeLine(lates.filter(d => d.breakdown.lateness.note === 'FREE_OCCURRENCE').length, rules?.lateness))}
+            {tile('sum_early', String(earlies.length), freeLine(earlies.filter(d => d.breakdown.earlyLeave.note === 'FREE_OCCURRENCE').length, rules?.earlyLeave))}
+            {tile('sum_absences', String(absences))}
+            {!hidesMoney && overtimeMinor > 0 && tile('sum_overtime', money(overtimeMinor))}
+            {balance?.enabled && tile('sum_permission_left', t('req_minutes').replace('{n}', String(balance.remainingMinutes)), t('sum_of_total').replace('{n}', String(balance.allowanceMinutes + balance.carriedMinutes)))}
+        </div>
     )
 }
 

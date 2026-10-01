@@ -4,6 +4,8 @@ import { can } from "@/lib/permissions/can"
 import { AttendanceEngineService, DAY_LIST_LIMIT } from "@/lib/services/attendance-engine.service"
 import { punchCompany, visibilityFor } from "@/lib/attendance/punch-access"
 import { isDateString, addDays } from "@/lib/attendance/calendar"
+import { policyOn } from "@/lib/attendance/policy"
+import { AttendancePolicyService } from "@/lib/services/attendance-policy.service"
 
 /**
  * Derived days between two dates: one's own always, other people's with
@@ -27,5 +29,12 @@ export const GET = withStandardHandler(async (req, session) => {
         const seesPay = d.userId === me || can(session.user, "salary.view", { companyId: access.companyId, userId: d.userId, teamLeaderId })
         return seesPay ? d : { ...d, deductionMinor: null, overtimeMinor: null }
     })
-    return ApiResponse.success({ days: shown, truncated: rows.length > DAY_LIST_LIMIT, limit: DAY_LIST_LIMIT })
+    // The free occurrences the period's policy allows, for "lates against the
+    // free allowance" on one's own month (§13.3): the rule, not anybody's pay.
+    const policy = policyOn(await AttendancePolicyService.versions(access.companyId), to)?.body
+    const rules = policy ? {
+        lateness: { enabled: policy.lateness.enabled, freePerMonth: policy.lateness.freePerMonth },
+        earlyLeave: { enabled: policy.earlyLeave.enabled, freePerMonth: policy.earlyLeave.freePerMonth },
+    } : null
+    return ApiResponse.success({ days: shown, truncated: rows.length > DAY_LIST_LIMIT, limit: DAY_LIST_LIMIT, rules })
 })
