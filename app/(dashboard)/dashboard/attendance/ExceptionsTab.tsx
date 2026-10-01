@@ -11,6 +11,7 @@ import LoadingSpinner from '@/components/LoadingSpinner'
 import ConfirmModal from '@/components/ConfirmModal'
 import type { TranslationKey } from '@/lib/translations'
 import AddPunchModal from './AddPunchModal'
+import { checkoutDate } from '@/lib/attendance/checkout-date'
 import { send, json } from './send'
 
 /**
@@ -27,6 +28,7 @@ type Row = {
     id: string; userId: string; name: string; teamLeaderId: string | null; date: string; status: string
     firstIn: string | null; lastOut: string | null; lateMinutes: number; earlyLeaveMinutes: number; overtimeMinutes: number
     deductionMinor: number | null; breakdown: { lateness: RuleOutcome; earlyLeave: RuleOutcome; absenceDays: number }
+    expectedEndMinutes: number | null
 }
 type Decided = { id: string; userId: string; name: string; teamLeaderId: string | null; date: string; subject: Subject; outcome: 'EXCUSED' | 'ACCEPTED'; reason: string | null }
 type Subject = 'LATENESS' | 'EARLY_LEAVE' | 'ABSENCE'
@@ -238,7 +240,7 @@ export default function ExceptionsTab({ q, companyId, today, onOpen }: { q: stri
                     today={today}
                     companyId={companyId}
                     people={people.filter(x => x.id === adding.userId)}
-                    initial={{ userId: adding.userId, date: adding.date, direction: 'OUT' }}
+                    initial={{ userId: adding.userId, date: checkoutDate(adding.date, adding.expectedEndMinutes), direction: 'OUT' }}
                     onClose={() => setAdding(null)}
                     onAdded={() => { setAdding(null); mutate() }}
                 />
