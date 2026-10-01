@@ -174,6 +174,10 @@ describe.skipIf(!ADMIN_URL)("attendance in payroll, in Postgres", () => {
         await db.query(`DELETE FROM "PayrollRun" WHERE id = 'oct'`)
         // September stays a month that carried attendance, whatever the setting says now.
         expect((await db.query(`SELECT "attendanceIncluded" FROM "PayrollRun" WHERE "companyId" = 'c1'`)).rows[0].attendanceIncluded).toBe(true)
+        // And its register still shows it so (review on #16).
+        const viewed = await Payroll.view("c1", 2026, 9)
+        expect(attendanceLines(ehab(viewed.register).lines)).toEqual([["Lateness", 15500], ["Absence", 31000]])
+        expect(viewed.attendance.reachesPayroll).toBe(true)
         await P.setPayrollFrom("c1", "2026-10", "a1")
     })
 

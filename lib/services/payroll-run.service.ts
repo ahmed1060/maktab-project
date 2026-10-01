@@ -217,12 +217,15 @@ export class PayrollRunService {
      * still undecided, and what is outstanding.
      */
     static async view(companyId: string, year: number, month: number) {
-        const [{ register, refused, payrollDay, attendance }, run, previous, debts] = await Promise.all([
-            this.compute(companyId, year, month),
-            prisma.payrollRun.findUnique({
-                where: { companyId_month_year: { companyId, month, year } },
-                include: { payslips: { select: { id: true, userId: true, netAmount: true, emailedAt: true, excluded: true } } },
-            }),
+        const run = await prisma.payrollRun.findUnique({
+            where: { companyId_month_year: { companyId, month, year } },
+            include: { payslips: { select: { id: true, userId: true, netAmount: true, emailedAt: true, excluded: true } } },
+        })
+        // An approved run shows attendance as it was approved, whatever the
+        // switch says now (review on #16).
+        const recorded = run && run.status !== "DRAFT" ? run.attendanceIncluded : undefined
+        const [{ register, refused, payrollDay, attendance }, previous, debts] = await Promise.all([
+            this.compute(companyId, year, month, prisma, recorded),
             this.previousNets(companyId, year, month),
             prisma.debt.findMany({
                 where: { companyId, status: "OUTSTANDING" },
