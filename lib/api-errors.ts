@@ -24,7 +24,7 @@ export const KNOWN_REFUSALS: Record<string, { status: 400 | 403 | 404 | 409; mes
     UNKNOWN_SUBSCRIPTION_TYPE: { status: 400, message: "This payment's subscription type isn't one the system knows." },
     ATTENDANCE_REQUIRES_HR: { status: 400, message: "The attendance add-ons need HR: attendance feeds payroll." },
     // The attendance calendar (lib/services/attendance-calendar.service.ts).
-    PAYROLL_MONTH_LOCKED: { status: 409, message: "That month's payroll is approved, so its calendar can't change." },
+    PAYROLL_MONTH_LOCKED: { status: 409, message: "That month's payroll is approved, so its attendance can't change." },
     INVALID_DATE: { status: 400, message: "That isn't a real date." },
     HOURS_NOT_WHOLE_MINUTES: { status: 400, message: "Times must be whole minutes." },
     START_OUT_OF_DAY: { status: 400, message: "A shift must start between 00:00 and 23:59." },
@@ -66,6 +66,19 @@ export const KNOWN_REFUSALS: Record<string, { status: 400 | 403 | 404 | 409; mes
     TEMPLATE_NOT_FOUND: { status: 404, message: "Template not found." },
     TEMPLATE_NAME_REQUIRED: { status: 400, message: "Give the template a name." },
     TEMPLATE_NAME_TAKEN: { status: 409, message: "There's already a template with that name." },
+    // Punches (lib/services/attendance-punch.service.ts).
+    REASON_REQUIRED: { status: 400, message: "Say why." },
+    CANNOT_CORRECT_OWN: { status: 403, message: "Nobody can correct their own attendance." },
+    USER_NOT_FOUND: { status: 404, message: "That person wasn't found in this company." },
+    PUNCH_NOT_FOUND: { status: 404, message: "Punch not found." },
+    PUNCH_ALREADY_VOIDED: { status: 409, message: "That punch has already been withdrawn." },
+    IMPORT_TOO_MANY_ROWS: { status: 400, message: "A file can hold at most 20,000 punches. Split it by month." },
+    IMPORT_NOTHING_NEW: { status: 409, message: "Every punch in this file is already in, or in a month whose payroll is approved." },
+    IMPORT_NOT_FOUND: { status: 404, message: "Import not found." },
+    IMPORT_ALREADY_VOIDED: { status: 409, message: "That import has already been withdrawn." },
+    CODE_REQUIRED: { status: 400, message: "Enter the employee number." },
+    CODE_TAKEN: { status: 409, message: "That employee number already belongs to someone. Remove it first." },
+    CODE_NOT_FOUND: { status: 404, message: "That employee number isn't mapped." },
     SOME_TASKS_NOT_FOUND_OR_ACCESS_DENIED: { status: 403, message: "Some of these tasks don't exist, or aren't yours to pay." },
 }
 

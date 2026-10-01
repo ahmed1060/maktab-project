@@ -143,6 +143,17 @@ export const PERMISSIONS = {
     "settings.view":            { code: 46, module: null, scopes: COMPANY },
     "settings.edit":            { code: 47, module: null, scopes: COMPANY, implies: ["settings.view"] },
     "audit.view":               { code: 48, module: null, scopes: COMPANY, reserved: true },
+
+    // --- Attendance (ATTENDANCE_PLAN.md §4.1, §14) ---------------------------
+    // view_team: other people's punches and days. Everybody sees their own.
+    // correct: bring punches in from a file, add or withdraw one by hand, and
+    // say which person a terminal's employee number is. Nobody corrects their
+    // own attendance (§4.3). Not high-risk: it is daily work, each change is
+    // audited with its reason, and none reaches a month whose payroll is
+    // approved — step-up on every forgotten punch would teach people to click
+    // through it.
+    "attendance.view_team":     { code: 49, module: "ATTENDANCE", scopes: TEAM_OR_COMPANY },
+    "attendance.correct":       { code: 50, module: "ATTENDANCE", scopes: TEAM_OR_COMPANY, implies: ["attendance.view_team"], notOnOwn: true },
 } as const satisfies Record<string, PermissionDefinition>
 
 export type Permission = keyof typeof PERMISSIONS

@@ -1,0 +1,562 @@
+'use client'
+
+import { useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'next/navigation'
+import { useSession } from 'next-auth/react'
+import useSWR from 'swr'
+import { fetcher } from '@/lib/swr-fetcher'
+import { useCan } from '@/lib/useCan'
+import { useLanguage } from '@/context/LanguageContext'
+import { useHeader } from '@/context/HeaderContext'
+import { useToast } from '@/context/ToastContext'
+import { apiErrorText } from '@/lib/api-error-text'
+import LoadingSpinner from '@/components/LoadingSpinner'
+import Modal from '@/components/Modal'
+import ConfirmModal from '@/components/ConfirmModal'
+import type { TranslationKey } from '@/lib/translations'
+
+/**
+ * Punches (ATTENDANCE_PLAN.md Phase 0): what came in, from a terminal's
+ * spreadsheet or added by hand, and who each terminal number is.
+ *
+ * Everyone sees their own punches; attendance.view_team shows other people's
+ * at its scope. attendance.correct adds and withdraws them, never one's own,
+ * and — held company-wide — imports files and maps employee numbers.
+ *
+ * Nothing here is edited: a wrong punch, or a whole wrong file, is withdrawn
+ * and stays on record. Days and their deductions are worked out from these by
+ * the engine; this screen shows the evidence.
+ */
+
+type Punch = {
+    id: string; userId: string | null; name: string | null; hardwareUserId: string | null
+    source: string; at: string; direction: 'IN' | 'OUT' | null; note: string | null
+    voidedAt: string | null; voidReason: string | null
+}
+type Person = { id: string; name: string; teamLeaderId: string | null }
+type Report = {
+    fileName: string; headers: string[]; columns: { code: number; date: number; time: number | null; direction: number | null } | null
+    rowCount: number; ready: number; duplicates: number; locked: number
+    problems: { row: number; code: string | null; error: string }[]; problemCount: number
+    codes: { code: string; userId: string | null; name: string | null; rows: number }[]
+    from: string | null; to: string | null; importId?: string; added?: number
+}
+type ImportRow = { id: string; fileName: string; createdAt: string; rowCount: number; addedCount: number; duplicateCount: number; refusedCount: number; voidedAt: string | null; voidReason: string | null }
+type Codes = { mapped: { id: string; code: string; userId: string; name: string }[]; unmatched: { code: string; punches: number; from: string; to: string }[] }
+
+type Tab = 'punches' | 'import' | 'numbers'
+
+const pad = (n: number) => String(n).padStart(2, '0')
+const today = () => { const d = new Date(); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}` }
+const monthStart = (date: string) => `${date.slice(0, 8)}01`
+
+async function send(url: string, init: RequestInit, fallback: string): Promise<{ ok: true; body: any } | { ok: false; error: string }> {
+    const res = await fetch(url, init)
+    const text = await res.text()
+    if (!res.ok) return { ok: false, error: apiErrorText(text, fallback) }
+    try { return { ok: true, body: JSON.parse(text)?.data } } catch { return { ok: true, body: null } }
+}
+const json = (method: string, body: unknown): RequestInit => ({ method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+
+export default function AttendancePage() {
+    const { t } = useLanguage()
+    const { setTitle, setSubtitle } = useHeader()
+    const { data: session, status } = useSession()
+    const params = useSearchParams()
+    const p = useCan()
+    const isSuperAdmin = session?.user?.role === 'SUPER_ADMIN'
+    const companyId = isSuperAdmin ? params.get('companyId') : null
+    const q = companyId ? `companyId=${encodeURIComponent(companyId)}&` : ''
+
+    useEffect(() => {
+        setTitle(t('attendance_title'))
+        setSubtitle(t('punch_page_hint'))
+        return () => { setTitle(null); setSubtitle(null) }
+    }, [t, setTitle, setSubtitle])
+
+    const correctsCompany = p.companyWide('attendance.correct')
+    const tabs: Tab[] = correctsCompany ? ['punches', 'import', 'numbers'] : ['punches']
+    const [tab, setTab] = useState<Tab>('punches')
+
+    if (status === 'loading') return <LoadingSpinner />
+    if (isSuperAdmin && !companyId) {
+        return <p style={{ color: 'var(--text-soft)' }}>{t('punch_pick_company')}</p>
+    }
+
+    const label: Record<Tab, TranslationKey> = { punches: 'punch_tab_punches', import: 'punch_tab_import', numbers: 'punch_tab_numbers' }
+    return (
+        <div style={{ display: 'grid', gap: '1rem' }}>
+            {tabs.length > 1 && (
+                <div role="tablist" style={{ display: 'flex', gap: '0.4rem', overflowX: 'auto' }}>
+                    {tabs.map(k => (
+                        <button key={k} role="tab" aria-selected={tab === k} className={tab === k ? 'btn btn-primary' : 'btn btn-secondary'} onClick={() => setTab(k)}>
+                            {t(label[k])}
+                        </button>
+                    ))}
+                </div>
+            )}
+            {tab === 'punches' && <PunchesTab q={q} companyId={companyId} />}
+            {tab === 'import' && correctsCompany && <ImportTab q={q} companyId={companyId} />}
+            {tab === 'numbers' && correctsCompany && <NumbersTab q={q} companyId={companyId} />}
+        </div>
+    )
+}
+
+// --- Punches -------------------------------------------------------------------
+
+function PunchesTab({ q, companyId }: { q: string; companyId: string | null }) {
+    const { t } = useLanguage()
+    const { showToast } = useToast()
+    const p = useCan()
+    const { data: session } = useSession()
+    const me = session?.user?.id
+    const seesOthers = p.can('attendance.view_team')
+    const correctsCompany = p.companyWide('attendance.correct')
+
+    const [from, setFrom] = useState(() => monthStart(today()))
+    const [to, setTo] = useState(today)
+    const [who, setWho] = useState('')
+    const [waiting, setWaiting] = useState(false)
+    const [adding, setAdding] = useState(false)
+    const [withdrawing, setWithdrawing] = useState<Punch | null>(null)
+
+    const { data: peopleBody } = useSWR(seesOthers || p.can('attendance.correct') ? `/api/attendance/people?${q}` : null, fetcher)
+    const people: Person[] = useMemo(() => peopleBody?.data?.people ?? [], [peopleBody])
+    const listUrl = `/api/attendance/punches?${q}from=${from}&to=${to}${waiting ? '&unmatched=1' : who ? `&userId=${encodeURIComponent(who)}` : ''}`
+    const { data: body, error, mutate } = useSWR(from && to && from <= to ? listUrl : null, fetcher)
+    const punches: Punch[] | null = body ? body.data?.punches ?? [] : null
+
+    const leaderOf = useMemo(() => new Map(people.map(x => [x.id, x.teamLeaderId])), [people])
+    const mayCorrect = (punch: Punch) => !punch.voidedAt && (punch.userId
+        ? p.canFor('attendance.correct', punch.userId, leaderOf.get(punch.userId) ?? null)
+        : correctsCompany)
+
+    const withdraw = async (reason?: string) => {
+        if (!withdrawing) return
+        const r = await send(`/api/attendance/punches/${withdrawing.id}/void`, json('POST', { reason }), t('punch_failed'))
+        setWithdrawing(null)
+        if (!r.ok) return showToast(r.error, 'error')
+        showToast(t('punch_withdrawn'), 'success')
+        mutate()
+    }
+
+    return (
+        <section className="glass" style={{ padding: '1.25rem', borderRadius: '1rem', display: 'grid', gap: '1rem' }}>
+            <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'flex-end' }}>
+                <label style={{ display: 'grid', gap: '0.25rem' }}>
+                    <span className="label">{t('punch_from')}</span>
+                    <input className="input" type="date" value={from} onChange={e => setFrom(e.target.value)} />
+                </label>
+                <label style={{ display: 'grid', gap: '0.25rem' }}>
+                    <span className="label">{t('punch_to')}</span>
+                    <input className="input" type="date" value={to} onChange={e => setTo(e.target.value)} />
+                </label>
+                {seesOthers && (
+                    <label style={{ display: 'grid', gap: '0.25rem', minWidth: '12rem' }}>
+                        <span className="label">{t('punch_person')}</span>
+                        <select className="input" value={waiting ? '' : who} disabled={waiting} onChange={e => setWho(e.target.value)}>
+                            <option value="">{t('punch_everyone')}</option>
+                            {people.map(x => <option key={x.id} value={x.id}>{x.name}</option>)}
+                        </select>
+                    </label>
+                )}
+                {correctsCompany && (
+                    <label style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', fontSize: '0.86rem' }}>
+                        <input type="checkbox" checked={waiting} onChange={e => setWaiting(e.target.checked)} />
+                        {t('punch_only_unmatched')}
+                    </label>
+                )}
+                <div style={{ flex: 1 }} />
+                {p.can('attendance.correct') && (
+                    <button className="btn btn-primary" onClick={() => setAdding(true)}>{t('punch_add')}</button>
+                )}
+            </div>
+
+            {error ? <p style={{ color: 'var(--danger-fg)' }}>{t('punch_failed')}</p>
+                : punches === null ? <LoadingSpinner />
+                    : punches.length === 0 ? <p style={{ margin: 0, color: 'var(--text-soft)' }}>{t('punch_none')}</p>
+                        : (
+                            <div style={{ overflowX: 'auto' }}>
+                                <table className="table" style={{ width: '100%', fontSize: '0.86rem' }}>
+                                    <thead>
+                                        <tr>
+                                            <th>{t('punch_time')}</th>
+                                            {(seesOthers || waiting) && <th>{t('punch_person')}</th>}
+                                            <th>{t('punch_direction')}</th>
+                                            <th>{t('punch_source')}</th>
+                                            <th />
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {punches.map(x => (
+                                            <tr key={x.id} style={{ opacity: x.voidedAt ? 0.5 : 1 }}>
+                                                <td style={{ whiteSpace: 'nowrap', textDecoration: x.voidedAt ? 'line-through' : 'none' }}>
+                                                    <bdi>{x.at.slice(0, 10)} {x.at.slice(11, 16)}</bdi>
+                                                </td>
+                                                {(seesOthers || waiting) && (
+                                                    <td>{x.name ?? <span style={{ color: 'var(--text-soft)' }}>{t('punch_number').replace('{code}', x.hardwareUserId ?? '')}</span>}</td>
+                                                )}
+                                                <td>{x.direction === 'IN' ? t('punch_in') : x.direction === 'OUT' ? t('punch_out') : '—'}</td>
+                                                <td>
+                                                    {t(x.source === 'MANUAL' ? 'punch_source_manual' : 'punch_source_import')}
+                                                    {x.note && <div style={{ color: 'var(--text-soft)', fontSize: '0.78rem' }}>{x.note}</div>}
+                                                    {x.voidedAt && <div style={{ color: 'var(--text-soft)', fontSize: '0.78rem' }}>{t('punch_withdrawn_because').replace('{reason}', x.voidReason ?? '')}</div>}
+                                                </td>
+                                                <td style={{ textAlign: 'end' }}>
+                                                    {mayCorrect(x) && x.userId !== me && (
+                                                        <button type="button" className="btn btn-secondary" style={{ fontSize: '0.78rem', padding: '0.25rem 0.6rem' }} onClick={() => setWithdrawing(x)}>
+                                                            {t('punch_withdraw')}
+                                                        </button>
+                                                    )}
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
+
+            {adding && (
+                <AddPunchModal
+                    companyId={companyId}
+                    people={people.filter(x => x.id !== me && p.canFor('attendance.correct', x.id, x.teamLeaderId))}
+                    onClose={() => setAdding(false)}
+                    onAdded={() => { setAdding(false); mutate() }}
+                />
+            )}
+            <ConfirmModal
+                isOpen={!!withdrawing}
+                title={t('punch_withdraw')}
+                message={t('punch_withdraw_hint')}
+                confirmText={t('punch_withdraw')}
+                variant="danger"
+                reason={{ label: t('punch_reason') }}
+                onConfirm={withdraw}
+                onCancel={() => setWithdrawing(null)}
+            />
+        </section>
+    )
+}
+
+function AddPunchModal({ companyId, people, onClose, onAdded }: { companyId: string | null; people: Person[]; onClose: () => void; onAdded: () => void }) {
+    const { t } = useLanguage()
+    const { showToast } = useToast()
+    const [userId, setUserId] = useState('')
+    const [date, setDate] = useState(today)
+    const [time, setTime] = useState('')
+    const [direction, setDirection] = useState<'' | 'IN' | 'OUT'>('')
+    const [note, setNote] = useState('')
+    const [busy, setBusy] = useState(false)
+
+    const save = async () => {
+        setBusy(true)
+        try {
+            const r = await send('/api/attendance/punches', json('POST', {
+                ...(companyId ? { companyId } : {}), userId, at: `${date}T${time}`, direction: direction || null, note,
+            }), t('punch_failed'))
+            if (!r.ok) return showToast(r.error, 'error')
+            showToast(t('punch_added'), 'success')
+            onAdded()
+        } finally { setBusy(false) }
+    }
+
+    return (
+        <Modal isOpen onClose={onClose} title={t('punch_add')}>
+            <div style={{ display: 'grid', gap: '0.75rem' }}>
+                <label style={{ display: 'grid', gap: '0.25rem' }}>
+                    <span className="label">{t('punch_person')}</span>
+                    <select className="input" value={userId} onChange={e => setUserId(e.target.value)}>
+                        <option value="">{t('punch_choose_person')}</option>
+                        {people.map(x => <option key={x.id} value={x.id}>{x.name}</option>)}
+                    </select>
+                </label>
+                <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+                    <label style={{ display: 'grid', gap: '0.25rem' }}>
+                        <span className="label">{t('punch_date')}</span>
+                        <input className="input" type="date" value={date} onChange={e => setDate(e.target.value)} />
+                    </label>
+                    <label style={{ display: 'grid', gap: '0.25rem' }}>
+                        <span className="label">{t('punch_time')}</span>
+                        <input className="input" type="time" value={time} onChange={e => setTime(e.target.value)} />
+                    </label>
+                    <label style={{ display: 'grid', gap: '0.25rem' }}>
+                        <span className="label">{t('punch_direction')}</span>
+                        <select className="input" value={direction} onChange={e => setDirection(e.target.value as '' | 'IN' | 'OUT')}>
+                            <option value="">{t('punch_direction_unknown')}</option>
+                            <option value="IN">{t('punch_in')}</option>
+                            <option value="OUT">{t('punch_out')}</option>
+                        </select>
+                    </label>
+                </div>
+                <label style={{ display: 'grid', gap: '0.25rem' }}>
+                    <span className="label">{t('punch_reason')}</span>
+                    <textarea className="input" rows={2} value={note} onChange={e => setNote(e.target.value)} placeholder={t('punch_reason_example')} />
+                </label>
+                <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+                    <button className="btn btn-secondary" onClick={onClose}>{t('cancel')}</button>
+                    <button className="btn btn-primary" disabled={busy || !userId || !date || !time || !note.trim()} onClick={save}>{t('punch_add')}</button>
+                </div>
+            </div>
+        </Modal>
+    )
+}
+
+// --- Import ---------------------------------------------------------------------
+
+const PROBLEM_KEYS: Record<string, TranslationKey> = {
+    NO_CODE: 'punch_problem_NO_CODE', NO_DATE: 'punch_problem_NO_DATE', BAD_DATE: 'punch_problem_BAD_DATE',
+    NO_TIME: 'punch_problem_NO_TIME', BAD_TIME: 'punch_problem_BAD_TIME',
+}
+
+function ImportTab({ q, companyId }: { q: string; companyId: string | null }) {
+    const { t } = useLanguage()
+    const { showToast } = useToast()
+    const [file, setFile] = useState<File | null>(null)
+    const [dateOrder, setDateOrder] = useState<'DMY' | 'MDY'>('DMY')
+    const [columns, setColumns] = useState<Report['columns']>(null)
+    const [report, setReport] = useState<Report | null>(null)
+    const [busy, setBusy] = useState(false)
+    const [withdrawing, setWithdrawing] = useState<ImportRow | null>(null)
+    const { data: history, mutate } = useSWR(`/api/attendance/imports?${q}`, fetcher)
+    const imports: ImportRow[] = history?.data?.imports ?? []
+
+    const run = async (commit: boolean, chosen: Report['columns'] = columns) => {
+        if (!file) return
+        setBusy(true)
+        try {
+            const form = new FormData()
+            form.append('file', file)
+            form.append('dateOrder', dateOrder)
+            if (companyId) form.append('companyId', companyId)
+            if (chosen) form.append('columns', JSON.stringify(chosen))
+            if (commit) form.append('commit', 'true')
+            const r = await send('/api/attendance/imports', { method: 'POST', body: form }, t('punch_failed'))
+            if (!r.ok) return showToast(r.error, 'error')
+            if (commit) {
+                showToast(t('punch_imported').replace('{n}', String(r.body.added ?? 0)), 'success')
+                setFile(null); setReport(null); setColumns(null)
+                mutate()
+            } else {
+                setReport(r.body)
+                setColumns(r.body.columns)
+            }
+        } finally { setBusy(false) }
+    }
+
+    const withdraw = async (reason?: string) => {
+        if (!withdrawing) return
+        const r = await send(`/api/attendance/imports/${withdrawing.id}/void`, json('POST', { reason }), t('punch_failed'))
+        setWithdrawing(null)
+        if (!r.ok) return showToast(r.error, 'error')
+        showToast(t('punch_import_withdrawn'), 'success')
+        mutate()
+    }
+
+    const pick = (field: 'code' | 'date' | 'time' | 'direction', value: string) => {
+        const base = columns ?? { code: 0, date: 1, time: null, direction: null }
+        const next = { ...base, [field]: value === '' ? null : Number(value) }
+        setColumns(next)
+        run(false, next)
+    }
+
+    return (
+        <div style={{ display: 'grid', gap: '1rem' }}>
+            <section className="glass" style={{ padding: '1.25rem', borderRadius: '1rem', display: 'grid', gap: '0.85rem' }}>
+                <p style={{ margin: 0, fontSize: '0.86rem', color: 'var(--text-soft)' }}>{t('punch_import_hint')}</p>
+                <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'flex-end' }}>
+                    <label style={{ display: 'grid', gap: '0.25rem' }}>
+                        <span className="label">{t('punch_file')}</span>
+                        <input className="input" type="file" accept=".xlsx,.csv,.txt" onChange={e => { setFile(e.target.files?.[0] ?? null); setReport(null); setColumns(null) }} />
+                    </label>
+                    <label style={{ display: 'grid', gap: '0.25rem' }}>
+                        <span className="label">{t('punch_date_order')}</span>
+                        <select className="input" value={dateOrder} onChange={e => { setDateOrder(e.target.value as 'DMY' | 'MDY'); setReport(null) }}>
+                            <option value="DMY">{t('punch_date_order_dmy')}</option>
+                            <option value="MDY">{t('punch_date_order_mdy')}</option>
+                        </select>
+                    </label>
+                    <button className="btn btn-secondary" disabled={!file || busy} onClick={() => run(false)}>{t('punch_check_file')}</button>
+                </div>
+
+                {report && <ImportReportView report={report} onPick={pick} />}
+
+                {report && (
+                    <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                        <button className="btn btn-primary" disabled={busy || report.ready - report.duplicates <= 0} onClick={() => run(true)}>
+                            {t('punch_import_n').replace('{n}', String(Math.max(0, report.ready - report.duplicates)))}
+                        </button>
+                    </div>
+                )}
+            </section>
+
+            <section className="glass" style={{ padding: '1.25rem', borderRadius: '1rem' }}>
+                <h3 style={{ margin: '0 0 0.75rem', fontSize: '1rem' }}>{t('punch_import_history')}</h3>
+                {imports.length === 0 ? <p style={{ margin: 0, color: 'var(--text-soft)', fontSize: '0.86rem' }}>{t('punch_no_imports')}</p> : (
+                    <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gap: '0.5rem' }}>
+                        {imports.map(i => (
+                            <li key={i.id} style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'center', fontSize: '0.86rem', opacity: i.voidedAt ? 0.55 : 1 }}>
+                                <strong><bdi>{i.fileName}</bdi></strong>
+                                <span style={{ color: 'var(--text-soft)' }}><bdi>{i.createdAt.slice(0, 10)}</bdi></span>
+                                <span>{t('punch_import_counts').replace('{added}', String(i.addedCount)).replace('{dup}', String(i.duplicateCount)).replace('{refused}', String(i.refusedCount))}</span>
+                                {i.voidedAt
+                                    ? <span style={{ color: 'var(--text-soft)' }}>{t('punch_withdrawn_because').replace('{reason}', i.voidReason ?? '')}</span>
+                                    : <button type="button" className="btn btn-secondary" style={{ fontSize: '0.78rem', padding: '0.25rem 0.6rem' }} onClick={() => setWithdrawing(i)}>{t('punch_withdraw_import')}</button>}
+                            </li>
+                        ))}
+                    </ul>
+                )}
+            </section>
+
+            <ConfirmModal
+                isOpen={!!withdrawing}
+                title={t('punch_withdraw_import')}
+                message={t('punch_withdraw_import_hint')}
+                confirmText={t('punch_withdraw_import')}
+                variant="danger"
+                reason={{ label: t('punch_reason') }}
+                onConfirm={withdraw}
+                onCancel={() => setWithdrawing(null)}
+            />
+        </div>
+    )
+}
+
+function ImportReportView({ report, onPick }: { report: Report; onPick: (field: 'code' | 'date' | 'time' | 'direction', value: string) => void }) {
+    const { t } = useLanguage()
+    const columnSelect = (field: 'code' | 'date' | 'time' | 'direction', labelKey: TranslationKey, optional: boolean) => (
+        <label style={{ display: 'grid', gap: '0.25rem' }}>
+            <span className="label">{t(labelKey)}</span>
+            <select className="input" value={report.columns?.[field] ?? ''} onChange={e => onPick(field, e.target.value)}>
+                {(optional || !report.columns) && <option value="">{optional ? t('punch_column_none') : t('punch_column_choose')}</option>}
+                {report.headers.map((h, i) => <option key={i} value={i}>{h || `#${i + 1}`}</option>)}
+            </select>
+        </label>
+    )
+    const unmatched = report.codes.filter(c => !c.userId)
+
+    return (
+        <div style={{ display: 'grid', gap: '0.85rem' }}>
+            {!report.columns && <p style={{ margin: 0, color: 'var(--warn-fg)' }}>{t('punch_columns_not_found')}</p>}
+            <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+                {columnSelect('code', 'punch_column_code', false)}
+                {columnSelect('date', 'punch_column_date', false)}
+                {columnSelect('time', 'punch_column_time', true)}
+                {columnSelect('direction', 'punch_column_direction', true)}
+            </div>
+            {report.columns && (
+                <ul style={{ margin: 0, paddingInlineStart: '1.2rem', fontSize: '0.86rem', display: 'grid', gap: '0.2rem' }}>
+                    <li>{t('punch_report_rows').replace('{n}', String(report.rowCount)).replace('{from}', report.from ?? '—').replace('{to}', report.to ?? '—')}</li>
+                    <li>{t('punch_report_new').replace('{n}', String(report.ready - report.duplicates))}</li>
+                    {report.duplicates > 0 && <li>{t('punch_report_duplicates').replace('{n}', String(report.duplicates))}</li>}
+                    {report.locked > 0 && <li style={{ color: 'var(--warn-fg)' }}>{t('punch_report_locked').replace('{n}', String(report.locked))}</li>}
+                    {report.problemCount > 0 && <li style={{ color: 'var(--danger-fg)' }}>{t('punch_report_problems').replace('{n}', String(report.problemCount))}</li>}
+                    {unmatched.length > 0 && <li style={{ color: 'var(--warn-fg)' }}>{t('punch_report_unmatched').replace('{codes}', unmatched.map(c => c.code).join(', '))}</li>}
+                </ul>
+            )}
+            {report.problems.length > 0 && (
+                <details>
+                    <summary style={{ cursor: 'pointer', fontSize: '0.86rem' }}>{t('punch_report_show_problems')}</summary>
+                    <ul style={{ margin: '0.5rem 0 0', paddingInlineStart: '1.2rem', fontSize: '0.82rem' }}>
+                        {report.problems.map(x => (
+                            <li key={x.row}>{t('punch_problem_row').replace('{row}', String(x.row))}: {t(PROBLEM_KEYS[x.error] ?? 'punch_failed')}</li>
+                        ))}
+                    </ul>
+                </details>
+            )}
+        </div>
+    )
+}
+
+// --- Employee numbers ------------------------------------------------------------
+
+function NumbersTab({ q, companyId }: { q: string; companyId: string | null }) {
+    const { t } = useLanguage()
+    const { showToast } = useToast()
+    const { data: session } = useSession()
+    const { data: body, mutate } = useSWR(`/api/attendance/codes?${q}`, fetcher)
+    const { data: peopleBody } = useSWR(`/api/attendance/people?${q}`, fetcher)
+    const codes: Codes | null = body?.data ?? null
+    const people: Person[] = (peopleBody?.data?.people ?? []).filter((x: Person) => x.id !== session?.user?.id)
+    const [choice, setChoice] = useState<Record<string, string>>({})
+    const [newCode, setNewCode] = useState('')
+    const [newPerson, setNewPerson] = useState('')
+    const [removing, setRemoving] = useState<Codes['mapped'][number] | null>(null)
+
+    const map = async (code: string, userId: string) => {
+        const r = await send('/api/attendance/codes', json('POST', { ...(companyId ? { companyId } : {}), code, userId }), t('punch_failed'))
+        if (!r.ok) return showToast(r.error, 'error')
+        showToast(t('punch_number_mapped').replace('{n}', String(r.body?.filled ?? 0)), 'success')
+        setNewCode(''); setNewPerson('')
+        mutate()
+    }
+    const unmap = async () => {
+        if (!removing) return
+        const r = await send(`/api/attendance/codes/${removing.id}`, { method: 'DELETE' }, t('punch_failed'))
+        setRemoving(null)
+        if (!r.ok) return showToast(r.error, 'error')
+        showToast(t('punch_number_removed'), 'success')
+        mutate()
+    }
+
+    if (!codes) return <LoadingSpinner />
+    return (
+        <div style={{ display: 'grid', gap: '1rem' }}>
+            <section className="glass" style={{ padding: '1.25rem', borderRadius: '1rem', display: 'grid', gap: '0.75rem' }}>
+                <h3 style={{ margin: 0, fontSize: '1rem' }}>{t('punch_numbers_waiting')}</h3>
+                <p style={{ margin: 0, fontSize: '0.86rem', color: 'var(--text-soft)' }}>{t('punch_numbers_waiting_hint')}</p>
+                {codes.unmatched.length === 0 ? <p style={{ margin: 0, fontSize: '0.86rem' }}>{t('punch_numbers_none_waiting')}</p> : codes.unmatched.map(u => (
+                    <div key={u.code} style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'center', fontSize: '0.86rem' }}>
+                        <strong style={{ minWidth: '4rem' }}><bdi>{u.code}</bdi></strong>
+                        <span style={{ color: 'var(--text-soft)' }}>{t('punch_numbers_seen').replace('{n}', String(u.punches)).replace('{from}', u.from).replace('{to}', u.to)}</span>
+                        <select className="input" aria-label={t('punch_person')} style={{ width: 'auto' }} value={choice[u.code] ?? ''} onChange={e => setChoice({ ...choice, [u.code]: e.target.value })}>
+                            <option value="">{t('punch_choose_person')}</option>
+                            {people.map(x => <option key={x.id} value={x.id}>{x.name}</option>)}
+                        </select>
+                        <button className="btn btn-primary" style={{ fontSize: '0.8rem', padding: '0.3rem 0.7rem' }} disabled={!choice[u.code]} onClick={() => map(u.code, choice[u.code])}>{t('punch_map')}</button>
+                    </div>
+                ))}
+            </section>
+
+            <section className="glass" style={{ padding: '1.25rem', borderRadius: '1rem', display: 'grid', gap: '0.75rem' }}>
+                <h3 style={{ margin: 0, fontSize: '1rem' }}>{t('punch_numbers_mapped')}</h3>
+                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'flex-end' }}>
+                    <label style={{ display: 'grid', gap: '0.25rem' }}>
+                        <span className="label">{t('punch_column_code')}</span>
+                        <input className="input" value={newCode} onChange={e => setNewCode(e.target.value)} style={{ width: '8rem' }} />
+                    </label>
+                    <label style={{ display: 'grid', gap: '0.25rem' }}>
+                        <span className="label">{t('punch_person')}</span>
+                        <select className="input" value={newPerson} onChange={e => setNewPerson(e.target.value)}>
+                            <option value="">{t('punch_choose_person')}</option>
+                            {people.map(x => <option key={x.id} value={x.id}>{x.name}</option>)}
+                        </select>
+                    </label>
+                    <button className="btn btn-secondary" disabled={!newCode.trim() || !newPerson} onClick={() => map(newCode.trim(), newPerson)}>{t('punch_map')}</button>
+                </div>
+                {codes.mapped.length === 0 ? <p style={{ margin: 0, fontSize: '0.86rem', color: 'var(--text-soft)' }}>{t('punch_numbers_none_mapped')}</p> : (
+                    <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gap: '0.4rem' }}>
+                        {codes.mapped.map(m => (
+                            <li key={m.id} style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', fontSize: '0.86rem' }}>
+                                <strong style={{ minWidth: '4rem' }}><bdi>{m.code}</bdi></strong>
+                                <span style={{ flex: 1 }}>{m.name}</span>
+                                {m.userId !== session?.user?.id && (
+                                    <button type="button" style={{ background: 'none', border: 'none', color: 'var(--danger-fg)', cursor: 'pointer', fontSize: '0.8rem' }} onClick={() => setRemoving(m)}>{t('punch_number_remove')}</button>
+                                )}
+                            </li>
+                        ))}
+                    </ul>
+                )}
+            </section>
+
+            <ConfirmModal
+                isOpen={!!removing}
+                title={t('punch_number_remove')}
+                message={t('punch_number_remove_hint')}
+                confirmText={t('punch_number_remove')}
+                variant="danger"
+                onConfirm={unmap}
+                onCancel={() => setRemoving(null)}
+            />
+        </div>
+    )
+}

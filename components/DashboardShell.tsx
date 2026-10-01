@@ -401,6 +401,32 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
                         </Link>
                     ))}
 
+                    {/* Attendance (ATTENDANCE_PLAN.md Phase 0): everyone in a
+                        company that bought it sees their own punches here. A
+                        company without it shows the locked entry only to those
+                        who would run it, not to every employee. */}
+                    {user?.role !== 'SUPER_ADMIN' && (features.has('ATTENDANCE') || permissions.companyWide('attendance.correct')) && (
+                        <Link
+                            href="/dashboard/attendance"
+                            onClick={() => isMobile && setIsSidebarOpen(false)}
+                            title={isCollapsed ? t('attendance_title') : ''}
+                            className="nav-link"
+                            style={{
+                                color: 'var(--sidebar-fg)', textDecoration: 'none', padding: '0.85rem 1rem', borderRadius: '1rem',
+                                display: 'flex', alignItems: 'center', justifyContent: isCollapsed ? 'center' : 'flex-start',
+                                gap: isCollapsed ? '0' : '1rem', transition: 'all 0.2s', fontSize: '0.95rem', fontWeight: '500',
+                            }}
+                        >
+                            <span style={{ fontSize: '1.4rem', opacity: isLockedHref('/dashboard/attendance') ? 0.45 : 1 }}>🕘</span>
+                            {!isCollapsed && (
+                                <span style={{ opacity: isLockedHref('/dashboard/attendance') ? 0.55 : 1, display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                                    {t('attendance_title')}
+                                    {isLockedHref('/dashboard/attendance') && <span style={{ fontSize: '0.75rem' }} title={t('module_locked_title' as any)}>🔒</span>}
+                                </span>
+                            )}
+                        </Link>
+                    )}
+
                     {/* G5: the payslip document was reachable only by typing
                         its URL. This is the way in for the person it is about —
                         everyone, not just managers, which is why it sits in the

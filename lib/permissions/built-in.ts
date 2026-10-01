@@ -115,6 +115,13 @@ export const BUILT_IN_GRANTS: Record<BuiltInRole, Grants> = {
         // (ATTENDANCE_PLAN.md §5.2). Added by migration 20261006000000.
         "settings.view": "COMPANY",
         "settings.edit": "COMPANY",
+
+        // Attendance: an Admin sees and corrects their company's attendance,
+        // never their own (ATTENDANCE_PLAN.md §14). Opens nothing for a
+        // company without the attendance add-on. Added by migration
+        // 20261010000000.
+        "attendance.view_team": "COMPANY",
+        "attendance.correct": "COMPANY",
     },
     // A Team Leader sees their team in the employee list and can look each of
     // them up — TEAM scope, enforced by buildUserWhereClause and

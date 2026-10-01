@@ -27,6 +27,7 @@ export const ROUTE_TITLE_KEYS: ReadonlyArray<readonly [string, string]> = [
     ["/dashboard/companies", "companies"],
     ["/dashboard/packages", "packages"],
     ["/dashboard/public-holidays", "public_holidays_title"],
+    ["/dashboard/attendance", "attendance_title"],
     ["/dashboard/all-users", "all_users"],
     ["/dashboard/audit-logs", "audit_logs"],
     ["/dashboard/health", "system_health"],

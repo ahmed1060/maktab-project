@@ -237,6 +237,9 @@ model Company {
   workSchedules        WorkSchedule[]
   attendancePolicies   AttendancePolicy[]
   scheduleDefaults     ScheduleDefault[]
+  attendancePunches    AttendancePunch[]
+  attendanceImports    AttendanceImport[]
+  attendanceCodes      AttendanceCode[]
   companyHolidays      CompanyHoliday[]
   holidayExclusions    CompanyHolidayExclusion[]
   finalSettlements     FinalSettlement[]
@@ -482,6 +485,8 @@ model User {
   accessReviewLines          AccessReviewLine[]      @relation("AccessReviewLineFor")
   accessReviewAnswers        AccessReviewLine[]      @relation("AccessReviewLineAnsweredBy")
   scheduleAssignments        UserSchedule[]
+  attendancePunches          AttendancePunch[]
+  attendanceCodes            AttendanceCode[]
 
   @@index([email])
   @@index([companyId])
@@ -1693,4 +1698,105 @@ model AttendancePolicy {
   company           Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
   @@unique([companyId, effectiveFrom])
+}
+
+// --- Attendance: punches (ATTENDANCE_PLAN.md §8.6) ---------------------------
+
+enum PunchSource {
+  IMPORT
+  MOBILE
+  AGENT
+  DEVICE_PUSH
+  MANUAL
+}
+
+enum PunchDirection {
+  IN
+  OUT
+}
+
+enum PunchStatus {
+  ACCEPTED
+  PENDING_DEVICE
+  FLAGGED
+  REJECTED
+}
+
+/// One clock-in or clock-out, as it arrived: evidence, never edited. A wrong
+/// one is withdrawn (voidedAt), not changed or deleted, and the engine reads
+/// only ACCEPTED, unwithdrawn punches with a person.
+model AttendancePunch {
+  id                   String            @id @default(uuid())
+  companyId            String
+  /// Null until the employee number it came with is mapped to a person
+  /// (AttendanceCode), which fills it in.
+  userId               String?
+  source               PunchSource
+  /// Stable across retries, so a delivery seen twice is stored once.
+  /// IMPORT: "<file sha256>:<row number>"; MANUAL: the punch's own id.
+  sourceKey            String
+  importId             String?
+  /// The employee number the terminal or file used.
+  hardwareUserId       String?
+  /// The wall-clock time where it happened, as written there.
+  punchAtLocal         DateTime          @db.Timestamp(0)
+  /// The same moment as an instant, resolved with the company's time zone.
+  punchAt              DateTime
+  resolvedWithTimeZone String
+  /// Decided when it arrives and never re-derived (§8.6). Null: not stated.
+  direction            PunchDirection?
+  status               PunchStatus       @default(ACCEPTED)
+  /// Why it was added by hand.
+  note                 String?
+  createdById          String?
+  receivedAt           DateTime          @default(now())
+  voidedAt             DateTime?
+  voidedById           String?
+  voidReason           String?
+  company              Company           @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  user                 User?             @relation(fields: [userId], references: [id], onDelete: SetNull)
+  import               AttendanceImport? @relation(fields: [importId], references: [id], onDelete: SetNull)
+
+  @@unique([companyId, source, sourceKey])
+  @@index([companyId, userId, punchAtLocal])
+  @@index([companyId, hardwareUserId])
+  @@index([importId])
+}
+
+/// A spreadsheet of punches brought in, and what became of its rows.
+model AttendanceImport {
+  id             String            @id @default(uuid())
+  companyId      String
+  fileName       String
+  fileHash       String
+  rowCount       Int
+  /// Rows stored now, rows already stored by an earlier import of the same
+  /// file, and rows refused (unreadable, or in a month whose payroll is approved).
+  addedCount     Int
+  duplicateCount Int
+  refusedCount   Int
+  createdById    String
+  createdAt      DateTime          @default(now())
+  voidedAt       DateTime?
+  voidedById     String?
+  voidReason     String?
+  company        Company           @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  punches        AttendancePunch[]
+
+  @@index([companyId, createdAt])
+}
+
+/// Which person an employee number on a terminal or in a file is.
+model AttendanceCode {
+  id          String   @id @default(uuid())
+  companyId   String
+  code        String
+  userId      String
+  createdById String
+  createdAt   DateTime @default(now())
+  company     Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([companyId, code])
+  @@index([userId])
 }

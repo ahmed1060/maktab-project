@@ -2,6 +2,8 @@
 
 import { useCallback, useMemo, useState } from 'react'
 import useSWR from 'swr'
+import Link from 'next/link'
+import { useSession } from 'next-auth/react'
 import { fetcher } from '@/lib/swr-fetcher'
 import { useLanguage } from '@/context/LanguageContext'
 import { useToast } from '@/context/ToastContext'
@@ -129,6 +131,7 @@ function hoursFromForm(form: HoursForm): { ok: true; startMinutes: number; endMi
 export default function CompanyAttendanceCard({ companyId, readOnly = false }: { companyId: string; readOnly?: boolean }) {
     const { t, locale } = useLanguage()
     const { showToast } = useToast()
+    const { data: session } = useSession()
     const isRtl = locale === 'ar'
     const intl = isRtl ? 'ar-EG' : 'en-GB'
 
@@ -187,6 +190,12 @@ export default function CompanyAttendanceCard({ companyId, readOnly = false }: {
 
     return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', textAlign: isRtl ? 'right' : 'left' }}>
+            {/* The Super Admin has no sidebar entry into one company's punches; this is it. */}
+            {session?.user?.role === 'SUPER_ADMIN' && (
+                <Link href={`/dashboard/attendance?companyId=${encodeURIComponent(companyId)}`} className="btn btn-secondary" style={{ alignSelf: 'flex-start' }}>
+                    {t('punch_open')} →
+                </Link>
+            )}
             {/* The policy first: its work week is what the schedules inherit. */}
             <AttendancePolicyPanel companyId={companyId} readOnly={!editable} onChanged={load} />
             <SchedulesSection ctx={ctx} />

@@ -14,6 +14,8 @@ const SQL = readFileSync("prisma/migrations/20260927000000_roles/migration.sql",
 const LATER = [
     // The built-in Admin role's settings.view and settings.edit (ATTENDANCE_PLAN.md §5.2).
     "prisma/migrations/20261006000000_admin_settings/migration.sql",
+    // The built-in Admin role's attendance.view_team and attendance.correct (ATTENDANCE_PLAN.md §14).
+    "prisma/migrations/20261010000000_attendance_punches/migration.sql",
 ].map(path => readFileSync(path, "utf8"))
 
 function seeded(): Record<string, Record<string, string>> {
