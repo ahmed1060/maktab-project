@@ -6,6 +6,7 @@ import { AttendanceCalendarService } from "@/lib/services/attendance-calendar.se
 import { checkBody } from "@/lib/services/attendance-policy.service"
 import { addDays } from "@/lib/attendance/calendar"
 import { attendanceCompanyFor, denyAttendanceSettings } from "@/lib/attendance/settings-access"
+import { can, canCompanyWide } from "@/lib/permissions/can"
 
 const simulateSchema = z.object({
     companyId: z.string().optional(),
@@ -28,5 +29,16 @@ export const POST = withStandardHandler(async (_req, session, json) => {
     if (denied) return denied
     const draft = checkBody(validation.data.body)
     const month = validation.data.month ?? addDays(`${(await AttendanceCalendarService.today(companyId!)).slice(0, 7)}-01`, -1).slice(0, 7)
-    return ApiResponse.success(await AttendanceEngineService.simulate(companyId!, month, draft))
+    const result = await AttendanceEngineService.simulate(companyId!, month, draft)
+    // Money here is each person's salary at work: priced per person, a draft
+    // charging one day would read out everyone's day rate. Without salary.view
+    // over the whole company, the preview shows days, not money (review on #15).
+    if (canCompanyWide(session.user, "salary.view") && can(session.user, "salary.view", { companyId: companyId! })) return ApiResponse.success(result)
+    const days = <T extends { deductionDays: number; days: number }>(s: T) => ({ deductionDays: s.deductionDays, days: s.days, deductionMinor: null, overtimeMinor: null })
+    return ApiResponse.success({
+        ...result,
+        moneyHidden: true,
+        people: result.people.map(p => ({ ...p, current: days(p.current), draft: days(p.draft) })),
+        totals: { current: days(result.totals.current), draft: days(result.totals.draft) },
+    })
 })
