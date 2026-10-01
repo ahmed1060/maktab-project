@@ -61,7 +61,7 @@ export const NOTIFY_RECENT_DAYS = 3
 /** The most days one list returns; the route asks for one more, to know it stopped short. */
 export const DAY_LIST_LIMIT = 3000
 
-export type RecomputeResult = { month: string; locked: boolean; derived: number; written: number; removed: number }
+export type RecomputeResult = { month: string; locked: boolean; derived: number; written: number; removed: number; discrepancies?: number }
 
 /** One day as derived: the row recomputeMonth stores, and the simulator compares. */
 type DerivedDay = {
@@ -238,6 +238,59 @@ async function deriveMonth(
     return { from, through, days: out }
 }
 
+/**
+ * A month whose payroll is approved, derived again and set beside what was
+ * paid (§12.3): every day whose money would now differ is recorded — opened,
+ * kept current, reopened if it changes again after being settled — and a day
+ * that has come back to what was paid closes its record. Nothing paid is
+ * rewritten. Only for a month whose attendance reached payroll: before that,
+ * attendance took nothing from anybody, and there is nothing to settle.
+ */
+async function recordDiscrepancies(tx: Prisma.TransactionClient, companyId: string, month: string, tz: string, today: string, userIds?: readonly string[]): Promise<number> {
+    const company = await tx.company.findUnique({ where: { id: companyId }, select: { attendancePayrollFrom: true } })
+    const from = company?.attendancePayrollFrom ? toDateString(company.attendancePayrollFrom) : null
+    if (!from || `${month}-01` < from) return 0
+    const run = await tx.payrollRun.findFirst({
+        where: { companyId, year: Number(month.slice(0, 4)), month: Number(month.slice(5, 7)), status: { in: ["APPROVED", "PAID"] } },
+        select: { id: true },
+    })
+    if (!run) return 0
+    const scope = userIds ? { userId: { in: [...userIds] } } : {}
+    const range = { gte: wallClock(`${month}-01T00:00:00`), lte: wallClock(`${monthEnd(month)}T00:00:00`) }
+    const [derived, paid, open] = await Promise.all([
+        deriveMonth(tx, companyId, month, tz, today, userIds),
+        tx.attendanceDay.findMany({ where: { companyId, ...scope, date: range }, select: { userId: true, date: true, status: true, deductionMinor: true, overtimeMinor: true } }),
+        tx.attendanceDiscrepancy.findMany({ where: { companyId, ...scope, date: range } }),
+    ])
+    const now = new Map(derived.days.map(d => [`${d.userId}:${d.date}`, d]))
+    const was = new Map(paid.map(d => [`${d.userId}:${toDateString(d.date)}`, d]))
+    const recorded = new Map(open.map(d => [`${d.userId}:${toDateString(d.date)}`, d]))
+    let differing = 0
+    for (const key of new Set([...now.keys(), ...was.keys()])) {
+        const [userId, date] = key.split(":")
+        const n = now.get(key), w = was.get(key)
+        const figures = {
+            paidDeductionMinor: w?.deductionMinor ?? 0, paidOvertimeMinor: w?.overtimeMinor ?? 0, paidStatus: w?.status ?? "NONE",
+            nowDeductionMinor: n?.deductionMinor ?? 0, nowOvertimeMinor: n?.overtimeMinor ?? 0, nowStatus: n ? String(n.row.status) : null,
+        }
+        const r = recorded.get(key)
+        if (figures.paidDeductionMinor === figures.nowDeductionMinor && figures.paidOvertimeMinor === figures.nowOvertimeMinor) {
+            // Back to what was paid: nothing left to settle, unless somebody already did.
+            if (r && !r.resolvedAt) await tx.attendanceDiscrepancy.delete({ where: { id: r.id } })
+            continue
+        }
+        differing += 1
+        if (r && r.nowDeductionMinor === figures.nowDeductionMinor && r.nowOvertimeMinor === figures.nowOvertimeMinor) continue
+        await tx.attendanceDiscrepancy.upsert({
+            where: { userId_date: { userId, date: wallClock(`${date}T00:00:00`) } },
+            create: { companyId, userId, date: wallClock(`${date}T00:00:00`), payrollRunId: run.id, ...figures },
+            // Changed again after being settled: open again, with the new figures.
+            update: { ...figures, resolvedAt: null, resolvedById: null, resolution: null },
+        })
+    }
+    return differing
+}
+
 export class AttendanceEngineService {
     /**
      * Rebuilds one month's days for a company — everyone, or only these
@@ -254,7 +307,12 @@ export class AttendanceEngineService {
 
         return prisma.$transaction(async tx => {
             await lockMonths(tx, companyId, [month])
-            if ((await lockedMonths(tx, companyId, [month])).size > 0) return { ...result, locked: true }
+            if ((await lockedMonths(tx, companyId, [month])).size > 0) {
+                // Its days stay as they were paid; what has changed since is
+                // recorded for an adjustment instead (§12.3).
+                const discrepancies = await recordDiscrepancies(tx, companyId, month, tz, today, userIds)
+                return { ...result, locked: true, discrepancies }
+            }
             return this.recomputeMonthIn(tx, companyId, month, tz, today, userIds)
         }, { timeout: 120_000 })
     }

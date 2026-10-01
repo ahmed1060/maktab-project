@@ -153,4 +153,37 @@ describe.skipIf(!ADMIN_URL)("attendance in payroll, in Postgres", () => {
         expect(await prisma.$transaction(tx => reconcileEntries(tx, "c1", 2026, 9, run.id, fewer))).toEqual({ written: 0, removed: 1 })
         expect((await db.query(`SELECT count(*)::int AS n FROM "AttendancePayrollEntry" WHERE "userId" = 'e1'`)).rows[0].n).toBe(1)
     })
+
+    it("is recorded beside what was paid, never rewritten, and closes if undone (§12.3)", async () => {
+        const { AttendanceEngineService: Engine } = await import("@/lib/services/attendance-engine.service")
+        const { AttendanceDiscrepancyService: Discrepancies } = await import("@/lib/services/attendance-discrepancy.service")
+        const { prisma } = await import("@/lib/prisma")
+        // Leave approved for Ehab's absence on the 8th, after the month was paid.
+        await prisma.dayOffRequest.create({ data: { id: "late-leave", userId: "e1", type: "REGULAR", status: "APPROVED", date: new Date("2026-09-08T00:00:00Z") } })
+        expect(await Engine.recomputeMonth("c1", "2026-09")).toMatchObject({ locked: true, discrepancies: 1 })
+        const [d] = await Discrepancies.list("c1")
+        expect(d).toMatchObject({ userId: "e1", date: "2026-09-08", paidDeductionMinor: 31000, nowDeductionMinor: 0, paidStatus: "ABSENT", nowStatus: "LEAVE", differenceMinor: 31000, resolvedAt: null })
+        // The paid day is as it was.
+        expect(await prisma.attendanceDay.findFirst({ where: { userId: "e1", date: new Date("2026-09-08T00:00:00Z") }, select: { status: true, deductionMinor: true } })).toEqual({ status: "ABSENT", deductionMinor: 31000 })
+
+        // Withdrawn before anybody acted: nothing left to settle.
+        await prisma.dayOffRequest.delete({ where: { id: "late-leave" } })
+        await Engine.recomputeMonth("c1", "2026-09")
+        expect(await Discrepancies.list("c1")).toEqual([])
+
+        // Approved again, settled, then changed again: open once more.
+        await prisma.dayOffRequest.create({ data: { id: "late-leave", userId: "e1", type: "REGULAR", status: "APPROVED", date: new Date("2026-09-08T00:00:00Z") } })
+        await Engine.recomputeMonth("c1", "2026-09")
+        const [open] = await Discrepancies.list("c1")
+        await expect(Discrepancies.resolve(open.id, " ", "a1", false)).rejects.toThrow("REASON_REQUIRED")
+        await Discrepancies.resolve(open.id, "Refunded 310.00 in October", "a1", false)
+        await expect(Discrepancies.resolve(open.id, "again", "a1", false)).rejects.toThrow("DISCREPANCY_ALREADY_RESOLVED")
+        expect((await Discrepancies.list("c1"))[0]).toMatchObject({ resolution: "Refunded 310.00 in October", resolvedById: "a1" })
+        await Engine.recomputeMonth("c1", "2026-09")
+        expect((await Discrepancies.list("c1"))[0].resolvedAt).not.toBeNull()
+        await prisma.salaryChange.create({ data: { id: "back", userId: "e1", monthlyAmount: 12000, effectiveFrom: new Date("2026-08-31T21:00:00Z") } })
+        await Engine.recomputeMonth("c1", "2026-09")
+        const after = await Discrepancies.list("c1")
+        expect(after.filter(x => !x.resolvedAt).length).toBeGreaterThan(0)
+    })
 })

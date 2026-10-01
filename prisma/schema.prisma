@@ -251,6 +251,7 @@ model Company {
   missingPunchRequests MissingPunchRequest[]
   attendanceDecisions  AttendanceDayDecision[]
   attendancePayrollEntries AttendancePayrollEntry[]
+  attendanceDiscrepancies  AttendanceDiscrepancy[]
   companyHolidays      CompanyHoliday[]
   holidayExclusions    CompanyHolidayExclusion[]
   finalSettlements     FinalSettlement[]
@@ -504,6 +505,7 @@ model User {
   missingPunchRequests       MissingPunchRequest[]
   attendanceDecisions        AttendanceDayDecision[]
   attendancePayrollEntries   AttendancePayrollEntry[]
+  attendanceDiscrepancies    AttendanceDiscrepancy[]
 
   @@index([email])
   @@index([companyId])
@@ -2029,4 +2031,34 @@ model AttendancePayrollEntry {
 
   @@unique([userId, year, month, category])
   @@index([companyId, year, month])
+}
+
+/// A day of a month whose payroll is approved that would now come out
+/// differently (§12.3): a leave approved, a salary backdated, a holiday added
+/// after the month was paid. The paid day is never rewritten; this records
+/// what it was paid at and what it would be now, for somebody to settle with
+/// an adjustment in the current period. One per person and day, kept up to
+/// date while open, and gone if the change is undone before anyone acts.
+model AttendanceDiscrepancy {
+  id                 String    @id @default(uuid())
+  companyId          String
+  userId             String
+  date               DateTime  @db.Date
+  payrollRunId       String
+  paidDeductionMinor Int
+  paidOvertimeMinor  Int
+  nowDeductionMinor  Int
+  nowOvertimeMinor   Int
+  paidStatus         String
+  nowStatus          String?
+  detectedAt         DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+  resolvedAt         DateTime?
+  resolvedById       String?
+  resolution         String?
+  company            Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  user               User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date])
+  @@index([companyId, resolvedAt])
 }
