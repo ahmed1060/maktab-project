@@ -104,8 +104,6 @@ export class AttendancePunchService {
         const problems = parsed.flatMap(r => (r.ok ? [] : [{ row: r.row, code: r.code, error: r.error }]))
 
         const company = await prisma.company.findUnique({ where: { id: companyId }, select: { timezone: true } }) ?? fail("COMPANY_NOT_FOUND")
-        const sourceKey = (row: number) => `${file.hash}:${row}`
-
         const run = async (tx: Prisma.TransactionClient) => {
             const months = new Set(good.map(r => monthOf(r.local)))
             if (commit) {
@@ -121,6 +119,13 @@ export class AttendancePunchService {
                 select: { code: true, userId: true, user: { select: { firstName: true, lastName: true } } },
             })
             const owner = new Map(mappings.map(m => [m.code, m]))
+            // A file withdrawn and sent again — read with the right date order
+            // or columns this time — is a new import, not a duplicate of the
+            // withdrawn one (review on #12): each withdrawal of a file starts
+            // a new generation of its row keys. A file sent twice while its
+            // first import stands is still stored once.
+            const generation = await tx.attendanceImport.count({ where: { companyId, fileHash: file.hash, voidedAt: { not: null } } })
+            const sourceKey = (row: number) => generation === 0 ? `${file.hash}:${row}` : `${file.hash}#${generation}:${row}`
             const locked = await lockedMonths(tx, companyId, months)
             const open = good.filter(r => !locked.has(monthOf(r.local)))
             const existing = await tx.attendancePunch.findMany({
