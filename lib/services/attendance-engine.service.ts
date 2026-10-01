@@ -255,7 +255,18 @@ export class AttendanceEngineService {
         return prisma.$transaction(async tx => {
             await lockMonths(tx, companyId, [month])
             if ((await lockedMonths(tx, companyId, [month])).size > 0) return { ...result, locked: true }
+            return this.recomputeMonthIn(tx, companyId, month, tz, today, userIds)
+        }, { timeout: 120_000 })
+    }
 
+    /**
+     * Rebuilds one month's days inside a transaction that already holds the
+     * month's lock and knows the month is open — payroll approval's, which
+     * recomputes as its last word before the month freezes (§12.1).
+     */
+    static async recomputeMonthIn(tx: Prisma.TransactionClient, companyId: string, month: string, tz: string, today: string, userIds?: readonly string[]): Promise<RecomputeResult> {
+        const result: RecomputeResult = { month, locked: false, derived: 0, written: 0, removed: 0 }
+        {
             const derived = await deriveMonth(tx, companyId, month, tz, today, userIds)
             const scope = userIds ? { userId: { in: [...userIds] } } : {}
             const existing = await tx.attendanceDay.findMany({
@@ -292,7 +303,7 @@ export class AttendanceEngineService {
             const stale = existing.filter(e => !keep.has(`${e.userId}:${toDateString(e.date)}`) && !e.lockedByPayrollRunId).map(e => e.id)
             if (stale.length > 0) result.removed = (await tx.attendanceDay.deleteMany({ where: { id: { in: stale } } })).count
             return result
-        }, { timeout: 120_000 })
+        }
     }
 
     /**

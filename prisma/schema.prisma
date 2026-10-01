@@ -227,6 +227,11 @@ model Company {
   /// nobody deciding it should, and most jurisdictions limit it for that
   /// reason. 0 switches recovery off without deleting anybody's debt.
   debtRecoveryPercent  Int                       @default(100)
+  /// The first month whose attendance reaches payroll (ATTENDANCE_PLAN.md
+  /// §20, Phase 1): the 1st of that month. Null: attendance is measured and
+  /// priced, and the register shows what it would cost, but nothing is
+  /// deducted — the dry run before it touches anybody's pay.
+  attendancePayrollFrom DateTime?                @db.Date
   /// The calendar this company's months are measured in.
   ///
   /// Everything in lib/time.ts already takes a zone as an argument; this is
@@ -245,6 +250,7 @@ model Company {
   overtimeApprovals    OvertimeApproval[]
   missingPunchRequests MissingPunchRequest[]
   attendanceDecisions  AttendanceDayDecision[]
+  attendancePayrollEntries AttendancePayrollEntry[]
   companyHolidays      CompanyHoliday[]
   holidayExclusions    CompanyHolidayExclusion[]
   finalSettlements     FinalSettlement[]
@@ -497,6 +503,7 @@ model User {
   overtimeApprovals          OvertimeApproval[]
   missingPunchRequests       MissingPunchRequest[]
   attendanceDecisions        AttendanceDayDecision[]
+  attendancePayrollEntries   AttendancePayrollEntry[]
 
   @@index([email])
   @@index([companyId])
@@ -1124,6 +1131,7 @@ model PayrollRun {
   company      Company           @relation(fields: [companyId], references: [id], onDelete: Cascade)
   payslips     Payslip[]
   settlements  FinalSettlement[]
+  attendanceEntries AttendancePayrollEntry[]
 
   /// One run per company per month. A second draft for a month that already has
   /// one is how two people approve different figures for the same payroll.
@@ -1988,4 +1996,37 @@ model AttendanceDayDecision {
 
   @@unique([userId, date, subject])
   @@index([companyId, date])
+}
+
+// --- Attendance: payroll (ATTENDANCE_PLAN.md §12) -------------------------------
+
+enum AttendanceCategory {
+  LATENESS
+  EARLY_LEAVE
+  ABSENCE
+  OVERTIME
+}
+
+/// What one person's attendance put on one month's payslip, by category, as
+/// approved (§12.2). Written only inside payroll approval, from that
+/// approval's own final recompute, and reconciled rather than appended: one
+/// row per person, month and category, so approving can never count twice.
+model AttendancePayrollEntry {
+  id           String             @id @default(uuid())
+  companyId    String
+  userId       String
+  year         Int
+  month        Int
+  category     AttendanceCategory
+  /// Money in minor units, never negative; the category says which way it goes.
+  amountMinor  Int
+  payrollRunId String
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+  company      Company            @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  user         User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  payrollRun   PayrollRun         @relation(fields: [payrollRunId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, year, month, category])
+  @@index([companyId, year, month])
 }

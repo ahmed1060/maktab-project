@@ -1,0 +1,156 @@
+import { describe, it, expect, beforeAll, afterAll, vi } from "vitest"
+import { readFileSync, readdirSync } from "node:fs"
+import { Client } from "pg"
+import { PayrollRunService as Payroll } from "@/lib/services/payroll-run.service"
+import { AttendancePunchService as Punches } from "@/lib/services/attendance-punch.service"
+import { AttendanceCalendarService as Calendar } from "@/lib/services/attendance-calendar.service"
+import { AttendancePolicyService as Policy } from "@/lib/services/attendance-policy.service"
+import { reconcileEntries } from "@/lib/services/attendance-payroll"
+import { STANDARD_OFFICE } from "@/lib/attendance/policy"
+import { addDays, weekdayOf } from "@/lib/attendance/calendar"
+
+/**
+ * Attendance reaching payroll, against a real Postgres built from the
+ * migrations (ATTENDANCE_PLAN.md §12, Phase 1): the dry run, then the month
+ * the company chooses, then approval — the last recompute, the payslip lines,
+ * the entries, the locked days — in one transaction.
+ *
+ * September 2026, approved on 5 October. Ehab earns 9,300.00 a month: 310.00 a
+ * day. He is late twice for free, then an hour late once (half a day,
+ * 155.00), absent once (310.00), and works two hours' overtime nobody approves.
+ */
+
+const ADMIN_URL = process.env.ROLES_TEST_DATABASE_URL
+const MIGRATIONS = readdirSync("prisma/migrations").filter(m => m !== "migration_lock.toml").sort((a, b) => (a === "0_init" ? -1 : b === "0_init" ? 1 : a.localeCompare(b)))
+const sql = (name: string) => readFileSync(`prisma/migrations/${name}/migration.sql`, "utf8")
+
+const BEFORE_ROLES = `
+INSERT INTO "Company"(id, name, "updatedAt") VALUES ('c1', 'One', now());
+INSERT INTO "User"(id, email, password, "firstName", "lastName", role, "lastDayOffResetYear", username, "companyId", "teamLeaderId") VALUES
+ ('a1', 'a1@x', 'p', 'Amal', 'One', 'ADMIN', 2026, 'a1', 'c1', NULL),
+ ('e1', 'e1@x', 'p', 'Ehab', 'One', 'EMPLOYEE', 2026, 'e1', 'c1', NULL);
+`
+
+const NOW = new Date("2026-10-05T06:00:00Z")
+const SESSION = { user: { id: "a1", role: "ADMIN" } }
+
+describe.skipIf(!ADMIN_URL)("attendance in payroll, in Postgres", () => {
+    const dbName = `attpay_test_${Date.now()}`
+    let db: Client
+
+    beforeAll(async () => {
+        vi.useFakeTimers({ toFake: ["Date"], now: NOW })
+        const admin = new Client({ connectionString: ADMIN_URL })
+        await admin.connect()
+        await admin.query(`CREATE DATABASE ${dbName}`)
+        await admin.end()
+        const url = new URL(ADMIN_URL!)
+        url.pathname = `/${dbName}`
+        db = new Client({ connectionString: url.toString() })
+        await db.connect()
+        for (const m of MIGRATIONS) {
+            await db.query(sql(m))
+            if (m === "20260920000000_team_leader") await db.query(BEFORE_ROLES)
+        }
+        process.env.POSTGRES_PRISMA_URL = url.toString()
+
+        await db.query(`INSERT INTO "SalaryChange"(id, "userId", "monthlyAmount", "effectiveFrom") VALUES
+            ('s1', 'e1', 9300, '2026-01-01T00:00:00Z'), ('s2', 'a1', 15000, '2026-01-01T00:00:00Z')`)
+        await db.query(`INSERT INTO "EmploymentEvent"(id, "userId", type, "effectiveFrom") VALUES
+            ('h1', 'e1', 'HIRED', '2026-01-01T00:00:00Z'), ('h2', 'a1', 'HIRED', '2026-01-01T00:00:00Z')`)
+        await Calendar.createSchedule("c1", { name: "Office", version: { effectiveFrom: "2026-09-01", startMinutes: 540, endMinutes: 1020, breakMinutes: 60 } }, "a1")
+        await Policy.saveVersion("c1", { effectiveFrom: "2026-09-01", body: STANDARD_OFFICE }, "a1")
+
+        // Both work every working day, 09:00–17:00, but for Ehab's listed days.
+        const { rows: holidays } = await db.query(`SELECT to_char(date, 'YYYY-MM-DD') AS d FROM "PublicHoliday" WHERE date BETWEEN '2026-09-01' AND '2026-09-30'`)
+        const off = new Set(holidays.map(h => h.d))
+        const special: Record<string, [string, string] | null> = {
+            "2026-09-02": ["09:40", "17:00"], // late 40: free
+            "2026-09-03": ["09:45", "17:00"], // late 45: free
+            "2026-09-06": ["10:00", "17:00"], // late 60: half a day
+            "2026-09-07": ["09:00", "19:00"], // two hours' overtime, waiting
+            "2026-09-08": null,               // absent
+        }
+        const rows: string[][] = [["AC-No.", "Check Time"]]
+        for (let d = "2026-09-01"; d <= "2026-09-30"; d = addDays(d, 1)) {
+            if (![0, 1, 2, 3, 4].includes(weekdayOf(d)) || off.has(d)) continue
+            const dmy = (t: string) => `${d.slice(8, 10)}/${d.slice(5, 7)}/${d.slice(0, 4)} ${t}`
+            rows.push(["2", dmy("09:00")], ["2", dmy("17:00")])
+            const mine = d in special ? special[d] : ["09:00", "17:00"]
+            if (mine) rows.push(["1", dmy(mine[0])], ["1", dmy(mine[1])])
+        }
+        await Punches.mapCode("c1", { code: "1", userId: "e1" }, "a1")
+        await Punches.mapCode("c1", { code: "2", userId: "a1" }, "e1")
+        await Punches.importRows("c1", { name: "september.csv", hash: "sep", rows }, { dateOrder: "DMY" }, "a1", true)
+    }, 180_000)
+
+    afterAll(async () => {
+        vi.useRealTimers()
+        await (await import("@/lib/prisma")).prisma.$disconnect()
+        await db?.end()
+        const admin = new Client({ connectionString: ADMIN_URL })
+        await admin.connect()
+        await admin.query(`DROP DATABASE IF EXISTS ${dbName}`)
+        await admin.end()
+    })
+
+    const ehab = (register: Awaited<ReturnType<typeof Payroll.compute>>["register"]) => register.entries.find(e => e.userId === "e1")!
+    const attendanceLines = (lines: { source: string; label: string; amountMinor: number }[]) =>
+        lines.filter(l => l.source === "ATTENDANCE").map(l => [l.label, l.amountMinor])
+
+    it("before the company's chosen month, shows what attendance would cost and deducts nothing (the dry run)", async () => {
+        const out = await Payroll.compute("c1", 2026, 9)
+        expect(out.attendance).toMatchObject({ reachesPayroll: false, from: null })
+        expect(out.attendance.byPerson.e1).toEqual({ lateness: 15500, earlyLeave: 0, absence: 31000, overtime: 0 })
+        expect(attendanceLines(ehab(out.register).lines)).toEqual([])
+        expect(ehab(out.register).totals.netMinor).toBe(930000)
+    })
+
+    it("from that month on, puts it on the payslip as money, one line per category", async () => {
+        await db.query(`UPDATE "Company" SET "attendancePayrollFrom" = '2026-09-01' WHERE id = 'c1'`)
+        const out = await Payroll.compute("c1", 2026, 9)
+        expect(out.attendance.reachesPayroll).toBe(true)
+        expect(attendanceLines(ehab(out.register).lines)).toEqual([["Lateness", 15500], ["Absence", 31000]])
+        expect(ehab(out.register).totals.netMinor).toBe(930000 - 15500 - 31000)
+    })
+
+    it("approves in one transaction: overtime nobody decided is rejected, the days rebuilt, priced, entered and locked", async () => {
+        expect((await db.query(`SELECT "overtimeStatus" FROM "AttendanceDay" WHERE "userId" = 'e1' AND date = '2026-09-07'`)).rows[0].overtimeStatus).toBe("PENDING")
+        const result = await Payroll.approve("c1", 2026, 9, SESSION)
+        expect(result).toHaveProperty("runId")
+        const runId = (result as { runId: string }).runId
+
+        const { rows: [ot] } = await db.query(`SELECT status, "decidedById" FROM "OvertimeApproval" WHERE "userId" = 'e1' AND date = '2026-09-07'`)
+        expect(ot).toEqual({ status: "REJECTED", decidedById: "a1" })
+        expect((await db.query(`SELECT "overtimeStatus" FROM "AttendanceDay" WHERE "userId" = 'e1' AND date = '2026-09-07'`)).rows[0].overtimeStatus).toBe("REJECTED")
+
+        const { rows: entries } = await db.query(`SELECT category, "amountMinor", "payrollRunId" FROM "AttendancePayrollEntry" WHERE "userId" = 'e1' ORDER BY category`)
+        // In the enum's order.
+        expect(entries).toEqual([
+            { category: "LATENESS", amountMinor: 15500, payrollRunId: runId },
+            { category: "ABSENCE", amountMinor: 31000, payrollRunId: runId },
+        ])
+        const { rows: lines } = await db.query(`SELECT l.label, l.amount::text FROM "PayslipLine" l JOIN "Payslip" p ON p.id = l."payslipId" WHERE p."userId" = 'e1' AND l.source = 'ATTENDANCE' ORDER BY l."sortOrder"`)
+        expect(lines).toEqual([{ label: "Lateness", amount: "155.00" }, { label: "Absence", amount: "310.00" }])
+
+        const { rows: [days] } = await db.query(`SELECT count(*)::int AS n, count(*) FILTER (WHERE "lockedByPayrollRunId" = $1)::int AS locked FROM "AttendanceDay" WHERE date BETWEEN '2026-09-01' AND '2026-09-30'`, [runId])
+        expect(days.n).toBeGreaterThan(50)
+        expect(days.locked).toBe(days.n)
+        expect((await db.query(`SELECT status FROM "PayrollRun" WHERE id = $1`, [runId])).rows[0].status).toBe("APPROVED")
+    })
+
+    it("then holds the month: nothing changes its attendance, and approving again is refused", async () => {
+        await expect(Punches.addManual("c1", { userId: "e1", at: "2026-09-08T09:00", direction: "IN", note: "late correction" }, "a1")).rejects.toThrow("PAYROLL_MONTH_LOCKED")
+        expect(await Payroll.approve("c1", 2026, 9, SESSION)).toHaveProperty("refusal")
+    })
+
+    it("reconciles entries rather than appending: writing the same again changes nothing, a category gone is removed", async () => {
+        const { prisma } = await import("@/lib/prisma")
+        const { rows: [run] } = await db.query(`SELECT id FROM "PayrollRun" WHERE "companyId" = 'c1'`)
+        const people = [{ userId: "e1", excluded: false, attendance: { lateness: 15500, earlyLeave: 0, absence: 31000, overtime: 0 } }]
+        expect(await prisma.$transaction(tx => reconcileEntries(tx, "c1", 2026, 9, run.id, people))).toEqual({ written: 0, removed: 0 })
+        const fewer = [{ userId: "e1", excluded: false, attendance: { lateness: 15500, earlyLeave: 0, absence: 0, overtime: 0 } }]
+        expect(await prisma.$transaction(tx => reconcileEntries(tx, "c1", 2026, 9, run.id, fewer))).toEqual({ written: 0, removed: 1 })
+        expect((await db.query(`SELECT count(*)::int AS n FROM "AttendancePayrollEntry" WHERE "userId" = 'e1'`)).rows[0].n).toBe(1)
+    })
+})

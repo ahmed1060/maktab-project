@@ -117,8 +117,12 @@ describe("approving is its own act", () => {
     it("recomputes from source before freezing", () => {
         // What gets approved should be what was true at the moment of approval,
         // not whatever a draft happened to be storing from an hour ago.
+        // Inside the approval's own transaction, under the month's lock, after
+        // attendance's last recompute (ATTENDANCE_PLAN.md §12.1): a draft
+        // saved before the transaction could be out of date by the time it froze.
         const approve = service.slice(service.indexOf("static async approve"))
-        expect(approve).toContain("this.saveDraft(companyId, year, month)")
+        expect(approve).toContain("this.compute(companyId, year, month, tx)")
+        expect(approve).toContain("this.writeDraft(tx, companyId, year, month, final, payrollDay)")
     })
 
     it("writes the payslips, the settlements and the debts together", () => {
