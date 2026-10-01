@@ -10,7 +10,7 @@ import AttendancePolicyPanel from '@/components/AttendancePolicyPanel'
 import ConfirmModal from '@/components/ConfirmModal'
 import { apiErrorText } from '@/lib/api-error-text'
 import {
-    formatMinutes, parseTime, scheduleIdOn, shiftEnd, versionOn, workDaysOf,
+    defaultOn, formatMinutes, parseTime, scheduleIdOn, shiftEnd, versionOn, workDaysOf,
     type DayHours, type Override, type Version,
 } from '@/lib/attendance/calendar'
 
@@ -28,7 +28,6 @@ import {
 type Schedule = {
     id: string
     name: string
-    isDefault: boolean
     archivedAt: string | null
     versions: Version[]
     overrides: Override[]
@@ -38,6 +37,8 @@ type Calendar = {
     today: string
     companyWorkWeek: number[]
     schedules: Schedule[]
+    /** The company's default schedule, by date (review on #10). */
+    defaults: { id: string; scheduleId: string; effectiveFrom: string }[]
     assignments: { id: string; userId: string; scheduleId: string; effectiveFrom: string }[]
     people: { id: string; name: string; role: string }[]
     holidays: {
@@ -71,6 +72,7 @@ type Ctx = {
     data: Calendar
     active: Schedule[]
     defaultSchedule: Schedule | null
+    setMakingDefault: (s: Schedule | null) => void
     editable: boolean
     busy: boolean
     isRtl: boolean
@@ -131,6 +133,7 @@ export default function CompanyAttendanceCard({ companyId, readOnly = false }: {
     const [year, setYear] = useState<number | null>(null)
     const [editing, setEditing] = useState<Editing>(null)
     const [confirming, setConfirming] = useState<{ message: string; run: () => Promise<void> } | null>(null)
+    const [makingDefault, setMakingDefault] = useState<Schedule | null>(null)
     const [busy, setBusy] = useState(false)
 
     const query = new URLSearchParams({ companyId, ...(year ? { year: String(year) } : {}) })
@@ -176,7 +179,7 @@ export default function CompanyAttendanceCard({ companyId, readOnly = false }: {
 
     const active = data.schedules.filter(s => !s.archivedAt)
     const ctx: Ctx = {
-        companyId, data, active, defaultSchedule: active.find(s => s.isDefault) ?? null,
+        companyId, data, active, defaultSchedule: active.find(s => s.id === defaultOn(data.defaults, data.today)) ?? null, setMakingDefault,
         editable, busy, isRtl, t: t as Ctx['t'], send, setEditing, setConfirming, setYear, weekdayName, dateText,
     }
 
@@ -211,6 +214,19 @@ export default function CompanyAttendanceCard({ companyId, readOnly = false }: {
                 />
             )}
 
+            {makingDefault && (
+                <DefaultModal
+                    schedule={makingDefault}
+                    today={data.today}
+                    busy={busy}
+                    onClose={() => setMakingDefault(null)}
+                    onSubmit={async effectiveFrom => {
+                        const ok = await send(`/api/attendance/schedules/${makingDefault.id}/default`, 'POST', { effectiveFrom }, t('attendance_default_set'))
+                        if (ok) setMakingDefault(null)
+                    }}
+                />
+            )}
+
             <ConfirmModal
                 isOpen={!!confirming}
                 title={t('confirm_action')}
@@ -231,7 +247,9 @@ export default function CompanyAttendanceCard({ companyId, readOnly = false }: {
 // --- Schedules -------------------------------------------------------------------
 
 function SchedulesSection({ ctx }: { ctx: Ctx }) {
-        const { t, active, editable, setEditing } = ctx
+        const { t, active, editable, setEditing, data, busy, send, setConfirming, dateText } = ctx
+        // Default changes still to come, each withdrawable until payroll locks it.
+        const upcomingDefaults = data.defaults.filter(d => d.effectiveFrom > data.today)
         return (
             <section className="glass" style={{ padding: '1.5rem', borderRadius: '1rem' }} aria-labelledby="attendance-schedules">
                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap', alignItems: 'baseline' }}>
@@ -246,6 +264,25 @@ function SchedulesSection({ ctx }: { ctx: Ctx }) {
                     <p style={{ margin: '1rem 0 0', color: 'var(--text-soft)' }}>{t('attendance_no_schedules')}</p>
                 )}
 
+                {upcomingDefaults.length > 0 && (
+                    <ul style={{ margin: '1rem 0 0', paddingInlineStart: '1.1rem', fontSize: '0.84rem' }}>
+                        {upcomingDefaults.map(d => (
+                            <li key={d.id}>
+                                {t('attendance_default_from')
+                                    .replace('{name}', data.schedules.find(s => s.id === d.scheduleId)?.name ?? '')
+                                    .replace('{date}', dateText(d.effectiveFrom))}
+                                {editable && (
+                                    <button disabled={busy} style={{ marginInlineStart: '0.5rem', fontSize: '0.8rem', background: 'none', border: 'none', color: 'var(--danger-fg)', cursor: 'pointer' }}
+                                        onClick={() => setConfirming({
+                                            message: t('attendance_withdraw_confirm'),
+                                            run: async () => { await send(`/api/attendance/defaults/${d.id}`, 'DELETE', undefined, t('attendance_withdrawn')) },
+                                        })}>{t('attendance_withdraw')}</button>
+                                )}
+                            </li>
+                        ))}
+                    </ul>
+                )}
+
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem', marginTop: '1rem' }}>
                     {active.map(schedule => <ScheduleRow key={schedule.id} ctx={ctx} schedule={schedule} />)}
                 </div>
@@ -254,11 +291,13 @@ function SchedulesSection({ ctx }: { ctx: Ctx }) {
     }
 
 function ScheduleRow({ ctx, schedule }: { ctx: Ctx; schedule: Schedule }) {
-        const { t, data, editable, busy, send, setEditing, setConfirming, weekdayName, dateText, defaultSchedule } = ctx
+        const { t, data, editable, busy, send, setEditing, setConfirming, weekdayName, dateText, setMakingDefault } = ctx
+        const isDefault = defaultOn(data.defaults, data.today) === schedule.id
+        const willBeDefault = data.defaults.some(d => d.effectiveFrom > data.today && d.scheduleId === schedule.id)
         const current = versionOn(schedule.versions, data.today)
         const upcoming = schedule.versions.filter(v => v.effectiveFrom > data.today)
         const people = data.people.filter(p => scheduleIdOn(
-            data.assignments.filter(a => a.userId === p.id), defaultSchedule?.id ?? null, data.today) === schedule.id).length
+            data.assignments.filter(a => a.userId === p.id), data.defaults, data.today) === schedule.id).length
         const shown = current ?? upcoming[0] ?? null
         const days = shown ? workDaysOf(shown, data.companyWorkWeek) : []
 
@@ -267,7 +306,7 @@ function ScheduleRow({ ctx, schedule }: { ctx: Ctx; schedule: Schedule }) {
                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', flexWrap: 'wrap' }}>
                     <div>
                         <strong>{schedule.name}</strong>
-                        {schedule.isDefault && (
+                        {isDefault && (
                             <span style={{ marginInlineStart: '0.5rem', padding: '0.1rem 0.5rem', borderRadius: '999px', fontSize: '0.72rem', fontWeight: 600, background: 'var(--info-bg)', color: 'var(--info-fg)' }}>
                                 {t('attendance_default')}
                             </span>
@@ -288,20 +327,20 @@ function ScheduleRow({ ctx, schedule }: { ctx: Ctx; schedule: Schedule }) {
                             </div>
                         )}
                         <div style={{ fontSize: '0.8rem', color: 'var(--text-soft)', marginTop: '0.2rem' }}>
-                            {schedule.isDefault ? t('attendance_people_default').replace('{n}', String(people)) : t('attendance_people_n').replace('{n}', String(people))}
+                            {isDefault ? t('attendance_people_default').replace('{n}', String(people)) : t('attendance_people_n').replace('{n}', String(people))}
                         </div>
                     </div>
                     {editable && (
                         <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', alignItems: 'flex-start' }}>
                             <button className="btn btn-secondary" style={{ fontSize: '0.82rem' }} onClick={() => setEditing({ kind: 'version', schedule })}>{t('attendance_change_hours')}</button>
                             <button className="btn btn-secondary" style={{ fontSize: '0.82rem' }} onClick={() => setEditing({ kind: 'override', schedule, override: null })}>{t('attendance_add_override')}</button>
-                            {!schedule.isDefault && (
+                            {!isDefault && (
                                 <button className="btn btn-secondary" style={{ fontSize: '0.82rem' }} disabled={busy}
-                                    onClick={() => send(`/api/attendance/schedules/${schedule.id}`, 'PATCH', { isDefault: true }, t('settings_saved_success'))}>
+                                    onClick={() => setMakingDefault(schedule)}>
                                     {t('attendance_make_default')}
                                 </button>
                             )}
-                            {!schedule.isDefault && (
+                            {!isDefault && !willBeDefault && (
                                 <button className="btn btn-secondary" style={{ fontSize: '0.82rem' }} disabled={busy}
                                     onClick={() => setConfirming({
                                         message: t('attendance_archive_confirm').replace('{name}', schedule.name),
@@ -361,17 +400,17 @@ function ScheduleRow({ ctx, schedule }: { ctx: Ctx; schedule: Schedule }) {
 // --- People ----------------------------------------------------------------------
 
 function PeoplePanel({ ctx }: { ctx: Ctx }) {
-        const { t, data, active, editable, busy, send, dateText, defaultSchedule, companyId, isRtl } = ctx
+        const { t, data, active, editable, busy, send, dateText, companyId, isRtl } = ctx
         const [selected, setSelected] = useState<string[]>([])
         const [target, setTarget] = useState(active[0]?.id ?? '')
         const [from, setFrom] = useState(firstOfNextMonth(data.today))
 
         const rows = useMemo(() => data.people.map(p => {
             const mine = data.assignments.filter(a => a.userId === p.id)
-            const now = scheduleIdOn(mine, defaultSchedule?.id ?? null, data.today)
+            const now = scheduleIdOn(mine, data.defaults, data.today)
             const next = mine.filter(a => a.effectiveFrom > data.today).sort((a, b) => a.effectiveFrom.localeCompare(b.effectiveFrom))[0]
             return { ...p, now, next, explicit: mine.some(a => a.effectiveFrom <= data.today) }
-        }), [data, defaultSchedule])
+        }), [data])
         const nameOf = (id: string | null | undefined) => data.schedules.find(s => s.id === id)?.name ?? t('attendance_none')
 
         if (active.length === 0) return null
@@ -522,7 +561,9 @@ function HolidaysPanel({ ctx }: { ctx: Ctx }) {
                             <button className="btn btn-primary" disabled={busy || !date || !name.trim()}
                                 onClick={async () => {
                                     const ok = await send('/api/attendance/holidays', 'POST', { companyId, date, name: name.trim(), isPaid }, t('attendance_holiday_added'))
-                                    if (ok) { setDate(''); setName(''); setIsPaid(true) }
+                                    // Show the year it was added to, or a holiday for next year
+                                    // vanishes from view the moment it is saved (review on #10).
+                                    if (ok) { setYear(Number(date.slice(0, 4))); setDate(''); setName(''); setIsPaid(true) }
                                 }}>
                                 {t('attendance_add_holiday')}
                             </button>
@@ -546,7 +587,9 @@ function HoursModal({ editing, today, companyWorkWeek, weekdayName, busy, onClos
 }) {
     const { t } = useLanguage()
     const isOverride = editing.kind === 'override'
-    const base = editing.kind === 'version' ? versionOn(editing.schedule.versions, today) ?? editing.schedule.versions.at(-1) ?? null
+    // A new version starts from the hours in force on its default date, next
+    // month: an upcoming change already planned, not today's (review on #10).
+    const base = editing.kind === 'version' ? versionOn(editing.schedule.versions, firstOfNextMonth(today)) ?? editing.schedule.versions.at(-1) ?? null
         : editing.kind === 'override' && editing.override ? { ...editing.override, workWeek: [] } : null
 
     const [name, setName] = useState(editing.kind === 'override' ? editing.override?.name ?? '' : '')
@@ -694,3 +737,31 @@ function HoursModal({ editing, today, companyWorkWeek, weekdayName, busy, onClos
     )
 }
 
+
+// --- Making a schedule the default -------------------------------------------------
+
+function DefaultModal({ schedule, today, busy, onClose, onSubmit }: {
+    schedule: Schedule
+    today: string
+    busy: boolean
+    onClose: () => void
+    onSubmit: (effectiveFrom: string) => Promise<void>
+}) {
+    const { t } = useLanguage()
+    const [from, setFrom] = useState(firstOfNextMonth(today))
+    return (
+        <Modal isOpen onClose={onClose} title={`${t('attendance_make_default')}: ${schedule.name}`}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.9rem' }}>
+                <p style={{ margin: 0, fontSize: '0.88rem', color: 'var(--text-body)' }}>{t('attendance_default_hint')}</p>
+                <div>
+                    <label htmlFor="default-from" className="label">{t('attendance_from_when')}</label>
+                    <input id="default-from" className="input" type="date" value={from} onChange={e => setFrom(e.target.value)} />
+                </div>
+                <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+                    <button className="btn btn-secondary" onClick={onClose}>{t('cancel')}</button>
+                    <button className="btn btn-primary" disabled={busy || !from} onClick={() => onSubmit(from)}>{t('save')}</button>
+                </div>
+            </div>
+        </Modal>
+    )
+}

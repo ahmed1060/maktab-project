@@ -25,14 +25,15 @@ export const versionSchema = hoursSchema.extend({
 export const createScheduleSchema = z.object({
     companyId: z.string().optional(),
     name: z.string().min(1).max(80),
-    isDefault: z.boolean().optional(),
     version: versionSchema,
 })
 
 export const updateScheduleSchema = z.object({
     name: z.string().min(1).max(80).optional(),
-    isDefault: z.boolean().optional(),
 })
+
+/** Make a schedule the company's default from a date. */
+export const setDefaultSchema = z.object({ effectiveFrom: date })
 
 export const overrideSchema = hoursSchema.extend({
     name: z.string().min(1).max(80),

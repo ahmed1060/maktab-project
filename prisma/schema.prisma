@@ -236,6 +236,7 @@ model Company {
   payrollRuns          PayrollRun[]
   workSchedules        WorkSchedule[]
   attendancePolicies   AttendancePolicy[]
+  scheduleDefaults     ScheduleDefault[]
   companyHolidays      CompanyHoliday[]
   holidayExclusions    CompanyHolidayExclusion[]
   finalSettlements     FinalSettlement[]
@@ -1503,9 +1504,6 @@ model WorkSchedule {
   id          String             @id @default(uuid())
   companyId   String
   name        String
-  /// The schedule for anybody without an assignment. Exactly one per company
-  /// once it has any (lib/services/attendance-calendar.service.ts).
-  isDefault   Boolean            @default(false)
   /// Retired, never deleted: past days were measured against it.
   archivedAt  DateTime?
   createdAt   DateTime           @default(now())
@@ -1514,6 +1512,7 @@ model WorkSchedule {
   versions    ScheduleVersion[]
   overrides   ScheduleOverride[]
   assignments UserSchedule[]
+  defaultFor  ScheduleDefault[]
 
   @@unique([companyId, name])
   @@index([companyId])
@@ -1585,6 +1584,23 @@ model ScheduleOverrideDay {
   override     ScheduleOverride @relation(fields: [overrideId], references: [id], onDelete: Cascade)
 
   @@unique([overrideId, weekday])
+}
+
+/// Which schedule is the company's default, from a date: the one anybody
+/// without an assignment works. Dated, so making another schedule the default
+/// moves unassigned people from that date on and never before it.
+model ScheduleDefault {
+  id            String       @id @default(uuid())
+  companyId     String
+  scheduleId    String
+  effectiveFrom DateTime     @db.Date
+  createdById   String
+  createdAt     DateTime     @default(now())
+  company       Company      @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  schedule      WorkSchedule @relation(fields: [scheduleId], references: [id], onDelete: Restrict)
+
+  @@unique([companyId, effectiveFrom])
+  @@index([scheduleId])
 }
 
 /// Which schedule a person works, from a date. Nobody assigned works the

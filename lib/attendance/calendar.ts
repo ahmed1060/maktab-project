@@ -51,6 +51,13 @@ export type Schedule = {
 
 export type Assignment = { scheduleId: string; effectiveFrom: string }
 
+/**
+ * Which schedule is the company's default from a date. Dated like everything
+ * else here: making another schedule the default moves unassigned people from
+ * that date on, never before it.
+ */
+export type DefaultChange = { scheduleId: string; effectiveFrom: string }
+
 export type Hours = { startMinutes: number; endMinutes: number; breakMinutes: number }
 
 export type HolidayEntry = { date: string; name: string; isPaid: boolean; source: "PUBLIC" | "COMPANY"; id: string }
@@ -111,14 +118,17 @@ export function workWeekProblem(days: readonly number[], { allowEmpty }: { allow
     return null
 }
 
-/** Why a set of per-weekday hours is not usable, or null. */
-export function dayHoursProblem(days: readonly DayHours[]): string | null {
+/**
+ * Why a set of per-weekday hours is not usable, or null. The break applies to
+ * every day, so a short day must still be longer than the break.
+ */
+export function dayHoursProblem(days: readonly DayHours[], breakMinutes = 0): string | null {
     const seen = new Set<number>()
     for (const d of days) {
         if (!Number.isInteger(d.weekday) || d.weekday < 0 || d.weekday > 6) return "WORK_WEEK_INVALID_DAY"
         if (seen.has(d.weekday)) return "WORK_WEEK_DUPLICATE_DAY"
         seen.add(d.weekday)
-        const problem = hoursProblem(d.startMinutes, d.endMinutes)
+        const problem = hoursProblem(d.startMinutes, d.endMinutes, breakMinutes)
         if (problem) return problem
     }
     return null
@@ -144,9 +154,23 @@ export function overrideOn(overrides: readonly Override[], date: string): Overri
     return overrides.find(o => o.startDate <= date && date <= o.endDate) ?? null
 }
 
-/** Which schedule a person works on a date: their assignment then, else the company default. */
-export function scheduleIdOn(assignments: readonly Assignment[], defaultScheduleId: string | null, date: string): string | null {
-    return latestFrom(assignments, date, a => a.effectiveFrom)?.scheduleId ?? defaultScheduleId
+/** The company's default schedule on a date, or null before it had one. */
+export function defaultOn(defaults: readonly DefaultChange[], date: string): string | null {
+    return latestFrom(defaults, date, d => d.effectiveFrom)?.scheduleId ?? null
+}
+
+/** Which schedule a person works on a date: their assignment then, else the company's default then. */
+export function scheduleIdOn(assignments: readonly Assignment[], defaults: readonly DefaultChange[], date: string): string | null {
+    return latestFrom(assignments, date, a => a.effectiveFrom)?.scheduleId ?? defaultOn(defaults, date)
+}
+
+/**
+ * The span an item dated `from` governs: up to the next item's date, or open
+ * when none follows. Changing or removing it changes every date in between.
+ */
+export function spanOf(dates: readonly string[], from: string): { from: string; until: string | null } {
+    const later = dates.filter(d => d > from).sort()
+    return { from, until: later[0] ?? null }
 }
 
 export function overridesOverlap(a: Pick<Override, "startDate" | "endDate">, b: Pick<Override, "startDate" | "endDate">): boolean {

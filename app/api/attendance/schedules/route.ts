@@ -4,13 +4,13 @@ import { AttendanceCalendarService } from "@/lib/services/attendance-calendar.se
 import { attendanceCompanyFor, denyAttendanceSettings } from "@/lib/attendance/settings-access"
 import { createScheduleSchema } from "@/lib/validations/attendance-calendar.schema"
 
-/** A new schedule with its first hours. The company's first one becomes its default. */
+/** A new schedule with its first hours. The company's first one becomes its default, from those hours' date. */
 export const POST = withStandardHandler(async (_req, session, json) => {
     const validation = createScheduleSchema.safeParse(json)
     if (!validation.success) return ApiResponse.badRequest("Validation Error", validation.error.format())
     const companyId = attendanceCompanyFor(session, validation.data.companyId)
     const denied = await denyAttendanceSettings(session, companyId, "edit")
     if (denied) return denied
-    const { name, isDefault, version } = validation.data
-    return ApiResponse.success(await AttendanceCalendarService.createSchedule(companyId!, { name, isDefault, version }, session.user.id), 201)
+    const { name, version } = validation.data
+    return ApiResponse.success(await AttendanceCalendarService.createSchedule(companyId!, { name, version }, session.user.id), 201)
 })

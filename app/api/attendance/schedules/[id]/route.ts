@@ -4,7 +4,7 @@ import { AttendanceCalendarService } from "@/lib/services/attendance-calendar.se
 import { denyAttendanceSettings } from "@/lib/attendance/settings-access"
 import { updateScheduleSchema } from "@/lib/validations/attendance-calendar.schema"
 
-/** Rename a schedule or make it the default. */
+/** Rename a schedule. Making it the default is dated: ./default. */
 export const PATCH = withStandardHandler(async (_req, session, json, context) => {
     const validation = updateScheduleSchema.safeParse(json)
     if (!validation.success) return ApiResponse.badRequest("Validation Error", validation.error.format())
