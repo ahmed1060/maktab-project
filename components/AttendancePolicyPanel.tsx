@@ -107,7 +107,7 @@ export default function AttendancePolicyPanel({ companyId, readOnly, onChanged }
                             <option value="">{t('attendance_start_from_template')}</option>
                             {data.templates.map(tpl => <option key={tpl.id} value={tpl.id}>{templateName(tpl)}</option>)}
                         </select>
-                        {shown && <button className="btn btn-primary" onClick={() => setEditing({ start: (upcoming.at(-1) ?? shown).body, templateId: null })}>{t('attendance_change_policy')}</button>}
+                        {shown && <button className="btn btn-primary" onClick={() => setEditing({ start: (policyOn(data.versions, firstOfNextMonth(data.today)) ?? shown).body, templateId: null })}>{t('attendance_change_policy')}</button>}
                     </div>
                 )}
             </div>
