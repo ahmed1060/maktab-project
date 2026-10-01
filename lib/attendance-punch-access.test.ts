@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
+import { readFileSync } from "node:fs"
 import { state, prismaMock, withBody, url } from "./permissions/employee-access.harness"
 import { encodeGrants } from "./permissions/grants"
 import { stepUpConfirmed } from "./permissions/test-actors"
@@ -247,7 +248,7 @@ describe("a long list (review on #12)", () => {
 })
 
 describe("the import preview (review on #12)", () => {
-    const page = () => require("node:fs").readFileSync("app/(dashboard)/dashboard/attendance/page.tsx", "utf8") as string
+    const page = () => readFileSync("app/(dashboard)/dashboard/attendance/page.tsx", "utf8")
     it("drops a reply to an older request instead of showing it over a newer one", () => {
         expect(page()).toContain("const mine = ++generation.current")
         expect(page()).toContain("if (mine !== generation.current) return")
