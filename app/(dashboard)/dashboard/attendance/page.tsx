@@ -46,8 +46,6 @@ type Codes = { mapped: { id: string; code: string; userId: string; name: string 
 
 type Tab = 'punches' | 'import' | 'numbers'
 
-const pad = (n: number) => String(n).padStart(2, '0')
-const today = () => { const d = new Date(); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}` }
 const monthStart = (date: string) => `${date.slice(0, 8)}01`
 
 async function send(url: string, init: RequestInit, fallback: string): Promise<{ ok: true; body: any } | { ok: false; error: string }> {
@@ -75,10 +73,14 @@ export default function AttendancePage() {
     }, [t, setTitle, setSubtitle])
 
     const correctsCompany = p.companyWide('attendance.correct')
+    // The company's date, not the device's: around midnight, or for somebody
+    // abroad, they differ, and every default date below starts from it (review on #12).
+    const { data: peopleBody } = useSWR(!isSuperAdmin || companyId ? `/api/attendance/people?${q}` : null, fetcher)
+    const today: string | undefined = peopleBody?.data?.today
     const tabs: Tab[] = correctsCompany ? ['punches', 'import', 'numbers'] : ['punches']
     const [tab, setTab] = useState<Tab>('punches')
 
-    if (status === 'loading') return <LoadingSpinner />
+    if (status === 'loading' || (!today && !(isSuperAdmin && !companyId))) return <LoadingSpinner />
     if (isSuperAdmin && !companyId) {
         return <p style={{ color: 'var(--text-soft)' }}>{t('punch_pick_company')}</p>
     }
@@ -95,7 +97,7 @@ export default function AttendancePage() {
                     ))}
                 </div>
             )}
-            {tab === 'punches' && <PunchesTab q={q} companyId={companyId} />}
+            {tab === 'punches' && today && <PunchesTab q={q} companyId={companyId} today={today} />}
             {tab === 'import' && correctsCompany && <ImportTab q={q} companyId={companyId} />}
             {tab === 'numbers' && correctsCompany && <NumbersTab q={q} companyId={companyId} />}
         </div>
@@ -104,7 +106,7 @@ export default function AttendancePage() {
 
 // --- Punches -------------------------------------------------------------------
 
-function PunchesTab({ q, companyId }: { q: string; companyId: string | null }) {
+function PunchesTab({ q, companyId, today }: { q: string; companyId: string | null; today: string }) {
     const { t } = useLanguage()
     const { showToast } = useToast()
     const p = useCan()
@@ -113,7 +115,7 @@ function PunchesTab({ q, companyId }: { q: string; companyId: string | null }) {
     const seesOthers = p.can('attendance.view_team')
     const correctsCompany = p.companyWide('attendance.correct')
 
-    const [from, setFrom] = useState(() => monthStart(today()))
+    const [from, setFrom] = useState(() => monthStart(today))
     const [to, setTo] = useState(today)
     const [who, setWho] = useState('')
     const [waiting, setWaiting] = useState(false)
@@ -218,6 +220,7 @@ function PunchesTab({ q, companyId }: { q: string; companyId: string | null }) {
 
             {adding && (
                 <AddPunchModal
+                    today={today}
                     companyId={companyId}
                     people={people.filter(x => x.id !== me && p.canFor('attendance.correct', x.id, x.teamLeaderId))}
                     onClose={() => setAdding(false)}
@@ -238,7 +241,7 @@ function PunchesTab({ q, companyId }: { q: string; companyId: string | null }) {
     )
 }
 
-function AddPunchModal({ companyId, people, onClose, onAdded }: { companyId: string | null; people: Person[]; onClose: () => void; onAdded: () => void }) {
+function AddPunchModal({ companyId, today, people, onClose, onAdded }: { companyId: string | null; today: string; people: Person[]; onClose: () => void; onAdded: () => void }) {
     const { t } = useLanguage()
     const { showToast } = useToast()
     const [userId, setUserId] = useState('')

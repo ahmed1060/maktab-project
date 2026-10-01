@@ -1,6 +1,7 @@
 import { withStandardHandler } from "@/lib/api-utils"
 import { ApiResponse } from "@/lib/api-response"
 import { AttendancePunchService } from "@/lib/services/attendance-punch.service"
+import { AttendanceCalendarService } from "@/lib/services/attendance-calendar.service"
 import { punchCompany, visibilityFor } from "@/lib/attendance/punch-access"
 
 /**
@@ -11,5 +12,11 @@ import { punchCompany, visibilityFor } from "@/lib/attendance/punch-access"
 export const GET = withStandardHandler(async (req, session) => {
     const access = await punchCompany(session, new URL(req.url).searchParams.get("companyId"))
     if ("denied" in access) return access.denied
-    return ApiResponse.success({ people: await AttendancePunchService.people(access.companyId, visibilityFor(session)) })
+    // The company's date today, so the screen's default dates are the company's,
+    // not the viewer's device's (review on #12).
+    const [people, today] = await Promise.all([
+        AttendancePunchService.people(access.companyId, visibilityFor(session)),
+        AttendanceCalendarService.today(access.companyId),
+    ])
+    return ApiResponse.success({ people, today })
 })

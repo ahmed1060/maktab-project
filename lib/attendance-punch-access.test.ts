@@ -21,6 +21,7 @@ vi.mock("@/lib/prisma", () => ({ prisma: prismaMock }))
 vi.mock("@/lib/services/audit-log.service", () => ({ AuditLogService: { log: async () => {}, logSystemError: async () => "ref", friendlyErrorMessage: () => "error" } }))
 
 const reached: string[] = []
+vi.mock("@/lib/services/attendance-calendar.service", () => ({ AttendanceCalendarService: { today: async (companyId: string) => companyId === "c1" ? "2026-10-01" : "2026-09-30" } }))
 vi.mock("@/lib/services/attendance-punch.service", () => ({
     AttendancePunchService: {
         list: async (companyId: string, query: any, visible: any) => { reached.push(`list:${companyId}:${visible.kind}${query.unmatched ? ":unmatched" : ""}`); return [] },
@@ -40,6 +41,7 @@ vi.mock("@/lib/services/attendance-punch.service", () => ({
         mapCode: async (companyId: string, input: any) => { reached.push(`map:${companyId}:${input.code}:${input.userId}`); return { id: "m-new" } },
         codeOf: async (id: string) => id === "m1" ? { id: "m1", companyId: "c1", code: "101", userId: "emp", user: { teamLeaderId: null } } : null,
         unmapCode: async (id: string) => { reached.push(`unmap:${id}`); return { unfilled: 0 } },
+        people: async () => [],
     },
 }))
 
@@ -214,5 +216,16 @@ describe("the company must hold attendance", () => {
         expect((await list("companyId=c1&from=2026-10-01&to=2026-10-31")).status).toBe(200)
         expect((await list()).status).toBe(400)
         expect(reached).toEqual(["list:c1:COMPANY"])
+    })
+})
+
+describe("the screen's dates (review on #12)", () => {
+    it("come from the company's calendar, not the viewer's device", async () => {
+        admin()
+        const res = await (await import("@/app/api/attendance/people/route")).GET(new Request(url("/api/attendance/people")))
+        expect((await res.json()).data.today).toBe("2026-10-01")
+        const page = (await import("node:fs")).readFileSync("app/(dashboard)/dashboard/attendance/page.tsx", "utf8")
+        expect(page).not.toMatch(/new Date\(\)\s*;\s*return\s*`\$\{d\.getFullYear\(\)/)
+        expect(page).not.toMatch(/\.getDate\(\)/)
     })
 })
