@@ -252,6 +252,8 @@ model Company {
   attendanceDecisions  AttendanceDayDecision[]
   attendancePayrollEntries AttendancePayrollEntry[]
   attendanceDiscrepancies  AttendanceDiscrepancy[]
+  attendanceAgents         AttendanceAgent[]
+  attendanceDevices        AttendanceDevice[]
   companyHolidays      CompanyHoliday[]
   holidayExclusions    CompanyHolidayExclusion[]
   finalSettlements     FinalSettlement[]
@@ -1781,11 +1783,15 @@ model AttendancePunch {
   /// A permanent deletion takes their punches with it (migration 20261010100000).
   user                 User?             @relation(fields: [userId], references: [id], onDelete: Cascade)
   import               AttendanceImport? @relation(fields: [importId], references: [id], onDelete: SetNull)
+  /// The terminal it came from (§17), for AGENT punches.
+  deviceId             String?
+  device               AttendanceDevice? @relation(fields: [deviceId], references: [id], onDelete: SetNull)
 
   @@unique([companyId, source, sourceKey])
   @@index([companyId, userId, punchAtLocal])
   @@index([companyId, hardwareUserId])
   @@index([importId])
+  @@index([deviceId])
 }
 
 /// A spreadsheet of punches brought in, and what became of its rows.
@@ -1809,6 +1815,99 @@ model AttendanceImport {
   punches        AttendancePunch[]
 
   @@index([companyId, createdAt])
+}
+
+// --- Attendance: terminals and the Local Sync Agent (ATTENDANCE_PLAN.md §17) ---
+
+enum AgentStatus {
+  /// Created; waiting for the agent to exchange its one-time code.
+  PENDING
+  ACTIVE
+  /// Its token no longer works. Kept, with its terminals' history.
+  REVOKED
+}
+
+/// How a terminal's scans are read (§17): by order (ANY), or always
+/// arriving or always leaving. Applied as each punch arrives, never again.
+enum DeviceMode {
+  ANY
+  ENTRANCE
+  EXIT
+}
+
+/// A Local Sync Agent: the program on a PC in the office that reads the
+/// terminals there and sends their punches. Enrolled with a one-time code
+/// shown to an admin, exchanged for a token; only hashes of either are kept.
+model AttendanceAgent {
+  id                String             @id @default(uuid())
+  companyId         String
+  name              String
+  status            AgentStatus        @default(PENDING)
+  /// sha256 of the one-time enrolment code, while one is outstanding.
+  codeHash          String?            @unique
+  codeExpiresAt     DateTime?
+  /// sha256 of the agent's token.
+  tokenHash         String?            @unique
+  /// A token issued by rotation, not yet used: the old one works until the
+  /// agent first uses this one, so a reply lost in transit locks nobody out.
+  nextTokenHash     String?            @unique
+  tokenIssuedAt     DateTime?
+  hostname          String?
+  agentVersion      String?
+  enrolledAt        DateTime?
+  lastSeenAt        DateTime?
+  /// When it last delivered punches.
+  lastSyncAt        DateTime?
+  /// Punches it holds that it has not yet delivered, as it last said.
+  queueDepth        Int?
+  /// Its clock minus ours, at its last heartbeat.
+  clockDriftSeconds Int?
+  createdById       String
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  revokedAt         DateTime?
+  revokedById       String?
+  company           Company            @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  devices           AttendanceDevice[]
+
+  @@index([companyId])
+}
+
+/// A fingerprint terminal, known by its serial number. Brought in by the
+/// first agent to report it; in use by one company at a time (a partial
+/// unique index over the unretired, migration 20261018000000). Retired, never
+/// deleted: its punches keep pointing at it.
+model AttendanceDevice {
+  id                String            @id @default(uuid())
+  companyId         String
+  /// The agent that last reported it.
+  agentId           String?
+  serialNumber      String
+  name              String
+  model             String?
+  firmware          String?
+  mode              DeviceMode        @default(ANY)
+  firstSeenAt       DateTime          @default(now())
+  lastSeenAt        DateTime?
+  /// Whether the agent reached it at its last heartbeat.
+  reachable         Boolean           @default(true)
+  lastError         String?
+  /// The terminal's clock minus the company's wall clock, at the agent's last heartbeat.
+  clockDriftSeconds Int?
+  userCount         Int?
+  recordCount       Int?
+  recordCapacity    Int?
+  /// The latest punch it has delivered, as an instant.
+  lastPunchAt       DateTime?
+  updatedAt         DateTime          @updatedAt
+  retiredAt         DateTime?
+  retiredById       String?
+  company           Company           @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  agent             AttendanceAgent?  @relation(fields: [agentId], references: [id], onDelete: SetNull)
+  punches           AttendancePunch[]
+
+  @@unique([companyId, serialNumber])
+  @@index([agentId])
 }
 
 /// Which person an employee number on a terminal or in a file is.

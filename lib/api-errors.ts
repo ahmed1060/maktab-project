@@ -105,6 +105,10 @@ export const KNOWN_REFUSALS: Record<string, { status: 400 | 403 | 404 | 409; mes
     DISCREPANCY_NOT_FOUND: { status: 404, message: "Not found." },
     DISCREPANCY_ALREADY_RESOLVED: { status: 409, message: "That has already been marked resolved." },
     NOTHING_TO_DECIDE: { status: 409, message: "That day has nothing of that kind to decide: it isn't late, early or absent as measured." },
+    AGENT_NAME_REQUIRED: { status: 400, message: "Give the agent a name, such as the office it is in." },
+    AGENT_NOT_FOUND: { status: 404, message: "Agent not found." },
+    AGENT_REVOKED: { status: 409, message: "That agent has been revoked. Add a new one instead." },
+    ENROLMENT_CODE_INVALID: { status: 400, message: "That code isn't valid. It may have expired or already been used; ask for a new one." },
     SOME_TASKS_NOT_FOUND_OR_ACCESS_DENIED: { status: 403, message: "Some of these tasks don't exist, or aren't yours to pay." },
 }
 
