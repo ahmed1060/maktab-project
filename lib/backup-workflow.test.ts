@@ -85,7 +85,21 @@ describe("a restore is all-or-nothing", () => {
         // A restore that succeeds into an empty database is the failure nobody
         // notices until somebody tries to sign in.
         expect(RESTORE_CODE).toMatch(/count\(\*\) FROM/)
-        expect(RESTORE_CODE).toContain("holds no users")
+        expect(RESTORE_CODE).toContain("holds no users and no super admin")
+    })
+
+    it("counts the Super Admin as somebody who can sign in, in both workflows", () => {
+        // Production before release holds a Super Admin and no "User" rows.
+        // Requiring a User failed the nightly backup from 21 September on a
+        // dump that was complete and restored cleanly, and would have failed a
+        // real restore of the same database.
+        const prove = BACKUP_CODE.split("- name:").find(s => s.includes("Prove the dump restores"))!
+        const verify = RESTORE_CODE.split("- name:").find(s => s.includes("Verify the restored database"))!
+        for (const [name, step] of [["backup", prove], ["restore", verify]] as const) {
+            expect(step, `${name}: does not count the Super Admin`).toMatch(/SUPER_ADMINS=\$\(count[^\n]*SuperAdmin/)
+            expect(step, `${name}: still requires a User row on its own`).toContain("test $((USERS + SUPER_ADMINS)) -gt 0")
+            expect(step, `${name}: still requires a User row on its own`).not.toMatch(/test "\$USERS" -gt 0/)
+        }
     })
 })
 
@@ -246,7 +260,7 @@ describe("every night's dump is loaded back", () => {
         const prove = BACKUP_CODE.split("- name:").find(s => s.includes("Prove the dump restores"))!
         expect(prove, "the nightly verifier went back to ignoring errors").toContain("--single-transaction -v ON_ERROR_STOP=1")
         expect(prove, "the nightly verifier no longer ignores errors, but also no longer counts what landed").toContain("information_schema.tables")
-        expect(prove, "the verifier no longer requires rows").toContain("Dump restored but holds no users")
+        expect(prove, "the verifier no longer requires rows").toContain("Dump restored but holds no users and no super admin")
 
         // The real restore asks it too, in the same words.
         const restoreStep = RESTORE_CODE.split("- name:").find(s => s.includes("Restore database"))!
