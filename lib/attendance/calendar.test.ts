@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest"
 import {
     DEFAULT_WORK_WEEK, isDateString, weekdayOf, addDays, hoursProblem, workWeekProblem, dayHoursProblem,
-    versionOn, overrideOn, scheduleIdOn, overridesOverlap, observedHolidays, expectedDay,
+    versionOn, overrideOn, scheduleIdOn, spanOf, overridesOverlap, observedHolidays, expectedDay,
     formatMinutes, parseTime, shiftEnd, type Schedule, type Version, type Override,
 } from "./calendar"
 
@@ -67,6 +67,9 @@ describe("hours", () => {
         expect(dayHoursProblem([{ weekday: 4, startMinutes: 540, endMinutes: 840 }])).toBeNull()
         expect(dayHoursProblem([{ weekday: 4, startMinutes: 540, endMinutes: 500 }])).toBe("END_NOT_AFTER_START")
         expect(dayHoursProblem([{ weekday: 4, startMinutes: 540, endMinutes: 600 }, { weekday: 4, startMinutes: 540, endMinutes: 600 }])).toBe("WORK_WEEK_DUPLICATE_DAY")
+        // The schedule's break applies to its short days too (review on #10):
+        // a 30-minute Thursday under a 60-minute break would be paid negative time.
+        expect(dayHoursProblem([{ weekday: 4, startMinutes: 540, endMinutes: 570 }], 60)).toBe("BREAK_TOO_LONG")
     })
 
     it("reads and writes clock times, with a night shift ending the next day", () => {
@@ -98,10 +101,23 @@ describe("effective dating (§6.1)", () => {
 
     it("follows a person's assignments, falling back to the company default", () => {
         const assignments = [{ scheduleId: "warehouse", effectiveFrom: "2026-03-10" }, { scheduleId: "office", effectiveFrom: "2026-06-01" }]
-        expect(scheduleIdOn(assignments, "office", "2026-03-09")).toBe("office")
-        expect(scheduleIdOn(assignments, "office", "2026-03-10")).toBe("warehouse")
-        expect(scheduleIdOn(assignments, "office", "2026-06-01")).toBe("office")
-        expect(scheduleIdOn([], null, "2026-03-01")).toBeNull()
+        const defaults = [{ scheduleId: "office", effectiveFrom: "2026-01-01" }]
+        expect(scheduleIdOn(assignments, defaults, "2026-03-09")).toBe("office")
+        expect(scheduleIdOn(assignments, defaults, "2026-03-10")).toBe("warehouse")
+        expect(scheduleIdOn(assignments, defaults, "2026-06-01")).toBe("office")
+        expect(scheduleIdOn([], [], "2026-03-01")).toBeNull()
+    })
+
+    it("moves unassigned people to a new default from its date, never before (review on #10)", () => {
+        const defaults = [{ scheduleId: "office", effectiveFrom: "2026-01-01" }, { scheduleId: "night", effectiveFrom: "2026-11-01" }]
+        expect(scheduleIdOn([], defaults, "2026-09-15")).toBe("office")
+        expect(scheduleIdOn([], defaults, "2026-11-01")).toBe("night")
+        expect(scheduleIdOn([], defaults, "2025-12-31")).toBeNull()
+    })
+
+    it("knows the span a dated change governs, up to the next one", () => {
+        expect(spanOf(["2026-01-01", "2026-04-01", "2026-10-01"], "2026-04-01")).toEqual({ from: "2026-04-01", until: "2026-10-01" })
+        expect(spanOf(["2026-01-01", "2026-04-01"], "2026-08-01")).toEqual({ from: "2026-08-01", until: null })
     })
 })
 

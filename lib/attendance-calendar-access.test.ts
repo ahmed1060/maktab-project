@@ -32,6 +32,9 @@ vi.mock("@/lib/services/attendance-calendar.service", () => ({
         updateSchedule: async (id: string) => { reached.push(`updateSchedule:${id}`); return {} },
         archiveSchedule: async (id: string) => { reached.push(`archiveSchedule:${id}`) },
         addVersion: async (id: string) => { reached.push(`addVersion:${id}`); return {} },
+        setDefault: async (id: string) => { reached.push(`setDefault:${id}`) },
+        defaultOf: async (id: string) => id === "d1" ? { id: "d1", companyId: "c1" } : id === "d2" ? { id: "d2", companyId: "c2" } : null,
+        withdrawDefault: async (id: string) => { reached.push(`withdrawDefault:${id}`) },
         assign: async (companyId: string) => { reached.push(`assign:${companyId}`) },
         addHoliday: async (companyId: string) => { reached.push(`addHoliday:${companyId}`); return {} },
         setObserved: async (companyId: string) => { reached.push(`setObserved:${companyId}`) },
@@ -172,6 +175,26 @@ describe("the Super Admin", () => {
         expect((await publicList()).status).toBe(403)
         expect((await publicCreate({ date: "2026-04-13", name: "Sham El Nessim" })).status).toBe(403)
         expect(reached).toEqual(["listPublic", "createPublic"])
+    })
+})
+
+describe("the default schedule, by date", () => {
+    const setDefault = async (id: string, body: unknown) =>
+        (await import("@/app/api/attendance/schedules/[id]/default/route")).POST(withBody("POST", `/api/attendance/schedules/${id}/default`, body), { params: Promise.resolve({ id }) } as any)
+    const withdraw = async (id: string) =>
+        (await import("@/app/api/attendance/defaults/[id]/route")).DELETE(withBody("DELETE", `/api/attendance/defaults/${id}`, {}), { params: Promise.resolve({ id }) } as any)
+
+    it("is set and withdrawn under the Attendance tab's rules, in one's own company only", async () => {
+        admin()
+        expect((await setDefault("s1", { effectiveFrom: "2026-11-01" })).status).toBe(200)
+        expect((await setDefault("s1", {})).status).toBe(400)
+        expect((await setDefault("s2", { effectiveFrom: "2026-11-01" })).status).toBe(404)
+        expect((await withdraw("d1")).status).toBe(200)
+        expect((await withdraw("d2")).status).toBe(404)
+        viewer()
+        expect((await setDefault("s1", { effectiveFrom: "2026-11-01" })).status).toBe(403)
+        expect((await withdraw("d1")).status).toBe(403)
+        expect(reached).toEqual(["setDefault:s1", "withdrawDefault:d1"])
     })
 })
 

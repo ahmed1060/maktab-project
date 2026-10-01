@@ -3,7 +3,7 @@ import { Prisma } from "@prisma/client"
 import { calendarDateStr } from "@/lib/time"
 import { AuditLogService } from "./audit-log.service"
 import {
-    DEFAULT_WORK_WEEK, dayHoursProblem, formatMinutes, hoursProblem, isDateString, overridesOverlap, toDateString, workWeekProblem,
+    DEFAULT_WORK_WEEK, addDays, dayHoursProblem, defaultOn, formatMinutes, hoursProblem, isDateString, overridesOverlap, spanOf, toDateString, workWeekProblem,
     type DayHours,
 } from "@/lib/attendance/calendar"
 
@@ -55,7 +55,7 @@ function fail(code: string): never {
 
 function checkHours(input: HoursInput & { days?: DayHours[] }) {
     const problem = hoursProblem(input.startMinutes, input.endMinutes, input.breakMinutes ?? 0)
-        ?? dayHoursProblem(input.days ?? [])
+        ?? dayHoursProblem(input.days ?? [], input.breakMinutes ?? 0)
     if (problem) fail(problem)
 }
 
@@ -63,7 +63,6 @@ function serializeSchedule(s: Prisma.WorkScheduleGetPayload<{ include: typeof SC
     return {
         id: s.id,
         name: s.name,
-        isDefault: s.isDefault,
         archivedAt: s.archivedAt,
         versions: s.versions.map(v => ({
             id: v.id,
@@ -85,6 +84,19 @@ function serializeSchedule(s: Prisma.WorkScheduleGetPayload<{ include: typeof SC
             days: o.days.map(d => ({ weekday: d.weekday, startMinutes: d.startMinutes, endMinutes: d.endMinutes })),
         })),
     }
+}
+
+/** People who still work there: the archived and deleted hold no schedule. */
+const WORKING = { notIn: ["ARCHIVED", "DELETED"] as ("ARCHIVED" | "DELETED")[] }
+
+/**
+ * Serializes writes that must see each other: two overrides on one schedule,
+ * an assignment and an archive of the same schedule, two default changes in
+ * one company. A transaction-scoped Postgres advisory lock, released at
+ * commit; the overlap and in-use checks run after it.
+ */
+async function serialize(tx: Prisma.TransactionClient, key: string) {
+    await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${key}))::text`
 }
 
 export class AttendanceCalendarService {
@@ -109,13 +121,36 @@ export class AttendanceCalendarService {
         if (locked) fail("PAYROLL_MONTH_LOCKED")
     }
 
+    /**
+     * Refuses when any payroll month a dated change governs is approved or
+     * paid: from its date up to the next change of the same kind, or onwards
+     * when none follows. Checking the start date alone let a change starting
+     * in an open month rewrite a later locked one (review on #10).
+     */
+    static async assertSpanUnlocked(companyId: string, span: { from: string; until: string | null }, client: Prisma.TransactionClient | typeof prisma = prisma) {
+        const first = span.from.slice(0, 7)
+        const last = span.until ? addDays(span.until, -1).slice(0, 7) : null
+        if (last !== null && last < first) return
+        const runs = await client.payrollRun.findMany({
+            where: { companyId, status: { in: ["APPROVED", "PAID"] } },
+            select: { year: true, month: true },
+        })
+        for (const r of runs) {
+            const ym = `${r.year}-${String(r.month).padStart(2, "0")}`
+            if (ym >= first && (last === null || ym <= last)) fail("PAYROLL_MONTH_LOCKED")
+        }
+    }
+
     /** Everything the Attendance settings tab shows, for one year of holidays. */
     static async calendar(companyId: string, year: number) {
         const from = DATE_ONLY(`${year}-01-01`), to = DATE_ONLY(`${year}-12-31`)
-        const [schedules, assignments, users, central, exclusions, own, today] = await Promise.all([
+        const [schedules, assignments, users, central, exclusions, own, today, defaults] = await Promise.all([
             prisma.workSchedule.findMany({ where: { companyId }, include: SCHEDULE_INCLUDE, orderBy: [{ archivedAt: "asc" }, { name: "asc" }] }),
             prisma.userSchedule.findMany({
-                where: { user: { companyId } },
+                // This company's schedules only: somebody moved here from
+                // another company keeps their old rows for the old company's
+                // history, and they mean nothing here (review on #10).
+                where: { user: { companyId }, schedule: { companyId } },
                 select: { id: true, userId: true, scheduleId: true, effectiveFrom: true },
                 orderBy: { effectiveFrom: "asc" },
             }),
@@ -128,12 +163,14 @@ export class AttendanceCalendarService {
             prisma.companyHolidayExclusion.findMany({ where: { companyId }, select: { publicHolidayId: true } }),
             prisma.companyHoliday.findMany({ where: { companyId, date: { gte: from, lte: to } }, orderBy: { date: "asc" } }),
             this.today(companyId),
+            prisma.scheduleDefault.findMany({ where: { companyId }, orderBy: { effectiveFrom: "asc" } }),
         ])
         const excluded = new Set(exclusions.map(e => e.publicHolidayId))
         return {
             today,
             companyWorkWeek: [...DEFAULT_WORK_WEEK],
             schedules: schedules.map(serializeSchedule),
+            defaults: defaults.map(d => ({ id: d.id, scheduleId: d.scheduleId, effectiveFrom: toDateString(d.effectiveFrom) })),
             assignments: assignments.map(a => ({ ...a, effectiveFrom: toDateString(a.effectiveFrom) })),
             people: users.map(u => ({ id: u.id, name: `${u.firstName} ${u.lastName}`.trim(), role: u.role })),
             holidays: {
@@ -145,37 +182,41 @@ export class AttendanceCalendarService {
     }
 
     static async scheduleOf(scheduleId: string) {
-        return prisma.workSchedule.findUnique({ where: { id: scheduleId }, select: { id: true, companyId: true, name: true, isDefault: true, archivedAt: true } })
+        return prisma.workSchedule.findUnique({ where: { id: scheduleId }, select: { id: true, companyId: true, name: true, archivedAt: true } })
     }
 
-    /** A schedule with its first version. The company's first schedule is its default. */
-    static async createSchedule(companyId: string, input: { name: string; isDefault?: boolean; version: VersionInput }, actorId: string) {
+    /**
+     * A schedule with its first version. The company's first schedule becomes
+     * its default from that version's date; a later one is made the default,
+     * from a date, with setDefault.
+     */
+    static async createSchedule(companyId: string, input: { name: string; version: VersionInput }, actorId: string) {
         const name = input.name.trim()
         if (!name) fail("SCHEDULE_NAME_REQUIRED")
         this.checkVersion(input.version)
-        await this.assertUnlocked(companyId, [input.version.effectiveFrom])
 
         return prisma.$transaction(async tx => {
+            await serialize(tx, `defaults:${companyId}`)
             if (await tx.workSchedule.findUnique({ where: { companyId_name: { companyId, name } } })) fail("SCHEDULE_NAME_TAKEN")
-            const hasDefault = await tx.workSchedule.count({ where: { companyId, isDefault: true, archivedAt: null } })
-            const isDefault = input.isDefault === true || hasDefault === 0
-            if (isDefault) await tx.workSchedule.updateMany({ where: { companyId, isDefault: true }, data: { isDefault: false } })
+            // A new schedule changes nobody's hours until people are put on it,
+            // or it becomes the default; only the first one does, from its date.
+            const isDefault = (await tx.scheduleDefault.count({ where: { companyId } })) === 0
+            if (isDefault) await this.assertSpanUnlocked(companyId, { from: input.version.effectiveFrom, until: null }, tx)
             const schedule = await tx.workSchedule.create({
-                data: {
-                    companyId, name, isDefault,
-                    versions: { create: this.versionData(input.version, actorId) },
-                },
+                data: { companyId, name, versions: { create: this.versionData(input.version, actorId) } },
                 include: SCHEDULE_INCLUDE,
             })
+            if (isDefault) {
+                await tx.scheduleDefault.create({ data: { companyId, scheduleId: schedule.id, effectiveFrom: DATE_ONLY(input.version.effectiveFrom), createdById: actorId } })
+            }
             await AuditLogService.log("CREATE_WORK_SCHEDULE", "ATTENDANCE_CALENDAR", schedule.id, { tx, ...(await actorOf(tx, actorId)), details: { companyId, name, isDefault, effectiveFrom: input.version.effectiveFrom } })
             return serializeSchedule(schedule)
         })
     }
 
-    static async updateSchedule(scheduleId: string, input: { name?: string; isDefault?: boolean }, actorId: string) {
+    static async updateSchedule(scheduleId: string, input: { name?: string }, actorId: string) {
         const schedule = await this.scheduleOf(scheduleId) ?? fail("SCHEDULE_NOT_FOUND")
         if (schedule.archivedAt) fail("SCHEDULE_ARCHIVED")
-        if (input.isDefault === false && schedule.isDefault) fail("SCHEDULE_DEFAULT_REQUIRED")
 
         return prisma.$transaction(async tx => {
             const data: Prisma.WorkScheduleUpdateInput = {}
@@ -186,42 +227,95 @@ export class AttendanceCalendarService {
                 if (clash && clash.id !== scheduleId) fail("SCHEDULE_NAME_TAKEN")
                 data.name = name
             }
-            if (input.isDefault === true && !schedule.isDefault) {
-                // Moves who an unassigned person works for every date not yet
-                // locked; the engine recomputes those days when it exists.
-                await tx.workSchedule.updateMany({ where: { companyId: schedule.companyId, isDefault: true }, data: { isDefault: false } })
-                data.isDefault = true
-            }
             const updated = await tx.workSchedule.update({ where: { id: scheduleId }, data, include: SCHEDULE_INCLUDE })
             await AuditLogService.log("UPDATE_WORK_SCHEDULE", "ATTENDANCE_CALENDAR", scheduleId, { tx, ...(await actorOf(tx, actorId)), details: {
                 companyId: schedule.companyId,
                 ...(data.name ? { name: { from: schedule.name, to: data.name } } : {}),
-                ...(data.isDefault ? { isDefault: true } : {}),
             } })
             return serializeSchedule(updated)
         })
     }
 
     /**
+     * Makes a schedule the company's default from a date (review on #10).
+     * Unassigned people move to it on that date and not before; a change on a
+     * date that already has one replaces it.
+     */
+    static async setDefault(scheduleId: string, effectiveFrom: string, actorId: string) {
+        if (!isDateString(effectiveFrom)) fail("INVALID_DATE")
+        const schedule = await this.scheduleOf(scheduleId) ?? fail("SCHEDULE_NOT_FOUND")
+        if (schedule.archivedAt) fail("SCHEDULE_ARCHIVED")
+        const companyId = schedule.companyId
+        await prisma.$transaction(async tx => {
+            await serialize(tx, `defaults:${companyId}`)
+            const rows = await tx.scheduleDefault.findMany({ where: { companyId }, select: { effectiveFrom: true } })
+            const dates = rows.map(r => toDateString(r.effectiveFrom)).filter(d => d !== effectiveFrom)
+            await this.assertSpanUnlocked(companyId, spanOf(dates, effectiveFrom), tx)
+            await tx.scheduleDefault.upsert({
+                where: { companyId_effectiveFrom: { companyId, effectiveFrom: DATE_ONLY(effectiveFrom) } },
+                create: { companyId, scheduleId, effectiveFrom: DATE_ONLY(effectiveFrom), createdById: actorId },
+                update: { scheduleId, createdById: actorId },
+            })
+            await AuditLogService.log("SET_DEFAULT_SCHEDULE", "ATTENDANCE_CALENDAR", scheduleId, {
+                tx, ...(await actorOf(tx, actorId)), details: { companyId, name: schedule.name, effectiveFrom },
+            })
+        })
+    }
+
+    static async defaultOf(defaultId: string) {
+        return prisma.scheduleDefault.findUnique({ where: { id: defaultId }, select: { id: true, companyId: true, scheduleId: true, effectiveFrom: true } })
+    }
+
+    /**
+     * Withdraws a change of default, while payroll has not locked the span it
+     * governs. The first one stays: without it, nobody unassigned works any
+     * schedule.
+     */
+    static async withdrawDefault(defaultId: string, actorId: string) {
+        const row = await this.defaultOf(defaultId) ?? fail("DEFAULT_NOT_FOUND")
+        const effectiveFrom = toDateString(row.effectiveFrom)
+        await prisma.$transaction(async tx => {
+            await serialize(tx, `defaults:${row.companyId}`)
+            const rows = await tx.scheduleDefault.findMany({ where: { companyId: row.companyId }, select: { effectiveFrom: true } })
+            const dates = rows.map(r => toDateString(r.effectiveFrom))
+            if (!dates.some(d => d < effectiveFrom)) fail("SCHEDULE_DEFAULT_REQUIRED")
+            await this.assertSpanUnlocked(row.companyId, spanOf(dates, effectiveFrom), tx)
+            await tx.scheduleDefault.delete({ where: { id: defaultId } })
+            await AuditLogService.log("WITHDRAW_DEFAULT_SCHEDULE", "ATTENDANCE_CALENDAR", row.scheduleId, {
+                tx, ...(await actorOf(tx, actorId)), details: { companyId: row.companyId, effectiveFrom },
+            })
+        })
+    }
+
+    /**
      * Retired rather than deleted: past days were measured against it. Not the
-     * default, and nobody may still be on it now or later.
+     * default now or from any later date, and nobody still working may be on
+     * it now or later. Checked under the schedule's lock, so an assignment
+     * cannot slip in between the check and the archive.
      */
     static async archiveSchedule(scheduleId: string, actorId: string) {
         const schedule = await this.scheduleOf(scheduleId) ?? fail("SCHEDULE_NOT_FOUND")
         if (schedule.archivedAt) return
-        if (schedule.isDefault) fail("SCHEDULE_IS_DEFAULT")
         const today = await this.today(schedule.companyId)
-        if (await this.peopleOnSchedule(schedule.companyId, scheduleId, today)) fail("SCHEDULE_IN_USE")
         await prisma.$transaction(async tx => {
+            await serialize(tx, `schedule:${scheduleId}`)
+            const defaults = (await tx.scheduleDefault.findMany({ where: { companyId: schedule.companyId } }))
+                .map(d => ({ scheduleId: d.scheduleId, effectiveFrom: toDateString(d.effectiveFrom) }))
+            if (defaultOn(defaults, today) === scheduleId || defaults.some(d => d.effectiveFrom > today && d.scheduleId === scheduleId)) fail("SCHEDULE_IS_DEFAULT")
+            if (await this.peopleOnSchedule(schedule.companyId, scheduleId, today, tx)) fail("SCHEDULE_IN_USE")
             await tx.workSchedule.update({ where: { id: scheduleId }, data: { archivedAt: new Date() } })
             await AuditLogService.log("ARCHIVE_WORK_SCHEDULE", "ATTENDANCE_CALENDAR", scheduleId, { tx, ...(await actorOf(tx, actorId)), details: { companyId: schedule.companyId, name: schedule.name } })
         })
     }
 
-    /** How many people's latest assignment as of today, or any later one, is this schedule. */
-    static async peopleOnSchedule(companyId: string, scheduleId: string, today: string): Promise<number> {
-        const rows = await prisma.userSchedule.findMany({
-            where: { user: { companyId } },
+    /**
+     * How many people still working here are on this schedule today or from a
+     * later date. The archived and deleted do not count: they are not on the
+     * screen to be moved, so they cannot be what holds a schedule open.
+     */
+    static async peopleOnSchedule(companyId: string, scheduleId: string, today: string, client: Prisma.TransactionClient | typeof prisma = prisma): Promise<number> {
+        const rows = await client.userSchedule.findMany({
+            where: { user: { companyId, status: WORKING }, schedule: { companyId } },
             select: { userId: true, scheduleId: true, effectiveFrom: true },
             orderBy: { effectiveFrom: "asc" },
         })
@@ -241,8 +335,10 @@ export class AttendanceCalendarService {
         const schedule = await this.scheduleOf(scheduleId) ?? fail("SCHEDULE_NOT_FOUND")
         if (schedule.archivedAt) fail("SCHEDULE_ARCHIVED")
         this.checkVersion(input)
-        await this.assertUnlocked(schedule.companyId, [input.effectiveFrom])
         return prisma.$transaction(async tx => {
+            await serialize(tx, `schedule:${scheduleId}`)
+            const dates = (await tx.scheduleVersion.findMany({ where: { scheduleId }, select: { effectiveFrom: true } })).map(v => toDateString(v.effectiveFrom))
+            await this.assertSpanUnlocked(schedule.companyId, spanOf(dates, input.effectiveFrom), tx)
             const taken = await tx.scheduleVersion.findUnique({ where: { scheduleId_effectiveFrom: { scheduleId, effectiveFrom: DATE_ONLY(input.effectiveFrom) } } })
             if (taken) fail("VERSION_DATE_TAKEN")
             await tx.scheduleVersion.create({ data: { scheduleId, ...this.versionData(input, actorId) } })
@@ -262,8 +358,11 @@ export class AttendanceCalendarService {
         }) ?? fail("VERSION_NOT_FOUND")
         if (version.schedule._count.versions <= 1) fail("LAST_VERSION")
         const effectiveFrom = toDateString(version.effectiveFrom)
-        await this.assertUnlocked(version.schedule.companyId, [effectiveFrom])
         await prisma.$transaction(async tx => {
+            await serialize(tx, `schedule:${version.schedule.id}`)
+            // Its span goes back to the version before it, up to the next one.
+            const dates = (await tx.scheduleVersion.findMany({ where: { scheduleId: version.schedule.id }, select: { effectiveFrom: true } })).map(v => toDateString(v.effectiveFrom))
+            await this.assertSpanUnlocked(version.schedule.companyId, spanOf(dates, effectiveFrom), tx)
             await tx.scheduleVersion.delete({ where: { id: versionId } })
             await AuditLogService.log("DELETE_SCHEDULE_VERSION", "ATTENDANCE_CALENDAR", version.schedule.id, { tx, ...(await actorOf(tx, actorId)), details: {
                 companyId: version.schedule.companyId, name: version.schedule.name, effectiveFrom,
@@ -282,6 +381,7 @@ export class AttendanceCalendarService {
         this.checkOverride(input)
         await this.assertUnlocked(schedule.companyId, this.monthsBetween(input.startDate, input.endDate))
         return prisma.$transaction(async tx => {
+            await serialize(tx, `schedule:${scheduleId}`)
             await this.assertNoOverlap(tx, scheduleId, input, null)
             const created = await tx.scheduleOverride.create({ data: { scheduleId, ...this.overrideData(input), createdById: actorId } })
             await AuditLogService.log("CREATE_SCHEDULE_OVERRIDE", "ATTENDANCE_CALENDAR", created.id, { tx, ...(await actorOf(tx, actorId)), details: {
@@ -311,6 +411,7 @@ export class AttendanceCalendarService {
             ...this.monthsBetween(input.startDate, input.endDate),
         ])
         return prisma.$transaction(async tx => {
+            await serialize(tx, `schedule:${existing.scheduleId}`)
             await this.assertNoOverlap(tx, existing.scheduleId, input, overrideId)
             await tx.scheduleOverrideDay.deleteMany({ where: { overrideId } })
             await tx.scheduleOverride.update({ where: { id: overrideId }, data: this.overrideData(input) })
@@ -342,13 +443,22 @@ export class AttendanceCalendarService {
         if (userIds.length === 0) fail("NOBODY_TO_ASSIGN")
         const schedule = await this.scheduleOf(input.scheduleId)
         if (!schedule || schedule.companyId !== companyId) fail("SCHEDULE_NOT_FOUND")
-        if (schedule.archivedAt) fail("SCHEDULE_ARCHIVED")
         const people = await prisma.user.count({ where: { id: { in: userIds }, companyId } })
         if (people !== userIds.length) fail("USER_NOT_IN_COMPANY")
-        await this.assertUnlocked(companyId, [input.effectiveFrom])
 
         const effectiveFrom = DATE_ONLY(input.effectiveFrom)
         await prisma.$transaction(async tx => {
+            // Under the schedule's lock, and re-read under it: an archive that
+            // committed a moment ago must be seen.
+            await serialize(tx, `schedule:${input.scheduleId}`)
+            const current = await tx.workSchedule.findUnique({ where: { id: input.scheduleId }, select: { archivedAt: true } })
+            if (current?.archivedAt) fail("SCHEDULE_ARCHIVED")
+            // Each person's move governs their dates up to their next one.
+            const theirs = await tx.userSchedule.findMany({ where: { userId: { in: userIds }, schedule: { companyId } }, select: { userId: true, effectiveFrom: true } })
+            for (const userId of userIds) {
+                const dates = theirs.filter(a => a.userId === userId).map(a => toDateString(a.effectiveFrom)).filter(d => d !== input.effectiveFrom)
+                await this.assertSpanUnlocked(companyId, spanOf(dates, input.effectiveFrom), tx)
+            }
             for (const userId of userIds) {
                 await tx.userSchedule.upsert({
                     where: { userId_effectiveFrom: { userId, effectiveFrom } },
@@ -365,7 +475,7 @@ export class AttendanceCalendarService {
     static async assignmentOf(assignmentId: string) {
         return prisma.userSchedule.findUnique({
             where: { id: assignmentId },
-            select: { id: true, effectiveFrom: true, scheduleId: true, user: { select: { companyId: true } } },
+            select: { id: true, userId: true, effectiveFrom: true, scheduleId: true, user: { select: { companyId: true } } },
         })
     }
 
@@ -373,8 +483,10 @@ export class AttendanceCalendarService {
         const existing = await this.assignmentOf(assignmentId) ?? fail("ASSIGNMENT_NOT_FOUND")
         const companyId = existing.user.companyId ?? fail("ASSIGNMENT_NOT_FOUND")
         const effectiveFrom = toDateString(existing.effectiveFrom)
-        await this.assertUnlocked(companyId, [effectiveFrom])
         await prisma.$transaction(async tx => {
+            // Its span falls back to the move before it, up to the next one.
+            const dates = (await tx.userSchedule.findMany({ where: { userId: existing.userId }, select: { effectiveFrom: true } })).map(a => toDateString(a.effectiveFrom))
+            await this.assertSpanUnlocked(companyId, spanOf(dates, effectiveFrom), tx)
             await tx.userSchedule.delete({ where: { id: assignmentId } })
             await AuditLogService.log("UNASSIGN_WORK_SCHEDULE", "ATTENDANCE_CALENDAR", existing.scheduleId, { tx, ...(await actorOf(tx, actorId)), details: { companyId, effectiveFrom } })
         })
