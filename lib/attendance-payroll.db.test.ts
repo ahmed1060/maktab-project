@@ -200,6 +200,10 @@ describe.skipIf(!ADMIN_URL)("attendance in payroll, in Postgres", () => {
         expect(await Engine.recomputeMonth("c1", "2026-09")).toMatchObject({ locked: true, discrepancies: 1 })
         const [d] = await Discrepancies.list("c1")
         expect(d).toMatchObject({ userId: "e1", date: "2026-09-08", paidDeductionMinor: 31000, nowDeductionMinor: 0, paidStatus: "ABSENT", nowStatus: "LEAVE", differenceMinor: 31000, resolvedAt: null })
+        // Listed on the register even once attendance has stopped reaching payroll (review on #16).
+        await db.query(`UPDATE "Company" SET "attendancePayrollFrom" = NULL WHERE id = 'c1'`)
+        expect((await Payroll.view("c1", 2026, 9)).attendance.discrepanciesOpen).toBe(1)
+        await db.query(`UPDATE "Company" SET "attendancePayrollFrom" = '2026-10-01' WHERE id = 'c1'`)
         // The paid day is as it was.
         expect(await prisma.attendanceDay.findFirst({ where: { userId: "e1", date: new Date("2026-09-08T00:00:00Z") }, select: { status: true, deductionMinor: true } })).toEqual({ status: "ABSENT", deductionMinor: 31000 })
 

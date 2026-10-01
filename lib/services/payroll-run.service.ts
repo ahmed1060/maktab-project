@@ -224,8 +224,11 @@ export class PayrollRunService {
         // An approved run shows attendance as it was approved, whatever the
         // switch says now (review on #16).
         const recorded = run && run.status !== "DRAFT" ? run.attendanceIncluded : undefined
-        const [{ register, refused, payrollDay, attendance }, previous, debts] = await Promise.all([
+        const [{ register, refused, payrollDay, attendance }, discrepanciesOpen, previous, debts] = await Promise.all([
             this.compute(companyId, year, month, prisma, recorded),
+            // Owed whether or not attendance reaches payroll now: a run approved
+            // with it keeps producing these after the switch is stopped.
+            prisma.attendanceDiscrepancy.count({ where: { companyId, resolvedAt: null } }),
             this.previousNets(companyId, year, month),
             prisma.debt.findMany({
                 where: { companyId, status: "OUTSTANDING" },
@@ -261,7 +264,7 @@ export class PayrollRunService {
             // What attendance costs this month: on the payslips once it reaches
             // payroll; before that, shown beside the register and deducted from
             // nobody — the dry run (ATTENDANCE_PLAN.md §20).
-            attendance,
+            attendance: { ...attendance, discrepanciesOpen },
             // Null rather than an empty variance: "nothing changed" and "there
             // is nothing to compare against" are different answers, and the
             // first is reassuring while the second is not.

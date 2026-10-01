@@ -60,7 +60,7 @@ type View = {
     draftSavedAt: string | null
     debts: { id: string; userId: string; name: string; amount: number; originalAmount: number; recoveredAmount: number; dueDate: string; source: string }[]
     /** What attendance costs this month: on the payslips once it reaches payroll, else the dry run (ATTENDANCE_PLAN.md §12, §20). */
-    attendance?: { reachesPayroll: boolean; from: string | null; byPerson: Record<string, AttendanceMoney> }
+    attendance?: { reachesPayroll: boolean; from: string | null; byPerson: Record<string, AttendanceMoney>; discrepanciesOpen: number }
 }
 
 export default function PayrollRegisterPage() {
@@ -148,10 +148,10 @@ export default function PayrollRegisterPage() {
     })
     const view: View | null = registerKey && !error ? (data?.data ?? null) : null
     const loading = !session || isLoading
-    // Attendance changed after a payroll was approved (§12.3), for a company
-    // whose attendance has reached payroll.
+    // Attendance changed after a payroll was approved (§12.3): whenever any is
+    // open, whatever the switch says now.
     const { data: discrepancyBody, mutate: reloadDiscrepancies } = useSWR(
-        view?.attendance?.from ? `/api/attendance/discrepancies${companyId ? `?companyId=${encodeURIComponent(companyId)}` : ''}` : null, fetcher)
+        view?.attendance?.discrepanciesOpen ? `/api/attendance/discrepancies${companyId ? `?companyId=${encodeURIComponent(companyId)}` : ''}` : null, fetcher)
     const discrepancies: Discrepancy[] = discrepancyBody?.data?.discrepancies ?? []
     const [resolving, setResolving] = useState<Discrepancy | null>(null)
     const resolve = async (reason?: string) => {
