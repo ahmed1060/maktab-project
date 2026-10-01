@@ -75,7 +75,7 @@ describe("measuring a day", () => {
 describe("pricing a month", () => {
     const day = (date: string, m: Partial<MeasuredDay>): MeasuredDay => ({
         date, status: "PRESENT", punchCount: 2, firstIn: null, lastOut: null, workedMinutes: 480,
-        lateMinutes: 0, earlyLeaveMinutes: 0, overtimeMinutes: 0, excusedMinutes: 0, ...m,
+        lateMinutes: 0, earlyLeaveMinutes: 0, overtimeMinutes: 0, excusedMinutes: 0, unpaidHoliday: false, ...m,
     })
     // 9,300.00 a month in a 31-day month: 300.00 a day, 30000 minor.
     const input = (d: MeasuredDay, extra: Partial<PricingInput> = {}): PricingInput =>
@@ -110,6 +110,14 @@ describe("pricing a month", () => {
             input(day("2026-10-07", { status: "ABSENT" }), { policy: { ...STANDARD_OFFICE, absence: { multiplier: 1.5 } } }),
         ])
         expect(priced.map(x => [x.absenceDays, x.deductionMinor])).toEqual([[1, 30000], [0, 0], [0, 0], [1.5, 45000]])
+    })
+
+    it("charges a day's pay for an unpaid company holiday not worked, and nothing for a paid one (review on #13)", () => {
+        const unpaid: ExpectedDay = { ...HOLIDAY, holiday: { ...HOLIDAY.holiday, isPaid: false, source: "COMPANY" } } as ExpectedDay
+        expect(measure(unpaid, [])).toMatchObject({ status: "HOLIDAY", unpaidHoliday: true })
+        expect(measure(HOLIDAY, [])).toMatchObject({ status: "HOLIDAY", unpaidHoliday: false })
+        const [off, paid] = priceMonth([input(measure(unpaid, [])), input(measure(HOLIDAY, []))])
+        expect([off.absenceDays, off.deductionMinor, paid.deductionMinor]).toEqual([1, 30000, 0])
     })
 
     it("prices a deduction at the salary in force that day, not the month's last", () => {

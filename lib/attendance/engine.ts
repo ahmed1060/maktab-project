@@ -110,6 +110,8 @@ export type MeasuredDay = {
     overtimeMinutes: number
     /** Minutes of approved permission hours that covered lateness or early leave (§6.6). */
     excusedMinutes: number
+    /** A company holiday it does not pay for: a day off, and a day's pay less (review on #13). */
+    unpaidHoliday: boolean
 }
 
 /**
@@ -137,6 +139,7 @@ export function measureDay(input: {
     const base: MeasuredDay = {
         date, status: "ABSENT", punchCount: punches.length, firstIn, lastOut,
         workedMinutes: 0, lateMinutes: 0, earlyLeaveMinutes: 0, overtimeMinutes: 0, excusedMinutes: 0,
+        unpaidHoliday: false,
     }
     const worked = pairs(punches).reduce((sum, [a, b]) => sum + (b - a), 0)
     const workedMinutes = Math.floor(worked / 60)
@@ -145,7 +148,7 @@ export function measureDay(input: {
     if (input.suspended) return { ...base, status: "SUSPENDED" }
     if (expected.kind === "NO_SCHEDULE") return { ...base, status: "NO_SCHEDULE", workedMinutes }
     if (expected.kind === "REST" || expected.kind === "HOLIDAY") {
-        if (punches.length === 0) return { ...base, status: expected.kind }
+        if (punches.length === 0) return { ...base, status: expected.kind, unpaidHoliday: expected.kind === "HOLIDAY" && !expected.holiday.isPaid }
         if (odd) return { ...base, status: "INCOMPLETE", lastOut: null }
         return { ...base, status: expected.kind === "REST" ? "WORKED_REST_DAY" : "WORKED_HOLIDAY", workedMinutes, overtimeMinutes: workedMinutes }
     }
@@ -265,7 +268,8 @@ export function priceMonth(days: readonly PricingInput[]): PricedDay[] {
 
         const lateness = day.status === "PRESENT" ? applyRule(policy.lateness, day.lateMinutes, input.paidMinutes, lateTally) : NO_RULE
         const earlyLeave = day.status === "PRESENT" ? applyRule(policy.earlyLeave, day.earlyLeaveMinutes, input.paidMinutes, earlyTally) : NO_RULE
-        const absenceDays = day.status === "ABSENT" ? policy.absence.multiplier : 0
+        // An absence costs the policy's multiplier; an unpaid holiday, one day.
+        const absenceDays = day.status === "ABSENT" ? policy.absence.multiplier : day.unpaidHoliday ? 1 : 0
         const deductionDays = Math.round((lateness.days + earlyLeave.days + absenceDays) * 10_000) / 10_000
 
         const ot = policy.overtime
