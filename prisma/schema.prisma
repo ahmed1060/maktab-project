@@ -240,6 +240,7 @@ model Company {
   attendancePunches    AttendancePunch[]
   attendanceImports    AttendanceImport[]
   attendanceCodes      AttendanceCode[]
+  attendanceDays       AttendanceDay[]
   companyHolidays      CompanyHoliday[]
   holidayExclusions    CompanyHolidayExclusion[]
   finalSettlements     FinalSettlement[]
@@ -487,6 +488,7 @@ model User {
   scheduleAssignments        UserSchedule[]
   attendancePunches          AttendancePunch[]
   attendanceCodes            AttendanceCode[]
+  attendanceDays             AttendanceDay[]
 
   @@index([email])
   @@index([companyId])
@@ -1799,4 +1801,64 @@ model AttendanceCode {
 
   @@unique([companyId, code])
   @@index([userId])
+}
+
+// --- Attendance: derived days (ATTENDANCE_PLAN.md §8.6, §11) -----------------
+
+enum AttendanceDayStatus {
+  PRESENT
+  ABSENT
+  INCOMPLETE
+  LEAVE
+  SUSPENDED
+  REST
+  HOLIDAY
+  WORKED_REST_DAY
+  WORKED_HOLIDAY
+  NO_SCHEDULE
+}
+
+/// What one person's day was, and what it costs: derived from the calendar,
+/// the policy and the punches by lib/attendance/engine.ts, and rebuilt
+/// whenever any of them changes. Never edited by hand — a correction changes
+/// an input, and the day is derived again. A locked day is never rewritten.
+model AttendanceDay {
+  id                   String              @id @default(uuid())
+  companyId            String
+  userId               String
+  date                 DateTime            @db.Date
+  status               AttendanceDayStatus
+  /// The exact inputs it was measured against (§6.1).
+  scheduleId           String?
+  scheduleVersionId    String?
+  overrideId           String?
+  policyId             String?
+  expectedStartMinutes Int?
+  expectedEndMinutes   Int?
+  breakMinutes         Int?
+  punchCount           Int                 @default(0)
+  /// Wall-clock times, as the punches were.
+  firstInAt            DateTime?           @db.Timestamp(0)
+  lastOutAt            DateTime?           @db.Timestamp(0)
+  workedMinutes        Int                 @default(0)
+  lateMinutes          Int                 @default(0)
+  earlyLeaveMinutes    Int                 @default(0)
+  overtimeMinutes      Int                 @default(0)
+  excusedMinutes       Int                 @default(0)
+  /// Priced over the month in order (§6.3): days deducted, and the money at
+  /// that day's salary, in minor units.
+  deductionDays        Decimal             @default(0) @db.Decimal(8, 4)
+  deductionMinor       Int                 @default(0)
+  overtimeStatus       String              @default("NONE")
+  overtimeMinor        Int                 @default(0)
+  /// Why each rule charged what it did, for the person and their payslip.
+  breakdown            Json
+  inputsHash           String
+  derivedAt            DateTime            @default(now())
+  lockedByPayrollRunId String?
+  company              Company             @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  user                 User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([companyId, userId, date])
+  @@index([companyId, date])
 }

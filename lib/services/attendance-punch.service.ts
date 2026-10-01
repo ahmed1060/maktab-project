@@ -2,9 +2,11 @@ import { randomUUID } from "node:crypto"
 import { prisma } from "@/lib/prisma"
 import { Prisma } from "@prisma/client"
 import { AuditLogService } from "./audit-log.service"
+import { recomputeAfter } from "./attendance-recompute"
 import { serialize } from "./attendance-calendar.service"
 import { localToInstant, parseRows, detectColumns, type Cell, type ColumnMap, type DateOrder, type RowError } from "@/lib/attendance/punch-import"
 import { MAX_ROWS } from "@/lib/attendance/punch-file"
+import { addDays } from "@/lib/attendance/calendar"
 
 /**
  * Punches (ATTENDANCE_PLAN.md §8.6): what arrives from a spreadsheet or is
@@ -186,7 +188,11 @@ export class AttendancePunchService {
             })
             return { ...report, importId: created.id, added: fresh.length }
         }
-        return commit ? prisma.$transaction(run, { timeout: 60_000 }) : run(prisma as unknown as Prisma.TransactionClient)
+        if (!commit) return run(prisma as unknown as Prisma.TransactionClient)
+        const report = await prisma.$transaction(run, { timeout: 60_000 })
+        // The whole company: a file can move the first punch earlier, and with it the first derived day.
+        if (report.from) await recomputeAfter(companyId, report.from)
+        return report
     }
 
     static async imports(companyId: string) {
@@ -204,7 +210,7 @@ export class AttendancePunchService {
     /** Withdraws every punch a file brought in. Refused if any of them is in a locked month. */
     static async voidImport(id: string, reason: string, actorId: string) {
         if (!reason.trim()) fail("REASON_REQUIRED")
-        return prisma.$transaction(async tx => {
+        const out = await prisma.$transaction(async tx => {
             const imp = await tx.attendanceImport.findUnique({ where: { id } }) ?? fail("IMPORT_NOT_FOUND")
             if (imp.voidedAt) fail("IMPORT_ALREADY_VOIDED")
             const punches = await tx.attendancePunch.findMany({ where: { importId: id, voidedAt: null }, select: { id: true, punchAtLocal: true } })
@@ -220,8 +226,10 @@ export class AttendancePunchService {
             await AuditLogService.log("VOID_ATTENDANCE_IMPORT", "ATTENDANCE_IMPORT", id, {
                 tx, ...(await actorOf(tx, actorId)), details: { companyId: imp.companyId, fileName: imp.fileName, punches: voided.count, reason: reason.trim() },
             })
-            return { voided: voided.count }
+            return { voided: voided.count, companyId: imp.companyId, from: months.sort()[0] ?? null }
         })
+        if (out.from) await recomputeAfter(out.companyId, `${out.from}-01`)
+        return { voided: out.voided }
     }
 
     // --- one punch ------------------------------------------------------------
@@ -276,7 +284,7 @@ export class AttendancePunchService {
         if (isNaN(wallClock(local).getTime()) || wallClockText(wallClock(local)) !== local) fail("INVALID_DATE")
         if (!input.note.trim()) fail("REASON_REQUIRED")
         if (input.userId === actorId) fail("CANNOT_CORRECT_OWN")
-        return prisma.$transaction(async tx => {
+        const out = await prisma.$transaction(async tx => {
             const person = await tx.user.findFirst({ where: { id: input.userId, companyId }, select: { id: true, status: true } }) ?? fail("USER_NOT_FOUND")
             if (person.status === "DELETED") fail("USER_NOT_FOUND")
             const company = await tx.company.findUnique({ where: { id: companyId }, select: { timezone: true } }) ?? fail("COMPANY_NOT_FOUND")
@@ -296,12 +304,15 @@ export class AttendancePunchService {
             })
             return { id }
         })
+        // From the day before: a punch after midnight may close the night before's shift.
+        await recomputeAfter(companyId, addDays(local.slice(0, 10), -1), [input.userId])
+        return out
     }
 
     /** Withdraws one punch, keeping it on record. */
     static async voidPunch(id: string, reason: string, actorId: string) {
         if (!reason.trim()) fail("REASON_REQUIRED")
-        return prisma.$transaction(async tx => {
+        const punch = await prisma.$transaction(async tx => {
             const punch = await tx.attendancePunch.findUnique({ where: { id } }) ?? fail("PUNCH_NOT_FOUND")
             if (punch.voidedAt) fail("PUNCH_ALREADY_VOIDED")
             if (punch.userId && punch.userId === actorId) fail("CANNOT_CORRECT_OWN")
@@ -313,7 +324,9 @@ export class AttendancePunchService {
                 tx, ...(await actorOf(tx, actorId)),
                 details: { companyId: punch.companyId, userId: punch.userId, at: wallClockText(punch.punchAtLocal), reason: reason.trim() },
             })
+            return punch
         })
+        if (punch.userId) await recomputeAfter(punch.companyId, addDays(wallClockText(punch.punchAtLocal).slice(0, 10), -1), [punch.userId])
     }
 
     // --- employee numbers -----------------------------------------------------
@@ -352,7 +365,7 @@ export class AttendancePunchService {
         const code = input.code.trim()
         if (!code) fail("CODE_REQUIRED")
         if (input.userId === actorId) fail("CANNOT_CORRECT_OWN")
-        return prisma.$transaction(async tx => {
+        const out = await prisma.$transaction(async tx => {
             const person = await tx.user.findFirst({ where: { id: input.userId, companyId, status: { not: "DELETED" } }, select: { id: true, firstName: true, lastName: true } }) ?? fail("USER_NOT_FOUND")
             await serialize(tx, `attendance-codes:${companyId}`)
             if (await tx.attendanceCode.findUnique({ where: { companyId_code: { companyId, code } } })) fail("CODE_TAKEN")
@@ -367,8 +380,11 @@ export class AttendancePunchService {
                 tx, ...(await actorOf(tx, actorId)),
                 details: { companyId, code, userId: person.id, name: `${person.firstName} ${person.lastName}`.trim(), filled: fill.length, leftInLockedMonths: waiting.length - fill.length },
             })
-            return { id: mapping.id, filled: fill.length, leftInLockedMonths: waiting.length - fill.length }
+            const firstFilled = waiting.filter(p => fill.includes(p.id)).map(p => wallClockText(p.punchAtLocal).slice(0, 10)).sort()[0] ?? null
+            return { id: mapping.id, filled: fill.length, leftInLockedMonths: waiting.length - fill.length, userId: person.id, firstFilled }
         })
+        if (out.firstFilled) await recomputeAfter(companyId, addDays(out.firstFilled, -1), [out.userId])
+        return { id: out.id, filled: out.filled, leftInLockedMonths: out.leftInLockedMonths }
     }
 
     /**
@@ -376,7 +392,7 @@ export class AttendancePunchService {
      * open months go back to nobody; those in locked months stay as paid.
      */
     static async unmapCode(id: string, actorId: string) {
-        return prisma.$transaction(async tx => {
+        const out = await prisma.$transaction(async tx => {
             const mapping = await tx.attendanceCode.findUnique({ where: { id } }) ?? fail("CODE_NOT_FOUND")
             if (mapping.userId === actorId) fail("CANNOT_CORRECT_OWN")
             await serialize(tx, `attendance-codes:${mapping.companyId}`)
@@ -394,7 +410,10 @@ export class AttendancePunchService {
                 tx, ...(await actorOf(tx, actorId)),
                 details: { companyId: mapping.companyId, code: mapping.code, userId: mapping.userId, unfilled: back.length },
             })
-            return { unfilled: back.length }
+            const firstBack = given.filter(p => back.includes(p.id)).map(p => wallClockText(p.punchAtLocal).slice(0, 10)).sort()[0] ?? null
+            return { unfilled: back.length, companyId: mapping.companyId, userId: mapping.userId, firstBack }
         })
+        if (out.firstBack) await recomputeAfter(out.companyId, addDays(out.firstBack, -1), [out.userId])
+        return { unfilled: out.unfilled }
     }
 }

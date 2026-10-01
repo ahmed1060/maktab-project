@@ -4,6 +4,7 @@ import { isDateString, spanOf, toDateString } from "@/lib/attendance/calendar"
 import { policyBodySchema, policyProblem, type PolicyBody, type PolicyVersion } from "@/lib/attendance/policy"
 import { AttendanceCalendarService, serialize } from "./attendance-calendar.service"
 import { AuditLogService } from "./audit-log.service"
+import { recomputeAfter } from "./attendance-recompute"
 
 /**
  * A company's attendance policy, version by version (ATTENDANCE_PLAN.md §6.1),
@@ -76,7 +77,7 @@ export class AttendancePolicyService {
         const body = checkBody(input.body)
         const today = await AttendanceCalendarService.today(companyId)
 
-        return prisma.$transaction(async tx => {
+        const out = await prisma.$transaction(async tx => {
             const dates = await otherDates(tx, companyId, input.effectiveFrom)
             await AttendanceCalendarService.assertSpanUnlocked(companyId, spanOf(dates, input.effectiveFrom), tx)
             const key = { companyId_effectiveFrom: { companyId, effectiveFrom: DATE_ONLY(input.effectiveFrom) } }
@@ -96,6 +97,8 @@ export class AttendancePolicyService {
             })
             return { id: saved.id, effectiveFrom: input.effectiveFrom, body }
         })
+        await recomputeAfter(companyId, input.effectiveFrom)
+        return out
     }
 
     static async versionOf(versionId: string) {
@@ -115,6 +118,7 @@ export class AttendancePolicyService {
                 tx, ...(await actorOf(tx, actorId)), details: { companyId: version.companyId, effectiveFrom },
             })
         })
+        await recomputeAfter(version.companyId, effectiveFrom)
     }
 
     // --- templates (§6.8) -----------------------------------------------------

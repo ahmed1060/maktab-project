@@ -44,7 +44,7 @@ type Report = {
 type ImportRow = { id: string; fileName: string; createdAt: string; rowCount: number; addedCount: number; duplicateCount: number; refusedCount: number; voidedAt: string | null; voidReason: string | null }
 type Codes = { mapped: { id: string; code: string; userId: string; name: string }[]; unmatched: { code: string; punches: number; from: string; to: string }[] }
 
-type Tab = 'punches' | 'import' | 'numbers'
+type Tab = 'days' | 'punches' | 'import' | 'numbers'
 
 const pad = (n: number) => String(n).padStart(2, '0')
 const today = () => { const d = new Date(); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}` }
@@ -75,15 +75,15 @@ export default function AttendancePage() {
     }, [t, setTitle, setSubtitle])
 
     const correctsCompany = p.companyWide('attendance.correct')
-    const tabs: Tab[] = correctsCompany ? ['punches', 'import', 'numbers'] : ['punches']
-    const [tab, setTab] = useState<Tab>('punches')
+    const tabs: Tab[] = correctsCompany ? ['days', 'punches', 'import', 'numbers'] : ['days', 'punches']
+    const [tab, setTab] = useState<Tab>('days')
 
     if (status === 'loading') return <LoadingSpinner />
     if (isSuperAdmin && !companyId) {
         return <p style={{ color: 'var(--text-soft)' }}>{t('punch_pick_company')}</p>
     }
 
-    const label: Record<Tab, TranslationKey> = { punches: 'punch_tab_punches', import: 'punch_tab_import', numbers: 'punch_tab_numbers' }
+    const label: Record<Tab, TranslationKey> = { days: 'day_tab_days', punches: 'punch_tab_punches', import: 'punch_tab_import', numbers: 'punch_tab_numbers' }
     return (
         <div style={{ display: 'grid', gap: '1rem' }}>
             {tabs.length > 1 && (
@@ -95,10 +95,145 @@ export default function AttendancePage() {
                     ))}
                 </div>
             )}
+            {tab === 'days' && <DaysTab q={q} companyId={companyId} />}
             {tab === 'punches' && <PunchesTab q={q} companyId={companyId} />}
             {tab === 'import' && correctsCompany && <ImportTab q={q} companyId={companyId} />}
             {tab === 'numbers' && correctsCompany && <NumbersTab q={q} companyId={companyId} />}
         </div>
+    )
+}
+
+// --- Days ------------------------------------------------------------------------
+
+type RuleOutcome = { minutes: number; days: number; occurrence: number; note: string | null }
+type Day = {
+    id: string; userId: string; name: string; date: string; status: string
+    firstIn: string | null; lastOut: string | null; workedMinutes: number
+    lateMinutes: number; earlyLeaveMinutes: number; overtimeMinutes: number; excusedMinutes: number
+    deductionDays: number; deductionMinor: number | null; overtimeStatus: string; overtimeMinor: number | null
+    breakdown: { lateness: RuleOutcome; earlyLeave: RuleOutcome; absenceDays: number; unpriced: string | null; holiday: string | null }
+}
+
+const STATUS_COLOR: Record<string, string> = {
+    PRESENT: 'var(--ok-fg)', ABSENT: 'var(--danger-fg)', INCOMPLETE: 'var(--warn-fg)', LEAVE: 'var(--info-fg)',
+    WORKED_REST_DAY: 'var(--info-fg)', WORKED_HOLIDAY: 'var(--info-fg)',
+}
+const money = (minor: number) => (minor / 100).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+const monthOfToday = () => today().slice(0, 7)
+const lastDayOf = (month: string) => { const [y, m] = month.split('-').map(Number); return `${month}-${pad(new Date(Date.UTC(y, m, 0)).getUTCDate())}` }
+
+function DaysTab({ q, companyId }: { q: string; companyId: string | null }) {
+    const { t } = useLanguage()
+    const { showToast } = useToast()
+    const p = useCan()
+    const seesOthers = p.can('attendance.view_team')
+    const correctsCompany = p.companyWide('attendance.correct')
+    const [month, setMonth] = useState(monthOfToday)
+    const [who, setWho] = useState('')
+    const [busy, setBusy] = useState(false)
+    const { data: peopleBody } = useSWR(seesOthers ? `/api/attendance/people?${q}` : null, fetcher)
+    const people: Person[] = useMemo(() => peopleBody?.data?.people ?? [], [peopleBody])
+    const url = month ? `/api/attendance/days?${q}from=${month}-01&to=${lastDayOf(month)}${who ? `&userId=${encodeURIComponent(who)}` : ''}` : null
+    const { data: body, error, mutate } = useSWR(url, fetcher)
+    const days: Day[] | null = body ? body.data?.days ?? [] : null
+
+    const recompute = async () => {
+        setBusy(true)
+        try {
+            const r = await send('/api/attendance/recompute', json('POST', { ...(companyId ? { companyId } : {}), month }), t('punch_failed'))
+            if (!r.ok) return showToast(r.error, 'error')
+            showToast(r.body?.locked ? t('day_recompute_locked') : t('day_recomputed'), r.body?.locked ? 'info' : 'success')
+            mutate()
+        } finally { setBusy(false) }
+    }
+
+    const ruleNote = (label: TranslationKey, r: RuleOutcome) => {
+        if (!r.note || r.note === 'CHARGED' || r.note === 'OFF') return null
+        const key = ({ WITHIN_GRACE: 'day_note_grace', FREE_OCCURRENCE: 'day_note_free', ESCALATED: 'day_note_escalated', CAPPED: 'day_note_capped' } as Record<string, TranslationKey>)[r.note]
+        return key ? `${t(label)}: ${t(key).replace('{n}', String(r.occurrence))}` : null
+    }
+    const notes = (d: Day) => [
+        d.breakdown.holiday,
+        ruleNote('day_late', d.breakdown.lateness),
+        ruleNote('day_early', d.breakdown.earlyLeave),
+        d.breakdown.unpriced ? t(({ INCOMPLETE: 'day_unpriced_incomplete', NO_POLICY: 'day_unpriced_no_policy', NO_SALARY: 'day_unpriced_no_salary' } as Record<string, TranslationKey>)[d.breakdown.unpriced] ?? 'day_unpriced_no_policy') : null,
+        d.overtimeStatus === 'PENDING' ? t('day_overtime_pending') : d.overtimeStatus === 'NOT_COUNTED' ? t('day_overtime_short') : null,
+        d.excusedMinutes > 0 ? t('day_excused').replace('{n}', String(d.excusedMinutes)) : null,
+    ].filter(Boolean).join(' · ')
+    const totalMinor = (days ?? []).reduce((sum, d) => sum + (d.deductionMinor ?? 0), 0)
+    const showsMoney = (days ?? []).some(d => d.deductionMinor !== null)
+    const mins = (n: number) => (n > 0 ? String(n) : '—')
+
+    return (
+        <section className="glass" style={{ padding: '1.25rem', borderRadius: '1rem', display: 'grid', gap: '1rem' }}>
+            <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'flex-end' }}>
+                <label style={{ display: 'grid', gap: '0.25rem' }}>
+                    <span className="label">{t('day_month')}</span>
+                    <input className="input" type="month" value={month} onChange={e => setMonth(e.target.value)} />
+                </label>
+                {seesOthers && (
+                    <label style={{ display: 'grid', gap: '0.25rem', minWidth: '12rem' }}>
+                        <span className="label">{t('punch_person')}</span>
+                        <select className="input" value={who} onChange={e => setWho(e.target.value)}>
+                            <option value="">{t('punch_everyone')}</option>
+                            {people.map(x => <option key={x.id} value={x.id}>{x.name}</option>)}
+                        </select>
+                    </label>
+                )}
+                <div style={{ flex: 1 }} />
+                {correctsCompany && <button className="btn btn-secondary" disabled={busy || !month} onClick={recompute}>{t('day_recompute')}</button>}
+            </div>
+            <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--text-soft)' }}>{t('day_hint')}</p>
+
+            {error ? <p style={{ color: 'var(--danger-fg)' }}>{t('punch_failed')}</p>
+                : days === null ? <LoadingSpinner />
+                    : days.length === 0 ? <p style={{ margin: 0, color: 'var(--text-soft)' }}>{t('day_none')}</p>
+                        : (
+                            <div style={{ overflowX: 'auto' }}>
+                                <table className="table" style={{ width: '100%', fontSize: '0.84rem' }}>
+                                    <thead>
+                                        <tr>
+                                            <th>{t('punch_date')}</th>
+                                            {seesOthers && <th>{t('punch_person')}</th>}
+                                            <th>{t('day_status')}</th>
+                                            <th>{t('punch_in')}</th>
+                                            <th>{t('punch_out')}</th>
+                                            <th>{t('day_late')}</th>
+                                            <th>{t('day_early')}</th>
+                                            <th>{t('day_overtime')}</th>
+                                            {showsMoney && <th>{t('day_deduction')}</th>}
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {days.map(d => (
+                                            <tr key={d.id}>
+                                                <td style={{ whiteSpace: 'nowrap' }}><bdi>{d.date}</bdi></td>
+                                                {seesOthers && <td>{d.name}</td>}
+                                                <td>
+                                                    <span style={{ color: STATUS_COLOR[d.status] ?? 'var(--text-soft)', fontWeight: 600 }}>{t(`audit_value_${d.status}` as TranslationKey)}</span>
+                                                    {notes(d) && <div style={{ color: 'var(--text-soft)', fontSize: '0.75rem' }}>{notes(d)}</div>}
+                                                </td>
+                                                <td><bdi>{d.firstIn ? d.firstIn.slice(11, 16) : '—'}</bdi></td>
+                                                <td><bdi>{d.lastOut ? d.lastOut.slice(11, 16) : '—'}</bdi></td>
+                                                <td>{mins(d.lateMinutes)}</td>
+                                                <td>{mins(d.earlyLeaveMinutes)}</td>
+                                                <td>{mins(d.overtimeMinutes)}</td>
+                                                {showsMoney && <td>{d.deductionMinor ? <bdi>{money(d.deductionMinor)}</bdi> : '—'}{d.deductionDays > 0 && <div style={{ color: 'var(--text-soft)', fontSize: '0.75rem' }}>{t('day_days').replace('{n}', String(d.deductionDays))}</div>}</td>}
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                    {showsMoney && (
+                                        <tfoot>
+                                            <tr>
+                                                <td colSpan={seesOthers ? 8 : 7} style={{ textAlign: 'end', fontWeight: 600 }}>{t('day_total')}</td>
+                                                <td style={{ fontWeight: 600 }}><bdi>{money(totalMinor)}</bdi></td>
+                                            </tr>
+                                        </tfoot>
+                                    )}
+                                </table>
+                            </div>
+                        )}
+        </section>
     )
 }
 
