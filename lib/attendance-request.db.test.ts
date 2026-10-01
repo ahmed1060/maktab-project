@@ -207,6 +207,18 @@ describe.skipIf(!ADMIN_URL)("attendance requests, in Postgres", () => {
             expect(await day("e1", "2026-10-15")).toMatchObject({ status: "PRESENT", punchCount: 2, workedMinutes: 480 })
         })
 
+        it("is refused when it is a night's check-out in a month whose payroll is approved (review on #14)", async () => {
+            // Eman's night of 30 September ends at 06:00 on 1 October; September is approved.
+            await db.query(`INSERT INTO "AttendanceDay"(id, "companyId", "userId", date, status, "expectedStartMinutes", "expectedEndMinutes", breakdown, "inputsHash")
+                VALUES ('night30', 'c1', 'e2', '2026-09-30', 'INCOMPLETE', 1320, 1800, '{}', 'x')`)
+            const before = await Requests.reportMissingPunch("c1", "e2", { at: "2026-10-01T06:10", direction: "OUT", reason: "Forgot" })
+            await db.query(`INSERT INTO "PayrollRun"(id, "companyId", month, year, status, "payrollDay", "updatedAt") VALUES ('run9', 'c1', 9, 2026, 'APPROVED', 25, now())`)
+            await expect(Requests.decideMissingPunch(before.id, { approve: true }, "a1")).rejects.toEqual(refusal("PAYROLL_MONTH_LOCKED"))
+            await expect(Requests.reportMissingPunch("c1", "e2", { at: "2026-10-01T06:20", direction: "OUT", reason: "Forgot" })).rejects.toEqual(refusal("PAYROLL_MONTH_LOCKED"))
+            // Past the night's late margin, it is October's.
+            await Requests.reportMissingPunch("c1", "e2", { at: "2026-10-01T13:00", direction: "IN", reason: "Forgot" })
+        })
+
         it("once rejected adds nothing", async () => {
             const r = await Requests.reportMissingPunch("c1", "e2", { at: "2026-10-13T09:00", direction: "IN", reason: "x" })
             await Requests.decideMissingPunch(r.id, { approve: false, reason: "You were on leave" }, "a1")
