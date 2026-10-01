@@ -13,6 +13,7 @@ import { SCHEDULE_INCLUDE, serializeSchedule } from "./attendance-calendar.servi
 import { AttendancePolicyService } from "./attendance-policy.service"
 import { lockMonths, lockedMonths } from "./attendance-lock"
 import { NotificationService } from "./notification.service"
+import { ATTENDANCE_PAGE } from "@/lib/attendance-notice-target"
 
 /**
  * Rebuilding attendance days (ATTENDANCE_PLAN.md §11). Pure and idempotent:
@@ -283,7 +284,7 @@ export class AttendanceEngineService {
                     await NotificationService.notify(d.userId, "ATTENDANCE_DAY", {
                         key: status === "ABSENT" ? "notice_att_day_absent" : "notice_att_day_incomplete",
                         params: { date: { date: `${d.date}T00:00:00.000Z` } },
-                    }, undefined, tx)
+                    }, ATTENDANCE_PAGE, tx)
                 }
             }
 
