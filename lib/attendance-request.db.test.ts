@@ -152,6 +152,17 @@ describe.skipIf(!ADMIN_URL)("attendance requests, in Postgres", () => {
             expect(await Requests.permissionBalance("c1", "e1", "2027-03")).toMatchObject({ allowanceMinutes: 240, carriedMinutes: 150, remainingMinutes: 390 })
         })
 
+        it("carry only what was neither used nor waiting, and never spend the same minutes twice (review on #14)", async () => {
+            const ask = (date: string, start = "09:00", end = "11:00") => Requests.requestPermission("c1", "e2", { date, type: "MIDDAY", start, end, reason: "x" })
+            // June 2027: 120 waiting. July carries what June leaves: 240 less those 120.
+            await ask("2027-06-01")
+            expect(await Requests.permissionBalance("c1", "e2", "2027-07")).toMatchObject({ allowanceMinutes: 240, carriedMinutes: 120, remainingMinutes: 360 })
+            for (const d of ["2027-07-01", "2027-07-04", "2027-07-05"]) await ask(d)
+            // July has spent its carry; June can't give the same minutes again.
+            await expect(ask("2027-06-02")).rejects.toEqual(refusal("PERMISSION_OVER_ALLOWANCE"))
+            expect((await db.query(`SELECT count(*)::int AS n FROM "PermissionRequest" WHERE "userId" = 'e2' AND date = '2027-06-02'`)).rows[0].n).toBe(0)
+        })
+
         it("are refused in a month whose payroll is approved", async () => {
             await db.query(`INSERT INTO "PayrollRun"(id, "companyId", month, year, status, "payrollDay", "updatedAt") VALUES ('run4', 'c1', 4, 2027, 'APPROVED', 25, now())`)
             await expect(Requests.requestPermission("c1", "e1", { date: "2027-04-05", type: "MIDDAY", start: "12:00", end: "13:00", reason: "x" }))

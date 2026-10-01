@@ -72,6 +72,8 @@ export type PermissionBalance = {
     pendingMinutes: number
     /** What a new request may still take: the allowance less what is approved or waiting. */
     remainingMinutes: number
+    /** How far what is approved or waiting goes past the allowance: above 0 only when something was taken back. */
+    overdrawnMinutes: number
     requests: number
     maxRequests: number | null
     minPerRequestMinutes: number
@@ -87,8 +89,8 @@ function permissionRules(policies: Awaited<ReturnType<typeof AttendancePolicySer
 /**
  * One person's permission hours for a date's month: allowed, spent and
  * waiting, under the policy in force that date. CARRY_ONCE brings in what
- * last month's own allowance left unused — once: what was carried into last
- * month does not carry again.
+ * last month's own allowance left neither used nor waiting — once: what was
+ * carried into last month does not carry again.
  */
 async function balanceIn(tx: Prisma.TransactionClient, companyId: string, userId: string, date: string, except?: string): Promise<PermissionBalance> {
     const month = monthOf(date)
@@ -105,7 +107,9 @@ async function balanceIn(tx: Prisma.TransactionClient, companyId: string, userId
         const last = addDays(`${month}-01`, -1).slice(0, 7)
         const before = permissionRules(policies, addDays(`${month}-01`, -1))
         if (before?.enabled) {
-            const used = await tx.permissionRequest.aggregate({ where: { companyId, userId, status: "APPROVED", date: monthRange(last) }, _sum: { minutes: true } })
+            // What waits for a decision there is reserved, as it is in its own
+            // month: carrying it too would let both months spend it (review on #14).
+            const used = await tx.permissionRequest.aggregate({ where: { companyId, userId, status: { in: ["APPROVED", "PENDING"] }, date: monthRange(last) }, _sum: { minutes: true } })
             carriedMinutes = Math.max(0, before.monthlyAllowanceMinutes - (used._sum.minutes ?? 0))
         }
     }
@@ -119,6 +123,7 @@ async function balanceIn(tx: Prisma.TransactionClient, companyId: string, userId
         approvedMinutes,
         pendingMinutes,
         remainingMinutes: Math.max(0, allowanceMinutes + carriedMinutes - approvedMinutes - pendingMinutes),
+        overdrawnMinutes: Math.max(0, approvedMinutes + pendingMinutes - allowanceMinutes - carriedMinutes),
         requests: rows.length,
         maxRequests: rules?.maxRequestsPerMonth ?? null,
         minPerRequestMinutes: rules?.minPerRequestMinutes ?? 0,
@@ -157,8 +162,11 @@ export class AttendanceRequestService {
         let endMinutes = minutesOf(input.end)
         if (endMinutes <= startMinutes) endMinutes += 1440
         const minutes = endMinutes - startMinutes
+        const next = `${addDays(`${input.date.slice(0, 8)}28`, 4).slice(0, 7)}-01`
         const out = await prisma.$transaction(async tx => {
             const company = await companyOf(tx, companyId)
+            // And the next month's, whose carried minutes this one can spend.
+            await lockMonths(tx, companyId, [monthOf(input.date), monthOf(next)])
             await openMonth(tx, companyId, monthOf(input.date))
             const balance = await balanceIn(tx, companyId, userId, input.date)
             if (!balance.enabled) fail("PERMISSION_HOURS_OFF")
@@ -180,6 +188,9 @@ export class AttendanceRequestService {
             const created = await tx.permissionRequest.create({
                 data: { companyId, userId, date: wallClock(`${input.date}T00:00:00`), type: input.type, startMinutes, endMinutes, minutes, reason: input.reason.trim() },
             })
+            // Minutes the next month already spent from what this one would
+            // have carried are not this month's to give again (review on #14).
+            if ((await balanceIn(tx, companyId, userId, next)).overdrawnMinutes > 0) fail("PERMISSION_OVER_ALLOWANCE")
             await AuditLogService.log("REQUEST_ATTENDANCE_PERMISSION", "PERMISSION_REQUEST", created.id, {
                 tx, userId, details: { companyId, date: input.date, type: input.type, minutes, reason: input.reason.trim() },
             })
