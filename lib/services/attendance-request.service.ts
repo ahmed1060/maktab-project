@@ -9,6 +9,8 @@ import { AttendanceCalendarService } from "./attendance-calendar.service"
 import { recomputeAfter } from "./attendance-recompute"
 import { lockMonths, lockedMonths, punchMonths } from "./attendance-lock"
 import { insertManualPunch, type Visibility } from "./attendance-punch.service"
+import { NotificationService } from "./notification.service"
+import { optional, type NoticeParam } from "@/lib/notice"
 
 /**
  * Attendance requests (ATTENDANCE_PLAN.md §6.4, §6.6, §8.4): permission hours
@@ -20,6 +22,9 @@ import { insertManualPunch, type Visibility } from "./attendance-punch.service"
  * for or decided in a month whose payroll is approved or paid, and two
  * requests made at once cannot both spend the last of an allowance.
  */
+
+const dayParam = (date: string): NoticeParam => ({ date: `${date}T00:00:00.000Z` })
+const reasonParam = (reason: string | null) => optional("notice_reason_suffix", { reason: reason ?? "" }, reason)
 
 function fail(code: string): never {
     throw new Error(code)
@@ -254,6 +259,11 @@ export class AttendanceRequestService {
             await AuditLogService.log(decision.approve ? "APPROVE_ATTENDANCE_PERMISSION" : "REJECT_ATTENDANCE_PERMISSION", "PERMISSION_REQUEST", id, {
                 tx, ...(await actorOf(tx, reviewerId)), details: { companyId: r.companyId, userId: r.userId, date, minutes: r.minutes, reason: rejectionReason },
             })
+            // The person who asked hears either way (§13.4).
+            await NotificationService.notify(r.userId, "ATTENDANCE_REQUEST", {
+                key: decision.approve ? "notice_att_permission_approved" : "notice_att_permission_rejected",
+                params: { date: dayParam(date), start: hhmm(r.startMinutes), end: hhmm(r.endMinutes), reason: reasonParam(rejectionReason) },
+            }, id, tx)
             return { companyId: r.companyId, userId: r.userId, date }
         })
         if (decision.approve) await recomputeAfter(out.companyId, out.date, [out.userId])
@@ -340,6 +350,10 @@ export class AttendanceRequestService {
             await AuditLogService.log(decision.approve ? "APPROVE_MISSING_PUNCH" : "REJECT_MISSING_PUNCH", "MISSING_PUNCH_REQUEST", id, {
                 tx, ...(await actorOf(tx, reviewerId)), details: { companyId: r.companyId, userId: r.userId, at: local, reason: rejectionReason },
             })
+            await NotificationService.notify(r.userId, "ATTENDANCE_REQUEST", {
+                key: decision.approve ? "notice_att_missing_approved" : "notice_att_missing_rejected",
+                params: { date: dayParam(local.slice(0, 10)), time: local.slice(11, 16), reason: reasonParam(rejectionReason) },
+            }, id, tx)
             return { companyId: r.companyId, userId: r.userId, date: local.slice(0, 10) }
         })
         // From the day before: a punch after midnight may close the night before's shift.
@@ -391,6 +405,10 @@ export class AttendanceRequestService {
             await AuditLogService.log("DECIDE_ATTENDANCE_OVERTIME", "OVERTIME_APPROVAL", saved.id, {
                 tx, ...(await actorOf(tx, deciderId)), details: { companyId, userId: input.userId, date: input.date, status: input.status, minutes, note },
             })
+            await NotificationService.notify(input.userId, "ATTENDANCE_REQUEST", {
+                key: input.status === "APPROVED" ? "notice_att_overtime_approved" : "notice_att_overtime_rejected",
+                params: { date: dayParam(input.date), minutes, reason: reasonParam(note) },
+            }, saved.id, tx)
             return saved
         })
         await recomputeAfter(companyId, input.date, [input.userId])

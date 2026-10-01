@@ -126,6 +126,24 @@ describe.skipIf(!ADMIN_URL)("daily exceptions, in Postgres", () => {
         expect(out.counts).toMatchObject({ permissions: 1, missing: 0, unmatched: 1 })
     })
 
+    it("tells the person when a recent day becomes absent or has a punch missing, once (§13.4)", async () => {
+        // The 20th: the 17th on is recent. Ehab's 18th and 19th were absent;
+        // the 11th's missing punch and the earlier absences are older.
+        const told = async () => (await db.query(`SELECT "messageKey", "messageParams"->'date'->>'date' AS d FROM "Notification" WHERE "userId" = 'e1' AND type = 'ATTENDANCE_DAY' ORDER BY 2, "createdAt"`)).rows
+        expect(await told()).toEqual([
+            { messageKey: "notice_att_day_absent", d: "2026-10-18T00:00:00.000Z" },
+            { messageKey: "notice_att_day_absent", d: "2026-10-19T00:00:00.000Z" },
+        ])
+        // Rebuilding the month finds them absent already, and says nothing more.
+        const { AttendanceEngineService } = await import("@/lib/services/attendance-engine.service")
+        await db.query(`UPDATE "AttendanceDay" SET "inputsHash" = 'stale' WHERE "userId" = 'e1'`)
+        await AttendanceEngineService.recomputeMonth("c1", "2026-10")
+        expect(await told()).toHaveLength(2)
+        // A punch in on the 19th with none out: incomplete now, and told.
+        await Punches.addManual("c1", { userId: "e1", at: "2026-10-19T09:00", direction: "IN", note: "terminal down" }, "a1")
+        expect((await told()).map(x => x.messageKey)).toEqual(["notice_att_day_absent", "notice_att_day_absent", "notice_att_day_incomplete"])
+    })
+
     it("is refused in a month whose payroll is approved", async () => {
         await db.query(`INSERT INTO "PayrollRun"(id, "companyId", month, year, status, "payrollDay", "updatedAt") VALUES ('run10', 'c1', 10, 2026, 'APPROVED', 25, now())`)
         await expect(Exceptions.decide("c1", { userId: "e1", date: "2026-10-15", subject: "ABSENCE", outcome: "ACCEPTED" }, "a1")).rejects.toEqual(refusal("PAYROLL_MONTH_LOCKED"))

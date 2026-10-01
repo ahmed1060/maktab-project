@@ -12,6 +12,7 @@ import { daysInMonth, toMinor } from "@/lib/payroll"
 import { SCHEDULE_INCLUDE, serializeSchedule } from "./attendance-calendar.service"
 import { AttendancePolicyService } from "./attendance-policy.service"
 import { lockMonths, lockedMonths } from "./attendance-lock"
+import { NotificationService } from "./notification.service"
 
 /**
  * Rebuilding attendance days (ATTENDANCE_PLAN.md §11). Pure and idempotent:
@@ -49,6 +50,13 @@ export function monthsBetween(from: string, to: string): string[] {
 function hashOf(value: unknown): string {
     return createHash("sha256").update(JSON.stringify(value)).digest("hex")
 }
+
+/**
+ * How recent a day must be for its becoming absent or incomplete to be told
+ * to the person (§13.4): yesterday's, and a weekend's worth before it — not
+ * the days of a month imported or rebuilt long after.
+ */
+export const NOTIFY_RECENT_DAYS = 3
 
 /** The most days one list returns; the route asks for one more, to know it stopped short. */
 export const DAY_LIST_LIMIT = 3000
@@ -251,10 +259,11 @@ export class AttendanceEngineService {
             const scope = userIds ? { userId: { in: [...userIds] } } : {}
             const existing = await tx.attendanceDay.findMany({
                 where: { companyId, ...scope, date: { gte: wallClock(`${month}-01T00:00:00`), lte: wallClock(`${monthEnd(month)}T00:00:00`) } },
-                select: { id: true, userId: true, date: true, inputsHash: true, lockedByPayrollRunId: true },
+                select: { id: true, userId: true, date: true, status: true, inputsHash: true, lockedByPayrollRunId: true },
             })
             const stored = new Map(existing.map(e => [`${e.userId}:${toDateString(e.date)}`, e]))
             const keep = new Set<string>()
+            const recent = addDays(today, -NOTIFY_RECENT_DAYS)
             for (const d of derived.days) {
                 const key = `${d.userId}:${d.date}`
                 keep.add(key)
@@ -267,6 +276,15 @@ export class AttendanceEngineService {
                     update: { ...d.row, inputsHash: d.inputsHash, derivedAt: new Date() },
                 })
                 result.written += 1
+                // A recent day that has just become absent or incomplete is told
+                // to the person, once: a rebuild that finds it so already says nothing (§13.4).
+                const status = d.row.status as string
+                if ((status === "ABSENT" || status === "INCOMPLETE") && was?.status !== status && d.date >= recent) {
+                    await NotificationService.notify(d.userId, "ATTENDANCE_DAY", {
+                        key: status === "ABSENT" ? "notice_att_day_absent" : "notice_att_day_incomplete",
+                        params: { date: { date: `${d.date}T00:00:00.000Z` } },
+                    }, undefined, tx)
+                }
             }
 
             // Days no longer derived — before the first punch, outside employment — go.
