@@ -174,6 +174,8 @@ export class AttendanceCalendarService {
         return {
             today,
             companyWorkWeek: workWeekOn(policies, today),
+            /** Every change of the work week, so a future schedule version shows the week it will inherit. */
+            companyWorkWeeks: policies.map(p => ({ effectiveFrom: p.effectiveFrom, workWeek: p.body.workWeek })),
             schedules: schedules.map(serializeSchedule),
             defaults: defaults.map(d => ({ id: d.id, scheduleId: d.scheduleId, effectiveFrom: toDateString(d.effectiveFrom) })),
             assignments: assignments.map(a => ({ ...a, effectiveFrom: toDateString(a.effectiveFrom) })),

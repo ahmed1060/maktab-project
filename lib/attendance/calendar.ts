@@ -178,6 +178,20 @@ export function overridesOverlap(a: Pick<Override, "startDate" | "endDate">, b: 
 }
 
 /** The days a version works: its own work week, or the company's when it has none. */
+/** A change of the company's work week, from its attendance policy (§6.2). */
+export type WorkWeekChange = { effectiveFrom: string; workWeek: readonly number[] }
+
+/**
+ * The company's work week on a date: the change in force then, or Sunday to
+ * Thursday before the first. A schedule that inherits the company's week
+ * inherits the one in force on each date, not today's (review on #11).
+ */
+export function companyWeekOn(changes: readonly WorkWeekChange[], date: string): readonly number[] {
+    let best: WorkWeekChange | null = null
+    for (const c of changes) if (c.effectiveFrom <= date && (!best || c.effectiveFrom > best.effectiveFrom)) best = c
+    return best?.workWeek ?? DEFAULT_WORK_WEEK
+}
+
 export function workDaysOf(version: Pick<Version, "workWeek">, companyWorkWeek: readonly number[]): readonly number[] {
     return version.workWeek.length > 0 ? version.workWeek : companyWorkWeek
 }

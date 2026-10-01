@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest"
 import {
     DEFAULT_WORK_WEEK, isDateString, weekdayOf, addDays, hoursProblem, workWeekProblem, dayHoursProblem,
-    versionOn, overrideOn, scheduleIdOn, spanOf, overridesOverlap, observedHolidays, expectedDay,
+    versionOn, overrideOn, scheduleIdOn, spanOf, companyWeekOn, overridesOverlap, observedHolidays, expectedDay,
     formatMinutes, parseTime, shiftEnd, type Schedule, type Version, type Override,
 } from "./calendar"
 
@@ -118,6 +118,20 @@ describe("effective dating (§6.1)", () => {
     it("knows the span a dated change governs, up to the next one", () => {
         expect(spanOf(["2026-01-01", "2026-04-01", "2026-10-01"], "2026-04-01")).toEqual({ from: "2026-04-01", until: "2026-10-01" })
         expect(spanOf(["2026-01-01", "2026-04-01"], "2026-08-01")).toEqual({ from: "2026-08-01", until: null })
+    })
+})
+
+describe("the company's work week by date (review on #11)", () => {
+    it("is the one in force on the date asked, Sunday to Thursday before any", () => {
+        const changes = [
+            { effectiveFrom: "2026-03-01", workWeek: [0, 1, 2, 3, 4] },
+            { effectiveFrom: "2027-01-01", workWeek: [6, 0, 1, 2, 3, 4] },
+        ]
+        expect(companyWeekOn(changes, "2026-02-28")).toEqual(DEFAULT_WORK_WEEK)
+        expect(companyWeekOn(changes, "2026-10-01")).toEqual([0, 1, 2, 3, 4])
+        // A schedule version starting in January inherits January's six days.
+        expect(companyWeekOn(changes, "2027-01-01")).toEqual([6, 0, 1, 2, 3, 4])
+        expect(companyWeekOn([], "2027-01-01")).toEqual(DEFAULT_WORK_WEEK)
     })
 })
 

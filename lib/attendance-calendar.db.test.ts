@@ -299,6 +299,9 @@ describe.skipIf(!ADMIN_URL)("the attendance calendar, in Postgres", () => {
         it("gives the calendar the company's working days from the policy in force", async () => {
             expect((await Calendar.calendar("c1", 2026)).companyWorkWeek).toEqual([0, 1, 2, 3, 4])
             expect((await Calendar.calendar("c2", 2026)).companyWorkWeek).toEqual([0, 1, 2, 3, 4])
+            // And every change of it, for versions that start later (review on #11).
+            expect((await Calendar.calendar("c1", 2026)).companyWorkWeeks).toEqual([{ effectiveFrom: await Calendar.today("c1"), workWeek: [0, 1, 2, 3, 4] }])
+            expect((await Calendar.calendar("c2", 2026)).companyWorkWeeks).toEqual([])
         })
 
         it("replaces a version not yet in force, and never one that is", async () => {

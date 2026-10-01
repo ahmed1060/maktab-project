@@ -10,7 +10,7 @@ import AttendancePolicyPanel from '@/components/AttendancePolicyPanel'
 import ConfirmModal from '@/components/ConfirmModal'
 import { apiErrorText } from '@/lib/api-error-text'
 import {
-    defaultOn, formatMinutes, parseTime, scheduleIdOn, shiftEnd, versionOn, workDaysOf,
+    companyWeekOn, defaultOn, formatMinutes, parseTime, scheduleIdOn, shiftEnd, versionOn, workDaysOf,
     type DayHours, type Override, type Version,
 } from '@/lib/attendance/calendar'
 
@@ -36,6 +36,8 @@ type Schedule = {
 type Calendar = {
     today: string
     companyWorkWeek: number[]
+    /** The company's work week by date, from its policy (review on #11). */
+    companyWorkWeeks: { effectiveFrom: string; workWeek: number[] }[]
     schedules: Schedule[]
     /** The company's default schedule, by date (review on #10). */
     defaults: { id: string; scheduleId: string; effectiveFrom: string }[]
@@ -196,7 +198,7 @@ export default function CompanyAttendanceCard({ companyId, readOnly = false }: {
                 <HoursModal
                     editing={editing}
                     today={data.today}
-                    companyWorkWeek={data.companyWorkWeek}
+                    companyWorkWeeks={data.companyWorkWeeks}
                     weekdayName={weekdayName}
                     busy={busy}
                     onClose={() => setEditing(null)}
@@ -299,7 +301,8 @@ function ScheduleRow({ ctx, schedule }: { ctx: Ctx; schedule: Schedule }) {
         const people = data.people.filter(p => scheduleIdOn(
             data.assignments.filter(a => a.userId === p.id), data.defaults, data.today) === schedule.id).length
         const shown = current ?? upcoming[0] ?? null
-        const days = shown ? workDaysOf(shown, data.companyWorkWeek) : []
+        // An upcoming version inherits the company's week in force when it starts.
+        const days = shown ? workDaysOf(shown, companyWeekOn(data.companyWorkWeeks, shown.effectiveFrom > data.today ? shown.effectiveFrom : data.today)) : []
 
         return (
             <div style={{ border: '1px solid var(--border)', borderRadius: '0.75rem', padding: '1rem' }}>
@@ -576,10 +579,10 @@ function HolidaysPanel({ ctx }: { ctx: Ctx }) {
 
 // --- The hours form ------------------------------------------------------------
 
-function HoursModal({ editing, today, companyWorkWeek, weekdayName, busy, onClose, onSubmit }: {
+function HoursModal({ editing, today, companyWorkWeeks, weekdayName, busy, onClose, onSubmit }: {
     editing: NonNullable<Editing>
     today: string
-    companyWorkWeek: number[]
+    companyWorkWeeks: { effectiveFrom: string; workWeek: number[] }[]
     weekdayName: (d: number) => string
     busy: boolean
     onClose: () => void
@@ -598,6 +601,8 @@ function HoursModal({ editing, today, companyWorkWeek, weekdayName, busy, onClos
     const [from, setFrom] = useState(editing.kind === 'schedule' ? today : firstOfNextMonth(today))
     const [startDate, setStartDate] = useState(editing.kind === 'override' ? editing.override?.startDate ?? '' : '')
     const [endDate, setEndDate] = useState(editing.kind === 'override' ? editing.override?.endDate ?? '' : '')
+    // The company's week on the date these hours start, which is what they inherit.
+    const companyWorkWeek = companyWeekOn(companyWorkWeeks, (isOverride ? startDate : from) || from)
     const [error, setError] = useState('')
 
     const title = editing.kind === 'schedule' ? t('attendance_new_schedule')
