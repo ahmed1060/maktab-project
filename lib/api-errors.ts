@@ -54,6 +54,17 @@ export const KNOWN_REFUSALS: Record<string, { status: 400 | 403 | 404 | 409; mes
     HOLIDAY_NAME_REQUIRED: { status: 400, message: "Give the holiday a name." },
     HOLIDAY_DATE_TAKEN: { status: 409, message: "There's already a holiday on that date." },
     HOLIDAY_NOT_FOUND: { status: 404, message: "Holiday not found." },
+    // The attendance policy (lib/services/attendance-policy.service.ts).
+    POLICY_INVALID: { status: 400, message: "That policy is missing a setting or has one out of range." },
+    BANDS_EMPTY: { status: 400, message: "Add at least one band, or charge per minute instead." },
+    BANDS_NOT_CONTIGUOUS: { status: 400, message: "Bands must start right after the grace period and follow on without gaps or overlaps." },
+    BANDS_OPEN_BEFORE_END: { status: 400, message: "Only the last band can be open-ended." },
+    BANDS_NOT_OPEN_ENDED: { status: 400, message: "The last band must be open-ended, so every minute late is covered." },
+    PERMISSION_LIMITS_REVERSED: { status: 400, message: "The shortest permission can't be longer than the longest." },
+    PERMISSION_REQUEST_OVER_ALLOWANCE: { status: 400, message: "One permission can't be longer than the whole month's allowance." },
+    TEMPLATE_NOT_FOUND: { status: 404, message: "Template not found." },
+    TEMPLATE_NAME_REQUIRED: { status: 400, message: "Give the template a name." },
+    TEMPLATE_NAME_TAKEN: { status: 409, message: "There's already a template with that name." },
     SOME_TASKS_NOT_FOUND_OR_ACCESS_DENIED: { status: 403, message: "Some of these tasks don't exist, or aren't yours to pay." },
 }
 

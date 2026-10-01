@@ -6,6 +6,7 @@ import { fetcher } from '@/lib/swr-fetcher'
 import { useLanguage } from '@/context/LanguageContext'
 import { useToast } from '@/context/ToastContext'
 import Modal from '@/components/Modal'
+import AttendancePolicyPanel from '@/components/AttendancePolicyPanel'
 import ConfirmModal from '@/components/ConfirmModal'
 import { apiErrorText } from '@/lib/api-error-text'
 import {
@@ -181,6 +182,8 @@ export default function CompanyAttendanceCard({ companyId, readOnly = false }: {
 
     return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', textAlign: isRtl ? 'right' : 'left' }}>
+            {/* The policy first: its work week is what the schedules inherit. */}
+            <AttendancePolicyPanel companyId={companyId} readOnly={!editable} onChanged={load} />
             <SchedulesSection ctx={ctx} />
             {/* Keyed by the data, so a reload starts the panel's own fields afresh. */}
             <PeoplePanel ctx={ctx} />

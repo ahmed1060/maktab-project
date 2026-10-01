@@ -3,6 +3,9 @@ import { readFileSync, readdirSync } from "node:fs"
 import { Client } from "pg"
 import { AttendanceCalendarService as Calendar } from "@/lib/services/attendance-calendar.service"
 import { PublicHolidayService } from "@/lib/services/public-holiday.service"
+import { AttendancePolicyService as Policy } from "@/lib/services/attendance-policy.service"
+import { STANDARD_OFFICE, SIX_DAY_FACTORY } from "@/lib/attendance/policy"
+import { addDays } from "@/lib/attendance/calendar"
 
 /**
  * The attendance calendar's rules, against a real Postgres built from the
@@ -211,6 +214,50 @@ describe.skipIf(!ADMIN_URL)("the attendance calendar, in Postgres", () => {
 
         it("refuses a second public holiday on one date", async () => {
             await expect(PublicHolidayService.create({ date: "2026-05-01", name: "Duplicate" }, "sa")).rejects.toEqual(refusal("HOLIDAY_DATE_TAKEN"))
+        })
+    })
+
+    describe("the policy (§6)", () => {
+        it("starts from a seeded template, copied, with the template named but not linked", async () => {
+            const today = await Calendar.today("c1")
+            const templates = await Policy.templates()
+            expect(templates.map(t => t.name)).toEqual(["Six-day factory", "Standard Egyptian office"])
+            const standard = templates.find(t => t.name === "Standard Egyptian office")!
+            await Policy.saveVersion("c1", { effectiveFrom: today, body: standard.body, appliedTemplateId: standard.id }, "a1")
+            const [v] = await Policy.versions("c1")
+            expect(v).toMatchObject({ effectiveFrom: today, appliedTemplateId: standard.id, body: STANDARD_OFFICE })
+            // Editing the template afterwards changes nobody's policy.
+            await Policy.updateTemplate(standard.id, { name: standard.name, body: { ...STANDARD_OFFICE, absence: { multiplier: 2 } } }, "sa")
+            expect((await Policy.versions("c1"))[0].body.absence.multiplier).toBe(1)
+        })
+
+        it("gives the calendar the company's working days from the policy in force", async () => {
+            expect((await Calendar.calendar("c1", 2026)).companyWorkWeek).toEqual([0, 1, 2, 3, 4])
+            expect((await Calendar.calendar("c2", 2026)).companyWorkWeek).toEqual([0, 1, 2, 3, 4])
+        })
+
+        it("replaces a version not yet in force, and never one that is", async () => {
+            const today = await Calendar.today("c1")
+            const later = addDays(today, 40)
+            await Policy.saveVersion("c1", { effectiveFrom: later, body: SIX_DAY_FACTORY }, "a1")
+            await Policy.saveVersion("c1", { effectiveFrom: later, body: { ...SIX_DAY_FACTORY, absence: { multiplier: 1.5 } } }, "a1")
+            const versions = await Policy.versions("c1")
+            expect(versions.map(v => [v.effectiveFrom, v.body.absence.multiplier])).toEqual([[today, 1], [later, 1.5]])
+            await expect(Policy.saveVersion("c1", { effectiveFrom: today, body: SIX_DAY_FACTORY }, "a1")).rejects.toEqual(refusal("VERSION_DATE_TAKEN"))
+        })
+
+        it("refuses a version inside an approved month, and a malformed body", async () => {
+            await expect(Policy.saveVersion("c1", { effectiveFrom: "2026-09-15", body: STANDARD_OFFICE }, "a1")).rejects.toEqual(refusal("PAYROLL_MONTH_LOCKED"))
+            await expect(Policy.saveVersion("c1", { effectiveFrom: "2027-01-01", body: { workWeek: [0] } }, "a1")).rejects.toEqual(refusal("POLICY_INVALID"))
+            const gap = structuredClone(STANDARD_OFFICE)
+            gap.lateness.bands[1].fromMinutes = 35
+            await expect(Policy.saveVersion("c1", { effectiveFrom: "2027-01-01", body: gap }, "a1")).rejects.toEqual(refusal("BANDS_NOT_CONTIGUOUS"))
+        })
+
+        it("withdraws a version, leaving the one before in force", async () => {
+            const versions = await Policy.versions("c1")
+            await Policy.deleteVersion(versions[1].id, "a1")
+            expect((await Policy.versions("c1")).length).toBe(1)
         })
     })
 

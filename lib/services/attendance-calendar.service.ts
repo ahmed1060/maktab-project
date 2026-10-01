@@ -3,7 +3,7 @@ import { Prisma } from "@prisma/client"
 import { calendarDateStr } from "@/lib/time"
 import { AuditLogService } from "./audit-log.service"
 import {
-    DEFAULT_WORK_WEEK, dayHoursProblem, formatMinutes, hoursProblem, isDateString, overridesOverlap, toDateString, workWeekProblem,
+    dayHoursProblem, formatMinutes, hoursProblem, isDateString, overridesOverlap, toDateString, workWeekProblem,
     type DayHours,
 } from "@/lib/attendance/calendar"
 
@@ -129,10 +129,15 @@ export class AttendanceCalendarService {
             prisma.companyHoliday.findMany({ where: { companyId, date: { gte: from, lte: to } }, orderBy: { date: "asc" } }),
             this.today(companyId),
         ])
+        // The company's working days are its policy's (§6.2), Sunday to
+        // Thursday until it sets one.
+        const { AttendancePolicyService } = await import("./attendance-policy.service")
+        const { workWeekOn } = await import("@/lib/attendance/policy")
+        const policies = await AttendancePolicyService.versions(companyId)
         const excluded = new Set(exclusions.map(e => e.publicHolidayId))
         return {
             today,
-            companyWorkWeek: [...DEFAULT_WORK_WEEK],
+            companyWorkWeek: workWeekOn(policies, today),
             schedules: schedules.map(serializeSchedule),
             assignments: assignments.map(a => ({ ...a, effectiveFrom: toDateString(a.effectiveFrom) })),
             people: users.map(u => ({ id: u.id, name: `${u.firstName} ${u.lastName}`.trim(), role: u.role })),

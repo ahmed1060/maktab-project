@@ -37,6 +37,16 @@ vi.mock("@/lib/services/attendance-calendar.service", () => ({
         setObserved: async (companyId: string) => { reached.push(`setObserved:${companyId}`) },
     },
 }))
+vi.mock("@/lib/services/attendance-policy.service", () => ({
+    AttendancePolicyService: {
+        versions: async (companyId: string) => { reached.push(`policy:${companyId}`); return [] },
+        templates: async () => [],
+        saveVersion: async (companyId: string) => { reached.push(`savePolicy:${companyId}`); return {} },
+        versionOf: async (id: string) => id === "p1" ? { id: "p1", companyId: "c1" } : id === "p2" ? { id: "p2", companyId: "c2" } : null,
+        deleteVersion: async (id: string) => { reached.push(`deletePolicy:${id}`) },
+        createTemplate: async () => { reached.push("createTemplate"); return {} },
+    },
+}))
 vi.mock("@/lib/services/public-holiday.service", () => ({
     PublicHolidayService: {
         list: async () => { reached.push("listPublic"); return [] },
@@ -172,6 +182,38 @@ describe("the Super Admin", () => {
         expect((await publicList()).status).toBe(403)
         expect((await publicCreate({ date: "2026-04-13", name: "Sham El Nessim" })).status).toBe(403)
         expect(reached).toEqual(["listPublic", "createPublic"])
+    })
+})
+
+describe("the policy", () => {
+    const getPolicy = async (query = "") => (await import("@/app/api/attendance/policy/route")).GET(new Request(url(`/api/attendance/policy${query}`)))
+    const savePolicy = async (body: unknown) => (await import("@/app/api/attendance/policy/route")).POST(withBody("POST", "/api/attendance/policy", body))
+    const deletePolicy = async (id: string) =>
+        (await import("@/app/api/attendance/policy/[id]/route")).DELETE(withBody("DELETE", `/api/attendance/policy/${id}`, {}), { params: Promise.resolve({ id }) } as any)
+    const createTemplate = async (body: unknown) => (await import("@/app/api/policy-templates/route")).POST(withBody("POST", "/api/policy-templates", body))
+    const POLICY = { effectiveFrom: "2026-11-01", body: { workWeek: [0, 1, 2, 3, 4] } }
+
+    it("is read and set through the Attendance tab's own rules", async () => {
+        admin()
+        expect((await getPolicy()).status).toBe(200)
+        expect((await savePolicy({ ...POLICY, companyId: "c2" })).status).toBe(201)
+        expect((await deletePolicy("p1")).status).toBe(200)
+        expect((await deletePolicy("p2")).status).toBe(404)
+        viewer()
+        expect((await getPolicy()).status).toBe(200)
+        expect((await savePolicy(POLICY)).status).toBe(403)
+        expect((await deletePolicy("p1")).status).toBe(403)
+        employee()
+        expect((await getPolicy()).status).toBe(404)
+        expect(reached).toEqual(["policy:c1", "savePolicy:c1", "deletePolicy:p1", "policy:c1"])
+    })
+
+    it("has templates only the Super Admin keeps", async () => {
+        admin()
+        expect((await createTemplate({ name: "Mine", body: {} })).status).toBe(403)
+        superAdmin()
+        expect((await createTemplate({ name: "Night shift", body: {} })).status).toBe(201)
+        expect(reached).toEqual(["createTemplate"])
     })
 })
 

@@ -235,6 +235,7 @@ model Company {
   timezone             String                    @default("Africa/Cairo")
   payrollRuns          PayrollRun[]
   workSchedules        WorkSchedule[]
+  attendancePolicies   AttendancePolicy[]
   companyHolidays      CompanyHoliday[]
   holidayExclusions    CompanyHolidayExclusion[]
   finalSettlements     FinalSettlement[]
@@ -1641,4 +1642,39 @@ model CompanyHolidayExclusion {
   publicHoliday   PublicHoliday @relation(fields: [publicHolidayId], references: [id], onDelete: Cascade)
 
   @@id([companyId, publicHolidayId])
+}
+
+// ---------------------------------------------------------------------------
+// Attendance: the policy (ATTENDANCE_PLAN.md §6, §8.3)
+// ---------------------------------------------------------------------------
+
+/// A starting point a company can copy (§6.8), kept by the Super Admin.
+/// Applying one copies its body; nothing links the company back to it.
+model PolicyTemplate {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  nameAr      String?
+  description String?
+  /// lib/attendance/policy.ts: policyBodySchema.
+  body        Json
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+/// One version of a company's policy, from a date (§6.1). Editing makes a new
+/// version; a day is measured against the one in force on it.
+model AttendancePolicy {
+  id                String   @id @default(uuid())
+  companyId         String
+  effectiveFrom     DateTime @db.Date
+  /// lib/attendance/policy.ts: policyBodySchema. Its workWeek is the
+  /// company's working days (§6.2).
+  body              Json
+  /// Informational only: which template it was copied from, if any.
+  appliedTemplateId String?
+  createdById       String
+  createdAt         DateTime @default(now())
+  company           Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@unique([companyId, effectiveFrom])
 }
