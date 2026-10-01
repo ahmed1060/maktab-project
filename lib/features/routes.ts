@@ -106,7 +106,7 @@ export function moduleForApiPath(pathname: string): Module | null {
  * the URL spaces are different, and conflating them would mean a page path
  * accidentally matching an API prefix.
  */
-const PAGE_MODULE_ROUTES: ReadonlyArray<readonly [string, Module]> = [
+export const PAGE_MODULE_ROUTES: ReadonlyArray<readonly [string, Module]> = [
     ['/dashboard/tasks', 'TASKS'],
     ['/dashboard/obligations', 'OBLIGATIONS'],
     ['/dashboard/clients', 'CLIENTS'],

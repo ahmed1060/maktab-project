@@ -227,3 +227,18 @@ describe("the locked screen's copy", () => {
         expect(ar.module_locked_body).toContain('{bundle}')
     })
 })
+
+describe("every gated page is guarded on the server", () => {
+    it("has a layout that calls guardModule for its module", async () => {
+        // The page table only decorates the sidebar; what stops a company that
+        // has not bought a module from opening its pages is the layout beside
+        // them. A table entry without one reads as gated and is not.
+        const { readFileSync, existsSync } = await import("node:fs")
+        const { PAGE_MODULE_ROUTES } = await import("./routes")
+        for (const [prefix, module] of PAGE_MODULE_ROUTES) {
+            const layout = `app/(dashboard)${prefix}/layout.tsx`
+            expect(existsSync(layout), `${prefix} has no layout`).toBe(true)
+            expect(readFileSync(layout, "utf8"), layout).toContain(`guardModule('${module}')`)
+        }
+    })
+})
