@@ -40,7 +40,11 @@ vi.mock("@/lib/services/attendance-calendar.service", () => ({
         setObserved: async (companyId: string) => { reached.push(`setObserved:${companyId}`) },
     },
 }))
+vi.mock("@/lib/services/attendance-engine.service", () => ({
+    AttendanceEngineService: { simulate: async (companyId: string, month: string) => { reached.push(`simulate:${companyId}:${month}`); return {} } },
+}))
 vi.mock("@/lib/services/attendance-policy.service", () => ({
+    checkBody: (body: unknown) => body,
     AttendancePolicyService: {
         versions: async (companyId: string) => { reached.push(`policy:${companyId}`); return [] },
         templates: async () => [],
@@ -209,6 +213,19 @@ describe("the policy", () => {
         employee()
         expect((await getPolicy()).status).toBe(404)
         expect(reached).toEqual(["policy:c1", "savePolicy:c1", "deletePolicy:p1", "policy:c1"])
+    })
+
+    it("is replayed over a month by whoever may change it, last month unless asked (§6.7)", async () => {
+        const simulate = async (body: unknown) => (await import("@/app/api/attendance/policy/simulate/route")).POST(withBody("POST", "/api/attendance/policy/simulate", body))
+        admin()
+        expect((await simulate({ body: POLICY.body })).status).toBe(200)
+        expect((await simulate({ body: POLICY.body, month: "2026-08" })).status).toBe(200)
+        expect((await simulate({ body: POLICY.body, month: "August" })).status).toBe(400)
+        viewer()
+        expect((await simulate({ body: POLICY.body })).status).toBe(403)
+        employee()
+        expect((await simulate({ body: POLICY.body })).status).toBe(404)
+        expect(reached).toEqual(["simulate:c1:2026-09", "simulate:c1:2026-08"])
     })
 
     it("has templates only the Super Admin keeps", async () => {

@@ -37,7 +37,8 @@ function parseBody(body: unknown): PolicyBody {
     return parsed.data
 }
 
-function checkBody(body: unknown): PolicyBody {
+/** A policy body as the editor sent it, checked in full; a refusal code otherwise. */
+export function checkBody(body: unknown): PolicyBody {
     const parsed = policyBodySchema.safeParse(body)
     if (!parsed.success) fail("POLICY_INVALID")
     const problem = policyProblem(parsed.data)

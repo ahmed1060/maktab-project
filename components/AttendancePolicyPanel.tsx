@@ -153,6 +153,7 @@ export default function AttendancePolicyPanel({ companyId, readOnly, onChanged }
 
             {editing && (
                 <PolicyEditor
+                    companyId={companyId}
                     start={editing.start}
                     defaultFrom={shown ? firstOfNextMonth(data.today) : data.today}
                     today={data.today}
@@ -298,7 +299,9 @@ const { t } = useLanguage()
 }
 
 
-function PolicyEditor({ start, defaultFrom, today, weekday, fraction, onClose, onSave }: {
+function PolicyEditor({ companyId, start, defaultFrom, today, weekday, fraction, onClose, onSave }: {
+    /** The company whose days a draft is replayed over; none for a template. */
+    companyId?: string
     start: PolicyBody
     defaultFrom: string
     today: string
@@ -438,6 +441,8 @@ function PolicyEditor({ start, defaultFrom, today, weekday, fraction, onClose, o
                     )}
                 </fieldset>
 
+                {companyId && <SimulationPreview companyId={companyId} draft={p} />}
+
                 <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
                     <button className="btn btn-secondary" onClick={onClose}>{t('cancel')}</button>
                     <button className="btn btn-primary" disabled={saving || p.workWeek.length === 0}
@@ -447,5 +452,84 @@ function PolicyEditor({ start, defaultFrom, today, weekday, fraction, onClose, o
                 </div>
             </div>
         </Modal>
+    )
+}
+
+type Sum = { deductionDays: number; deductionMinor: number; overtimeMinor: number; days: number }
+type Simulation = { month: string; people: { userId: string; name: string; current: Sum; draft: Sum }[]; totals: { current: Sum; draft: Sum } }
+
+/**
+ * "Under this rule, last month would have been…" (§6.7): the draft replayed
+ * over last month's measured days, per person against the policy in force.
+ * Nothing is saved. A result for an earlier draft is marked as such.
+ */
+function SimulationPreview({ companyId, draft }: { companyId: string; draft: PolicyBody }) {
+    const { t, locale } = useLanguage()
+    const { showToast } = useToast()
+    const [result, setResult] = useState<{ for: string; data: Simulation } | null>(null)
+    const [busy, setBusy] = useState(false)
+    const key = JSON.stringify(draft)
+    const money = (minor: number) => (minor / 100).toLocaleString(locale === 'ar' ? 'ar-EG' : 'en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+    const signed = (minor: number) => (minor > 0 ? '+' : minor < 0 ? '−' : '') + money(Math.abs(minor))
+
+    const run = async () => {
+        setBusy(true)
+        try {
+            const res = await fetch('/api/attendance/policy/simulate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ companyId, body: draft }) })
+            const text = await res.text()
+            if (!res.ok) return showToast(apiErrorText(text, t('error_generic')), 'error')
+            setResult({ for: key, data: JSON.parse(text).data })
+        } finally { setBusy(false) }
+    }
+
+    const data = result?.data
+    const changed = data?.people.filter(x => x.current.deductionMinor !== x.draft.deductionMinor || x.current.overtimeMinor !== x.draft.overtimeMinor) ?? []
+    return (
+        <fieldset style={{ border: '1px solid var(--border)', borderRadius: '0.75rem', padding: '0.85rem', margin: 0, display: 'grid', gap: '0.6rem' }}>
+            <legend style={{ fontWeight: 600, padding: '0 0.35rem' }}>{t('sim_title')}</legend>
+            <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                <span style={{ fontSize: '0.82rem', color: 'var(--text-soft)', flex: 1, minWidth: '12rem' }}>{t('sim_hint')}</span>
+                <button type="button" className="btn btn-secondary" disabled={busy} onClick={run}>{busy ? '…' : t('sim_run')}</button>
+            </div>
+            {data && (
+                <>
+                    {result.for !== key && <p role="status" style={{ margin: 0, color: 'var(--warn-fg)', fontSize: '0.82rem' }}>{t('sim_stale')}</p>}
+                    <p style={{ margin: 0, fontSize: '0.88rem' }}>
+                        {t('sim_summary')
+                            .replace('{month}', data.month)
+                            .replace('{now}', money(data.totals.current.deductionMinor))
+                            .replace('{then}', money(data.totals.draft.deductionMinor))
+                            .replace('{diff}', signed(data.totals.draft.deductionMinor - data.totals.current.deductionMinor))}
+                        {data.totals.current.overtimeMinor !== data.totals.draft.overtimeMinor && (
+                            <> {t('sim_overtime').replace('{diff}', signed(data.totals.draft.overtimeMinor - data.totals.current.overtimeMinor))}</>
+                        )}
+                    </p>
+                    {data.totals.current.days === 0 ? <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--text-soft)' }}>{t('sim_no_days')}</p>
+                        : changed.length === 0 ? <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--text-soft)' }}>{t('sim_no_change')}</p>
+                            : (
+                                <div style={{ overflowX: 'auto' }}>
+                                    <table className="table" style={{ width: '100%', fontSize: '0.82rem' }}>
+                                        <thead><tr><th>{t('sim_person')}</th><th>{t('sim_now')}</th><th>{t('sim_draft')}</th><th>{t('sim_difference')}</th></tr></thead>
+                                        <tbody>
+                                            {changed.map(x => (
+                                                <tr key={x.userId}>
+                                                    <td>{x.name}</td>
+                                                    <td><bdi>{money(x.current.deductionMinor)}</bdi><div style={{ color: 'var(--text-soft)', fontSize: '0.75rem' }}>{t('day_days').replace('{n}', String(x.current.deductionDays))}</div></td>
+                                                    <td><bdi>{money(x.draft.deductionMinor)}</bdi><div style={{ color: 'var(--text-soft)', fontSize: '0.75rem' }}>{t('day_days').replace('{n}', String(x.draft.deductionDays))}</div></td>
+                                                    <td style={{ fontWeight: 600 }}>
+                                                        <bdi>{signed(x.draft.deductionMinor - x.current.deductionMinor)}</bdi>
+                                                        {x.current.overtimeMinor !== x.draft.overtimeMinor && (
+                                                            <div style={{ color: 'var(--text-soft)', fontSize: '0.75rem', fontWeight: 400 }}>{t('sim_overtime').replace('{diff}', signed(x.draft.overtimeMinor - x.current.overtimeMinor))}</div>
+                                                        )}
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )}
+                </>
+            )}
+        </fieldset>
     )
 }
