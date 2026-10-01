@@ -257,36 +257,49 @@ async function recordDiscrepancies(tx: Prisma.TransactionClient, companyId: stri
     if (!run) return 0
     const scope = userIds ? { userId: { in: [...userIds] } } : {}
     const range = { gte: wallClock(`${month}-01T00:00:00`), lte: wallClock(`${monthEnd(month)}T00:00:00`) }
-    const [derived, paid, open] = await Promise.all([
+    const [derived, paid, recorded] = await Promise.all([
         deriveMonth(tx, companyId, month, tz, today, userIds),
         tx.attendanceDay.findMany({ where: { companyId, ...scope, date: range }, select: { userId: true, date: true, status: true, deductionMinor: true, overtimeMinor: true } }),
         tx.attendanceDiscrepancy.findMany({ where: { companyId, ...scope, date: range } }),
     ])
     const now = new Map(derived.days.map(d => [`${d.userId}:${d.date}`, d]))
     const was = new Map(paid.map(d => [`${d.userId}:${toDateString(d.date)}`, d]))
-    const recorded = new Map(open.map(d => [`${d.userId}:${toDateString(d.date)}`, d]))
+    // Per day: the open difference, if any, and the last one settled.
+    const opened = new Map<string, (typeof recorded)[number]>()
+    const settled = new Map<string, (typeof recorded)[number]>()
+    for (const d of recorded) {
+        const key = `${d.userId}:${toDateString(d.date)}`
+        if (!d.resolvedAt) opened.set(key, d)
+        else if (!settled.has(key) || settled.get(key)!.resolvedAt! < d.resolvedAt) settled.set(key, d)
+    }
     let differing = 0
-    for (const key of new Set([...now.keys(), ...was.keys()])) {
+    for (const key of new Set([...now.keys(), ...was.keys(), ...settled.keys()])) {
         const [userId, date] = key.split(":")
-        const n = now.get(key), w = was.get(key)
+        const n = now.get(key), w = was.get(key), r = opened.get(key), s = settled.get(key)
+        // What the person has been paid for the day so far: as the payroll
+        // paid it, or as last settled since (review on #16) — never the
+        // original once a settlement has moved it.
+        const base = r ? { deduction: r.paidDeductionMinor, overtime: r.paidOvertimeMinor, status: r.paidStatus }
+            : s ? { deduction: s.nowDeductionMinor, overtime: s.nowOvertimeMinor, status: s.nowStatus ?? "NONE" }
+                : { deduction: w?.deductionMinor ?? 0, overtime: w?.overtimeMinor ?? 0, status: w?.status ?? "NONE" }
         const figures = {
-            paidDeductionMinor: w?.deductionMinor ?? 0, paidOvertimeMinor: w?.overtimeMinor ?? 0, paidStatus: w?.status ?? "NONE",
+            paidDeductionMinor: base.deduction, paidOvertimeMinor: base.overtime, paidStatus: base.status,
             nowDeductionMinor: n?.deductionMinor ?? 0, nowOvertimeMinor: n?.overtimeMinor ?? 0, nowStatus: n ? String(n.row.status) : null,
         }
-        const r = recorded.get(key)
         if (figures.paidDeductionMinor === figures.nowDeductionMinor && figures.paidOvertimeMinor === figures.nowOvertimeMinor) {
-            // Back to what was paid: nothing left to settle, unless somebody already did.
-            if (r && !r.resolvedAt) await tx.attendanceDiscrepancy.delete({ where: { id: r.id } })
+            // Back to what was paid or settled: nothing left to settle.
+            if (r) await tx.attendanceDiscrepancy.delete({ where: { id: r.id } })
             continue
         }
         differing += 1
-        if (r && r.nowDeductionMinor === figures.nowDeductionMinor && r.nowOvertimeMinor === figures.nowOvertimeMinor) continue
-        await tx.attendanceDiscrepancy.upsert({
-            where: { userId_date: { userId, date: wallClock(`${date}T00:00:00`) } },
-            create: { companyId, userId, date: wallClock(`${date}T00:00:00`), payrollRunId: run.id, ...figures },
-            // Changed again after being settled: open again, with the new figures.
-            update: { ...figures, resolvedAt: null, resolvedById: null, resolution: null },
-        })
+        if (r) {
+            if (r.nowDeductionMinor !== figures.nowDeductionMinor || r.nowOvertimeMinor !== figures.nowOvertimeMinor || r.nowStatus !== figures.nowStatus) {
+                await tx.attendanceDiscrepancy.update({ where: { id: r.id }, data: { nowDeductionMinor: figures.nowDeductionMinor, nowOvertimeMinor: figures.nowOvertimeMinor, nowStatus: figures.nowStatus } })
+            }
+            continue
+        }
+        // New, or changed again after being settled: a new one, the settled one kept as it was.
+        await tx.attendanceDiscrepancy.create({ data: { companyId, userId, date: wallClock(`${date}T00:00:00`), payrollRunId: run.id, ...figures } })
     }
     return differing
 }

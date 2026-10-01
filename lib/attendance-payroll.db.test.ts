@@ -228,6 +228,24 @@ describe.skipIf(!ADMIN_URL)("attendance in payroll, in Postgres", () => {
         expect(after.open.length).toBeGreaterThan(0)
     })
 
+    it("measures a change after a settlement from what was settled, keeping the settlement (review on #16)", async () => {
+        const { AttendanceEngineService: Engine } = await import("@/lib/services/attendance-engine.service")
+        const { prisma } = await import("@/lib/prisma")
+        // The 8th was paid as an absence, then made leave and refunded. Now the
+        // leave is withdrawn: Ehab owes back what he was refunded.
+        await prisma.dayOffRequest.delete({ where: { id: "late-leave" } })
+        await Engine.recomputeMonth("c1", "2026-09")
+        const rows = await prisma.attendanceDiscrepancy.findMany({ where: { userId: "e1", date: new Date("2026-09-08T00:00:00Z") }, orderBy: { detectedAt: "asc" } })
+        expect(rows).toHaveLength(2)
+        expect(rows[0]).toMatchObject({ paidDeductionMinor: 31000, nowDeductionMinor: 0, resolution: "Refunded 310.00 in October" })
+        expect(rows[1]).toMatchObject({ paidDeductionMinor: 0, paidStatus: "LEAVE", nowStatus: "ABSENT", resolvedAt: null })
+        expect(rows[1].nowDeductionMinor).toBeGreaterThan(0)
+        // Leave again: back to what was settled, nothing left open for the day.
+        await prisma.dayOffRequest.create({ data: { id: "late-leave", userId: "e1", type: "REGULAR", status: "APPROVED", date: new Date("2026-09-08T00:00:00Z") } })
+        await Engine.recomputeMonth("c1", "2026-09")
+        expect(await prisma.attendanceDiscrepancy.count({ where: { userId: "e1", date: new Date("2026-09-08T00:00:00Z") } })).toBe(1)
+    })
+
     it("lists every open difference a page at a time, none cut off (review on #16)", async () => {
         const { AttendanceDiscrepancyService: Discrepancies } = await import("@/lib/services/attendance-discrepancy.service")
         const { rows: [run] } = await db.query(`SELECT id FROM "PayrollRun" WHERE "companyId" = 'c1'`)
