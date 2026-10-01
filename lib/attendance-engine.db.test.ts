@@ -194,6 +194,35 @@ describe.skipIf(!ADMIN_URL)("the attendance engine, a month in Postgres", () => 
         expect((await days("e1")).get("2026-09-08")).toMatchObject({ status: "HOLIDAY", deductionMinor: 0 })
     })
 
+    it("reprices the days a salary change reaches back to, as it is recorded (review on #13)", async () => {
+        const { SalaryHistoryService } = await import("@/lib/services/salary-history.service")
+        // The half day for leaving early on the 13th, at 9,300.00 a month.
+        expect((await days("e1")).get("2026-09-13")).toMatchObject({ deductionMinor: 15500 })
+        // A correction: 15,000.00 from 1 September (Cairo midnight, +03:00), entered late.
+        await SalaryHistoryService.record({ userId: "e1", monthlyAmount: 15000, effectiveFrom: new Date("2026-08-31T21:00:00Z"), reason: "Correction" })
+        expect((await days("e1")).get("2026-09-13")).toMatchObject({ deductionMinor: 25000 })
+    })
+
+    it("rebuilds at night the months a recent salary change reaches back to, and one company failing does not stop the rest (review on #13)", async () => {
+        // Written straight to the table, as one recorded inside another change's transaction would be: no rebuild yet.
+        await db.query(`INSERT INTO "SalaryChange"(id, "userId", "monthlyAmount", "effectiveFrom") VALUES ('s9', 'e3', 9500, '2026-06-30T21:00:00Z')`)
+        // Company Two has a punch and an unreadable stored policy, so its rebuild throws.
+        await db.query(`INSERT INTO "AttendancePolicy"(id, "companyId", "effectiveFrom", body, "createdById") VALUES ('bad', 'c2', '2026-09-01', '{"workWeek": []}', 'a1')`)
+        await db.query(`INSERT INTO "AttendancePunch"(id, "companyId", "userId", source, "sourceKey", "punchAtLocal", "punchAt", "resolvedWithTimeZone") VALUES ('c2p', 'c2', 'e2', 'MANUAL', 'c2p', '2026-09-07 09:00', now(), 'Africa/Cairo')`)
+        // The setup's own rows are old news by now; only s9 and the correction above are recent.
+        await db.query(`UPDATE "SalaryChange" SET "createdAt" = now() - interval '10 days' WHERE id NOT IN ('s9') AND reason IS DISTINCT FROM 'Correction'`)
+        await db.query(`UPDATE "EmploymentEvent" SET "createdAt" = now() - interval '10 days'`)
+        const both = await Engine.reconcileAll(["c2", "c1"])
+        expect(both.failed.length).toBeGreaterThan(0)
+        expect(both.failed.every(f => f.companyId === "c2")).toBe(true)
+        // c1 alone: from July, the month s9 reaches back to, to this month.
+        const today = new Date().toISOString().slice(0, 7)
+        const expected = (Number(today.slice(0, 4)) - 2026) * 12 + Number(today.slice(5, 7)) - 7 + 1
+        expect((await Engine.reconcileAll(["c1"]))).toMatchObject({ months: expected, failed: [] })
+        await db.query(`DELETE FROM "AttendancePolicy" WHERE id = 'bad'`)
+        await db.query(`DELETE FROM "AttendancePunch" WHERE id = 'c2p'`)
+    })
+
     it("never rewrites a month whose payroll is approved", async () => {
         await db.query(`INSERT INTO "PayrollRun"(id, "companyId", month, year, status, "payrollDay", "updatedAt") VALUES ('run9', 'c1', 9, 2026, 'APPROVED', 25, now())`)
         const before = (await days("e1")).get("2026-09-08")!.derivedAt

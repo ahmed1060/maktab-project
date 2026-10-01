@@ -19,3 +19,18 @@ export async function recomputeEveryCompanyAfter(fromDate: string) {
     const companies = await prisma.attendancePunch.findMany({ distinct: ["companyId"], select: { companyId: true } })
     for (const { companyId } of companies) await recomputeAfter(companyId, fromDate)
 }
+
+/**
+ * After a change to somebody's salary or employment, effective from an
+ * instant: their days from that date in their company's calendar (review on
+ * #13). Only for a change that has committed — one written inside a caller's
+ * transaction is caught by the nightly run instead, which rebuilds the months
+ * of recent changes.
+ */
+export async function recomputeForPersonFrom(userId: string, from: Date) {
+    const { prisma } = await import("@/lib/prisma")
+    const { calendarDateStr } = await import("@/lib/time")
+    const user = await prisma.user.findUnique({ where: { id: userId }, select: { companyId: true, company: { select: { timezone: true } } } })
+    if (!user?.companyId || !user.company) return
+    await recomputeAfter(user.companyId, calendarDateStr(from, user.company.timezone), [userId])
+}

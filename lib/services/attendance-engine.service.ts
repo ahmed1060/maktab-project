@@ -256,20 +256,45 @@ export class AttendanceEngineService {
         }
     }
 
-    /** The nightly reconciliation: this month and last, for every company with attendance. */
+    /**
+     * The nightly reconciliation: this month and last, for every company with
+     * attendance, and every month a salary or employment change recorded in
+     * the last two days reaches back to — those do not always rebuild as they
+     * happen (one written inside another change's transaction cannot), and a
+     * backdated correction can reach months ago (review on #13). One company
+     * failing is recorded and the rest go on (review on #13).
+     */
     static async reconcileAll(companyIds: readonly string[]) {
         let months = 0
+        const failed: { companyId: string; month: string; error: string }[] = []
+        const since = new Date(Date.now() - 2 * 86_400_000)
         for (const companyId of companyIds) {
-            const company = await prisma.company.findUnique({ where: { id: companyId }, select: { timezone: true } })
-            if (!company) continue
-            const today = calendarDateStr(new Date(), company.timezone)
-            const lastMonth = addDays(`${today.slice(0, 7)}-01`, -1)
-            for (const month of monthsBetween(lastMonth, today)) {
-                await this.recomputeMonth(companyId, month)
-                months += 1
+            try {
+                const company = await prisma.company.findUnique({ where: { id: companyId }, select: { timezone: true } })
+                if (!company) continue
+                const today = calendarDateStr(new Date(), company.timezone)
+                const [salary, employment] = await Promise.all([
+                    prisma.salaryChange.findFirst({ where: { createdAt: { gte: since }, user: { companyId } }, orderBy: { effectiveFrom: "asc" }, select: { effectiveFrom: true } }),
+                    prisma.employmentEvent.findFirst({ where: { createdAt: { gte: since }, user: { companyId } }, orderBy: { effectiveFrom: "asc" }, select: { effectiveFrom: true } }),
+                ])
+                const changed = [salary, employment].flatMap(c => (c ? [calendarDateStr(c.effectiveFrom, company.timezone)] : [])).sort()[0]
+                const lastMonth = addDays(`${today.slice(0, 7)}-01`, -1)
+                const yearAgo = `${Number(today.slice(0, 4)) - 1}${today.slice(4, 7)}-01`
+                const from = [lastMonth, changed && changed > yearAgo ? changed : changed ? yearAgo : lastMonth].sort()[0]
+                for (const month of monthsBetween(from, today)) {
+                    try {
+                        await this.recomputeMonth(companyId, month)
+                        months += 1
+                    } catch (error) {
+                        failed.push({ companyId, month, error: error instanceof Error ? error.message : String(error) })
+                    }
+                }
+            } catch (error) {
+                failed.push({ companyId, month: "", error: error instanceof Error ? error.message : String(error) })
             }
         }
-        return { companies: companyIds.length, months }
+        if (failed.length > 0) console.error("[attendance] reconciliation failures", failed)
+        return { companies: companyIds.length, months, failed }
     }
 
     /** Days between two dates for the people the viewer sees. */

@@ -31,7 +31,10 @@ export async function GET(req: Request) {
 
         const result = await JobHeartbeatService.run("attendance", async () => {
             const companies = await prisma.attendancePunch.findMany({ distinct: ["companyId"], select: { companyId: true } })
-            return AttendanceEngineService.reconcileAll(companies.map(c => c.companyId))
+            const outcome = await AttendanceEngineService.reconcileAll(companies.map(c => c.companyId))
+            // Every company was tried; any that failed turn the job's card red.
+            if (outcome.failed.length > 0) throw new Error(`Attendance reconciliation failed for ${outcome.failed.length} month(s): ${outcome.failed.map(f => `${f.companyId} ${f.month} ${f.error}`).join("; ")}`)
+            return outcome
         })
         return ApiResponse.success(result)
     } catch (error: any) {
