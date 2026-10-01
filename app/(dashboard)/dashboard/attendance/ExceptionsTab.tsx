@@ -33,6 +33,8 @@ type Subject = 'LATENESS' | 'EARLY_LEAVE' | 'ABSENCE'
 type Data = {
     late: Row[]; early: Row[]; absent: Row[]; incomplete: Row[]; overtime: Row[]; decided: Decided[]
     counts: { late: number; early: number; absent: number; incomplete: number; overtime: number; permissions: number | null; missing: number | null; unmatched: number | null }
+    /** Kinds with more than the list shows. */
+    capped?: Record<string, boolean>
 }
 type Kind = 'lateEarly' | 'absent' | 'incomplete' | 'overtime' | 'decided'
 type Person = { id: string; name: string; teamLeaderId: string | null }
@@ -84,11 +86,12 @@ export default function ExceptionsTab({ q, companyId, today, onOpen }: { q: stri
     const approvesOvertime = (row: Row) => row.userId !== me && p.canFor('attendance.approve_overtime', row.userId, row.teamLeaderId)
 
     const c = data?.counts
-    const kinds: { key: Kind; label: TranslationKey; count: number | undefined }[] = [
-        { key: 'lateEarly', label: 'exc_tab_late', count: c ? c.late + c.early : undefined },
-        { key: 'absent', label: 'exc_tab_absent', count: c?.absent },
-        { key: 'incomplete', label: 'exc_tab_incomplete', count: c?.incomplete },
-        { key: 'overtime', label: 'exc_tab_overtime', count: c?.overtime },
+    const cap = data?.capped ?? {}
+    const kinds: { key: Kind; label: TranslationKey; count: number | undefined; more?: boolean }[] = [
+        { key: 'lateEarly', label: 'exc_tab_late', count: c ? c.late + c.early : undefined, more: cap.late || cap.early },
+        { key: 'absent', label: 'exc_tab_absent', count: c?.absent, more: cap.absent },
+        { key: 'incomplete', label: 'exc_tab_incomplete', count: c?.incomplete, more: cap.incomplete },
+        { key: 'overtime', label: 'exc_tab_overtime', count: c?.overtime, more: cap.overtime },
         { key: 'decided', label: 'exc_tab_decided', count: data?.decided.length },
     ]
     const waitingRequests = (c?.permissions ?? 0) + (c?.missing ?? 0)
@@ -126,7 +129,7 @@ export default function ExceptionsTab({ q, companyId, today, onOpen }: { q: stri
             <div role="tablist" style={{ display: 'flex', gap: '0.4rem', overflowX: 'auto' }}>
                 {kinds.map(k => (
                     <button key={k.key} role="tab" aria-selected={kind === k.key} className={kind === k.key ? 'btn btn-primary' : 'btn btn-secondary'} style={{ whiteSpace: 'nowrap' }} onClick={() => setKind(k.key)}>
-                        {t(k.label)}{k.count !== undefined && <span style={{ marginInlineStart: '0.4rem', opacity: 0.8 }}>({k.count})</span>}
+                        {t(k.label)}{k.count !== undefined && <span style={{ marginInlineStart: '0.4rem', opacity: 0.8 }}>({k.count}{k.more ? '+' : ''})</span>}
                     </button>
                 ))}
             </div>

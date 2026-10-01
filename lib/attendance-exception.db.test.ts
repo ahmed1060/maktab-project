@@ -91,6 +91,13 @@ describe.skipIf(!ADMIN_URL)("daily exceptions, in Postgres", () => {
         expect(out.counts).toMatchObject({ late: 3, early: 0, incomplete: 1, overtime: 1, permissions: null, missing: null, unmatched: null })
     })
 
+    it("reads each kind with a bounded query, and says when there are more than it shows (review on #15)", async () => {
+        const out = await Exceptions.list("c1", { from: "2026-10-01", to: "2026-10-19" }, ALL, NONE, 2)
+        expect(dates(out.late)).toEqual(["2026-10-07", "2026-10-08"])
+        expect(out.capped).toMatchObject({ late: true, incomplete: false, overtime: false })
+        expect(out.counts.late).toBe(2)
+    })
+
     it("excuses lateness with a reason: not charged, recorded as excused, off the list", async () => {
         expect(await day("2026-10-08")).toMatchObject({ lateMinutes: 60, deductionMinor: 15000 })
         await expect(Exceptions.decide("c1", { userId: "e1", date: "2026-10-08", subject: "LATENESS", outcome: "EXCUSED" }, "a1")).rejects.toEqual(refusal("REASON_REQUIRED"))

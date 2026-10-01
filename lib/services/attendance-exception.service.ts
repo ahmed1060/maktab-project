@@ -48,9 +48,6 @@ export type DecisionInput = { userId: string; date: string; subject: Subject; ou
 /** The most of each kind one list returns. */
 export const EXCEPTION_LIST_LIMIT = 500
 
-/** A rule outcome that needs a look: past grace, whether free this time or charged. */
-const counts = (note: unknown) => note === "FREE_OCCURRENCE" || note === "CHARGED" || note === "ESCALATED" || note === "CAPPED"
-
 export class AttendanceExceptionService {
     /**
      * What needs a decision between two dates, for the people the viewer
@@ -62,31 +59,43 @@ export class AttendanceExceptionService {
         query: { from: string; to: string },
         visible: Visibility,
         waitingFor: { permissions: Visibility | null; missing: Visibility | null; unmatched: boolean },
+        limit = EXCEPTION_LIST_LIMIT,
     ) {
         const range = { gte: wallClock(`${query.from}T00:00:00`), lte: wallClock(`${query.to}T00:00:00`) }
-        const [days, decisions, permissions, missing, unmatched] = await Promise.all([
-            prisma.attendanceDay.findMany({
-                where: {
-                    companyId, date: range, ...visibleWhere(visible),
-                    OR: [{ lateMinutes: { gt: 0 } }, { earlyLeaveMinutes: { gt: 0 } }, { status: { in: ["ABSENT", "INCOMPLETE"] } }, { overtimeStatus: "PENDING" }],
-                },
-                orderBy: [{ date: "desc" }, { userId: "asc" }],
-                omit: { inputsHash: true },
-                include: { user: { select: { firstName: true, lastName: true, teamLeaderId: true } } },
-            }),
-            prisma.attendanceDayDecision.findMany({
-                where: { companyId, date: range, ...visibleWhere(visible) },
-                orderBy: [{ date: "desc" }, { decidedAt: "desc" }],
-                include: { user: { select: { firstName: true, lastName: true, teamLeaderId: true } } },
-            }),
+        const base = { companyId, date: range, ...visibleWhere(visible) }
+        // Decisions first: they are what each kind's list leaves out.
+        const decisions = await prisma.attendanceDayDecision.findMany({
+            where: base,
+            orderBy: [{ date: "desc" }, { decidedAt: "desc" }],
+            include: { user: { select: { firstName: true, lastName: true, teamLeaderId: true } } },
+        })
+        const decided = new Set(decisions.map(d => `${d.userId}:${toDateString(d.date)}:${d.subject}`))
+        const decidedOf = (subject: Subject) => decisions.filter(d => d.subject === subject).length
+
+        // One bounded query per kind, filtered in the database (review on
+        // #15): a list of the limit, plus the decided days it may have to skip,
+        // plus one to know there are more — never every row of two months.
+        const counted = (rule: "lateness" | "earlyLeave") => ({ OR: ["FREE_OCCURRENCE", "CHARGED", "ESCALATED", "CAPPED"].map(note => ({ breakdown: { path: [rule, "note"], equals: note } })) })
+        const kind = (where: Prisma.AttendanceDayWhereInput, extra = 0) => prisma.attendanceDay.findMany({
+            where: { ...base, ...where },
+            orderBy: [{ date: "desc" }, { userId: "asc" }],
+            take: limit + extra + 1,
+            omit: { inputsHash: true },
+            include: { user: { select: { firstName: true, lastName: true, teamLeaderId: true } } },
+        })
+        const [lateRows, earlyRows, absentRows, incompleteRows, overtimeRows, permissions, missing, unmatched] = await Promise.all([
+            kind({ status: "PRESENT", lateMinutes: { gt: 0 }, ...counted("lateness") }, decidedOf("LATENESS")),
+            kind({ status: "PRESENT", earlyLeaveMinutes: { gt: 0 }, ...counted("earlyLeave") }, decidedOf("EARLY_LEAVE")),
+            kind({ status: "ABSENT" }, decidedOf("ABSENCE")),
+            kind({ status: "INCOMPLETE" }),
+            kind({ overtimeStatus: "PENDING" }),
             waitingFor.permissions ? prisma.permissionRequest.count({ where: { companyId, status: "PENDING", ...visibleWhere(waitingFor.permissions) } }) : null,
             waitingFor.missing ? prisma.missingPunchRequest.count({ where: { companyId, status: "PENDING", ...visibleWhere(waitingFor.missing) } }) : null,
             waitingFor.unmatched ? prisma.attendancePunch.count({ where: { companyId, userId: null, voidedAt: null } }) : null,
         ])
 
-        const decided = new Set(decisions.map(d => `${d.userId}:${toDateString(d.date)}:${d.subject}`))
-        const open = (userId: string, date: Date, subject: Subject) => !decided.has(`${userId}:${toDateString(date)}:${subject}`)
-        const shape = ({ user, date, firstInAt, lastOutAt, deductionDays, ...d }: (typeof days)[number]) => ({
+        type Row = (typeof lateRows)[number]
+        const shape = ({ user, date, firstInAt, lastOutAt, deductionDays, ...d }: Row) => ({
             ...d,
             date: toDateString(date),
             firstIn: firstInAt ? wallClockText(firstInAt) : null,
@@ -95,21 +104,26 @@ export class AttendanceExceptionService {
             name: `${user.firstName} ${user.lastName}`.trim(),
             teamLeaderId: user.teamLeaderId,
         })
-        const breakdown = (d: (typeof days)[number]) => (d.breakdown ?? {}) as { lateness?: { note?: unknown }; earlyLeave?: { note?: unknown } }
-        const take = <T>(rows: T[]) => rows.slice(0, EXCEPTION_LIST_LIMIT)
-
-        const late = take(days.filter(d => d.status === "PRESENT" && d.lateMinutes > 0 && counts(breakdown(d).lateness?.note) && open(d.userId, d.date, "LATENESS")).map(shape))
-        const early = take(days.filter(d => d.status === "PRESENT" && d.earlyLeaveMinutes > 0 && counts(breakdown(d).earlyLeave?.note) && open(d.userId, d.date, "EARLY_LEAVE")).map(shape))
-        const absent = take(days.filter(d => d.status === "ABSENT" && open(d.userId, d.date, "ABSENCE")).map(shape))
-        const incomplete = take(days.filter(d => d.status === "INCOMPLETE").map(shape))
-        const overtime = take(days.filter(d => d.overtimeStatus === "PENDING").map(shape))
+        const capped: Record<string, boolean> = {}
+        const open = (name: string, rows: Row[], subject?: Subject) => {
+            const left = subject ? rows.filter(d => !decided.has(`${d.userId}:${toDateString(d.date)}:${subject}`)) : rows
+            capped[name] = left.length > limit
+            return left.slice(0, limit).map(shape)
+        }
+        const late = open("late", lateRows, "LATENESS")
+        const early = open("early", earlyRows, "EARLY_LEAVE")
+        const absent = open("absent", absentRows, "ABSENCE")
+        const incomplete = open("incomplete", incompleteRows)
+        const overtime = open("overtime", overtimeRows)
         return {
             late, early, absent, incomplete, overtime,
-            decided: take(decisions).map(({ user, date, ...d }) => ({ ...d, date: toDateString(date), name: `${user.firstName} ${user.lastName}`.trim(), teamLeaderId: user.teamLeaderId })),
+            decided: decisions.slice(0, limit).map(({ user, date, ...d }) => ({ ...d, date: toDateString(date), name: `${user.firstName} ${user.lastName}`.trim(), teamLeaderId: user.teamLeaderId })),
             counts: {
                 late: late.length, early: early.length, absent: absent.length, incomplete: incomplete.length, overtime: overtime.length,
                 permissions, missing, unmatched,
             },
+            /** Kinds with more than the list shows: "500+" rather than a count that reads as the whole. */
+            capped,
         }
     }
 
