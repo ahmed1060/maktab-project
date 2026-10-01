@@ -156,13 +156,19 @@ export class AttendanceEngineService {
                 const inputs: (PricingInput & { plan: { expected: ExpectedDay; scheduleId: string | null }; policyId: string | null })[] = []
                 for (let date = from; date <= through; date = addDays(date, 1)) {
                     const noon = localToInstant(`${date}T12:00:00`, tz)
-                    const inSpan = (s: { from: Date; to: Date | null }) => s.from <= noon && (s.to === null || noon < s.to)
+                    const dayStart = localToInstant(`${date}T00:00:00`, tz)
+                    const nextStart = localToInstant(`${addDays(date, 1)}T00:00:00`, tz)
+                    // The rules payroll's employment timeline uses (review on
+                    // #13): a day employment touches at all is a working day of
+                    // theirs, and only a whole day suspended is a suspended day.
+                    const touches = (s: { from: Date; to: Date | null }) => s.from < nextStart && (s.to === null || s.to > dayStart)
+                    const covers = (s: { from: Date; to: Date | null }) => s.from <= dayStart && (s.to === null || s.to >= nextStart)
                     // Before their first day or after their last, a person has no attendance.
-                    if (person.EmploymentEvent.length > 0 && !employed.some(inSpan)) continue
+                    if (person.EmploymentEvent.length > 0 && !employed.some(touches)) continue
                     const plan = plans.get(date)!
                     const day = measureDay({
                         date, expected: plan.expected, punches: grouped.get(date) ?? [],
-                        onLeave: leaveDays.has(date), suspended: suspended.some(inSpan),
+                        onLeave: leaveDays.has(date), suspended: suspended.some(covers),
                     })
                     const policy = policyOn(policies, date)
                     const rate = rateAt(person.SalaryChange as any, noon)

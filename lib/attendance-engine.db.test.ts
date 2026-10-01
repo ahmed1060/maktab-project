@@ -88,6 +88,12 @@ describe.skipIf(!ADMIN_URL)("the attendance engine, a month in Postgres", () => 
             ('s1', 'e1', 9300, '2026-01-01T00:00:00Z'), ('s2', 'e1', 12000, '2026-09-14T21:00:00Z'), ('s3', 'e3', 9000, '2026-01-01T00:00:00Z')`)
         await db.query(`INSERT INTO "DayOffRequest"(id, "userId", type, status, date, "updatedAt") VALUES ('l1', 'e1', 'REGULAR', 'APPROVED', '2026-09-09T00:00:00Z', now())`)
 
+        // Hessa: hired at 14:00 on 3 September, suspended from 10:00 on the 10th to 10:00 on the 13th (Cairo, +03:00).
+        await db.query(`INSERT INTO "User"(id, email, password, "firstName", "lastName", role, "lastDayOffResetYear", username, "companyId", "roleId")
+            SELECT 'e4', 'e4@x', 'p', 'Hessa', 'Four', 'EMPLOYEE', 2026, 'e4', 'c1', id FROM "Role" WHERE "companyId" = 'c1' AND "builtIn" = 'EMPLOYEE'`)
+        await db.query(`INSERT INTO "EmploymentEvent"(id, "userId", type, "effectiveFrom") VALUES
+            ('h4', 'e4', 'HIRED', '2026-09-03T11:00:00Z'), ('s4', 'e4', 'SUSPENDED', '2026-09-10T07:00:00Z'), ('u4', 'e4', 'UNSUSPENDED', '2026-09-13T07:00:00Z')`)
+
         await Calendar.createSchedule("c1", { name: "Office", version: { effectiveFrom: "2026-09-01", startMinutes: 540, endMinutes: 1020, breakMinutes: 60 } }, "a1")
         const night = await Calendar.createSchedule("c1", { name: "Night", version: { effectiveFrom: "2026-09-01", startMinutes: 1320, endMinutes: 1800, breakMinutes: 30 } }, "a1")
         await Calendar.assign("c1", { userIds: ["e3"], scheduleId: night.id, effectiveFrom: "2026-09-01" }, "a1")
@@ -113,10 +119,10 @@ describe.skipIf(!ADMIN_URL)("the attendance engine, a month in Postgres", () => 
     }
 
     it("derived the month as the punches arrived and were mapped, from the first punch on", async () => {
-        // Ehab, Eman and Amal, the Admin: everyone working there is measured, 30 days each.
-        expect((await db.query(`SELECT count(*)::int AS n FROM "AttendanceDay" WHERE "companyId" = 'c1'`)).rows[0].n).toBe(90)
+        // Ehab, Eman and Amal, the Admin, 30 days each; Hessa from her first day, the 3rd.
+        expect((await db.query(`SELECT count(*)::int AS n FROM "AttendanceDay" WHERE "companyId" = 'c1'`)).rows[0].n).toBe(90 + 28)
         // Asked again, it finds nothing to change; a company with no punches has no days.
-        expect(await Engine.recomputeMonth("c1", "2026-09")).toMatchObject({ locked: false, derived: 90, written: 0 })
+        expect(await Engine.recomputeMonth("c1", "2026-09")).toMatchObject({ locked: false, derived: 118, written: 0 })
         expect(await Engine.recomputeMonth("c2", "2026-09")).toMatchObject({ derived: 0, written: 0 })
         expect((await db.query(`SELECT count(*)::int AS n FROM "AttendanceDay" WHERE "companyId" = 'c2'`)).rows[0].n).toBe(0)
     })
@@ -147,6 +153,15 @@ describe.skipIf(!ADMIN_URL)("the attendance engine, a month in Postgres", () => 
         expect(e.get("2026-09-13")).toMatchObject({ deductionMinor: 15500 })
         expect(e.get("2026-09-16")).toMatchObject({ deductionMinor: 40000 })
         expect(e.get("2026-09-09")).toMatchObject({ deductionMinor: 0 })
+    })
+
+    it("counts a day employment touches, and only whole days of a suspension (review on #13)", async () => {
+        const h = await days("e4")
+        // Hired at 14:00 on the 3rd: the 3rd is hers, the 2nd is not.
+        expect(h.has("2026-09-02")).toBe(false)
+        expect(h.get("2026-09-03")!.status).toBe("ABSENT")
+        // Suspended from 10:00 on the 10th to 10:00 on the 13th: only the 11th and 12th are whole days.
+        expect(["2026-09-10", "2026-09-11", "2026-09-12", "2026-09-13"].map(d => h.get(d)!.status)).toEqual(["ABSENT", "SUSPENDED", "SUSPENDED", "ABSENT"])
     })
 
     it("keeps a night shift's morning check-out on the night it started", async () => {
