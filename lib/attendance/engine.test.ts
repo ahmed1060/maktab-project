@@ -44,6 +44,11 @@ describe("measuring a day", () => {
         expect(early).toMatchObject({ lateMinutes: 0, earlyLeaveMinutes: 30, overtimeMinutes: 0 })
     })
 
+    it("counts as overtime only the time worked after the shift, not a gap before coming back (review on #13)", () => {
+        const day = measure(work(), [p("2026-10-04T09:00:00"), p("2026-10-04T18:00:00"), p("2026-10-04T19:00:00"), p("2026-10-04T20:00:00")])
+        expect(day).toMatchObject({ overtimeMinutes: 60 + 60, workedMinutes: 540 + 60 })
+    })
+
     it("never guesses a missing punch: an odd count is incomplete, with only the lateness known", () => {
         const day = measure(work(), [p("2026-10-04T09:40:00")])
         expect(day).toMatchObject({ status: "INCOMPLETE", firstIn: "2026-10-04T09:40:00", lastOut: null, lateMinutes: 40, earlyLeaveMinutes: 0, overtimeMinutes: 0 })

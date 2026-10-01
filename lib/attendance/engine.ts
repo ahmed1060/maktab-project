@@ -91,6 +91,13 @@ export function debounce(punches: readonly EnginePunch[]): EnginePunch[] {
     return kept
 }
 
+/** Punches taken two by two in sequence, as [in, out] seconds; an odd last one is left out. */
+function pairs(punches: readonly EnginePunch[]): [number, number][] {
+    const out: [number, number][] = []
+    for (let i = 0; i + 1 < punches.length; i += 2) out.push([wallSeconds(punches[i].at), wallSeconds(punches[i + 1].at)])
+    return out
+}
+
 export type MeasuredDay = {
     date: string
     status: DayStatus
@@ -131,8 +138,7 @@ export function measureDay(input: {
         date, status: "ABSENT", punchCount: punches.length, firstIn, lastOut,
         workedMinutes: 0, lateMinutes: 0, earlyLeaveMinutes: 0, overtimeMinutes: 0, excusedMinutes: 0,
     }
-    let worked = 0
-    for (let i = 0; i + 1 < punches.length; i += 2) worked += wallSeconds(punches[i + 1].at) - wallSeconds(punches[i].at)
+    const worked = pairs(punches).reduce((sum, [a, b]) => sum + (b - a), 0)
     const workedMinutes = Math.floor(worked / 60)
     const odd = punches.length % 2 === 1
 
@@ -160,7 +166,10 @@ export function measureDay(input: {
         workedMinutes,
         lateMinutes: lateRaw - excusedLate,
         earlyLeaveMinutes: earlyRaw - excusedEarly,
-        overtimeMinutes: Math.max(0, Math.floor((out - shift.end) / 60)),
+        // Only time actually worked past the shift's end: the sum of each
+        // pair's part after it, so a gap between leaving and coming back is
+        // not overtime (review on #13).
+        overtimeMinutes: Math.floor(pairs(punches).reduce((sum, [a, b]) => sum + Math.max(0, b - Math.max(a, shift.end)), 0) / 60),
         excusedMinutes: excusedLate + excusedEarly,
     }
 }
