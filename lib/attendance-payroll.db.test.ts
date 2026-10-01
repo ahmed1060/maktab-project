@@ -116,6 +116,9 @@ describe.skipIf(!ADMIN_URL)("attendance in payroll, in Postgres", () => {
 
     it("approves in one transaction: overtime nobody decided is rejected, the days rebuilt, priced, entered and locked", async () => {
         expect((await db.query(`SELECT "overtimeStatus" FROM "AttendanceDay" WHERE "userId" = 'e1' AND date = '2026-09-07'`)).rows[0].overtimeStatus).toBe("PENDING")
+        // The day's stored row is missing — a punch landed but its recompute
+        // failed. Approval rebuilds before it refuses what waits (review on #16).
+        await db.query(`DELETE FROM "AttendanceDay" WHERE "userId" = 'e1' AND date = '2026-09-07'`)
         // The switch is being turned on, not yet committed, as approval starts:
         // approval waits for it and uses it throughout (review on #16).
         await db.query(`UPDATE "Company" SET "attendancePayrollFrom" = NULL WHERE id = 'c1'`)

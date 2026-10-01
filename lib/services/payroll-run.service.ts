@@ -449,8 +449,13 @@ export class PayrollRunService {
             const reaches = attendanceReaches(attendancePayrollFrom, year, month)
             let overtimeRejected = 0
             if (reaches) {
+                // Rebuilt first, so overtime on days whose stored row was stale
+                // or missing is found and refused too; then rebuilt again so the
+                // money reflects those refusals (review on #16).
+                const today = calendarDateStr(new Date(), timeZone)
+                await AttendanceEngineService.recomputeMonthIn(tx, companyId, key, timeZone, today)
                 overtimeRejected = await rejectPendingOvertime(tx, companyId, year, month, approverId)
-                await AttendanceEngineService.recomputeMonthIn(tx, companyId, key, timeZone, calendarDateStr(new Date(), timeZone))
+                if (overtimeRejected > 0) await AttendanceEngineService.recomputeMonthIn(tx, companyId, key, timeZone, today)
             }
             const { register: final, payrollDay } = await this.compute(companyId, year, month, tx, reaches)
             const draft = await this.writeDraft(tx, companyId, year, month, final, payrollDay)
