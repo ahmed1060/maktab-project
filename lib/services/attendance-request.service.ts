@@ -147,8 +147,16 @@ function minutesOf(text: string): number {
 export class AttendanceRequestService {
     // --- permission hours -----------------------------------------------------
 
-    /** A month's balance, under the policy in force today when it is this month, else on its first day. */
-    static async permissionBalance(companyId: string, userId: string, month: string) {
+    /**
+     * A month's balance under the policy in force on a date in it: the date
+     * asked about (the day a request would be for, review on #14), else
+     * today when it is this month, else the month's first day.
+     */
+    static async permissionBalance(companyId: string, userId: string, month: string, date?: string | null) {
+        if (date) {
+            if (!isDateString(date)) fail("INVALID_DATE")
+            return prisma.$transaction(tx => balanceIn(tx, companyId, userId, date))
+        }
         if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) fail("INVALID_MONTH")
         const today = await this.todayIn(companyId)
         return prisma.$transaction(tx => balanceIn(tx, companyId, userId, monthOf(today) === month ? today : `${month}-01`))

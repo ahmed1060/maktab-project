@@ -1354,6 +1354,7 @@ export const en = {
         req_balance: "{left} of {total} minutes of permission left this month ({pending} waiting for a decision).",
         req_carried: "{n} min carried from last month",
         req_permissions_off: "The attendance policy doesn't allow permission hours this month.",
+        req_permissions_off_on_day: "The attendance policy doesn't allow permission hours on that day.",
         req_permissions: "Permission hours",
         req_missing: "Missing punches",
         req_overtime: "Overtime waiting for approval",

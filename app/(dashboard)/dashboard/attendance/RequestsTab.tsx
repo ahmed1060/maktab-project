@@ -80,7 +80,8 @@ function MyRequests({ today }: { today: string }) {
             <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'center' }}>
                 <h2 style={{ margin: 0, fontSize: '1.05rem' }}>{t('req_mine')}</h2>
                 <div style={{ flex: 1 }} />
-                {balance?.enabled && <button className="btn btn-primary" onClick={() => setAsking(true)}>{t('req_ask_permission')}</button>}
+                {/* Always offered: a later month's policy may allow what this one doesn't (review on #14). */}
+                <button className="btn btn-primary" onClick={() => setAsking(true)}>{t('req_ask_permission')}</button>
                 <button className="btn btn-secondary" onClick={() => setReporting(true)}>{t('req_report_missing')}</button>
             </div>
             {balance && (
@@ -140,7 +141,7 @@ function MyRequests({ today }: { today: string }) {
                 </div>
             )}
 
-            {asking && balance && <AskPermissionModal today={today} balance={balance} onClose={() => setAsking(false)} onDone={() => { setAsking(false); refresh() }} />}
+            {asking && <AskPermissionModal today={today} onClose={() => setAsking(false)} onDone={() => { setAsking(false); refresh() }} />}
             {reporting && <ReportMissingModal today={today} onClose={() => setReporting(false)} onDone={() => { setReporting(false); refresh() }} />}
             <ConfirmModal
                 isOpen={!!withdrawing}
@@ -165,11 +166,15 @@ function StatusText({ status, why }: { status: Status; why: string | null }) {
     )
 }
 
-function AskPermissionModal({ today, balance, onClose, onDone }: { today: string; balance: Balance; onClose: () => void; onDone: () => void }) {
+function AskPermissionModal({ today, onClose, onDone }: { today: string; onClose: () => void; onDone: () => void }) {
     const { t } = useLanguage()
     const { showToast } = useToast()
     const [date, setDate] = useState(today)
-    const [type, setType] = useState(balance.types[0] ?? 'LATE_ARRIVAL')
+    // The rules and balance of the chosen day's month, under the policy in force that day (review on #14).
+    const { data: balanceBody } = useSWR(/^\d{4}-\d{2}-\d{2}$/.test(date) ? `/api/attendance/permissions/balance?date=${date}` : null, fetcher)
+    const balance: Balance | undefined = balanceBody?.data
+    const [picked, setType] = useState('')
+    const type = balance?.types.includes(picked) ? picked : balance?.types[0] ?? ''
     const [start, setStart] = useState('')
     const [end, setEnd] = useState('')
     const [reason, setReason] = useState('')
@@ -189,7 +194,9 @@ function AskPermissionModal({ today, balance, onClose, onDone }: { today: string
         <Modal isOpen onClose={onClose} title={t('req_ask_permission')}>
             <div style={{ display: 'grid', gap: '0.75rem' }}>
                 <p style={{ margin: 0, ...soft }}>
-                    {t('req_limits').replace('{min}', String(balance.minPerRequestMinutes)).replace('{max}', String(balance.maxPerRequestMinutes)).replace('{left}', String(balance.remainingMinutes))}
+                    {!balance ? '…' : balance.enabled
+                        ? t('req_limits').replace('{min}', String(balance.minPerRequestMinutes)).replace('{max}', String(balance.maxPerRequestMinutes)).replace('{left}', String(balance.remainingMinutes))
+                        : t('req_permissions_off_on_day')}
                 </p>
                 <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
                     <label style={{ display: 'grid', gap: '0.25rem' }}>
@@ -199,7 +206,7 @@ function AskPermissionModal({ today, balance, onClose, onDone }: { today: string
                     <label style={{ display: 'grid', gap: '0.25rem' }}>
                         <span className="label">{t('req_type')}</span>
                         <select className="input" value={type} onChange={e => setType(e.target.value)}>
-                            {balance.types.map(x => <option key={x} value={x}>{t(TYPE_KEY[x])}</option>)}
+                            {(balance?.types ?? []).map(x => <option key={x} value={x}>{t(TYPE_KEY[x])}</option>)}
                         </select>
                     </label>
                     <label style={{ display: 'grid', gap: '0.25rem' }}>
@@ -217,7 +224,7 @@ function AskPermissionModal({ today, balance, onClose, onDone }: { today: string
                 </label>
                 <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
                     <button className="btn btn-secondary" onClick={onClose}>{t('cancel')}</button>
-                    <button className="btn btn-primary" disabled={busy || !date || !start || !end || !reason.trim()} onClick={save}>{t('req_send')}</button>
+                    <button className="btn btn-primary" disabled={busy || !balance?.enabled || !type || !date || !start || !end || !reason.trim()} onClick={save}>{t('req_send')}</button>
                 </div>
             </div>
         </Modal>

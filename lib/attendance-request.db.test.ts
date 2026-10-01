@@ -163,6 +163,15 @@ describe.skipIf(!ADMIN_URL)("attendance requests, in Postgres", () => {
             expect((await db.query(`SELECT count(*)::int AS n FROM "PermissionRequest" WHERE "userId" = 'e2' AND date = '2027-06-02'`)).rows[0].n).toBe(0)
         })
 
+        it("are shown under the policy of the day asked about (review on #14)", async () => {
+            // Permission hours off from 1 August 2027.
+            await Policy.saveVersion("c1", { effectiveFrom: "2027-08-01", body: { ...STANDARD_OFFICE, permissionHours: { ...STANDARD_OFFICE.permissionHours, enabled: false } } }, "a1")
+            await Policy.saveVersion("c1", { effectiveFrom: "2027-09-15", body: { ...STANDARD_OFFICE, permissionHours: { ...STANDARD_OFFICE.permissionHours, types: ["MIDDAY"] } } }, "a1")
+            expect(await Requests.permissionBalance("c1", "e1", "2027-08", "2027-08-10")).toMatchObject({ enabled: false })
+            expect(await Requests.permissionBalance("c1", "e1", "2027-09", "2027-09-01")).toMatchObject({ enabled: false })
+            expect(await Requests.permissionBalance("c1", "e1", "2027-09", "2027-09-20")).toMatchObject({ enabled: true, types: ["MIDDAY"] })
+        })
+
         it("are refused in a month whose payroll is approved", async () => {
             await db.query(`INSERT INTO "PayrollRun"(id, "companyId", month, year, status, "payrollDay", "updatedAt") VALUES ('run4', 'c1', 4, 2027, 'APPROVED', 25, now())`)
             await expect(Requests.requestPermission("c1", "e1", { date: "2027-04-05", type: "MIDDAY", start: "12:00", end: "13:00", reason: "x" }))

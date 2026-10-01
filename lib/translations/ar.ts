@@ -1353,6 +1353,7 @@ export const ar = {
         req_balance: "متبقٍ {left} من {total} دقيقة إذن هذا الشهر ({pending} بانتظار القرار).",
         req_carried: "{n} دقيقة مرحّلة من الشهر الماضي",
         req_permissions_off: "سياسة الحضور لا تسمح بساعات الإذن هذا الشهر.",
+        req_permissions_off_on_day: "سياسة الحضور لا تسمح بساعات الإذن في ذلك اليوم.",
         req_permissions: "ساعات الإذن",
         req_missing: "البصمات الناقصة",
         req_overtime: "عمل إضافي بانتظار الاعتماد",

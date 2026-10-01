@@ -32,7 +32,7 @@ vi.mock("@/lib/services/attendance-request.service", () => ({
         todayIn: async () => "2026-10-20",
         permissions: async (companyId: string, _q: any, visible: any) => { reached.push(`permissions:${companyId}:${visible.kind}`); return [] },
         requestPermission: async (companyId: string, userId: string) => { reached.push(`ask:${companyId}:${userId}`); return { id: "new" } },
-        permissionBalance: async (companyId: string, userId: string, month: string) => { reached.push(`balance:${companyId}:${userId}:${month}`); return {} },
+        permissionBalance: async (companyId: string, userId: string, month: string, date?: string | null) => { reached.push(`balance:${companyId}:${userId}:${month}${date ? `:${date}` : ""}`); return {} },
         permissionOf: async (id: string) => REQUESTS[id] ?? null,
         cancelPermission: async (id: string, userId: string) => { reached.push(`cancel:${id}:${userId}`) },
         decidePermission: async (id: string, d: any) => { reached.push(`decide:${id}:${d.approve}`) },
@@ -94,7 +94,7 @@ const MISSING = { at: "2026-10-15T17:00", direction: "OUT", reason: "Forgot" }
 
 const permissions = async (query = "") => (await import("@/app/api/attendance/permissions/route")).GET(new Request(url(`/api/attendance/permissions${query}`)))
 const ask = async (body: unknown = PERMISSION) => (await import("@/app/api/attendance/permissions/route")).POST(withBody("POST", "/api/attendance/permissions", body))
-const balance = async () => (await import("@/app/api/attendance/permissions/balance/route")).GET(new Request(url("/api/attendance/permissions/balance")))
+const balance = async (query = "") => (await import("@/app/api/attendance/permissions/balance/route")).GET(new Request(url(`/api/attendance/permissions/balance${query}`)))
 const cancel = async (id: string) => (await import("@/app/api/attendance/permissions/[id]/route")).DELETE(withBody("DELETE", `/api/attendance/permissions/${id}`, {}), params(id))
 const decide = async (id: string, approve = true) =>
     (await import("@/app/api/attendance/permissions/[id]/decide/route")).POST(withBody("POST", `/api/attendance/permissions/${id}/decide`, { approve }), params(id))
@@ -112,11 +112,13 @@ describe("asking for oneself", () => {
         employee()
         expect((await ask()).status).toBe(201)
         expect((await balance()).status).toBe(200)
+        // For the day a request would be for: that day's month and policy (review on #14).
+        expect((await balance("?date=2026-11-03")).status).toBe(200)
         expect((await report()).status).toBe(201)
         expect((await permissions("?mine=1")).status).toBe(200)
         expect((await missing("?mine=1")).status).toBe(200)
         expect((await cancel("r1")).status).toBe(200)
-        expect(reached).toEqual(["ask:c1:emp", "balance:c1:emp:2026-10", "report:c1:emp", "permissions:c1:OWN", "missing:c1:OWN", "cancel:r1:emp"])
+        expect(reached).toEqual(["ask:c1:emp", "balance:c1:emp:2026-10", "balance:c1:emp:2026-11:2026-11-03", "report:c1:emp", "permissions:c1:OWN", "missing:c1:OWN", "cancel:r1:emp"])
     })
 
     it("is nobody's in a company without attendance, and not the Super Admin's, who has none", async () => {
