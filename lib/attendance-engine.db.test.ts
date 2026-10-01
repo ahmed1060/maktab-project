@@ -231,6 +231,18 @@ describe.skipIf(!ADMIN_URL)("the attendance engine, a month in Postgres", () => 
         expect((await days("e1")).get("2026-09-08")!.derivedAt).toEqual(before)
     })
 
+    it("refuses a punch after midnight that belongs to a night in the approved month (review on #14)", async () => {
+        // Eman's 30 September night ends at 06:00 on 1 October; with its late
+        // margin, a punch up to noon is that night's — a September day.
+        await expect(Punches.addManual("c1", { userId: "e3", at: "2026-10-01T06:30", direction: "OUT", note: "Forgot" }, "a1"))
+            .rejects.toThrow("PAYROLL_MONTH_LOCKED")
+        // Ehab's office day ended at 17:00 on the 30th: his 06:30 is October's, and open.
+        const { id } = await Punches.addManual("c1", { userId: "e1", at: "2026-10-01T06:30", direction: "IN", note: "Early start" }, "a1")
+        // Withdrawing one of that night's is refused the same way.
+        await db.query(`UPDATE "AttendancePunch" SET "userId" = 'e3' WHERE id = $1`, [id])
+        await expect(Punches.voidPunch(id, "Wrong person", "a1")).rejects.toThrow("PAYROLL_MONTH_LOCKED")
+    })
+
     it("derives no day that has not ended", async () => {
         const result = await Engine.recomputeMonth("c1", "2099-01")
         expect(result).toMatchObject({ derived: 0, written: 0 })
