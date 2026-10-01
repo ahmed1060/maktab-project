@@ -1,7 +1,7 @@
 import { withStandardHandler } from "@/lib/api-utils"
 import { ApiResponse } from "@/lib/api-response"
 import { prisma } from "@/lib/prisma"
-import { AttendancePunchService } from "@/lib/services/attendance-punch.service"
+import { AttendancePunchService, PUNCH_LIST_LIMIT } from "@/lib/services/attendance-punch.service"
 import { punchCompany, visibilityFor, correctsCompany, correctsPerson } from "@/lib/attendance/punch-access"
 import { isDateString, addDays } from "@/lib/attendance/calendar"
 import { manualPunchSchema } from "@/lib/validations/attendance-punch.schema"
@@ -21,12 +21,15 @@ export const GET = withStandardHandler(async (req, session) => {
     if (to > addDays(from, 62)) return ApiResponse.badRequest("Ask for at most two months at a time")
     const unmatched = url.searchParams.get("unmatched") === "1"
     if (unmatched && !correctsCompany(session, access.companyId)) return ApiResponse.forbidden()
-    const punches = await AttendancePunchService.list(
+    // One more than is shown, so a list cut short says so instead of passing
+    // for the whole record (review on #12).
+    const rows = await AttendancePunchService.list(
         access.companyId,
         { from, to, userId: url.searchParams.get("userId"), unmatched },
         visibilityFor(session),
+        PUNCH_LIST_LIMIT + 1,
     )
-    return ApiResponse.success({ punches })
+    return ApiResponse.success({ punches: rows.slice(0, PUNCH_LIST_LIMIT), truncated: rows.length > PUNCH_LIST_LIMIT, limit: PUNCH_LIST_LIMIT })
 })
 
 /** A punch added by hand, for somebody else, with a reason (§14). */

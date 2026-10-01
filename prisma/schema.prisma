@@ -1756,7 +1756,8 @@ model AttendancePunch {
   voidedById           String?
   voidReason           String?
   company              Company           @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  user                 User?             @relation(fields: [userId], references: [id], onDelete: SetNull)
+  /// A permanent deletion takes their punches with it (migration 20261010100000).
+  user                 User?             @relation(fields: [userId], references: [id], onDelete: Cascade)
   import               AttendanceImport? @relation(fields: [importId], references: [id], onDelete: SetNull)
 
   @@unique([companyId, source, sourceKey])

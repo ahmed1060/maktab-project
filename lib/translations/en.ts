@@ -1255,6 +1255,7 @@ export const en = {
         punch_add: "Add a punch",
         punch_added: "Punch added",
         punch_none: "No punches in these dates.",
+        punch_truncated: "Showing the latest {n} punches only. Narrow the dates or choose a person to see the rest.",
         punch_failed: "That didn't work. Try again.",
         punch_time: "Time",
         punch_date: "Date",

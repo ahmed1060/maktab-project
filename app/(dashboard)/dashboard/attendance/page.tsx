@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import useSWR from 'swr'
@@ -47,7 +47,6 @@ type Codes = { mapped: { id: string; code: string; userId: string; name: string 
 type Tab = 'days' | 'punches' | 'import' | 'numbers'
 
 const pad = (n: number) => String(n).padStart(2, '0')
-const today = () => { const d = new Date(); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}` }
 const monthStart = (date: string) => `${date.slice(0, 8)}01`
 
 async function send(url: string, init: RequestInit, fallback: string): Promise<{ ok: true; body: any } | { ok: false; error: string }> {
@@ -75,10 +74,14 @@ export default function AttendancePage() {
     }, [t, setTitle, setSubtitle])
 
     const correctsCompany = p.companyWide('attendance.correct')
+    // The company's date, not the device's: around midnight, or for somebody
+    // abroad, they differ, and every default date below starts from it (review on #12).
+    const { data: peopleBody } = useSWR(!isSuperAdmin || companyId ? `/api/attendance/people?${q}` : null, fetcher)
+    const today: string | undefined = peopleBody?.data?.today
     const tabs: Tab[] = correctsCompany ? ['days', 'punches', 'import', 'numbers'] : ['days', 'punches']
     const [tab, setTab] = useState<Tab>('days')
 
-    if (status === 'loading') return <LoadingSpinner />
+    if (status === 'loading' || (!today && !(isSuperAdmin && !companyId))) return <LoadingSpinner />
     if (isSuperAdmin && !companyId) {
         return <p style={{ color: 'var(--text-soft)' }}>{t('punch_pick_company')}</p>
     }
@@ -95,8 +98,8 @@ export default function AttendancePage() {
                     ))}
                 </div>
             )}
-            {tab === 'days' && <DaysTab q={q} companyId={companyId} />}
-            {tab === 'punches' && <PunchesTab q={q} companyId={companyId} />}
+            {tab === 'days' && today && <DaysTab q={q} companyId={companyId} today={today} />}
+            {tab === 'punches' && today && <PunchesTab q={q} companyId={companyId} today={today} />}
             {tab === 'import' && correctsCompany && <ImportTab q={q} companyId={companyId} />}
             {tab === 'numbers' && correctsCompany && <NumbersTab q={q} companyId={companyId} />}
         </div>
@@ -119,16 +122,15 @@ const STATUS_COLOR: Record<string, string> = {
     WORKED_REST_DAY: 'var(--info-fg)', WORKED_HOLIDAY: 'var(--info-fg)',
 }
 const money = (minor: number) => (minor / 100).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-const monthOfToday = () => today().slice(0, 7)
 const lastDayOf = (month: string) => { const [y, m] = month.split('-').map(Number); return `${month}-${pad(new Date(Date.UTC(y, m, 0)).getUTCDate())}` }
 
-function DaysTab({ q, companyId }: { q: string; companyId: string | null }) {
+function DaysTab({ q, companyId, today }: { q: string; companyId: string | null; today: string }) {
     const { t } = useLanguage()
     const { showToast } = useToast()
     const p = useCan()
     const seesOthers = p.can('attendance.view_team')
     const correctsCompany = p.companyWide('attendance.correct')
-    const [month, setMonth] = useState(monthOfToday)
+    const [month, setMonth] = useState(() => today.slice(0, 7))
     const [who, setWho] = useState('')
     const [busy, setBusy] = useState(false)
     const { data: peopleBody } = useSWR(seesOthers ? `/api/attendance/people?${q}` : null, fetcher)
@@ -239,7 +241,7 @@ function DaysTab({ q, companyId }: { q: string; companyId: string | null }) {
 
 // --- Punches -------------------------------------------------------------------
 
-function PunchesTab({ q, companyId }: { q: string; companyId: string | null }) {
+function PunchesTab({ q, companyId, today }: { q: string; companyId: string | null; today: string }) {
     const { t } = useLanguage()
     const { showToast } = useToast()
     const p = useCan()
@@ -248,7 +250,7 @@ function PunchesTab({ q, companyId }: { q: string; companyId: string | null }) {
     const seesOthers = p.can('attendance.view_team')
     const correctsCompany = p.companyWide('attendance.correct')
 
-    const [from, setFrom] = useState(() => monthStart(today()))
+    const [from, setFrom] = useState(() => monthStart(today))
     const [to, setTo] = useState(today)
     const [who, setWho] = useState('')
     const [waiting, setWaiting] = useState(false)
@@ -260,6 +262,7 @@ function PunchesTab({ q, companyId }: { q: string; companyId: string | null }) {
     const listUrl = `/api/attendance/punches?${q}from=${from}&to=${to}${waiting ? '&unmatched=1' : who ? `&userId=${encodeURIComponent(who)}` : ''}`
     const { data: body, error, mutate } = useSWR(from && to && from <= to ? listUrl : null, fetcher)
     const punches: Punch[] | null = body ? body.data?.punches ?? [] : null
+    const truncated: boolean = !!body?.data?.truncated
 
     const leaderOf = useMemo(() => new Map(people.map(x => [x.id, x.teamLeaderId])), [people])
     const mayCorrect = (punch: Punch) => !punch.voidedAt && (punch.userId
@@ -307,6 +310,7 @@ function PunchesTab({ q, companyId }: { q: string; companyId: string | null }) {
                 )}
             </div>
 
+            {truncated && <p role="status" style={{ margin: 0, color: 'var(--warn-fg)', fontSize: '0.86rem' }}>{t('punch_truncated').replace('{n}', String(body?.data?.limit ?? ''))}</p>}
             {error ? <p style={{ color: 'var(--danger-fg)' }}>{t('punch_failed')}</p>
                 : punches === null ? <LoadingSpinner />
                     : punches.length === 0 ? <p style={{ margin: 0, color: 'var(--text-soft)' }}>{t('punch_none')}</p>
@@ -353,6 +357,7 @@ function PunchesTab({ q, companyId }: { q: string; companyId: string | null }) {
 
             {adding && (
                 <AddPunchModal
+                    today={today}
                     companyId={companyId}
                     people={people.filter(x => x.id !== me && p.canFor('attendance.correct', x.id, x.teamLeaderId))}
                     onClose={() => setAdding(false)}
@@ -373,7 +378,7 @@ function PunchesTab({ q, companyId }: { q: string; companyId: string | null }) {
     )
 }
 
-function AddPunchModal({ companyId, people, onClose, onAdded }: { companyId: string | null; people: Person[]; onClose: () => void; onAdded: () => void }) {
+function AddPunchModal({ companyId, today, people, onClose, onAdded }: { companyId: string | null; today: string; people: Person[]; onClose: () => void; onAdded: () => void }) {
     const { t } = useLanguage()
     const { showToast } = useToast()
     const [userId, setUserId] = useState('')
@@ -449,33 +454,42 @@ function ImportTab({ q, companyId }: { q: string; companyId: string | null }) {
     const [file, setFile] = useState<File | null>(null)
     const [dateOrder, setDateOrder] = useState<'DMY' | 'MDY'>('DMY')
     const [columns, setColumns] = useState<Report['columns']>(null)
-    const [report, setReport] = useState<Report | null>(null)
+    // The report on screen, with the exact file and settings it was made from:
+    // importing sends those, never whatever the controls hold now (review on #12).
+    const [report, setReport] = useState<(Report & { made: { file: File; dateOrder: 'DMY' | 'MDY'; columns: Report['columns'] } }) | null>(null)
     const [busy, setBusy] = useState(false)
     const [withdrawing, setWithdrawing] = useState<ImportRow | null>(null)
     const { data: history, mutate } = useSWR(`/api/attendance/imports?${q}`, fetcher)
     const imports: ImportRow[] = history?.data?.imports ?? []
+    // Bumped by every change of file or settings and by every request, so a
+    // reply to an older request is dropped rather than shown over a newer one.
+    const generation = useRef(0)
+    const invalidate = () => { generation.current += 1; setReport(null) }
 
     const run = async (commit: boolean, chosen: Report['columns'] = columns) => {
-        if (!file) return
+        const made = commit && report ? report.made : file ? { file, dateOrder, columns: chosen } : null
+        if (!made) return
+        const mine = ++generation.current
         setBusy(true)
         try {
             const form = new FormData()
-            form.append('file', file)
-            form.append('dateOrder', dateOrder)
+            form.append('file', made.file)
+            form.append('dateOrder', made.dateOrder)
             if (companyId) form.append('companyId', companyId)
-            if (chosen) form.append('columns', JSON.stringify(chosen))
+            if (made.columns) form.append('columns', JSON.stringify(made.columns))
             if (commit) form.append('commit', 'true')
             const r = await send('/api/attendance/imports', { method: 'POST', body: form }, t('punch_failed'))
+            if (mine !== generation.current) return
             if (!r.ok) return showToast(r.error, 'error')
             if (commit) {
                 showToast(t('punch_imported').replace('{n}', String(r.body.added ?? 0)), 'success')
                 setFile(null); setReport(null); setColumns(null)
                 mutate()
             } else {
-                setReport(r.body)
+                setReport({ ...r.body, made: { ...made, columns: r.body.columns } })
                 setColumns(r.body.columns)
             }
-        } finally { setBusy(false) }
+        } finally { if (mine === generation.current) setBusy(false) }
     }
 
     const withdraw = async (reason?: string) => {
@@ -491,6 +505,7 @@ function ImportTab({ q, companyId }: { q: string; companyId: string | null }) {
         const base = columns ?? { code: 0, date: 1, time: null, direction: null }
         const next = { ...base, [field]: value === '' ? null : Number(value) }
         setColumns(next)
+        // run() starts a new generation, so a reply for the previous columns is dropped.
         run(false, next)
     }
 
@@ -501,11 +516,11 @@ function ImportTab({ q, companyId }: { q: string; companyId: string | null }) {
                 <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'flex-end' }}>
                     <label style={{ display: 'grid', gap: '0.25rem' }}>
                         <span className="label">{t('punch_file')}</span>
-                        <input className="input" type="file" accept=".xlsx,.csv,.txt" onChange={e => { setFile(e.target.files?.[0] ?? null); setReport(null); setColumns(null) }} />
+                        <input className="input" type="file" accept=".xlsx,.csv,.txt" disabled={busy} onChange={e => { setFile(e.target.files?.[0] ?? null); setColumns(null); invalidate() }} />
                     </label>
                     <label style={{ display: 'grid', gap: '0.25rem' }}>
                         <span className="label">{t('punch_date_order')}</span>
-                        <select className="input" value={dateOrder} onChange={e => { setDateOrder(e.target.value as 'DMY' | 'MDY'); setReport(null) }}>
+                        <select className="input" value={dateOrder} disabled={busy} onChange={e => { setDateOrder(e.target.value as 'DMY' | 'MDY'); invalidate() }}>
                             <option value="DMY">{t('punch_date_order_dmy')}</option>
                             <option value="MDY">{t('punch_date_order_mdy')}</option>
                         </select>
@@ -513,7 +528,7 @@ function ImportTab({ q, companyId }: { q: string; companyId: string | null }) {
                     <button className="btn btn-secondary" disabled={!file || busy} onClick={() => run(false)}>{t('punch_check_file')}</button>
                 </div>
 
-                {report && <ImportReportView report={report} onPick={pick} />}
+                {report && <ImportReportView report={report} onPick={pick} busy={busy} />}
 
                 {report && (
                     <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
@@ -556,12 +571,12 @@ function ImportTab({ q, companyId }: { q: string; companyId: string | null }) {
     )
 }
 
-function ImportReportView({ report, onPick }: { report: Report; onPick: (field: 'code' | 'date' | 'time' | 'direction', value: string) => void }) {
+function ImportReportView({ report, onPick, busy }: { report: Report; onPick: (field: 'code' | 'date' | 'time' | 'direction', value: string) => void; busy: boolean }) {
     const { t } = useLanguage()
     const columnSelect = (field: 'code' | 'date' | 'time' | 'direction', labelKey: TranslationKey, optional: boolean) => (
         <label style={{ display: 'grid', gap: '0.25rem' }}>
             <span className="label">{t(labelKey)}</span>
-            <select className="input" value={report.columns?.[field] ?? ''} onChange={e => onPick(field, e.target.value)}>
+            <select className="input" value={report.columns?.[field] ?? ''} disabled={busy} onChange={e => onPick(field, e.target.value)}>
                 {(optional || !report.columns) && <option value="">{optional ? t('punch_column_none') : t('punch_column_choose')}</option>}
                 {report.headers.map((h, i) => <option key={i} value={i}>{h || `#${i + 1}`}</option>)}
             </select>

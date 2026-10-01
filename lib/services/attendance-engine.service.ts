@@ -11,7 +11,7 @@ import { rateAt } from "@/lib/salary-history"
 import { daysInMonth, toMinor } from "@/lib/payroll"
 import { SCHEDULE_INCLUDE, serializeSchedule } from "./attendance-calendar.service"
 import { AttendancePolicyService } from "./attendance-policy.service"
-import { lockMonths, lockedMonths } from "./attendance-punch.service"
+import { lockMonths, lockedMonths } from "./attendance-lock"
 
 /**
  * Rebuilding attendance days (ATTENDANCE_PLAN.md §11). Pure and idempotent:

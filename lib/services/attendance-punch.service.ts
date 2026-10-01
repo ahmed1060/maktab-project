@@ -4,6 +4,7 @@ import { Prisma } from "@prisma/client"
 import { AuditLogService } from "./audit-log.service"
 import { recomputeAfter } from "./attendance-recompute"
 import { serialize } from "./attendance-calendar.service"
+import { lockMonths, lockedMonths } from "./attendance-lock"
 import { localToInstant, parseRows, detectColumns, type Cell, type ColumnMap, type DateOrder, type RowError } from "@/lib/attendance/punch-import"
 import { MAX_ROWS } from "@/lib/attendance/punch-file"
 import { addDays } from "@/lib/attendance/calendar"
@@ -24,6 +25,9 @@ import { addDays } from "@/lib/attendance/calendar"
 
 const PREVIEW_PROBLEMS = 50
 
+/** The most punches one list returns; the route asks for one more, to know it stopped short. */
+export const PUNCH_LIST_LIMIT = 2000
+
 function fail(code: string): never {
     throw new Error(code)
 }
@@ -39,28 +43,7 @@ const monthOf = (local: string) => local.slice(0, 7)
 const wallClock = (local: string) => new Date(`${local}Z`)
 const wallClockText = (d: Date) => d.toISOString().slice(0, 19)
 
-/**
- * Takes the company-month lock for each month, in order (§12.1). Payroll
- * approval takes the same lock, so a punch and the approval that freezes its
- * month happen one after the other, never across each other.
- */
-export async function lockMonths(tx: Prisma.TransactionClient, companyId: string, months: Iterable<string>) {
-    for (const month of [...new Set(months)].sort()) await serialize(tx, `attendance-month:${companyId}:${month}`)
-}
-
-/** Which of these months have an approved or paid payroll run. Read after the lock. */
-export async function lockedMonths(tx: Prisma.TransactionClient, companyId: string, months: Iterable<string>): Promise<Set<string>> {
-    const wanted = [...new Set(months)]
-    if (wanted.length === 0) return new Set()
-    const runs = await tx.payrollRun.findMany({
-        where: {
-            companyId, status: { in: ["APPROVED", "PAID"] },
-            OR: wanted.map(m => ({ year: Number(m.slice(0, 4)), month: Number(m.slice(5, 7)) })),
-        },
-        select: { year: true, month: true },
-    })
-    return new Set(runs.map(r => `${r.year}-${String(r.month).padStart(2, "0")}`))
-}
+export { lockMonths, lockedMonths } from "./attendance-lock"
 
 /** Whose punches a viewer sees: the company's, their team's, or their own. */
 export type Visibility = { kind: "COMPANY" } | { kind: "TEAM"; leaderId: string } | { kind: "OWN"; userId: string }
@@ -126,16 +109,28 @@ export class AttendancePunchService {
         const problems = parsed.flatMap(r => (r.ok ? [] : [{ row: r.row, code: r.code, error: r.error }]))
 
         const company = await prisma.company.findUnique({ where: { id: companyId }, select: { timezone: true } }) ?? fail("COMPANY_NOT_FOUND")
-        const mappings = await prisma.attendanceCode.findMany({
-            where: { companyId, code: { in: [...new Set(good.map(r => r.code))] } },
-            select: { code: true, userId: true, user: { select: { firstName: true, lastName: true } } },
-        })
-        const owner = new Map(mappings.map(m => [m.code, m]))
-        const sourceKey = (row: number) => `${file.hash}:${row}`
-
         const run = async (tx: Prisma.TransactionClient) => {
             const months = new Set(good.map(r => monthOf(r.local)))
-            if (commit) await lockMonths(tx, companyId, months)
+            if (commit) {
+                // The mappings are read under the lock mapping takes, in the
+                // same order (numbers, then months), so a number mapped while
+                // this file goes in either reaches these rows or finds them
+                // waiting afterwards — never neither (review on #12).
+                await serialize(tx, `attendance-codes:${companyId}`)
+                await lockMonths(tx, companyId, months)
+            }
+            const mappings = await tx.attendanceCode.findMany({
+                where: { companyId, code: { in: [...new Set(good.map(r => r.code))] } },
+                select: { code: true, userId: true, user: { select: { firstName: true, lastName: true } } },
+            })
+            const owner = new Map(mappings.map(m => [m.code, m]))
+            // A file withdrawn and sent again — read with the right date order
+            // or columns this time — is a new import, not a duplicate of the
+            // withdrawn one (review on #12): each withdrawal of a file starts
+            // a new generation of its row keys. A file sent twice while its
+            // first import stands is still stored once.
+            const generation = await tx.attendanceImport.count({ where: { companyId, fileHash: file.hash, voidedAt: { not: null } } })
+            const sourceKey = (row: number) => generation === 0 ? `${file.hash}:${row}` : `${file.hash}#${generation}:${row}`
             const locked = await lockedMonths(tx, companyId, months)
             const open = good.filter(r => !locked.has(monthOf(r.local)))
             const existing = await tx.attendancePunch.findMany({
@@ -235,7 +230,7 @@ export class AttendancePunchService {
     // --- one punch ------------------------------------------------------------
 
     /** Lists punches between two dates (inclusive), newest first, as far as the viewer sees. */
-    static async list(companyId: string, query: { from: string; to: string; userId?: string | null; unmatched?: boolean }, visible: Visibility) {
+    static async list(companyId: string, query: { from: string; to: string; userId?: string | null; unmatched?: boolean }, visible: Visibility, limit = PUNCH_LIST_LIMIT) {
         if (query.unmatched && visible.kind !== "COMPANY") return []
         const rows = await prisma.attendancePunch.findMany({
             where: {
@@ -245,7 +240,7 @@ export class AttendancePunchService {
                 ...visibleWhere(visible),
             },
             orderBy: [{ punchAtLocal: "desc" }],
-            take: 2000,
+            take: limit,
             select: {
                 id: true, userId: true, hardwareUserId: true, source: true, punchAtLocal: true, direction: true, status: true, note: true,
                 importId: true, receivedAt: true, voidedAt: true, voidReason: true,

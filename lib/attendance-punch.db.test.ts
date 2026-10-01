@@ -177,6 +177,41 @@ describe.skipIf(!ADMIN_URL)("punches, in Postgres", () => {
         })
     })
 
+    describe("a number mapped while a file goes in (review on #12)", () => {
+        it("reaches the file's rows: the import reads the mappings after the mapping commits", async () => {
+            // Another connection maps 555 under the numbers' lock, as mapCode does, finding nothing waiting yet.
+            const other = new Client({ connectionString: process.env.POSTGRES_PRISMA_URL })
+            await other.connect()
+            await other.query("BEGIN")
+            await other.query(`SELECT pg_advisory_xact_lock(hashtext('attendance-codes:c1'))`)
+            const imported = Punches.importRows("c1", file([FILE[0], ["555", "Ehab", "05/10/2026 08:00", "C/In"]], "hash-555"), { dateOrder: "DMY" }, "a1", true)
+                .then(r => r.added, (e: Error) => e.message)
+            await new Promise(r => setTimeout(r, 300))
+            await other.query(`INSERT INTO "AttendanceCode"(id, "companyId", code, "userId", "createdById") VALUES ('m555', 'c1', '555', 'e1', 'a1')`)
+            await other.query("COMMIT")
+            await other.end()
+            expect(await imported).toBe(1)
+            expect((await rows(`"hardwareUserId" = '555'`))[0].userId).toBe("e1")
+        })
+    })
+
+    describe("payroll approval and a punch at the same moment (review on #12)", () => {
+        it("makes the punch wait for the approval, then refuses it", async () => {
+            // Another connection approves November while holding the month's lock, as approval does.
+            const other = new Client({ connectionString: process.env.POSTGRES_PRISMA_URL })
+            await other.connect()
+            await other.query("BEGIN")
+            await other.query(`SELECT pg_advisory_xact_lock(hashtext('attendance-month:c1:2026-11'))`)
+            const punch = Punches.addManual("c1", { userId: "e3", at: "2026-11-02T09:00", direction: "IN", note: "During approval" }, "a1")
+                .then(() => "added", (e: Error) => e.message)
+            await new Promise(r => setTimeout(r, 300))
+            await other.query(`INSERT INTO "PayrollRun"(id, "companyId", month, year, status, "payrollDay", "updatedAt") VALUES ('run11', 'c1', 11, 2026, 'APPROVED', 25, now())`)
+            await other.query("COMMIT")
+            await other.end()
+            expect(await punch).toBe("PAYROLL_MONTH_LOCKED")
+        })
+    })
+
     describe("seeing punches", () => {
         it("shows the company's, one's own, and the ones waiting for a person separately", async () => {
             const all = await Punches.list("c1", { from: "2026-10-01", to: "2026-10-31" }, { kind: "COMPANY" })
@@ -214,11 +249,28 @@ describe.skipIf(!ADMIN_URL)("punches, in Postgres", () => {
         })
     })
 
+    it("takes a withdrawn file again, as a new import, and still stores a resend of it once (review on #12)", async () => {
+        const { rows: [imp] } = await db.query(`SELECT id FROM "AttendanceImport" WHERE "fileHash" = 'hash-oct'`)
+        expect(imp).toBeTruthy()
+        const again = await Punches.importRows("c1", file(), { dateOrder: "DMY" }, "a1", true)
+        expect(again).toMatchObject({ added: 3, duplicates: 0 })
+        expect((await rows(`"sourceKey" LIKE 'hash-oct#1:%' AND "voidedAt" IS NULL`)).length).toBe(3)
+        await expect(Punches.importRows("c1", file(), { dateOrder: "DMY" }, "a1", true)).rejects.toEqual(refusal("IMPORT_NOTHING_NEW"))
+    })
+
+    it("lets a person with punches added by hand be deleted permanently, taking their punches (review on #12)", async () => {
+        await db.query(`INSERT INTO "User"(id, email, password, "firstName", "lastName", role, "lastDayOffResetYear", username, "companyId", "roleId") SELECT 'gone', 'gone@x', 'p', 'Gone', 'Soon', 'EMPLOYEE', 2026, 'gone', 'c1', id FROM "Role" WHERE "companyId" = 'c1' AND "builtIn" = 'EMPLOYEE'`)
+        await db.query(`INSERT INTO "AttendancePunch"(id, "companyId", "userId", source, "sourceKey", "punchAtLocal", "punchAt", "resolvedWithTimeZone") VALUES ('byhand', 'c1', 'gone', 'MANUAL', 'byhand', '2026-10-02 09:00', now(), 'Africa/Cairo')`)
+        await db.query(`DELETE FROM "User" WHERE id = 'gone'`)
+        expect(await rows(`id = 'byhand'`)).toEqual([])
+    })
+
     it("writes every change to the audit log, as the person who made it", async () => {
         const { rows: log } = await db.query(`SELECT action, "entityType", "userId" FROM "AuditLog" WHERE "entityType" LIKE 'ATTENDANCE_%' AND "entityType" NOT IN ('ATTENDANCE_CALENDAR', 'ATTENDANCE_POLICY') ORDER BY "createdAt"`)
         expect(log.map(l => l.action)).toEqual([
             "IMPORT_ATTENDANCE_PUNCHES", "MAP_ATTENDANCE_CODE", "IMPORT_ATTENDANCE_PUNCHES", "MAP_ATTENDANCE_CODE",
-            "UNMAP_ATTENDANCE_CODE", "MAP_ATTENDANCE_CODE", "ADD_ATTENDANCE_PUNCH", "VOID_ATTENDANCE_PUNCH", "VOID_ATTENDANCE_IMPORT",
+            "UNMAP_ATTENDANCE_CODE", "MAP_ATTENDANCE_CODE", "ADD_ATTENDANCE_PUNCH", "VOID_ATTENDANCE_PUNCH", "IMPORT_ATTENDANCE_PUNCHES",
+            "VOID_ATTENDANCE_IMPORT", "IMPORT_ATTENDANCE_PUNCHES",
         ])
         expect(new Set(log.map(l => l.userId))).toEqual(new Set(["a1"]))
     })

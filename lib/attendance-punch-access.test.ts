@@ -21,9 +21,14 @@ vi.mock("@/lib/prisma", () => ({ prisma: prismaMock }))
 vi.mock("@/lib/services/audit-log.service", () => ({ AuditLogService: { log: async () => {}, logSystemError: async () => "ref", friendlyErrorMessage: () => "error" } }))
 
 const reached: string[] = []
+vi.mock("@/lib/services/attendance-calendar.service", () => ({ AttendanceCalendarService: { today: async (companyId: string) => companyId === "c1" ? "2026-10-01" : "2026-09-30" } }))
 vi.mock("@/lib/services/attendance-punch.service", () => ({
+    PUNCH_LIST_LIMIT: 2000,
     AttendancePunchService: {
-        list: async (companyId: string, query: any, visible: any) => { reached.push(`list:${companyId}:${visible.kind}${query.unmatched ? ":unmatched" : ""}`); return [] },
+        list: async (companyId: string, query: any, visible: any, limit: number) => {
+            reached.push(`list:${companyId}:${visible.kind}${query.unmatched ? ":unmatched" : ""}`)
+            return Array.from({ length: query.userId === "busy" ? limit : 1 }, (_, i) => ({ id: `p${i}` }))
+        },
         addManual: async (companyId: string, input: any) => { reached.push(`add:${companyId}:${input.userId}`); return { id: "p-new" } },
         punchOf: async (id: string) => ({
             p1: { id: "p1", companyId: "c1", userId: "emp", user: { teamLeaderId: "tl" } },
@@ -40,6 +45,7 @@ vi.mock("@/lib/services/attendance-punch.service", () => ({
         mapCode: async (companyId: string, input: any) => { reached.push(`map:${companyId}:${input.code}:${input.userId}`); return { id: "m-new" } },
         codeOf: async (id: string) => id === "m1" ? { id: "m1", companyId: "c1", code: "101", userId: "emp", user: { teamLeaderId: null } } : null,
         unmapCode: async (id: string) => { reached.push(`unmap:${id}`); return { unfilled: 0 } },
+        people: async () => [],
     },
 }))
 
@@ -214,5 +220,40 @@ describe("the company must hold attendance", () => {
         expect((await list("companyId=c1&from=2026-10-01&to=2026-10-31")).status).toBe(200)
         expect((await list()).status).toBe(400)
         expect(reached).toEqual(["list:c1:COMPANY"])
+    })
+})
+
+describe("the screen's dates (review on #12)", () => {
+    it("come from the company's calendar, not the viewer's device", async () => {
+        admin()
+        const res = await (await import("@/app/api/attendance/people/route")).GET(new Request(url("/api/attendance/people")))
+        expect((await res.json()).data.today).toBe("2026-10-01")
+        const page = (await import("node:fs")).readFileSync("app/(dashboard)/dashboard/attendance/page.tsx", "utf8")
+        expect(page).not.toMatch(/new Date\(\)\s*;\s*return\s*`\$\{d\.getFullYear\(\)/)
+        expect(page).not.toMatch(/\.getDate\(\)/)
+    })
+})
+
+describe("a long list (review on #12)", () => {
+    it("says it stopped short rather than passing for the whole record", async () => {
+        admin()
+        const full = await (await list("from=2026-10-01&to=2026-10-31&userId=busy")).json()
+        expect(full.data).toMatchObject({ truncated: true, limit: 2000 })
+        expect(full.data.punches).toHaveLength(2000)
+        const short = await (await list()).json()
+        expect(short.data).toMatchObject({ truncated: false })
+        expect(short.data.punches).toHaveLength(1)
+    })
+})
+
+describe("the import preview (review on #12)", () => {
+    const page = () => require("node:fs").readFileSync("app/(dashboard)/dashboard/attendance/page.tsx", "utf8") as string
+    it("drops a reply to an older request instead of showing it over a newer one", () => {
+        expect(page()).toContain("const mine = ++generation.current")
+        expect(page()).toContain("if (mine !== generation.current) return")
+    })
+    it("imports the file and settings the report on screen was made from", () => {
+        expect(page()).toMatch(/const made = commit && report \? report\.made/)
+        expect(page()).toContain("form.append('file', made.file)")
     })
 })

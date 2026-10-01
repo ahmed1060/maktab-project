@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma"
+import { lockMonths } from "./attendance-lock"
 import { buildRegister, variance, nextIssueBatch, issueProgress, ISSUE_BATCH_SIZE, type PersonMonth, type AdjustmentInput } from "@/lib/register"
 import { DEBT_RECOVERY_SOURCE, type RecoverableDebt } from "@/lib/debt-recovery"
 import { timelineForMonth } from "@/lib/employment"
@@ -395,6 +396,11 @@ export class PayrollRunService {
         const { timeZone } = await this.policy(companyId)
 
         return prisma.$transaction(async (tx) => {
+            // The month's attendance lock (ATTENDANCE_PLAN.md §12.1): a punch
+            // imported, added or withdrawn for this month waits for the
+            // approval to commit and is then refused, rather than landing
+            // between the check that the month is open and the approval.
+            await lockMonths(tx, companyId, [`${year}-${String(month).padStart(2, "0")}`])
             const run = await tx.payrollRun.update({
                 where: { companyId_month_year: { companyId, month, year } },
                 data: {
