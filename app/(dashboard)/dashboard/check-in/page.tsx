@@ -13,6 +13,7 @@ import type { TranslationKey } from '@/lib/translations'
 import { checkInDevice, inNativeApp } from '@/lib/mobile/native'
 import { checkIn, deviceFingerprint, registerPhone, type CheckInAnswer } from '@/lib/mobile/check-in-flow'
 import { answerKey, thisPhone } from '@/lib/mobile/screen'
+import { enablePush, pushPlugin } from '@/lib/mobile/push'
 import { send, json } from '../attendance/send'
 import { AskPermissionModal } from '../attendance/RequestsTab'
 
@@ -82,6 +83,8 @@ export default function CheckInPage() {
         try {
             await registerPhone(device!, post)
             showToast(t('ci_registered'), 'success')
+            // A new phone has a new key: tell the server where to push to it.
+            void enablePush(device!, pushPlugin(), post)
             await Promise.all([refreshFingerprint(), refreshPhone()])
         } catch (e) { problem(e) } finally { setBusy(null) }
     }

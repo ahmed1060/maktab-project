@@ -7,6 +7,7 @@ import { moduleForPagePath } from '@/lib/features'
 import { useFeatures } from '@/lib/features/useFeatures'
 import { hasBundle } from '@/lib/features/bundles'
 import { inNativeApp } from '@/lib/mobile/native'
+import AppPush from './AppPush'
 import { MANAGEMENT_MODULES, MENU_MODULES, type ModuleKey } from '@/lib/modules'
 import { useModules } from '@/lib/useModules'
 import { useCompanyBranding } from '@/context/CompanyBrandingContext'
@@ -143,6 +144,8 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
 
     return (
         <div style={{ display: 'flex', minHeight: '100vh', background: 'transparent' }}>
+            {/* Inside the Nizmo app: pushes on, and a tapped notice opens its page. */}
+            {inApp && <AppPush />}
             {/* Renders nothing; sets the browser tab title for the current route.
                 Mounted once here rather than per page, because 27 of the 35
                 dashboard pages are Client Components and cannot export metadata. */}

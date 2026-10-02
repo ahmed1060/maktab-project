@@ -67,6 +67,52 @@ On an emulator, set its location to the work location's address in the
 emulator's own location controls first. A fake-location app on a real phone
 is what the check-in refuses.
 
+## Push notifications
+
+The app asks once for permission, then sends the server the token its push
+service gives (`lib/mobile/push.ts`). Notices about the person's own
+attendance (check-in decisions, days, phone, requests, reminders) are then
+pushed to their phone as well as shown in the bell, in their language;
+tapping one opens its page. Without the setup below the app works the same,
+with no pushes.
+
+**Android, through Firebase Cloud Messaging**
+1. Create a Firebase project (free), add an Android app with the app ID
+   `com.shsd.nizmo`, download `google-services.json` and put it in
+   `mobile/android/app/`. Then rebuild.
+2. In Firebase: Project settings → Service accounts → Generate new private
+   key. Put the whole JSON, as one line, in the server's environment as
+   `FCM_SERVICE_ACCOUNT`.
+
+**iOS, through Apple Push Notification service** (needs the Apple developer account)
+1. In Xcode: the App target → Signing & Capabilities → + Push Notifications.
+2. In the Apple developer site: Keys → + → Apple Push Notifications service.
+   Download the `.p8` file once. On the server set `APNS_KEY` (the file's
+   text; newlines may be written as `\n`), `APNS_KEY_ID` (the key's ID),
+   `APNS_TEAM_ID`, and `APNS_SANDBOX=true` while you test with builds from
+   Xcode. `APNS_BUNDLE_ID` if the app ID isn't `com.shsd.nizmo`.
+
+## Reminders
+
+"You haven't checked in" goes to whoever checks in with the app and hasn't,
+N minutes after their shift starts (the policy's setting, 15 in the standard
+template). The same job sends the pushes. It must run every few minutes:
+
+```
+GET https://your-nizmo-domain/api/cron/check-in-reminder
+Authorization: Bearer <CRON_SECRET>
+```
+
+Vercel's Hobby plan runs crons at most once a day, so it isn't in
+`vercel.json`. Either:
+
+- on Vercel Pro, add `{ "path": "/api/cron/check-in-reminder", "schedule": "*/5 * * * *" }`
+  to `vercel.json`'s crons; or
+- use a free scheduler such as cron-job.org: every 5 minutes, that URL, with
+  the `Authorization` header above.
+
+System Health shows "Check-in reminders" as late until something calls it.
+
 ## Not yet
 
 - **Attestation.** `requestAttestation` returns no token, and the server has
@@ -75,8 +121,6 @@ is what the check-in refuses.
   (`ATTENDANCE_ATTESTATION` unset). Play Integrity needs the app's Google Cloud
   project number; App Attest needs the Apple team. Once they are built, set
   `ATTENDANCE_ATTESTATION=required` on the server.
-- **Push notifications** and the no-check-in reminder (§13.4): they need a
-  Firebase project (Android) and an APNs key (iOS).
 - **Face verification** (Phase 3b).
 
 ## How it was checked
