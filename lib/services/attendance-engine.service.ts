@@ -423,6 +423,40 @@ export class AttendanceEngineService {
         return { month, from: current.from, through: current.through, people, totals: { current: total("current"), draft: total("draft") } }
     }
 
+    /**
+     * What one date is for one person, and the lateness rule in force that
+     * day: the same inputs the engine measures them against, read for one
+     * day rather than a month. Today's day isn't derived until tomorrow, so
+     * a check-in that wants to say "you're late" asks here.
+     */
+    static async expectedFor(companyId: string, userId: string, date: string): Promise<{ expected: ExpectedDay; lateness: PolicyBody["lateness"] | null }> {
+        const day = wallClock(`${date}T00:00:00`)
+        const [schedules, assignments, defaults, central, exclusions, own, policies] = await Promise.all([
+            prisma.workSchedule.findMany({ where: { companyId }, include: SCHEDULE_INCLUDE }),
+            prisma.userSchedule.findMany({ where: { userId, schedule: { companyId } }, select: { scheduleId: true, effectiveFrom: true } }),
+            prisma.scheduleDefault.findMany({ where: { companyId }, select: { scheduleId: true, effectiveFrom: true } }),
+            prisma.publicHoliday.findMany({ where: { country: "EG", date: day } }),
+            prisma.companyHolidayExclusion.findMany({ where: { companyId }, select: { publicHolidayId: true } }),
+            prisma.companyHoliday.findMany({ where: { companyId, date: day } }),
+            AttendancePolicyService.versions(companyId),
+        ])
+        const scheduleId = scheduleIdOn(
+            assignments.map(a => ({ scheduleId: a.scheduleId, effectiveFrom: toDateString(a.effectiveFrom) })),
+            defaults.map(d => ({ scheduleId: d.scheduleId, effectiveFrom: toDateString(d.effectiveFrom) })),
+            date,
+        )
+        const found = scheduleId ? schedules.find(s => s.id === scheduleId) : undefined
+        const holidays = observedHolidays(
+            central.map(h => ({ id: h.id, date: toDateString(h.date), name: h.name })),
+            new Set(exclusions.map(e => e.publicHolidayId)),
+            own.map(h => ({ id: h.id, date: toDateString(h.date), name: h.name, isPaid: h.isPaid })),
+            date, date,
+        )
+        const weeks = policies.map(p => ({ effectiveFrom: p.effectiveFrom, workWeek: p.body.workWeek }))
+        const expected = expectedDay({ date, schedule: found ? serializeSchedule(found) : null, companyWorkWeek: companyWeekOn(weeks, date), holiday: holidays.get(date) ?? null })
+        return { expected, lateness: policyOn(policies, date)?.body.lateness ?? null }
+    }
+
     /** Rebuilds every month from a date's month to today's, skipping locked ones. */
     static async recomputeFrom(companyId: string, fromDate: string, userIds?: readonly string[]): Promise<RecomputeResult[]> {
         const company = await prisma.company.findUnique({ where: { id: companyId }, select: { timezone: true } })

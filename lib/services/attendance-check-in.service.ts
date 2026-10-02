@@ -8,7 +8,8 @@ import { lockMonths, lockedMonths, punchMonths } from "./attendance-lock"
 import { parsePhoneKey, signatureValid, signedText } from "@/lib/attendance/phone-keys"
 import { attestationMode, verifyAttestation } from "@/lib/attendance/attestation"
 import { judgeCheckIn, type FlagReason } from "@/lib/attendance/check-in-rules"
-import { addDays } from "@/lib/attendance/calendar"
+import { addDays, formatMinutes } from "@/lib/attendance/calendar"
+import { AttendanceEngineService } from "./attendance-engine.service"
 import { DEFAULT_TIME_ZONE, offsetMsIn } from "@/lib/time"
 
 /**
@@ -41,7 +42,11 @@ export type CheckInInput = {
 
 export type CheckInResult =
     | { outcome: "REFUSED"; reason: string }
-    | { outcome: "ACCEPTED" | "FLAGGED" | "HELD"; reasons: FlagReason[]; place: { id: string; name: string }; distanceMeters: number; at: string }
+    | {
+        outcome: "ACCEPTED" | "FLAGGED" | "HELD"; reasons: FlagReason[]; place: { id: string; name: string }; distanceMeters: number; at: string
+        /** The day's first check-in, past its start and its grace: the app offers to ask for permission hours (§13.6). */
+        late: { minutes: number; startsAt: string } | null
+    }
 
 function fail(code: string): never {
     throw new Error(code)
@@ -125,14 +130,37 @@ export class AttendanceCheckInService {
                 },
             })
             return {
-                result: { outcome: verdict.outcome, reasons: verdict.reasons, place: { id: verdict.place.id, name: verdict.place.name }, distanceMeters: verdict.distanceMeters, at: local },
+                result: { outcome: verdict.outcome, reasons: verdict.reasons, place: { id: verdict.place.id, name: verdict.place.name }, distanceMeters: verdict.distanceMeters, at: local, late: null },
                 counts: verdict.outcome === "ACCEPTED",
             }
         })
         if (!out.result) fail("PHONE_SIGNATURE_INVALID")
         // From the day before: a check-in after midnight can end the night shift that began then.
         if (out.counts) await recomputeAfter(companyId, addDays(local.slice(0, 10), -1), [userId])
-        return out.result
+        if (out.result.outcome === "REFUSED") return out.result
+        return { ...out.result, late: await AttendanceCheckInService.lateness(companyId, userId, local) }
+    }
+
+    /**
+     * How late this check-in is, when it is the day's first and the day is a
+     * working one: minutes past the start, if past the policy's grace. Null
+     * otherwise — a second check-in, a rest day, no schedule, or lateness not
+     * charged at all, when asking for permission would be pointless.
+     */
+    static async lateness(companyId: string, userId: string, local: string): Promise<{ minutes: number; startsAt: string } | null> {
+        const date = local.slice(0, 10)
+        const earlier = await prisma.attendancePunch.count({
+            where: {
+                userId, voidedAt: null, status: { in: ["ACCEPTED", "FLAGGED", "PENDING_DEVICE"] },
+                punchAtLocal: { gte: new Date(`${date}T00:00:00Z`), lt: new Date(`${local}Z`) },
+            },
+        })
+        if (earlier > 0) return null
+        const { expected, lateness } = await AttendanceEngineService.expectedFor(companyId, userId, date)
+        if (expected.kind !== "WORK" || !lateness?.enabled) return null
+        const minutes = Number(local.slice(11, 13)) * 60 + Number(local.slice(14, 16)) - expected.hours.startMinutes
+        if (minutes <= lateness.graceMinutes) return null
+        return { minutes, startsAt: formatMinutes(expected.hours.startMinutes) }
     }
 
     private static async refuse(db: Prisma.TransactionClient, companyId: string, userId: string, phoneId: string | null, reason: string, ip: string | null, at: Date, details?: Prisma.InputJsonValue) {

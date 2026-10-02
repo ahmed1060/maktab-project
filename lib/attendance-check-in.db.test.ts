@@ -5,6 +5,9 @@ import { AttendanceCheckInService as CheckIns, checkInText } from "@/lib/service
 import { AttendancePhoneService as Phones } from "@/lib/services/attendance-phone.service"
 import { AttendanceChallengeService as Challenges } from "@/lib/services/attendance-challenge.service"
 import { AttendanceLocationService as Locations } from "@/lib/services/attendance-location.service"
+import { AttendanceCalendarService as Calendar } from "@/lib/services/attendance-calendar.service"
+import { AttendancePolicyService as Policy } from "@/lib/services/attendance-policy.service"
+import { STANDARD_OFFICE } from "@/lib/attendance/policy"
 import { parsePhoneKey, signedText } from "@/lib/attendance/phone-keys"
 import { phoneKeyPair } from "@/lib/attendance/test-phone"
 
@@ -32,7 +35,8 @@ INSERT INTO "User"(id, email, password, "firstName", "lastName", role, "lastDayO
  ('a1', 'a1@x', 'p', 'Amal', 'One', 'ADMIN', 2026, 'a1', 'c1', NULL),
  ('e1', 'e1@x', 'p', 'Ehab', 'One', 'EMPLOYEE', 2026, 'e1', 'c1', NULL),
  ('e2', 'e2@x', 'p', 'Eman', 'Two', 'EMPLOYEE', 2026, 'e2', 'c1', NULL),
- ('e3', 'e3@x', 'p', 'Essam', 'Three', 'EMPLOYEE', 2026, 'e3', 'c1', NULL);
+ ('e3', 'e3@x', 'p', 'Essam', 'Three', 'EMPLOYEE', 2026, 'e3', 'c1', NULL),
+ ('e4', 'e4@x', 'p', 'Eslam', 'Four', 'EMPLOYEE', 2026, 'e4', 'c1', NULL);
 `
 
 // Tahrir: the office's centre; about 11 m away; about 333 m away.
@@ -60,7 +64,7 @@ describe.skipIf(!ADMIN_URL)("checking in with the app, in Postgres", () => {
         await db.query(`UPDATE "Company" SET timezone = 'Africa/Cairo' WHERE id = 'c1'`)
         process.env.POSTGRES_PRISMA_URL = url.toString()
         const office = await Locations.create("c1", { name: "Head office", ...OFFICE, radiusMeters: 100, officeIpRanges: ["198.51.100.0/24"] }, "a1")
-        await Locations.setPeople(office.id, ["e1", "e2"], "a1")
+        await Locations.setPeople(office.id, ["e1", "e2", "e4"], "a1")
     }, 180_000)
 
     afterAll(async () => {
@@ -86,11 +90,11 @@ describe.skipIf(!ADMIN_URL)("checking in with the app, in Postgres", () => {
     type Phone = Awaited<ReturnType<typeof phoneOf>>
 
     /** What the app does: a number, a fix, a signature. */
-    async function checkIn(userId: string, phone: Phone, fix = AT_DESK, over: { mocked?: boolean; ip?: string | null; signWith?: Phone } = {}) {
+    async function checkIn(userId: string, phone: Phone, fix = AT_DESK, over: { mocked?: boolean; ip?: string | null; signWith?: Phone; at?: string } = {}) {
         const { nonce } = await Challenges.issue(userId, "CHECK_IN")
         const body = { nonce, keyFingerprint: phone.fingerprint, ...fix, mocked: over.mocked ?? false, direction: null }
         const signature = (over.signWith ?? phone).key.sign(checkInText(body))
-        return CheckIns.checkIn("c1", userId, { ...body, signature }, over.ip === undefined ? "198.51.100.20" : over.ip)
+        return CheckIns.checkIn("c1", userId, { ...body, signature }, over.ip === undefined ? "198.51.100.20" : over.ip, over.at ? new Date(over.at) : undefined)
     }
     const punches = async (userId: string) => (await db.query(`SELECT status, "flagReasons", "checkIn", source, "phoneId" FROM "AttendancePunch" WHERE "userId" = $1 ORDER BY "receivedAt"`, [userId])).rows
     const refusals = async (userId: string) => (await db.query(`SELECT reason FROM "CheckInRefusal" WHERE "userId" = $1 ORDER BY at`, [userId])).rows.map(r => r.reason)
@@ -169,6 +173,25 @@ describe.skipIf(!ADMIN_URL)("checking in with the app, in Postgres", () => {
         await Phones.decide(next.id, { approve: true }, "a1")
         const held = (await punches("e1")).filter(p => p.phoneId === next.id)
         expect(held.map(p => p.status)).toEqual(["ACCEPTED", "FLAGGED"])
+    })
+
+    it("says how late the day's first check-in is, so the app can offer permission hours; not a later one, within grace, or on a rest day", async () => {
+        // 09:00–17:00 Sunday to Thursday, lateness charged after 15 minutes' grace.
+        const office = await Calendar.createSchedule("c1", { name: "Office", version: { effectiveFrom: "2026-01-01", startMinutes: 540, endMinutes: 1020, breakMinutes: 60 } }, "a1")
+        await Calendar.setDefault(office.id, "2026-01-01", "a1")
+        await Policy.saveVersion("c1", { effectiveFrom: "2026-01-01", body: STANDARD_OFFICE }, "a1")
+        const e4 = await phoneOf("e4")
+        // Cairo is UTC+3 in September. Sunday 27th, 09:40: flagged while attestation is in testing, and still late.
+        expect(await checkIn("e4", e4, AT_DESK, { at: "2026-09-27T06:40:00Z" })).toMatchObject({ outcome: "FLAGGED", at: "2026-09-27T09:40:00", late: { minutes: 40, startsAt: "09:00" } })
+        // Back from lunch the same day: not the first.
+        expect(await checkIn("e4", e4, AT_DESK, { at: "2026-09-27T10:00:00Z" })).toMatchObject({ late: null })
+        // Monday 28th, 09:10: within the grace.
+        expect(await checkIn("e4", e4, AT_DESK, { at: "2026-09-28T06:10:00Z" })).toMatchObject({ late: null })
+        // Friday 25th, 10:30: a rest day.
+        expect(await checkIn("e4", e4, AT_DESK, { at: "2026-09-25T07:30:00Z" })).toMatchObject({ late: null })
+        // Tuesday 29th, 09:20, from a verified app: counted, and late.
+        attested.verified = true
+        expect(await checkIn("e4", e4, AT_DESK, { at: "2026-09-29T06:20:00Z" })).toMatchObject({ outcome: "ACCEPTED", late: { minutes: 20, startsAt: "09:00" } })
     })
 
     // Last: it approves this month's payroll, which closes the month to every later check-in here.
