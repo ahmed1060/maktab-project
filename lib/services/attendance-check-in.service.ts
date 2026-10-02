@@ -7,7 +7,7 @@ import { recomputeAfter } from "./attendance-recompute"
 import { lockMonths, lockedMonths, punchMonths } from "./attendance-lock"
 import { parsePhoneKey, signatureValid } from "@/lib/attendance/phone-keys"
 import { checkInText } from "@/lib/attendance/signed-text"
-import { attestationMode, verifyAttestation } from "@/lib/attendance/attestation"
+import { attestationMode, verifyAttestation, type AttestationResult } from "@/lib/attendance/attestation"
 import { judgeCheckIn, type FlagReason } from "@/lib/attendance/check-in-rules"
 import { addDays, formatMinutes, toDateString } from "@/lib/attendance/calendar"
 import { localToInstant } from "@/lib/attendance/punch-import"
@@ -71,7 +71,13 @@ export class AttendanceCheckInService {
         // A key we don't know can't be checked: there is nothing to check it with.
         const key = phone ? parsePhoneKey(phone.publicKey) : null
         const badSignature = !!phone && !(key && signatureValid(key.key, checkInText(input), input.signature))
-        let attestation = await verifyAttestation({ platform: phone?.platform ?? "ANDROID", token: input.attestation, challenge: input.nonce, purpose: "CHECK_IN", phone })
+        // Google and Apple only for a request that could count: our phone, its
+        // signature, a number not yet used. Anything else is refused below
+        // without a call that spends the app's quota (review on #26).
+        const worthAsking = !!phone && !badSignature && (await AttendanceChallengeService.isLive(userId, "CHECK_IN", input.nonce, now))
+        let attestation: AttestationResult = worthAsking
+            ? await verifyAttestation({ platform: phone.platform, token: input.attestation, challenge: input.nonce, purpose: "CHECK_IN", phone })
+            : { verified: false, reason: "NOT_CHECKED" }
         const company = await prisma.company.findUnique({ where: { id: companyId }, select: { timezone: true } })
         const timeZone = company?.timezone ?? DEFAULT_TIME_ZONE
         const local = new Date(now.getTime() + offsetMsIn(now, timeZone)).toISOString().slice(0, 19)

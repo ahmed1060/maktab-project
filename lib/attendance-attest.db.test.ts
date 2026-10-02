@@ -34,6 +34,13 @@ vi.mock("@/lib/attendance/app-attest", async importOriginal => ({
     },
 }))
 
+// The real verifier, counted: what reaches Google or Apple.
+const verifierCalls = vi.hoisted(() => ({ n: 0 }))
+vi.mock("@/lib/attendance/attestation", async importOriginal => {
+    const real = await importOriginal<typeof import("@/lib/attendance/attestation")>()
+    return { ...real, verifyAttestation: (...args: Parameters<typeof real.verifyAttestation>) => { verifierCalls.n++; return real.verifyAttestation(...args) } }
+})
+
 const ADMIN_URL = process.env.ROLES_TEST_DATABASE_URL
 const MIGRATIONS = readdirSync("prisma/migrations").filter(m => m !== "migration_lock.toml").sort((a, b) => (a === "0_init" ? -1 : b === "0_init" ? 1 : a.localeCompare(b)))
 const sql = (name: string) => readFileSync(`prisma/migrations/${name}/migration.sql`, "utf8")
@@ -180,5 +187,25 @@ describe.skipIf(!ADMIN_URL)("attestation at registration and check-in, in Postgr
         await Phones.decide(phone.id, { approve: true }, "a1")
         expect(await appCheckIn(device, post, "IN")).toMatchObject({ outcome: "ACCEPTED", reasons: [] })
         expect(asked).toEqual(["REGISTER nizmo-attest|REGISTER", "CHECK_IN nizmo-attest|CHECK_IN"])
+    })
+
+    it("asks nobody about a replayed or badly signed request: it can't count, and each call spends quota", async () => {
+        // A check-in that counted, sent again.
+        const body = await checkInBody("e1", iphone, text => JSON.stringify({ assertion: appAttestKey.assertion(text, 50) }))
+        await CheckIns.checkIn("c1", "e1", body, null)
+        const before = verifierCalls.n
+        await expect(CheckIns.checkIn("c1", "e1", body, null)).rejects.toThrow("PHONE_CHALLENGE_INVALID")
+        await expect(CheckIns.checkIn("c1", "e1", { ...body, nonce: "made-up-number-0000000000000" }, null)).rejects.toThrow("PHONE_CHALLENGE_INVALID")
+        // A live number with a signature that isn't the phone's.
+        const forged = await checkInBody("e1", iphone, () => "token")
+        await expect(CheckIns.checkIn("c1", "e1", { ...forged, signature: body.signature }, null)).rejects.toThrow("PHONE_SIGNATURE_INVALID")
+        // A registration whose number was used.
+        const key = signingKey()
+        const { nonce } = await Challenges.issue("e2", "REGISTER")
+        const register = { nonce, publicKey: key.publicKey, signature: key.sign(signedText("REGISTER", nonce, [key.fingerprint, "ANDROID"])), platform: "ANDROID" as const, attestation: "token" }
+        await Phones.register("c1", "e2", register)
+        expect(verifierCalls.n).toBe(before + 1)
+        await expect(Phones.register("c1", "e2", register)).rejects.toThrow("PHONE_CHALLENGE_INVALID")
+        expect(verifierCalls.n).toBe(before + 1)
     })
 })

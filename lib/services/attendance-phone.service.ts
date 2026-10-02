@@ -79,6 +79,8 @@ export class AttendancePhoneService {
         const key = parsePhoneKey(input.publicKey) ?? fail("PHONE_KEY_INVALID")
         const text = signedText("REGISTER", input.nonce, [key.fingerprint, input.platform])
         if (!signatureValid(key.key, text, input.signature)) fail("PHONE_SIGNATURE_INVALID")
+        // A used or made-up number is refused before Google or Apple is asked (review on #26).
+        if (!(await AttendanceChallengeService.isLive(userId, "REGISTER", input.nonce))) fail("PHONE_CHALLENGE_INVALID")
         const attestation = await verifyAttestation({ platform: input.platform, token: input.attestation, challenge: input.nonce, purpose: "REGISTER" })
         if (!attestation.verified && attestationMode() === "required") fail("PHONE_ATTESTATION_FAILED")
 

@@ -46,6 +46,20 @@ export class AttendanceChallengeService {
         return count === 1
     }
 
+    /**
+     * Whether the number could still be used, without using it: checked
+     * before asking Google or Apple anything, so a replayed or made-up
+     * request costs no call to them (review on #26). consume() still decides.
+     */
+    static async isLive(userId: string, purpose: ChallengePurpose, nonce: string, now = new Date()): Promise<boolean> {
+        if (typeof nonce !== "string" || nonce.length < 20 || nonce.length > 100) return false
+        const found = await prisma.attendanceChallenge.findFirst({
+            where: { nonceHash: hashOf(nonce), userId, purpose, usedAt: null, expiresAt: { gt: now } },
+            select: { id: true },
+        })
+        return !!found
+    }
+
     /** Old numbers, used or not, for the nightly prune. */
     static async prune(now = new Date()) {
         return prisma.attendanceChallenge.deleteMany({ where: { expiresAt: { lt: new Date(now.getTime() - 24 * 3_600_000) } } })
