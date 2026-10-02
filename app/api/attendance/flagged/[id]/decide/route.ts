@@ -16,9 +16,11 @@ export const POST = withStandardHandler(async (_req, session, json, { params }) 
     if (!validation.success) return ApiResponse.badRequest("Validation Error", validation.error.format())
     const punch = await AttendanceFlagService.flaggedOf(params.id)
     if (!punch || !punch.userId) return ApiResponse.notFound("Check-in not found.")
-    const access = await punchCompany(session, punch.companyId)
-    if ("denied" in access || access.companyId !== punch.companyId) return ApiResponse.notFound("Check-in not found.")
+    // The Super Admin decides any, even once the company's package no longer
+    // has attendance: their queue lists it regardless (review on #23).
     if (session.user.role !== "SUPER_ADMIN") {
+        const access = await punchCompany(session, punch.companyId)
+        if ("denied" in access || access.companyId !== punch.companyId) return ApiResponse.notFound("Check-in not found.")
         if (AttendanceFlagService.reviewerOf(punch.flagReasons) === "PLATFORM") return ApiResponse.forbidden("This check-in is waiting for the Super Admin's review.")
         if (!correctsPerson(session, { companyId: punch.companyId, userId: punch.userId, teamLeaderId: punch.user?.teamLeaderId ?? null })) return ApiResponse.forbidden()
     }

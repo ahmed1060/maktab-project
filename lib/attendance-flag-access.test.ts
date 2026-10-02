@@ -106,6 +106,13 @@ describe("the Super Admin's review", () => {
         expect(reached).toEqual(["list:PLATFORM:ALL", "integrity", "decide:f-platform:false", "decide:f-c2:true"])
     })
 
+    it("decides one waiting for them even after the company's package lost attendance", async () => {
+        companies.c2.package = { hasCompanyManagement: false, hasHR: true }
+        superAdmin()
+        expect((await decide("f-c2", { accept: false })).status).toBe(200)
+        expect(reached).toEqual(["decide:f-c2:false"])
+    })
+
     it("is the Super Admin's alone", async () => {
         admin()
         expect((await review()).status).toBe(403)
