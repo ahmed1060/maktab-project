@@ -1,4 +1,4 @@
-import { checkInText, signedText } from "@/lib/attendance/signed-text"
+import { attestedText, checkInText, signedText } from "@/lib/attendance/signed-text"
 import type { CheckInDevice } from "./native"
 
 /**
@@ -33,7 +33,7 @@ export async function registerPhone(device: CheckInDevice, post: Post) {
     const fingerprint = await fingerprintOf(publicKey)
     const { nonce } = await post("/api/attendance/phone/challenge", { purpose: "REGISTER" })
     const signature = await device.sign(signedText("REGISTER", nonce, [fingerprint, device.platform]))
-    const [info, attestation] = await Promise.all([device.info(), device.attestation(nonce)])
+    const [info, attestation] = await Promise.all([device.info(), device.attestation(attestedText("REGISTER", nonce), "REGISTER")])
     return post("/api/attendance/phone/register", {
         nonce, publicKey, signature, platform: device.platform, model: info.model, appVersion: info.appVersion, attestation,
     })
@@ -57,6 +57,6 @@ export async function checkIn(device: CheckInDevice, post: Post, direction: "IN"
     const fix = await device.location()
     const { nonce } = await post("/api/attendance/phone/challenge", { purpose: "CHECK_IN" })
     const body = { nonce, keyFingerprint, ...fix, direction }
-    const [signature, attestation] = await Promise.all([device.sign(checkInText(body)), device.attestation(nonce)])
+    const [signature, attestation] = await Promise.all([device.sign(checkInText(body)), device.attestation(attestedText("CHECK_IN", nonce), "CHECK_IN")])
     return post("/api/attendance/check-in", { ...body, signature, attestation })
 }

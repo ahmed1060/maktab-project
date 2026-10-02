@@ -9,6 +9,9 @@ import { AttendanceChallengeService as Challenges } from "@/lib/services/attenda
 import { AttendancePhoneService as Phones } from "@/lib/services/attendance-phone.service"
 import { AttendanceCheckInService as CheckIns } from "@/lib/services/attendance-check-in.service"
 import { AttendanceLocationService as Locations } from "@/lib/services/attendance-location.service"
+import { registerPhone, checkIn as appCheckIn, type Post } from "@/lib/mobile/check-in-flow"
+import type { CheckInDevice } from "@/lib/mobile/native"
+import { checkInSchema, challengeSchema, registerPhoneSchema } from "@/lib/validations/attendance-phone.schema"
 
 /**
  * Attestation wired into registering and checking in (ATTENDANCE_PLAN.md
@@ -39,7 +42,8 @@ INSERT INTO "Company"(id, name, "updatedAt") VALUES ('c1', 'One', now());
 INSERT INTO "User"(id, email, password, "firstName", "lastName", role, "lastDayOffResetYear", username, "companyId", "teamLeaderId") VALUES
  ('a1', 'a1@x', 'p', 'Amal', 'One', 'ADMIN', 2026, 'a1', 'c1', NULL),
  ('e1', 'e1@x', 'p', 'Ehab', 'One', 'EMPLOYEE', 2026, 'e1', 'c1', NULL),
- ('e2', 'e2@x', 'p', 'Eman', 'Two', 'EMPLOYEE', 2026, 'e2', 'c1', NULL);
+ ('e2', 'e2@x', 'p', 'Eman', 'Two', 'EMPLOYEE', 2026, 'e2', 'c1', NULL),
+ ('e3', 'e3@x', 'p', 'Essam', 'Three', 'EMPLOYEE', 2026, 'e3', 'c1', NULL);
 `
 
 /** A phone's signing key, as its secure hardware holds it. */
@@ -73,7 +77,7 @@ describe.skipIf(!ADMIN_URL)("attestation at registration and check-in, in Postgr
         delete process.env.PLAY_INTEGRITY_SERVICE_ACCOUNT
         delete process.env.FCM_SERVICE_ACCOUNT
         const office = await Locations.create("c1", { name: "Head office", latitude: 30.0444, longitude: 31.2357, radiusMeters: 100 }, "a1")
-        await Locations.setPeople(office.id, ["e1", "e2"], "a1")
+        await Locations.setPeople(office.id, ["e1", "e2", "e3"], "a1")
     }, 180_000)
 
     afterAll(async () => {
@@ -143,5 +147,38 @@ describe.skipIf(!ADMIN_URL)("attestation at registration and check-in, in Postgr
         expect((await lastEvidence("e2")).checkIn).toMatchObject({ attested: false, attestationReason: "NOT_CONFIGURED" })
         const { rows: [audit] } = await db.query(`SELECT details FROM "AuditLog" WHERE action = 'REGISTER_CHECK_IN_PHONE' AND "entityId" = $1`, [phone.id])
         expect(audit.details).toMatchObject({ attested: false, attestationReason: "NOT_CONFIGURED" })
+    })
+
+    it("the check-in screen's own flows, on an iPhone: attested when registering, then accepted, asked for the right text each time", async () => {
+        // A stand-in iPhone: a signing key, and the App Attest key the server will keep (Apple's part stood in above).
+        const key = signingKey()
+        const asked: string[] = []
+        let counter = 0
+        const device: CheckInDevice = {
+            platform: "IOS",
+            info: async () => ({ model: "iPhone 15", appVersion: "1.0.0" }),
+            publicKey: async () => key.publicKey,
+            createKey: async () => key.publicKey,
+            sign: async text => key.sign(text),
+            location: async () => ({ latitude: 30.0445, longitude: 31.2357, accuracyMeters: 8, mocked: false }),
+            attestation: async (text, purpose) => {
+                asked.push(`${purpose} ${text.split("|").slice(0, 2).join("|")}`)
+                return purpose === "REGISTER"
+                    ? JSON.stringify({ keyId: "a2V5", attestation: "b2JqZWN0" })
+                    : JSON.stringify({ assertion: appAttestKey.assertion(text, ++counter + 100) })
+            },
+        }
+        // What the routes do with the body: the same schemas, then the same services.
+        const post: Post = async (url, body) => {
+            if (url === "/api/attendance/phone/challenge") return Challenges.issue("e3", challengeSchema.parse(body).purpose)
+            if (url === "/api/attendance/phone/register") return Phones.register("c1", "e3", registerPhoneSchema.parse(body))
+            if (url === "/api/attendance/check-in") return CheckIns.checkIn("c1", "e3", checkInSchema.parse(body), null)
+            throw new Error(url)
+        }
+        const phone = await registerPhone(device, post)
+        expect(phone).toMatchObject({ attested: true })
+        await Phones.decide(phone.id, { approve: true }, "a1")
+        expect(await appCheckIn(device, post, "IN")).toMatchObject({ outcome: "ACCEPTED", reasons: [] })
+        expect(asked).toEqual(["REGISTER nizmo-attest|REGISTER", "CHECK_IN nizmo-attest|CHECK_IN"])
     })
 })
