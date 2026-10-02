@@ -54,6 +54,7 @@ const TERMINAL_ALERTS = "20261019000000_attendance_terminal_alerts"
 const CHECK_IN_PHONES = "20261021000000_attendance_check_in_phones"
 // Notification.pushedAt, which every notice written here now carries (§13.4).
 const PUSH = "20261023000000_attendance_push"
+const PUSH_CLAIM = "20261024000000_push_claim"
 const sql = (name: string) => readFileSync(`prisma/migrations/${name}/migration.sql`, "utf8")
 
 const BEFORE_ROLES = `
@@ -102,6 +103,7 @@ describe.skipIf(!ADMIN_URL)("roles as data, in Postgres", () => {
         await db.query(sql(TERMINAL_ALERTS))
         await db.query(sql(CHECK_IN_PHONES))
         await db.query(sql(PUSH))
+        await db.query(sql(PUSH_CLAIM))
         prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: url.toString() }) })
         // The services that manage roles use the application's client; point it
         // here before its first use (it is built lazily).

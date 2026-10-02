@@ -110,6 +110,20 @@ describe.skipIf(!ADMIN_URL)("the push outbox, in Postgres", () => {
         expect(sent).toHaveLength(1)
     })
 
+    it("sends a notice whose run died mid-send once its claim lapses, and not while it is fresh", async () => {
+        await NotificationService.notify("e2", "ATTENDANCE_CHECK_IN", accepted)
+        const now = new Date()
+        // A run took it thirty seconds ago and may still be sending: left alone.
+        await db.query(`UPDATE "Notification" SET "pushClaimedAt" = $1`, [new Date(now.getTime() - 30_000)])
+        await PushService.flush(now, sender)
+        expect(sent).toEqual([])
+        // That run died five minutes ago, before the answer: sent now.
+        await db.query(`UPDATE "Notification" SET "pushClaimedAt" = $1`, [new Date(now.getTime() - 5 * 60_000)])
+        await PushService.flush(now, sender)
+        expect(sent.map(s => s.token)).toEqual(["tok-e2"])
+        expect((await db.query(`SELECT "pushedAt" FROM "Notification"`)).rows[0].pushedAt).not.toBeNull()
+    })
+
     it("forgets a token the push service says is dead, and tries again later after a plain failure", async () => {
         outcome = "FAILED"
         await NotificationService.notify("e2", "ATTENDANCE_PHONE", accepted)
@@ -132,7 +146,7 @@ describe.skipIf(!ADMIN_URL)("the push outbox, in Postgres", () => {
         await PushService.flush(new Date(), sender)
         expect(sent).toEqual([])
         await db.query(`UPDATE "CheckInPhone" SET "pushToken" = 'tok-e1-new' WHERE id = 'p1new'`)
-        await db.query(`UPDATE "Notification" SET "pushedAt" = NULL`)
+        await db.query(`UPDATE "Notification" SET "pushedAt" = NULL, "pushClaimedAt" = NULL`)
         await PushService.flush(new Date(), sender)
         expect(sent.map(s => s.token)).toEqual(["tok-e1-new"])
         await db.query(`DELETE FROM "CheckInPhone" WHERE id = 'p1new'`)

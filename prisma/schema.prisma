@@ -623,6 +623,9 @@ model Notification {
   /// When it was sent to the person's phone as a push (§13.4); null for one
   /// not sent, or never meant to be.
   pushedAt      DateTime?
+  /// When a push run took it to send; lapses after a couple of minutes, so a
+  /// run that died mid-send doesn't lose it.
+  pushClaimedAt DateTime?
   user          User?       @relation(fields: [userId], references: [id], onDelete: Cascade)
   superAdmin    SuperAdmin? @relation(fields: [superAdminId], references: [id], onDelete: Cascade)
 

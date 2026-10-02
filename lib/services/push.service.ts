@@ -33,6 +33,8 @@ export const PUSHED_TYPES = ["ATTENDANCE_CHECK_IN", "ATTENDANCE_DAY", "ATTENDANC
 export const NOT_PUSHED_KEYS = ["notice_att_phone_requested"] as const
 
 const FRESH_FOR_MS = 30 * 60_000
+/** A claim older than this was a run that died: the notice is free again. */
+const CLAIM_LAPSES_MS = 2 * 60_000
 const BATCH = 200
 const LIVE = { status: { in: ["ACTIVE", "PENDING"] as ("ACTIVE" | "PENDING")[] } }
 const PHONES = { ...LIVE, pushToken: { not: null } }
@@ -84,10 +86,14 @@ export class PushService {
      */
     static async flush(now = new Date(), sender: Sender | null = configuredSender()) {
         if (!sender) return { sent: 0, skipped: "NOT_CONFIGURED" as const }
+        const lapsed = new Date(now.getTime() - CLAIM_LAPSES_MS)
         const due = await prisma.notification.findMany({
             where: {
                 pushedAt: null, createdAt: { gte: new Date(now.getTime() - FRESH_FOR_MS) }, type: { in: [...PUSHED_TYPES] },
-                OR: [{ messageKey: null }, { messageKey: { notIn: [...NOT_PUSHED_KEYS] } }],
+                AND: [
+                    { OR: [{ messageKey: null }, { messageKey: { notIn: [...NOT_PUSHED_KEYS] } }] },
+                    { OR: [{ pushClaimedAt: null }, { pushClaimedAt: { lt: lapsed } }] },
+                ],
                 user: { checkInPhones: { some: PHONES } },
             },
             select: {
@@ -111,7 +117,12 @@ export class PushService {
                 await prisma.notification.updateMany({ where: { id: n.id, pushedAt: null }, data: { pushedAt: now } })
                 continue
             }
-            const { count } = await prisma.notification.updateMany({ where: { id: n.id, pushedAt: null }, data: { pushedAt: now } })
+            // Claimed, not yet marked sent: if this run dies before the
+            // answer, the claim lapses and a later run sends it (review on #25).
+            const { count } = await prisma.notification.updateMany({
+                where: { id: n.id, pushedAt: null, OR: [{ pushClaimedAt: null }, { pushClaimedAt: { lt: lapsed } }] },
+                data: { pushClaimedAt: now },
+            })
             if (count === 0) continue
             const language = n.user?.language ?? "en"
             const message: PushMessage = { title: (DICTS[language] ?? en).app_name, body: textOf(n, language), link: attendanceNoticeTarget(n.type, n.relatedId) }
@@ -126,9 +137,12 @@ export class PushService {
                 } else if (outcome === "FAILED") retry = true
             }
             if (delivered) sent++
-            else if (retry) {
+            if (retry && !delivered) {
                 failed++
-                await prisma.notification.updateMany({ where: { id: n.id, pushedAt: now }, data: { pushedAt: null } })
+                await prisma.notification.updateMany({ where: { id: n.id, pushClaimedAt: now }, data: { pushClaimedAt: null } })
+            } else {
+                // Sent, or never to be: a dead token, no phone to send to, no service for its platform.
+                await prisma.notification.updateMany({ where: { id: n.id, pushClaimedAt: now }, data: { pushedAt: now } })
             }
         }
         return { sent, forgotten, failed }
