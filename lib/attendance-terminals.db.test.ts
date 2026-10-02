@@ -215,6 +215,23 @@ describe.skipIf(!ADMIN_URL)("attendance agents, in Postgres", () => {
         expect((await db.query(`SELECT count(*)::int AS n FROM "AttendanceDevice" WHERE "serialNumber" = 'SN-300'`)).rows[0].n).toBe(1)
     })
 
+    it("is not turned away as another company's when its own company brought it in a moment ago", async () => {
+        // The race above, made certain: the other heartbeat commits the
+        // terminal between this one looking for it in its own company (and
+        // missing it) and looking for it anywhere else.
+        const a = await agentOf("c1", "Late A")
+        const b = await agentOf("c1", "Late B")
+        await Devices.heartbeat(a, beat([{ serialNumber: "SN-310", reachable: true }]))
+        const { prisma } = await import("@/lib/prisma")
+        const lookup = vi.spyOn(prisma.attendanceDevice, "findUnique").mockResolvedValueOnce(null)
+        try {
+            const reply = await Devices.heartbeat(b, beat([{ serialNumber: "SN-310", reachable: true }]))
+            expect(reply.devices[0]).toMatchObject({ state: "ACTIVE", deviceId: (await device("c1", "SN-310")).id })
+        } finally {
+            lookup.mockRestore()
+        }
+    })
+
     it("renames a terminal and changes its mode, audited; the agent hears the new mode", async () => {
         const agent = await agentOf("c1", "Modes")
         const [{ deviceId }] = (await Devices.heartbeat(agent, beat([{ serialNumber: "SN-400", reachable: true }]))).devices
