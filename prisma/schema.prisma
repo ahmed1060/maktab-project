@@ -257,6 +257,7 @@ model Company {
   workLocations            WorkLocation[]
   checkInPhones            CheckInPhone[]
   checkInRefusals          CheckInRefusal[]
+  checkInReminders         CheckInReminder[]
   companyHolidays      CompanyHoliday[]
   holidayExclusions    CompanyHolidayExclusion[]
   finalSettlements     FinalSettlement[]
@@ -515,6 +516,7 @@ model User {
   checkInPhones              CheckInPhone[]
   attendanceChallenges       AttendanceChallenge[]
   checkInRefusals            CheckInRefusal[]
+  checkInReminders           CheckInReminder[]
 
   @@index([email])
   @@index([companyId])
@@ -618,6 +620,9 @@ model Notification {
   priority      NotificationPriority @default(NORMAL)
   relatedId     String?
   createdAt     DateTime    @default(now())
+  /// When it was sent to the person's phone as a push (§13.4); null for one
+  /// not sent, or never meant to be.
+  pushedAt      DateTime?
   user          User?       @relation(fields: [userId], references: [id], onDelete: Cascade)
   superAdmin    SuperAdmin? @relation(fields: [superAdminId], references: [id], onDelete: Cascade)
 
@@ -2281,6 +2286,11 @@ model CheckInPhone {
   decidedById    String?
   /// Why it was rejected or revoked, when someone said.
   reason         String?
+  /// Where pushes for its owner go (§13.4): an FCM registration token on
+  /// Android, an APNs device token on iOS. Null until the app sends one, and
+  /// cleared when the push service says it is no longer valid.
+  pushToken      String?
+  pushTokenAt    DateTime?
   company        Company            @relation(fields: [companyId], references: [id], onDelete: Cascade)
   user           User               @relation(fields: [userId], references: [id], onDelete: Cascade)
   punches        AttendancePunch[]
@@ -2311,6 +2321,21 @@ model AttendanceChallenge {
 /// setup, nothing for a person to judge. It counts for nothing, and is kept
 /// for the Super Admin's integrity view (§13.7): a sudden run of them at one
 /// company is an attack or a broken app release.
+/// A "you haven't checked in" reminder sent (§13.4): one per person and
+/// working day, however often the reminder job runs.
+model CheckInReminder {
+  userId    String
+  /// The working day it was about, the shift's own date.
+  date      DateTime @db.Date
+  companyId String
+  sentAt    DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@id([userId, date])
+  @@index([companyId])
+}
+
 model CheckInRefusal {
   id        String   @id @default(uuid())
   companyId String
