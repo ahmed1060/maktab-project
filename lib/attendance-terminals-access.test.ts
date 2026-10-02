@@ -56,6 +56,12 @@ vi.mock("@/lib/services/attendance-device.service", () => ({
     },
 }))
 
+vi.mock("@/lib/services/attendance-ingest.service", () => ({
+    AttendanceIngestService: {
+        punches: async (agent: { companyId: string }, batch: any) => { reached.push(`punches:${agent.companyId}:${batch.punches.length}`); return { accepted: batch.punches.length, duplicates: 0, refused: [] } },
+    },
+}))
+
 type Pkg = { hasCompanyManagement: boolean; hasHR: boolean; hasAttendanceTerminals?: boolean; hasAttendanceMobile?: boolean } | null
 const TERMINALS: Pkg = { hasCompanyManagement: false, hasHR: true, hasAttendanceTerminals: true }
 const MOBILE_ONLY: Pkg = { hasCompanyManagement: false, hasHR: true, hasAttendanceMobile: true }
@@ -233,6 +239,18 @@ describe("on the agent's side: the token is the identity", () => {
         expect((await bad.json()).code).toBe("INVALID_BODY")
         // A company in the body is ignored: the agent's is c1.
         expect(reached).toEqual(["heartbeat:c1:1"])
+    })
+
+    it("takes punches for the agent's own company, and refuses a batch in the wrong shape", async () => {
+        const deliver = async (token: string, body: unknown) => (await import("@/app/api/agent/punches/route")).POST(new Request(url("/api/agent/punches"), {
+            method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: JSON.stringify(body),
+        }))
+        const punch = { serialNumber: "SN1", userNumber: "7", at: "2026-09-14T09:05:00" }
+        expect((await deliver("mka_good", { punches: [punch], companyId: "c2" })).status).toBe(200)
+        expect((await deliver("mka_good", { punches: [] })).status).toBe(400)
+        expect((await deliver("mka_good", { punches: [{ ...punch, at: "14/09/2026 09:05" }] })).status).toBe(400)
+        expect((await deliver("mka_revoked", { punches: [punch] })).status).toBe(401)
+        expect(reached).toEqual(["punches:c1:1"])
     })
 
     it("refuses a body that is not a JSON object, or too large", async () => {

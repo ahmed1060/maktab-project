@@ -271,10 +271,13 @@ export class AttendancePunchService {
                 id: true, userId: true, hardwareUserId: true, source: true, punchAtLocal: true, direction: true, status: true, note: true,
                 importId: true, receivedAt: true, voidedAt: true, voidReason: true,
                 user: { select: { firstName: true, lastName: true } },
+                device: { select: { name: true } },
             },
         })
-        return rows.map(({ user, punchAtLocal, ...r }) => ({
+        return rows.map(({ user, punchAtLocal, device, ...r }) => ({
             ...r, at: wallClockText(punchAtLocal), name: user ? `${user.firstName} ${user.lastName}`.trim() : null,
+            // Which terminal, for a punch from one (§17).
+            deviceName: device?.name ?? null,
         }))
     }
 

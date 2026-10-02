@@ -1272,6 +1272,7 @@ export const ar = {
         punch_source: "المصدر",
         punch_source_import: "مستوردة",
         punch_source_manual: "مضافة يدويًا",
+        punch_source_terminal: "جهاز: {name}",
         punch_number: "الرقم {code}، غير منسوب لأحد",
         punch_withdraw: "سحب",
         punch_withdraw_hint: "تبقى البصمة في السجل لكنها لا تُحتسب. لا يمكن لأحد سحب بصمته.",

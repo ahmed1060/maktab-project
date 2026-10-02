@@ -3,12 +3,17 @@ import { readFileSync, readdirSync } from "node:fs"
 import { Client } from "pg"
 import { AttendanceAgentService as Agents, type AuthenticatedAgent } from "@/lib/services/attendance-agent.service"
 import { AttendanceDeviceService as Devices } from "@/lib/services/attendance-device.service"
+import { AttendanceIngestService as Ingest } from "@/lib/services/attendance-ingest.service"
+import { AttendancePunchService as Punches } from "@/lib/services/attendance-punch.service"
+import { AttendanceCalendarService as Calendar } from "@/lib/services/attendance-calendar.service"
+import { AttendancePolicyService as Policy } from "@/lib/services/attendance-policy.service"
+import { STANDARD_OFFICE } from "@/lib/attendance/policy"
 
 /**
  * Local Sync Agents against a real Postgres built from the migrations
  * (ATTENDANCE_PLAN.md §17, Phase 2): enrolment with a one-time code, the
  * token that follows, its rotation, and revocation; then the terminals the
- * agents report in their heartbeats.
+ * agents report in their heartbeats, and the punches they deliver.
  */
 
 const ADMIN_URL = process.env.ROLES_TEST_DATABASE_URL
@@ -18,7 +23,8 @@ const sql = (name: string) => readFileSync(`prisma/migrations/${name}/migration.
 const BEFORE_ROLES = `
 INSERT INTO "Company"(id, name, "updatedAt") VALUES ('c1', 'One', now()), ('c2', 'Two', now());
 INSERT INTO "User"(id, email, password, "firstName", "lastName", role, "lastDayOffResetYear", username, "companyId", "teamLeaderId") VALUES
- ('a1', 'a1@x', 'p', 'Amal', 'One', 'ADMIN', 2026, 'a1', 'c1', NULL);
+ ('a1', 'a1@x', 'p', 'Amal', 'One', 'ADMIN', 2026, 'a1', 'c1', NULL),
+ ('e1', 'e1@x', 'p', 'Ehab', 'One', 'EMPLOYEE', 2026, 'e1', 'c1', NULL);
 `
 
 describe.skipIf(!ADMIN_URL)("attendance agents, in Postgres", () => {
@@ -225,6 +231,76 @@ describe.skipIf(!ADMIN_URL)("attendance agents, in Postgres", () => {
         const agent = await agentOf("c1", "Old token")
         await db.query(`UPDATE "AttendanceAgent" SET "tokenIssuedAt" = now() - interval '31 days' WHERE id = $1`, [agent.id])
         expect((await Devices.heartbeat(agent, beat([]))).rotateToken).toBe(true)
+    })
+
+    it("stores the punches an agent delivers, once each, and rebuilds the days they touch", async () => {
+        await db.query(`INSERT INTO "SalaryChange"(id, "userId", "monthlyAmount", "effectiveFrom") VALUES ('s1', 'e1', 9300, '2026-01-01T00:00:00Z')`)
+        await db.query(`INSERT INTO "EmploymentEvent"(id, "userId", type, "effectiveFrom") VALUES ('h1', 'e1', 'HIRED', '2026-01-01T00:00:00Z')`)
+        await Calendar.createSchedule("c1", { name: "Office", version: { effectiveFrom: "2026-09-01", startMinutes: 540, endMinutes: 1020, breakMinutes: 60 } }, "a1")
+        await Policy.saveVersion("c1", { effectiveFrom: "2026-09-01", body: STANDARD_OFFICE }, "a1")
+        await Punches.mapCode("c1", { code: "7", userId: "e1" }, "a1")
+        const agent = await agentOf("c1", "Punches")
+        await Devices.heartbeat(agent, beat([{ serialNumber: "IN-1", reachable: true }, { serialNumber: "OUT-1", reachable: true }]))
+        const exitGate = await device("c1", "OUT-1")
+        await Devices.update(exitGate.id, { mode: "EXIT" }, "a1")
+
+        const batch = { punches: [
+            { serialNumber: "IN-1", userNumber: "7", at: "2026-09-14T09:05:00" },
+            { serialNumber: "OUT-1", userNumber: "7", at: "2026-09-14T17:02:00" },
+            { serialNumber: "IN-1", userNumber: "7", at: "2026-09-14T09:05:00" },  // the same record twice in one batch
+            { serialNumber: "IN-1", userNumber: "99", at: "2026-09-14T09:10:00" }, // nobody's number yet
+        ] }
+        expect(await Ingest.punches(agent, batch)).toEqual({ accepted: 3, duplicates: 1, refused: [] })
+        // Sent again, as an agent that never heard back would: nothing new.
+        expect(await Ingest.punches(agent, batch)).toEqual({ accepted: 0, duplicates: 4, refused: [] })
+
+        const { rows } = await db.query(`SELECT source, "userId", "hardwareUserId", direction, "deviceId", to_char("punchAtLocal", 'YYYY-MM-DD"T"HH24:MI:SS') AS at FROM "AttendancePunch" WHERE "companyId" = 'c1' ORDER BY "punchAtLocal", "hardwareUserId"`)
+        expect(rows).toEqual([
+            { source: "AGENT", userId: "e1", hardwareUserId: "7", direction: null, deviceId: (await device("c1", "IN-1")).id, at: "2026-09-14T09:05:00" },
+            { source: "AGENT", userId: null, hardwareUserId: "99", direction: null, deviceId: (await device("c1", "IN-1")).id, at: "2026-09-14T09:10:00" },
+            { source: "AGENT", userId: "e1", hardwareUserId: "7", direction: "OUT", deviceId: exitGate.id, at: "2026-09-14T17:02:00" },
+        ])
+        // Listed with the terminal each came from.
+        const listed = await Punches.list("c1", { from: "2026-09-14", to: "2026-09-14" }, { kind: "COMPANY" })
+        expect(listed.map(p => [p.source, p.deviceName, p.direction])).toEqual([["AGENT", "Terminal OUT-1", "OUT"], ["AGENT", "Terminal IN-1", null]])
+        // The day is built from them.
+        const { rows: [day] } = await db.query(`SELECT status, "lateMinutes" FROM "AttendanceDay" WHERE "userId" = 'e1' AND date = '2026-09-14'`)
+        expect(day).toEqual({ status: "PRESENT", lateMinutes: 5 })
+        expect((await device("c1", "OUT-1")).lastPunchAt).toEqual(new Date("2026-09-14T14:02:00Z"))
+        expect((await row(agent.id)).lastSyncAt).not.toBeNull()
+
+        // A mode changed later reinterprets nothing already stored.
+        await Devices.update(exitGate.id, { mode: "ENTRANCE" }, "a1")
+        expect((await db.query(`SELECT direction FROM "AttendancePunch" WHERE "deviceId" = $1`, [exitGate.id])).rows[0].direction).toBe("OUT")
+    })
+
+    it("says why it refused a punch, and whether sending it again could help", async () => {
+        const agent = await agentOf("c1", "Refusals")
+        await Devices.heartbeat(agent, beat([{ serialNumber: "R-1", reachable: true }, { serialNumber: "R-OLD", reachable: true }]))
+        await Devices.retire((await device("c1", "R-OLD")).id, "a1")
+        await db.query(`INSERT INTO "PayrollRun"(id, "companyId", year, month, status, "payrollDay", "updatedAt") VALUES ('aug', 'c1', 2026, 8, 'APPROVED', 25, now())`)
+        const result = await Ingest.punches(agent, { punches: [
+            { serialNumber: "R-NEW", userNumber: "7", at: "2026-09-15T09:00:00" },  // not reported yet
+            { serialNumber: "R-OLD", userNumber: "7", at: "2026-09-15T09:00:00" },  // retired
+            { serialNumber: "R-1", userNumber: "7", at: "2026-08-20T09:00:00" },    // August is paid
+            { serialNumber: "R-1", userNumber: "7", at: "2099-01-01T09:00:00" },    // the terminal's clock is wrong
+            { serialNumber: "R-1", userNumber: "7", at: "2026-09-15T09:00:00" },
+        ] })
+        expect(result).toEqual({
+            accepted: 1, duplicates: 0,
+            refused: [
+                { index: 0, reason: "UNKNOWN_DEVICE", retry: true },
+                { index: 1, reason: "DEVICE_RETIRED", retry: false },
+                { index: 2, reason: "MONTH_LOCKED", retry: false },
+                { index: 3, reason: "IN_FUTURE", retry: false },
+            ],
+        })
+        // A check-out just after midnight on 1 September closes 31 August's night: August is locked, so it is refused too.
+        await db.query(`INSERT INTO "AttendanceDay"(id, "companyId", "userId", date, status, "expectedEndMinutes", breakdown, "inputsHash") VALUES ('night', 'c1', 'e1', '2026-08-31', 'PRESENT', 1800, '{}', 'x')`)
+        expect((await Ingest.punches(agent, { punches: [{ serialNumber: "R-1", userNumber: "7", at: "2026-09-01T05:30:00" }] })).refused).toEqual([{ index: 0, reason: "MONTH_LOCKED", retry: false }])
+        // Another company's agent cannot deliver to this company's terminal.
+        const theirs = await agentOf("c2", "Not yours")
+        expect((await Ingest.punches(theirs, { punches: [{ serialNumber: "R-1", userNumber: "7", at: "2026-09-16T09:00:00" }] })).refused[0].reason).toBe("UNKNOWN_DEVICE")
     })
 
     it("keeps a revoked agent from holding anything that works, at the database", async () => {

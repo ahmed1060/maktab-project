@@ -1273,6 +1273,7 @@ export const en = {
         punch_source: "From",
         punch_source_import: "Imported",
         punch_source_manual: "Added by hand",
+        punch_source_terminal: "Terminal: {name}",
         punch_number: "Number {code}, nobody yet",
         punch_withdraw: "Withdraw",
         punch_withdraw_hint: "The punch stays on record but no longer counts. Nobody can withdraw their own.",

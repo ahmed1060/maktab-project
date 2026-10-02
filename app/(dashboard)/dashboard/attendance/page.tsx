@@ -33,7 +33,7 @@ import type { TranslationKey } from '@/lib/translations'
 
 type Punch = {
     id: string; userId: string | null; name: string | null; hardwareUserId: string | null
-    source: string; at: string; direction: 'IN' | 'OUT' | null; note: string | null
+    source: string; at: string; direction: 'IN' | 'OUT' | null; note: string | null; deviceName?: string | null
     voidedAt: string | null; voidReason: string | null
 }
 type Person = { id: string; name: string; teamLeaderId: string | null }
@@ -410,7 +410,7 @@ function PunchesTab({ q, companyId, today }: { q: string; companyId: string | nu
                                                 )}
                                                 <td>{x.direction === 'IN' ? t('punch_in') : x.direction === 'OUT' ? t('punch_out') : '—'}</td>
                                                 <td>
-                                                    {t(x.source === 'MANUAL' ? 'punch_source_manual' : 'punch_source_import')}
+                                                    {x.source === 'AGENT' ? t('punch_source_terminal').replace('{name}', x.deviceName ?? '—') : t(x.source === 'MANUAL' ? 'punch_source_manual' : 'punch_source_import')}
                                                     {x.note && <div style={{ color: 'var(--text-soft)', fontSize: '0.78rem' }}>{x.note}</div>}
                                                     {x.voidedAt && <div style={{ color: 'var(--text-soft)', fontSize: '0.78rem' }}>{t('punch_withdrawn_because').replace('{reason}', x.voidReason ?? '')}</div>}
                                                 </td>
