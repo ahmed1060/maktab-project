@@ -474,6 +474,11 @@ export class UserService {
                     : { actingUntil: null, returnRoleId: null })
             }
 
+            // The places they could check in at with the app were the old
+            // company's (ATTENDANCE_PLAN.md §8.5): none of them is theirs now,
+            // and a move back must not quietly bring them back.
+            if (companyChanging) updateData.workLocations = { deleteMany: {} }
+
             // Never the company's last Admin at work (ROLES_PLAN.md §4.2, rule 8).
             await RoleAssignmentService.keepsAnAdmin(prisma, id, {
                 roleId: updateData.roleId, status: updateData.status, companyId: updateData.companyId,

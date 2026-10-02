@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll, afterAll } from "vitest"
 import { readFileSync, readdirSync } from "node:fs"
 import { Client } from "pg"
 import { AttendanceLocationService as Locations } from "@/lib/services/attendance-location.service"
+import { UserService } from "@/lib/services/user.service"
 
 /**
  * Work locations (ATTENDANCE_PLAN.md §8.5, §9.4): where people check in with
@@ -41,6 +42,7 @@ describe.skipIf(!ADMIN_URL)("work locations, in Postgres", () => {
             await db.query(sql(m))
             if (m === "20260920000000_team_leader") await db.query(BEFORE_ROLES)
         }
+        await db.query(`INSERT INTO "SuperAdmin"(id, email, username, password, "firstName", "lastName", "updatedAt") VALUES ('sa', 'sa@x', 'sa', 'p', 'Sara', 'Admin', now())`)
         process.env.POSTGRES_PRISMA_URL = url.toString()
     }, 180_000)
 
@@ -107,6 +109,16 @@ describe.skipIf(!ADMIN_URL)("work locations, in Postgres", () => {
         expect(outcomes.map(o => o.status)).toEqual(["fulfilled", "fulfilled"])
         const { locations } = await Locations.list("c1")
         expect([["e1"], ["e2"]]).toContainEqual(locations.find(x => x.id === l.id)!.userIds)
+    })
+
+    it("takes a person off the old company's places when the Super Admin moves them to another company", async () => {
+        const l = await Locations.create("c1", { ...OFFICE, name: "Before the move" }, "a1")
+        await Locations.setPeople(l.id, ["e2", "e1"], "a1")
+        await UserService.update({ id: "e2", companyId: "c2" } as any, { user: { id: "sa", role: "SUPER_ADMIN" } })
+        expect((await db.query(`SELECT "userId" FROM "UserWorkLocation" WHERE "locationId" = $1`, [l.id])).rows).toEqual([{ userId: "e1" }])
+        // Back again: nothing comes back with them.
+        await UserService.update({ id: "e2", companyId: "c1" } as any, { user: { id: "sa", role: "SUPER_ADMIN" } })
+        expect((await Locations.forPerson("c1", "e2")).map(x => x.name)).not.toContain("Before the move")
     })
 
     it("lets a person check in where they are listed, or where everyone may, and nowhere archived", async () => {
