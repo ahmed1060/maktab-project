@@ -147,6 +147,15 @@ export class SyncAgent {
     private async readDevices(result: RoundResult): Promise<Map<string, DeviceReport & { ratio: number }>> {
         const reports = new Map<string, DeviceReport & { ratio: number }>()
         const sendFrom = this.config.sendFrom ?? this.state.sendFrom
+        // The start moved earlier (sendFrom set back in agent.json): the
+        // cursors passed over records it now wants, so every log is read again
+        // from the start; the server stores each punch once (review on #18).
+        const from = sendFrom ?? ""
+        if (this.state.readFrom != null && from < this.state.readFrom) {
+            this.log.info(`Sending from ${sendFrom ?? "the beginning"} now (was ${this.state.readFrom}); reading each terminal's log again.`)
+            for (const remembered of Object.values(this.state.devices)) remembered.cursor = { count: 0, lastKey: null }
+        }
+        this.state.readFrom = from
         for (const d of this.config.devices) {
             const key = deviceKey(d)
             const remembered = (this.state.devices[key] ??= { serialNumber: null, cursor: { count: 0, lastKey: null } })

@@ -26,6 +26,8 @@ export type AgentState = {
     enrolledAt: string | null
     /** Records older than this date are not sent (see config.sendFrom). */
     sendFrom: string | null
+    /** The start the cursors were last moved under ("" for none): moved earlier, the logs are read again. */
+    readFrom?: string | null
     /** By "host:port", as configured. */
     devices: Record<string, { serialNumber: string | null; cursor: Cursor; mustEnable?: boolean }>
     queue: QueuedPunch[]
