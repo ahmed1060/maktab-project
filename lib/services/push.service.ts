@@ -23,7 +23,19 @@ export const PUSHED_TYPES = ["ATTENDANCE_CHECK_IN", "ATTENDANCE_DAY", "ATTENDANC
 
 const FRESH_FOR_MS = 30 * 60_000
 const BATCH = 200
-const PHONES = { status: { in: ["ACTIVE", "PENDING"] as ("ACTIVE" | "PENDING")[] }, pushToken: { not: null } }
+const LIVE = { status: { in: ["ACTIVE", "PENDING"] as ("ACTIVE" | "PENDING")[] } }
+const PHONES = { ...LIVE, pushToken: { not: null } }
+
+/**
+ * The phone a person's pushes go to: the one waiting for approval when there
+ * is one — from the moment it was asked for, the old one can't check in and
+ * may be lost (§9.3) — else the one in use. Neither, if that phone has no
+ * token yet (review on #25).
+ */
+export function pushTarget<P extends { status: string; pushToken: string | null }>(phones: readonly P[]): P | null {
+    const phone = phones.find(p => p.status === "PENDING") ?? phones.find(p => p.status === "ACTIVE") ?? null
+    return phone?.pushToken ? phone : null
+}
 
 export type Sender = (platform: "ANDROID" | "IOS", token: string, message: PushMessage) => Promise<PushOutcome | "NOT_CONFIGURED">
 
@@ -68,7 +80,7 @@ export class PushService {
             },
             select: {
                 id: true, message: true, messageKey: true, messageParams: true, relatedId: true,
-                user: { select: { language: true, checkInPhones: { where: PHONES, select: { id: true, platform: true, pushToken: true } } } },
+                user: { select: { language: true, checkInPhones: { where: LIVE, select: { id: true, status: true, platform: true, pushToken: true } } } },
             },
             orderBy: { createdAt: "asc" },
             take: BATCH,
@@ -80,7 +92,8 @@ export class PushService {
             const language = n.user?.language ?? "en"
             const message: PushMessage = { title: (DICTS[language] ?? en).app_name, body: textOf(n, language), link: n.relatedId?.startsWith("/") ? n.relatedId : null }
             let delivered = false, retry = false
-            for (const phone of n.user?.checkInPhones ?? []) {
+            const target = pushTarget(n.user?.checkInPhones ?? [])
+            for (const phone of target ? [target] : []) {
                 const outcome = await sender(phone.platform, phone.pushToken!, message)
                 if (outcome === "SENT") delivered = true
                 else if (outcome === "INVALID_TOKEN") {

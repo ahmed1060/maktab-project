@@ -111,6 +111,21 @@ describe.skipIf(!ADMIN_URL)("the push outbox, in Postgres", () => {
         expect((await db.query(`SELECT "pushToken" FROM "CheckInPhone" WHERE id = 'p1'`)).rows[0].pushToken).toBeNull()
     })
 
+    it("pushes only to the new phone while it waits, not the one it replaces", async () => {
+        // Ehab asks for a new phone: from then on the old one can't check in, and may be lost.
+        await db.query(`UPDATE "CheckInPhone" SET "pushToken" = 'tok-e1' WHERE id = 'p1'`)
+        await db.query(`INSERT INTO "CheckInPhone"(id, "companyId", "userId", "publicKey", "keyFingerprint", platform, status) VALUES ('p1new', 'c1', 'e1', 'k', 'f1new', 'IOS', 'PENDING')`)
+        await NotificationService.notify("e1", "ATTENDANCE_DAY", accepted)
+        // The new phone has no token yet: nothing goes to the old one meanwhile.
+        await PushService.flush(new Date(), sender)
+        expect(sent).toEqual([])
+        await db.query(`UPDATE "CheckInPhone" SET "pushToken" = 'tok-e1-new' WHERE id = 'p1new'`)
+        await db.query(`UPDATE "Notification" SET "pushedAt" = NULL`)
+        await PushService.flush(new Date(), sender)
+        expect(sent.map(s => s.token)).toEqual(["tok-e1-new"])
+        await db.query(`DELETE FROM "CheckInPhone" WHERE id = 'p1new'`)
+    })
+
     it("sends nothing, and says so, when no push service is set up", async () => {
         await NotificationService.notify("e2", "ATTENDANCE_CHECK_IN", accepted)
         expect(await PushService.flush(new Date(), null)).toEqual({ sent: 0, skipped: "NOT_CONFIGURED" })
