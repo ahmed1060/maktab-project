@@ -14,7 +14,7 @@ import typescript from "eslint-config-next/typescript"
  */
 const config = [
     {
-        ignores: [".next/**", "node_modules/**", "next-env.d.ts", "public/**", "agent/node_modules/**", "agent/dist/**"],
+        ignores: [".next/**", "node_modules/**", "next-env.d.ts", "public/**", "agent/node_modules/**", "agent/dist/**", "mobile/**"],
     },
 
     ...coreWebVitals,
