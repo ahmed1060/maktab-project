@@ -161,4 +161,17 @@ describe.skipIf(!ADMIN_URL)("checking in with the app, in Postgres", () => {
         const held = (await punches("e1")).filter(p => p.phoneId === next.id)
         expect(held.map(p => p.status)).toEqual(["ACCEPTED", "FLAGGED"])
     })
+
+    // Last: it approves this month's payroll, which closes the month to every later check-in here.
+    it("doesn't count a held check-in in a month whose payroll was approved before the phone was", async () => {
+        attested.verified = true
+        const next = await phoneOf("e2", false)
+        expect(await checkIn("e2", next)).toMatchObject({ outcome: "HELD" })
+        const month = new Date(Date.now() + 3 * 3_600_000).toISOString().slice(0, 7)
+        await db.query(`INSERT INTO "PayrollRun"(id, "companyId", year, month, status, "payrollDay", "updatedAt") VALUES ('run', 'c1', $1, $2, 'APPROVED', 1, now())`, [Number(month.slice(0, 4)), Number(month.slice(5, 7))])
+        await Phones.decide(next.id, { approve: true }, "a1")
+        expect((await punches("e2")).filter(p => p.phoneId === next.id).map(p => p.status)).toEqual(["REJECTED"])
+        // And a check-in now, in the closed month, is refused.
+        expect(await checkIn("e2", next)).toEqual({ outcome: "REFUSED", reason: "MONTH_LOCKED" })
+    })
 })

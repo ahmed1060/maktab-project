@@ -4,6 +4,7 @@ import { AuditLogService } from "./audit-log.service"
 import { NotificationService } from "./notification.service"
 import { AttendanceChallengeService } from "./attendance-challenge.service"
 import { recomputeAfter } from "./attendance-recompute"
+import { lockMonths, lockedMonths, punchMonths } from "./attendance-lock"
 import type { Visibility } from "./attendance-punch.service"
 import { parsePhoneKey, signatureValid, signedText } from "@/lib/attendance/phone-keys"
 import { attestationMode, verifyAttestation } from "@/lib/attendance/attestation"
@@ -191,6 +192,19 @@ export class AttendancePhoneService {
             }
             await tx.checkInPhone.update({ where: { id }, data: { status: decision.approve ? "ACTIVE" : "REJECTED", decidedAt: now, decidedById: deciderId, reason } })
             const held = await tx.attendancePunch.findMany({ where: { phoneId: id, status: "PENDING_DEVICE" }, select: { punchAtLocal: true }, orderBy: { punchAtLocal: "asc" }, take: 1 })
+            // A check-in held in a month whose payroll was approved meanwhile
+            // can't count now: that month is closed to every punch (§12.1,
+            // review on #22). Locked as any punch write is, then discarded.
+            if (decision.approve) {
+                const waiting = await tx.attendancePunch.findMany({ where: { phoneId: id, status: "PENDING_DEVICE" }, select: { id: true, punchAtLocal: true } })
+                const monthsOf = new Map<string, string[]>()
+                for (const w of waiting) monthsOf.set(w.id, await punchMonths(tx, phone.companyId, phone.userId, w.punchAtLocal.toISOString().slice(0, 19)))
+                const months = [...new Set([...monthsOf.values()].flat())]
+                await lockMonths(tx, phone.companyId, months)
+                const closed = await lockedMonths(tx, phone.companyId, months)
+                const late = waiting.filter(w => monthsOf.get(w.id)!.some(m => closed.has(m))).map(w => w.id)
+                if (late.length > 0) await tx.attendancePunch.updateMany({ where: { id: { in: late } }, data: { status: "REJECTED" } })
+            }
             // Approved, what it held counts, or is flagged with the reasons it
             // was held with (§9.6); rejected, it is discarded.
             const flagged = decision.approve
