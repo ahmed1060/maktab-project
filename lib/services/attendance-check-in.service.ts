@@ -9,7 +9,9 @@ import { parsePhoneKey, signatureValid } from "@/lib/attendance/phone-keys"
 import { checkInText } from "@/lib/attendance/signed-text"
 import { attestationMode, verifyAttestation } from "@/lib/attendance/attestation"
 import { judgeCheckIn, type FlagReason } from "@/lib/attendance/check-in-rules"
-import { addDays, formatMinutes } from "@/lib/attendance/calendar"
+import { addDays, formatMinutes, toDateString } from "@/lib/attendance/calendar"
+import { localToInstant } from "@/lib/attendance/punch-import"
+import { employmentSpans, suspensionSpans } from "@/lib/employment"
 import { assignPunches } from "@/lib/attendance/engine"
 import { AttendanceEngineService } from "./attendance-engine.service"
 import { DEFAULT_TIME_ZONE, offsetMsIn } from "@/lib/time"
@@ -168,11 +170,40 @@ export class AttendanceCheckInService {
         const expected = plans.get(day)
         const rule = latenessOn(day)
         if (expected?.kind !== "WORK" || !rule?.enabled) return null
+        if (await AttendanceCheckInService.latenessWaived(companyId, userId, day)) return null
         // Minutes from the start of the shift's own day, past midnight included.
         const daysAfter = (Date.parse(`${date}T00:00:00Z`) - Date.parse(`${day}T00:00:00Z`)) / 86_400_000
         const minutes = daysAfter * 1440 + Number(local.slice(11, 13)) * 60 + Number(local.slice(14, 16)) - expected.hours.startMinutes
         if (minutes <= rule.graceMinutes) return null
         return { minutes, startsAt: formatMinutes(expected.hours.startMinutes) }
+    }
+
+    /**
+     * Whether lateness that day costs nothing anyway, as the engine measures
+     * it (deriveMonth, measureDay): on approved leave, suspended for the whole
+     * day or not employed on it, already excused on the exceptions screen, or
+     * with a late-arrival permission already asked for or granted. Offering
+     * another would spend allowance on nothing, or be refused as overlapping
+     * (review on #24).
+     */
+    private static async latenessWaived(companyId: string, userId: string, day: string): Promise<boolean> {
+        const date = new Date(`${day}T00:00:00Z`)
+        const [leave, permission, excused, person, company] = await Promise.all([
+            prisma.dayOffRequest.findMany({ where: { userId, status: "APPROVED", date: { lte: new Date(`${day}T23:59:59Z`) } }, select: { date: true, endDate: true } }),
+            prisma.permissionRequest.count({ where: { companyId, userId, date, type: "LATE_ARRIVAL", status: { in: ["PENDING", "APPROVED"] } } }),
+            prisma.attendanceDayDecision.count({ where: { companyId, userId, date, outcome: "EXCUSED", subject: "LATENESS" } }),
+            prisma.user.findUnique({ where: { id: userId }, select: { EmploymentEvent: { select: { type: true, effectiveFrom: true, deductSuspension: true, createdAt: true } } } }),
+            prisma.company.findUnique({ where: { id: companyId }, select: { timezone: true } }),
+        ])
+        if (permission > 0 || excused > 0) return true
+        if (leave.some(l => toDateString(l.date) <= day && day <= toDateString(l.endDate ?? l.date))) return true
+        const events = (person?.EmploymentEvent ?? []) as Parameters<typeof employmentSpans>[0]
+        if (events.length === 0) return false
+        const timeZone = company?.timezone ?? DEFAULT_TIME_ZONE
+        const dayStart = localToInstant(`${day}T00:00:00`, timeZone), nextStart = localToInstant(`${addDays(day, 1)}T00:00:00`, timeZone)
+        const touches = (s: { from: Date; to: Date | null }) => s.from < nextStart && (s.to === null || s.to > dayStart)
+        const covers = (s: { from: Date; to: Date | null }) => s.from <= dayStart && (s.to === null || s.to >= nextStart)
+        return !employmentSpans(events).some(touches) || suspensionSpans(events).some(covers)
     }
 
     private static async refuse(db: Prisma.TransactionClient, companyId: string, userId: string, phoneId: string | null, reason: string, ip: string | null, at: Date, details?: Prisma.InputJsonValue) {

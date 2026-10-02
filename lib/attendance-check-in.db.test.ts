@@ -195,6 +195,19 @@ describe.skipIf(!ADMIN_URL)("checking in with the app, in Postgres", () => {
         expect(await checkIn("e4", e4, AT_DESK, { at: "2026-09-29T06:20:00Z" })).toMatchObject({ outcome: "ACCEPTED", late: { minutes: 20, startsAt: "09:00" } })
     })
 
+    it("says nothing of lateness the engine would waive: on leave, already asked for, or excused", async () => {
+        await db.query(`INSERT INTO "DayOffRequest"(id, "userId", type, date, status, "updatedAt") VALUES ('leave', 'e4', 'REGULAR', '2026-09-02', 'APPROVED', now())`)
+        await db.query(`INSERT INTO "PermissionRequest"(id, "companyId", "userId", date, type, "startMinutes", "endMinutes", minutes, reason) VALUES ('perm', 'c1', 'e4', '2026-09-03', 'LATE_ARRIVAL', 540, 600, 60, 'Doctor')`)
+        await db.query(`INSERT INTO "AttendanceDayDecision"(id, "companyId", "userId", date, subject, outcome, "decidedById") VALUES ('excuse', 'c1', 'e4', '2026-09-06', 'LATENESS', 'EXCUSED', 'a1')`)
+        const phone = await phoneOf("e4")
+        // Wednesday 2nd on leave, Thursday 3rd with a permission waiting, Sunday 6th excused: 09:40 each, and nothing to offer.
+        for (const at of ["2026-09-02T06:40:00Z", "2026-09-03T06:40:00Z", "2026-09-06T06:40:00Z"]) {
+            expect(await checkIn("e4", phone, AT_DESK, { at })).toMatchObject({ late: null })
+        }
+        // Monday 7th, nothing of the kind: late as before.
+        expect(await checkIn("e4", phone, AT_DESK, { at: "2026-09-07T06:40:00Z" })).toMatchObject({ late: { minutes: 40 } })
+    })
+
     it("measures a night shift's arrival against the night it starts, after midnight too, and not after the morning's check-out", async () => {
         // 22:00–06:00, nights starting Sunday to Thursday; the same policy as above.
         const night = await Calendar.createSchedule("c1", { name: "Night", version: { effectiveFrom: "2026-01-01", startMinutes: 1320, endMinutes: 1800, breakMinutes: 0 } }, "a1")
