@@ -9,7 +9,7 @@ import { parsePhoneKey, signatureValid, signedText } from "@/lib/attendance/phon
 import { attestationMode, verifyAttestation } from "@/lib/attendance/attestation"
 import { holdersOf } from "@/lib/permissions/holders"
 import { optional } from "@/lib/notice"
-import { toDateString } from "@/lib/attendance/calendar"
+import { addDays, toDateString } from "@/lib/attendance/calendar"
 
 /**
  * The one phone each person checks in from (ATTENDANCE_PLAN.md §9.2, §9.3).
@@ -202,7 +202,8 @@ export class AttendancePhoneService {
             return { ...phone, from: held[0] ? toDateString(held[0].punchAtLocal) : null, counted: decision.approve && released.count > 0 }
         })
         // The check-ins it held now count: the days they fall on are worked out again.
-        if (out.counted && out.from) await recomputeAfter(out.companyId, out.from, [out.userId])
+        // From the day before: an early check-in may end the night shift that began then.
+        if (out.counted && out.from) await recomputeAfter(out.companyId, addDays(out.from, -1), [out.userId])
     }
 
     /** Lost, stolen, or left: it checks in no more. Its owner registers a new one. */
