@@ -11,6 +11,7 @@ import Modal from '@/components/Modal'
 import AttendancePolicyPanel from '@/components/AttendancePolicyPanel'
 import AttendancePayrollPanel from '@/components/AttendancePayrollPanel'
 import AttendanceTerminalsPanel from '@/components/AttendanceTerminalsPanel'
+import AttendanceLocationsPanel from '@/components/AttendanceLocationsPanel'
 import ConfirmModal from '@/components/ConfirmModal'
 import { apiErrorText } from '@/lib/api-error-text'
 import {
@@ -202,6 +203,8 @@ export default function CompanyAttendanceCard({ companyId, readOnly = false }: {
             <AttendancePayrollPanel companyId={companyId} readOnly={!editable} />
             {/* Only for a company holding the Terminals add-on; hides itself otherwise (§16). */}
             <AttendanceTerminalsPanel companyId={companyId} readOnly={!editable} />
+            {/* Only for a company holding the Mobile App add-on; hides itself otherwise (§16). */}
+            <AttendanceLocationsPanel companyId={companyId} readOnly={!editable} />
             {/* The policy first: its work week is what the schedules inherit. */}
             <AttendancePolicyPanel companyId={companyId} readOnly={!editable} onChanged={load} />
             <SchedulesSection ctx={ctx} />

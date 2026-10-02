@@ -254,6 +254,7 @@ model Company {
   attendanceDiscrepancies  AttendanceDiscrepancy[]
   attendanceAgents         AttendanceAgent[]
   attendanceDevices        AttendanceDevice[]
+  workLocations            WorkLocation[]
   companyHolidays      CompanyHoliday[]
   holidayExclusions    CompanyHolidayExclusion[]
   finalSettlements     FinalSettlement[]
@@ -508,6 +509,7 @@ model User {
   attendanceDecisions        AttendanceDayDecision[]
   attendancePayrollEntries   AttendancePayrollEntry[]
   attendanceDiscrepancies    AttendanceDiscrepancy[]
+  workLocations              UserWorkLocation[]
 
   @@index([email])
   @@index([companyId])
@@ -2180,4 +2182,40 @@ model AttendanceDiscrepancy {
   /// express.
   @@index([userId, date])
   @@index([companyId, resolvedAt])
+}
+
+/// A place where people check in with the app (ATTENDANCE_PLAN.md §8.5,
+/// §9.4): a circle on the map, and optionally the office's public IPs, which
+/// a check-in must then also come from. Archived, never deleted: check-ins
+/// will point at it.
+model WorkLocation {
+  id             String             @id @default(uuid())
+  companyId      String
+  name           String
+  latitude       Float
+  longitude      Float
+  radiusMeters   Int
+  /// Addresses or CIDR ranges; empty means no IP check (§9.4).
+  officeIpRanges String[]           @default([])
+  /// Everyone in the company may check in here, not only those listed.
+  everyone       Boolean            @default(false)
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+  archivedAt     DateTime?
+  company        Company            @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  people         UserWorkLocation[]
+
+  @@index([companyId])
+}
+
+/// Who may check in where (§8.5).
+model UserWorkLocation {
+  userId     String
+  locationId String
+  createdAt  DateTime     @default(now())
+  user       User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  location   WorkLocation @relation(fields: [locationId], references: [id], onDelete: Cascade)
+
+  @@id([userId, locationId])
+  @@index([locationId])
 }
