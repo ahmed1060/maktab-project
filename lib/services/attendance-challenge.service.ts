@@ -17,10 +17,18 @@ export const CHALLENGE_TTL_MS = 5 * 60_000
 const hashOf = (nonce: string) => createHash("sha256").update(nonce).digest("hex")
 
 export class AttendanceChallengeService {
+    /**
+     * A new number, which replaces any this person was given for the same
+     * purpose and has not used: at most one waits per person and purpose,
+     * however often an app asks.
+     */
     static async issue(userId: string, purpose: ChallengePurpose, now = new Date()) {
         const nonce = randomBytes(32).toString("base64url")
         const expiresAt = new Date(now.getTime() + CHALLENGE_TTL_MS)
-        await prisma.attendanceChallenge.create({ data: { userId, purpose, nonceHash: hashOf(nonce), expiresAt } })
+        await prisma.$transaction([
+            prisma.attendanceChallenge.deleteMany({ where: { userId, purpose, usedAt: null } }),
+            prisma.attendanceChallenge.create({ data: { userId, purpose, nonceHash: hashOf(nonce), expiresAt } }),
+        ])
         return { nonce, expiresAt }
     }
 
