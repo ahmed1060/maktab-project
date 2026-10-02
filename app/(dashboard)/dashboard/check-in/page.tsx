@@ -12,7 +12,7 @@ import { fetcher } from '@/lib/swr-fetcher'
 import type { TranslationKey } from '@/lib/translations'
 import { checkInDevice, inNativeApp } from '@/lib/mobile/native'
 import { checkIn, deviceFingerprint, registerPhone, type CheckInAnswer } from '@/lib/mobile/check-in-flow'
-import { answerKey } from '@/lib/mobile/screen'
+import { answerKey, thisPhone } from '@/lib/mobile/screen'
 import { send, json } from '../attendance/send'
 import { AskPermissionModal } from '../attendance/RequestsTab'
 
@@ -52,7 +52,7 @@ export default function CheckInPage() {
     const native = useSyncExternalStore(subscribeNever, inNativeApp, () => false)
     const device = useMemo(() => (native ? checkInDevice() : null), [native])
     const { data: phoneBody, error: phoneError, mutate: refreshPhone } = useSWR(device ? '/api/attendance/phone' : null, fetcher)
-    const { data: fingerprint, mutate: refreshFingerprint } = useSWR(device ? 'this-phone-key' : null, () => deviceFingerprint(device!))
+    const { data: fingerprint, error: keyError, mutate: refreshFingerprint } = useSWR(device ? 'this-phone-key' : null, () => deviceFingerprint(device!))
     const [busy, setBusy] = useState<null | 'register' | 'IN' | 'OUT'>(null)
     const [answer, setAnswer] = useState<CheckInAnswer | null>(null)
     const [switching, setSwitching] = useState(false)
@@ -101,17 +101,16 @@ export default function CheckInPage() {
         </section>
     )
     if (phoneError) return <section className="glass" style={box}><p style={{ margin: 0 }}>{phoneError.status === 403 ? t('ci_not_available') : t('error_generic')}</p></section>
-    if (!phoneBody || fingerprint === undefined) return <LoadingSpinner />
-
-    const { active, pending } = phoneBody.data as { active: Phone | null; pending: Phone | null }
+    const which = thisPhone(phoneBody?.data as { active: Phone | null; pending: Phone | null } | undefined, { fingerprint, failed: !!keyError })
+    if (!which) return <LoadingSpinner />
+    const { mine, other, keyFailed } = which
     const label = (ph: Phone) => ph.model || t(`audit_value_${ph.platform}` as TranslationKey)
-    const mine = fingerprint && active?.keyFingerprint === fingerprint ? 'ACTIVE' : fingerprint && pending?.keyFingerprint === fingerprint ? 'PENDING' : null
-    const other = !mine ? (pending ?? active) : null
 
     return (
         <div style={{ display: 'grid', gap: '1rem', maxWidth: '36rem' }}>
             {!mine && (
                 <section className="glass" style={box}>
+                    {keyFailed && <p role="alert" style={{ margin: 0, color: 'var(--danger-fg)' }}>{t('ci_key_failed')}</p>}
                     <p style={{ margin: 0 }}>{other ? t('ci_other_phone').replaceAll('{model}', label(other)) : t('ci_register_hint')}</p>
                     <button className="btn btn-primary" style={big} disabled={!!busy} onClick={() => (other ? setSwitching(true) : register())}>
                         {busy === 'register' ? '…' : t(other ? 'ci_switch' : 'ci_register')}
