@@ -4,3 +4,4 @@ agent.json
 state.json
 state.json.tmp
 logs/
+agent.lock

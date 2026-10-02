@@ -3,6 +3,7 @@ import { mkdtempSync, writeFileSync, existsSync, readFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { getEventListeners } from "node:events"
+import { spawn } from "node:child_process"
 import { main, sleep } from "../src/main"
 import { FakeZkDevice } from "./fake-zk-device"
 import { FakeServer } from "./fake-server"
@@ -32,6 +33,27 @@ describe("nizmo-agent", () => {
         expect(server.stored.size).toBe(1)
         expect(existsSync(join(home, "logs", "agent.log"))).toBe(true)
         expect(await main(["nonsense"])).toBe(2)
+    })
+
+    it("will not enrol while the service holds the folder, and takes over a lock left by one that has gone (review on #18)", async () => {
+        device = new FakeZkDevice()
+        const port = await device.start()
+        server = new FakeServer()
+        await server.start()
+        const home = mkdtempSync(join(tmpdir(), "agent-home-"))
+        process.env.NIZMO_AGENT_HOME = home
+        writeFileSync(join(home, "agent.json"), JSON.stringify({ server: server.url, devices: [{ host: "127.0.0.1", port }] }))
+        // The service, standing in: a live process holding the lock.
+        const service = spawn(process.execPath, ["-e", "setTimeout(() => {}, 60000)"])
+        writeFileSync(join(home, "agent.lock"), String(service.pid))
+        expect(await main(["enrol", "K7QD-2MXP"])).toBe(3)
+        expect(existsSync(join(home, "state.json"))).toBe(false)
+        expect(readFileSync(join(home, "logs", "agent.log"), "utf8")).toContain("stop it first")
+        // The service stopped without tidying up: its lock is taken over.
+        service.kill()
+        await new Promise(r => service.once("exit", r))
+        expect(await main(["enrol", "K7QD-2MXP"])).toBe(0)
+        expect(existsSync(join(home, "agent.lock"))).toBe(false)
     })
 
     it("leaves nothing behind after each wait between rounds (review on #18)", async () => {

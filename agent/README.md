@@ -85,7 +85,7 @@ and clear, then turns it back on.
 
 ## Moving to another PC
 
-In Nizmo, choose **Move to another PC** on the agent, install on the new PC with
+In Nizmo, choose **Move to another PC** on the agent. Install on the new PC with
 the new code, and uninstall from the old one. The old PC stops working as soon
 as the new one is enrolled.
 
@@ -96,7 +96,8 @@ as the new one is enrolled.
 | **Not heard from** in Nizmo | Is the PC on, and is the service running (`nizmo-agent-service.exe status`)? Check `logs\agent.log`. |
 | **Agent can't reach it** on a terminal | Check its IP address and network cable. Run `nizmo-agent.exe probe <address>`. |
 | `ZK_AUTH_FAILED` | The terminal has a comm password. Add `"password"` for it in `agent.json`. |
-| `The server no longer accepts this agent` | It was revoked or moved. Get a new code in Nizmo and run `nizmo-agent.exe enrol <code>`. |
+| `The server no longer accepts this agent` | It was revoked or moved. Get a new code in Nizmo, then `nizmo-agent-service.exe stop`, `nizmo-agent.exe enrol <code>`, `nizmo-agent-service.exe start`. |
+| `Another nizmo-agent … is using this folder` | The service is running. Stop it before `enrol` or `check`, and start it again after. |
 | **Clock off** on a terminal | Set the terminal's date and time. Scans are recorded by its clock. |
 
 `state.json` holds the agent's key to your company. Keep the folder readable by

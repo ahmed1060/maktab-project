@@ -2,6 +2,7 @@ import { join } from "node:path"
 import { ConfigError, loadConfig } from "./config"
 import { fileLogger } from "./log"
 import { loadState } from "./state"
+import { LockedError, acquireLock } from "./lock"
 import { SyncAgent } from "./sync"
 import { withDevice } from "./zk/client"
 import { AGENT_VERSION } from "./version"
@@ -79,6 +80,28 @@ export async function main(argv: string[]): Promise<number> {
         if (e instanceof ConfigError) { log.error(e.message); return 2 }
         throw e
     }
+    if (!["enrol", "enroll", "check", "run"].includes(command)) {
+        process.stderr.write(HELP)
+        return 2
+    }
+    let lock: { release(): void }
+    try {
+        lock = acquireLock(join(dir, "agent.lock"))
+    } catch (e) {
+        if (!(e instanceof LockedError)) throw e
+        log.error(`${e.message} If the service is running, stop it first: nizmo-agent-service.exe stop`)
+        return 3
+    }
+    try {
+        return await locked(command, args, config, paths, log)
+    } finally {
+        lock.release()
+    }
+}
+
+/** What the commands that use the state do, holding the folder's lock. */
+async function locked(command: string, args: string[], config: ReturnType<typeof loadConfig>, paths: { state: string }, log: ReturnType<typeof fileLogger>): Promise<number> {
+    // Read under the lock, so nothing else has it half-changed.
     const state = loadState(paths.state)
 
     if (command === "enrol" || command === "enroll") {
@@ -116,7 +139,6 @@ export async function main(argv: string[]): Promise<number> {
         return 0
     }
 
-    process.stderr.write(HELP)
     return 2
 }
 
