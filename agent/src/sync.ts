@@ -185,7 +185,8 @@ export class SyncAgent {
                 result.read += records.length
                 result.queued += wanted.length
                 reports.set(key, {
-                    serialNumber: info.serialNumber, ...(d.name ? { name: d.name } : {}), ...(info.name ? { model: info.name } : {}), ...(info.firmware ? { firmware: info.firmware } : {}),
+                    // What the terminal says about itself, cut to what the server takes.
+                    serialNumber: info.serialNumber, ...(d.name ? { name: d.name } : {}), ...(info.name ? { model: info.name.slice(0, 80) } : {}), ...(info.firmware ? { firmware: info.firmware.slice(0, 80) } : {}),
                     reachable: true, clock: info.clock, userCount: info.users, recordCount: info.records, recordCapacity: info.recordsCapacity,
                     ratio: info.recordsCapacity > 0 ? info.records / info.recordsCapacity : 0,
                 })

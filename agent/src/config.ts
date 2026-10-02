@@ -56,7 +56,10 @@ export function parseConfig(raw: unknown): AgentConfig {
         if (!Number.isInteger(port) || port < 1 || port > 65535) throw new ConfigError(`Terminal ${i + 1}: "port" must be a number from 1 to 65535.`)
         const password = d.password === undefined ? 0 : Number(d.password)
         if (!Number.isInteger(password) || password < 0) throw new ConfigError(`Terminal ${i + 1}: "password" must be the terminal's numeric comm password.`)
-        return { host: d.host.trim(), port, password, name: typeof d.name === "string" && d.name.trim() ? d.name.trim() : null }
+        const name = typeof d.name === "string" && d.name.trim() ? d.name.trim() : null
+        // The server takes at most 80; a longer one would fail every heartbeat (review on #18).
+        if (name && name.length > 80) throw new ConfigError(`Terminal ${i + 1}: "name" must be at most 80 characters.`)
+        return { host: d.host.trim(), port, password, name }
     })
     const keys = devices.map(d => `${d.host}:${d.port}`)
     if (new Set(keys).size !== keys.length) throw new ConfigError("The same terminal is listed twice.")

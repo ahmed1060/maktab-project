@@ -173,6 +173,15 @@ describe("a round of the agent", () => {
         expect(server.tokens).toEqual(new Set(["mka_2"]))
     })
 
+    it("cuts what a terminal says about itself to what the server takes (review on #18)", async () => {
+        device.state.name = "M".repeat(120)
+        device.state.firmware = "F".repeat(120)
+        await agent().enrol("K7QD-2MXP")
+        await agent().round()
+        expect(server.heartbeats[0].devices[0].model).toHaveLength(80)
+        expect(server.heartbeats[0].devices[0].firmware).toHaveLength(80)
+    })
+
     it("reports a terminal it cannot reach, by the serial number it last had", async () => {
         await agent().enrol("K7QD-2MXP")
         await agent().round()
@@ -290,5 +299,8 @@ describe("the config file", () => {
         expect(() => parseConfig({ server: "https://x.co", devices: [{ host: "a" }, { host: "a", port: 4370 }] })).toThrow("twice")
         expect(() => parseConfig({ server: "https://x.co", devices: [], pollSeconds: 5 })).toThrow("pollSeconds")
         expect(() => parseConfig({ server: "https://x.co", devices: [{ host: "a", password: "secret" }] })).toThrow("numeric")
+        // Longer than the server takes: refused here rather than failing every heartbeat (review on #18).
+        expect(() => parseConfig({ server: "https://x.co", devices: [{ host: "a", name: "x".repeat(81) }] })).toThrow("80 characters")
+        expect(parseConfig({ server: "https://x.co", devices: [{ host: "a", name: "x".repeat(80) }] }).devices[0].name).toHaveLength(80)
     })
 })
