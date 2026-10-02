@@ -110,9 +110,9 @@ export class SyncAgent {
         }
         const reports = await this.readDevices(result)
         try {
-            await this.heartbeat(reports)
+            const states = await this.heartbeat(reports)
             await this.deliver(result)
-            if (this.config.clearWhenFull) await this.clearFull(reports, result)
+            if (this.config.clearWhenFull) await this.clearFull(reports, states, result)
         } catch (e) {
             if (!(e instanceof ApiError)) throw e
             if (e.reenrol) {
@@ -171,7 +171,8 @@ export class SyncAgent {
 
     // --- 2. the heartbeat -----------------------------------------------------------
 
-    private async heartbeat(reports: Map<string, DeviceReport & { ratio: number }>) {
+    /** Sends the heartbeat; answers each terminal's state as the server sees it, by serial number. */
+    private async heartbeat(reports: Map<string, DeviceReport & { ratio: number }>): Promise<Map<string, string>> {
         const reply = await this.api.heartbeat({
             agentVersion: AGENT_VERSION, hostname: hostname(), queueDepth: this.state.queue.length, clock: new Date().toISOString(),
             devices: [...reports.values()].map(withoutRatio),
@@ -186,6 +187,7 @@ export class SyncAgent {
             this.save()
             this.log.info("Token rotated.")
         }
+        return new Map(reply.devices.map(d => [d.serialNumber, d.state]))
     }
 
     // --- 3. delivery ------------------------------------------------------------------
@@ -217,13 +219,16 @@ export class SyncAgent {
 
     // --- 4. clearing a full terminal -------------------------------------------------
 
-    private async clearFull(reports: Map<string, DeviceReport & { ratio: number }>, result: RoundResult) {
+    private async clearFull(reports: Map<string, DeviceReport & { ratio: number }>, states: Map<string, string>, result: RoundResult) {
         for (const d of this.config.devices) {
             const key = deviceKey(d)
             const report = reports.get(key)
             const remembered = this.state.devices[key]
             if (!report?.reachable || report.ratio < this.config.clearAtRatio || !remembered?.serialNumber) continue
             if (this.state.queue.some(p => p.serialNumber === remembered.serialNumber)) continue
+            // Only a terminal in use by this company: one retired here, or now
+            // another company's, holds scans that are not ours to erase (review on #18).
+            if (states.get(remembered.serialNumber) !== "ACTIVE") continue
             await this.device(zkOptions(d), async zk => {
                 await zk.disable()
                 try {
