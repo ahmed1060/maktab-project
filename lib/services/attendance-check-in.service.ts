@@ -187,23 +187,51 @@ export class AttendanceCheckInService {
      * (review on #24).
      */
     static async latenessWaived(companyId: string, userId: string, day: string): Promise<boolean> {
-        const date = new Date(`${day}T00:00:00Z`)
-        const [leave, permission, excused, person, company] = await Promise.all([
-            prisma.dayOffRequest.findMany({ where: { userId, status: "APPROVED", date: { lte: new Date(`${day}T23:59:59Z`) } }, select: { date: true, endDate: true } }),
-            prisma.permissionRequest.count({ where: { companyId, userId, date, type: "LATE_ARRIVAL", status: { in: ["PENDING", "APPROVED"] } } }),
-            prisma.attendanceDayDecision.count({ where: { companyId, userId, date, outcome: "EXCUSED", subject: "LATENESS" } }),
-            prisma.user.findUnique({ where: { id: userId }, select: { EmploymentEvent: { select: { type: true, effectiveFrom: true, deductSuspension: true, createdAt: true } } } }),
+        return (await this.latenessWaivedFor(companyId, [{ userId, date: day }])).has(`${userId}|${day}`)
+    }
+
+    /**
+     * latenessWaived for many people and days at once: five queries however
+     * many, for the reminder job (review on #25). The keys of the waived ones,
+     * as "userId|date".
+     */
+    static async latenessWaivedFor(companyId: string, pairs: readonly { userId: string; date: string }[]): Promise<Set<string>> {
+        const waived = new Set<string>()
+        if (pairs.length === 0) return waived
+        const userIds = [...new Set(pairs.map(p => p.userId))]
+        const days = [...new Set(pairs.map(p => p.date))].sort()
+        const asDates = days.map(d => new Date(`${d}T00:00:00Z`))
+        const [leave, permissions, excused, people, company] = await Promise.all([
+            prisma.dayOffRequest.findMany({
+                where: {
+                    userId: { in: userIds }, status: "APPROVED", date: { lte: new Date(`${days.at(-1)}T23:59:59Z`) },
+                    OR: [{ endDate: { gte: asDates[0] } }, { endDate: null, date: { gte: asDates[0] } }],
+                },
+                select: { userId: true, date: true, endDate: true },
+            }),
+            prisma.permissionRequest.findMany({ where: { companyId, userId: { in: userIds }, date: { in: asDates }, type: "LATE_ARRIVAL", status: { in: ["PENDING", "APPROVED"] } }, select: { userId: true, date: true } }),
+            prisma.attendanceDayDecision.findMany({ where: { companyId, userId: { in: userIds }, date: { in: asDates }, outcome: "EXCUSED", subject: "LATENESS" }, select: { userId: true, date: true } }),
+            prisma.user.findMany({ where: { id: { in: userIds } }, select: { id: true, EmploymentEvent: { select: { type: true, effectiveFrom: true, deductSuspension: true, createdAt: true } } } }),
             prisma.company.findUnique({ where: { id: companyId }, select: { timezone: true } }),
         ])
-        if (permission > 0 || excused > 0) return true
-        if (leave.some(l => toDateString(l.date) <= day && day <= toDateString(l.endDate ?? l.date))) return true
-        const events = (person?.EmploymentEvent ?? []) as Parameters<typeof employmentSpans>[0]
-        if (events.length === 0) return false
         const timeZone = company?.timezone ?? DEFAULT_TIME_ZONE
-        const dayStart = localToInstant(`${day}T00:00:00`, timeZone), nextStart = localToInstant(`${addDays(day, 1)}T00:00:00`, timeZone)
-        const touches = (s: { from: Date; to: Date | null }) => s.from < nextStart && (s.to === null || s.to > dayStart)
-        const covers = (s: { from: Date; to: Date | null }) => s.from <= dayStart && (s.to === null || s.to >= nextStart)
-        return !employmentSpans(events).some(touches) || suspensionSpans(events).some(covers)
+        const asked = new Set([...permissions, ...excused].map(r => `${r.userId}|${toDateString(r.date)}`))
+        const spans = new Map(people.map(p => {
+            const events = p.EmploymentEvent as Parameters<typeof employmentSpans>[0]
+            return [p.id, events.length === 0 ? null : { employed: employmentSpans(events), suspended: suspensionSpans(events) }]
+        }))
+        for (const { userId, date: day } of pairs) {
+            const key = `${userId}|${day}`
+            if (asked.has(key)) { waived.add(key); continue }
+            if (leave.some(l => l.userId === userId && toDateString(l.date) <= day && day <= toDateString(l.endDate ?? l.date))) { waived.add(key); continue }
+            const mine = spans.get(userId)
+            if (!mine) continue
+            const dayStart = localToInstant(`${day}T00:00:00`, timeZone), nextStart = localToInstant(`${addDays(day, 1)}T00:00:00`, timeZone)
+            const touches = (s: { from: Date; to: Date | null }) => s.from < nextStart && (s.to === null || s.to > dayStart)
+            const covers = (s: { from: Date; to: Date | null }) => s.from <= dayStart && (s.to === null || s.to >= nextStart)
+            if (!mine.employed.some(touches) || mine.suspended.some(covers)) waived.add(key)
+        }
+        return waived
     }
 
     private static async refuse(db: Prisma.TransactionClient, companyId: string, userId: string, phoneId: string | null, reason: string, ip: string | null, at: Date, details?: Prisma.InputJsonValue) {

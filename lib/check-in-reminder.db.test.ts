@@ -119,6 +119,22 @@ describe.skipIf(!ADMIN_URL)("the no-check-in reminder, in Postgres", () => {
         expect(await Reminders.run(new Date("2026-09-28T08:30:00Z"))).toMatchObject({ reminded: 0 })
     })
 
+    it("reminds a whole shift at once, each person once, with their own start", async () => {
+        // Forty more people with the app, all due at 09:20 on Wednesday 30th; and Eyad's night not yet.
+        const ids = Array.from({ length: 40 }, (_, i) => `m${i}`)
+        await db.query(`INSERT INTO "User"(id, email, password, "firstName", "lastName", role, "lastDayOffResetYear", username, "companyId", "roleId")
+            SELECT id, id || '@x', 'p', 'M', id, 'EMPLOYEE', 2026, id, 'c1', (SELECT r.id FROM "Role" r WHERE r."companyId" = 'c1' AND r."builtIn" = 'EMPLOYEE')
+            FROM unnest($1::text[]) AS id`, [ids])
+        await db.query(`INSERT INTO "CheckInPhone"(id, "companyId", "userId", "publicKey", "keyFingerprint", platform, status)
+            SELECT 'ph-' || id, 'c1', id, 'k', 'fp-' || id, 'ANDROID', 'ACTIVE' FROM unnest($1::text[]) AS id`, [ids])
+        await Reminders.run(new Date("2026-09-30T06:20:00Z"))
+        await Reminders.run(new Date("2026-09-30T06:25:00Z"))
+        const wednesday = (await reminders()).filter(r => r.date === "2026-09-30").map(r => r.userId)
+        expect(wednesday.filter(u => u.startsWith("m"))).toHaveLength(40)
+        const told = (await db.query(`SELECT count(*)::int AS n, min("messageParams"->>'time') AS t FROM "Notification" WHERE type = 'ATTENDANCE_REMINDER' AND "userId" LIKE 'm%'`)).rows[0]
+        expect(told).toEqual({ n: 40, t: "09:00" })
+    })
+
     it("says nothing on a rest day", async () => {
         // Friday 2nd October, 09:20.
         expect(await Reminders.run(new Date("2026-10-02T06:20:00Z"))).toMatchObject({ reminded: 0 })

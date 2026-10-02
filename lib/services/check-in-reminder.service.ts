@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma"
 import { offsetMsIn, DEFAULT_TIME_ZONE } from "@/lib/time"
-import { addDays, formatMinutes } from "@/lib/attendance/calendar"
+import { addDays, formatMinutes, toDateString } from "@/lib/attendance/calendar"
 import { EARLY_MARGIN_MINUTES } from "@/lib/attendance/engine"
 import { hasBundle, resolveBundles } from "@/lib/features/bundles"
 import { CompanyService } from "./company.service"
@@ -57,7 +57,9 @@ export class CheckInReminderService {
         const { plans, policyOn } = await AttendanceEngineService.plansFor(companyId, userIds, dates)
         const minutesInto = (date: string) => (Date.parse(`${local}Z`) - Date.parse(`${date}T00:00:00Z`)) / 60_000
 
-        let reminded = 0
+        // Who is due, from the plans alone; then what rules them out, a
+        // handful of queries for the whole company (review on #25).
+        const due: { userId: string; date: string; start: number; earliest: Date }[] = []
         for (const userId of userIds) {
             for (const date of dates) {
                 const expected = plans.get(userId)?.get(date)
@@ -67,22 +69,42 @@ export class CheckInReminderService {
                 const since = minutesInto(date) - start
                 if (since < after || since > after + LATE_WINDOW_MINUTES) continue
                 // Any check-in since the shift's window opened counts, flagged or held included.
-                const earliest = new Date(Date.parse(`${date}T00:00:00Z`) + (start - EARLY_MARGIN_MINUTES) * 60_000)
-                const checkedIn = await prisma.attendancePunch.count({
-                    // This company's own: punches stay with a company the person has left (review on #25).
-                    where: { companyId, userId, voidedAt: null, status: { in: ["ACCEPTED", "FLAGGED", "PENDING_DEVICE"] }, punchAtLocal: { gte: earliest, lte: new Date(`${local}Z`) } },
-                })
-                if (checkedIn > 0) continue
-                if (await AttendanceCheckInService.latenessWaived(companyId, userId, date)) continue
-                const sent = await prisma.$transaction(async tx => {
-                    const { count } = await tx.checkInReminder.createMany({ data: [{ userId, companyId, date: new Date(`${date}T00:00:00Z`) }], skipDuplicates: true })
-                    if (count === 0) return false
-                    await NotificationService.notify(userId, "ATTENDANCE_REMINDER", { key: "notice_att_checkin_reminder", params: { time: formatMinutes(start) } }, "/dashboard/check-in", tx)
-                    return true
-                })
-                if (sent) reminded++
+                due.push({ userId, date, start, earliest: new Date(Date.parse(`${date}T00:00:00Z`) + (start - EARLY_MARGIN_MINUTES) * 60_000) })
             }
         }
-        return reminded
+        if (due.length === 0) return 0
+        const [punches, waived] = await Promise.all([
+            prisma.attendancePunch.findMany({
+                // This company's own: punches stay with a company the person has left.
+                where: {
+                    companyId, userId: { in: [...new Set(due.map(d => d.userId))] }, voidedAt: null, status: { in: ["ACCEPTED", "FLAGGED", "PENDING_DEVICE"] },
+                    punchAtLocal: { gte: new Date(Math.min(...due.map(d => d.earliest.getTime()))), lte: new Date(`${local}Z`) },
+                },
+                select: { userId: true, punchAtLocal: true },
+            }),
+            AttendanceCheckInService.latenessWaivedFor(companyId, due),
+        ])
+        const remind = due.filter(d =>
+            !punches.some(p => p.userId === d.userId && p.punchAtLocal >= d.earliest) && !waived.has(`${d.userId}|${d.date}`))
+        if (remind.length === 0) return 0
+
+        // Once per person and day: the rows inserted are the ones told, in one transaction.
+        return prisma.$transaction(async tx => {
+            const inserted = await tx.$queryRaw<{ userId: string; date: Date }[]>`
+                INSERT INTO "CheckInReminder"("userId", "date", "companyId")
+                SELECT u, d::date, ${companyId} FROM UNNEST(${remind.map(r => r.userId)}::text[], ${remind.map(r => r.date)}::text[]) AS t(u, d)
+                ON CONFLICT DO NOTHING
+                RETURNING "userId", "date"`
+            const startOf = new Map(remind.map(r => [`${r.userId}|${r.date}`, r.start]))
+            const byTime = new Map<string, string[]>()
+            for (const row of inserted) {
+                const time = formatMinutes(startOf.get(`${row.userId}|${toDateString(row.date)}`)!)
+                byTime.set(time, [...(byTime.get(time) ?? []), row.userId])
+            }
+            for (const [time, ids] of byTime) {
+                await NotificationService.notifyMany(ids, "ATTENDANCE_REMINDER", { key: "notice_att_checkin_reminder", params: { time } }, "/dashboard/check-in", tx)
+            }
+            return inserted.length
+        })
     }
 }
