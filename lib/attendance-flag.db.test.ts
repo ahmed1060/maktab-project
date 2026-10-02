@@ -105,6 +105,10 @@ describe.skipIf(!ADMIN_URL)("flagged check-ins, in Postgres", () => {
         const theirs = await Flags.list("COMPANY", { companyId: "c1", visible: { kind: "COMPANY" } })
         expect(theirs.map(f => f.id)).toEqual([outside])
         expect(theirs[0]).toMatchObject({ name: "Ehab One", flagReasons: ["OUTSIDE_AREA"], workLocation: { name: "Office c1" }, checkIn: { distanceMeters: 334 } })
+        // A team leader sees their team's only; Ehab has no team leader.
+        expect(await Flags.list("COMPANY", { companyId: "c1", visible: { kind: "TEAM", leaderId: "a1" } })).toEqual([])
+        expect((await Flags.list("COMPANY", { companyId: "c1", visible: { kind: "OWN", userId: "e1" } })).map(f => f.id)).toEqual([outside])
+        expect(await Flags.list("COMPANY", { companyId: "c2", visible: { kind: "COMPANY" } })).toEqual([])
         const platform = await Flags.list("PLATFORM", "ALL")
         expect(platform.map(f => f.id)).toEqual([unverified])
         expect(platform[0]).toMatchObject({ companyName: "One", flagReasons: ["ATTESTATION_UNVERIFIED"] })
@@ -146,6 +150,8 @@ describe.skipIf(!ADMIN_URL)("flagged check-ins, in Postgres", () => {
         await db.query(`INSERT INTO "PayrollRun"(id, "companyId", year, month, status, "payrollDay", "updatedAt") VALUES ('run2', 'c2', $1, $2, 'APPROVED', 1, now())`, [Number(month.slice(0, 4)), Number(month.slice(5, 7))])
         await expect(Flags.decide(late, { accept: true }, "a2")).rejects.toThrow("PAYROLL_MONTH_LOCKED")
         expect(await status(late)).toBe("FLAGGED")
+        // Nor is it listed to decide: its buttons could never work (review on #23).
+        expect((await Flags.list("COMPANY", { companyId: "c2", visible: { kind: "COMPANY" } })).map(f => f.id)).not.toContain(late)
     })
 
     it("shows the Super Admin, per company, what was refused and flagged, and why", async () => {

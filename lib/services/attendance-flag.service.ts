@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma"
-import type { Prisma } from "@prisma/client"
+import { Prisma } from "@prisma/client"
 import { AuditLogService } from "./audit-log.service"
 import { NotificationService } from "./notification.service"
 import { recomputeAfter } from "./attendance-recompute"
@@ -38,13 +38,10 @@ async function actorOf(tx: Prisma.TransactionClient, actorId: string) {
 
 const wallClockText = (d: Date) => d.toISOString().slice(0, 19)
 
-const reviewerWhere = (reviewer: Reviewer): Prisma.AttendancePunchWhereInput =>
-    reviewer === "PLATFORM" ? { flagReasons: { has: PLATFORM_REASON } } : { NOT: { flagReasons: { has: PLATFORM_REASON } } }
-
-function visibleWhere(v: Visibility): Prisma.AttendancePunchWhereInput {
-    if (v.kind === "COMPANY") return {}
-    if (v.kind === "TEAM") return { user: { teamLeaderId: v.leaderId } }
-    return { userId: v.userId }
+function visibleSql(v: Visibility): Prisma.Sql {
+    if (v.kind === "COMPANY") return Prisma.sql`TRUE`
+    if (v.kind === "TEAM") return Prisma.sql`u."teamLeaderId" = ${v.leaderId}`
+    return Prisma.sql`p."userId" = ${v.userId}`
 }
 
 const SHOWN = {
@@ -61,17 +58,27 @@ const shown = (p: Prisma.AttendancePunchGetPayload<{ select: typeof SHOWN }>) =>
 }
 
 export class AttendanceFlagService {
-    /** What waits for this reviewer: one company's, or — for the Super Admin's queue — every company's. */
+    /**
+     * What waits for this reviewer: one company's, or — for the Super Admin's
+     * queue — every company's. Not those in a month whose payroll is approved
+     * or paid: they can't be decided (§12.1), and the oldest 500 would
+     * otherwise crowd out every one that can (review on #23).
+     */
     static async list(reviewer: Reviewer, scope: { companyId: string; visible: Visibility } | "ALL") {
-        const rows = await prisma.attendancePunch.findMany({
-            where: {
-                status: "FLAGGED", voidedAt: null, ...reviewerWhere(reviewer),
-                ...(scope === "ALL" ? {} : { companyId: scope.companyId, ...visibleWhere(scope.visible) }),
-            },
-            select: SHOWN,
-            orderBy: { punchAtLocal: "asc" },
-            take: 500,
-        })
+        const forReviewer = reviewer === "PLATFORM"
+            ? Prisma.sql`${PLATFORM_REASON} = ANY(p."flagReasons")`
+            : Prisma.sql`NOT (${PLATFORM_REASON} = ANY(COALESCE(p."flagReasons", ARRAY[]::text[])))`
+        const inScope = scope === "ALL" ? Prisma.sql`TRUE` : Prisma.sql`p."companyId" = ${scope.companyId} AND ${visibleSql(scope.visible)}`
+        const ids = await prisma.$queryRaw<{ id: string }[]>`
+            SELECT p.id FROM "AttendancePunch" p JOIN "User" u ON u.id = p."userId"
+            WHERE p.status = 'FLAGGED' AND p."voidedAt" IS NULL AND ${forReviewer} AND ${inScope}
+              AND NOT EXISTS (
+                SELECT 1 FROM "PayrollRun" r
+                WHERE r."companyId" = p."companyId" AND r.status IN ('APPROVED', 'PAID')
+                  AND r.year = EXTRACT(YEAR FROM p."punchAtLocal") AND r.month = EXTRACT(MONTH FROM p."punchAtLocal"))
+            ORDER BY p."punchAtLocal" ASC
+            LIMIT 500`
+        const rows = await prisma.attendancePunch.findMany({ where: { id: { in: ids.map(r => r.id) } }, select: SHOWN, orderBy: { punchAtLocal: "asc" } })
         return rows.map(shown)
     }
 
