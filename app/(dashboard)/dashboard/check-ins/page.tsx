@@ -27,7 +27,7 @@ import type { TranslationKey } from '@/lib/translations'
 
 type Waiting = {
     id: string; companyName: string; name: string; at: string; flagReasons: string[]
-    checkIn: { latitude?: number; longitude?: number; distanceMeters?: number; accuracyMeters?: number; ip?: string | null } | null
+    checkIn: { latitude?: number; longitude?: number; distanceMeters?: number; accuracyMeters?: number; ip?: string | null; attestationReason?: string | null } | null
     workLocation: { name: string } | null; phone: { model: string | null; platform: string } | null
 }
 type Integrity = { companyId: string; name: string; checkIns: number; accepted: number; flagged: number; refused: number; refusedBy: Record<string, number>; flaggedBy: Record<string, number> }
@@ -96,6 +96,8 @@ export default function CheckInReviewPage() {
                                                     w.checkIn?.distanceMeters !== undefined && t('req_flagged_distance').replace('{n}', String(w.checkIn.distanceMeters)),
                                                     w.checkIn?.accuracyMeters !== undefined && t('req_flagged_accuracy').replace('{n}', String(Math.round(w.checkIn.accuracyMeters))),
                                                     w.checkIn?.ip,
+                                                    // Why the app wasn't verified, as the verifier said it: for testing attestation.
+                                                    w.checkIn?.attestationReason && t('chk_attest_reason').replace('{reason}', w.checkIn.attestationReason),
                                                 ].filter(Boolean).join(' · ')}
                                                 {w.checkIn?.latitude !== undefined && w.checkIn?.longitude !== undefined && (
                                                     <> · <a href={mapLink(w.checkIn.latitude, w.checkIn.longitude)} target="_blank" rel="noopener noreferrer">{t('att_loc_map')}</a></>

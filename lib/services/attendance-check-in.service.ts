@@ -66,12 +66,12 @@ export class AttendanceCheckInService {
         // The phone by its key; its status is read again under the lock below.
         const phone = await prisma.checkInPhone.findFirst({
             where: { userId, keyFingerprint: input.keyFingerprint },
-            select: { id: true, publicKey: true, platform: true },
+            select: { id: true, publicKey: true, platform: true, appAttestKey: true, appAttestCounter: true },
         })
         // A key we don't know can't be checked: there is nothing to check it with.
         const key = phone ? parsePhoneKey(phone.publicKey) : null
         const badSignature = !!phone && !(key && signatureValid(key.key, checkInText(input), input.signature))
-        const attestation = await verifyAttestation({ platform: phone?.platform ?? "ANDROID", token: input.attestation, challenge: input.nonce })
+        let attestation = await verifyAttestation({ platform: phone?.platform ?? "ANDROID", token: input.attestation, challenge: input.nonce, purpose: "CHECK_IN", phone })
         const company = await prisma.company.findUnique({ where: { id: companyId }, select: { timezone: true } })
         const timeZone = company?.timezone ?? DEFAULT_TIME_ZONE
         const local = new Date(now.getTime() + offsetMsIn(now, timeZone)).toISOString().slice(0, 19)
@@ -89,6 +89,15 @@ export class AttendanceCheckInService {
             // the check-in (review on #22).
             await tx.$queryRaw`SELECT id FROM "User" WHERE id = ${userId} FOR UPDATE`
             const current = phone ? await tx.checkInPhone.findUnique({ where: { id: phone.id }, select: { status: true } }) : null
+            // App Attest's counter, moved on only if it is still below this one: the
+            // verifier read it before the lock, and a stale read must not count twice.
+            if (phone && attestation.appAttest) {
+                const { count } = await tx.checkInPhone.updateMany({
+                    where: { id: phone.id, appAttestCounter: { lt: attestation.appAttest.counter } },
+                    data: { appAttestCounter: attestation.appAttest.counter },
+                })
+                if (count === 0) attestation = { verified: false, reason: "BAD_COUNTER" }
+            }
             const waiting = await tx.checkInPhone.count({ where: { userId, status: "PENDING" } })
             const places = await AttendanceLocationService.forPerson(companyId, userId)
             const verdict = judgeCheckIn({
@@ -124,7 +133,7 @@ export class AttendanceCheckInService {
                     status: STATUS[verdict.outcome], flagReasons: verdict.reasons,
                     checkIn: {
                         latitude: input.latitude, longitude: input.longitude, accuracyMeters: input.accuracyMeters,
-                        distanceMeters: verdict.distanceMeters, ip, attested: attestation.verified,
+                        distanceMeters: verdict.distanceMeters, ip, attested: attestation.verified, attestationReason: attestation.reason,
                     },
                 },
             })

@@ -25,3 +25,13 @@ export function checkInText(input: {
 }): string {
     return signedText("CHECK_IN", input.nonce, [input.keyFingerprint, input.latitude, input.longitude, input.accuracyMeters, input.mocked ? 1 : 0, input.direction ?? ""])
 }
+
+/**
+ * What a phone's proof of our genuine app covers (§9.4): the one-time number
+ * and what it was given for. The phone hashes this text (sha256): that is
+ * the Play Integrity nonce on Android, and App Attest's client data hash on
+ * iOS.
+ */
+export function attestedText(purpose: SignedPurpose, nonce: string): string {
+    return `nizmo-attest|${purpose}|${nonce}`
+}

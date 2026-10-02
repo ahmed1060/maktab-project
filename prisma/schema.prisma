@@ -2283,6 +2283,12 @@ model CheckInPhone {
   /// Whether the phone proved it runs our genuine app (Play Integrity, App
   /// Attest) when it registered. False while attestation is in testing (§9.4).
   attested       Boolean            @default(false)
+  /// iOS: the App Attest key Apple attested when the phone registered
+  /// (SubjectPublicKeyInfo DER, base64), and the last counter its
+  /// assertions used, which only goes up (§9.4). Null on Android, and on a
+  /// phone that wasn't attested.
+  appAttestKey     String?
+  appAttestCounter Int                @default(0)
   status         CheckInPhoneStatus @default(PENDING)
   requestedAt    DateTime           @default(now())
   decidedAt      DateTime?
