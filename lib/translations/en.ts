@@ -1576,6 +1576,7 @@ export const en = {
         ci_accepted: "Recorded at {time}, {place}.",
         ci_flagged: "Recorded at {time}, {place}. It counts once someone reviews it: {reasons}.",
         ci_held: "Recorded at {time}, {place}. It counts once this phone is approved.",
+        ci_held_flagged: "Recorded at {time}, {place}. It counts once this phone is approved and someone reviews it: {reasons}.",
         ci_refused: "Not recorded: {reason}",
         ci_distance: "{n} m from the place",
         ci_late: "You're {n} minutes late. Your day starts at {start}.",

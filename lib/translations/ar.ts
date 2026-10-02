@@ -1575,6 +1575,7 @@ export const ar = {
         ci_accepted: "تم التسجيل في {time}، {place}.",
         ci_flagged: "تم التسجيل في {time}، {place}. يُحتسب بعد مراجعته: {reasons}.",
         ci_held: "تم التسجيل في {time}، {place}. يُحتسب بعد الموافقة على هذا الهاتف.",
+        ci_held_flagged: "تم التسجيل في {time}، {place}. يُحتسب بعد الموافقة على هذا الهاتف ومراجعته: {reasons}.",
         ci_refused: "لم يُسجَّل: {reason}",
         ci_distance: "على بعد {n} م من المكان",
         ci_late: "أنت متأخر {n} دقيقة. يبدأ يومك في {start}.",

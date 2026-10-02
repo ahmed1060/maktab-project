@@ -12,6 +12,7 @@ import { fetcher } from '@/lib/swr-fetcher'
 import type { TranslationKey } from '@/lib/translations'
 import { checkInDevice, inNativeApp } from '@/lib/mobile/native'
 import { checkIn, deviceFingerprint, registerPhone, type CheckInAnswer } from '@/lib/mobile/check-in-flow'
+import { answerKey } from '@/lib/mobile/screen'
 import { send, json } from '../attendance/send'
 import { AskPermissionModal } from '../attendance/RequestsTab'
 
@@ -172,7 +173,7 @@ function Answer({ answer }: { answer: CheckInAnswer }) {
         .replace('{time}', answer.at.slice(11, 16))
         .replace('{place}', answer.place.name)
         .replace('{reasons}', answer.reasons.map(r => t(`att_flag_${r}` as TranslationKey)).join(', '))
-    const key: TranslationKey = answer.outcome === 'ACCEPTED' ? 'ci_accepted' : answer.outcome === 'HELD' ? 'ci_held' : 'ci_flagged'
+    const key: TranslationKey = answerKey(answer)
     return (
         <section className="glass" role="status" style={{ ...box, color: answer.outcome === 'ACCEPTED' ? 'var(--ok-fg)' : undefined }}>
             <p style={{ margin: 0 }}>{answer.outcome === 'ACCEPTED' ? '✅ ' : '🕒 '}{fill(key)}</p>
