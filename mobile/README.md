@@ -33,7 +33,7 @@ Where the code is:
 
 ## Building
 
-You need Node 20+, and Android Studio for Android or Xcode on a Mac for iOS.
+You need Node 22 or later (Capacitor 8 requires it), and Android Studio for Android or Xcode on a Mac for iOS.
 No Google or Apple developer account is needed to build and install on your
 own phone; you need them only to publish to the stores.
 
