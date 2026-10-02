@@ -9,6 +9,7 @@ import android.location.LocationManager;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.SystemClock;
 import android.security.keystore.KeyGenParameterSpec;
 import android.security.keystore.KeyProperties;
 import android.util.Base64;
@@ -60,6 +61,8 @@ public class NizmoCheckInPlugin extends Plugin {
     private static final String KEY_ALIAS = "nizmo-check-in";
     /** How long to wait for a fix before saying there isn't one. */
     private static final long LOCATION_TIMEOUT_MS = 30_000;
+    /** A fix older than this says where the phone was, not where it is. */
+    private static final long MAX_FIX_AGE_MS = 30_000;
 
     @PluginMethod
     public void getInfo(PluginCall call) {
@@ -240,9 +243,16 @@ public class NizmoCheckInPlugin extends Plugin {
         manager.requestSingleUpdate(provider, listener, Looper.getMainLooper());
     }
 
+    /** How long ago the fix was taken, on the clock that doesn't jump when the time is changed. */
+    private static long ageMillis(Location location) {
+        return (SystemClock.elapsedRealtimeNanos() - location.getElapsedRealtimeNanos()) / 1_000_000;
+    }
+
     @SuppressWarnings("deprecation")
     private static void answer(PluginCall call, Location location) {
-        if (location == null) {
+        // getCurrentLocation may hand back a recent cached fix; one taken before
+        // the person asked is refused rather than signed (review on #24).
+        if (location == null || ageMillis(location) > MAX_FIX_AGE_MS) {
             call.reject("The phone couldn't find its location.", "LOCATION_UNAVAILABLE");
             return;
         }

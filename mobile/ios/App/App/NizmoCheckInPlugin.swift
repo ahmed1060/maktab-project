@@ -37,8 +37,13 @@ public class NizmoCheckInPlugin: CAPPlugin, CAPBridgedPlugin, CLLocationManagerD
     ]
 
     private var locationManager: CLLocationManager?
-    /// Calls waiting for a fix; all are answered by the next one.
+    /// Calls waiting for a fix; all are answered by the next fresh one.
     private var waiting: [CAPPluginCall] = []
+    /// When the fix was asked for: anything taken before it is where the phone was, not where it is.
+    private var askedAt = Date.distantPast
+    private var giveUp: DispatchWorkItem?
+    /// How long to wait for a fresh fix before saying there isn't one.
+    private static let locationTimeout: TimeInterval = 30
 
     @objc func getInfo(_ call: CAPPluginCall) {
         var system = utsname()
@@ -112,14 +117,18 @@ public class NizmoCheckInPlugin: CAPPlugin, CAPBridgedPlugin, CLLocationManagerD
             manager.desiredAccuracy = kCLLocationAccuracyBest
             self.locationManager = manager
             self.waiting.append(call)
+            self.askedAt = Date()
+            self.giveUp?.cancel()
+            let giveUp = DispatchWorkItem { [weak self] in self?.fail("The phone couldn't find its location.", "LOCATION_UNAVAILABLE") }
+            self.giveUp = giveUp
+            DispatchQueue.main.asyncAfter(deadline: .now() + Self.locationTimeout, execute: giveUp)
             switch manager.authorizationStatus {
             case .notDetermined:
                 manager.requestWhenInUseAuthorization()
             case .denied, .restricted:
                 self.fail("Location permission was refused.", "LOCATION_DENIED")
             default:
-                // A fresh fix, never a cached one: a cached fix says where the phone was, not where it is.
-                manager.requestLocation()
+                manager.startUpdatingLocation()
             }
         }
     }
@@ -143,12 +152,16 @@ public class NizmoCheckInPlugin: CAPPlugin, CAPBridgedPlugin, CLLocationManagerD
         case .denied, .restricted:
             fail("Location permission was refused.", "LOCATION_DENIED")
         default:
-            manager.requestLocation()
+            manager.startUpdatingLocation()
         }
     }
 
     public func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
-        guard let location = locations.last else { return }
+        // Only a fix taken since it was asked for (review on #24): Core Location
+        // may first hand back a cached one from when the phone was elsewhere.
+        guard let location = locations.last(where: { $0.timestamp >= askedAt && $0.horizontalAccuracy >= 0 }) else { return }
+        manager.stopUpdatingLocation()
+        giveUp?.cancel()
         var mocked = false
         if #available(iOS 15.0, *) {
             mocked = location.sourceInformation?.isSimulatedBySoftware ?? false
@@ -166,14 +179,24 @@ public class NizmoCheckInPlugin: CAPPlugin, CAPBridgedPlugin, CLLocationManagerD
     }
 
     public func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
-        if let failure = error as? CLError, failure.code == .denied {
+        guard let failure = error as? CLError else {
+            fail("The phone couldn't find its location.", "LOCATION_UNAVAILABLE")
+            return
+        }
+        switch failure.code {
+        case .denied:
             fail("Location permission was refused.", "LOCATION_DENIED")
-        } else {
+        case .locationUnknown:
+            // Still looking: Core Location keeps trying until the timeout.
+            return
+        default:
             fail("The phone couldn't find its location.", "LOCATION_UNAVAILABLE")
         }
     }
 
     private func fail(_ message: String, _ code: String) {
+        locationManager?.stopUpdatingLocation()
+        giveUp?.cancel()
         let calls = waiting
         waiting = []
         for call in calls { call.reject(message, code) }
