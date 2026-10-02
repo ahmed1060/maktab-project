@@ -366,7 +366,7 @@ function ToDecide({ q, companyId, today }: { q: string; companyId: string | null
     const { data: permBody, mutate: refreshPerms } = useSWR(decidesPermissions ? `/api/attendance/permissions?${q}status=PENDING` : null, fetcher)
     const { data: missBody, mutate: refreshMissing } = useSWR(decidesMissing ? `/api/attendance/missing-punches?${q}status=PENDING` : null, fetcher)
     const { data: otBody, mutate: refreshOvertime } = useSWR(decidesOvertime && month ? `/api/attendance/overtime?${q}from=${month}-01&to=${lastDayOf(month)}` : null, fetcher)
-    const { data: phoneBody, mutate: refreshPhones } = useSWR(decidesPhones ? `/api/attendance/phones?${q}` : null, fetcher)
+    const { data: phoneBody, error: phoneError, mutate: refreshPhones } = useSWR(decidesPhones ? `/api/attendance/phones?${q}` : null, fetcher)
     const { data: peopleBody } = useSWR(decidesOvertime ? `/api/attendance/people?${q}` : null, fetcher)
     const people: Person[] = useMemo(() => peopleBody?.data?.people ?? [], [peopleBody])
     const permissions: PermissionRow[] | null = permBody ? permBody.data?.requests ?? [] : null
@@ -469,7 +469,13 @@ function ToDecide({ q, companyId, today }: { q: string; companyId: string | null
                 </>
             )}
 
-            {/* Only once somebody has a phone: a company without the app has nothing here (§9.3). */}
+            {/* While loading, or failing to, it says so; loaded, only once somebody has a phone: a company without the app has nothing here (§9.3). */}
+            {decidesPhones && !phoneBody && (
+                <>
+                    <h3 style={{ margin: 0, fontSize: '0.95rem' }}>{t('req_phones')}</h3>
+                    {phoneError ? <p style={{ margin: 0, ...soft, color: 'var(--danger-fg)' }}>{t('error_generic')}</p> : <LoadingSpinner />}
+                </>
+            )}
             {decidesPhones && phones.length > 0 && (
                 <>
                     <h3 style={{ margin: 0, fontSize: '0.95rem' }}>{t('req_phones')}</h3>
