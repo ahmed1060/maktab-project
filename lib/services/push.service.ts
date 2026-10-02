@@ -7,6 +7,8 @@ import { fcmAccount, sendFcm, type PushMessage, type PushOutcome } from "@/lib/p
 import { apnsAccount, sendApns } from "@/lib/push/apns"
 // Where the bell opens a notice; the push opens the same page (review on #25).
 import { attendanceNoticeTarget } from "@/lib/attendance-notice-target"
+import { hasBundle, resolveBundles } from "@/lib/features/bundles"
+import { CompanyService } from "./company.service"
 
 /**
  * Notices pushed to the check-in app (ATTENDANCE_PLAN.md §13.4): what is
@@ -90,13 +92,25 @@ export class PushService {
             },
             select: {
                 id: true, type: true, message: true, messageKey: true, messageParams: true, relatedId: true,
-                user: { select: { language: true, checkInPhones: { where: LIVE, select: { id: true, status: true, platform: true, pushToken: true } } } },
+                user: { select: { language: true, companyId: true, checkInPhones: { where: LIVE, select: { id: true, status: true, platform: true, pushToken: true } } } },
             },
             orderBy: { createdAt: "asc" },
             take: BATCH,
         })
+        // Only while the company still has the Mobile App add-on: phones and
+        // their tokens outlive the package that paid for them (review on #25).
+        const mobile = new Map<string, boolean>()
+        for (const companyId of new Set(due.map(n => n.user?.companyId).filter((c): c is string => !!c))) {
+            const company = await CompanyService.settingsExposure(companyId)
+            mobile.set(companyId, !!company && hasBundle(resolveBundles(company.package), "ATTENDANCE_MOBILE"))
+        }
         let sent = 0, forgotten = 0, failed = 0
         for (const n of due) {
+            if (!n.user?.companyId || !mobile.get(n.user.companyId)) {
+                // Never to be pushed: marked, so it isn't looked at again.
+                await prisma.notification.updateMany({ where: { id: n.id, pushedAt: null }, data: { pushedAt: now } })
+                continue
+            }
             const { count } = await prisma.notification.updateMany({ where: { id: n.id, pushedAt: null }, data: { pushedAt: now } })
             if (count === 0) continue
             const language = n.user?.language ?? "en"

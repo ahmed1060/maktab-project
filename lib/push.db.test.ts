@@ -138,6 +138,15 @@ describe.skipIf(!ADMIN_URL)("the push outbox, in Postgres", () => {
         await db.query(`DELETE FROM "CheckInPhone" WHERE id = 'p1new'`)
     })
 
+    it("stops once the company no longer has the Mobile App add-on", async () => {
+        await db.query(`INSERT INTO "Package"(id, name, "hasHR", "updatedAt") VALUES ('hr', 'HR only', true, now())`)
+        await db.query(`UPDATE "Company" SET "packageId" = 'hr' WHERE id = 'c1'`)
+        await NotificationService.notify("e2", "ATTENDANCE_CHECK_IN", accepted)
+        await PushService.flush(new Date(), sender)
+        expect(sent).toEqual([])
+        await db.query(`UPDATE "Company" SET "packageId" = NULL WHERE id = 'c1'`)
+    })
+
     it("sends nothing, and says so, when no push service is set up", async () => {
         await NotificationService.notify("e2", "ATTENDANCE_CHECK_IN", accepted)
         expect(await PushService.flush(new Date(), null)).toEqual({ sent: 0, skipped: "NOT_CONFIGURED" })
