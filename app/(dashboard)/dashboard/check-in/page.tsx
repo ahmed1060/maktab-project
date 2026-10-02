@@ -131,7 +131,7 @@ export default function CheckInPage() {
             {answer && <Answer answer={answer} />}
 
             {late && answer?.outcome !== 'REFUSED' && (
-                <section className="glass" style={{ ...box, borderInlineStart: '4px solid var(--warning-fg, #b45309)' }}>
+                <section className="glass" style={{ ...box, borderInlineStart: '4px solid var(--warn-solid)' }}>
                     <p style={{ margin: 0 }}>{t('ci_late').replace('{n}', String(late.minutes)).replace('{start}', late.startsAt)}</p>
                     {balanceBody?.data?.enabled && <p style={{ margin: 0, ...soft }}>{t('ci_late_balance').replace('{left}', String(balanceBody.data.remainingMinutes))}</p>}
                     {balanceBody?.data?.enabled && balanceBody.data.types.includes('LATE_ARRIVAL') && (
@@ -174,7 +174,7 @@ function Answer({ answer }: { answer: CheckInAnswer }) {
         .replace('{reasons}', answer.reasons.map(r => t(`att_flag_${r}` as TranslationKey)).join(', '))
     const key: TranslationKey = answer.outcome === 'ACCEPTED' ? 'ci_accepted' : answer.outcome === 'HELD' ? 'ci_held' : 'ci_flagged'
     return (
-        <section className="glass" role="status" style={{ ...box, color: answer.outcome === 'ACCEPTED' ? 'var(--success-fg, #15803d)' : undefined }}>
+        <section className="glass" role="status" style={{ ...box, color: answer.outcome === 'ACCEPTED' ? 'var(--ok-fg)' : undefined }}>
             <p style={{ margin: 0 }}>{answer.outcome === 'ACCEPTED' ? '✅ ' : '🕒 '}{fill(key)}</p>
             <p style={{ margin: 0, ...soft }}>{t('ci_distance').replace('{n}', String(answer.distanceMeters))}</p>
         </section>
