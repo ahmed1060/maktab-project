@@ -30,6 +30,11 @@ type Waiting = { userId: string; name: string; teamLeaderId: string | null; date
 type Decision = { id: string; userId: string; name: string; teamLeaderId: string | null; date: string; status: 'APPROVED' | 'REJECTED'; approvedMinutes: number; note: string | null }
 type Balance = { enabled: boolean; types: string[]; allowanceMinutes: number; carriedMinutes: number; approvedMinutes: number; pendingMinutes: number; remainingMinutes: number; requests: number; maxRequests: number | null; minPerRequestMinutes: number; maxPerRequestMinutes: number }
 type Person = { id: string; name: string; teamLeaderId: string | null }
+type FlaggedRow = {
+    id: string; userId: string; name: string; teamLeaderId: string | null; at: string; flagReasons: string[]
+    checkIn: { latitude?: number; longitude?: number; distanceMeters?: number; accuracyMeters?: number; ip?: string | null } | null
+    workLocation: { name: string } | null; phone: { model: string | null; platform: string } | null
+}
 type PhoneRow = { id: string; userId: string; name: string; teamLeaderId: string | null; platform: 'ANDROID' | 'IOS'; model: string | null; appVersion: string | null; attested: boolean; status: 'PENDING' | 'ACTIVE'; requestedAt: string; decidedAt: string | null; held: number }
 
 const STATUS_COLOR: Record<Status, string> = { PENDING: 'var(--warn-fg)', APPROVED: 'var(--ok-fg)', REJECTED: 'var(--danger-fg)', CANCELLED: 'var(--text-soft)' }
@@ -345,7 +350,7 @@ export function ReportMissingModal({ today, initial, onClose, onDone }: {
 
 // --- to decide -------------------------------------------------------------------
 
-type Rejecting = { kind: 'permission' | 'missing' | 'phone'; id: string } | { kind: 'overtime'; userId: string; date: string }
+type Rejecting = { kind: 'permission' | 'missing' | 'phone' | 'checkin'; id: string } | { kind: 'overtime'; userId: string; date: string }
 
 function ToDecide({ q, companyId, today }: { q: string; companyId: string | null; today: string }) {
     const { t } = useLanguage()
@@ -366,6 +371,7 @@ function ToDecide({ q, companyId, today }: { q: string; companyId: string | null
     const { data: permBody, mutate: refreshPerms } = useSWR(decidesPermissions ? `/api/attendance/permissions?${q}status=PENDING` : null, fetcher)
     const { data: missBody, mutate: refreshMissing } = useSWR(decidesMissing ? `/api/attendance/missing-punches?${q}status=PENDING` : null, fetcher)
     const { data: otBody, mutate: refreshOvertime } = useSWR(decidesOvertime && month ? `/api/attendance/overtime?${q}from=${month}-01&to=${lastDayOf(month)}` : null, fetcher)
+    const { data: flagBody, error: flagError, mutate: refreshFlagged } = useSWR(decidesMissing ? `/api/attendance/flagged?${q}` : null, fetcher)
     const { data: phoneBody, error: phoneError, mutate: refreshPhones } = useSWR(decidesPhones ? `/api/attendance/phones?${q}` : null, fetcher)
     const { data: peopleBody } = useSWR(decidesOvertime ? `/api/attendance/people?${q}` : null, fetcher)
     const people: Person[] = useMemo(() => peopleBody?.data?.people ?? [], [peopleBody])
@@ -374,6 +380,7 @@ function ToDecide({ q, companyId, today }: { q: string; companyId: string | null
     const waiting: Waiting[] | null = otBody ? otBody.data?.waiting ?? [] : null
     const decisions: Decision[] = otBody?.data?.decisions ?? []
     const phones: PhoneRow[] = phoneBody?.data?.phones ?? []
+    const flagged: FlaggedRow[] = flagBody?.data?.checkIns ?? []
 
     if (!decidesPermissions && !decidesOvertime && !decidesMissing && !decidesPhones) return null
     const companyField = companyId ? { companyId } : {}
@@ -393,6 +400,8 @@ function ToDecide({ q, companyId, today }: { q: string; companyId: string | null
         approve ? 'req_approved' : 'req_rejected',
         kind === 'permission' ? refreshPerms : refreshMissing,
     )
+    const decideCheckIn = (id: string, accept: boolean, reason?: string) =>
+        act(`/api/attendance/flagged/${id}/decide`, json('POST', { accept, reason: reason ?? null }), accept ? 'req_approved' : 'req_rejected', refreshFlagged)
     const decidePhone = (id: string, approve: boolean, reason?: string) =>
         act(`/api/attendance/phones/${id}/decide`, json('POST', { approve, reason: reason ?? null }), approve ? 'req_approved' : 'req_rejected', refreshPhones)
     const decideOvertime = (userId: string, date: string, status: 'APPROVED' | 'REJECTED', note?: string) =>
@@ -404,6 +413,7 @@ function ToDecide({ q, companyId, today }: { q: string; companyId: string | null
         if (!r) return
         if (r.kind === 'overtime') return decideOvertime(r.userId, r.date, 'REJECTED', reason)
         if (r.kind === 'phone') return decidePhone(r.id, false, reason)
+        if (r.kind === 'checkin') return decideCheckIn(r.id, false, reason)
         return decide(r.kind, r.id, false, reason)
     }
     const approveReject = (onApprove: () => void, onReject: () => void) => (
@@ -459,6 +469,48 @@ function ToDecide({ q, companyId, today }: { q: string; companyId: string | null
                                             <td>{r.direction === 'IN' ? t('punch_in') : r.direction === 'OUT' ? t('punch_out') : '—'}</td>
                                             <td>{!mine(r.userId) && p.canFor('attendance.correct', r.userId, r.teamLeaderId) && (
                                                 approveReject(() => decide('missing', r.id, true), () => setRejecting({ kind: 'missing', id: r.id }))
+                                            )}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
+                </>
+            )}
+
+            {/* Check-ins the app flagged for the company to decide (§9.6): shown while
+                loading or failing, and once loaded only when there is one. */}
+            {decidesMissing && (!flagBody || flagged.length > 0) && (
+                <>
+                    <h3 style={{ margin: 0, fontSize: '0.95rem' }}>{t('req_flagged')}</h3>
+                    <p style={{ margin: 0, ...soft }}>{t('req_flagged_hint')}</p>
+                    {!flagBody ? (flagError ? <p style={{ margin: 0, ...soft, color: 'var(--danger-fg)' }}>{t('error_generic')}</p> : <LoadingSpinner />) : (
+                        <div style={{ overflowX: 'auto' }}>
+                            <table className="table" style={{ width: '100%', fontSize: '0.84rem' }}>
+                                <thead><tr><th>{t('punch_person')}</th><th>{t('punch_time')}</th><th>{t('req_flagged_why')}</th><th /></tr></thead>
+                                <tbody>
+                                    {flagged.map(f => (
+                                        <tr key={f.id}>
+                                            <td>{f.name}</td>
+                                            <td style={{ whiteSpace: 'nowrap' }}>
+                                                <bdi>{f.at.slice(0, 10)} {f.at.slice(11, 16)}</bdi>
+                                                <div style={soft}>{f.workLocation?.name ?? '—'}</div>
+                                            </td>
+                                            <td>
+                                                {f.flagReasons.map(r => t(`att_flag_${r}` as TranslationKey)).join(', ')}
+                                                <div style={soft}>{[
+                                                    f.checkIn?.distanceMeters !== undefined && t('req_flagged_distance').replace('{n}', String(f.checkIn.distanceMeters)),
+                                                    f.checkIn?.accuracyMeters !== undefined && t('req_flagged_accuracy').replace('{n}', String(Math.round(f.checkIn.accuracyMeters))),
+                                                    f.checkIn?.ip,
+                                                ].filter(Boolean).join(' · ')}
+                                                    {f.checkIn?.latitude !== undefined && f.checkIn?.longitude !== undefined && (
+                                                        <> · <a href={`https://www.openstreetmap.org/?mlat=${f.checkIn.latitude}&mlon=${f.checkIn.longitude}#map=17/${f.checkIn.latitude}/${f.checkIn.longitude}`} target="_blank" rel="noopener noreferrer">{t('att_loc_map')}</a></>
+                                                    )}
+                                                </div>
+                                            </td>
+                                            <td>{!mine(f.userId) && p.canFor('attendance.correct', f.userId, f.teamLeaderId) && (
+                                                approveReject(() => decideCheckIn(f.id, true), () => setRejecting({ kind: 'checkin', id: f.id }))
                                             )}</td>
                                         </tr>
                                     ))}

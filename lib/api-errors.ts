@@ -122,6 +122,8 @@ export const KNOWN_REFUSALS: Record<string, { status: 400 | 403 | 404 | 409; mes
     PHONE_NOT_FOUND: { status: 404, message: "Phone not found." },
     PHONE_NOT_PENDING: { status: 409, message: "That phone has already been decided, or the request was withdrawn." },
     PHONE_NOT_ACTIVE: { status: 409, message: "That phone isn't in use, so there is nothing to revoke." },
+    CHECK_IN_NOT_FOUND: { status: 404, message: "Check-in not found." },
+    CHECK_IN_NOT_FLAGGED: { status: 409, message: "That check-in has already been decided." },
     LOCATION_NAME_REQUIRED: { status: 400, message: "Give the place a name, such as the office or the site." },
     LOCATION_INVALID_POINT: { status: 400, message: "That isn't a place on the map. Latitude is between -90 and 90, longitude between -180 and 180." },
     LOCATION_INVALID_RADIUS: { status: 400, message: "The radius must be a whole number of metres, from 20 to 5000." },
