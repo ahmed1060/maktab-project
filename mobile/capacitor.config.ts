@@ -23,6 +23,11 @@ const config: CapacitorConfig = {
         cleartext: false,
     },
     android: { allowMixedContent: false },
+    plugins: {
+        // Play Integrity (§9.4): the Google Cloud project the server decodes tokens with,
+        // NIZMO_CLOUD_PROJECT_NUMBER. A build installed from Play can do without it.
+        NizmoCheckIn: { cloudProjectNumber: process.env.NIZMO_CLOUD_PROJECT_NUMBER ?? "" },
+    },
 }
 
 export default config

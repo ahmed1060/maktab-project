@@ -13,7 +13,7 @@ page can't:
 | `createKey()` | Makes a new key in the phone's secure hardware (Android Keystore, StrongBox when present; iOS Secure Enclave), replacing any before it. The private half never leaves the hardware |
 | `sign({ text })` | ECDSA P-256 / SHA-256 signature of the text, DER in base64 |
 | `getLocation()` | A fresh fix `{ latitude, longitude, accuracy, mocked }`; `mocked` is Android's mock-provider flag or iOS 15's simulated-by-software flag |
-| `requestAttestation({ nonce })` | `{ token: null }` for now (see below) |
+| `requestAttestation({ text, purpose })` | Proof of our genuine app over the text (see [Attestation](#attestation)): a Play Integrity token on Android; on iOS an App Attest attestation when `purpose` is `REGISTER`, an assertion when `CHECK_IN`. `{ token: null }` when the phone can't give one |
 
 Errors reject with a code the page turns into words: `LOCATION_DENIED`,
 `LOCATION_UNAVAILABLE`, `KEY_UNAVAILABLE`.
@@ -60,8 +60,9 @@ upload, since the stores never let it change afterwards.
    employee to it.
 2. Sign in on the phone as that employee and tap **Register this phone**.
 3. Approve it on the website: Attendance → Requests → Check-in phones.
-4. Tap **Check in**. While attestation is in testing every check-in is
-   flagged for the Super Admin, who decides it under Check-in review.
+4. Tap **Check in**. While attestation is in testing, a check-in the server
+   can't verify is flagged for the Super Admin, who decides it under
+   Check-in review, which also shows why it wasn't verified.
 
 On an emulator, set its location to the work location's address in the
 emulator's own location controls first. A fake-location app on a real phone
@@ -113,14 +114,52 @@ Vercel's Hobby plan runs crons at most once a day, so it isn't in
 
 System Health shows "Check-in reminders" as late until something calls it.
 
+## Attestation
+
+Proof that a registration or check-in came from our genuine, unmodified app
+on a genuine phone (ATTENDANCE_PLAN.md §9.4). The phone covers the text
+`nizmo-attest|PURPOSE|number` (`attestedText` in `lib/attendance/signed-text.ts`),
+hashed with SHA-256. The server verifies it in `lib/attendance/attestation.ts`.
+
+While `ATTENDANCE_ATTESTATION` is unset, attestation is in **testing**:
+nothing is refused for it. Every check-in it doesn't verify is flagged for the
+Super Admin, with the reason, for example `NOT_CONFIGURED`, `APP_NOT_RECOGNIZED`
+or `BAD_COUNTER`. Once real phones pass, set `ATTENDANCE_ATTESTATION=required`
+and unverified phones are refused.
+
+### Android: Play Integrity
+
+1. In Play Console → your app → App integrity, link a Google Cloud project,
+   and enable the **Play Integrity API** in that project.
+2. Give a service account in that project access, and set it on the server as
+   `PLAY_INTEGRITY_SERVICE_ACCOUNT` (the key's JSON). If the push account
+   (`FCM_SERVICE_ACCOUNT`) is in the same project, it is used when this isn't set.
+3. Optional, stricter: `PLAY_INTEGRITY_CERT_SHA256` set to the app signing
+   certificate's SHA-256 from Play Console (hex with colons is fine; several,
+   comma-separated).
+4. `ATTENDANCE_ANDROID_PACKAGE` if the app ID isn't `com.shsd.nizmo`.
+5. For a build not installed from Play, build with
+   `NIZMO_CLOUD_PROJECT_NUMBER=<project number>` so the app can ask for a token.
+   Such a build still fails with `APP_NOT_RECOGNIZED`, because Play didn't
+   install it. Test through an internal testing track.
+
+Google's default quota is 10,000 requests a day, one per registration and per
+check-in. Ask Google for more before a large rollout.
+
+### iOS: App Attest
+
+1. In the Apple developer account, enable **App Attest** for the app ID.
+   `ios/App/App/App.entitlements` already asks for the production environment.
+2. Set `APP_ATTEST_APP_ID` on the server to `TEAMID.bundle.id`, for example
+   `ABCDE12345.com.shsd.nizmo`.
+3. For builds that use Apple's development environment, also set
+   `APP_ATTEST_ALLOW_DEVELOPMENT=1`. Leave it unset in production.
+
+A phone registered before App Attest was set up has no attested key; its
+check-ins say `NO_ATTESTED_KEY`. Registering it again fixes that.
+
 ## Not yet
 
-- **Attestation.** `requestAttestation` returns no token, and the server has
-  no Play Integrity or App Attest verifier yet (`lib/attendance/attestation.ts`).
-  Until both exist, every check-in is accepted but flagged for the Super Admin
-  (`ATTENDANCE_ATTESTATION` unset). Play Integrity needs the app's Google Cloud
-  project number; App Attest needs the Apple team. Once they are built, set
-  `ATTENDANCE_ATTESTATION=required` on the server.
 - **Face verification** (Phase 3b).
 
 ## How it was checked
@@ -128,6 +167,7 @@ System Health shows "Check-in reminders" as late until something calls it.
 The site's side runs against the real server in the test suite
 (`lib/mobile-check-in.db.test.ts`), and the check-in page was driven in a
 browser with a stand-in for the plugin. The Android plugin was compiled
-against the Android framework and Capacitor's real method signatures; the
+against the Android framework, Capacitor's real method signatures and the
+Play Integrity API's; the
 Swift plugin has not been compiled here (it needs Xcode). Neither has run on a
 phone yet: the first build on a real device is the test that remains.

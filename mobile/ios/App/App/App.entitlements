@@ -5,5 +5,8 @@
 	<!-- Push notifications (ATTENDANCE_PLAN.md §13.4). Xcode switches this to production for App Store builds. -->
 	<key>aps-environment</key>
 	<string>development</string>
+	<!-- App Attest (ATTENDANCE_PLAN.md §9.4): Apple's production environment, which the server accepts by default. -->
+	<key>com.apple.developer.devicecheck.appattest-environment</key>
+	<string>production</string>
 </dict>
 </plist>
