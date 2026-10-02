@@ -69,7 +69,8 @@ export class CheckInReminderService {
                 // Any check-in since the shift's window opened counts, flagged or held included.
                 const earliest = new Date(Date.parse(`${date}T00:00:00Z`) + (start - EARLY_MARGIN_MINUTES) * 60_000)
                 const checkedIn = await prisma.attendancePunch.count({
-                    where: { userId, voidedAt: null, status: { in: ["ACCEPTED", "FLAGGED", "PENDING_DEVICE"] }, punchAtLocal: { gte: earliest, lte: new Date(`${local}Z`) } },
+                    // This company's own: punches stay with a company the person has left (review on #25).
+                    where: { companyId, userId, voidedAt: null, status: { in: ["ACCEPTED", "FLAGGED", "PENDING_DEVICE"] }, punchAtLocal: { gte: earliest, lte: new Date(`${local}Z`) } },
                 })
                 if (checkedIn > 0) continue
                 if (await AttendanceCheckInService.latenessWaived(companyId, userId, date)) continue

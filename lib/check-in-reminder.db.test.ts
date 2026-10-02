@@ -103,6 +103,14 @@ describe.skipIf(!ADMIN_URL)("the no-check-in reminder, in Postgres", () => {
         await db.query(`DELETE FROM "CheckInReminder" WHERE date = '2026-09-28'`)
     })
 
+    it("counts only this company's check-ins: one kept from a company the person left doesn't", async () => {
+        // Tuesday 29th: Ehab's punch at 08:55 belongs to a company he worked for before.
+        await db.query(`INSERT INTO "Company"(id, name, "updatedAt") VALUES ('old', 'Before', now())`)
+        await db.query(`INSERT INTO "AttendancePunch"(id, "companyId", "userId", source, "sourceKey", "punchAtLocal", "punchAt", "resolvedWithTimeZone") VALUES ('elsewhere', 'old', 'e1', 'MANUAL', 'elsewhere', '2026-09-29 08:55', '2026-09-29 05:55', 'Africa/Cairo')`)
+        await Reminders.run(new Date("2026-09-29T06:20:00Z"))
+        expect((await reminders()).filter(r => r.userId === "e1" && r.date === "2026-09-29")).toHaveLength(1)
+    })
+
     it("reminds a night shift after its start, and nobody long after it was due", async () => {
         // 22:20 on Sunday 27th: Eyad's night started at 22:00.
         expect(await Reminders.run(new Date("2026-09-27T19:20:00Z"))).toMatchObject({ reminded: 1 })
