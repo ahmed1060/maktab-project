@@ -26,14 +26,7 @@ export function parsePhoneKey(base64: string): PhoneKey | null {
     return { key, der: canonical, fingerprint: createHash("sha256").update(canonical).digest("hex") }
 }
 
-/**
- * What a phone signs: the purpose, the one-time number the server gave it,
- * and the details of what it is doing, one per line. Fixed and unambiguous,
- * so a signature for one thing can never be passed off as another.
- */
-export function signedText(purpose: "REGISTER" | "CHECK_IN", nonce: string, details: readonly (string | number)[]): string {
-    return ["nizmo-attendance/v1", purpose, nonce, ...details.map(String)].join("\n")
-}
+export { signedText } from "./signed-text"
 
 /**
  * Whether this signature over this text was made with this key's private

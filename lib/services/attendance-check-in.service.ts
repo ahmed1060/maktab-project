@@ -5,7 +5,8 @@ import { AttendanceChallengeService } from "./attendance-challenge.service"
 import { AttendanceLocationService } from "./attendance-location.service"
 import { recomputeAfter } from "./attendance-recompute"
 import { lockMonths, lockedMonths, punchMonths } from "./attendance-lock"
-import { parsePhoneKey, signatureValid, signedText } from "@/lib/attendance/phone-keys"
+import { parsePhoneKey, signatureValid } from "@/lib/attendance/phone-keys"
+import { checkInText } from "@/lib/attendance/signed-text"
 import { attestationMode, verifyAttestation } from "@/lib/attendance/attestation"
 import { judgeCheckIn, type FlagReason } from "@/lib/attendance/check-in-rules"
 import { addDays, formatMinutes } from "@/lib/attendance/calendar"
@@ -52,14 +53,8 @@ function fail(code: string): never {
     throw new Error(code)
 }
 
-/**
- * The exact text a phone signs for a check-in: the number, which key, the fix
- * and whether it was simulated, the direction if the person chose one.
- * Numbers as JavaScript writes them (String(n)); the app must write the same.
- */
-export function checkInText(input: Pick<CheckInInput, "nonce" | "keyFingerprint" | "latitude" | "longitude" | "accuracyMeters" | "mocked" | "direction">) {
-    return signedText("CHECK_IN", input.nonce, [input.keyFingerprint, input.latitude, input.longitude, input.accuracyMeters, input.mocked ? 1 : 0, input.direction ?? ""])
-}
+/** Signed by the phone; shared with the check-in screen so the two always agree. */
+export { checkInText }
 
 const STATUS = { ACCEPTED: "ACCEPTED", FLAGGED: "FLAGGED", HELD: "PENDING_DEVICE" } as const
 

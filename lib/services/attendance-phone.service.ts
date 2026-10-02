@@ -135,7 +135,8 @@ export class AttendancePhoneService {
 
     /** This person's phone in use, and the one they asked for, if any. */
     static async mine(userId: string) {
-        const phones = await prisma.checkInPhone.findMany({ where: { userId, status: { in: ["ACTIVE", "PENDING"] } }, select: SHOWN })
+        // With the key's fingerprint, so the app can tell whether it is the phone in question.
+        const phones = await prisma.checkInPhone.findMany({ where: { userId, status: { in: ["ACTIVE", "PENDING"] } }, select: { ...SHOWN, keyFingerprint: true } })
         return { active: phones.find(p => p.status === "ACTIVE") ?? null, pending: phones.find(p => p.status === "PENDING") ?? null }
     }
 
