@@ -1,0 +1,35 @@
+import { describe, it, expect, afterEach } from "vitest"
+import { mkdtempSync, writeFileSync, existsSync, readFileSync } from "node:fs"
+import { tmpdir } from "node:os"
+import { join } from "node:path"
+import { main } from "../src/main"
+import { FakeZkDevice } from "./fake-zk-device"
+import { FakeServer } from "./fake-server"
+
+/** The command line, as an installer uses it: probe, enrol, check. */
+describe("nizmo-agent", () => {
+    let device: FakeZkDevice, server: FakeServer
+    afterEach(async () => { await device?.stop(); await server?.stop(); delete process.env.NIZMO_AGENT_HOME })
+
+    it("probes a terminal, enrols with a code, and sends a round", async () => {
+        device = new FakeZkDevice({ serialNumber: "ZK-CLI" })
+        const port = await device.start()
+        server = new FakeServer()
+        await server.start()
+        const home = mkdtempSync(join(tmpdir(), "agent-home-"))
+        process.env.NIZMO_AGENT_HOME = home
+
+        expect(await main(["probe", "127.0.0.1", String(port)])).toBe(0)
+        // No config yet: says what to do, and stops.
+        expect(await main(["enrol", "K7QD-2MXP"])).toBe(2)
+        writeFileSync(join(home, "agent.json"), JSON.stringify({ server: server.url, devices: [{ host: "127.0.0.1", port }] }))
+        expect(await main(["enrol"])).toBe(2)
+        expect(await main(["enrol", "k7qd-2mxp".toUpperCase()])).toBe(0)
+        expect(JSON.parse(readFileSync(join(home, "state.json"), "utf8")).token).toBe("mka_1")
+        device.scan("7", `${new Date().toISOString().slice(0, 10)}T09:00:00`)
+        expect(await main(["check"])).toBe(0)
+        expect(server.stored.size).toBe(1)
+        expect(existsSync(join(home, "logs", "agent.log"))).toBe(true)
+        expect(await main(["nonsense"])).toBe(2)
+    })
+})
