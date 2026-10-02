@@ -1355,6 +1355,7 @@ export const en = {
         attpay_register_on: "Attendance is on these payslips (from {month}): lateness, early leave and absence as deductions, approved overtime as earnings.",
         attpay_dry_title: "Attendance — not deducted yet",
         attpay_dry_msg: "This month's attendance would deduct {deductions} and add {overtime} of overtime. Nothing is deducted until attendance is switched on in Company Settings → Attendance; this is to check the figures first.",
+        att_loc_retry: "Try again",
         att_loc_title: "Check-in places",
         att_loc_hint: "Where people check in with the app. A check-in counts when the phone is inside the circle; if office IPs are set, it must also come over the office's internet.",
         att_loc_add: "Add a place",

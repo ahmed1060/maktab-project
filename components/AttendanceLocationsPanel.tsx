@@ -35,7 +35,17 @@ export default function AttendanceLocationsPanel({ companyId, readOnly }: { comp
     const [busy, setBusy] = useState(false)
 
     // Not sold to this company, or not this person's to see: nothing here.
-    if (error || !body?.data) return null
+    // Anything else is a failure to load, and says so rather than vanishing.
+    if (error && (error.status === 403 || error.status === 404)) return null
+    if (error) {
+        return (
+            <section className="glass" style={{ padding: '1.5rem', borderRadius: '1rem', display: 'flex', gap: '1rem', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap' }}>
+                <span style={{ fontSize: '0.88rem' }}>{t('att_loc_title')}: {t('error_generic')}</span>
+                <button className="btn btn-secondary" onClick={() => mutate()}>{t('att_loc_retry')}</button>
+            </section>
+        )
+    }
+    if (!body?.data) return null
     const locations: Location[] = body.data.locations
     const people: Person[] = body.data.people
     const nameOf = new Map(people.map(p => [p.id, p.name]))
@@ -49,6 +59,9 @@ export default function AttendanceLocationsPanel({ companyId, readOnly }: { comp
             showToast(t(done as any), 'success')
             then?.()
             mutate()
+        } catch {
+            // The connection dropped: nothing was confirmed, and the form stays open to try again.
+            showToast(t('error_generic'), 'error')
         } finally { setBusy(false) }
     }
 
