@@ -159,6 +159,9 @@ export const PERMISSIONS = {
     // is attendance.correct's to decide. Never one's own.
     "attendance.approve_overtime":    { code: 51, module: "ATTENDANCE", scopes: TEAM_OR_COMPANY, implies: ["attendance.view_team"], notOnOwn: true },
     "attendance.approve_permissions": { code: 52, module: "ATTENDANCE", scopes: TEAM_OR_COMPANY, implies: ["attendance.view_team"], notOnOwn: true },
+    // Approving the one phone someone checks in from (§9.3), and revoking a
+    // lost one. Never one's own: approving your own phone is the whole fraud.
+    "attendance.approve_devices":     { code: 53, module: "ATTENDANCE", scopes: TEAM_OR_COMPANY, implies: ["attendance.view_team"], notOnOwn: true },
 } as const satisfies Record<string, PermissionDefinition>
 
 export type Permission = keyof typeof PERMISSIONS

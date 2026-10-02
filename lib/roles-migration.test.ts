@@ -18,6 +18,8 @@ const LATER = [
     "prisma/migrations/20261010000000_attendance_punches/migration.sql",
     // The built-in Admin role's attendance.approve_overtime and attendance.approve_permissions (§6.4, §6.6).
     "prisma/migrations/20261012000000_attendance_requests/migration.sql",
+    // The built-in Admin role's attendance.approve_devices (§9.3).
+    "prisma/migrations/20261021000000_attendance_check_in_phones/migration.sql",
 ].map(path => readFileSync(path, "utf8"))
 
 function seeded(): Record<string, Record<string, string>> {

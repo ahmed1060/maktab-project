@@ -80,8 +80,10 @@ export default function AttendancePage() {
         'days', 'punches', 'requests',
         ...(correctsCompany ? ['import' as const, 'numbers' as const] : []),
     ]
+    // A link may open a tab (?tab=requests, from a notice about a phone); one this person doesn't have falls back.
+    const linked = params.get('tab') as Tab | null
     const [picked, setTab] = useState<Tab | null>(null)
-    const tab: Tab = picked ?? (seesOthers ? 'exceptions' : 'days')
+    const tab: Tab = picked ?? (linked && tabs.includes(linked) ? linked : seesOthers ? 'exceptions' : 'days')
 
     if (status === 'loading' || (!today && !(isSuperAdmin && !companyId))) return <LoadingSpinner />
     if (isSuperAdmin && !companyId) {

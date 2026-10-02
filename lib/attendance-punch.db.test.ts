@@ -77,7 +77,7 @@ describe.skipIf(!ADMIN_URL)("punches, in Postgres", () => {
         it("gains the attendance permissions, and only the Admin does", async () => {
             const { rows: grants } = await db.query(`SELECT r."builtIn", g.permission FROM "RoleGrant" g JOIN "Role" r ON r.id = g."roleId" WHERE g.permission LIKE 'attendance.%' ORDER BY 1, 2`)
             expect(new Set(grants.map(g => g.builtIn))).toEqual(new Set(["ADMIN"]))
-            expect(new Set(grants.map(g => g.permission))).toEqual(new Set(["attendance.correct", "attendance.view_team", "attendance.approve_overtime", "attendance.approve_permissions"]))
+            expect(new Set(grants.map(g => g.permission))).toEqual(new Set(["attendance.correct", "attendance.view_team", "attendance.approve_overtime", "attendance.approve_permissions", "attendance.approve_devices"]))
         })
     })
 

@@ -50,6 +50,8 @@ const ATTENDANCE_PAYROLL = "20261014000000_attendance_payroll"
 // alters the terminals' tables, so those come first.
 const ATTENDANCE_TERMINALS = "20261018000000_attendance_terminals"
 const TERMINAL_ALERTS = "20261019000000_attendance_terminal_alerts"
+// The built-in Admin role's attendance.approve_devices (§9.3).
+const CHECK_IN_PHONES = "20261021000000_attendance_check_in_phones"
 const sql = (name: string) => readFileSync(`prisma/migrations/${name}/migration.sql`, "utf8")
 
 const BEFORE_ROLES = `
@@ -96,6 +98,7 @@ describe.skipIf(!ADMIN_URL)("roles as data, in Postgres", () => {
         await db.query(sql(ATTENDANCE_PAYROLL))
         await db.query(sql(ATTENDANCE_TERMINALS))
         await db.query(sql(TERMINAL_ALERTS))
+        await db.query(sql(CHECK_IN_PHONES))
         prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: url.toString() }) })
         // The services that manage roles use the application's client; point it
         // here before its first use (it is built lazily).
@@ -135,9 +138,9 @@ describe.skipIf(!ADMIN_URL)("roles as data, in Postgres", () => {
 
         it("later gives the built-in Admin role the settings and attendance permissions, has its holders reload, and shows no company its settings", async () => {
             // ATTENDANCE_PLAN.md §5.2: the grants open nothing while the switch is off.
-            // Three later grants to the Admin role (settings, attendance, attendance requests), each a reload.
+            // Four later grants to the Admin role (settings, attendance, attendance requests, check-in phones), each a reload.
             const { rows: roles } = await db.query(`SELECT "companyId", "builtIn", version FROM "Role" ORDER BY "companyId", "builtIn"`)
-            for (const role of roles) expect(role.version, `${role.companyId} ${role.builtIn}`).toBe(role.builtIn === "ADMIN" ? 4 : 1)
+            for (const role of roles) expect(role.version, `${role.companyId} ${role.builtIn}`).toBe(role.builtIn === "ADMIN" ? 5 : 1)
             const { rows: companies } = await db.query(`SELECT "adminSettingsEnabled", "adminSettingsTabs" FROM "Company"`)
             expect(companies).toEqual([
                 { adminSettingsEnabled: false, adminSettingsTabs: [] },

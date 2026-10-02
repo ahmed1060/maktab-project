@@ -255,6 +255,7 @@ model Company {
   attendanceAgents         AttendanceAgent[]
   attendanceDevices        AttendanceDevice[]
   workLocations            WorkLocation[]
+  checkInPhones            CheckInPhone[]
   companyHolidays      CompanyHoliday[]
   holidayExclusions    CompanyHolidayExclusion[]
   finalSettlements     FinalSettlement[]
@@ -510,6 +511,8 @@ model User {
   attendancePayrollEntries   AttendancePayrollEntry[]
   attendanceDiscrepancies    AttendanceDiscrepancy[]
   workLocations              UserWorkLocation[]
+  checkInPhones              CheckInPhone[]
+  attendanceChallenges       AttendanceChallenge[]
 
   @@index([email])
   @@index([companyId])
@@ -1797,12 +1800,16 @@ model AttendancePunch {
   /// The terminal it came from (§17), for AGENT punches.
   deviceId             String?
   device               AttendanceDevice? @relation(fields: [deviceId], references: [id], onDelete: SetNull)
+  /// The phone it came from (§9.2), for MOBILE punches.
+  phoneId              String?
+  phone                CheckInPhone?     @relation(fields: [phoneId], references: [id], onDelete: SetNull)
 
   @@unique([companyId, source, sourceKey])
   @@index([companyId, userId, punchAtLocal])
   @@index([companyId, hardwareUserId])
   @@index([importId])
   @@index([deviceId])
+  @@index([phoneId])
 }
 
 /// A spreadsheet of punches brought in, and what became of its rows.
@@ -2218,4 +2225,68 @@ model UserWorkLocation {
 
   @@id([userId, locationId])
   @@index([locationId])
+}
+
+enum CheckInPhoneStatus {
+  PENDING
+  ACTIVE
+  REJECTED
+  REVOKED
+  WITHDRAWN
+}
+
+enum PhonePlatform {
+  ANDROID
+  IOS
+}
+
+/// The one phone a person checks in from (ATTENDANCE_PLAN.md §9.2, §9.3).
+/// Its key pair was made inside the phone's secure hardware; we hold the
+/// public half, and each check-in is signed with the private one. At most one
+/// ACTIVE and one PENDING per person (partial unique indexes, migration
+/// 20261021000000). While one is PENDING, it is the only one that checks in:
+/// the moment of asking is the cutover.
+model CheckInPhone {
+  id             String             @id @default(uuid())
+  companyId      String
+  userId         String
+  /// SubjectPublicKeyInfo, DER, base64: an ECDSA P-256 key.
+  publicKey      String
+  /// sha256 of the DER key, hex: the same key is never registered twice.
+  keyFingerprint String             @unique
+  platform       PhonePlatform
+  model          String?
+  appVersion     String?
+  /// Whether the phone proved it runs our genuine app (Play Integrity, App
+  /// Attest) when it registered. False while attestation is in testing (§9.4).
+  attested       Boolean            @default(false)
+  status         CheckInPhoneStatus @default(PENDING)
+  requestedAt    DateTime           @default(now())
+  decidedAt      DateTime?
+  decidedById    String?
+  /// Why it was rejected or revoked, when someone said.
+  reason         String?
+  company        Company            @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  user           User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  punches        AttendancePunch[]
+
+  @@index([companyId, status])
+  @@index([userId])
+}
+
+/// A one-time number the server gives a phone to sign (§9.2): a captured
+/// request cannot be sent again. Used once, within minutes; kept only as a hash.
+model AttendanceChallenge {
+  id        String    @id @default(uuid())
+  userId    String
+  nonceHash String    @unique
+  /// REGISTER or CHECK_IN: a number given for one cannot be used for the other.
+  purpose   String
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
 }
