@@ -65,20 +65,21 @@ export class AttendanceCheckInService {
             select: { id: true, status: true, publicKey: true, platform: true },
         })
         // A key we don't know can't be checked: there is nothing to check it with.
-        if (phone) {
-            const key = parsePhoneKey(phone.publicKey)
-            if (!key || !signatureValid(key.key, checkInText(input), input.signature)) {
-                await AttendanceCheckInService.refuse(prisma, companyId, userId, phone.id, "BAD_SIGNATURE", ip, now)
-                fail("PHONE_SIGNATURE_INVALID")
-            }
-        }
+        const key = phone ? parsePhoneKey(phone.publicKey) : null
+        const badSignature = !!phone && !(key && signatureValid(key.key, checkInText(input), input.signature))
         const attestation = await verifyAttestation({ platform: phone?.platform ?? "ANDROID", token: input.attestation, challenge: input.nonce })
         const company = await prisma.company.findUnique({ where: { id: companyId }, select: { timezone: true } })
         const timeZone = company?.timezone ?? DEFAULT_TIME_ZONE
         const local = new Date(now.getTime() + offsetMsIn(now, timeZone)).toISOString().slice(0, 19)
 
         const out = await prisma.$transaction(async tx => {
+            // The number first, even for a bad signature: one recorded failure
+            // per number given, never one per request replayed (review on #22).
             if (!(await AttendanceChallengeService.consume(tx, userId, "CHECK_IN", input.nonce, now))) fail("PHONE_CHALLENGE_INVALID")
+            if (badSignature) {
+                await AttendanceCheckInService.refuse(tx, companyId, userId, phone!.id, "BAD_SIGNATURE", ip, now)
+                return { result: null, counts: false }
+            }
             const waiting = await tx.checkInPhone.count({ where: { userId, status: "PENDING" } })
             const places = await AttendanceLocationService.forPerson(companyId, userId)
             const verdict = judgeCheckIn({
@@ -122,12 +123,13 @@ export class AttendanceCheckInService {
                 counts: verdict.outcome === "ACCEPTED",
             }
         })
+        if (!out.result) fail("PHONE_SIGNATURE_INVALID")
         // From the day before: a check-in after midnight can end the night shift that began then.
         if (out.counts) await recomputeAfter(companyId, addDays(local.slice(0, 10), -1), [userId])
         return out.result
     }
 
-    private static async refuse(db: Prisma.TransactionClient | typeof prisma, companyId: string, userId: string, phoneId: string | null, reason: string, ip: string | null, at: Date, details?: Prisma.InputJsonValue) {
+    private static async refuse(db: Prisma.TransactionClient, companyId: string, userId: string, phoneId: string | null, reason: string, ip: string | null, at: Date, details?: Prisma.InputJsonValue) {
         await db.checkInRefusal.create({ data: { companyId, userId, phoneId, reason, ip, at, ...(details && { details }) } })
     }
 }

@@ -129,10 +129,19 @@ describe.skipIf(!ADMIN_URL)("checking in with the app, in Postgres", () => {
         expect(await checkIn("e1", e1)).toEqual({ outcome: "REFUSED", reason: "ATTESTATION_FAILED" })
     })
 
-    it("refuses a signature that isn't the phone's, and a number used twice", async () => {
+    it("refuses a signature that isn't the phone's, recording it once per number however often it is sent, and a number used twice", async () => {
         const stranger = { ...e1, key: phoneKeyPair() }
         await expect(checkIn("e1", e1, AT_DESK, { signWith: stranger })).rejects.toThrow("PHONE_SIGNATURE_INVALID")
         expect((await refusals("e1")).at(-1)).toBe("BAD_SIGNATURE")
+        // The same forged request sent again: the number is spent, and nothing more is recorded.
+        const { nonce: forgedNonce } = await Challenges.issue("e1", "CHECK_IN")
+        const forgedBody = { nonce: forgedNonce, keyFingerprint: e1.fingerprint, ...AT_DESK, mocked: false, direction: null }
+        const forged = { ...forgedBody, signature: stranger.key.sign(checkInText(forgedBody)) }
+        const recorded = (await refusals("e1")).length
+        await expect(CheckIns.checkIn("c1", "e1", forged, null)).rejects.toThrow("PHONE_SIGNATURE_INVALID")
+        await expect(CheckIns.checkIn("c1", "e1", forged, null)).rejects.toThrow("PHONE_CHALLENGE_INVALID")
+        await expect(CheckIns.checkIn("c1", "e1", forged, null)).rejects.toThrow("PHONE_CHALLENGE_INVALID")
+        expect(await refusals("e1")).toHaveLength(recorded + 1)
         const { nonce } = await Challenges.issue("e1", "CHECK_IN")
         const body = { nonce, keyFingerprint: e1.fingerprint, ...AT_DESK, mocked: false, direction: null }
         const signed = { ...body, signature: e1.key.sign(checkInText(body)) }
