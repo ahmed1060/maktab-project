@@ -121,6 +121,9 @@ export class AttendanceLocationService {
     static async setPeople(id: string, userIds: string[], actorId: string) {
         const wanted = [...new Set(userIds)]
         return prisma.$transaction(async tx => {
+            // One save at a time per place: two at once would each apply their
+            // difference to the same starting list, and leave neither.
+            await tx.$queryRaw`SELECT id FROM "WorkLocation" WHERE id = ${id} FOR UPDATE`
             const location = await tx.workLocation.findUnique({ where: { id }, select: { companyId: true, name: true, archivedAt: true, people: { select: { userId: true } } } }) ?? fail("LOCATION_NOT_FOUND")
             if (location.archivedAt) fail("LOCATION_ARCHIVED")
             const theirs = await tx.user.count({ where: { id: { in: wanted }, companyId: location.companyId } })

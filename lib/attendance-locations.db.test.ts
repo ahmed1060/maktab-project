@@ -100,6 +100,15 @@ describe.skipIf(!ADMIN_URL)("work locations, in Postgres", () => {
         expect((await audit(l.id)).filter(a => a.action === "ASSIGN_WORK_LOCATION")).toHaveLength(2)
     })
 
+    it("settles two saves of the same place's people at once as one of them, never a mix", async () => {
+        const l = await Locations.create("c1", { ...OFFICE, name: "Contested" }, "a1")
+        await Locations.setPeople(l.id, ["a1"], "a1")
+        const outcomes = await Promise.allSettled([Locations.setPeople(l.id, ["e1"], "a1"), Locations.setPeople(l.id, ["e2"], "a1")])
+        expect(outcomes.map(o => o.status)).toEqual(["fulfilled", "fulfilled"])
+        const { locations } = await Locations.list("c1")
+        expect([["e1"], ["e2"]]).toContainEqual(locations.find(x => x.id === l.id)!.userIds)
+    })
+
     it("lets a person check in where they are listed, or where everyone may, and nowhere archived", async () => {
         const listed = await Locations.create("c1", { ...OFFICE, name: "Listed" }, "a1")
         await Locations.setPeople(listed.id, ["e1"], "a1")
