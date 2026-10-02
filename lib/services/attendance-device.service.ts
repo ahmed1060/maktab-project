@@ -153,7 +153,10 @@ export class AttendanceDeviceService {
                 await prisma.attendanceDevice.update({ where: { id: mine.id }, data: health })
                 return { serialNumber, state: "ACTIVE" as const, deviceId: mine.id, mode: mine.mode }
             }
-            const elsewhere = await prisma.attendanceDevice.findFirst({ where: { serialNumber, retiredAt: null }, select: { id: true } })
+            // Another company's only: one that is this company's was brought
+            // in by another of its heartbeats since the lookup above, and the
+            // create below runs into it and reads again.
+            const elsewhere = await prisma.attendanceDevice.findFirst({ where: { serialNumber, retiredAt: null, companyId: { not: agent.companyId } }, select: { id: true } })
             if (elsewhere) return { serialNumber, state: "CLAIMED_ELSEWHERE" as const, deviceId: null, mode: null }
             try {
                 const created = await prisma.$transaction(async tx => {
