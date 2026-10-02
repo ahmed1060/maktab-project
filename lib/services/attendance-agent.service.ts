@@ -3,6 +3,8 @@ import { Prisma } from "@prisma/client"
 import { AuditLogService } from "./audit-log.service"
 import { ENROLMENT_CODE_MINUTES, hashSecret, newAgentToken, newEnrolmentCode, normaliseEnrolmentCode } from "@/lib/attendance/agent-credentials"
 import { hasBundle, resolveBundles } from "@/lib/features/bundles"
+import { agentHealth } from "@/lib/attendance/terminal-health"
+import { workingNow } from "./attendance-terminal-status"
 
 /**
  * Local Sync Agents (ATTENDANCE_PLAN.md §17): the programs on office PCs that
@@ -35,8 +37,14 @@ const SHOWN = {
 } as const
 
 export class AttendanceAgentService {
+    /** With each one's health now (§13.2): silent during working hours is the one to worry about. */
     static async list(companyId: string) {
-        return prisma.attendanceAgent.findMany({ where: { companyId }, orderBy: [{ revokedAt: { sort: "desc", nulls: "first" } }, { createdAt: "asc" }], select: SHOWN })
+        const [agents, working] = await Promise.all([
+            prisma.attendanceAgent.findMany({ where: { companyId }, orderBy: [{ revokedAt: { sort: "desc", nulls: "first" } }, { createdAt: "asc" }], select: SHOWN }),
+            workingNow(companyId),
+        ])
+        const now = new Date()
+        return agents.map(a => ({ ...a, health: agentHealth(a, now, working) }))
     }
 
     static async agentOf(id: string) {

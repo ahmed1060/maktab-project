@@ -4,6 +4,8 @@ import { AuditLogService } from "./audit-log.service"
 import { offsetMsIn } from "@/lib/time"
 import type { AuthenticatedAgent } from "./attendance-agent.service"
 import type { Heartbeat } from "@/lib/attendance/agent-payloads"
+import { deviceHealth } from "@/lib/attendance/terminal-health"
+import { workingNow } from "./attendance-terminal-status"
 
 /**
  * Fingerprint terminals (ATTENDANCE_PLAN.md §17), as the agents report them.
@@ -45,8 +47,14 @@ const SHOWN = {
 } as const
 
 export class AttendanceDeviceService {
+    /** With each one's health now (§13.2). */
     static async list(companyId: string) {
-        return prisma.attendanceDevice.findMany({ where: { companyId }, orderBy: [{ retiredAt: { sort: "desc", nulls: "first" } }, { name: "asc" }], select: SHOWN })
+        const [devices, working] = await Promise.all([
+            prisma.attendanceDevice.findMany({ where: { companyId }, orderBy: [{ retiredAt: { sort: "desc", nulls: "first" } }, { name: "asc" }], select: SHOWN }),
+            workingNow(companyId),
+        ])
+        const now = new Date()
+        return devices.map(d => ({ ...d, health: deviceHealth(d, now, working) }))
     }
 
     static async deviceOf(id: string) {

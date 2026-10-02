@@ -184,6 +184,17 @@ describe("terminals on the website", () => {
     })
 })
 
+describe("the Super Admin's view of every company's terminals", () => {
+    it("is the Super Admin's alone", async () => {
+        const overview = async () => (await import("@/app/api/admin/terminals/route")).GET(new Request(url("/api/admin/terminals")))
+        prismaMock.company.findMany = async () => []
+        superAdmin()
+        expect((await overview()).status).toBe(200)
+        admin()
+        expect((await overview()).status).toBe(403)
+    })
+})
+
 const agentCall = async (token: string | null, body: unknown = {}, extra: Record<string, string> = {}) =>
     (await import("@/app/api/agent/token/route")).POST(new Request(url("/api/agent/token"), {
         method: "POST",

@@ -303,6 +303,32 @@ describe.skipIf(!ADMIN_URL)("attendance agents, in Postgres", () => {
         expect((await Ingest.punches(theirs, { punches: [{ serialNumber: "R-1", userNumber: "7", at: "2026-09-16T09:00:00" }] })).refused[0].reason).toBe("UNKNOWN_DEVICE")
     })
 
+    it("says how each agent and terminal is doing, and which companies need attention first", async () => {
+        const { terminalsOverview } = await import("@/lib/services/attendance-terminal-status")
+        await db.query(`UPDATE "AttendanceAgent" SET status = 'REVOKED', "revokedAt" = now(), "codeHash" = NULL, "codeExpiresAt" = NULL, "tokenHash" = NULL, "nextTokenHash" = NULL WHERE status <> 'REVOKED'`)
+        await db.query(`UPDATE "AttendanceDevice" SET "retiredAt" = now() WHERE "retiredAt" IS NULL`)
+        const quiet = await agentOf("c1", "Quiet one")
+        const fine = await agentOf("c2", "Fine one")
+        await Devices.heartbeat(quiet, beat([{ serialNumber: "H-1", reachable: false, error: "timeout", recordCount: 95, recordCapacity: 100 }]))
+        await Devices.heartbeat(fine, beat([{ serialNumber: "H-2", reachable: true }]))
+        // Thursday 10:00 in Cairo: working hours. One agent last heard from an hour before.
+        const thursday = new Date("2026-10-01T07:00:00Z")
+        await db.query(`UPDATE "AttendanceAgent" SET "lastSeenAt" = $2 WHERE id = $1`, [quiet.id, new Date(thursday.getTime() - 3_600_000)])
+        await db.query(`UPDATE "AttendanceAgent" SET "lastSeenAt" = $2 WHERE id = $1`, [fine.id, new Date(thursday.getTime() - 60_000)])
+        await db.query(`UPDATE "AttendanceDevice" SET "lastSeenAt" = $1 WHERE "serialNumber" = 'H-2'`, [new Date(thursday.getTime() - 60_000)])
+        const overview = await terminalsOverview(thursday)
+        expect(overview.map(r => [r.name, r.tone, r.working])).toEqual([["One", "bad", true], ["Two", "ok", true]])
+        expect(overview[0].agents.map(a => a.health)).toEqual(["SILENT"])
+        expect(overview[0].terminals).toEqual({ total: 1, ok: 0, unreachable: 1, silent: 0, memoryFull: 1, clockOff: 0 })
+        // Friday: a PC switched off is not an alarm.
+        const friday = new Date("2026-10-02T07:00:00Z")
+        await db.query(`UPDATE "AttendanceAgent" SET "lastSeenAt" = $2 WHERE id = $1`, [quiet.id, new Date(friday.getTime() - 3_600_000)])
+        expect((await terminalsOverview(friday)).find(r => r.name === "One")!.agents[0].health).toBe("QUIET")
+        // The company's own lists carry the same health.
+        expect((await Agents.list("c1")).find(a => a.id === quiet.id)).toHaveProperty("health")
+        expect((await Devices.list("c1")).find(d => d.serialNumber === "H-1")!.health).toMatchObject({ state: "UNREACHABLE", memoryFull: true })
+    })
+
     it("keeps a revoked agent from holding anything that works, at the database", async () => {
         const { agent } = await Agents.create("c1", "Checked", "a1")
         await expect(db.query(`UPDATE "AttendanceAgent" SET status = 'REVOKED', "revokedAt" = now() WHERE id = $1`, [agent.id])).rejects.toThrow(/AttendanceAgent_revoked/)
