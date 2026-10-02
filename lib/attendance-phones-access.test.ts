@@ -73,8 +73,8 @@ const superAdmin = () => signIn({ id: "sa", role: "SUPER_ADMIN", companyId: null
 
 const REGISTER = { nonce: "n".repeat(43), publicKey: "AAAA", signature: "BBBB", platform: "ANDROID" }
 const CHECK_IN = { nonce: "n".repeat(43), keyFingerprint: "a".repeat(64), signature: "BBBB", latitude: 30.04, longitude: 31.23, accuracyMeters: 12, mocked: false }
-const checkIn = async (body: unknown, ip?: string) => (await import("@/app/api/attendance/check-in/route")).POST(
-    new Request(url("/api/attendance/check-in"), { method: "POST", headers: { "Content-Type": "application/json", ...(ip && { "x-forwarded-for": `${ip}, 10.0.0.1` }) }, body: JSON.stringify(body) }),
+const checkIn = async (body: unknown, ip?: string, headers: Record<string, string> = {}) => (await import("@/app/api/attendance/check-in/route")).POST(
+    new Request(url("/api/attendance/check-in"), { method: "POST", headers: { "Content-Type": "application/json", ...(ip && { "x-forwarded-for": `${ip}, 10.0.0.1` }), ...headers }, body: JSON.stringify(body) }),
 )
 const params = (id: string) => ({ params: Promise.resolve({ id }) }) as any
 const challenge = async (body: unknown) => (await import("@/app/api/attendance/phone/challenge/route")).POST(withBody("POST", "/api/attendance/phone/challenge", body))
@@ -121,6 +121,12 @@ describe("checking in", () => {
         expect(res.status).toBe(200)
         expect((await res.json()).data).toEqual({ outcome: "REFUSED", reason: "MOCK_LOCATION" })
         expect(reached).toEqual(["checkIn:c1:e1:203.0.113.7"])
+    })
+
+    it("takes the address Vercel saw over one the caller wrote: office IPs can't be claimed", async () => {
+        employee()
+        await checkIn(CHECK_IN, "198.51.100.20", { "x-vercel-forwarded-for": "203.0.113.99" })
+        expect(reached).toEqual(["checkIn:c1:e1:203.0.113.99"])
     })
 
     it("refuses a body of the wrong shape, a company without the app, and the Super Admin", async () => {

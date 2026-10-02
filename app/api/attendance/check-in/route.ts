@@ -1,13 +1,17 @@
-import { withStandardHandler } from "@/lib/api-utils"
+import { getClientIp, withStandardHandler } from "@/lib/api-utils"
 import { ApiResponse } from "@/lib/api-response"
 import { AttendanceCheckInService } from "@/lib/services/attendance-check-in.service"
 import { mobileSelf } from "@/lib/attendance/mobile-access"
 import { checkInSchema } from "@/lib/validations/attendance-phone.schema"
 
-/** The address a request came from: the first hop the platform's proxy recorded. */
+/**
+ * The address a request came from, as the platform saw it: Vercel's own
+ * header first, which a caller can't set (review on #22). Office IPs are
+ * checked against it, so a caller must not be able to choose it.
+ */
 function clientIp(req: Request): string | null {
-    const forwarded = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
-    return forwarded || req.headers.get("x-real-ip")?.trim() || null
+    const ip = getClientIp(req.headers)
+    return ip === "unknown" ? null : ip
 }
 
 /**
