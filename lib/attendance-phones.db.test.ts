@@ -5,6 +5,7 @@ import { AttendancePhoneService as Phones } from "@/lib/services/attendance-phon
 import { AttendanceChallengeService as Challenges } from "@/lib/services/attendance-challenge.service"
 import { parsePhoneKey, signedText } from "@/lib/attendance/phone-keys"
 import { phoneKeyPair } from "@/lib/attendance/test-phone"
+import { UserService } from "@/lib/services/user.service"
 
 /**
  * The one phone each person checks in from (ATTENDANCE_PLAN.md §9.2, §9.3):
@@ -18,7 +19,7 @@ const MIGRATIONS = readdirSync("prisma/migrations").filter(m => m !== "migration
 const sql = (name: string) => readFileSync(`prisma/migrations/${name}/migration.sql`, "utf8")
 
 const BEFORE_ROLES = `
-INSERT INTO "Company"(id, name, "updatedAt") VALUES ('c1', 'One', now());
+INSERT INTO "Company"(id, name, "updatedAt") VALUES ('c1', 'One', now()), ('c2', 'Two', now());
 INSERT INTO "User"(id, email, password, "firstName", "lastName", role, "lastDayOffResetYear", username, "companyId", "teamLeaderId") VALUES
  ('a1', 'a1@x', 'p', 'Amal', 'One', 'ADMIN', 2026, 'a1', 'c1', NULL),
  ('t1', 't1@x', 'p', 'Tarek', 'Lead', 'TEAM_LEADER', 2026, 't1', 'c1', NULL),
@@ -26,7 +27,8 @@ INSERT INTO "User"(id, email, password, "firstName", "lastName", role, "lastDayO
  ('e2', 'e2@x', 'p', 'Eman', 'Two', 'EMPLOYEE', 2026, 'e2', 'c1', NULL),
  ('e3', 'e3@x', 'p', 'Essam', 'Three', 'EMPLOYEE', 2026, 'e3', 'c1', NULL),
  ('e4', 'e4@x', 'p', 'Enas', 'Four', 'EMPLOYEE', 2026, 'e4', 'c1', NULL),
- ('e5', 'e5@x', 'p', 'Ezz', 'Five', 'EMPLOYEE', 2026, 'e5', 'c1', NULL);
+ ('e5', 'e5@x', 'p', 'Ezz', 'Five', 'EMPLOYEE', 2026, 'e5', 'c1', NULL),
+ ('m1', 'm1@x', 'p', 'Mona', 'Moved', 'EMPLOYEE', 2026, 'm1', 'c1', NULL);
 `
 
 describe.skipIf(!ADMIN_URL)("check-in phones, in Postgres", () => {
@@ -46,6 +48,7 @@ describe.skipIf(!ADMIN_URL)("check-in phones, in Postgres", () => {
             await db.query(sql(m))
             if (m === "20260920000000_team_leader") await db.query(BEFORE_ROLES)
         }
+        await db.query(`INSERT INTO "SuperAdmin"(id, email, username, password, "firstName", "lastName", "updatedAt") VALUES ('sa', 'sa@x', 'sa', 'p', 'Sara', 'Admin', now())`)
         process.env.POSTGRES_PRISMA_URL = url.toString()
     }, 180_000)
 
@@ -198,6 +201,20 @@ describe.skipIf(!ADMIN_URL)("check-in phones, in Postgres", () => {
         expect((await notices("e3")).at(-1)).toBe("notice_att_phone_revoked")
         expect((await db.query(`SELECT action FROM "AuditLog" WHERE "entityId" = $1 ORDER BY "createdAt"`, [phone.id])).rows.map(r => r.action))
             .toEqual(["REGISTER_CHECK_IN_PHONE", "APPROVE_CHECK_IN_PHONE", "REVOKE_CHECK_IN_PHONE"])
+    })
+
+    it("ends a person's phones, and discards what a new one held, when the Super Admin moves them to another company", async () => {
+        const inUse = await register("m1")
+        await Phones.decide(inUse.id, { approve: true }, "a1")
+        const waiting = await register("m1")
+        const punch = await held("m1", waiting.id)
+        await UserService.update({ id: "m1", companyId: "c2" } as any, { user: { id: "sa", role: "SUPER_ADMIN" } })
+        expect(await status(inUse.id)).toBe("REVOKED")
+        expect(await status(waiting.id)).toBe("REVOKED")
+        expect(await punchStatus(punch)).toMatchObject({ status: "REJECTED" })
+        // The old company no longer sees them, nor can decide them.
+        expect((await Phones.list("c1", { kind: "COMPANY" })).map(p => p.userId)).not.toContain("m1")
+        await expect(Phones.decide(waiting.id, { approve: true }, "a1")).rejects.toThrow("PHONE_NOT_PENDING")
     })
 
     it("holds at most one phone in use and one waiting per person, in the database too", async () => {

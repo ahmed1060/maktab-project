@@ -478,6 +478,13 @@ export class UserService {
             // company's (ATTENDANCE_PLAN.md §8.5): none of them is theirs now,
             // and a move back must not quietly bring them back.
             if (companyChanging) updateData.workLocations = { deleteMany: {} }
+            // Their check-in phone was approved by the old company, and what a
+            // new one is holding is the old company's to judge (§9.3): both end
+            // with the move, in the same write. The new company approves afresh.
+            if (companyChanging) {
+                updateData.checkInPhones = { updateMany: { where: { status: { in: ["ACTIVE", "PENDING"] } }, data: { status: "REVOKED", decidedAt: new Date(), reason: "MOVED_COMPANY" } } }
+                updateData.attendancePunches = { updateMany: { where: { status: "PENDING_DEVICE" }, data: { status: "REJECTED" } } }
+            }
 
             // Never the company's last Admin at work (ROLES_PLAN.md §4.2, rule 8).
             await RoleAssignmentService.keepsAnAdmin(prisma, id, {

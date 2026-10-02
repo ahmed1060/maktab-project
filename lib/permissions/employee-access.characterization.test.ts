@@ -169,8 +169,9 @@ const EDITS: Case[] = [
         run: put({ id: "emp", companyId: "c2" }),
         // Super Admin only; for an Admin the field is ignored. A new company
         // means that company's role, so role and roleId are written with it,
-        // and the old company's check-in places are taken away (review on #20).
-        expected: c1Managers("companyId,role,roleId,teamLeaderId,workLocations", { admin: [200, ""], employee: [200, ""] }),
+        // and the old company's check-in places are taken away (review on #20),
+        // and its phone and the check-ins a new one held (review on #21).
+        expected: c1Managers("attendancePunches,checkInPhones,companyId,role,roleId,teamLeaderId,workLocations", { admin: [200, ""], employee: [200, ""] }),
     },
 ]
 
