@@ -34,13 +34,15 @@ export type FakeDeviceState = {
     log: number[]
     /** A packet whose checksum did not match. */
     badChecksums: number
+    /** Drop the connection instead of answering the next enable, staying disabled. */
+    dropNextEnable: boolean
 }
 
 export function fakeState(overrides: Partial<FakeDeviceState> = {}): FakeDeviceState {
     return {
         serialNumber: "SIM-0001", name: "Simulated K40", firmware: "Ver 6.60 Sep 2026", clock: "2026-10-01T09:30:00", password: 0,
         recordSize: 40, users: [], records: [], recordsCapacity: 100_000, disabled: false,
-        directLimit: 1024, packetLimit: 4096, dribble: false, log: [], badChecksums: 0,
+        directLimit: 1024, packetLimit: 4096, dribble: false, log: [], badChecksums: 0, dropNextEnable: false,
         ...overrides,
     }
 }
@@ -171,7 +173,9 @@ export class FakeZkDevice {
                     }
                     case CMD.FREE_DATA: prepared = null; reply(CMD.ACK_OK, r); break
                     case CMD.DISABLEDEVICE: s.disabled = true; reply(CMD.ACK_OK, r); break
-                    case CMD.ENABLEDEVICE: s.disabled = false; reply(CMD.ACK_OK, r); break
+                    case CMD.ENABLEDEVICE:
+                        if (s.dropNextEnable) { s.dropNextEnable = false; socket.destroy(); break }
+                        s.disabled = false; reply(CMD.ACK_OK, r); break
                     case CMD.CLEAR_ATTLOG: s.records = []; reply(CMD.ACK_OK, r); break
                     default: reply(CMD.ACK_ERROR, r)
                 }

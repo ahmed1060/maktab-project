@@ -217,6 +217,24 @@ describe("a round of the agent", () => {
             expect(await agent().round()).toMatchObject({ delivered: 1, cleared: [expect.any(String)] })
         })
 
+        it("switches a terminal back on in a later round if the connection is lost before it was (review on #18)", async () => {
+            config = { ...config, clearWhenFull: true, clearAtRatio: 0.9 }
+            device.state.recordsCapacity = 10
+            await agent().enrol("K7QD-2MXP")
+            for (let i = 0; i < 9; i++) device.scan(String(i), at(today, `09:0${i}:00`))
+            device.state.dropNextEnable = true
+            await agent().round()
+            expect(device.state.records).toEqual([])
+            expect(device.state.disabled).toBe(true)
+            expect(loadState(statePath()).devices[Object.keys(state.devices)[0]].mustEnable).toBe(true)
+            // A restart, then the next round: on again before anything else.
+            state = loadState(statePath())
+            await agent().round()
+            expect(device.state.disabled).toBe(false)
+            expect(loadState(statePath()).devices[Object.keys(state.devices)[0]].mustEnable).toBe(false)
+            expect(device.scan("7", at(today, "12:00:00"))).toBe(true)
+        })
+
         it("is never done to a terminal retired here or in use by another company (review on #18)", async () => {
             config = { ...config, clearWhenFull: true, clearAtRatio: 0.9 }
             device.state.recordsCapacity = 10

@@ -27,7 +27,7 @@ export type AgentState = {
     /** Records older than this date are not sent (see config.sendFrom). */
     sendFrom: string | null
     /** By "host:port", as configured. */
-    devices: Record<string, { serialNumber: string | null; cursor: Cursor }>
+    devices: Record<string, { serialNumber: string | null; cursor: Cursor; mustEnable?: boolean }>
     queue: QueuedPunch[]
     /** Set when the server no longer accepts the token: nothing is sent until the agent is enrolled again. */
     needsEnrolment: boolean

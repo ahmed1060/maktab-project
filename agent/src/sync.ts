@@ -138,7 +138,16 @@ export class SyncAgent {
             const key = deviceKey(d)
             const remembered = (this.state.devices[key] ??= { serialNumber: null, cursor: { count: 0, lastKey: null } })
             try {
-                const { info, records } = await this.device(zkOptions(d), async zk => ({ info: await zk.info(), records: await zk.attendance() }))
+                const { info, records } = await this.device(zkOptions(d), async zk => {
+                    // Left disabled when a clear was interrupted: switched back on before anything else.
+                    if (remembered.mustEnable) {
+                        await zk.enable()
+                        remembered.mustEnable = false
+                        this.save()
+                        this.log.info(`Switched terminal ${d.name ?? key} back on after an interrupted clear.`)
+                    }
+                    return { info: await zk.info(), records: await zk.attendance() }
+                })
                 // Another terminal at this address now: its log is a different log.
                 if (remembered.serialNumber && remembered.serialNumber !== info.serialNumber) {
                     this.log.warn(`${key} is now terminal ${info.serialNumber} (was ${remembered.serialNumber}); reading its log from the start.`)
@@ -230,6 +239,10 @@ export class SyncAgent {
             // another company's, holds scans that are not ours to erase (review on #18).
             if (states.get(remembered.serialNumber) !== "ACTIVE") continue
             await this.device(zkOptions(d), async zk => {
+                // Recorded before disabling: if this connection is lost before the
+                // terminal is enabled again, every later round enables it first (review on #18).
+                remembered.mustEnable = true
+                this.save()
                 await zk.disable()
                 try {
                     const records = await zk.attendance()
@@ -243,6 +256,8 @@ export class SyncAgent {
                     this.log.info(`Cleared ${records.length} delivered record(s) from terminal ${d.name ?? key}, which was ${Math.round(report.ratio * 100)}% full.`)
                 } finally {
                     await zk.enable()
+                    remembered.mustEnable = false
+                    this.save()
                 }
             }).catch(e => this.log.warn(`Could not clear terminal ${d.name ?? key}: ${(e as Error).message}`))
         }
