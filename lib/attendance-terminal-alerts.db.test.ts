@@ -63,7 +63,7 @@ describe.skipIf(!ADMIN_URL)("silent terminal alerts, in Postgres", () => {
 
     /** An enrolled agent, last heard from at this time. */
     async function agentHeardAt(companyId: string, name: string, at: Date | null) {
-        const { agent, code } = await Agents.create(companyId, name, companyId === "c1" ? "a1" : "a2")
+        const { agent, code } = await Agents.create(companyId, name, companyId === "c2" ? "a2" : "a1")
         await Agents.enrol(code, {})
         await db.query(`UPDATE "AttendanceAgent" SET "lastSeenAt" = $2, "enrolledAt" = $3 WHERE id = $1`, [agent.id, at, minutesBefore(WORKING, 24 * 60)])
         return agent.id
@@ -157,6 +157,60 @@ describe.skipIf(!ADMIN_URL)("silent terminal alerts, in Postgres", () => {
         expect(rows.map(r => r.superAdminId)).toEqual(["sa1"])
         expect(rows[0]).toMatchObject({ userId: null, relatedId: `/dashboard/companies/c2/settings?tab=attendance&highlight=${id}`, messageKey: "notice_att_in_company" })
         expect(rows[0].message).toMatch(/^Two: Nothing has been heard from the attendance agent “Their office”/)
+    })
+
+    it("clears a terminal's notice when its agent falls silent too: the agent's notice stands for both", async () => {
+        const agent = await agentHeardAt("c1", "Annex", minutesBefore(WORKING, 1))
+        const gate = await terminal("c1", agent, "Annex gate", minutesBefore(WORKING, 30))
+        await TerminalAlerts.check({ companyId: "c1" }, WORKING)
+        expect((await notices(gate)).map(r => r.read)).toEqual([false])
+
+        // An hour on, nothing from the agent either.
+        const later = new Date(WORKING.getTime() + 60 * 60_000)
+        await TerminalAlerts.check({ companyId: "c1" }, later)
+        expect((await notices(gate)).map(r => r.read)).toEqual([true])
+        expect((await notices(agent)).map(r => r.read)).toEqual([false])
+    })
+
+    it("tells whoever has come to look after terminals while the silence goes on", async () => {
+        const id = await agentHeardAt("c1", "Depot", minutesBefore(WORKING, 40))
+        await TerminalAlerts.check({ companyId: "c1" }, WORKING)
+        expect((await notices(id)).map(r => r.userId ?? r.superAdminId)).toEqual(["a1"])
+        try {
+            // The Super Admin takes the company's settings back: the Super
+            // Admin is now the one to tell, and is told, once.
+            await db.query(`UPDATE "Company" SET "adminSettingsEnabled" = false WHERE id = 'c1'`)
+            await TerminalAlerts.check({ companyId: "c1" }, WORKING)
+            await TerminalAlerts.check({ companyId: "c1" }, WORKING)
+            expect((await notices(id)).map(r => r.userId ?? r.superAdminId)).toEqual(["a1", "sa1"])
+            expect((await notices(id)).every(r => !r.read)).toBe(true)
+        } finally {
+            await db.query(`UPDATE "Company" SET "adminSettingsEnabled" = true WHERE id = 'c1'`)
+        }
+    })
+
+    it("clears the notice of a company that no longer holds the Terminals add-on", async () => {
+        const id = await agentHeardAt("c2", "Lapsed", minutesBefore(WORKING, 40))
+        await TerminalAlerts.check({ companyId: "c2" }, WORKING)
+        expect((await notices(id)).map(r => r.read)).toEqual([false])
+        try {
+            await db.query(`INSERT INTO "Package"(id, name, "hasHR", "updatedAt") VALUES ('p-hr', 'HR only', true, now())`)
+            await db.query(`UPDATE "Company" SET "packageId" = 'p-hr' WHERE id = 'c2'`)
+            await TerminalAlerts.check({ companyId: "c2" }, WORKING)
+            expect((await notices(id)).map(r => r.read)).toEqual([true])
+        } finally {
+            await db.query(`UPDATE "Company" SET "packageId" = NULL WHERE id = 'c2'`)
+        }
+    })
+
+    it("clears the Super Admin's notice about a company that has been deleted", async () => {
+        await db.query(`INSERT INTO "Company"(id, name, "updatedAt") VALUES ('c3', 'Three', now())`)
+        const id = await agentHeardAt("c3", "Gone", minutesBefore(WORKING, 40))
+        await TerminalAlerts.check({ companyId: "c3" }, WORKING)
+        expect((await notices(id)).map(r => [r.superAdminId, r.read])).toEqual([["sa1", false]])
+        await db.query(`DELETE FROM "Company" WHERE id = 'c3'`)
+        await TerminalAlerts.check("ALL", WORKING)
+        expect((await notices(id)).map(r => r.read)).toEqual([true])
     })
 
     it("keeps a CRITICAL notice unread and on top when everything else is marked read", async () => {
