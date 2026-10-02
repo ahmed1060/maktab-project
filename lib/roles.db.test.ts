@@ -46,6 +46,10 @@ const ATTENDANCE_DAYS = "20261011000000_attendance_days"
 const ATTENDANCE_REQUESTS = "20261012000000_attendance_requests"
 // Adds a column to Company, which the role services read and write.
 const ATTENDANCE_PAYROLL = "20261014000000_attendance_payroll"
+// Notification.priority, which every notice written here now carries; it
+// alters the terminals' tables, so those come first.
+const ATTENDANCE_TERMINALS = "20261018000000_attendance_terminals"
+const TERMINAL_ALERTS = "20261019000000_attendance_terminal_alerts"
 const sql = (name: string) => readFileSync(`prisma/migrations/${name}/migration.sql`, "utf8")
 
 const BEFORE_ROLES = `
@@ -90,6 +94,8 @@ describe.skipIf(!ADMIN_URL)("roles as data, in Postgres", () => {
         await db.query(sql(ATTENDANCE_DAYS))
         await db.query(sql(ATTENDANCE_REQUESTS))
         await db.query(sql(ATTENDANCE_PAYROLL))
+        await db.query(sql(ATTENDANCE_TERMINALS))
+        await db.query(sql(TERMINAL_ALERTS))
         prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: url.toString() }) })
         // The services that manage roles use the application's client; point it
         // here before its first use (it is built lazily).
