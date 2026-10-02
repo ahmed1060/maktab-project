@@ -149,11 +149,14 @@ check-in. Ask Google for more before a large rollout.
 ### iOS: App Attest
 
 1. In the Apple developer account, enable **App Attest** for the app ID.
-   `ios/App/App/App.entitlements` already asks for the production environment.
+   Release builds (TestFlight, App Store) use Apple's production environment
+   (`ios/App/App/App.entitlements`). Debug builds run from Xcode use the
+   development one (`App.Debug.entitlements`), which is what a development
+   profile grants.
 2. Set `APP_ATTEST_APP_ID` on the server to `TEAMID.bundle.id`, for example
    `ABCDE12345.com.shsd.nizmo`.
-3. For builds that use Apple's development environment, also set
-   `APP_ATTEST_ALLOW_DEVELOPMENT=1`. Leave it unset in production.
+3. To test a Debug build against a server, also set
+   `APP_ATTEST_ALLOW_DEVELOPMENT=1` there. Leave it unset in production.
 
 A phone registered before App Attest was set up has no attested key; its
 check-ins say `NO_ATTESTED_KEY`. Registering it again fixes that.

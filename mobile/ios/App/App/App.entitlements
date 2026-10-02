@@ -5,7 +5,8 @@
 	<!-- Push notifications (ATTENDANCE_PLAN.md §13.4). Xcode switches this to production for App Store builds. -->
 	<key>aps-environment</key>
 	<string>development</string>
-	<!-- App Attest (ATTENDANCE_PLAN.md §9.4): Apple's production environment, which the server accepts by default. -->
+	<!-- App Attest (ATTENDANCE_PLAN.md §9.4): Apple's production environment, for TestFlight and the App Store; the
+	     server accepts it by default. Debug builds use App.Debug.entitlements, with the development one. -->
 	<key>com.apple.developer.devicecheck.appattest-environment</key>
 	<string>production</string>
 </dict>
