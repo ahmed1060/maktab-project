@@ -186,7 +186,7 @@ export class AttendanceCheckInService {
      * another would spend allowance on nothing, or be refused as overlapping
      * (review on #24).
      */
-    private static async latenessWaived(companyId: string, userId: string, day: string): Promise<boolean> {
+    static async latenessWaived(companyId: string, userId: string, day: string): Promise<boolean> {
         const date = new Date(`${day}T00:00:00Z`)
         const [leave, permission, excused, person, company] = await Promise.all([
             prisma.dayOffRequest.findMany({ where: { userId, status: "APPROVED", date: { lte: new Date(`${day}T23:59:59Z`) } }, select: { date: true, endDate: true } }),

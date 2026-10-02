@@ -2201,6 +2201,7 @@ export const ar = {
         notice_att_phone_approved: "تمت الموافقة على هاتفك ({model}): سجّل الحضور منه من الآن.",
         notice_att_phone_rejected: "لم تتم الموافقة على هاتفك الجديد ({model})، ولا تُحتسب تسجيلات الحضور التي تمت منه.{reason} سجّل الحضور من هاتفك السابق، أو اطلب مرة أخرى.",
         notice_att_phone_revoked: "لم يعد بإمكانك تسجيل الحضور من هاتفك ({model}).{reason} سجّل هاتفك الجديد من التطبيق.",
+        notice_att_checkin_reminder: "لم تسجّل حضورك بعد. بدأ يومك في {time}.",
         notice_att_checkin_accepted: "تمت مراجعة تسجيل حضورك الساعة {time} يوم {date}، وهو محتسب.",
         notice_att_checkin_rejected: "تمت مراجعة تسجيل حضورك الساعة {time} يوم {date}، وهو غير محتسب.{reason} إذا كان ذلك خطأ، فأبلغ عن الوقت كبصمة ناقصة.",
         notice_att_day_incomplete: "هناك بصمة ناقصة يوم {date}. أبلغ عن الوقت الذي نسيته ليُحسب اليوم.",

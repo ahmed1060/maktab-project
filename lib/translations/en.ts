@@ -2206,6 +2206,7 @@ export const en = {
         notice_att_phone_approved: "Your phone ({model}) is approved: check in with it from now on.",
         notice_att_phone_rejected: "Your new phone ({model}) wasn't approved, and check-ins made with it don't count.{reason} Check in with your previous phone, or ask again.",
         notice_att_phone_revoked: "Your phone ({model}) can no longer be used to check in.{reason} Register your new phone in the app.",
+        notice_att_checkin_reminder: "You haven't checked in yet. Your day started at {time}.",
         notice_att_checkin_accepted: "Your check-in at {time} on {date} was reviewed and counts.",
         notice_att_checkin_rejected: "Your check-in at {time} on {date} was reviewed and doesn't count.{reason} If that's wrong, report the time as a missing punch.",
         notice_att_day_incomplete: "A punch is missing on {date}. Report the time you forgot so the day can be worked out.",

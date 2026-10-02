@@ -424,27 +424,29 @@ export class AttendanceEngineService {
     }
 
     /**
-     * What some dates are for one person, and the lateness rule in force on
-     * each: the same inputs the engine measures them against, read for a few
-     * days rather than a month. Today's day isn't derived until tomorrow, so a
-     * check-in that wants to say "you're late" asks here.
+     * What some dates are for some people, and the policy in force on each
+     * date: the same inputs the engine measures them against, read for a few
+     * days rather than a month. Today's day isn't derived until tomorrow, so
+     * a check-in that wants to say "you're late", and the no-check-in
+     * reminder, ask here. The company's schedules, holidays and policy are
+     * read once, however many people.
      */
-    static async expectedFor(companyId: string, userId: string, dates: readonly string[]): Promise<{
-        plans: Map<string, ExpectedDay>
-        latenessOn: (date: string) => PolicyBody["lateness"] | null
+    static async plansFor(companyId: string, userIds: readonly string[], dates: readonly string[]): Promise<{
+        plans: Map<string, Map<string, ExpectedDay>>
+        policyOn: (date: string) => PolicyBody | null
     }> {
         const sorted = [...dates].sort()
         const span = { gte: wallClock(`${sorted[0]}T00:00:00`), lte: wallClock(`${sorted.at(-1)}T00:00:00`) }
         const [schedules, assignments, defaults, central, exclusions, own, policies] = await Promise.all([
             prisma.workSchedule.findMany({ where: { companyId }, include: SCHEDULE_INCLUDE }),
-            prisma.userSchedule.findMany({ where: { userId, schedule: { companyId } }, select: { scheduleId: true, effectiveFrom: true } }),
+            prisma.userSchedule.findMany({ where: { userId: { in: [...userIds] }, schedule: { companyId } }, select: { userId: true, scheduleId: true, effectiveFrom: true } }),
             prisma.scheduleDefault.findMany({ where: { companyId }, select: { scheduleId: true, effectiveFrom: true } }),
             prisma.publicHoliday.findMany({ where: { country: "EG", date: span } }),
             prisma.companyHolidayExclusion.findMany({ where: { companyId }, select: { publicHolidayId: true } }),
             prisma.companyHoliday.findMany({ where: { companyId, date: span } }),
             AttendancePolicyService.versions(companyId),
         ])
-        const mine = assignments.map(a => ({ scheduleId: a.scheduleId, effectiveFrom: toDateString(a.effectiveFrom) }))
+        const bySchedule = new Map(schedules.map(s => [s.id, serializeSchedule(s)]))
         const defaultChanges = defaults.map(d => ({ scheduleId: d.scheduleId, effectiveFrom: toDateString(d.effectiveFrom) }))
         const holidays = observedHolidays(
             central.map(h => ({ id: h.id, date: toDateString(h.date), name: h.name })),
@@ -453,13 +455,27 @@ export class AttendanceEngineService {
             sorted[0], sorted.at(-1)!,
         )
         const weeks = policies.map(p => ({ effectiveFrom: p.effectiveFrom, workWeek: p.body.workWeek }))
-        const plans = new Map<string, ExpectedDay>()
-        for (const date of sorted) {
-            const scheduleId = scheduleIdOn(mine, defaultChanges, date)
-            const found = scheduleId ? schedules.find(s => s.id === scheduleId) : undefined
-            plans.set(date, expectedDay({ date, schedule: found ? serializeSchedule(found) : null, companyWorkWeek: companyWeekOn(weeks, date), holiday: holidays.get(date) ?? null }))
+        const plans = new Map<string, Map<string, ExpectedDay>>()
+        for (const userId of userIds) {
+            const mine = assignments.filter(a => a.userId === userId).map(a => ({ scheduleId: a.scheduleId, effectiveFrom: toDateString(a.effectiveFrom) }))
+            const days = new Map<string, ExpectedDay>()
+            for (const date of sorted) {
+                const scheduleId = scheduleIdOn(mine, defaultChanges, date)
+                const schedule = scheduleId ? bySchedule.get(scheduleId) ?? null : null
+                days.set(date, expectedDay({ date, schedule, companyWorkWeek: companyWeekOn(weeks, date), holiday: holidays.get(date) ?? null }))
+            }
+            plans.set(userId, days)
         }
-        return { plans, latenessOn: date => policyOn(policies, date)?.body.lateness ?? null }
+        return { plans, policyOn: date => policyOn(policies, date)?.body ?? null }
+    }
+
+    /** plansFor, for one person, with the lateness rule on each date. */
+    static async expectedFor(companyId: string, userId: string, dates: readonly string[]): Promise<{
+        plans: Map<string, ExpectedDay>
+        latenessOn: (date: string) => PolicyBody["lateness"] | null
+    }> {
+        const { plans, policyOn } = await this.plansFor(companyId, [userId], dates)
+        return { plans: plans.get(userId)!, latenessOn: date => policyOn(date)?.lateness ?? null }
     }
 
     /** Rebuilds every month from a date's month to today's, skipping locked ones. */

@@ -16,6 +16,8 @@ import { stripComments } from "./strip-comments"
  * the way everything was before, and nothing else would ever say so.
  */
 const VERCEL = JSON.parse(readFileSync("vercel.json", "utf8")) as { crons: { path: string; schedule: string }[] }
+/** Jobs fired from outside Vercel, more often than its Hobby plan allows (job-heartbeat.service.ts). */
+const EXTERNAL = SCHEDULED_JOBS.filter(j => "firedBy" in j && j.firedBy === "external").map(j => j.job as string)
 
 describe("the register matches what is actually scheduled", () => {
     it("has an entry for every cron in vercel.json", () => {
@@ -31,7 +33,7 @@ describe("the register matches what is actually scheduled", () => {
     it("does not watch for jobs that are not scheduled", () => {
         // A registered job that nothing fires is permanently overdue, and a
         // card that is always red is a card nobody reads.
-        const scheduled = VERCEL.crons.map(c => c.path.split("/").filter(Boolean).pop()!)
+        const scheduled = [...VERCEL.crons.map(c => c.path.split("/").filter(Boolean).pop()!), ...EXTERNAL]
         for (const { job } of SCHEDULED_JOBS) {
             expect(scheduled, `${job} is registered but nothing in vercel.json fires it`).toContain(job)
         }
@@ -41,10 +43,23 @@ describe("the register matches what is actually scheduled", () => {
         // Wiring the register without wiring the route gives a job that is
         // running fine and reports as dead.
         for (const { job } of SCHEDULED_JOBS) {
-            const path = VERCEL.crons.find(c => c.path.endsWith(`/${job}`))!.path
+            const path = VERCEL.crons.find(c => c.path.endsWith(`/${job}`))?.path ?? `/api/cron/${job}`
             const source = stripComments(readFileSync(`app${path}/route.ts`, "utf8"))
             expect(source, `${path} does not record a heartbeat`).toContain(`JobHeartbeatService.run("${job}"`)
         }
+    })
+})
+
+describe("a job fired from outside", () => {
+    it("has its route, answering GET, and isn't also in vercel.json", () => {
+        // Fired by an outside scheduler with CRON_SECRET, as Vercel would.
+        for (const job of EXTERNAL) {
+            const source = readFileSync(`app/api/cron/${job}/route.ts`, "utf8")
+            expect(source).toMatch(/export (async function|const) GET/)
+            expect(stripComments(source)).toContain("isValidCronRequest(req)")
+            expect(VERCEL.crons.map(c => c.path)).not.toContain(`/api/cron/${job}`)
+        }
+        expect(EXTERNAL).toContain("check-in-reminder")
     })
 })
 
