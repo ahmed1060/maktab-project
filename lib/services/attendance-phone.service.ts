@@ -191,10 +191,15 @@ export class AttendancePhoneService {
             }
             await tx.checkInPhone.update({ where: { id }, data: { status: decision.approve ? "ACTIVE" : "REJECTED", decidedAt: now, decidedById: deciderId, reason } })
             const held = await tx.attendancePunch.findMany({ where: { phoneId: id, status: "PENDING_DEVICE" }, select: { punchAtLocal: true }, orderBy: { punchAtLocal: "asc" }, take: 1 })
+            // Approved, what it held counts, or is flagged with the reasons it
+            // was held with (§9.6); rejected, it is discarded.
+            const flagged = decision.approve
+                ? await tx.attendancePunch.updateMany({ where: { phoneId: id, status: "PENDING_DEVICE", NOT: { flagReasons: { isEmpty: true } } }, data: { status: "FLAGGED" } })
+                : { count: 0 }
             const released = await tx.attendancePunch.updateMany({ where: { phoneId: id, status: "PENDING_DEVICE" }, data: { status: decision.approve ? "ACCEPTED" : "REJECTED" } })
             await AuditLogService.log(decision.approve ? "APPROVE_CHECK_IN_PHONE" : "REJECT_CHECK_IN_PHONE", "CHECK_IN_PHONE", id, {
                 tx, ...(await actorOf(tx, deciderId)),
-                details: { companyId: phone.companyId, userId: phone.userId, model: phone.model, reason, replaced, punches: released.count },
+                details: { companyId: phone.companyId, userId: phone.userId, model: phone.model, reason, replaced, punches: released.count + flagged.count },
             })
             await NotificationService.notify(phone.userId, "ATTENDANCE_PHONE", {
                 key: decision.approve ? "notice_att_phone_approved" : "notice_att_phone_rejected",

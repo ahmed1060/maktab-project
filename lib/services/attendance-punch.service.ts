@@ -269,15 +269,17 @@ export class AttendancePunchService {
             take: limit,
             select: {
                 id: true, userId: true, hardwareUserId: true, source: true, punchAtLocal: true, direction: true, status: true, note: true,
-                importId: true, receivedAt: true, voidedAt: true, voidReason: true,
+                importId: true, receivedAt: true, voidedAt: true, voidReason: true, flagReasons: true,
                 user: { select: { firstName: true, lastName: true } },
                 device: { select: { name: true } },
+                workLocation: { select: { name: true } },
             },
         })
-        return rows.map(({ user, punchAtLocal, device, ...r }) => ({
+        return rows.map(({ user, punchAtLocal, device, workLocation, ...r }) => ({
             ...r, at: wallClockText(punchAtLocal), name: user ? `${user.firstName} ${user.lastName}`.trim() : null,
-            // Which terminal, for a punch from one (§17).
+            // Which terminal, for a punch from one (§17); which place, for a check-in from the app (§9).
             deviceName: device?.name ?? null,
+            placeName: workLocation?.name ?? null,
         }))
     }
 

@@ -38,6 +38,9 @@ vi.mock("@/lib/services/attendance-phone.service", () => ({
         revoke: async (id: string) => { reached.push(`revoke:${id}`) },
     },
 }))
+vi.mock("@/lib/services/attendance-check-in.service", () => ({
+    AttendanceCheckInService: { checkIn: async (companyId: string, userId: string, _input: unknown, ip: string | null) => { reached.push(`checkIn:${companyId}:${userId}:${ip}`); return { outcome: "REFUSED", reason: "MOCK_LOCATION" } } },
+}))
 vi.mock("@/lib/services/attendance-challenge.service", () => ({
     AttendanceChallengeService: { issue: async (userId: string, purpose: string) => { reached.push(`challenge:${userId}:${purpose}`); return { nonce: "n", expiresAt: new Date() } } },
 }))
@@ -69,6 +72,10 @@ const employee = (id = "e1", pkg: Pkg = MOBILE) => signIn({ id, role: "EMPLOYEE"
 const superAdmin = () => signIn({ id: "sa", role: "SUPER_ADMIN", companyId: null })
 
 const REGISTER = { nonce: "n".repeat(43), publicKey: "AAAA", signature: "BBBB", platform: "ANDROID" }
+const CHECK_IN = { nonce: "n".repeat(43), keyFingerprint: "a".repeat(64), signature: "BBBB", latitude: 30.04, longitude: 31.23, accuracyMeters: 12, mocked: false }
+const checkIn = async (body: unknown, ip?: string) => (await import("@/app/api/attendance/check-in/route")).POST(
+    new Request(url("/api/attendance/check-in"), { method: "POST", headers: { "Content-Type": "application/json", ...(ip && { "x-forwarded-for": `${ip}, 10.0.0.1` }) }, body: JSON.stringify(body) }),
+)
 const params = (id: string) => ({ params: Promise.resolve({ id }) }) as any
 const challenge = async (body: unknown) => (await import("@/app/api/attendance/phone/challenge/route")).POST(withBody("POST", "/api/attendance/phone/challenge", body))
 const register = async (body: unknown) => (await import("@/app/api/attendance/phone/register/route")).POST(withBody("POST", "/api/attendance/phone/register", body))
@@ -103,6 +110,28 @@ describe("one's own phone", () => {
         expect((await register(REGISTER)).status).toBe(403)
         superAdmin()
         expect((await mine()).status).toBe(404)
+        expect(reached).toEqual([])
+    })
+})
+
+describe("checking in", () => {
+    it("is one's own, with the address it came from, and a refusal is an answer, not an error", async () => {
+        employee()
+        const res = await checkIn(CHECK_IN, "203.0.113.7")
+        expect(res.status).toBe(200)
+        expect((await res.json()).data).toEqual({ outcome: "REFUSED", reason: "MOCK_LOCATION" })
+        expect(reached).toEqual(["checkIn:c1:e1:203.0.113.7"])
+    })
+
+    it("refuses a body of the wrong shape, a company without the app, and the Super Admin", async () => {
+        employee()
+        expect((await checkIn({ ...CHECK_IN, latitude: 91 })).status).toBe(400)
+        expect((await checkIn({ ...CHECK_IN, keyFingerprint: "not hex" })).status).toBe(400)
+        companies.c1.package = TERMINALS_ONLY
+        employee("e1", TERMINALS_ONLY)
+        expect((await checkIn(CHECK_IN)).status).toBe(403)
+        superAdmin()
+        expect((await checkIn(CHECK_IN)).status).toBe(404)
         expect(reached).toEqual([])
     })
 })

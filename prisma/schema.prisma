@@ -256,6 +256,7 @@ model Company {
   attendanceDevices        AttendanceDevice[]
   workLocations            WorkLocation[]
   checkInPhones            CheckInPhone[]
+  checkInRefusals          CheckInRefusal[]
   companyHolidays      CompanyHoliday[]
   holidayExclusions    CompanyHolidayExclusion[]
   finalSettlements     FinalSettlement[]
@@ -513,6 +514,7 @@ model User {
   workLocations              UserWorkLocation[]
   checkInPhones              CheckInPhone[]
   attendanceChallenges       AttendanceChallenge[]
+  checkInRefusals            CheckInRefusal[]
 
   @@index([email])
   @@index([companyId])
@@ -1803,6 +1805,17 @@ model AttendancePunch {
   /// The phone it came from (§9.2), for MOBILE punches.
   phoneId              String?
   phone                CheckInPhone?     @relation(fields: [phoneId], references: [id], onDelete: SetNull)
+  /// Why a check-in is FLAGGED for a person to decide (§9.6), e.g.
+  /// OUTSIDE_AREA, IMPRECISE_LOCATION, OFFICE_IP_MISMATCH, ATTESTATION_UNVERIFIED.
+  /// Kept when it is held for a phone's approval, so approval flags it then.
+  flagReasons          String[]          @default([])
+  /// The place it was checked against: the nearest the person may check in at.
+  workLocationId       String?
+  workLocation         WorkLocation?     @relation(fields: [workLocationId], references: [id], onDelete: SetNull)
+  /// What the phone said and the server saw, for whoever reviews it: the
+  /// fix, its accuracy, the distance to the place, the address it came from,
+  /// whether the app was verified. Never a photo or anything biometric.
+  checkIn              Json?
 
   @@unique([companyId, source, sourceKey])
   @@index([companyId, userId, punchAtLocal])
@@ -1810,6 +1823,7 @@ model AttendancePunch {
   @@index([importId])
   @@index([deviceId])
   @@index([phoneId])
+  @@index([companyId, status])
 }
 
 /// A spreadsheet of punches brought in, and what became of its rows.
@@ -2211,6 +2225,7 @@ model WorkLocation {
   archivedAt     DateTime?
   company        Company            @relation(fields: [companyId], references: [id], onDelete: Cascade)
   people         UserWorkLocation[]
+  punches        AttendancePunch[]
 
   @@index([companyId])
 }
@@ -2289,4 +2304,28 @@ model AttendanceChallenge {
 
   @@index([userId])
   @@index([expiresAt])
+}
+
+
+/// A check-in refused outright (§9.6): clear evidence of cheating or a wrong
+/// setup, nothing for a person to judge. It counts for nothing, and is kept
+/// for the Super Admin's integrity view (§13.7): a sudden run of them at one
+/// company is an attack or a broken app release.
+model CheckInRefusal {
+  id        String   @id @default(uuid())
+  companyId String
+  userId    String
+  /// The phone it came from, when it was one we know.
+  phoneId   String?
+  /// MOCK_LOCATION, ATTESTATION_FAILED, NOT_REGISTERED_PHONE, PHONE_SUSPENDED,
+  /// NO_WORK_LOCATION, BAD_SIGNATURE, MONTH_LOCKED.
+  reason    String
+  at        DateTime @default(now())
+  ip        String?
+  details   Json?
+  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([companyId, at])
+  @@index([at])
 }

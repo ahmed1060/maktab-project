@@ -34,6 +34,7 @@ import type { TranslationKey } from '@/lib/translations'
 type Punch = {
     id: string; userId: string | null; name: string | null; hardwareUserId: string | null
     source: string; at: string; direction: 'IN' | 'OUT' | null; note: string | null; deviceName?: string | null
+    placeName?: string | null; status?: string; flagReasons?: string[]
     voidedAt: string | null; voidReason: string | null
 }
 type Person = { id: string; name: string; teamLeaderId: string | null }
@@ -414,7 +415,16 @@ function PunchesTab({ q, companyId, today }: { q: string; companyId: string | nu
                                                 )}
                                                 <td>{x.direction === 'IN' ? t('punch_in') : x.direction === 'OUT' ? t('punch_out') : '—'}</td>
                                                 <td>
-                                                    {x.source === 'AGENT' ? t('punch_source_terminal').replace('{name}', x.deviceName ?? '—') : t(x.source === 'MANUAL' ? 'punch_source_manual' : 'punch_source_import')}
+                                                    {x.source === 'AGENT' ? t('punch_source_terminal').replace('{name}', x.deviceName ?? '—')
+                                                        : x.source === 'MOBILE' ? t('punch_source_app').replace('{place}', x.placeName ?? '—')
+                                                        : t(x.source === 'MANUAL' ? 'punch_source_manual' : 'punch_source_import')}
+                                                    {/* A check-in that doesn't count yet, or won't: why (§9.6). */}
+                                                    {x.status && x.status !== 'ACCEPTED' && (
+                                                        <div style={{ color: x.status === 'REJECTED' ? 'var(--danger-fg)' : 'var(--warn-fg)', fontSize: '0.78rem' }}>
+                                                            {t(`punch_status_${x.status}` as TranslationKey)}
+                                                            {(x.flagReasons ?? []).length > 0 && ` · ${(x.flagReasons ?? []).map(r => t(`att_flag_${r}` as TranslationKey)).join(', ')}`}
+                                                        </div>
+                                                    )}
                                                     {x.note && <div style={{ color: 'var(--text-soft)', fontSize: '0.78rem' }}>{x.note}</div>}
                                                     {x.voidedAt && <div style={{ color: 'var(--text-soft)', fontSize: '0.78rem' }}>{t('punch_withdrawn_because').replace('{reason}', x.voidReason ?? '')}</div>}
                                                 </td>
