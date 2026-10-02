@@ -6,6 +6,7 @@ import { AttendanceCheckInService as CheckIns, checkInText } from "@/lib/service
 import { AttendancePhoneService as Phones } from "@/lib/services/attendance-phone.service"
 import { AttendanceChallengeService as Challenges } from "@/lib/services/attendance-challenge.service"
 import { AttendanceLocationService as Locations } from "@/lib/services/attendance-location.service"
+import { AttendancePunchService as Punches } from "@/lib/services/attendance-punch.service"
 import { parsePhoneKey, signedText } from "@/lib/attendance/phone-keys"
 import { phoneKeyPair } from "@/lib/attendance/test-phone"
 
@@ -127,6 +128,15 @@ describe.skipIf(!ADMIN_URL)("flagged check-ins, in Postgres", () => {
         await expect(Flags.decide(mine, { accept: true }, "e1")).rejects.toThrow("CANNOT_DECIDE_OWN")
         const outcomes = await Promise.allSettled([Flags.decide(mine, { accept: true }, "a1"), Flags.decide(mine, { accept: false }, "sa")])
         expect(outcomes.filter(o => o.status === "fulfilled")).toHaveLength(1)
+    })
+
+    it("refuses to decide one withdrawn while it waited, and tells nobody", async () => {
+        attested.verified = true
+        const gone = await checkIn("c2", "x2", DOWN_THE_ROAD)
+        await Punches.voidPunch(gone, "Entered twice", "a2")
+        await expect(Flags.decide(gone, { accept: true }, "a2")).rejects.toThrow("CHECK_IN_NOT_FLAGGED")
+        expect(await status(gone)).toBe("FLAGGED")
+        expect(await notices("x2")).toEqual([])
     })
 
     it("refuses to decide one in a month whose payroll is approved", async () => {

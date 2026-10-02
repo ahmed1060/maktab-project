@@ -101,8 +101,9 @@ export class AttendanceFlagService {
             const months = await punchMonths(tx, punch.companyId, punch.userId!, local)
             await lockMonths(tx, punch.companyId, months)
             if ((await lockedMonths(tx, punch.companyId, months)).size > 0) fail("PAYROLL_MONTH_LOCKED")
-            // Read again under the lock: another reviewer may have decided it first.
-            const { count } = await tx.attendancePunch.updateMany({ where: { id, status: "FLAGGED" }, data: { status: decision.accept ? "ACCEPTED" : "REJECTED" } })
+            // Read again under the lock: another reviewer may have decided it first,
+            // or it was withdrawn while it waited (review on #23).
+            const { count } = await tx.attendancePunch.updateMany({ where: { id, status: "FLAGGED", voidedAt: null }, data: { status: decision.accept ? "ACCEPTED" : "REJECTED" } })
             if (count === 0) fail("CHECK_IN_NOT_FLAGGED")
             await AuditLogService.log(decision.accept ? "ACCEPT_FLAGGED_CHECK_IN" : "REJECT_FLAGGED_CHECK_IN", "ATTENDANCE_PUNCH", id, {
                 tx, ...(await actorOf(tx, deciderId)),
