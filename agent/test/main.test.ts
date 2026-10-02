@@ -2,7 +2,8 @@ import { describe, it, expect, afterEach } from "vitest"
 import { mkdtempSync, writeFileSync, existsSync, readFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import { main } from "../src/main"
+import { getEventListeners } from "node:events"
+import { main, sleep } from "../src/main"
 import { FakeZkDevice } from "./fake-zk-device"
 import { FakeServer } from "./fake-server"
 
@@ -31,5 +32,14 @@ describe("nizmo-agent", () => {
         expect(server.stored.size).toBe(1)
         expect(existsSync(join(home, "logs", "agent.log"))).toBe(true)
         expect(await main(["nonsense"])).toBe(2)
+    })
+
+    it("leaves nothing behind after each wait between rounds (review on #18)", async () => {
+        const stop = new AbortController()
+        for (let i = 0; i < 5; i++) await sleep(1, stop.signal)
+        expect(getEventListeners(stop.signal, "abort")).toHaveLength(0)
+        const waiting = sleep(60_000, stop.signal)
+        stop.abort()
+        await waiting
     })
 })

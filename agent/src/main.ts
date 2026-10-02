@@ -38,10 +38,22 @@ function home(): string {
     return exe.endsWith("nizmo-agent.exe") ? join(process.execPath, "..") : process.cwd()
 }
 
-const sleep = (ms: number, signal: AbortSignal) => new Promise<void>(resolve => {
-    const t = setTimeout(resolve, ms)
-    signal.addEventListener("abort", () => { clearTimeout(t); resolve() }, { once: true })
-})
+/**
+ * Waits, or stops waiting when the service is stopped. The listener goes
+ * when the wait ends either way: one left behind each round would grow
+ * forever in a service that runs for months (review on #18).
+ */
+export function sleep(ms: number, signal: AbortSignal): Promise<void> {
+    return new Promise<void>(resolve => {
+        const done = () => {
+            clearTimeout(timer)
+            signal.removeEventListener("abort", done)
+            resolve()
+        }
+        const timer = setTimeout(done, ms)
+        signal.addEventListener("abort", done, { once: true })
+    })
+}
 
 export async function main(argv: string[]): Promise<number> {
     const [command, ...args] = argv
