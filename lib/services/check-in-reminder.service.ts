@@ -29,7 +29,9 @@ export class CheckInReminderService {
     /** Reminds whoever is due, then sends what is waiting to be pushed. */
     static async run(now = new Date()) {
         const phones = await prisma.checkInPhone.findMany({
-            where: { status: { in: ["ACTIVE", "PENDING"] }, user: { status: { not: "DELETED" } } },
+            // Not someone who can't sign in (review on #25): suspended, deleted, or whose
+            // contract ended — a change partway through a day isn't a whole day's suspension.
+            where: { status: { in: ["ACTIVE", "PENDING"] }, user: { status: { notIn: ["SUSPENDED", "DELETED", "ARCHIVED"] } } },
             select: { companyId: true, userId: true },
             distinct: ["userId"],
         })

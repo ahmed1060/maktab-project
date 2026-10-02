@@ -90,6 +90,19 @@ describe.skipIf(!ADMIN_URL)("the no-check-in reminder, in Postgres", () => {
         expect(await notices("e1")).toHaveLength(1)
     })
 
+    it("reminds nobody who can't sign in: suspended, or whose contract ended", async () => {
+        // Monday 28th, 09:20: Ehab is due again, but is suspended; then archived.
+        const ehab = async () => (await reminders()).filter(r => r.userId === "e1" && r.date === "2026-09-28")
+        await db.query(`UPDATE "User" SET status = 'SUSPENDED' WHERE id = 'e1'`)
+        await Reminders.run(new Date("2026-09-28T06:20:00Z"))
+        expect(await ehab()).toEqual([])
+        await db.query(`UPDATE "User" SET status = 'ARCHIVED' WHERE id = 'e1'`)
+        await Reminders.run(new Date("2026-09-28T06:21:00Z"))
+        expect(await ehab()).toEqual([])
+        await db.query(`UPDATE "User" SET status = 'ACTIVE' WHERE id = 'e1'`)
+        await db.query(`DELETE FROM "CheckInReminder" WHERE date = '2026-09-28'`)
+    })
+
     it("reminds a night shift after its start, and nobody long after it was due", async () => {
         // 22:20 on Sunday 27th: Eyad's night started at 22:00.
         expect(await Reminders.run(new Date("2026-09-27T19:20:00Z"))).toMatchObject({ reminded: 1 })
