@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest"
 import { mkdtempSync, readFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import { SyncAgent, newRecords, firstOfThisMonth, type Logger, type DeviceAccess } from "../src/sync"
+import { SyncAgent, newRecords, firstOfMonthIn, type Logger, type DeviceAccess } from "../src/sync"
 import { parseConfig, type AgentConfig } from "../src/config"
 import { emptyState, loadState, type AgentState } from "../src/state"
 import { withDevice } from "../src/zk/client"
@@ -42,7 +42,7 @@ describe("a round of the agent", () => {
     const statePath = () => join(dir, "state.json")
     const agent = (access: DeviceAccess = withDevice) => new SyncAgent(config, state, statePath(), log, access)
     const at = (day: string, time: string) => `${day}T${time}`
-    const today = firstOfThisMonth().slice(0, 8) + "02"
+    const today = firstOfMonthIn("Africa/Cairo").slice(0, 8) + "02"
 
     beforeEach(async () => {
         device = new FakeZkDevice({ serialNumber: "ZK-A1" })
@@ -64,7 +64,14 @@ describe("a round of the agent", () => {
         const enrolled = await agent().enrol("K7QD-2MXP")
         expect(enrolled.company).toBe("Sweep Co")
         const saved = loadState(statePath())
-        expect(saved).toMatchObject({ token: "mka_1", company: "Sweep Co", timeZone: "Africa/Cairo", sendFrom: firstOfThisMonth(), needsEnrolment: false })
+        expect(saved).toMatchObject({ token: "mka_1", company: "Sweep Co", timeZone: "Africa/Cairo", sendFrom: firstOfMonthIn("Africa/Cairo"), needsEnrolment: false })
+    })
+
+    it("starts from the company's month by the server's clock, not this PC's (review on #18)", async () => {
+        // 23:30 on 30 November in UTC is already 1 December in Cairo.
+        server.serverDate = new Date("2026-11-30T23:30:00Z")
+        await agent().enrol("K7QD-2MXP")
+        expect(loadState(statePath()).sendFrom).toBe("2026-12-01")
     })
 
     it("reads the terminal, reports it, and delivers its new punches — then only what is newer", async () => {

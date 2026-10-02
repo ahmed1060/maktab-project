@@ -57,8 +57,20 @@ export function newRecords(records: AttendanceRecord[], cursor: Cursor): { fresh
     return { fresh, cursor: { count: records.length, lastKey: last ? recordKey(last) : null } }
 }
 
-/** The first of the current month on this machine's clock: the default start for a new agent. */
-export const firstOfThisMonth = (now = new Date()) => `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`
+/**
+ * The first of the current month in the company's time zone: the default
+ * start for a new agent. Not the office PC's calendar, which may be in
+ * another zone (review on #18).
+ */
+export function firstOfMonthIn(timeZone: string, now = new Date()): string {
+    let date: string
+    try {
+        date = new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).format(now)
+    } catch {
+        date = now.toISOString().slice(0, 10)
+    }
+    return `${date.slice(0, 7)}-01`
+}
 
 /** A report as the server takes it: how full the memory is stays here, for clearing. */
 const withoutRatio = (r: DeviceReport & { ratio: number }): DeviceReport => {
@@ -95,7 +107,8 @@ export class SyncAgent {
         this.state.company = enrolled.company
         this.state.timeZone = enrolled.timeZone
         this.state.enrolledAt = new Date().toISOString()
-        this.state.sendFrom ??= firstOfThisMonth()
+        // The server's clock, not this PC's, which may be wrong.
+        this.state.sendFrom ??= firstOfMonthIn(enrolled.timeZone, this.api.lastServerDate ?? new Date())
         this.state.needsEnrolment = false
         this.save()
         return enrolled

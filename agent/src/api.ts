@@ -41,6 +41,9 @@ export type PunchesReply = { accepted: number; duplicates: number; refused: { in
 export class AgentApi {
     constructor(private readonly server: string, private readonly token: () => string | null, private readonly timeoutMs = 30_000) {}
 
+    /** The server's clock at its last reply (its Date header), or null. */
+    lastServerDate: Date | null = null
+
     private async post<T>(path: string, body: unknown, authenticated = true): Promise<T> {
         const headers: Record<string, string> = { "Content-Type": "application/json" }
         if (authenticated) {
@@ -54,6 +57,8 @@ export class AgentApi {
         } catch (e) {
             throw new ApiError(0, "NETWORK", (e as Error).message)
         }
+        const date = res.headers.get("date")
+        this.lastServerDate = date && !Number.isNaN(Date.parse(date)) ? new Date(date) : null
         const json = await res.json().catch(() => null) as { success?: boolean; data?: T; code?: string; error?: string } | null
         if (!res.ok || !json?.success) throw new ApiError(res.status, json?.code ?? `HTTP_${res.status}`, json?.error ?? res.statusText)
         return json.data as T

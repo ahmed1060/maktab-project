@@ -41,8 +41,12 @@ export class FakeServer {
         await new Promise<void>(r => this.server.close(() => r()))
     }
 
+    /** The time the server says it is (its Date header), when set. */
+    serverDate: Date | null = null
+    timeZone = "Africa/Cairo"
+
     private send(res: ServerResponse, status: number, body: object) {
-        res.writeHead(status, { "Content-Type": "application/json" })
+        res.writeHead(status, { "Content-Type": "application/json", ...(this.serverDate ? { Date: this.serverDate.toUTCString() } : {}) })
         res.end(JSON.stringify(body))
     }
 
@@ -58,7 +62,7 @@ export class FakeServer {
             this.code = "used"
             const token = `mka_${++this.counter}`
             this.tokens.add(token)
-            return ok({ token, agentId: "ag1", name: "Office", company: "Sweep Co", timeZone: "Africa/Cairo" }, 201)
+            return ok({ token, agentId: "ag1", name: "Office", company: "Sweep Co", timeZone: this.timeZone }, 201)
         }
         const token = /^Bearer (\S+)$/.exec(req.headers.authorization ?? "")?.[1] ?? ""
         if (token === this.pendingToken) { this.tokens.clear(); this.tokens.add(token); this.pendingToken = null }
