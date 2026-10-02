@@ -10,6 +10,7 @@ import { checkInText } from "@/lib/attendance/signed-text"
 import { attestationMode, verifyAttestation } from "@/lib/attendance/attestation"
 import { judgeCheckIn, type FlagReason } from "@/lib/attendance/check-in-rules"
 import { addDays, formatMinutes } from "@/lib/attendance/calendar"
+import { assignPunches } from "@/lib/attendance/engine"
 import { AttendanceEngineService } from "./attendance-engine.service"
 import { DEFAULT_TIME_ZONE, offsetMsIn } from "@/lib/time"
 
@@ -109,7 +110,8 @@ export class AttendanceCheckInService {
                 return { result: { outcome: "REFUSED" as const, reason: "MONTH_LOCKED" }, counts: false }
             }
 
-            await tx.attendancePunch.create({
+            const punch = await tx.attendancePunch.create({
+                select: { id: true },
                 data: {
                     companyId, userId, source: "MOBILE",
                     // One punch per number signed: the number is used once, so its hash is the punch's identity.
@@ -127,34 +129,49 @@ export class AttendanceCheckInService {
             return {
                 result: { outcome: verdict.outcome, reasons: verdict.reasons, place: { id: verdict.place.id, name: verdict.place.name }, distanceMeters: verdict.distanceMeters, at: local, late: null },
                 counts: verdict.outcome === "ACCEPTED",
+                punchId: punch.id,
             }
         })
         if (!out.result) fail("PHONE_SIGNATURE_INVALID")
         // From the day before: a check-in after midnight can end the night shift that began then.
         if (out.counts) await recomputeAfter(companyId, addDays(local.slice(0, 10), -1), [userId])
         if (out.result.outcome === "REFUSED") return out.result
-        return { ...out.result, late: await AttendanceCheckInService.lateness(companyId, userId, local) }
+        return { ...out.result, late: await AttendanceCheckInService.lateness(companyId, userId, out.punchId!, local) }
     }
 
     /**
-     * How late this check-in is, when it is the day's first and the day is a
-     * working one: minutes past the start, if past the policy's grace. Null
-     * otherwise — a second check-in, a rest day, no schedule, or lateness not
-     * charged at all, when asking for permission would be pointless.
+     * How late this check-in is, when it is the first of its working day:
+     * minutes past the start, if past the policy's grace. The day is the
+     * shift it belongs to, as the engine groups punches (assignPunches), so a
+     * night shift's arrival after midnight is measured against the night it
+     * starts, and the morning's check-out from last night's shift doesn't
+     * count as this evening's first (review on #24). Null otherwise — a
+     * later check-in, a rest day, no schedule, or lateness not charged at all,
+     * when asking for permission would be pointless.
      */
-    static async lateness(companyId: string, userId: string, local: string): Promise<{ minutes: number; startsAt: string } | null> {
+    static async lateness(companyId: string, userId: string, punchId: string, local: string): Promise<{ minutes: number; startsAt: string } | null> {
         const date = local.slice(0, 10)
-        const earlier = await prisma.attendancePunch.count({
-            where: {
-                userId, voidedAt: null, status: { in: ["ACCEPTED", "FLAGGED", "PENDING_DEVICE"] },
-                punchAtLocal: { gte: new Date(`${date}T00:00:00Z`), lt: new Date(`${local}Z`) },
-            },
-        })
-        if (earlier > 0) return null
-        const { expected, lateness } = await AttendanceEngineService.expectedFor(companyId, userId, date)
-        if (expected.kind !== "WORK" || !lateness?.enabled) return null
-        const minutes = Number(local.slice(11, 13)) * 60 + Number(local.slice(14, 16)) - expected.hours.startMinutes
-        if (minutes <= lateness.graceMinutes) return null
+        const days = [addDays(date, -1), date, addDays(date, 1)]
+        const [{ plans, latenessOn }, nearby] = await Promise.all([
+            AttendanceEngineService.expectedFor(companyId, userId, days),
+            prisma.attendancePunch.findMany({
+                where: {
+                    userId, voidedAt: null, status: { in: ["ACCEPTED", "FLAGGED", "PENDING_DEVICE"] },
+                    punchAtLocal: { gte: new Date(`${days[0]}T00:00:00Z`), lt: new Date(`${addDays(days[2], 1)}T00:00:00Z`) },
+                },
+                select: { id: true, punchAtLocal: true, direction: true },
+            }),
+        ])
+        const grouped = assignPunches(nearby.map(p => ({ id: p.id, at: p.punchAtLocal.toISOString().slice(0, 19), direction: p.direction })), plans)
+        const [day, punches] = [...grouped].find(([, list]) => list.some(p => p.id === punchId)) ?? []
+        if (!day || !punches || punches[0].id !== punchId) return null
+        const expected = plans.get(day)
+        const rule = latenessOn(day)
+        if (expected?.kind !== "WORK" || !rule?.enabled) return null
+        // Minutes from the start of the shift's own day, past midnight included.
+        const daysAfter = (Date.parse(`${date}T00:00:00Z`) - Date.parse(`${day}T00:00:00Z`)) / 86_400_000
+        const minutes = daysAfter * 1440 + Number(local.slice(11, 13)) * 60 + Number(local.slice(14, 16)) - expected.hours.startMinutes
+        if (minutes <= rule.graceMinutes) return null
         return { minutes, startsAt: formatMinutes(expected.hours.startMinutes) }
     }
 

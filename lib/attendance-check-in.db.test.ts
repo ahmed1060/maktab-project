@@ -36,7 +36,8 @@ INSERT INTO "User"(id, email, password, "firstName", "lastName", role, "lastDayO
  ('e1', 'e1@x', 'p', 'Ehab', 'One', 'EMPLOYEE', 2026, 'e1', 'c1', NULL),
  ('e2', 'e2@x', 'p', 'Eman', 'Two', 'EMPLOYEE', 2026, 'e2', 'c1', NULL),
  ('e3', 'e3@x', 'p', 'Essam', 'Three', 'EMPLOYEE', 2026, 'e3', 'c1', NULL),
- ('e4', 'e4@x', 'p', 'Eslam', 'Four', 'EMPLOYEE', 2026, 'e4', 'c1', NULL);
+ ('e4', 'e4@x', 'p', 'Eslam', 'Four', 'EMPLOYEE', 2026, 'e4', 'c1', NULL),
+ ('e5', 'e5@x', 'p', 'Eyad', 'Five', 'EMPLOYEE', 2026, 'e5', 'c1', NULL);
 `
 
 // Tahrir: the office's centre; about 11 m away; about 333 m away.
@@ -64,7 +65,7 @@ describe.skipIf(!ADMIN_URL)("checking in with the app, in Postgres", () => {
         await db.query(`UPDATE "Company" SET timezone = 'Africa/Cairo' WHERE id = 'c1'`)
         process.env.POSTGRES_PRISMA_URL = url.toString()
         const office = await Locations.create("c1", { name: "Head office", ...OFFICE, radiusMeters: 100, officeIpRanges: ["198.51.100.0/24"] }, "a1")
-        await Locations.setPeople(office.id, ["e1", "e2", "e4"], "a1")
+        await Locations.setPeople(office.id, ["e1", "e2", "e4", "e5"], "a1")
     }, 180_000)
 
     afterAll(async () => {
@@ -192,6 +193,19 @@ describe.skipIf(!ADMIN_URL)("checking in with the app, in Postgres", () => {
         // Tuesday 29th, 09:20, from a verified app: counted, and late.
         attested.verified = true
         expect(await checkIn("e4", e4, AT_DESK, { at: "2026-09-29T06:20:00Z" })).toMatchObject({ outcome: "ACCEPTED", late: { minutes: 20, startsAt: "09:00" } })
+    })
+
+    it("measures a night shift's arrival against the night it starts, after midnight too, and not after the morning's check-out", async () => {
+        // 22:00–06:00, nights starting Sunday to Thursday; the same policy as above.
+        const night = await Calendar.createSchedule("c1", { name: "Night", version: { effectiveFrom: "2026-01-01", startMinutes: 1320, endMinutes: 1800, breakMinutes: 0 } }, "a1")
+        await Calendar.assign("c1", { userIds: ["e5"], scheduleId: night.id, effectiveFrom: "2026-01-01" }, "a1")
+        const e5 = await phoneOf("e5")
+        // Sunday night's arrival at 00:30 on Monday: two and a half hours late for 22:00.
+        expect(await checkIn("e5", e5, AT_DESK, { at: "2026-09-27T21:30:00Z" })).toMatchObject({ at: "2026-09-28T00:30:00", late: { minutes: 150, startsAt: "22:00" } })
+        // Its check-out at 06:00 Monday: not a first check-in.
+        expect(await checkIn("e5", e5, AT_DESK, { at: "2026-09-28T03:00:00Z" })).toMatchObject({ late: null })
+        // Monday night's arrival at 22:30: the morning's punches were last night's, so this is the first, and late.
+        expect(await checkIn("e5", e5, AT_DESK, { at: "2026-09-28T19:30:00Z" })).toMatchObject({ at: "2026-09-28T22:30:00", late: { minutes: 30, startsAt: "22:00" } })
     })
 
     // Last: it approves this month's payroll, which closes the month to every later check-in here.
