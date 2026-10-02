@@ -44,6 +44,23 @@ describe("turning pushes on", () => {
         expect(push.removed.sort()).toEqual(["registration", "registrationError"])
     })
 
+    it("listens before asking, so a token the phone already has, given at once, isn't missed", async () => {
+        // The plugin takes a moment to add each listener, and a phone that already has a token answers register() straight away.
+        const handlers: Record<string, (x: any) => void> = {}
+        const plugin = {
+            checkPermissions: async () => ({ receive: "granted" }),
+            requestPermissions: async () => ({ receive: "granted" }),
+            addListener: async (event: string, cb: (x: any) => void) => {
+                await new Promise(r => setTimeout(r, 10))
+                handlers[event] = cb
+                return { remove: async () => {} }
+            },
+            register: async () => { handlers.registration?.({ value: "cached-token" }) },
+        } as unknown as PushPlugin
+        expect(await enablePush(device(der.toString("base64")), plugin, post, 500)).toBe("REGISTERED")
+        expect(posted.map(p => p.body.token)).toEqual(["cached-token"])
+    })
+
     it("doesn't ask again when the answer is already yes, and sends nothing when it is no", async () => {
         const yes = fakePush({ permission: "granted" })
         await enablePush(device(der.toString("base64")), yes.plugin, post)
