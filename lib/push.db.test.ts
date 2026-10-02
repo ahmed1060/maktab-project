@@ -92,6 +92,12 @@ describe.skipIf(!ADMIN_URL)("the push outbox, in Postgres", () => {
         expect(sent).toEqual([])
     })
 
+    it("pushes nothing about someone else: a new phone waiting for the reader's approval", async () => {
+        await NotificationService.notify("e2", "ATTENDANCE_PHONE", { key: "notice_att_phone_requested", params: { name: "Ehab One", model: "Pixel 9" } })
+        await PushService.flush(new Date(), sender)
+        expect(sent).toEqual([])
+    })
+
     it("sends once when two runs overlap", async () => {
         await NotificationService.notify("e1", "ATTENDANCE_REQUEST", accepted)
         await Promise.all([PushService.flush(new Date(), sender), PushService.flush(new Date(), sender)])

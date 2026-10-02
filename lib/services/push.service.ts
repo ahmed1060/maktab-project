@@ -21,6 +21,13 @@ import { apnsAccount, sendApns } from "@/lib/push/apns"
 /** The notice types pushed: each is addressed to the person about their own attendance. */
 export const PUSHED_TYPES = ["ATTENDANCE_CHECK_IN", "ATTENDANCE_DAY", "ATTENDANCE_PHONE", "ATTENDANCE_REQUEST", "ATTENDANCE_REMINDER"] as const
 
+/**
+ * Notices of those types that are about someone else: "a new phone is waiting
+ * for your approval" goes to whoever decides phones, and is no news about
+ * their own attendance (review on #25).
+ */
+export const NOT_PUSHED_KEYS = ["notice_att_phone_requested"] as const
+
 const FRESH_FOR_MS = 30 * 60_000
 const BATCH = 200
 const LIVE = { status: { in: ["ACTIVE", "PENDING"] as ("ACTIVE" | "PENDING")[] } }
@@ -76,6 +83,7 @@ export class PushService {
         const due = await prisma.notification.findMany({
             where: {
                 pushedAt: null, createdAt: { gte: new Date(now.getTime() - FRESH_FOR_MS) }, type: { in: [...PUSHED_TYPES] },
+                OR: [{ messageKey: null }, { messageKey: { notIn: [...NOT_PUSHED_KEYS] } }],
                 user: { checkInPhones: { some: PHONES } },
             },
             select: {
