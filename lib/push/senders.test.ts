@@ -54,6 +54,9 @@ describe("Firebase Cloud Messaging", () => {
         expect(await sendFcm(account, "t", message, fakeFetch)).toBe("INVALID_TOKEN")
         answer = { status: 503, body: "unavailable" }
         expect(await sendFcm(account, "t", message, fakeFetch)).toBe("FAILED")
+        // A 404 for a project that doesn't exist is the server's setup, not the phone's token.
+        answer = { status: 404, body: JSON.stringify({ error: { code: 404, status: "NOT_FOUND", message: "Requested entity was not found." } }) }
+        expect(await sendFcm(account, "t", message, fakeFetch)).toBe("FAILED")
     })
 })
 

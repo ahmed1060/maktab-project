@@ -72,9 +72,12 @@ export async function sendFcm(account: FcmAccount, token: string, message: PushM
             }),
         })
         if (res.ok) return "SENT"
-        // UNREGISTERED: the app was removed or the token rotated. A malformed token is just as dead.
+        // Only FCM's own word that the token is dead (review on #25): UNREGISTERED
+        // (the app was removed, the token rotated) or a malformed token. A 404
+        // for a wrong project is our setup, not the phone's, and must not wipe
+        // every token in the run.
         const text = await res.text()
-        if (res.status === 404 || (res.status === 400 && /registration token|UNREGISTERED/i.test(text))) return "INVALID_TOKEN"
+        if ((res.status === 404 || res.status === 400) && /UNREGISTERED|not a valid FCM registration token/i.test(text)) return "INVALID_TOKEN"
         return "FAILED"
     } catch {
         return "FAILED"
