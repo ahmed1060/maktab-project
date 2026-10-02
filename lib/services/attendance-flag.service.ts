@@ -134,11 +134,24 @@ export class AttendanceFlagService {
      */
     static async integrity(days = 30, now = new Date()) {
         const since = new Date(now.getTime() - days * 86_400_000)
-        const [refusals, checkIns, companies] = await Promise.all([
+        // Counted in Postgres: only the counts leave the database, however
+        // many check-ins came in (review on #23).
+        const [refusals, totals, flags] = await Promise.all([
             prisma.checkInRefusal.groupBy({ by: ["companyId", "reason"], where: { at: { gte: since } }, _count: { _all: true } }),
-            prisma.attendancePunch.findMany({ where: { source: "MOBILE", receivedAt: { gte: since } }, select: { companyId: true, status: true, flagReasons: true } }),
-            prisma.company.findMany({ select: { id: true, name: true } }),
+            prisma.$queryRaw<{ companyId: string; checkIns: number; accepted: number; flagged: number }[]>`
+                SELECT "companyId", COUNT(*)::int AS "checkIns",
+                       (COUNT(*) FILTER (WHERE status = 'ACCEPTED'))::int AS accepted,
+                       (COUNT(*) FILTER (WHERE cardinality("flagReasons") > 0))::int AS flagged
+                FROM "AttendancePunch" WHERE source = 'MOBILE' AND "receivedAt" >= ${since}
+                GROUP BY "companyId"`,
+            prisma.$queryRaw<{ companyId: string; reason: string; n: number }[]>`
+                SELECT "companyId", reason, COUNT(*)::int AS n
+                FROM "AttendancePunch", unnest("flagReasons") AS reason
+                WHERE source = 'MOBILE' AND "receivedAt" >= ${since}
+                GROUP BY "companyId", reason`,
         ])
+        const ids = [...new Set([...refusals.map(r => r.companyId), ...totals.map(t => t.companyId)])]
+        const companies = await prisma.company.findMany({ where: { id: { in: ids } }, select: { id: true, name: true } })
         const names = new Map(companies.map(c => [c.id, c.name]))
         type Row = { companyId: string; name: string; checkIns: number; accepted: number; flagged: number; refused: number; refusedBy: Record<string, number>; flaggedBy: Record<string, number> }
         const rows = new Map<string, Row>()
@@ -146,15 +159,8 @@ export class AttendanceFlagService {
             if (!rows.has(companyId)) rows.set(companyId, { companyId, name: names.get(companyId) ?? "?", checkIns: 0, accepted: 0, flagged: 0, refused: 0, refusedBy: {}, flaggedBy: {} })
             return rows.get(companyId)!
         }
-        for (const c of checkIns) {
-            const r = row(c.companyId)
-            r.checkIns++
-            if (c.status === "ACCEPTED") r.accepted++
-            if (c.flagReasons.length > 0) {
-                r.flagged++
-                for (const f of c.flagReasons) r.flaggedBy[f] = (r.flaggedBy[f] ?? 0) + 1
-            }
-        }
+        for (const t of totals) Object.assign(row(t.companyId), { checkIns: t.checkIns, accepted: t.accepted, flagged: t.flagged })
+        for (const f of flags) row(f.companyId).flaggedBy[f.reason] = f.n
         for (const g of refusals) {
             const r = row(g.companyId)
             r.refused += g._count._all
