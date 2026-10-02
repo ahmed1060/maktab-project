@@ -5,6 +5,8 @@ import { en } from "@/lib/translations/en"
 import { ar } from "@/lib/translations/ar"
 import { fcmAccount, sendFcm, type PushMessage, type PushOutcome } from "@/lib/push/fcm"
 import { apnsAccount, sendApns } from "@/lib/push/apns"
+// Where the bell opens a notice; the push opens the same page (review on #25).
+import { attendanceNoticeTarget } from "@/lib/attendance-notice-target"
 
 /**
  * Notices pushed to the check-in app (ATTENDANCE_PLAN.md §13.4): what is
@@ -87,7 +89,7 @@ export class PushService {
                 user: { checkInPhones: { some: PHONES } },
             },
             select: {
-                id: true, message: true, messageKey: true, messageParams: true, relatedId: true,
+                id: true, type: true, message: true, messageKey: true, messageParams: true, relatedId: true,
                 user: { select: { language: true, checkInPhones: { where: LIVE, select: { id: true, status: true, platform: true, pushToken: true } } } },
             },
             orderBy: { createdAt: "asc" },
@@ -98,7 +100,7 @@ export class PushService {
             const { count } = await prisma.notification.updateMany({ where: { id: n.id, pushedAt: null }, data: { pushedAt: now } })
             if (count === 0) continue
             const language = n.user?.language ?? "en"
-            const message: PushMessage = { title: (DICTS[language] ?? en).app_name, body: textOf(n, language), link: n.relatedId?.startsWith("/") ? n.relatedId : null }
+            const message: PushMessage = { title: (DICTS[language] ?? en).app_name, body: textOf(n, language), link: attendanceNoticeTarget(n.type, n.relatedId) }
             let delivered = false, retry = false
             const target = pushTarget(n.user?.checkInPhones ?? [])
             for (const phone of target ? [target] : []) {
