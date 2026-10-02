@@ -81,9 +81,11 @@ export default function AttendancePage() {
         ...(correctsCompany ? ['import' as const, 'numbers' as const] : []),
     ]
     // A link may open a tab (?tab=requests, from a notice about a phone); one this person doesn't have falls back.
+    // A tab picked by hand holds only under the link it was picked under: a new link wins.
     const linked = params.get('tab') as Tab | null
-    const [picked, setTab] = useState<Tab | null>(null)
-    const tab: Tab = picked ?? (linked && tabs.includes(linked) ? linked : seesOthers ? 'exceptions' : 'days')
+    const [picked, setPicked] = useState<{ tab: Tab; under: Tab | null } | null>(null)
+    const setTab = (k: Tab) => setPicked({ tab: k, under: linked })
+    const tab: Tab = picked && picked.under === linked ? picked.tab : linked && tabs.includes(linked) ? linked : seesOthers ? 'exceptions' : 'days'
 
     if (status === 'loading' || (!today && !(isSuperAdmin && !companyId))) return <LoadingSpinner />
     if (isSuperAdmin && !companyId) {
