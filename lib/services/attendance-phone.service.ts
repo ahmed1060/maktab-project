@@ -105,17 +105,18 @@ export class AttendancePhoneService {
             await AuditLogService.log("REGISTER_CHECK_IN_PHONE", "CHECK_IN_PHONE", phone.id, {
                 tx, userId, details: { companyId, userId, platform: phone.platform, model: phone.model, attested: phone.attested, replaced: replaced?.id ?? null },
             })
+            // In the same transaction: a request nobody hears about would wait forever.
+            await AttendancePhoneService.tellDeciders(tx, companyId, userId, phone.model)
             return { phone, fresh: true }
         })
-        if (out.fresh) await AttendancePhoneService.tellDeciders(companyId, userId, out.phone.model)
         return out.phone
     }
 
     /** Whoever may approve this person's phone: the company's deciders, and their team leader if theirs is the team scope. */
-    private static async tellDeciders(companyId: string, userId: string, model: string | null) {
-        const person = await prisma.user.findUnique({ where: { id: userId }, select: { firstName: true, lastName: true, teamLeaderId: true } })
+    private static async tellDeciders(tx: Prisma.TransactionClient, companyId: string, userId: string, model: string | null) {
+        const person = await tx.user.findUnique({ where: { id: userId }, select: { firstName: true, lastName: true, teamLeaderId: true } })
         if (!person) return
-        const deciders = await prisma.user.findMany({
+        const deciders = await tx.user.findMany({
             where: {
                 id: { not: userId }, status: { in: ["ACTIVE", "OFFLINE"] },
                 OR: [
@@ -128,7 +129,7 @@ export class AttendancePhoneService {
         await NotificationService.notifyMany(deciders.map(d => d.id), "ATTENDANCE_PHONE", {
             key: "notice_att_phone_requested",
             params: { name: `${person.firstName} ${person.lastName}`.trim(), model: model ?? "" },
-        }, PHONE_REQUESTS_PAGE)
+        }, PHONE_REQUESTS_PAGE, tx)
     }
 
     /** This person's phone in use, and the one they asked for, if any. */
