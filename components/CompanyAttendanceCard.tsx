@@ -2,14 +2,21 @@
 
 import { useCallback, useMemo, useState } from 'react'
 import useSWR from 'swr'
+import Link from 'next/link'
+import { useSession } from 'next-auth/react'
 import { fetcher } from '@/lib/swr-fetcher'
 import { useLanguage } from '@/context/LanguageContext'
 import { useToast } from '@/context/ToastContext'
 import Modal from '@/components/Modal'
+import AttendancePolicyPanel from '@/components/AttendancePolicyPanel'
+import FaceLegalPanel from '@/components/FaceLegalPanel'
+import AttendancePayrollPanel from '@/components/AttendancePayrollPanel'
+import AttendanceTerminalsPanel from '@/components/AttendanceTerminalsPanel'
+import AttendanceLocationsPanel from '@/components/AttendanceLocationsPanel'
 import ConfirmModal from '@/components/ConfirmModal'
 import { apiErrorText } from '@/lib/api-error-text'
 import {
-    defaultOn, formatMinutes, parseTime, scheduleIdOn, shiftEnd, versionOn, workDaysOf,
+    companyWeekOn, defaultOn, formatMinutes, parseTime, scheduleIdOn, shiftEnd, versionOn, workDaysOf,
     type DayHours, type Override, type Version,
 } from '@/lib/attendance/calendar'
 
@@ -35,6 +42,8 @@ type Schedule = {
 type Calendar = {
     today: string
     companyWorkWeek: number[]
+    /** The company's work week by date, from its policy (review on #11). */
+    companyWorkWeeks: { effectiveFrom: string; workWeek: number[] }[]
     schedules: Schedule[]
     /** The company's default schedule, by date (review on #10). */
     defaults: { id: string; scheduleId: string; effectiveFrom: string }[]
@@ -126,6 +135,7 @@ function hoursFromForm(form: HoursForm): { ok: true; startMinutes: number; endMi
 export default function CompanyAttendanceCard({ companyId, readOnly = false }: { companyId: string; readOnly?: boolean }) {
     const { t, locale } = useLanguage()
     const { showToast } = useToast()
+    const { data: session } = useSession()
     const isRtl = locale === 'ar'
     const intl = isRtl ? 'ar-EG' : 'en-GB'
 
@@ -184,6 +194,21 @@ export default function CompanyAttendanceCard({ companyId, readOnly = false }: {
 
     return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', textAlign: isRtl ? 'right' : 'left' }}>
+            {/* The Super Admin has no sidebar entry into one company's punches; this is it. */}
+            {session?.user?.role === 'SUPER_ADMIN' && (
+                <Link href={`/dashboard/attendance?companyId=${encodeURIComponent(companyId)}`} className="btn btn-secondary" style={{ alignSelf: 'flex-start' }}>
+                    {t('punch_open')} →
+                </Link>
+            )}
+            {/* Whether any of this reaches anybody's pay yet (§12). */}
+            <AttendancePayrollPanel companyId={companyId} readOnly={!editable} />
+            {/* Only for a company holding the Terminals add-on; hides itself otherwise (§16). */}
+            <AttendanceTerminalsPanel companyId={companyId} readOnly={!editable} />
+            {/* Only for a company holding the Mobile App add-on; hides itself otherwise (§16). */}
+            <AttendanceLocationsPanel companyId={companyId} readOnly={!editable} />
+            {/* The policy first: its work week is what the schedules inherit. */}
+            <AttendancePolicyPanel companyId={companyId} readOnly={!editable} onChanged={load} />
+            <FaceLegalPanel companyId={companyId} readOnly={!editable} />
             <SchedulesSection ctx={ctx} />
             {/* Keyed by the data, so a reload starts the panel's own fields afresh. */}
             <PeoplePanel ctx={ctx} />
@@ -193,7 +218,7 @@ export default function CompanyAttendanceCard({ companyId, readOnly = false }: {
                 <HoursModal
                     editing={editing}
                     today={data.today}
-                    companyWorkWeek={data.companyWorkWeek}
+                    companyWorkWeeks={data.companyWorkWeeks}
                     weekdayName={weekdayName}
                     busy={busy}
                     onClose={() => setEditing(null)}
@@ -296,7 +321,8 @@ function ScheduleRow({ ctx, schedule }: { ctx: Ctx; schedule: Schedule }) {
         const people = data.people.filter(p => scheduleIdOn(
             data.assignments.filter(a => a.userId === p.id), data.defaults, data.today) === schedule.id).length
         const shown = current ?? upcoming[0] ?? null
-        const days = shown ? workDaysOf(shown, data.companyWorkWeek) : []
+        // An upcoming version inherits the company's week in force when it starts.
+        const days = shown ? workDaysOf(shown, companyWeekOn(data.companyWorkWeeks, shown.effectiveFrom > data.today ? shown.effectiveFrom : data.today)) : []
 
         return (
             <div style={{ border: '1px solid var(--border)', borderRadius: '0.75rem', padding: '1rem' }}>
@@ -573,10 +599,10 @@ function HolidaysPanel({ ctx }: { ctx: Ctx }) {
 
 // --- The hours form ------------------------------------------------------------
 
-function HoursModal({ editing, today, companyWorkWeek, weekdayName, busy, onClose, onSubmit }: {
+function HoursModal({ editing, today, companyWorkWeeks, weekdayName, busy, onClose, onSubmit }: {
     editing: NonNullable<Editing>
     today: string
-    companyWorkWeek: number[]
+    companyWorkWeeks: { effectiveFrom: string; workWeek: number[] }[]
     weekdayName: (d: number) => string
     busy: boolean
     onClose: () => void
@@ -595,6 +621,8 @@ function HoursModal({ editing, today, companyWorkWeek, weekdayName, busy, onClos
     const [from, setFrom] = useState(editing.kind === 'schedule' ? today : firstOfNextMonth(today))
     const [startDate, setStartDate] = useState(editing.kind === 'override' ? editing.override?.startDate ?? '' : '')
     const [endDate, setEndDate] = useState(editing.kind === 'override' ? editing.override?.endDate ?? '' : '')
+    // The company's week on the date these hours start, which is what they inherit.
+    const companyWorkWeek = companyWeekOn(companyWorkWeeks, (isOverride ? startDate : from) || from)
     const [error, setError] = useState('')
 
     const title = editing.kind === 'schedule' ? t('attendance_new_schedule')

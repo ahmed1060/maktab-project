@@ -9,6 +9,7 @@
     { "path": "/api/cron/employment", "schedule": "0 22 * * *" },
     { "path": "/api/cron/role-requests", "schedule": "0 6 * * *" },
     { "path": "/api/cron/acting-roles", "schedule": "0 22 * * *" },
-    { "path": "/api/cron/access-reviews", "schedule": "0 5 * * *" }
+    { "path": "/api/cron/access-reviews", "schedule": "0 5 * * *" },
+    { "path": "/api/cron/attendance", "schedule": "30 22 * * *" }
   ]
 }

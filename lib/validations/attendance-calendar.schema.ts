@@ -67,3 +67,11 @@ export const publicHolidaySchema = z.object({
     name: z.string().min(1).max(120),
     nameAr: z.string().max(120).nullable().optional(),
 })
+
+/** An attendance policy template (ATTENDANCE_PLAN.md §6.8); its body is checked in full by the service. */
+export const policyTemplateSchema = z.object({
+    name: z.string().min(1).max(80),
+    nameAr: z.string().max(80).nullable().optional(),
+    description: z.string().max(500).nullable().optional(),
+    body: z.record(z.string(), z.unknown()),
+})
