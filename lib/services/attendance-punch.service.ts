@@ -54,6 +54,30 @@ function visibleWhere(v: Visibility): Prisma.AttendancePunchWhereInput {
     return { userId: v.userId }
 }
 
+/**
+ * Writes one punch added by hand, and its audit entry, inside the caller's
+ * transaction — which has taken the month's lock and checked it is open.
+ * Shared with an approved report of a missing punch (P0.6).
+ */
+export async function insertManualPunch(
+    tx: Prisma.TransactionClient,
+    input: { companyId: string; timezone: string; userId: string; local: string; direction: "IN" | "OUT" | null; note: string; actorId: string },
+): Promise<string> {
+    const id = randomUUID()
+    await tx.attendancePunch.create({
+        data: {
+            id, companyId: input.companyId, userId: input.userId, source: "MANUAL", sourceKey: id,
+            punchAtLocal: wallClock(input.local), punchAt: localToInstant(input.local, input.timezone), resolvedWithTimeZone: input.timezone,
+            direction: input.direction, note: input.note, createdById: input.actorId,
+        },
+    })
+    await AuditLogService.log("ADD_ATTENDANCE_PUNCH", "ATTENDANCE_PUNCH", id, {
+        tx, ...(await actorOf(tx, input.actorId)),
+        details: { companyId: input.companyId, userId: input.userId, at: input.local, direction: input.direction, reason: input.note },
+    })
+    return id
+}
+
 export type ImportOptions = { dateOrder: DateOrder; columns?: ColumnMap | null }
 
 export type ImportReport = {
@@ -245,12 +269,17 @@ export class AttendancePunchService {
             take: limit,
             select: {
                 id: true, userId: true, hardwareUserId: true, source: true, punchAtLocal: true, direction: true, status: true, note: true,
-                importId: true, receivedAt: true, voidedAt: true, voidReason: true,
+                importId: true, receivedAt: true, voidedAt: true, voidReason: true, flagReasons: true,
                 user: { select: { firstName: true, lastName: true } },
+                device: { select: { name: true } },
+                workLocation: { select: { name: true } },
             },
         })
-        return rows.map(({ user, punchAtLocal, ...r }) => ({
+        return rows.map(({ user, punchAtLocal, device, workLocation, ...r }) => ({
             ...r, at: wallClockText(punchAtLocal), name: user ? `${user.firstName} ${user.lastName}`.trim() : null,
+            // Which terminal, for a punch from one (§17); which place, for a check-in from the app (§9).
+            deviceName: device?.name ?? null,
+            placeName: workLocation?.name ?? null,
         }))
     }
 
@@ -288,18 +317,7 @@ export class AttendancePunchService {
             const months = await punchMonths(tx, companyId, person.id, local)
             await lockMonths(tx, companyId, months)
             if ((await lockedMonths(tx, companyId, months)).size > 0) fail("PAYROLL_MONTH_LOCKED")
-            const id = randomUUID()
-            await tx.attendancePunch.create({
-                data: {
-                    id, companyId, userId: person.id, source: "MANUAL", sourceKey: id,
-                    punchAtLocal: wallClock(local), punchAt: localToInstant(local, company.timezone), resolvedWithTimeZone: company.timezone,
-                    direction: input.direction, note: input.note.trim(), createdById: actorId,
-                },
-            })
-            await AuditLogService.log("ADD_ATTENDANCE_PUNCH", "ATTENDANCE_PUNCH", id, {
-                tx, ...(await actorOf(tx, actorId)),
-                details: { companyId, userId: person.id, at: local, direction: input.direction, reason: input.note.trim() },
-            })
+            const id = await insertManualPunch(tx, { companyId, timezone: company.timezone, userId: person.id, local, direction: input.direction, note: input.note.trim(), actorId })
             return { id }
         })
         // From the day before: a punch after midnight may close the night before's shift.
@@ -319,6 +337,8 @@ export class AttendancePunchService {
             await lockMonths(tx, punch.companyId, months)
             if ((await lockedMonths(tx, punch.companyId, months)).size > 0) fail("PAYROLL_MONTH_LOCKED")
             await tx.attendancePunch.update({ where: { id }, data: { voidedAt: new Date(), voidedById: actorId, voidReason: reason.trim() } })
+            // A failed face check's frame lives only while its flag is open (§13.8); voiding closes it too.
+            await tx.faceFrame.deleteMany({ where: { punchId: id } })
             await AuditLogService.log("VOID_ATTENDANCE_PUNCH", "ATTENDANCE_PUNCH", id, {
                 tx, ...(await actorOf(tx, actorId)),
                 details: { companyId: punch.companyId, userId: punch.userId, at: wallClockText(punch.punchAtLocal), reason: reason.trim() },

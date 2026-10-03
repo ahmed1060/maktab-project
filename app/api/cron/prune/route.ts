@@ -6,6 +6,7 @@ import { isValidCronRequest } from "@/lib/cron-auth"
 import { AuditLogService } from "@/lib/services/audit-log.service"
 import { isNextInternalError } from "@/lib/next-internal-error"
 import { JobHeartbeatService } from "@/lib/services/job-heartbeat.service"
+import { AttendanceChallengeService } from "@/lib/services/attendance-challenge.service"
 
 // F-18: pruneOldLogs/pruneOldNotifications existed already (used by the
 // manual maintenance-page buttons) but nothing scheduled them, so audit
@@ -27,12 +28,14 @@ export async function GET(req: Request) {
             return ApiResponse.unauthorized("Unauthorized")
         }
 
-        const [logs, notifications] = await JobHeartbeatService.run("prune", () => Promise.all([
+        const [logs, notifications, challenges] = await JobHeartbeatService.run("prune", () => Promise.all([
             MaintenanceService.pruneOldLogs(),
             MaintenanceService.pruneOldNotifications(),
+            // The check-in app's one-time numbers, a day after they ran out (ATTENDANCE_PLAN.md §9.2).
+            AttendanceChallengeService.prune(),
         ]))
 
-        return ApiResponse.success({ logs, notifications })
+        return ApiResponse.success({ logs, notifications, challenges: challenges.count })
     } catch (error: any) {
         if (isNextInternalError(error)) throw error
         console.error('Prune cron failed:', error)

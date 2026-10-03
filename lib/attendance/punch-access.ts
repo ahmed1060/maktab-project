@@ -47,3 +47,25 @@ export function correctsCompany(session: any, companyId: string): boolean {
 export function correctsPerson(session: any, target: { companyId: string; userId: string; teamLeaderId: string | null }): boolean {
     return can(session.user, "attendance.correct", target)
 }
+
+/** The two permissions that decide requests (P0.6). Missing punches are decided by attendance.correct. */
+export type DecidingPermission = "attendance.approve_permissions" | "attendance.approve_overtime" | "attendance.correct" | "attendance.approve_devices"
+
+/** Whose requests this person may decide: the company's, their team's, or nobody's. */
+export function decidesFor(session: any, permission: DecidingPermission): Visibility | null {
+    const scope = grantFor(session.user, permission)
+    if (scope === "ALL" || scope === "COMPANY") return { kind: "COMPANY" }
+    if (scope === "TEAM") return { kind: "TEAM", leaderId: session.user.id }
+    return null
+}
+
+/** Deciding one person's request. Nobody may decide their own (can() refuses it). */
+export function decidesPerson(session: any, permission: DecidingPermission, target: { companyId: string; userId: string; teamLeaderId: string | null }): boolean {
+    return can(session.user, permission, target)
+}
+
+/** Asking for oneself: a person of this company, never the Super Admin, who has no attendance. */
+export function asksForSelf(session: any): { companyId: string; userId: string } | null {
+    if (session.user.role === "SUPER_ADMIN" || !session.user.companyId) return null
+    return { companyId: session.user.companyId, userId: session.user.id }
+}

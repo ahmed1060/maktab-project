@@ -37,6 +37,20 @@ export interface AdjustmentInput {
     sourceId?: string | null
 }
 
+/**
+ * What attendance put on this month, in money (ATTENDANCE_PLAN.md §12.2):
+ * each the sum of the days' priced amounts, never revalued here.
+ */
+export interface AttendanceMoney {
+    lateness: Minor
+    earlyLeave: Minor
+    absence: Minor
+    overtime: Minor
+}
+
+/** Where an attendance line comes from: one per category, so a payslip line is traceable to its entry. */
+export const ATTENDANCE_SOURCE = "ATTENDANCE"
+
 export interface PersonMonth {
     userId: string
     name: string
@@ -44,6 +58,8 @@ export interface PersonMonth {
     /** As ratesForMonth returns them: at least one, opening on day 1. */
     rates: RateChange[]
     adjustments: AdjustmentInput[]
+    /** This month's attendance, when the company's attendance reaches payroll. */
+    attendance?: AttendanceMoney
     /** Present when this person is deliberately left out of the run. */
     exclusion?: { reason: string }
     /** What this person still owes, for recovery out of this month's net. */
@@ -142,6 +158,21 @@ export function buildEntry(person: PersonMonth): RegisterEntry {
             sourceId: adjustment.sourceId ?? null,
             sortOrder: order++,
         })
+    }
+
+    // Attendance as money already priced day by day (§12.2), one line per
+    // category; a category that cost nothing prints nothing.
+    if (person.attendance) {
+        const a = person.attendance
+        for (const [category, kind, label, amountMinor] of [
+            ["OVERTIME", "EARNING", "Overtime", a.overtime],
+            ["LATENESS", "DEDUCTION", "Lateness", a.lateness],
+            ["EARLY_LEAVE", "DEDUCTION", "Early leave", a.earlyLeave],
+            ["ABSENCE", "DEDUCTION", "Absence", a.absence],
+        ] as const) {
+            if (amountMinor <= 0) continue
+            lines.push({ kind, label, amountMinor, source: ATTENDANCE_SOURCE, sourceId: category, sortOrder: order++ })
+        }
     }
 
     // Recovery runs last, against the net rather than alongside the other

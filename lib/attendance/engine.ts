@@ -112,6 +112,30 @@ export type MeasuredDay = {
     excusedMinutes: number
     /** A company holiday it does not pay for: a day off, and a day's pay less (review on #13). */
     unpaidHoliday: boolean
+    /** An absence somebody excused (§13.1): measured as absent, never charged. */
+    excusedAbsence: boolean
+}
+
+export type PermissionSpan = { type: "LATE_ARRIVAL" | "EARLY_LEAVE" | "MIDDAY"; startMinutes: number; endMinutes: number }
+
+/**
+ * The minutes of a stretch of lateness or early leave that approved
+ * permissions of one kind cover: only where their times overlap it, so an
+ * hour approved for noon excuses nothing of a 09:00 lateness (review on #14).
+ * Overlapping permissions count once.
+ */
+function coveredMinutes(date: string, permissions: readonly PermissionSpan[], type: PermissionSpan["type"], from: number, to: number): number {
+    const base = dayNumber(date) * 86_400
+    const spans = permissions.filter(p => p.type === type)
+        .map(p => [Math.max(from, base + p.startMinutes * 60), Math.min(to, base + p.endMinutes * 60)] as const)
+        .filter(([a, b]) => b > a)
+        .sort((x, y) => x[0] - y[0])
+    let covered = 0, reach = from
+    for (const [a, b] of spans) {
+        const start = Math.max(a, reach)
+        if (b > start) { covered += b - start; reach = b }
+    }
+    return Math.floor(covered / 60)
 }
 
 /**
@@ -129,8 +153,10 @@ export function measureDay(input: {
     punches: readonly EnginePunch[]
     onLeave: boolean
     suspended: boolean
-    /** Approved permission minutes that day, by what they excuse (P0.6). */
-    excused?: { late: number; early: number }
+    /** Approved permission hours that day (P0.6), in minutes from the day's midnight. */
+    permissions?: readonly PermissionSpan[]
+    /** What somebody excused outright on the exceptions screen (§13.1), whatever its length. */
+    excused?: { lateness?: boolean; earlyLeave?: boolean; absence?: boolean }
 }): MeasuredDay {
     const { date, expected } = input
     const punches = debounce(input.punches)
@@ -139,7 +165,7 @@ export function measureDay(input: {
     const base: MeasuredDay = {
         date, status: "ABSENT", punchCount: punches.length, firstIn, lastOut,
         workedMinutes: 0, lateMinutes: 0, earlyLeaveMinutes: 0, overtimeMinutes: 0, excusedMinutes: 0,
-        unpaidHoliday: false,
+        unpaidHoliday: false, excusedAbsence: false,
     }
     const worked = pairs(punches).reduce((sum, [a, b]) => sum + (b - a), 0)
     const workedMinutes = Math.floor(worked / 60)
@@ -153,16 +179,18 @@ export function measureDay(input: {
         return { ...base, status: expected.kind === "REST" ? "WORKED_REST_DAY" : "WORKED_HOLIDAY", workedMinutes, overtimeMinutes: workedMinutes }
     }
     if (input.onLeave) return { ...base, status: "LEAVE" }
-    if (punches.length === 0) return base
+    if (punches.length === 0) return { ...base, excusedAbsence: !!input.excused?.absence }
 
     const shift = shiftOf(date, expected)!
     const lateRaw = Math.max(0, Math.floor((wallSeconds(firstIn!) - shift.start) / 60))
-    const excusedLate = Math.min(lateRaw, input.excused?.late ?? 0)
+    const excusedLate = input.excused?.lateness ? lateRaw
+        : Math.min(lateRaw, coveredMinutes(date, input.permissions ?? [], "LATE_ARRIVAL", shift.start, wallSeconds(firstIn!)))
     if (odd) return { ...base, status: "INCOMPLETE", lastOut: null, lateMinutes: lateRaw - excusedLate, excusedMinutes: excusedLate }
 
     const out = wallSeconds(lastOut!)
     const earlyRaw = Math.max(0, Math.floor((shift.end - out) / 60))
-    const excusedEarly = Math.min(earlyRaw, input.excused?.early ?? 0)
+    const excusedEarly = input.excused?.earlyLeave ? earlyRaw
+        : Math.min(earlyRaw, coveredMinutes(date, input.permissions ?? [], "EARLY_LEAVE", out, shift.end))
     return {
         ...base,
         status: "PRESENT",
@@ -196,7 +224,13 @@ export type PricedDay = MeasuredDay & {
     /** Days deducted in all: lateness + early leave + absence. */
     deductionDays: number
     deductionMinor: number
-    overtimeStatus: "NONE" | "PENDING" | "APPROVED" | "NOT_COUNTED"
+    /**
+     * The deduction by what caused it, in minor units, each rounded on its own
+     * so payroll's lines (§12.2) are exact sums of the days and the day's
+     * deduction is exactly their sum.
+     */
+    deductionParts: { lateness: number; earlyLeave: number; absence: number }
+    overtimeStatus: "NONE" | "PENDING" | "APPROVED" | "REJECTED" | "NOT_COUNTED"
     overtimeMinor: number
     /** Why nothing was priced, when nothing could be. */
     unpriced: "NO_POLICY" | "NO_SALARY" | "INCOMPLETE" | null
@@ -212,8 +246,11 @@ export type PricingInput = {
     daysInMonth: number
     /** The shift's paid minutes, which an hour of overtime is a fraction of. */
     paidMinutes: number
-    /** Overtime minutes somebody approved (P0.6). */
-    approvedOvertimeMinutes?: number
+    /**
+     * Somebody's decision on the day's overtime (P0.6): approved for some
+     * minutes, or rejected. Read only when the policy requires approval.
+     */
+    overtimeDecision?: { status: "APPROVED" | "REJECTED"; minutes: number } | null
 }
 
 const roundHalfUp = (v: number) => Math.sign(v) * Math.round(Math.abs(v))
@@ -261,6 +298,7 @@ export function priceMonth(days: readonly PricingInput[]): PricedDay[] {
         const { day, policy, monthlyMinor } = input
         const none: PricedDay = {
             ...day, lateness: NO_RULE, earlyLeave: NO_RULE, absenceDays: 0, deductionDays: 0, deductionMinor: 0,
+            deductionParts: { lateness: 0, earlyLeave: 0, absence: 0 },
             overtimeStatus: "NONE", overtimeMinor: 0, unpriced: null,
         }
         if (day.status === "INCOMPLETE") return { ...none, unpriced: "INCOMPLETE" }
@@ -269,25 +307,32 @@ export function priceMonth(days: readonly PricingInput[]): PricedDay[] {
         const lateness = day.status === "PRESENT" ? applyRule(policy.lateness, day.lateMinutes, input.paidMinutes, lateTally) : NO_RULE
         const earlyLeave = day.status === "PRESENT" ? applyRule(policy.earlyLeave, day.earlyLeaveMinutes, input.paidMinutes, earlyTally) : NO_RULE
         // An absence costs the policy's multiplier; an unpaid holiday, one day.
-        const absenceDays = day.status === "ABSENT" ? policy.absence.multiplier : day.unpaidHoliday ? 1 : 0
+        const absenceDays = day.status === "ABSENT" ? (day.excusedAbsence ? 0 : policy.absence.multiplier) : day.unpaidHoliday ? 1 : 0
         const deductionDays = Math.round((lateness.days + earlyLeave.days + absenceDays) * 10_000) / 10_000
 
         const ot = policy.overtime
         const countable = ot.enabled && day.overtimeMinutes > 0 && day.overtimeMinutes >= ot.minimumMinutes
         const overtimeStatus: PricedDay["overtimeStatus"] = day.overtimeMinutes === 0 ? "NONE"
             : !countable ? "NOT_COUNTED"
-                : ot.requiresApproval ? ((input.approvedOvertimeMinutes ?? 0) > 0 ? "APPROVED" : "PENDING") : "APPROVED"
-        const pricedOvertime = !countable ? 0 : ot.requiresApproval ? Math.min(day.overtimeMinutes, input.approvedOvertimeMinutes ?? 0) : day.overtimeMinutes
+                : ot.requiresApproval ? (input.overtimeDecision?.status ?? "PENDING") : "APPROVED"
+        const approved = input.overtimeDecision?.status === "APPROVED" ? input.overtimeDecision.minutes : 0
+        const pricedOvertime = !countable ? 0 : ot.requiresApproval ? Math.min(day.overtimeMinutes, approved) : day.overtimeMinutes
         const multiplier = day.status === "WORKED_HOLIDAY" ? ot.multipliers.holiday : day.status === "WORKED_REST_DAY" ? ot.multipliers.restDay : ot.multipliers.workday
 
         if (monthlyMinor === null) {
             return { ...none, lateness, earlyLeave, absenceDays, deductionDays, overtimeStatus, unpriced: "NO_SALARY" }
         }
         const dayMinor = monthlyMinor / input.daysInMonth
+        const parts = {
+            lateness: roundHalfUp(dayMinor * lateness.days),
+            earlyLeave: roundHalfUp(dayMinor * earlyLeave.days),
+            absence: roundHalfUp(dayMinor * absenceDays),
+        }
         const paid = input.paidMinutes > 0 ? input.paidMinutes : FALLBACK_PAID_MINUTES
         return {
             ...none, lateness, earlyLeave, absenceDays, deductionDays, overtimeStatus,
-            deductionMinor: roundHalfUp(dayMinor * deductionDays),
+            deductionMinor: parts.lateness + parts.earlyLeave + parts.absence,
+            deductionParts: parts,
             overtimeMinor: roundHalfUp(dayMinor * (pricedOvertime / paid) * multiplier),
         }
     })

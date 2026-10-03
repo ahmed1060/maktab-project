@@ -156,6 +156,22 @@ describe.skipIf(!ADMIN_URL)("the attendance engine, a month in Postgres", () => 
         expect(e.get("2026-09-09")).toMatchObject({ deductionMinor: 0 })
     })
 
+    it("replays the month under a draft policy, per person, writing nothing (§6.7)", async () => {
+        const { rows: [before] } = await db.query(`SELECT count(*)::int AS n, max("derivedAt") AS at, sum("deductionMinor")::int AS minor FROM "AttendanceDay" WHERE "userId" = 'e1' AND date < '2026-10-01'`)
+        // The policy in force, as a draft: the same figures the days hold.
+        const same = await Engine.simulate("c1", "2026-09", STANDARD_OFFICE)
+        const ehab = (r: typeof same) => r.people.find(p => p.userId === "e1")!
+        expect(ehab(same).current).toEqual(ehab(same).draft)
+        expect(ehab(same).current.deductionMinor).toBe(before.minor)
+        // Absence at two days each: Ehab's two absences cost one more day each,
+        // at that day's salary — 310.00 on the 8th, 400.00 on the 16th.
+        const strict = await Engine.simulate("c1", "2026-09", { ...STANDARD_OFFICE, absence: { multiplier: 2 } })
+        expect(ehab(strict).draft.deductionMinor - ehab(strict).current.deductionMinor).toBe(31000 + 40000)
+        expect(strict.totals.draft.deductionMinor).toBeGreaterThan(strict.totals.current.deductionMinor)
+        const { rows: [after] } = await db.query(`SELECT count(*)::int AS n, max("derivedAt") AS at, sum("deductionMinor")::int AS minor FROM "AttendanceDay" WHERE "userId" = 'e1' AND date < '2026-10-01'`)
+        expect(after).toEqual(before)
+    })
+
     it("counts a day employment touches, and only whole days of a suspension (review on #13)", async () => {
         const h = await days("e4")
         // Hired at 14:00 on the 3rd: the 3rd is hers, the 2nd is not.
