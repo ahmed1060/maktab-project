@@ -37,6 +37,9 @@
     "**/*.mts"
   ],
   "exclude": [
-    "node_modules"
+    "node_modules",
+    "agent/node_modules",
+    "agent/dist",
+    "mobile"
   ]
 }

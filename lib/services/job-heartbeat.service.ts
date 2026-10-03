@@ -19,6 +19,10 @@ export const SCHEDULED_JOBS = [
     { job: "role-requests", label: "Role request reminders", everyHours: 24 },
     { job: "acting-roles", label: "Acting roles", everyHours: 24 },
     { job: "access-reviews", label: "Access reviews", everyHours: 24 },
+    { job: "attendance", label: "Attendance days", everyHours: 24 },
+    // Every five minutes, which Vercel's Hobby plan can't schedule: fired from
+    // outside (mobile/README.md, "Reminders"), so it is late here until that is set up.
+    { job: "check-in-reminder", label: "Check-in reminders", everyHours: 1, firedBy: "external" },
     { job: "salary-init", label: "Salary records", everyHours: 24 * 31 },
     { job: "reset-day-off", label: "Leave reset", everyHours: 24 * 366 },
 ] as const

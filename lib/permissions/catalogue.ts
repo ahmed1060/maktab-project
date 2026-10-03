@@ -154,6 +154,19 @@ export const PERMISSIONS = {
     // through it.
     "attendance.view_team":     { code: 49, module: "ATTENDANCE", scopes: TEAM_OR_COMPANY },
     "attendance.correct":       { code: 50, module: "ATTENDANCE", scopes: TEAM_OR_COMPANY, implies: ["attendance.view_team"], notOnOwn: true },
+    // Deciding requests (§6.4, §6.6): overtime — after the fact or ahead of
+    // it — and permission hours (إذن). A missing punch is a correction, so it
+    // is attendance.correct's to decide. Never one's own.
+    "attendance.approve_overtime":    { code: 51, module: "ATTENDANCE", scopes: TEAM_OR_COMPANY, implies: ["attendance.view_team"], notOnOwn: true },
+    "attendance.approve_permissions": { code: 52, module: "ATTENDANCE", scopes: TEAM_OR_COMPANY, implies: ["attendance.view_team"], notOnOwn: true },
+    // Approving the one phone someone checks in from (§9.3), and revoking a
+    // lost one. Never one's own: approving your own phone is the whole fraud.
+    "attendance.approve_devices":     { code: 53, module: "ATTENDANCE", scopes: TEAM_OR_COMPANY, implies: ["attendance.view_team"], notOnOwn: true },
+    // Face verification (§9.5): turning it on for a person, deciding their
+    // verification photo, asking for re-verification. Company-wide only: the
+    // photo is shown to the Admin, HR and the Super Admin, never to a team
+    // leader. Never one's own: approving your own face is the whole fraud.
+    "attendance.approve_face":        { code: 54, module: "ATTENDANCE", scopes: COMPANY, implies: ["attendance.view_team"], notOnOwn: true },
 } as const satisfies Record<string, PermissionDefinition>
 
 export type Permission = keyof typeof PERMISSIONS

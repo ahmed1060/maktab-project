@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma"
 import { Prisma } from "@prisma/client"
 import { calendarDateStr } from "@/lib/time"
 import { AuditLogService } from "./audit-log.service"
+import { recomputeAfter } from "./attendance-recompute"
 import {
     addDays, dayHoursProblem, defaultOn, formatMinutes, hoursProblem, isDateString, overridesOverlap, spanOf, toDateString, workWeekProblem,
     type DayHours,
@@ -38,7 +39,7 @@ export type OverrideInput = HoursInput & {
 const DATE_ONLY = (date: string) => new Date(`${date}T00:00:00Z`)
 
 /** The day-by-day shape every screen and the engine read. */
-const SCHEDULE_INCLUDE = {
+export const SCHEDULE_INCLUDE = {
     versions: { include: { days: true }, orderBy: { effectiveFrom: "asc" } },
     overrides: { include: { days: true }, orderBy: { startDate: "asc" } },
 } satisfies Prisma.WorkScheduleInclude
@@ -59,7 +60,7 @@ function checkHours(input: HoursInput & { days?: DayHours[] }) {
     if (problem) fail(problem)
 }
 
-function serializeSchedule(s: Prisma.WorkScheduleGetPayload<{ include: typeof SCHEDULE_INCLUDE }>) {
+export function serializeSchedule(s: Prisma.WorkScheduleGetPayload<{ include: typeof SCHEDULE_INCLUDE }>) {
     return {
         id: s.id,
         name: s.name,
@@ -202,7 +203,7 @@ export class AttendanceCalendarService {
         if (!name) fail("SCHEDULE_NAME_REQUIRED")
         this.checkVersion(input.version)
 
-        return prisma.$transaction(async tx => {
+        const out = await prisma.$transaction(async tx => {
             await serialize(tx, `defaults:${companyId}`)
             if (await tx.workSchedule.findUnique({ where: { companyId_name: { companyId, name } } })) fail("SCHEDULE_NAME_TAKEN")
             // A new schedule changes nobody's hours until people are put on it,
@@ -219,6 +220,8 @@ export class AttendanceCalendarService {
             await AuditLogService.log("CREATE_WORK_SCHEDULE", "ATTENDANCE_CALENDAR", schedule.id, { tx, ...(await actorOf(tx, actorId)), details: { companyId, name, isDefault, effectiveFrom: input.version.effectiveFrom } })
             return serializeSchedule(schedule)
         })
+        await recomputeAfter(companyId, input.version.effectiveFrom)
+        return out
     }
 
     static async updateSchedule(scheduleId: string, input: { name?: string }, actorId: string) {
@@ -267,6 +270,7 @@ export class AttendanceCalendarService {
                 tx, ...(await actorOf(tx, actorId)), details: { companyId, name: schedule.name, effectiveFrom },
             })
         })
+        await recomputeAfter(companyId, effectiveFrom)
     }
 
     static async defaultOf(defaultId: string) {
@@ -292,6 +296,7 @@ export class AttendanceCalendarService {
                 tx, ...(await actorOf(tx, actorId)), details: { companyId: row.companyId, effectiveFrom },
             })
         })
+        await recomputeAfter(row.companyId, effectiveFrom)
     }
 
     /**
@@ -342,7 +347,7 @@ export class AttendanceCalendarService {
         const schedule = await this.scheduleOf(scheduleId) ?? fail("SCHEDULE_NOT_FOUND")
         if (schedule.archivedAt) fail("SCHEDULE_ARCHIVED")
         this.checkVersion(input)
-        return prisma.$transaction(async tx => {
+        const out = await prisma.$transaction(async tx => {
             await serialize(tx, `schedule:${scheduleId}`)
             const dates = (await tx.scheduleVersion.findMany({ where: { scheduleId }, select: { effectiveFrom: true } })).map(v => toDateString(v.effectiveFrom))
             await this.assertSpanUnlocked(schedule.companyId, spanOf(dates, input.effectiveFrom), tx)
@@ -355,6 +360,8 @@ export class AttendanceCalendarService {
             } })
             return serializeSchedule(await tx.workSchedule.findUniqueOrThrow({ where: { id: scheduleId }, include: SCHEDULE_INCLUDE }))
         })
+        await recomputeAfter(schedule.companyId, input.effectiveFrom)
+        return out
     }
 
     /** Withdraws a version not yet locked by payroll. A schedule keeps at least one. */
@@ -375,6 +382,7 @@ export class AttendanceCalendarService {
                 companyId: version.schedule.companyId, name: version.schedule.name, effectiveFrom,
             } })
         })
+        await recomputeAfter(version.schedule.companyId, effectiveFrom)
     }
 
     static async versionOf(versionId: string) {
@@ -387,7 +395,7 @@ export class AttendanceCalendarService {
         if (schedule.archivedAt) fail("SCHEDULE_ARCHIVED")
         this.checkOverride(input)
         await this.assertUnlocked(schedule.companyId, this.monthsBetween(input.startDate, input.endDate))
-        return prisma.$transaction(async tx => {
+        const out = await prisma.$transaction(async tx => {
             await serialize(tx, `schedule:${scheduleId}`)
             await this.assertNoOverlap(tx, scheduleId, input, null)
             const created = await tx.scheduleOverride.create({ data: { scheduleId, ...this.overrideData(input), createdById: actorId } })
@@ -396,6 +404,8 @@ export class AttendanceCalendarService {
             } })
             return serializeSchedule(await tx.workSchedule.findUniqueOrThrow({ where: { id: scheduleId }, include: SCHEDULE_INCLUDE }))
         })
+        await recomputeAfter(schedule.companyId, input.startDate)
+        return out
     }
 
     static async overrideOf(overrideId: string) {
@@ -417,7 +427,7 @@ export class AttendanceCalendarService {
             ...this.monthsBetween(toDateString(existing.startDate), toDateString(existing.endDate)),
             ...this.monthsBetween(input.startDate, input.endDate),
         ])
-        return prisma.$transaction(async tx => {
+        const out = await prisma.$transaction(async tx => {
             await serialize(tx, `schedule:${existing.scheduleId}`)
             await this.assertNoOverlap(tx, existing.scheduleId, input, overrideId)
             await tx.scheduleOverrideDay.deleteMany({ where: { overrideId } })
@@ -429,6 +439,8 @@ export class AttendanceCalendarService {
             } })
             return serializeSchedule(await tx.workSchedule.findUniqueOrThrow({ where: { id: existing.scheduleId }, include: SCHEDULE_INCLUDE }))
         })
+        await recomputeAfter(companyId, [toDateString(existing.startDate), input.startDate].sort()[0])
+        return out
     }
 
     static async deleteOverride(overrideId: string, actorId: string) {
@@ -441,6 +453,7 @@ export class AttendanceCalendarService {
                 companyId, name: existing.name, startDate: toDateString(existing.startDate), endDate: toDateString(existing.endDate),
             } })
         })
+        await recomputeAfter(companyId, toDateString(existing.startDate))
     }
 
     /** Puts people on a schedule from a date. A second assignment on the same date replaces the first. */
@@ -477,6 +490,7 @@ export class AttendanceCalendarService {
                 companyId, name: schedule.name, effectiveFrom: input.effectiveFrom, people: userIds.length,
             } })
         })
+        await recomputeAfter(companyId, input.effectiveFrom, userIds)
     }
 
     static async assignmentOf(assignmentId: string) {
@@ -497,6 +511,7 @@ export class AttendanceCalendarService {
             await tx.userSchedule.delete({ where: { id: assignmentId } })
             await AuditLogService.log("UNASSIGN_WORK_SCHEDULE", "ATTENDANCE_CALENDAR", existing.scheduleId, { tx, ...(await actorOf(tx, actorId)), details: { companyId, effectiveFrom } })
         })
+        await recomputeAfter(companyId, effectiveFrom, [existing.userId])
     }
 
     /** A company's own holiday (§7.2). */
@@ -505,12 +520,14 @@ export class AttendanceCalendarService {
         const name = input.name.trim()
         if (!name) fail("HOLIDAY_NAME_REQUIRED")
         await this.assertUnlocked(companyId, [input.date])
-        return prisma.$transaction(async tx => {
+        const out = await prisma.$transaction(async tx => {
             if (await tx.companyHoliday.findUnique({ where: { companyId_date: { companyId, date: DATE_ONLY(input.date) } } })) fail("HOLIDAY_DATE_TAKEN")
             const created = await tx.companyHoliday.create({ data: { companyId, date: DATE_ONLY(input.date), name, isPaid: input.isPaid ?? true } })
             await AuditLogService.log("CREATE_COMPANY_HOLIDAY", "ATTENDANCE_CALENDAR", created.id, { tx, ...(await actorOf(tx, actorId)), details: { companyId, name, date: input.date, isPaid: created.isPaid } })
             return { id: created.id, date: input.date, name, isPaid: created.isPaid }
         })
+        await recomputeAfter(companyId, input.date)
+        return out
     }
 
     static async holidayOf(holidayId: string) {
@@ -525,6 +542,7 @@ export class AttendanceCalendarService {
             await tx.companyHoliday.delete({ where: { id: holidayId } })
             await AuditLogService.log("DELETE_COMPANY_HOLIDAY", "ATTENDANCE_CALENDAR", holidayId, { tx, ...(await actorOf(tx, actorId)), details: { companyId: holiday.companyId, name: holiday.name, date } })
         })
+        await recomputeAfter(holiday.companyId, date)
     }
 
     /**
@@ -543,6 +561,7 @@ export class AttendanceCalendarService {
             else await tx.companyHolidayExclusion.upsert({ where: key, create: { companyId, publicHolidayId }, update: {} })
             await AuditLogService.log(observed ? "OBSERVE_PUBLIC_HOLIDAY" : "SKIP_PUBLIC_HOLIDAY", "ATTENDANCE_CALENDAR", publicHolidayId, { tx, ...(await actorOf(tx, actorId)), details: { companyId, name: holiday.name, date } })
         })
+        await recomputeAfter(companyId, date)
     }
 
     // --- helpers -----------------------------------------------------------

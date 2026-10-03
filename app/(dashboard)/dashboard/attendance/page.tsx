@@ -9,9 +9,13 @@ import { useCan } from '@/lib/useCan'
 import { useLanguage } from '@/context/LanguageContext'
 import { useHeader } from '@/context/HeaderContext'
 import { useToast } from '@/context/ToastContext'
-import { apiErrorText } from '@/lib/api-error-text'
+import { send, json } from './send'
+import FaceTab from './FaceTab'
+import RequestsTab, { AskPermissionModal, ReportMissingModal } from './RequestsTab'
+import AddPunchModal from './AddPunchModal'
+import { checkoutDate } from '@/lib/attendance/checkout-date'
+import ExceptionsTab from './ExceptionsTab'
 import LoadingSpinner from '@/components/LoadingSpinner'
-import Modal from '@/components/Modal'
 import ConfirmModal from '@/components/ConfirmModal'
 import type { TranslationKey } from '@/lib/translations'
 
@@ -30,7 +34,8 @@ import type { TranslationKey } from '@/lib/translations'
 
 type Punch = {
     id: string; userId: string | null; name: string | null; hardwareUserId: string | null
-    source: string; at: string; direction: 'IN' | 'OUT' | null; note: string | null
+    source: string; at: string; direction: 'IN' | 'OUT' | null; note: string | null; deviceName?: string | null
+    placeName?: string | null; status?: string; flagReasons?: string[]
     voidedAt: string | null; voidReason: string | null
 }
 type Person = { id: string; name: string; teamLeaderId: string | null }
@@ -44,17 +49,10 @@ type Report = {
 type ImportRow = { id: string; fileName: string; createdAt: string; rowCount: number; addedCount: number; duplicateCount: number; refusedCount: number; voidedAt: string | null; voidReason: string | null }
 type Codes = { mapped: { id: string; code: string; userId: string; name: string }[]; unmatched: { code: string; punches: number; from: string; to: string }[] }
 
-type Tab = 'punches' | 'import' | 'numbers'
+type Tab = 'exceptions' | 'days' | 'punches' | 'requests' | 'face' | 'import' | 'numbers'
 
+const pad = (n: number) => String(n).padStart(2, '0')
 const monthStart = (date: string) => `${date.slice(0, 8)}01`
-
-async function send(url: string, init: RequestInit, fallback: string): Promise<{ ok: true; body: any } | { ok: false; error: string }> {
-    const res = await fetch(url, init)
-    const text = await res.text()
-    if (!res.ok) return { ok: false, error: apiErrorText(text, fallback) }
-    try { return { ok: true, body: JSON.parse(text)?.data } } catch { return { ok: true, body: null } }
-}
-const json = (method: string, body: unknown): RequestInit => ({ method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
 
 export default function AttendancePage() {
     const { t } = useLanguage()
@@ -77,15 +75,28 @@ export default function AttendancePage() {
     // abroad, they differ, and every default date below starts from it (review on #12).
     const { data: peopleBody } = useSWR(!isSuperAdmin || companyId ? `/api/attendance/people?${q}` : null, fetcher)
     const today: string | undefined = peopleBody?.data?.today
-    const tabs: Tab[] = correctsCompany ? ['punches', 'import', 'numbers'] : ['punches']
-    const [tab, setTab] = useState<Tab>('punches')
+    // Whoever sees other people's attendance starts on what needs a decision (§13.1).
+    const seesOthers = p.can('attendance.view_team')
+    const tabs: Tab[] = [
+        ...(seesOthers ? ['exceptions' as const] : []),
+        'days', 'punches', 'requests',
+        // Face verification (§9.5): only whoever decides it, company-wide.
+        ...(p.companyWide('attendance.approve_face') ? ['face' as const] : []),
+        ...(correctsCompany ? ['import' as const, 'numbers' as const] : []),
+    ]
+    // A link may open a tab (?tab=requests, from a notice about a phone); one this person doesn't have falls back.
+    // A tab picked by hand holds only under the link it was picked under: a new link wins.
+    const linked = params.get('tab') as Tab | null
+    const [picked, setPicked] = useState<{ tab: Tab; under: Tab | null } | null>(null)
+    const setTab = (k: Tab) => setPicked({ tab: k, under: linked })
+    const tab: Tab = picked && picked.under === linked ? picked.tab : linked && tabs.includes(linked) ? linked : seesOthers ? 'exceptions' : 'days'
 
     if (status === 'loading' || (!today && !(isSuperAdmin && !companyId))) return <LoadingSpinner />
     if (isSuperAdmin && !companyId) {
         return <p style={{ color: 'var(--text-soft)' }}>{t('punch_pick_company')}</p>
     }
 
-    const label: Record<Tab, TranslationKey> = { punches: 'punch_tab_punches', import: 'punch_tab_import', numbers: 'punch_tab_numbers' }
+    const label: Record<Tab, TranslationKey> = { exceptions: 'exc_tab', days: 'day_tab_days', punches: 'punch_tab_punches', requests: 'req_tab', face: 'face_tab', import: 'punch_tab_import', numbers: 'punch_tab_numbers' }
     return (
         <div style={{ display: 'grid', gap: '1rem' }}>
             {tabs.length > 1 && (
@@ -97,9 +108,215 @@ export default function AttendancePage() {
                     ))}
                 </div>
             )}
+            {tab === 'exceptions' && today && seesOthers && <ExceptionsTab q={q} companyId={companyId} today={today} onOpen={setTab} />}
+            {tab === 'days' && today && <DaysTab q={q} companyId={companyId} today={today} />}
             {tab === 'punches' && today && <PunchesTab q={q} companyId={companyId} today={today} />}
+            {tab === 'requests' && today && <RequestsTab q={q} companyId={companyId} today={today} />}
+            {tab === 'face' && <FaceTab q={q} />}
             {tab === 'import' && correctsCompany && <ImportTab q={q} companyId={companyId} />}
             {tab === 'numbers' && correctsCompany && <NumbersTab q={q} companyId={companyId} />}
+        </div>
+    )
+}
+
+// --- Days ------------------------------------------------------------------------
+
+type RuleOutcome = { minutes: number; days: number; occurrence: number; note: string | null }
+type Day = {
+    id: string; userId: string; name: string; date: string; status: string
+    firstIn: string | null; lastOut: string | null; workedMinutes: number
+    lateMinutes: number; earlyLeaveMinutes: number; overtimeMinutes: number; excusedMinutes: number
+    expectedStartMinutes: number | null; expectedEndMinutes: number | null
+    deductionDays: number; deductionMinor: number | null; overtimeStatus: string; overtimeMinor: number | null
+    breakdown: { lateness: RuleOutcome; earlyLeave: RuleOutcome; absenceDays: number; unpriced: string | null; holiday: string | null; excusedAbsence?: boolean }
+}
+
+const STATUS_COLOR: Record<string, string> = {
+    PRESENT: 'var(--ok-fg)', ABSENT: 'var(--danger-fg)', INCOMPLETE: 'var(--warn-fg)', LEAVE: 'var(--info-fg)',
+    WORKED_REST_DAY: 'var(--info-fg)', WORKED_HOLIDAY: 'var(--info-fg)',
+}
+const money = (minor: number) => (minor / 100).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+const lastDayOf = (month: string) => { const [y, m] = month.split('-').map(Number); return `${month}-${pad(new Date(Date.UTC(y, m, 0)).getUTCDate())}` }
+
+function DaysTab({ q, companyId, today }: { q: string; companyId: string | null; today: string }) {
+    const { t } = useLanguage()
+    const { showToast } = useToast()
+    const p = useCan()
+    const seesOthers = p.can('attendance.view_team')
+    const correctsCompany = p.companyWide('attendance.correct')
+    const [month, setMonth] = useState(() => today.slice(0, 7))
+    const [who, setWho] = useState('')
+    const [busy, setBusy] = useState(false)
+    const { data: peopleBody } = useSWR(seesOthers ? `/api/attendance/people?${q}` : null, fetcher)
+    const people: Person[] = useMemo(() => peopleBody?.data?.people ?? [], [peopleBody])
+    const url = month ? `/api/attendance/days?${q}from=${month}-01&to=${lastDayOf(month)}${who ? `&userId=${encodeURIComponent(who)}` : ''}` : null
+    const { data: body, error, mutate } = useSWR(url, fetcher)
+    const days: Day[] | null = body ? body.data?.days ?? [] : null
+    const daysTruncated: boolean = !!body?.data?.truncated
+    const rules: Rules | null = body?.data?.rules ?? null
+    const { data: session } = useSession()
+    const me = session?.user?.id
+    // One person's month — one's own, or the person picked — gets its summary (§13.3).
+    const onePerson = !seesOthers || !!who
+    const oneself = !seesOthers || who === me
+    const { data: balanceBody, mutate: refreshBalance } = useSWR(oneself && me && !companyId ? `/api/attendance/permissions/balance?month=${month}` : null, fetcher)
+    const [asking, setAsking] = useState<Parameters<typeof AskPermissionModal>[0]['initial'] | null>(null)
+    const [reporting, setReporting] = useState<string | null>(null)
+
+    const recompute = async () => {
+        setBusy(true)
+        try {
+            const r = await send('/api/attendance/recompute', json('POST', { ...(companyId ? { companyId } : {}), month }), t('punch_failed'))
+            if (!r.ok) return showToast(r.error, 'error')
+            showToast(r.body?.locked ? t('day_recompute_locked') : t('day_recomputed'), r.body?.locked ? 'info' : 'success')
+            mutate()
+        } finally { setBusy(false) }
+    }
+
+    const ruleNote = (label: TranslationKey, r: RuleOutcome) => {
+        if (!r.note || r.note === 'CHARGED' || r.note === 'OFF') return null
+        const key = ({ WITHIN_GRACE: 'day_note_grace', FREE_OCCURRENCE: 'day_note_free', ESCALATED: 'day_note_escalated', CAPPED: 'day_note_capped' } as Record<string, TranslationKey>)[r.note]
+        return key ? `${t(label)}: ${t(key).replace('{n}', String(r.occurrence))}` : null
+    }
+    const notes = (d: Day) => [
+        d.breakdown.holiday,
+        ruleNote('day_late', d.breakdown.lateness),
+        ruleNote('day_early', d.breakdown.earlyLeave),
+        d.breakdown.unpriced ? t(({ INCOMPLETE: 'day_unpriced_incomplete', NO_POLICY: 'day_unpriced_no_policy', NO_SALARY: 'day_unpriced_no_salary' } as Record<string, TranslationKey>)[d.breakdown.unpriced] ?? 'day_unpriced_no_policy') : null,
+        d.overtimeStatus === 'PENDING' ? t('day_overtime_pending') : d.overtimeStatus === 'REJECTED' ? t('day_overtime_rejected') : d.overtimeStatus === 'NOT_COUNTED' ? t('day_overtime_short') : null,
+        d.excusedMinutes > 0 ? t('day_excused').replace('{n}', String(d.excusedMinutes)) : null,
+        d.breakdown.excusedAbsence ? t('day_absence_excused') : null,
+    ].filter(Boolean).join(' · ')
+    const totalMinor = (days ?? []).reduce((sum, d) => sum + (d.deductionMinor ?? 0), 0)
+    const showsMoney = (days ?? []).some(d => d.deductionMinor !== null)
+    const mins = (n: number) => (n > 0 ? String(n) : '—')
+    const hhmm = (minutes: number) => `${pad(Math.floor(minutes / 60) % 24)}:${pad(minutes % 60)}`
+    const askFor = (d: Day) => d.status === 'PRESENT' && d.expectedStartMinutes !== null && d.expectedEndMinutes !== null && (
+        d.lateMinutes > 0 && d.firstIn ? { date: d.date, type: 'LATE_ARRIVAL' as const, start: hhmm(d.expectedStartMinutes), end: d.firstIn.slice(11, 16) }
+            : d.earlyLeaveMinutes > 0 && d.lastOut ? { date: d.date, type: 'EARLY_LEAVE' as const, start: d.lastOut.slice(11, 16), end: hhmm(d.expectedEndMinutes) }
+                : null
+    )
+
+    return (
+        <section className="glass" style={{ padding: '1.25rem', borderRadius: '1rem', display: 'grid', gap: '1rem' }}>
+            <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'flex-end' }}>
+                <label style={{ display: 'grid', gap: '0.25rem' }}>
+                    <span className="label">{t('day_month')}</span>
+                    <input className="input" type="month" value={month} onChange={e => setMonth(e.target.value)} />
+                </label>
+                {seesOthers && (
+                    <label style={{ display: 'grid', gap: '0.25rem', minWidth: '12rem' }}>
+                        <span className="label">{t('punch_person')}</span>
+                        <select className="input" value={who} onChange={e => setWho(e.target.value)}>
+                            <option value="">{t('punch_everyone')}</option>
+                            {people.map(x => <option key={x.id} value={x.id}>{x.name}</option>)}
+                        </select>
+                    </label>
+                )}
+                <div style={{ flex: 1 }} />
+                {correctsCompany && <button className="btn btn-secondary" disabled={busy || !month} onClick={recompute}>{t('day_recompute')}</button>}
+            </div>
+            <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--text-soft)' }}>{t('day_hint')}</p>
+            {daysTruncated && <p role="status" style={{ margin: 0, color: 'var(--warn-fg)', fontSize: '0.86rem' }}>{t('day_truncated').replace('{n}', String(body?.data?.limit ?? ''))}</p>}
+            {onePerson && days && days.length > 0 && !daysTruncated && <MonthSummary days={days} rules={rules} balance={oneself ? balanceBody?.data ?? null : null} />}
+
+            {error ? <p style={{ color: 'var(--danger-fg)' }}>{t('punch_failed')}</p>
+                : days === null ? <LoadingSpinner />
+                    : days.length === 0 ? <p style={{ margin: 0, color: 'var(--text-soft)' }}>{t('day_none')}</p>
+                        : (
+                            <div style={{ overflowX: 'auto' }}>
+                                <table className="table" style={{ width: '100%', fontSize: '0.84rem' }}>
+                                    <thead>
+                                        <tr>
+                                            <th>{t('punch_date')}</th>
+                                            {seesOthers && <th>{t('punch_person')}</th>}
+                                            <th>{t('day_status')}</th>
+                                            <th>{t('punch_in')}</th>
+                                            <th>{t('punch_out')}</th>
+                                            <th>{t('day_late')}</th>
+                                            <th>{t('day_early')}</th>
+                                            <th>{t('day_overtime')}</th>
+                                            {showsMoney && <th>{t('day_deduction')}</th>}
+                                            {oneself && <th />}
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {days.map(d => (
+                                            <tr key={d.id}>
+                                                <td style={{ whiteSpace: 'nowrap' }}><bdi>{d.date}</bdi></td>
+                                                {seesOthers && <td>{d.name}</td>}
+                                                <td>
+                                                    <span style={{ color: STATUS_COLOR[d.status] ?? 'var(--text-soft)', fontWeight: 600 }}>{t(`audit_value_${d.status}` as TranslationKey)}</span>
+                                                    {notes(d) && <div style={{ color: 'var(--text-soft)', fontSize: '0.75rem' }}>{notes(d)}</div>}
+                                                </td>
+                                                <td><bdi>{d.firstIn ? d.firstIn.slice(11, 16) : '—'}</bdi></td>
+                                                <td><bdi>{d.lastOut ? d.lastOut.slice(11, 16) : '—'}</bdi></td>
+                                                <td>{mins(d.lateMinutes)}</td>
+                                                <td>{mins(d.earlyLeaveMinutes)}</td>
+                                                <td>{mins(d.overtimeMinutes)}</td>
+                                                {showsMoney && <td>{d.deductionMinor ? <bdi>{money(d.deductionMinor)}</bdi> : '—'}{d.deductionDays > 0 && <div style={{ color: 'var(--text-soft)', fontSize: '0.75rem' }}>{t('day_days').replace('{n}', String(d.deductionDays))}</div>}</td>}
+                                                {oneself && (
+                                                    <td style={{ textAlign: 'end' }}>
+                                                        {d.userId === me && askFor(d) && <button type="button" className="btn btn-secondary" style={{ fontSize: '0.75rem', padding: '0.2rem 0.5rem', whiteSpace: 'nowrap' }} onClick={() => setAsking(askFor(d) || null)}>{t('req_ask_permission')}</button>}
+                                                        {d.userId === me && d.status === 'INCOMPLETE' && <button type="button" className="btn btn-secondary" style={{ fontSize: '0.75rem', padding: '0.2rem 0.5rem', whiteSpace: 'nowrap' }} onClick={() => setReporting(checkoutDate(d.date, d.expectedEndMinutes))}>{t('req_report_missing')}</button>}
+                                                    </td>
+                                                )}
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                    {showsMoney && !daysTruncated && (
+                                        <tfoot>
+                                            <tr>
+                                                <td colSpan={seesOthers ? 8 : 7} style={{ textAlign: 'end', fontWeight: 600 }}>{t('day_total')}</td>
+                                                <td style={{ fontWeight: 600 }}><bdi>{money(totalMinor)}</bdi></td>
+                                                {oneself && <td />}
+                                            </tr>
+                                        </tfoot>
+                                    )}
+                                </table>
+                            </div>
+                        )}
+            {asking && <AskPermissionModal today={today} initial={asking} onClose={() => setAsking(null)} onDone={() => { setAsking(null); refreshBalance() }} />}
+            {reporting && <ReportMissingModal today={today} initial={{ date: reporting, direction: 'OUT' }} onClose={() => setReporting(null)} onDone={() => setReporting(null)} />}
+        </section>
+    )
+}
+
+type Rules = { lateness: { enabled: boolean; freePerMonth: number }; earlyLeave: { enabled: boolean; freePerMonth: number } }
+type Balance = { enabled: boolean; remainingMinutes: number; allowanceMinutes: number; carriedMinutes: number }
+const COUNTED = new Set(['FREE_OCCURRENCE', 'CHARGED', 'ESCALATED', 'CAPPED'])
+
+/**
+ * One person's month so far (§13.3): deductions to date, lateness and early
+ * leave against the free allowance, absences, overtime pay, and — for one's
+ * own — the permission hours left.
+ */
+function MonthSummary({ days, rules, balance }: { days: Day[]; rules: Rules | null; balance: Balance | null }) {
+    const { t } = useLanguage()
+    const deducted = days.reduce((s, d) => s + (d.deductionMinor ?? 0), 0)
+    const deductedDays = Math.round(days.reduce((s, d) => s + d.deductionDays, 0) * 10_000) / 10_000
+    const overtimeMinor = days.reduce((s, d) => s + (d.overtimeMinor ?? 0), 0)
+    const hidesMoney = days.every(d => d.deductionMinor === null)
+    const lates = days.filter(d => COUNTED.has(d.breakdown.lateness.note ?? ''))
+    const earlies = days.filter(d => COUNTED.has(d.breakdown.earlyLeave.note ?? ''))
+    const absences = days.filter(d => d.status === 'ABSENT' && !d.breakdown.excusedAbsence).length
+    const freeLine = (used: number, rule: { enabled: boolean; freePerMonth: number } | undefined) =>
+        rule?.enabled && rule.freePerMonth > 0 ? t('sum_free_used').replace('{used}', String(Math.min(used, rule.freePerMonth))).replace('{free}', String(rule.freePerMonth)) : null
+    const tile = (label: TranslationKey, value: string, note?: string | null) => (
+        <div style={{ border: '1px solid var(--border)', borderRadius: '0.75rem', padding: '0.6rem 0.8rem', minWidth: '9rem', flex: '1 1 9rem' }}>
+            <div className="label" style={{ fontSize: '0.75rem' }}>{t(label)}</div>
+            <div style={{ fontSize: '1.1rem', fontWeight: 600 }}><bdi>{value}</bdi></div>
+            {note && <div style={{ color: 'var(--text-soft)', fontSize: '0.75rem' }}>{note}</div>}
+        </div>
+    )
+    return (
+        <div role="group" aria-label={t('sum_title')} style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
+            {tile('sum_deductions', hidesMoney ? t('day_days').replace('{n}', String(deductedDays)) : money(deducted), hidesMoney ? null : t('day_days').replace('{n}', String(deductedDays)))}
+            {tile('sum_lates', String(lates.length), freeLine(lates.filter(d => d.breakdown.lateness.note === 'FREE_OCCURRENCE').length, rules?.lateness))}
+            {tile('sum_early', String(earlies.length), freeLine(earlies.filter(d => d.breakdown.earlyLeave.note === 'FREE_OCCURRENCE').length, rules?.earlyLeave))}
+            {tile('sum_absences', String(absences))}
+            {!hidesMoney && overtimeMinor > 0 && tile('sum_overtime', money(overtimeMinor))}
+            {balance?.enabled && tile('sum_permission_left', t('req_minutes').replace('{n}', String(balance.remainingMinutes)), t('sum_of_total').replace('{n}', String(balance.allowanceMinutes + balance.carriedMinutes)))}
         </div>
     )
 }
@@ -202,7 +419,16 @@ function PunchesTab({ q, companyId, today }: { q: string; companyId: string | nu
                                                 )}
                                                 <td>{x.direction === 'IN' ? t('punch_in') : x.direction === 'OUT' ? t('punch_out') : '—'}</td>
                                                 <td>
-                                                    {t(x.source === 'MANUAL' ? 'punch_source_manual' : 'punch_source_import')}
+                                                    {x.source === 'AGENT' ? t('punch_source_terminal').replace('{name}', x.deviceName ?? '—')
+                                                        : x.source === 'MOBILE' ? t('punch_source_app').replace('{place}', x.placeName ?? '—')
+                                                        : t(x.source === 'MANUAL' ? 'punch_source_manual' : 'punch_source_import')}
+                                                    {/* A check-in that doesn't count yet, or won't: why (§9.6). */}
+                                                    {x.status && x.status !== 'ACCEPTED' && (
+                                                        <div style={{ color: x.status === 'REJECTED' ? 'var(--danger-fg)' : 'var(--warn-fg)', fontSize: '0.78rem' }}>
+                                                            {t(`punch_status_${x.status}` as TranslationKey)}
+                                                            {(x.flagReasons ?? []).length > 0 && ` · ${(x.flagReasons ?? []).map(r => t(`att_flag_${r}` as TranslationKey)).join(', ')}`}
+                                                        </div>
+                                                    )}
                                                     {x.note && <div style={{ color: 'var(--text-soft)', fontSize: '0.78rem' }}>{x.note}</div>}
                                                     {x.voidedAt && <div style={{ color: 'var(--text-soft)', fontSize: '0.78rem' }}>{t('punch_withdrawn_because').replace('{reason}', x.voidReason ?? '')}</div>}
                                                 </td>
@@ -240,69 +466,6 @@ function PunchesTab({ q, companyId, today }: { q: string; companyId: string | nu
                 onCancel={() => setWithdrawing(null)}
             />
         </section>
-    )
-}
-
-function AddPunchModal({ companyId, today, people, onClose, onAdded }: { companyId: string | null; today: string; people: Person[]; onClose: () => void; onAdded: () => void }) {
-    const { t } = useLanguage()
-    const { showToast } = useToast()
-    const [userId, setUserId] = useState('')
-    const [date, setDate] = useState(today)
-    const [time, setTime] = useState('')
-    const [direction, setDirection] = useState<'' | 'IN' | 'OUT'>('')
-    const [note, setNote] = useState('')
-    const [busy, setBusy] = useState(false)
-
-    const save = async () => {
-        setBusy(true)
-        try {
-            const r = await send('/api/attendance/punches', json('POST', {
-                ...(companyId ? { companyId } : {}), userId, at: `${date}T${time}`, direction: direction || null, note,
-            }), t('punch_failed'))
-            if (!r.ok) return showToast(r.error, 'error')
-            showToast(t('punch_added'), 'success')
-            onAdded()
-        } finally { setBusy(false) }
-    }
-
-    return (
-        <Modal isOpen onClose={onClose} title={t('punch_add')}>
-            <div style={{ display: 'grid', gap: '0.75rem' }}>
-                <label style={{ display: 'grid', gap: '0.25rem' }}>
-                    <span className="label">{t('punch_person')}</span>
-                    <select className="input" value={userId} onChange={e => setUserId(e.target.value)}>
-                        <option value="">{t('punch_choose_person')}</option>
-                        {people.map(x => <option key={x.id} value={x.id}>{x.name}</option>)}
-                    </select>
-                </label>
-                <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-                    <label style={{ display: 'grid', gap: '0.25rem' }}>
-                        <span className="label">{t('punch_date')}</span>
-                        <input className="input" type="date" value={date} onChange={e => setDate(e.target.value)} />
-                    </label>
-                    <label style={{ display: 'grid', gap: '0.25rem' }}>
-                        <span className="label">{t('punch_time')}</span>
-                        <input className="input" type="time" value={time} onChange={e => setTime(e.target.value)} />
-                    </label>
-                    <label style={{ display: 'grid', gap: '0.25rem' }}>
-                        <span className="label">{t('punch_direction')}</span>
-                        <select className="input" value={direction} onChange={e => setDirection(e.target.value as '' | 'IN' | 'OUT')}>
-                            <option value="">{t('punch_direction_unknown')}</option>
-                            <option value="IN">{t('punch_in')}</option>
-                            <option value="OUT">{t('punch_out')}</option>
-                        </select>
-                    </label>
-                </div>
-                <label style={{ display: 'grid', gap: '0.25rem' }}>
-                    <span className="label">{t('punch_reason')}</span>
-                    <textarea className="input" rows={2} value={note} onChange={e => setNote(e.target.value)} placeholder={t('punch_reason_example')} />
-                </label>
-                <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-                    <button className="btn btn-secondary" onClick={onClose}>{t('cancel')}</button>
-                    <button className="btn btn-primary" disabled={busy || !userId || !date || !time || !note.trim()} onClick={save}>{t('punch_add')}</button>
-                </div>
-            </div>
-        </Modal>
     )
 }
 

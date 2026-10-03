@@ -95,7 +95,12 @@ export class EmploymentService {
             return event
         }
 
-        return tx ? run(tx) : prisma.$transaction(run)
+        if (tx) return run(tx)
+        const out = await prisma.$transaction(run)
+        // Attendance prices days at the salary, and only while employed, in force on them.
+        const { recomputeForPersonFrom } = await import("./attendance-recompute")
+        await recomputeForPersonFrom(input.userId, input.effectiveFrom)
+        return out
     }
 
     /**
