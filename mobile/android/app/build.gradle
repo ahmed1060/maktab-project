@@ -7,8 +7,10 @@ android {
         applicationId "com.shsd.nizmo"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        // The GitHub build passes its run number (.github/workflows/mobile.yml), so
+        // each APK it makes installs over the last; a local build stays at 1.
+        versionCode((project.findProperty("nizmoVersionCode") ?: "1") as Integer)
+        versionName((project.findProperty("nizmoVersionName") ?: "1.0") as String)
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
