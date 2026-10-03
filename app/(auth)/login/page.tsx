@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useLanguage } from '@/context/LanguageContext'
 import PreferenceBar from '@/components/PreferenceBar'
 import { reportClientError, friendlyErrorMessage } from '@/lib/client-error-report'
+import { signInErrorKey, codeErrorKey } from '@/lib/login-errors'
 
 export default function LoginPage() {
     const { t, locale } = useLanguage()
@@ -133,15 +134,7 @@ export default function LoginPage() {
             }
 
             if (res?.error) {
-                if (res.error.includes('suspended')) {
-                    setError(t('error_suspended'))
-                } else if (res.error.includes('Company access restricted')) {
-                    setError(t('error_banned'))
-                } else if (res.error.includes('This user does not belong')) {
-                    setError('Access Denied.')
-                } else {
-                    setError(t('error_invalid_credentials'))
-                }
+                setError(t(signInErrorKey(res.error)))
                 setLoading(false)
             } else if (res?.ok) {
                 await finishLogin()
@@ -176,11 +169,7 @@ export default function LoginPage() {
                 return
             }
 
-            setError(
-                res?.error === 'INVALID_MFA_CODE'
-                    ? (isAr ? 'رمز غير صالح' : 'Invalid code')
-                    : (isAr ? 'حدث خطأ' : 'Something went wrong')
-            )
+            setError(t(codeErrorKey(res?.error)))
             setLoading(false)
         } catch (err: any) {
             const ref = await reportClientError(err, '/login')

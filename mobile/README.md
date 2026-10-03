@@ -120,6 +120,41 @@ own iPhone:
 
 A free-account install stops opening after 7 days; run it from Xcode again.
 
+### Building in GitHub
+
+Without Android Studio or a Mac: on GitHub, open **Actions → Mobile app → Run
+workflow**, keep the site (`https://nizmo.vercel.app`) or enter another, and
+pick Android, iPhone or both. It runs only when started by hand, and
+always builds the code on `main`. When it
+finishes, the run's page has the files under **Artifacts**, kept 30 days:
+
+- **`nizmo-android-<run>`**: `nizmo-<run>.apk`. Install it as in step 3 of
+  "an APK anyone can install" above. Each run's version code is its run
+  number, so a newer build installs over an older one.
+- **`nizmo-ios-<run>`**: `nizmo-<run>-unsigned.ipa`. An iPhone won't install
+  it as it is: sign it with your free Apple ID using a sideloading tool on
+  your computer (Sideloadly, for example), with the iPhone connected by cable,
+  then trust your Apple ID and turn on Developer Mode as in step 5 above. Like
+  a build from Xcode, it stops opening after 7 days, and it has no push
+  notifications or App Attest.
+
+Optional settings (Settings → Secrets and variables → Actions):
+
+- **`GOOGLE_SERVICES_JSON`** (secret): the whole text of the Firebase
+  `google-services.json`, for push notifications on Android.
+- **`ANDROID_DEBUG_KEYSTORE`** (secret): the key the APK is signed with, as
+  base64. Without it each run uses a new key, and Android refuses to install
+  a build over one signed with a different key: the old one has to be
+  uninstalled first, which also forgets the phone's registration. Make one
+  once (Command Prompt, with Android Studio's or any Java's `keytool`):
+  ```
+  keytool -genkeypair -keystore nizmo-debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
+  powershell -c "[Convert]::ToBase64String([IO.File]::ReadAllBytes('nizmo-debug.keystore')) | Set-Clipboard"
+  ```
+  The second line copies the base64 to the clipboard; paste it as the
+  secret's value. Keep the `.keystore` file out of the repository.
+- **`NIZMO_CLOUD_PROJECT_NUMBER`** (variable): see Attestation below.
+
 ## Push notifications
 
 The app asks once for permission, then sends the server the token its push

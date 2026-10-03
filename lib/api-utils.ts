@@ -113,6 +113,21 @@ export class RateLimiter {
         }
     }
 
+    /**
+     * Gives back one attempt that getLimitData counted and that turned out
+     * not to be a failure (sign-in counts first, so parallel guesses can't
+     * slip past the check, then returns the attempt when it succeeds).
+     * Never below zero, and a no-op once the window has been reset.
+     */
+    static async refund(key: string) {
+        try {
+            await prisma.rateLimit.updateMany({
+                where: { key, count: { gt: 0 } },
+                data: { count: { decrement: 1 } },
+            })
+        } catch { }
+    }
+
     static async clear(key: string) {
         try {
             await prisma.rateLimit.delete({ where: { key } })
