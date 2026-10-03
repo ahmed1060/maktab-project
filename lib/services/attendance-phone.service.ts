@@ -4,6 +4,7 @@ import { AuditLogService } from "./audit-log.service"
 import { NotificationService } from "./notification.service"
 import { AttendanceChallengeService } from "./attendance-challenge.service"
 import { recomputeAfter } from "./attendance-recompute"
+import { lockMonths, lockedMonths, punchMonths } from "./attendance-lock"
 import type { Visibility } from "./attendance-punch.service"
 import { parsePhoneKey, signatureValid, signedText } from "@/lib/attendance/phone-keys"
 import { attestationMode, verifyAttestation } from "@/lib/attendance/attestation"
@@ -78,7 +79,9 @@ export class AttendancePhoneService {
         const key = parsePhoneKey(input.publicKey) ?? fail("PHONE_KEY_INVALID")
         const text = signedText("REGISTER", input.nonce, [key.fingerprint, input.platform])
         if (!signatureValid(key.key, text, input.signature)) fail("PHONE_SIGNATURE_INVALID")
-        const attestation = await verifyAttestation({ platform: input.platform, token: input.attestation, challenge: input.nonce })
+        // A used or made-up number is refused before Google or Apple is asked (review on #26).
+        if (!(await AttendanceChallengeService.isLive(userId, "REGISTER", input.nonce))) fail("PHONE_CHALLENGE_INVALID")
+        const attestation = await verifyAttestation({ platform: input.platform, token: input.attestation, challenge: input.nonce, purpose: "REGISTER" })
         if (!attestation.verified && attestationMode() === "required") fail("PHONE_ATTESTATION_FAILED")
 
         const out = await prisma.$transaction(async tx => {
@@ -97,13 +100,15 @@ export class AttendancePhoneService {
                     companyId, userId, publicKey: key.der.toString("base64"), keyFingerprint: key.fingerprint, platform: input.platform,
                     model: input.model?.trim().slice(0, 80) || null, appVersion: input.appVersion?.trim().slice(0, 40) || null,
                     attested: attestation.verified,
+                    // iOS: the attested key, which each check-in's assertion is checked with.
+                    appAttestKey: attestation.appAttest?.publicKey ?? null,
                 },
                 select: SHOWN,
             })
             // What the replaced request was holding waits for this one instead.
             if (replaced) await tx.attendancePunch.updateMany({ where: { phoneId: replaced.id, status: "PENDING_DEVICE" }, data: { phoneId: phone.id } })
             await AuditLogService.log("REGISTER_CHECK_IN_PHONE", "CHECK_IN_PHONE", phone.id, {
-                tx, userId, details: { companyId, userId, platform: phone.platform, model: phone.model, attested: phone.attested, replaced: replaced?.id ?? null },
+                tx, userId, details: { companyId, userId, platform: phone.platform, model: phone.model, attested: phone.attested, attestationReason: attestation.reason, replaced: replaced?.id ?? null },
             })
             // In the same transaction: a request nobody hears about would wait forever.
             await AttendancePhoneService.tellDeciders(tx, companyId, userId, phone.model)
@@ -134,7 +139,8 @@ export class AttendancePhoneService {
 
     /** This person's phone in use, and the one they asked for, if any. */
     static async mine(userId: string) {
-        const phones = await prisma.checkInPhone.findMany({ where: { userId, status: { in: ["ACTIVE", "PENDING"] } }, select: SHOWN })
+        // With the key's fingerprint, so the app can tell whether it is the phone in question.
+        const phones = await prisma.checkInPhone.findMany({ where: { userId, status: { in: ["ACTIVE", "PENDING"] } }, select: { ...SHOWN, keyFingerprint: true } })
         return { active: phones.find(p => p.status === "ACTIVE") ?? null, pending: phones.find(p => p.status === "PENDING") ?? null }
     }
 
@@ -191,10 +197,28 @@ export class AttendancePhoneService {
             }
             await tx.checkInPhone.update({ where: { id }, data: { status: decision.approve ? "ACTIVE" : "REJECTED", decidedAt: now, decidedById: deciderId, reason } })
             const held = await tx.attendancePunch.findMany({ where: { phoneId: id, status: "PENDING_DEVICE" }, select: { punchAtLocal: true }, orderBy: { punchAtLocal: "asc" }, take: 1 })
+            // A check-in held in a month whose payroll was approved meanwhile
+            // can't count now: that month is closed to every punch (§12.1,
+            // review on #22). Locked as any punch write is, then discarded.
+            if (decision.approve) {
+                const waiting = await tx.attendancePunch.findMany({ where: { phoneId: id, status: "PENDING_DEVICE" }, select: { id: true, punchAtLocal: true } })
+                const monthsOf = new Map<string, string[]>()
+                for (const w of waiting) monthsOf.set(w.id, await punchMonths(tx, phone.companyId, phone.userId, w.punchAtLocal.toISOString().slice(0, 19)))
+                const months = [...new Set([...monthsOf.values()].flat())]
+                await lockMonths(tx, phone.companyId, months)
+                const closed = await lockedMonths(tx, phone.companyId, months)
+                const late = waiting.filter(w => monthsOf.get(w.id)!.some(m => closed.has(m))).map(w => w.id)
+                if (late.length > 0) await tx.attendancePunch.updateMany({ where: { id: { in: late } }, data: { status: "REJECTED" } })
+            }
+            // Approved, what it held counts, or is flagged with the reasons it
+            // was held with (§9.6); rejected, it is discarded.
+            const flagged = decision.approve
+                ? await tx.attendancePunch.updateMany({ where: { phoneId: id, status: "PENDING_DEVICE", NOT: { flagReasons: { isEmpty: true } } }, data: { status: "FLAGGED" } })
+                : { count: 0 }
             const released = await tx.attendancePunch.updateMany({ where: { phoneId: id, status: "PENDING_DEVICE" }, data: { status: decision.approve ? "ACCEPTED" : "REJECTED" } })
             await AuditLogService.log(decision.approve ? "APPROVE_CHECK_IN_PHONE" : "REJECT_CHECK_IN_PHONE", "CHECK_IN_PHONE", id, {
                 tx, ...(await actorOf(tx, deciderId)),
-                details: { companyId: phone.companyId, userId: phone.userId, model: phone.model, reason, replaced, punches: released.count },
+                details: { companyId: phone.companyId, userId: phone.userId, model: phone.model, reason, replaced, punches: released.count + flagged.count },
             })
             await NotificationService.notify(phone.userId, "ATTENDANCE_PHONE", {
                 key: decision.approve ? "notice_att_phone_approved" : "notice_att_phone_rejected",

@@ -9,6 +9,7 @@ import { useLanguage } from '@/context/LanguageContext'
 import { useToast } from '@/context/ToastContext'
 import Modal from '@/components/Modal'
 import AttendancePolicyPanel from '@/components/AttendancePolicyPanel'
+import FaceLegalPanel from '@/components/FaceLegalPanel'
 import AttendancePayrollPanel from '@/components/AttendancePayrollPanel'
 import AttendanceTerminalsPanel from '@/components/AttendanceTerminalsPanel'
 import AttendanceLocationsPanel from '@/components/AttendanceLocationsPanel'
@@ -207,6 +208,7 @@ export default function CompanyAttendanceCard({ companyId, readOnly = false }: {
             <AttendanceLocationsPanel companyId={companyId} readOnly={!editable} />
             {/* The policy first: its work week is what the schedules inherit. */}
             <AttendancePolicyPanel companyId={companyId} readOnly={!editable} onChanged={load} />
+            <FaceLegalPanel companyId={companyId} readOnly={!editable} />
             <SchedulesSection ctx={ctx} />
             {/* Keyed by the data, so a reload starts the panel's own fields afresh. */}
             <PeoplePanel ctx={ctx} />

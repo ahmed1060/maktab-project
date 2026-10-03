@@ -38,6 +38,9 @@ vi.mock("@/lib/services/attendance-phone.service", () => ({
         revoke: async (id: string) => { reached.push(`revoke:${id}`) },
     },
 }))
+vi.mock("@/lib/services/attendance-check-in.service", () => ({
+    AttendanceCheckInService: { checkIn: async (companyId: string, userId: string, _input: unknown, ip: string | null) => { reached.push(`checkIn:${companyId}:${userId}:${ip}`); return { outcome: "REFUSED", reason: "MOCK_LOCATION" } } },
+}))
 vi.mock("@/lib/services/attendance-challenge.service", () => ({
     AttendanceChallengeService: { issue: async (userId: string, purpose: string) => { reached.push(`challenge:${userId}:${purpose}`); return { nonce: "n", expiresAt: new Date() } } },
 }))
@@ -69,6 +72,10 @@ const employee = (id = "e1", pkg: Pkg = MOBILE) => signIn({ id, role: "EMPLOYEE"
 const superAdmin = () => signIn({ id: "sa", role: "SUPER_ADMIN", companyId: null })
 
 const REGISTER = { nonce: "n".repeat(43), publicKey: "AAAA", signature: "BBBB", platform: "ANDROID" }
+const CHECK_IN = { nonce: "n".repeat(43), keyFingerprint: "a".repeat(64), signature: "BBBB", latitude: 30.04, longitude: 31.23, accuracyMeters: 12, mocked: false }
+const checkIn = async (body: unknown, ip?: string, headers: Record<string, string> = {}) => (await import("@/app/api/attendance/check-in/route")).POST(
+    new Request(url("/api/attendance/check-in"), { method: "POST", headers: { "Content-Type": "application/json", ...(ip && { "x-forwarded-for": `${ip}, 10.0.0.1` }), ...headers }, body: JSON.stringify(body) }),
+)
 const params = (id: string) => ({ params: Promise.resolve({ id }) }) as any
 const challenge = async (body: unknown) => (await import("@/app/api/attendance/phone/challenge/route")).POST(withBody("POST", "/api/attendance/phone/challenge", body))
 const register = async (body: unknown) => (await import("@/app/api/attendance/phone/register/route")).POST(withBody("POST", "/api/attendance/phone/register", body))
@@ -107,6 +114,34 @@ describe("one's own phone", () => {
     })
 })
 
+describe("checking in", () => {
+    it("is one's own, with the address it came from, and a refusal is an answer, not an error", async () => {
+        employee()
+        const res = await checkIn(CHECK_IN, "203.0.113.7")
+        expect(res.status).toBe(200)
+        expect((await res.json()).data).toEqual({ outcome: "REFUSED", reason: "MOCK_LOCATION" })
+        expect(reached).toEqual(["checkIn:c1:e1:203.0.113.7"])
+    })
+
+    it("takes the address Vercel saw over one the caller wrote: office IPs can't be claimed", async () => {
+        employee()
+        await checkIn(CHECK_IN, "198.51.100.20", { "x-vercel-forwarded-for": "203.0.113.99" })
+        expect(reached).toEqual(["checkIn:c1:e1:203.0.113.99"])
+    })
+
+    it("refuses a body of the wrong shape, a company without the app, and the Super Admin", async () => {
+        employee()
+        expect((await checkIn({ ...CHECK_IN, latitude: 91 })).status).toBe(400)
+        expect((await checkIn({ ...CHECK_IN, keyFingerprint: "not hex" })).status).toBe(400)
+        companies.c1.package = TERMINALS_ONLY
+        employee("e1", TERMINALS_ONLY)
+        expect((await checkIn(CHECK_IN)).status).toBe(403)
+        superAdmin()
+        expect((await checkIn(CHECK_IN)).status).toBe(404)
+        expect(reached).toEqual([])
+    })
+})
+
 describe("deciding others' phones", () => {
     it("the company's Admin lists, approves and revokes; never their own", async () => {
         admin()
@@ -141,5 +176,40 @@ describe("deciding others' phones", () => {
         expect((await list("?companyId=c2")).status).toBe(200)
         expect((await decide("ph-other", { approve: true })).status).toBe(200)
         expect(reached).toEqual(["list:c2:COMPANY", "decide:ph-other:true"])
+    })
+})
+
+describe("telling the server where to push", () => {
+    const pushToken = async (body: unknown) => (await import("@/app/api/attendance/phone/push-token/route")).POST(withBody("POST", "/api/attendance/phone/push-token", body))
+    const saved: any[] = []
+    beforeEach(() => {
+        saved.length = 0
+        // Only Ehab's own phone in use or waiting matches.
+        prismaMock.checkInPhone.updateMany = async ({ where, data }: any) => {
+            saved.push({ where, data })
+            const ok = where.userId === "e1" && where.keyFingerprint === "a".repeat(64) && where.status.in.includes("ACTIVE") && where.status.in.includes("PENDING")
+            return { count: ok ? 1 : 0 }
+        }
+    })
+
+    it("saves the token on the person's own phone, and only theirs", async () => {
+        employee()
+        expect((await pushToken({ keyFingerprint: "a".repeat(64), token: "fcm-token" })).status).toBe(200)
+        expect(saved[0].data).toMatchObject({ pushToken: "fcm-token" })
+        expect((await pushToken({ keyFingerprint: "b".repeat(64), token: "fcm-token" })).status).toBe(404)
+        employee("e2")
+        expect((await pushToken({ keyFingerprint: "a".repeat(64), token: "fcm-token" })).status).toBe(404)
+    })
+
+    it("refuses a bad body, a company without the app, and the Super Admin", async () => {
+        employee()
+        expect((await pushToken({ keyFingerprint: "nope", token: "t" })).status).toBe(400)
+        expect((await pushToken({ keyFingerprint: "a".repeat(64), token: "" })).status).toBe(400)
+        companies.c1.package = TERMINALS_ONLY
+        employee("e1", TERMINALS_ONLY)
+        expect((await pushToken({ keyFingerprint: "a".repeat(64), token: "t" })).status).toBe(403)
+        superAdmin()
+        expect((await pushToken({ keyFingerprint: "a".repeat(64), token: "t" })).status).toBe(404)
+        expect(saved).toHaveLength(0)
     })
 })
