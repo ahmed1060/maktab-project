@@ -1,0 +1,7 @@
+node_modules/
+dist/
+agent.json
+state.json
+state.json.tmp
+logs/
+agent.lock

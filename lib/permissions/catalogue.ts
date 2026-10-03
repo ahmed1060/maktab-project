@@ -143,6 +143,30 @@ export const PERMISSIONS = {
     "settings.view":            { code: 46, module: null, scopes: COMPANY },
     "settings.edit":            { code: 47, module: null, scopes: COMPANY, implies: ["settings.view"] },
     "audit.view":               { code: 48, module: null, scopes: COMPANY, reserved: true },
+
+    // --- Attendance (ATTENDANCE_PLAN.md §4.1, §14) ---------------------------
+    // view_team: other people's punches and days. Everybody sees their own.
+    // correct: bring punches in from a file, add or withdraw one by hand, and
+    // say which person a terminal's employee number is. Nobody corrects their
+    // own attendance (§4.3). Not high-risk: it is daily work, each change is
+    // audited with its reason, and none reaches a month whose payroll is
+    // approved — step-up on every forgotten punch would teach people to click
+    // through it.
+    "attendance.view_team":     { code: 49, module: "ATTENDANCE", scopes: TEAM_OR_COMPANY },
+    "attendance.correct":       { code: 50, module: "ATTENDANCE", scopes: TEAM_OR_COMPANY, implies: ["attendance.view_team"], notOnOwn: true },
+    // Deciding requests (§6.4, §6.6): overtime — after the fact or ahead of
+    // it — and permission hours (إذن). A missing punch is a correction, so it
+    // is attendance.correct's to decide. Never one's own.
+    "attendance.approve_overtime":    { code: 51, module: "ATTENDANCE", scopes: TEAM_OR_COMPANY, implies: ["attendance.view_team"], notOnOwn: true },
+    "attendance.approve_permissions": { code: 52, module: "ATTENDANCE", scopes: TEAM_OR_COMPANY, implies: ["attendance.view_team"], notOnOwn: true },
+    // Approving the one phone someone checks in from (§9.3), and revoking a
+    // lost one. Never one's own: approving your own phone is the whole fraud.
+    "attendance.approve_devices":     { code: 53, module: "ATTENDANCE", scopes: TEAM_OR_COMPANY, implies: ["attendance.view_team"], notOnOwn: true },
+    // Face verification (§9.5): turning it on for a person, deciding their
+    // verification photo, asking for re-verification. Company-wide only: the
+    // photo is shown to the Admin, HR and the Super Admin, never to a team
+    // leader. Never one's own: approving your own face is the whole fraud.
+    "attendance.approve_face":        { code: 54, module: "ATTENDANCE", scopes: COMPANY, implies: ["attendance.view_team"], notOnOwn: true },
 } as const satisfies Record<string, PermissionDefinition>
 
 export type Permission = keyof typeof PERMISSIONS
