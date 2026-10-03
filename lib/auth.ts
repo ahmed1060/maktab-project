@@ -85,6 +85,7 @@ export const authOptions: NextAuthOptions = {
                 mfaRecoveryCode: { label: "MFA Recovery Code", type: "text" }
             },
             async authorize(credentials) {
+                let loginKey: string | null = null
                 try {
                     // Rate Limiting (5 attempts per 15 minutes per IP)
                     // headers() is async since Next 15.
@@ -100,7 +101,14 @@ export const authOptions: NextAuthOptions = {
                     // through there (checked its actual call site, not just the
                     // .d.ts, which under-declares what's available either way).
                     const cookieHeader = headerList.get('cookie')
-                    const { limited, resetAt } = await RateLimiter.getLimitData(`login:${ip}`, 5, 15 * 60 * 1000)
+                    // Counted first and handed back below when the attempt turns
+                    // out not to be a failure: the step that only asks for the
+                    // two-factor code, and a sign-in that succeeds. Only wrong
+                    // passwords and wrong codes use up the five — otherwise two
+                    // two-factor sign-ins in a row locked the account out, and a
+                    // whole office behind one address shared five sign-ins.
+                    loginKey = `login:${ip}`
+                    const { limited, resetAt } = await RateLimiter.getLimitData(loginKey, 5, 15 * 60 * 1000)
                     if (limited) {
                         const timeStr = new Date(resetAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
                         throw new Error(`Too many login attempts. Please try again at ${timeStr}.`)
@@ -191,6 +199,7 @@ export const authOptions: NextAuthOptions = {
                             cookieHeader,
                         })
 
+                        await RateLimiter.refund(loginKey)
                         const { AuditLogService } = await import("./services/audit-log.service")
                         await AuditLogService.log('LOGIN', 'USER', superAdmin.id, {
                             superAdminId: superAdmin.id,
@@ -286,6 +295,8 @@ export const authOptions: NextAuthOptions = {
                         })
                     } catch (e) { console.error('[AUTH_STATUS_UPDATE_FAIL]', e) }
 
+                    await RateLimiter.refund(loginKey)
+
                     // Audit Log (Success - Centralized)
                     const { AuditLogService } = await import("./services/audit-log.service")
                     await AuditLogService.log('LOGIN', 'USER', validatedUser.id, {
@@ -326,6 +337,7 @@ export const authOptions: NextAuthOptions = {
                     }
 
                 } catch (error) {
+                    if (loginKey && (error as Error)?.message === 'MFA_REQUIRED') await RateLimiter.refund(loginKey)
                     console.error('Auth error:', error)
                     throw error
                 }
