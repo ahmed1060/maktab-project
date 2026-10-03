@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import useSWR from 'swr'
+import { useFaceLegal } from '@/components/FaceLegalPanel'
 import { useLanguage } from '@/context/LanguageContext'
 import { useToast } from '@/context/ToastContext'
 import Modal from '@/components/Modal'
@@ -453,6 +454,8 @@ export function PolicyEditor({ companyId, start, defaultFrom, today, weekday, fr
                     )}
                 </fieldset>
 
+                {companyId && <FacePolicyFields companyId={companyId} policy={p} onChange={setP} />}
+
                 {companyId && <SimulationPreview companyId={companyId} draft={p} />}
 
                 <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
@@ -476,6 +479,36 @@ type Simulation = { month: string; moneyHidden?: boolean; people: { userId: stri
  * over last month's measured days, per person against the policy in force.
  * Nothing is saved. A result for an earlier draft is marked as such.
  */
+/**
+ * Face verification in the company's policy (ATTENDANCE_PLAN.md §9.5): offered
+ * once the system has it and the company has confirmed its legal readiness,
+ * with an optional re-verification interval. Hidden while it can't be offered,
+ * unless this version already offers it.
+ */
+function FacePolicyFields({ companyId, policy, onChange }: { companyId: string; policy: PolicyBody; onChange: (p: PolicyBody) => void }) {
+    const { t } = useLanguage()
+    const { data } = useFaceLegal(companyId)
+    const offerable = !!data && data.data.system !== 'OFF' && data.data.mobileApp !== false && !!data.data.legalConfirmedAt
+    if (!offerable && !policy.faceVerificationAvailable) return null
+    return (
+        <fieldset style={{ border: '1px solid var(--border)', borderRadius: '0.75rem', padding: '0.85rem', margin: 0, display: 'grid', gap: '0.6rem' }}>
+            <legend style={{ fontWeight: 600, padding: '0 0.35rem' }}>{t('face_policy_title')}</legend>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <input type="checkbox" checked={policy.faceVerificationAvailable} onChange={e => onChange({ ...policy, faceVerificationAvailable: e.target.checked })} />
+                {t('face_policy_available')}
+            </label>
+            {policy.faceVerificationAvailable && (
+                <label style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                    <span className="label">{t('face_policy_reverify')}</span>
+                    <input className="input" type="number" min={1} max={36} placeholder={t('face_policy_reverify_never')} value={policy.faceReverifyMonths ?? ''} style={{ width: '8rem' }}
+                        onChange={e => onChange({ ...policy, faceReverifyMonths: e.target.value === '' ? null : Math.max(1, Math.min(36, Math.round(Number(e.target.value) || 1))) })} />
+                </label>
+            )}
+            {!offerable && <span style={{ fontSize: '0.78rem', color: 'var(--warn-fg)' }}>{t('face_policy_not_offerable')}</span>}
+        </fieldset>
+    )
+}
+
 function SimulationPreview({ companyId, draft }: { companyId: string; draft: PolicyBody }) {
     const { t, locale } = useLanguage()
     const { showToast } = useToast()
