@@ -37,6 +37,9 @@ export async function enablePush(device: CheckInDevice, push: PushPlugin | null,
     if (!push) return "UNAVAILABLE"
     const keyFingerprint = await deviceFingerprint(device)
     if (!keyFingerprint) return "UNAVAILABLE"
+    // A build without a push service set up (Android without Firebase) crashes when
+    // asked to register: don't ask the person, and don't register.
+    if (!(await device.info()).pushReady) return "UNAVAILABLE"
     let permission = await push.checkPermissions()
     if (permission.receive === "prompt" || permission.receive === "prompt-with-rationale") permission = await push.requestPermissions()
     if (permission.receive !== "granted") return "DENIED"
