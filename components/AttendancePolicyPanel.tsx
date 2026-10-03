@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import useSWR from 'swr'
+import { useFaceLegal } from '@/components/FaceLegalPanel'
 import { useLanguage } from '@/context/LanguageContext'
 import { useToast } from '@/context/ToastContext'
 import Modal from '@/components/Modal'
@@ -153,6 +154,7 @@ export default function AttendancePolicyPanel({ companyId, readOnly, onChanged }
 
             {editing && (
                 <PolicyEditor
+                    companyId={companyId}
                     start={editing.start}
                     defaultFrom={shown ? firstOfNextMonth(data.today) : data.today}
                     today={data.today}
@@ -298,33 +300,47 @@ const { t } = useLanguage()
 }
 
 
-function PolicyEditor({ start, defaultFrom, today, weekday, fraction, onClose, onSave }: {
+/**
+ * The policy's rules, edited. For a company it asks "from when?" (§6.1) and
+ * can preview the draft on last month (§6.7); for a template (§6.8) it has
+ * neither — a template is a starting point — and shows its own fields above.
+ */
+export function PolicyEditor({ companyId, start, defaultFrom, today, weekday, fraction, title, header, canSave = true, onClose, onSave }: {
+    /** The company whose days a draft is replayed over; none for a template. */
+    companyId?: string
     start: PolicyBody
-    defaultFrom: string
-    today: string
+    /** "From when?" — left out for a template, which has no date. */
+    defaultFrom?: string
+    today?: string
     weekday: (d: number) => string
     fraction: (f: number) => string
+    title?: string
+    header?: React.ReactNode
+    canSave?: boolean
     onClose: () => void
     onSave: (effectiveFrom: string, policy: PolicyBody) => Promise<void>
 }) {
     const { t } = useLanguage()
     const [p, setP] = useState<PolicyBody>(structuredClone(start))
-    const [from, setFrom] = useState(defaultFrom)
+    const [from, setFrom] = useState(defaultFrom ?? '')
     const [saving, setSaving] = useState(false)
 
 
     const ph = p.permissionHours
     return (
-        <Modal isOpen onClose={onClose} title={t('attendance_change_policy')}>
+        <Modal isOpen onClose={onClose} title={title ?? t('attendance_change_policy')}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                <label style={field}>
-                    <span className="label">{t('attendance_from_when')}</span>
-                    <input className="input" type="date" value={from} onChange={e => setFrom(e.target.value)} />
-                    <span style={{ fontSize: '0.78rem', color: 'var(--text-soft)' }}>
-                        {t('attendance_policy_from_hint')}{' '}
-                        <button type="button" style={{ background: 'none', border: 'none', color: 'var(--brand-primary-text)', cursor: 'pointer', padding: 0 }} onClick={() => setFrom(today)}>{t('attendance_from_today')}</button>
-                    </span>
-                </label>
+                {header}
+                {defaultFrom !== undefined && (
+                    <label style={field}>
+                        <span className="label">{t('attendance_from_when')}</span>
+                        <input className="input" type="date" value={from} onChange={e => setFrom(e.target.value)} />
+                        <span style={{ fontSize: '0.78rem', color: 'var(--text-soft)' }}>
+                            {t('attendance_policy_from_hint')}{' '}
+                            {today && <button type="button" style={{ background: 'none', border: 'none', color: 'var(--brand-primary-text)', cursor: 'pointer', padding: 0 }} onClick={() => setFrom(today)}>{t('attendance_from_today')}</button>}
+                        </span>
+                    </label>
+                )}
 
                 <fieldset style={{ border: 'none', padding: 0, margin: 0 }}>
                     <legend className="label">{t('attendance_work_week')}</legend>
@@ -438,14 +454,136 @@ function PolicyEditor({ start, defaultFrom, today, weekday, fraction, onClose, o
                     )}
                 </fieldset>
 
+                {companyId && <FacePolicyFields companyId={companyId} policy={p} onChange={setP} />}
+
+                {companyId && <SimulationPreview companyId={companyId} draft={p} />}
+
                 <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
                     <button className="btn btn-secondary" onClick={onClose}>{t('cancel')}</button>
-                    <button className="btn btn-primary" disabled={saving || p.workWeek.length === 0}
+                    <button className="btn btn-primary" disabled={saving || !canSave || p.workWeek.length === 0}
                         onClick={async () => { setSaving(true); try { await onSave(from, p) } finally { setSaving(false) } }}>
                         {t('save')}
                     </button>
                 </div>
             </div>
         </Modal>
+    )
+}
+
+type Sum = { deductionDays: number; deductionMinor: number | null; overtimeMinor: number | null; days: number }
+/** Money is null for whoever may not see salaries: then the preview is in days. */
+type Simulation = { month: string; moneyHidden?: boolean; people: { userId: string; name: string; current: Sum; draft: Sum }[]; totals: { current: Sum; draft: Sum } }
+
+/**
+ * "Under this rule, last month would have been…" (§6.7): the draft replayed
+ * over last month's measured days, per person against the policy in force.
+ * Nothing is saved. A result for an earlier draft is marked as such.
+ */
+/**
+ * Face verification in the company's policy (ATTENDANCE_PLAN.md §9.5): offered
+ * once the system has it and the company has confirmed its legal readiness,
+ * with an optional re-verification interval. Hidden while it can't be offered,
+ * unless this version already offers it.
+ */
+function FacePolicyFields({ companyId, policy, onChange }: { companyId: string; policy: PolicyBody; onChange: (p: PolicyBody) => void }) {
+    const { t } = useLanguage()
+    const { data } = useFaceLegal(companyId)
+    const offerable = !!data && data.data.system !== 'OFF' && data.data.mobileApp !== false && !!data.data.legalConfirmedAt
+    if (!offerable && !policy.faceVerificationAvailable) return null
+    return (
+        <fieldset style={{ border: '1px solid var(--border)', borderRadius: '0.75rem', padding: '0.85rem', margin: 0, display: 'grid', gap: '0.6rem' }}>
+            <legend style={{ fontWeight: 600, padding: '0 0.35rem' }}>{t('face_policy_title')}</legend>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <input type="checkbox" checked={policy.faceVerificationAvailable} onChange={e => onChange({ ...policy, faceVerificationAvailable: e.target.checked })} />
+                {t('face_policy_available')}
+            </label>
+            {policy.faceVerificationAvailable && (
+                <label style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                    <span className="label">{t('face_policy_reverify')}</span>
+                    <input className="input" type="number" min={1} max={36} placeholder={t('face_policy_reverify_never')} value={policy.faceReverifyMonths ?? ''} style={{ width: '8rem' }}
+                        onChange={e => onChange({ ...policy, faceReverifyMonths: e.target.value === '' ? null : Math.max(1, Math.min(36, Math.round(Number(e.target.value) || 1))) })} />
+                </label>
+            )}
+            {!offerable && <span style={{ fontSize: '0.78rem', color: 'var(--warn-fg)' }}>{t('face_policy_not_offerable')}</span>}
+        </fieldset>
+    )
+}
+
+function SimulationPreview({ companyId, draft }: { companyId: string; draft: PolicyBody }) {
+    const { t, locale } = useLanguage()
+    const { showToast } = useToast()
+    const [result, setResult] = useState<{ for: string; data: Simulation } | null>(null)
+    const [busy, setBusy] = useState(false)
+    const key = JSON.stringify(draft)
+    const money = (minor: number) => (minor / 100).toLocaleString(locale === 'ar' ? 'ar-EG' : 'en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+    const signed = (minor: number) => (minor > 0 ? '+' : minor < 0 ? '−' : '') + money(Math.abs(minor))
+
+    const run = async () => {
+        setBusy(true)
+        try {
+            const res = await fetch('/api/attendance/policy/simulate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ companyId, body: draft }) })
+            const text = await res.text()
+            if (!res.ok) return showToast(apiErrorText(text, t('error_generic')), 'error')
+            setResult({ for: key, data: JSON.parse(text).data })
+        } finally { setBusy(false) }
+    }
+
+    const data = result?.data
+    const hidden = !!data?.moneyHidden
+    const changed = data?.people.filter(x => x.current.deductionDays !== x.draft.deductionDays || x.current.deductionMinor !== x.draft.deductionMinor || x.current.overtimeMinor !== x.draft.overtimeMinor) ?? []
+    const days = (n: number) => t('day_days').replace('{n}', String(n))
+    const signedDays = (n: number) => `${n > 0 ? '+' : n < 0 ? '−' : ''}${days(Math.round(Math.abs(n) * 10_000) / 10_000)}`
+    return (
+        <fieldset style={{ border: '1px solid var(--border)', borderRadius: '0.75rem', padding: '0.85rem', margin: 0, display: 'grid', gap: '0.6rem' }}>
+            <legend style={{ fontWeight: 600, padding: '0 0.35rem' }}>{t('sim_title')}</legend>
+            <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                <span style={{ fontSize: '0.82rem', color: 'var(--text-soft)', flex: 1, minWidth: '12rem' }}>{t('sim_hint')}</span>
+                <button type="button" className="btn btn-secondary" disabled={busy} onClick={run}>{busy ? '…' : t('sim_run')}</button>
+            </div>
+            {data && (
+                <>
+                    {result.for !== key && <p role="status" style={{ margin: 0, color: 'var(--warn-fg)', fontSize: '0.82rem' }}>{t('sim_stale')}</p>}
+                    <p style={{ margin: 0, fontSize: '0.88rem' }}>
+                        {hidden
+                            ? t('sim_summary_days')
+                                .replace('{month}', data.month)
+                                .replace('{now}', days(data.totals.current.deductionDays))
+                                .replace('{then}', days(data.totals.draft.deductionDays))
+                            : t('sim_summary')
+                                .replace('{month}', data.month)
+                                .replace('{now}', money(data.totals.current.deductionMinor ?? 0))
+                                .replace('{then}', money(data.totals.draft.deductionMinor ?? 0))
+                                .replace('{diff}', signed((data.totals.draft.deductionMinor ?? 0) - (data.totals.current.deductionMinor ?? 0)))}
+                        {!hidden && data.totals.current.overtimeMinor !== data.totals.draft.overtimeMinor && (
+                            <> {t('sim_overtime').replace('{diff}', signed((data.totals.draft.overtimeMinor ?? 0) - (data.totals.current.overtimeMinor ?? 0)))}</>
+                        )}
+                    </p>
+                    {data.totals.current.days === 0 ? <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--text-soft)' }}>{t('sim_no_days')}</p>
+                        : changed.length === 0 ? <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--text-soft)' }}>{t('sim_no_change')}</p>
+                            : (
+                                <div style={{ overflowX: 'auto' }}>
+                                    <table className="table" style={{ width: '100%', fontSize: '0.82rem' }}>
+                                        <thead><tr><th>{t('sim_person')}</th><th>{t('sim_now')}</th><th>{t('sim_draft')}</th><th>{t('sim_difference')}</th></tr></thead>
+                                        <tbody>
+                                            {changed.map(x => (
+                                                <tr key={x.userId}>
+                                                    <td>{x.name}</td>
+                                                    <td>{hidden ? days(x.current.deductionDays) : <><bdi>{money(x.current.deductionMinor ?? 0)}</bdi><div style={{ color: 'var(--text-soft)', fontSize: '0.75rem' }}>{days(x.current.deductionDays)}</div></>}</td>
+                                                    <td>{hidden ? days(x.draft.deductionDays) : <><bdi>{money(x.draft.deductionMinor ?? 0)}</bdi><div style={{ color: 'var(--text-soft)', fontSize: '0.75rem' }}>{days(x.draft.deductionDays)}</div></>}</td>
+                                                    <td style={{ fontWeight: 600 }}>
+                                                        <bdi>{hidden ? signedDays(x.draft.deductionDays - x.current.deductionDays) : signed((x.draft.deductionMinor ?? 0) - (x.current.deductionMinor ?? 0))}</bdi>
+                                                        {!hidden && x.current.overtimeMinor !== x.draft.overtimeMinor && (
+                                                            <div style={{ color: 'var(--text-soft)', fontSize: '0.75rem', fontWeight: 400 }}>{t('sim_overtime').replace('{diff}', signed((x.draft.overtimeMinor ?? 0) - (x.current.overtimeMinor ?? 0)))}</div>
+                                                        )}
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )}
+                </>
+            )}
+        </fieldset>
     )
 }

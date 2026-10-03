@@ -89,6 +89,9 @@ describe.skipIf(!ADMIN_URL)("attendance requests, in Postgres", () => {
             await expect(Requests.decidePermission(asked.id, { approve: true }, "e1")).rejects.toEqual(refusal("CANNOT_DECIDE_OWN"))
             await Requests.decidePermission(asked.id, { approve: true }, "a1")
             expect(await day("e1", "2026-10-19")).toMatchObject({ earlyLeaveMinutes: 0, excusedMinutes: 60, deductionMinor: 0 })
+            // Ehab hears it (§13.4), in the bell's own words.
+            const { rows: told } = await db.query(`SELECT "messageKey", "messageParams" FROM "Notification" WHERE "userId" = 'e1' AND type = 'ATTENDANCE_REQUEST'`)
+            expect(told).toEqual([{ messageKey: "notice_att_permission_approved", messageParams: { date: { date: "2026-10-19T00:00:00.000Z" }, start: "16:00", end: "17:00", reason: "" } }])
             await expect(Requests.decidePermission(asked.id, { approve: false }, "a1")).rejects.toEqual(refusal("REQUEST_ALREADY_DECIDED"))
             // An approved permission that has begun stays.
             await expect(Requests.cancelPermission(asked.id, "e1")).rejects.toEqual(refusal("REQUEST_ALREADY_STARTED"))
@@ -248,6 +251,8 @@ describe.skipIf(!ADMIN_URL)("attendance requests, in Postgres", () => {
         it("once rejected adds nothing", async () => {
             const r = await Requests.reportMissingPunch("c1", "e2", { at: "2026-10-13T09:00", direction: "IN", reason: "x" })
             await Requests.decideMissingPunch(r.id, { approve: false, reason: "You were on leave" }, "a1")
+            const { rows: [told] } = await db.query(`SELECT "messageKey", message FROM "Notification" WHERE "userId" = 'e2' AND "relatedId" = $1`, [r.id])
+            expect(told).toEqual({ messageKey: "notice_att_missing_rejected", message: expect.stringContaining("Reason: You were on leave") })
             expect((await db.query(`SELECT status, "punchId" FROM "MissingPunchRequest" WHERE id = $1`, [r.id])).rows[0]).toEqual({ status: "REJECTED", punchId: null })
         })
     })

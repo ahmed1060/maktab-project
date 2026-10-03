@@ -1,0 +1,77 @@
+name: Attendance agent
+
+# Builds the Local Sync Agent for Windows (ATTENDANCE_PLAN.md §17): a single
+# nizmo-agent.exe with Node inside, the WinSW service wrapper, and the files
+# an office needs, zipped as a build artifact. Run by hand (Actions → this
+# workflow → Run workflow); nothing here runs on pushes.
+#
+# Signing: when the repository has the secrets WINDOWS_CERT_PFX (the
+# certificate as base64) and WINDOWS_CERT_PASSWORD, both executables are
+# signed and timestamped. Without them the build is unsigned, and Windows
+# SmartScreen warns the first time it is run.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 20
+    env:
+      # A secret cannot be read in a step's `if`; whether one is set can.
+      HAS_CERT: ${{ secrets.WINDOWS_CERT_PFX != '' }}
+    defaults:
+      run:
+        working-directory: agent
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install build tools
+        run: npm ci
+
+      - name: Build nizmo-agent.exe
+        run: npm run build:exe
+
+      - name: Check it starts
+        run: dist\nizmo-agent.exe version
+
+      - name: Add the service wrapper (WinSW 2.12.0)
+        shell: pwsh
+        run: |
+          Invoke-WebRequest https://github.com/winsw/winsw/releases/download/v2.12.0/WinSW-x64.exe -OutFile dist\nizmo-agent-service.exe
+          # Pinned: the wrapper runs as a service with full rights on the office PC.
+          $hash = (Get-FileHash dist\nizmo-agent-service.exe -Algorithm SHA256).Hash
+          if ($hash -ne "05B82D46AD331CC16BDC00DE5C6332C1EF818DF8CEEFCD49C726553209B3A0DA") { throw "WinSW does not match the pinned hash: $hash" }
+
+      - name: Sign
+        if: ${{ env.HAS_CERT == 'true' }}
+        shell: pwsh
+        env:
+          WINDOWS_CERT_PFX: ${{ secrets.WINDOWS_CERT_PFX }}
+          WINDOWS_CERT_PASSWORD: ${{ secrets.WINDOWS_CERT_PASSWORD }}
+        run: |
+          $pfx = Join-Path $env:RUNNER_TEMP "cert.pfx"
+          [IO.File]::WriteAllBytes($pfx, [Convert]::FromBase64String($env:WINDOWS_CERT_PFX))
+          $signtool = Get-ChildItem "C:\Program Files (x86)\Windows Kits\10\bin\*\x64\signtool.exe" | Sort-Object FullName -Descending | Select-Object -First 1
+          & $signtool.FullName sign /f $pfx /p $env:WINDOWS_CERT_PASSWORD /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 dist\nizmo-agent.exe dist\nizmo-agent-service.exe
+          if ($LASTEXITCODE -ne 0) { throw "signing failed" }
+          Remove-Item $pfx
+
+      - name: Package
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force package | Out-Null
+          Copy-Item dist\nizmo-agent.exe, dist\nizmo-agent-service.exe, service\nizmo-agent-service.xml, agent.example.json, README.md package\
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nizmo-agent-windows
+          path: agent/package
+          retention-days: 30

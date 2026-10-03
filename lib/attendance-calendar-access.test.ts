@@ -40,7 +40,17 @@ vi.mock("@/lib/services/attendance-calendar.service", () => ({
         setObserved: async (companyId: string) => { reached.push(`setObserved:${companyId}`) },
     },
 }))
+vi.mock("@/lib/services/attendance-engine.service", () => ({
+    AttendanceEngineService: {
+        simulate: async (companyId: string, month: string) => {
+            reached.push(`simulate:${companyId}:${month}`)
+            const sum = { deductionDays: 1, deductionMinor: 31000, overtimeMinor: 0, days: 30 }
+            return { month, people: [{ userId: "emp", name: "Ehab", current: sum, draft: { ...sum, deductionDays: 2, deductionMinor: 62000 } }], totals: { current: sum, draft: sum } }
+        },
+    },
+}))
 vi.mock("@/lib/services/attendance-policy.service", () => ({
+    checkBody: (body: unknown) => body,
     AttendancePolicyService: {
         versions: async (companyId: string) => { reached.push(`policy:${companyId}`); return [] },
         templates: async () => [],
@@ -48,6 +58,8 @@ vi.mock("@/lib/services/attendance-policy.service", () => ({
         versionOf: async (id: string) => id === "p1" ? { id: "p1", companyId: "c1" } : id === "p2" ? { id: "p2", companyId: "c2" } : null,
         deleteVersion: async (id: string) => { reached.push(`deletePolicy:${id}`) },
         createTemplate: async () => { reached.push("createTemplate"); return {} },
+        payrollFrom: async (companyId: string) => { reached.push(`payrollFrom:${companyId}`); return { from: null, earliest: null } },
+        setPayrollFrom: async (companyId: string, from: string | null) => { reached.push(`setPayrollFrom:${companyId}:${from}`); return { from, earliest: null } },
     },
 }))
 vi.mock("@/lib/services/public-holiday.service", () => ({
@@ -209,6 +221,46 @@ describe("the policy", () => {
         employee()
         expect((await getPolicy()).status).toBe(404)
         expect(reached).toEqual(["policy:c1", "savePolicy:c1", "deletePolicy:p1", "policy:c1"])
+    })
+
+    it("is replayed over a month by whoever may change it, last month unless asked (§6.7)", async () => {
+        const simulate = async (body: unknown) => (await import("@/app/api/attendance/policy/simulate/route")).POST(withBody("POST", "/api/attendance/policy/simulate", body))
+        admin()
+        expect((await simulate({ body: POLICY.body })).status).toBe(200)
+        expect((await simulate({ body: POLICY.body, month: "2026-08" })).status).toBe(200)
+        expect((await simulate({ body: POLICY.body, month: "August" })).status).toBe(400)
+        viewer()
+        expect((await simulate({ body: POLICY.body })).status).toBe(403)
+        employee()
+        expect((await simulate({ body: POLICY.body })).status).toBe(404)
+        expect(reached).toEqual(["simulate:c1:2026-09", "simulate:c1:2026-08"])
+    })
+
+    it("says from when attendance reaches payroll, set by whoever may change the policy (§12)", async () => {
+        const get = async () => (await import("@/app/api/attendance/payroll-from/route")).GET(new Request(url("/api/attendance/payroll-from")))
+        const put = async (body: unknown) => (await import("@/app/api/attendance/payroll-from/route")).PUT(withBody("PUT", "/api/attendance/payroll-from", body))
+        admin()
+        expect((await get()).status).toBe(200)
+        expect((await put({ from: "2026-11" })).status).toBe(200)
+        expect((await put({ from: null })).status).toBe(200)
+        viewer()
+        expect((await get()).status).toBe(200)
+        expect((await put({ from: "2026-11" })).status).toBe(403)
+        employee()
+        expect((await get()).status).toBe(404)
+        expect(reached).toEqual(["payrollFrom:c1", "setPayrollFrom:c1:2026-11", "setPayrollFrom:c1:null", "payrollFrom:c1"])
+    })
+
+    it("shows money in the preview only to whoever may see the company's salaries (review on #15)", async () => {
+        const simulate = async () => (await (await import("@/app/api/attendance/policy/simulate/route")).POST(withBody("POST", "/api/attendance/policy/simulate", { body: POLICY.body }))).json()
+        admin()
+        expect((await simulate()).data.people[0].draft).toEqual({ deductionDays: 2, deductionMinor: 62000, overtimeMinor: 0, days: 30 })
+        // Allowed to edit settings, not to see salaries: days only.
+        signIn({ id: "set", role: "EMPLOYEE", companyId: "c1", grants: { "settings.view": "COMPANY", "settings.edit": "COMPANY" } })
+        const hidden = (await simulate()).data
+        expect(hidden.moneyHidden).toBe(true)
+        expect(hidden.people[0].draft).toEqual({ deductionDays: 2, days: 30, deductionMinor: null, overtimeMinor: null })
+        expect(hidden.totals.current.deductionMinor).toBeNull()
     })
 
     it("has templates only the Super Admin keeps", async () => {

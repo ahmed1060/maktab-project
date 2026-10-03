@@ -87,10 +87,24 @@ describe("measuring a day", () => {
     })
 })
 
+describe("excused on the exceptions screen (§13.1)", () => {
+    it("excuses the whole lateness or early leave, and records it as excused", () => {
+        const day = measure(work(), [p("2026-10-04T10:30:00"), p("2026-10-04T15:00:00")], { excused: { lateness: true, earlyLeave: true } })
+        expect(day).toMatchObject({ lateMinutes: 0, earlyLeaveMinutes: 0, excusedMinutes: 90 + 120 })
+    })
+
+    it("charges nothing for an excused absence, which stays an absence", () => {
+        const absent = measure(work(), [], { excused: { absence: true } })
+        expect(absent).toMatchObject({ status: "ABSENT", excusedAbsence: true })
+        const [priced] = priceMonth([{ day: absent, policy: STANDARD_OFFICE, monthlyMinor: 930_000, daysInMonth: 31, paidMinutes: 420 }])
+        expect(priced).toMatchObject({ absenceDays: 0, deductionMinor: 0 })
+    })
+})
+
 describe("pricing a month", () => {
     const day = (date: string, m: Partial<MeasuredDay>): MeasuredDay => ({
         date, status: "PRESENT", punchCount: 2, firstIn: null, lastOut: null, workedMinutes: 480,
-        lateMinutes: 0, earlyLeaveMinutes: 0, overtimeMinutes: 0, excusedMinutes: 0, unpaidHoliday: false, ...m,
+        lateMinutes: 0, earlyLeaveMinutes: 0, overtimeMinutes: 0, excusedMinutes: 0, unpaidHoliday: false, excusedAbsence: false, ...m,
     })
     // 9,300.00 a month in a 31-day month: 300.00 a day, 30000 minor.
     const input = (d: MeasuredDay, extra: Partial<PricingInput> = {}): PricingInput =>
@@ -151,6 +165,17 @@ describe("pricing a month", () => {
         expect(holiday.overtimeMinor).toBe(Math.round(30000 * 120 / 420 * 3))
         const [short] = priceMonth([input(day("2026-10-04", { overtimeMinutes: 20 }), { policy: noApproval })])
         expect(short).toMatchObject({ overtimeStatus: "NOT_COUNTED", overtimeMinor: 0 })
+    })
+
+    it("splits a day's deduction by its cause, each part rounded alone, the whole their sum (§12.2)", () => {
+        // A third of a day's pay three ways, at 100.00 a day (3,100.00 over 31 days).
+        const rule = { enabled: true, graceMinutes: 0, mode: "BANDS" as const, bands: [{ fromMinutes: 1, toMinutes: null, dayFraction: 1 / 3 }], freePerMonth: 0, escalation: null, monthlyCapDays: null }
+        const policy: PolicyBody = { ...STANDARD_OFFICE, lateness: rule, earlyLeave: rule }
+        const [d] = priceMonth([input(day("2026-10-04", { lateMinutes: 10, earlyLeaveMinutes: 10 }), { policy, monthlyMinor: 310_000 })])
+        expect(d.deductionParts).toEqual({ lateness: 3333, earlyLeave: 3333, absence: 0 })
+        expect(d.deductionMinor).toBe(6666)
+        const [a] = priceMonth([input(day("2026-10-05", { status: "ABSENT" }), { monthlyMinor: 310_000 })])
+        expect(a.deductionParts).toEqual({ lateness: 0, earlyLeave: 0, absence: 10000 })
     })
 
     it("pays approved overtime only up to what was worked, and rejected overtime not at all (P0.6)", () => {

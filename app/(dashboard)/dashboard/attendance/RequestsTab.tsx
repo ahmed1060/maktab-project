@@ -5,6 +5,7 @@ import { useSession } from 'next-auth/react'
 import useSWR from 'swr'
 import { fetcher } from '@/lib/swr-fetcher'
 import { useCan } from '@/lib/useCan'
+import { FlaggedFaceModal } from '@/components/FacePhoto'
 import { useLanguage } from '@/context/LanguageContext'
 import { useToast } from '@/context/ToastContext'
 import LoadingSpinner from '@/components/LoadingSpinner'
@@ -30,6 +31,12 @@ type Waiting = { userId: string; name: string; teamLeaderId: string | null; date
 type Decision = { id: string; userId: string; name: string; teamLeaderId: string | null; date: string; status: 'APPROVED' | 'REJECTED'; approvedMinutes: number; note: string | null }
 type Balance = { enabled: boolean; types: string[]; allowanceMinutes: number; carriedMinutes: number; approvedMinutes: number; pendingMinutes: number; remainingMinutes: number; requests: number; maxRequests: number | null; minPerRequestMinutes: number; maxPerRequestMinutes: number }
 type Person = { id: string; name: string; teamLeaderId: string | null }
+type FlaggedRow = {
+    id: string; userId: string; name: string; teamLeaderId: string | null; at: string; flagReasons: string[]
+    checkIn: { latitude?: number; longitude?: number; distanceMeters?: number; accuracyMeters?: number; ip?: string | null } | null
+    workLocation: { name: string } | null; phone: { model: string | null; platform: string } | null
+}
+type PhoneRow = { id: string; userId: string; name: string; teamLeaderId: string | null; platform: 'ANDROID' | 'IOS'; model: string | null; appVersion: string | null; attested: boolean; status: 'PENDING' | 'ACTIVE'; requestedAt: string; decidedAt: string | null; held: number }
 
 const STATUS_COLOR: Record<Status, string> = { PENDING: 'var(--warn-fg)', APPROVED: 'var(--ok-fg)', REJECTED: 'var(--danger-fg)', CANCELLED: 'var(--text-soft)' }
 const TYPE_KEY: Record<string, TranslationKey> = { LATE_ARRIVAL: 'audit_value_LATE_ARRIVAL', EARLY_LEAVE: 'audit_value_EARLY_LEAVE', MIDDAY: 'audit_value_MIDDAY' }
@@ -43,6 +50,7 @@ export default function RequestsTab({ q, companyId, today }: { q: string; compan
     const asks = session?.user?.role !== 'SUPER_ADMIN'
     return (
         <div style={{ display: 'grid', gap: '1rem' }}>
+            {asks && <MyPhone />}
             {asks && <MyRequests today={today} />}
             <ToDecide q={q} companyId={companyId} today={today} />
         </div>
@@ -50,6 +58,50 @@ export default function RequestsTab({ q, companyId, today }: { q: string; compan
 }
 
 // --- one's own -----------------------------------------------------------------
+
+/**
+ * The phone one checks in from (ATTENDANCE_PLAN.md §9.2, §9.3): registered in
+ * the app; seen here, and a new one waiting can be cancelled. Not there for a
+ * company without the Mobile App add-on.
+ */
+function MyPhone() {
+    const { t } = useLanguage()
+    const { showToast } = useToast()
+    const [cancelling, setCancelling] = useState(false)
+    const { data, error, mutate } = useSWR('/api/attendance/phone', fetcher)
+    if (error || !data?.data) return null
+    const { active, pending } = data.data as { active: { model: string | null; platform: string } | null; pending: { model: string | null; platform: string } | null }
+    const label = (ph: { model: string | null; platform: string }) => ph.model || t(`audit_value_${ph.platform}` as TranslationKey)
+    const withdraw = async () => {
+        setCancelling(false)
+        const r = await send('/api/attendance/phone', { method: 'DELETE' }, t('punch_failed'))
+        if (!r.ok) return showToast(r.error, 'error')
+        showToast(t('req_my_phone_withdrawn'), 'success')
+        mutate()
+    }
+    return (
+        <section className="glass" style={{ ...box, gap: '0.5rem' }}>
+            <h2 style={{ margin: 0, fontSize: '1.05rem' }}>{t('req_my_phone')}</h2>
+            {!active && !pending && <p style={{ margin: 0, ...soft }}>{t('req_my_phone_none')}</p>}
+            {active && <p style={{ margin: 0, fontSize: '0.88rem' }}>{t('req_my_phone_in_use').replace('{model}', label(active))}</p>}
+            {pending && (
+                <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                    <p style={{ margin: 0, fontSize: '0.88rem', flex: '1 1 16rem' }}>{t('req_my_phone_waiting').replace('{model}', label(pending))}</p>
+                    <button className="btn btn-secondary" style={small} onClick={() => setCancelling(true)}>{t('req_my_phone_withdraw')}</button>
+                </div>
+            )}
+            <ConfirmModal
+                isOpen={cancelling}
+                title={t('req_my_phone_withdraw')}
+                message={t('req_my_phone_withdraw_confirm')}
+                confirmText={t('req_my_phone_withdraw')}
+                variant="danger"
+                onConfirm={withdraw}
+                onCancel={() => setCancelling(false)}
+            />
+        </section>
+    )
+}
 
 function MyRequests({ today }: { today: string }) {
     const { t } = useLanguage()
@@ -166,17 +218,23 @@ function StatusText({ status, why }: { status: Status; why: string | null }) {
     )
 }
 
-function AskPermissionModal({ today, onClose, onDone }: { today: string; onClose: () => void; onDone: () => void }) {
+/** Asks for permission hours; from a day on the Days tab, with its times filled in (§13.3). */
+export function AskPermissionModal({ today, initial, onClose, onDone }: {
+    today: string
+    initial?: { date: string; type: 'LATE_ARRIVAL' | 'EARLY_LEAVE'; start: string; end: string }
+    onClose: () => void
+    onDone: () => void
+}) {
     const { t } = useLanguage()
     const { showToast } = useToast()
-    const [date, setDate] = useState(today)
+    const [date, setDate] = useState(initial?.date ?? today)
     // The rules and balance of the chosen day's month, under the policy in force that day (review on #14).
     const { data: balanceBody } = useSWR(/^\d{4}-\d{2}-\d{2}$/.test(date) ? `/api/attendance/permissions/balance?date=${date}` : null, fetcher)
     const balance: Balance | undefined = balanceBody?.data
-    const [picked, setType] = useState('')
+    const [picked, setType] = useState<string>(initial?.type ?? '')
     const type = balance?.types.includes(picked) ? picked : balance?.types[0] ?? ''
-    const [start, setStart] = useState('')
-    const [end, setEnd] = useState('')
+    const [start, setStart] = useState(initial?.start ?? '')
+    const [end, setEnd] = useState(initial?.end ?? '')
     const [reason, setReason] = useState('')
     const [busy, setBusy] = useState(false)
 
@@ -231,12 +289,18 @@ function AskPermissionModal({ today, onClose, onDone }: { today: string; onClose
     )
 }
 
-function ReportMissingModal({ today, onClose, onDone }: { today: string; onClose: () => void; onDone: () => void }) {
+/** Reports a punch one forgot; from a day on the Days tab, for that day (§13.3). */
+export function ReportMissingModal({ today, initial, onClose, onDone }: {
+    today: string
+    initial?: { date: string; direction?: 'IN' | 'OUT' }
+    onClose: () => void
+    onDone: () => void
+}) {
     const { t } = useLanguage()
     const { showToast } = useToast()
-    const [date, setDate] = useState(today)
+    const [date, setDate] = useState(initial?.date ?? today)
     const [time, setTime] = useState('')
-    const [direction, setDirection] = useState<'' | 'IN' | 'OUT'>('')
+    const [direction, setDirection] = useState<'' | 'IN' | 'OUT'>(initial?.direction ?? '')
     const [reason, setReason] = useState('')
     const [busy, setBusy] = useState(false)
 
@@ -287,33 +351,41 @@ function ReportMissingModal({ today, onClose, onDone }: { today: string; onClose
 
 // --- to decide -------------------------------------------------------------------
 
-type Rejecting = { kind: 'permission' | 'missing'; id: string } | { kind: 'overtime'; userId: string; date: string }
+type Rejecting = { kind: 'permission' | 'missing' | 'phone' | 'checkin'; id: string } | { kind: 'overtime'; userId: string; date: string }
 
 function ToDecide({ q, companyId, today }: { q: string; companyId: string | null; today: string }) {
     const { t } = useLanguage()
     const { showToast } = useToast()
     const p = useCan()
+    // A flagged check-in whose face check failed, open beside the reference photo (§13.8).
+    const [faceOf, setFaceOf] = useState<{ id: string; name: string } | null>(null)
     const { data: session } = useSession()
     const me = session?.user?.id
     const decidesPermissions = p.can('attendance.approve_permissions')
     const decidesOvertime = p.can('attendance.approve_overtime')
     const decidesMissing = p.can('attendance.correct')
+    const decidesPhones = p.can('attendance.approve_devices')
     const [month, setMonth] = useState(() => today.slice(0, 7))
     const [rejecting, setRejecting] = useState<Rejecting | null>(null)
     const [approvingAhead, setApprovingAhead] = useState(false)
+    const [revoking, setRevoking] = useState<PhoneRow | null>(null)
     const [busy, setBusy] = useState(false)
 
     const { data: permBody, mutate: refreshPerms } = useSWR(decidesPermissions ? `/api/attendance/permissions?${q}status=PENDING` : null, fetcher)
     const { data: missBody, mutate: refreshMissing } = useSWR(decidesMissing ? `/api/attendance/missing-punches?${q}status=PENDING` : null, fetcher)
     const { data: otBody, mutate: refreshOvertime } = useSWR(decidesOvertime && month ? `/api/attendance/overtime?${q}from=${month}-01&to=${lastDayOf(month)}` : null, fetcher)
+    const { data: flagBody, error: flagError, mutate: refreshFlagged } = useSWR(decidesMissing ? `/api/attendance/flagged?${q}` : null, fetcher)
+    const { data: phoneBody, error: phoneError, mutate: refreshPhones } = useSWR(decidesPhones ? `/api/attendance/phones?${q}` : null, fetcher)
     const { data: peopleBody } = useSWR(decidesOvertime ? `/api/attendance/people?${q}` : null, fetcher)
     const people: Person[] = useMemo(() => peopleBody?.data?.people ?? [], [peopleBody])
     const permissions: PermissionRow[] | null = permBody ? permBody.data?.requests ?? [] : null
     const missing: MissingRow[] | null = missBody ? missBody.data?.requests ?? [] : null
     const waiting: Waiting[] | null = otBody ? otBody.data?.waiting ?? [] : null
     const decisions: Decision[] = otBody?.data?.decisions ?? []
+    const phones: PhoneRow[] = phoneBody?.data?.phones ?? []
+    const flagged: FlaggedRow[] = flagBody?.data?.checkIns ?? []
 
-    if (!decidesPermissions && !decidesOvertime && !decidesMissing) return null
+    if (!decidesPermissions && !decidesOvertime && !decidesMissing && !decidesPhones) return null
     const companyField = companyId ? { companyId } : {}
 
     const act = async (url: string, init: RequestInit, done: TranslationKey, refresh: () => void) => {
@@ -331,6 +403,10 @@ function ToDecide({ q, companyId, today }: { q: string; companyId: string | null
         approve ? 'req_approved' : 'req_rejected',
         kind === 'permission' ? refreshPerms : refreshMissing,
     )
+    const decideCheckIn = (id: string, accept: boolean, reason?: string) =>
+        act(`/api/attendance/flagged/${id}/decide`, json('POST', { accept, reason: reason ?? null }), accept ? 'req_approved' : 'req_rejected', refreshFlagged)
+    const decidePhone = (id: string, approve: boolean, reason?: string) =>
+        act(`/api/attendance/phones/${id}/decide`, json('POST', { approve, reason: reason ?? null }), approve ? 'req_approved' : 'req_rejected', refreshPhones)
     const decideOvertime = (userId: string, date: string, status: 'APPROVED' | 'REJECTED', note?: string) =>
         act('/api/attendance/overtime', json('POST', { ...companyField, userId, date, status, note: note ?? null }), status === 'APPROVED' ? 'req_approved' : 'req_rejected', refreshOvertime)
 
@@ -339,6 +415,8 @@ function ToDecide({ q, companyId, today }: { q: string; companyId: string | null
         setRejecting(null)
         if (!r) return
         if (r.kind === 'overtime') return decideOvertime(r.userId, r.date, 'REJECTED', reason)
+        if (r.kind === 'phone') return decidePhone(r.id, false, reason)
+        if (r.kind === 'checkin') return decideCheckIn(r.id, false, reason)
         return decide(r.kind, r.id, false, reason)
     }
     const approveReject = (onApprove: () => void, onReject: () => void) => (
@@ -401,6 +479,92 @@ function ToDecide({ q, companyId, today }: { q: string; companyId: string | null
                             </table>
                         </div>
                     )}
+                </>
+            )}
+
+            {/* Check-ins the app flagged for the company to decide (§9.6): shown while
+                loading or failing, and once loaded only when there is one. */}
+            {decidesMissing && (!flagBody || flagged.length > 0) && (
+                <>
+                    <h3 style={{ margin: 0, fontSize: '0.95rem' }}>{t('req_flagged')}</h3>
+                    <p style={{ margin: 0, ...soft }}>{t('req_flagged_hint')}</p>
+                    {!flagBody ? (flagError ? <p style={{ margin: 0, ...soft, color: 'var(--danger-fg)' }}>{t('error_generic')}</p> : <LoadingSpinner />) : (
+                        <div style={{ overflowX: 'auto' }}>
+                            <table className="table" style={{ width: '100%', fontSize: '0.84rem' }}>
+                                <thead><tr><th>{t('punch_person')}</th><th>{t('punch_time')}</th><th>{t('req_flagged_why')}</th><th /></tr></thead>
+                                <tbody>
+                                    {flagged.map(f => (
+                                        <tr key={f.id}>
+                                            <td>{f.name}</td>
+                                            <td style={{ whiteSpace: 'nowrap' }}>
+                                                <bdi>{f.at.slice(0, 10)} {f.at.slice(11, 16)}</bdi>
+                                                <div style={soft}>{f.workLocation?.name ?? '—'}</div>
+                                            </td>
+                                            <td>
+                                                {f.flagReasons.map(r => t(`att_flag_${r}` as TranslationKey)).join(', ')}
+                                                {f.flagReasons.includes('FACE_UNVERIFIED') && !mine(f.userId) && p.companyWide('attendance.approve_face') && (
+                                                    <> · <button type="button" style={{ background: 'none', border: 'none', padding: 0, color: 'var(--brand-primary-text)', cursor: 'pointer' }} onClick={() => setFaceOf({ id: f.id, name: f.name })}>{t('face_flag_see')}</button></>
+                                                )}
+                                                <div style={soft}>{[
+                                                    f.checkIn?.distanceMeters !== undefined && t('req_flagged_distance').replace('{n}', String(f.checkIn.distanceMeters)),
+                                                    f.checkIn?.accuracyMeters !== undefined && t('req_flagged_accuracy').replace('{n}', String(Math.round(f.checkIn.accuracyMeters))),
+                                                    f.checkIn?.ip,
+                                                ].filter(Boolean).join(' · ')}
+                                                    {f.checkIn?.latitude !== undefined && f.checkIn?.longitude !== undefined && (
+                                                        <> · <a href={`https://www.openstreetmap.org/?mlat=${f.checkIn.latitude}&mlon=${f.checkIn.longitude}#map=17/${f.checkIn.latitude}/${f.checkIn.longitude}`} target="_blank" rel="noopener noreferrer">{t('att_loc_map')}</a></>
+                                                    )}
+                                                </div>
+                                            </td>
+                                            <td>{!mine(f.userId) && p.canFor('attendance.correct', f.userId, f.teamLeaderId) && (
+                                                approveReject(() => decideCheckIn(f.id, true), () => setRejecting({ kind: 'checkin', id: f.id }))
+                                            )}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
+                    {faceOf && <FlaggedFaceModal punchId={faceOf.id} name={faceOf.name} onClose={() => setFaceOf(null)} />}
+                </>
+            )}
+
+            {/* While loading, or failing to, it says so; loaded, only once somebody has a phone: a company without the app has nothing here (§9.3). */}
+            {decidesPhones && !phoneBody && (
+                <>
+                    <h3 style={{ margin: 0, fontSize: '0.95rem' }}>{t('req_phones')}</h3>
+                    {phoneError ? <p style={{ margin: 0, ...soft, color: 'var(--danger-fg)' }}>{t('error_generic')}</p> : <LoadingSpinner />}
+                </>
+            )}
+            {decidesPhones && phones.length > 0 && (
+                <>
+                    <h3 style={{ margin: 0, fontSize: '0.95rem' }}>{t('req_phones')}</h3>
+                    <p style={{ margin: 0, ...soft }}>{t('req_phones_hint')}</p>
+                    <div style={{ overflowX: 'auto' }}>
+                        <table className="table" style={{ width: '100%', fontSize: '0.84rem' }}>
+                            <thead><tr><th>{t('punch_person')}</th><th>{t('req_phone')}</th><th>{t('req_phone_state')}</th><th /></tr></thead>
+                            <tbody>
+                                {phones.map(ph => (
+                                    <tr key={ph.id}>
+                                        <td>{ph.name}</td>
+                                        <td>
+                                            {ph.model || t(`audit_value_${ph.platform}` as TranslationKey)}
+                                            <div style={soft}>{[t(`audit_value_${ph.platform}` as TranslationKey), ph.appVersion && `v${ph.appVersion}`].filter(Boolean).join(' · ')}</div>
+                                            {!ph.attested && <div style={{ ...soft, color: 'var(--warn-fg)' }}>{t('req_phone_unverified')}</div>}
+                                        </td>
+                                        <td>
+                                            {ph.status === 'PENDING' ? <span style={{ color: 'var(--warn-fg)' }}>{t('req_phone_waiting')}</span> : <span style={{ color: 'var(--ok-fg)' }}>{t('req_phone_in_use')}</span>}
+                                            {ph.status === 'PENDING' && ph.held > 0 && <div style={soft}>{t('req_phone_held').replace('{n}', String(ph.held))}</div>}
+                                        </td>
+                                        <td>{!mine(ph.userId) && p.canFor('attendance.approve_devices', ph.userId, ph.teamLeaderId) && (
+                                            ph.status === 'PENDING'
+                                                ? approveReject(() => decidePhone(ph.id, true), () => setRejecting({ kind: 'phone', id: ph.id }))
+                                                : <div style={{ textAlign: 'end' }}><button className="btn btn-secondary" style={{ ...small, color: 'var(--danger-fg)' }} disabled={busy} onClick={() => setRevoking(ph)}>{t('req_phone_revoke')}</button></div>
+                                        )}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
                 </>
             )}
 
@@ -471,6 +635,16 @@ function ToDecide({ q, companyId, today }: { q: string; companyId: string | null
                     onDone={() => { setApprovingAhead(false); refreshOvertime() }}
                 />
             )}
+            <ConfirmModal
+                isOpen={!!revoking}
+                title={t('req_phone_revoke')}
+                message={t('req_phone_revoke_confirm').replace('{name}', revoking?.name ?? '')}
+                confirmText={t('req_phone_revoke')}
+                variant="danger"
+                reason={{ label: t('punch_reason'), minLength: 0 }}
+                onConfirm={(reason?: string) => { const ph = revoking; setRevoking(null); if (ph) act(`/api/attendance/phones/${ph.id}/revoke`, json('POST', { reason: reason ?? null }), 'req_phone_revoked', refreshPhones) }}
+                onCancel={() => setRevoking(null)}
+            />
             <ConfirmModal
                 isOpen={!!rejecting}
                 title={t('req_reject')}

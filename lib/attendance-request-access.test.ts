@@ -48,6 +48,27 @@ vi.mock("@/lib/services/attendance-request.service", () => ({
     },
 }))
 
+vi.mock("@/lib/services/attendance-exception.service", () => ({
+    AttendanceExceptionService: {
+        list: async (companyId: string, _q: any, visible: any, waiting: any) => {
+            reached.push(`exceptions:${companyId}:${visible.kind}:${waiting.permissions?.kind ?? "-"}:${waiting.missing?.kind ?? "-"}:${waiting.unmatched}`)
+            const day = (userId: string) => ({ userId, teamLeaderId: null, deductionMinor: 15000, overtimeMinor: 2000 })
+            return { late: [day("emp"), day("hr")], early: [], absent: [day("emp")], incomplete: [], overtime: [day("emp")], decided: [], counts: {} }
+        },
+        decide: async (companyId: string, input: any) => { reached.push(`dayDecision:${companyId}:${input.userId}:${input.subject}:${input.outcome}`); return {} },
+        decisionOf: async (id: string) => REQUESTS[id] ?? null,
+        withdraw: async (id: string) => { reached.push(`withdrawDay:${id}`) },
+    },
+}))
+
+vi.mock("@/lib/services/attendance-discrepancy.service", () => ({
+    AttendanceDiscrepancyService: {
+        list: async (companyId: string, page: { after?: string | null }) => { reached.push(`discrepancies:${companyId}${page.after ? `:${page.after}` : ""}`); return { open: [], openCount: 0, nextCursor: null, resolved: [] } },
+        of: async (id: string) => ({ x1: { id: "x1", companyId: "c1", resolvedAt: null }, x2: { id: "x2", companyId: "c2", resolvedAt: null } } as any)[id] ?? null,
+        resolve: async (id: string) => { reached.push(`resolve:${id}`) },
+    },
+}))
+
 type Pkg = { hasCompanyManagement: boolean; hasHR: boolean; hasAttendanceTerminals?: boolean } | null
 const ATTENDANCE: Pkg = { hasCompanyManagement: false, hasHR: true, hasAttendanceTerminals: true }
 const HR_ONLY: Pkg = { hasCompanyManagement: false, hasHR: true }
@@ -193,5 +214,83 @@ describe("deciding", () => {
         expect((await decideOvertime("emp", { companyId: "c1" })).status).toBe(200)
         expect((await decideOvertime("emp", { companyId: "c3" })).status).toBe(404)
         expect(reached).toEqual(["decide:r1:true", "overtime:c1:emp:APPROVED"])
+    })
+})
+
+describe("daily exceptions (§13.1)", () => {
+    const exceptions = async (query = "from=2026-10-01&to=2026-10-19") => (await import("@/app/api/attendance/exceptions/route")).GET(new Request(url(`/api/attendance/exceptions?${query}`)))
+    const decideDay = async (userId: string, extra: Record<string, unknown> = {}) =>
+        (await import("@/app/api/attendance/decisions/route")).POST(withBody("POST", "/api/attendance/decisions", { userId, date: "2026-10-07", subject: "LATENESS", outcome: "EXCUSED", reason: "Metro strike", ...extra }))
+    const withdrawDay = async (id: string) => (await import("@/app/api/attendance/decisions/[id]/route")).DELETE(withBody("DELETE", `/api/attendance/decisions/${id}`, {}), params(id))
+    const teamViewer = () => signIn({ id: "tl", role: "EMPLOYEE", companyId: "c1", grants: { "attendance.view_team": "TEAM", "attendance.correct": "TEAM" } })
+
+    it("are listed for whoever sees other people's attendance, at that scope, with what waits for them elsewhere", async () => {
+        admin()
+        expect((await exceptions()).status).toBe(200)
+        teamViewer()
+        expect((await exceptions()).status).toBe(200)
+        employee()
+        expect((await exceptions()).status).toBe(403)
+        expect(reached).toEqual(["exceptions:c1:COMPANY:COMPANY:COMPANY:true", "exceptions:c1:TEAM:-:TEAM:false"])
+    })
+
+    it("show what a day cost only to whoever may see that person's pay (review on #15)", async () => {
+        const money = async () => {
+            const body = (await (await exceptions()).json()).data
+            return [...body.late, ...body.absent, ...body.overtime].map((d: any) => [d.userId, d.deductionMinor, d.overtimeMinor])
+        }
+        admin()
+        expect(await money()).toEqual([["emp", 15000, 2000], ["hr", 15000, 2000], ["emp", 15000, 2000], ["emp", 15000, 2000]])
+        // Attendance at company scope, but no salary.view: minutes, not money — except one's own.
+        signIn({ id: "hr", role: "EMPLOYEE", companyId: "c1", grants: { "attendance.view_team": "COMPANY", "attendance.correct": "COMPANY" } })
+        expect(await money()).toEqual([["emp", null, null], ["hr", 15000, 2000], ["emp", null, null], ["emp", null, null]])
+    })
+
+    it("ask for real dates, in order, and at most two months", async () => {
+        admin()
+        expect((await exceptions("from=2026-10-19&to=2026-10-01")).status).toBe(400)
+        expect((await exceptions("from=2026-01-01&to=2026-12-31")).status).toBe(400)
+        expect(reached).toEqual([])
+    })
+
+    it("are decided by whoever corrects that person, never on their own day, never in another company", async () => {
+        admin()
+        expect((await decideDay("emp")).status).toBe(201)
+        expect((await decideDay("emp", { subject: "ABSENCE", outcome: "ACCEPTED", reason: null })).status).toBe(201)
+        expect((await decideDay("admin")).status).toBe(403)
+        expect((await decideDay("other")).status).toBe(404)
+        expect((await decideDay("emp", { subject: "LUNCH" })).status).toBe(400)
+        expect((await withdrawDay("r1")).status).toBe(200)
+        expect((await withdrawDay("rOwn")).status).toBe(403)
+        expect((await withdrawDay("rOther")).status).toBe(404)
+        teamViewer()
+        expect((await decideDay("emp")).status).toBe(201)
+        expect((await decideDay("loner")).status).toBe(403)
+        employee()
+        expect((await decideDay("loner")).status).toBe(403)
+        expect(reached).toEqual(["dayDecision:c1:emp:LATENESS:EXCUSED", "dayDecision:c1:emp:ABSENCE:ACCEPTED", "withdrawDay:r1", "dayDecision:c1:emp:LATENESS:EXCUSED"])
+    })
+})
+
+describe("attendance changed after payroll (§12.3)", () => {
+    const list = async () => (await import("@/app/api/attendance/discrepancies/route")).GET(new Request(url("/api/attendance/discrepancies")))
+    const resolve = async (id: string, reason = "Refunded in October") =>
+        (await import("@/app/api/attendance/discrepancies/[id]/resolve/route")).POST(withBody("POST", `/api/attendance/discrepancies/${id}/resolve`, { reason }), params(id))
+    const payrollViewer = () => signIn({ id: "acc", role: "EMPLOYEE", companyId: "c1", grants: { "payroll.view": "COMPANY" } })
+
+    it("is seen by whoever sees payroll, and settled by whoever prepares it, in their own company", async () => {
+        admin()
+        expect((await list()).status).toBe(200)
+        // The next page of open ones follows from the last (review on #16).
+        expect((await (await import("@/app/api/attendance/discrepancies/route")).GET(new Request(url("/api/attendance/discrepancies?after=2026-09-08_d1")))).status).toBe(200)
+        expect((await resolve("x1")).status).toBe(200)
+        expect((await resolve("x2")).status).toBe(404)
+        expect((await resolve("nope")).status).toBe(404)
+        payrollViewer()
+        expect((await list()).status).toBe(200)
+        expect((await resolve("x1")).status).toBe(403)
+        employee()
+        expect((await list()).status).toBe(403)
+        expect(reached).toEqual(["discrepancies:c1", "discrepancies:c1:2026-09-08_d1", "resolve:x1", "discrepancies:c1"])
     })
 })

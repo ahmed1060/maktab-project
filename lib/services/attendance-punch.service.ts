@@ -269,12 +269,17 @@ export class AttendancePunchService {
             take: limit,
             select: {
                 id: true, userId: true, hardwareUserId: true, source: true, punchAtLocal: true, direction: true, status: true, note: true,
-                importId: true, receivedAt: true, voidedAt: true, voidReason: true,
+                importId: true, receivedAt: true, voidedAt: true, voidReason: true, flagReasons: true,
                 user: { select: { firstName: true, lastName: true } },
+                device: { select: { name: true } },
+                workLocation: { select: { name: true } },
             },
         })
-        return rows.map(({ user, punchAtLocal, ...r }) => ({
+        return rows.map(({ user, punchAtLocal, device, workLocation, ...r }) => ({
             ...r, at: wallClockText(punchAtLocal), name: user ? `${user.firstName} ${user.lastName}`.trim() : null,
+            // Which terminal, for a punch from one (§17); which place, for a check-in from the app (§9).
+            deviceName: device?.name ?? null,
+            placeName: workLocation?.name ?? null,
         }))
     }
 
@@ -332,6 +337,8 @@ export class AttendancePunchService {
             await lockMonths(tx, punch.companyId, months)
             if ((await lockedMonths(tx, punch.companyId, months)).size > 0) fail("PAYROLL_MONTH_LOCKED")
             await tx.attendancePunch.update({ where: { id }, data: { voidedAt: new Date(), voidedById: actorId, voidReason: reason.trim() } })
+            // A failed face check's frame lives only while its flag is open (§13.8); voiding closes it too.
+            await tx.faceFrame.deleteMany({ where: { punchId: id } })
             await AuditLogService.log("VOID_ATTENDANCE_PUNCH", "ATTENDANCE_PUNCH", id, {
                 tx, ...(await actorOf(tx, actorId)),
                 details: { companyId: punch.companyId, userId: punch.userId, at: wallClockText(punch.punchAtLocal), reason: reason.trim() },
