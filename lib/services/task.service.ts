@@ -6,6 +6,7 @@ import { supabase } from "@/lib/storage"
 import { normalizeJsonInput } from "@/lib/json-input"
 import { SystemSettingsService } from "./system-settings.service"
 import { earliestDeadline } from "@/lib/deadline"
+import { scopesToTeam } from "@/lib/team-scope"
 
 /**
  * TaskService
@@ -483,8 +484,21 @@ export class TaskService {
         const now = new Date()
 
         return await prisma.$transaction(async (tx) => {
-            const task = await tx.task.findUnique({ where: { id } })
+            const task = await tx.task.findUnique({ where: { id }, include: { assignees: { select: { id: true, teamLeaderId: true } } } })
             if (!task) throw new Error("TASK_NOT_FOUND")
+            // A task's penalty falls on one of its own people. The id came
+            // from the request and was never checked against the task: anyone
+            // allowed to penalise one task could take pay from any account,
+            // in any company, by naming it.
+            const target = task.assignees.find(a => a.id === targetUserId)
+            if (!target) throw new Error("NOT_AN_ASSIGNEE")
+            // And a Team Leader's reach is their team. A task shared with
+            // someone outside it is theirs to open, but that person's pay is
+            // not theirs to cut: the same rule as every per-person check
+            // (lib/security.ts, USER).
+            if (scopesToTeam(session.user.role) && target.id !== session.user.id && target.teamLeaderId !== session.user.id) {
+                throw new Error("OUTSIDE_TEAM")
+            }
 
             // Through SalaryService, not a second hand-rolled find-or-create.
             // This block used to compute its own days-in-month and read its own
