@@ -159,6 +159,22 @@ describe.skipIf(!ADMIN_URL)("the app's face verification, against the server", (
         expect(rows).toHaveLength(1)
     })
 
+    it("checks in without the face check when the SDK fails, flagged; not at all when the person cancels (review on #27)", async () => {
+        const verify = face.verify
+        try {
+            face.verify = async () => { throw new Error("SDK_CRASHED") }
+            const server = serverFor("e1")
+            expect(await checkIn(phone, server, "IN", face)).toMatchObject({ outcome: "FLAGGED", reasons: expect.arrayContaining(["FACE_UNVERIFIED"]) })
+            expect(server.sent).toContain("/api/attendance/check-in")
+            face.verify = async () => { throw Object.assign(new Error("closed"), { code: "FACE_CANCELLED" }) }
+            const cancelled = serverFor("e1")
+            await expect(checkIn(phone, cancelled, "OUT", face)).rejects.toMatchObject({ code: "FACE_CANCELLED" })
+            expect(cancelled.sent).not.toContain("/api/attendance/check-in")
+        } finally {
+            face.verify = verify
+        }
+    })
+
     it("on withdrawal, the phone is told to delete its templates, does, and says so; then no key", async () => {
         await Face.withdrawConsent("e1")
         expect(await wrappingKey(phone, face, serverFor("e1"))).toBeNull()

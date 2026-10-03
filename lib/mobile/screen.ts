@@ -57,8 +57,11 @@ export type FaceStatus = {
  * check wait for a review, which the person should know.
  */
 export function faceStep(status: FaceStatus | undefined, here: { phoneActive: boolean; verifier: boolean }):
-    null | "CONSENT" | "WAITING" | "NEEDS_APP" | "ENROL" | "REJECTED" | "REVERIFY" | "READY" {
-    if (!status?.required) return null
+    null | "IDLE" | "CONSENT" | "WAITING" | "NEEDS_APP" | "ENROL" | "REJECTED" | "REVERIFY" | "READY" {
+    if (!status) return null
+    // Not in use for them now (paused, no longer offered or asked), but consent
+    // given stays withdrawable in one tap (review on #27).
+    if (!status.required) return status.consent ? "IDLE" : null
     if (!status.consent) return "CONSENT"
     if (!here.phoneActive) return null
     if (status.pendingReview) return "WAITING"
@@ -66,4 +69,20 @@ export function faceStep(status: FaceStatus | undefined, here: { phoneActive: bo
     const face = status.phone?.faceStatus
     if (face === "APPROVED") return status.reverifyDue ? "REVERIFY" : "READY"
     return face === "REJECTED" ? "REJECTED" : "ENROL"
+}
+
+/**
+ * Whether this phone should ask the server about face templates it holds
+ * while face verification isn't in use for the person: they may have been
+ * told to go (no longer asked, purged) with nothing else ever asking
+ * (review on #27). Paused keeps them; the server says which.
+ */
+export function shouldReconcileTemplates(status: FaceStatus | undefined, here: { phoneActive: boolean; enrolled: boolean }): boolean {
+    if (!status || !here.phoneActive || !here.enrolled) return false
+    return !(status.required && status.consent)
+}
+
+/** Whether the next check-in starts with re-verification: asked for or due, and none sent yet (§9.5). */
+export function reverifyFirst(status: FaceStatus | undefined): boolean {
+    return !!status?.active && status.reverifyDue && !status.pendingReview
 }

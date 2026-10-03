@@ -11,8 +11,8 @@ import { useToast } from '@/context/ToastContext'
 import { fetcher } from '@/lib/swr-fetcher'
 import type { TranslationKey } from '@/lib/translations'
 import { checkInDevice, inNativeApp } from '@/lib/mobile/native'
-import { checkIn, deviceFingerprint, registerPhone, type CheckInAnswer } from '@/lib/mobile/check-in-flow'
-import { answerKey, faceStep, thisPhone, type FaceStatus } from '@/lib/mobile/screen'
+import { checkIn, deviceFingerprint, errorCode, registerPhone, type CheckInAnswer } from '@/lib/mobile/check-in-flow'
+import { answerKey, faceStep, reverifyFirst, shouldReconcileTemplates, thisPhone, type FaceStatus } from '@/lib/mobile/screen'
 import { enrolFace, faceVerifier, wrappingKey } from '@/lib/mobile/face'
 import { enablePush, pushPlugin } from '@/lib/mobile/push'
 import { send, json } from '../attendance/send'
@@ -70,6 +70,22 @@ export default function CheckInPage() {
     const late = answer && answer.outcome !== 'REFUSED' ? answer.late : null
     const { data: balanceBody } = useSWR(late && answer?.outcome !== 'REFUSED' ? `/api/attendance/permissions/balance?date=${answer!.at.slice(0, 10)}` : null, fetcher)
 
+    // Face templates on this phone while face verification isn't in use for
+    // the person: the server may have said they are to go, and nothing else
+    // would ever ask (review on #27). It says whether to delete or keep them.
+    const phoneActive = !!fingerprint && (phoneBody?.data as { active: Phone | null } | undefined)?.active?.keyFingerprint === fingerprint
+    useEffect(() => {
+        if (!device || !face || !faceStatus || !phoneActive) return
+        const quiet = async (url: string, body: unknown) => {
+            const r = await send(url, json('POST', body), '')
+            if (!r.ok) throw new Error(r.error)
+            return r.body
+        }
+        void face.info()
+            .then(i => (shouldReconcileTemplates(faceStatus, { phoneActive, enrolled: i.enrolled }) ? wrappingKey(device, face, quiet) : null))
+            .catch(() => {})
+    }, [device, face, faceStatus, phoneActive])
+
     useEffect(() => {
         setTitle(t('ci_title'))
         setSubtitle(t('ci_hint'))
@@ -82,7 +98,7 @@ export default function CheckInPage() {
         return r.body
     }
     const problem = (e: unknown) => {
-        const code = (e as { code?: string })?.code ?? (e as Error)?.message
+        const code = errorCode(e)
         showToast(code && DEVICE_ERRORS[code] ? t(DEVICE_ERRORS[code]) : (e as Error)?.message || t('ci_failed'), 'error')
     }
 
@@ -101,6 +117,15 @@ export default function CheckInPage() {
         setBusy(direction)
         setAnswer(null)
         try {
+            // Asked to re-verify: the check-in starts with it (§9.5). Not doing it
+            // doesn't stop the check-in, which still counts against the approved face.
+            if (face && reverifyFirst(faceStatus)) {
+                try {
+                    await enrolFace(device!, face, post)
+                    showToast(t('face_ci_sent'), 'success')
+                } catch (e) { if (errorCode(e) !== 'FACE_CANCELLED') problem(e) }
+                void refreshFace()
+            }
             setAnswer(await checkIn(device!, post, direction, faceStatus?.active ? face : null))
         } catch (e) { problem(e) } finally { setBusy(null) }
     }
@@ -246,13 +271,14 @@ function FaceCard({ step, active, busy, working, onConsent, onWithdraw, onEnrol 
         </section>
     )
     const text: Record<Exclude<typeof step, 'CONSENT'>, TranslationKey> = {
-        WAITING: 'face_ci_waiting', NEEDS_APP: 'face_ci_needs_app', ENROL: 'face_ci_enrol_hint',
-        REJECTED: 'face_ci_rejected', REVERIFY: 'face_ci_reverify_hint', READY: 'face_ci_on',
+        // A re-verification waiting: check-ins wait for a review until it is approved.
+        WAITING: active ? 'face_ci_waiting_reverify' : 'face_ci_waiting', NEEDS_APP: 'face_ci_needs_app', ENROL: 'face_ci_enrol_hint',
+        REJECTED: 'face_ci_rejected', REVERIFY: 'face_ci_reverify_hint', READY: 'face_ci_on', IDLE: 'face_ci_idle',
     }
     const action = step === 'ENROL' || step === 'REJECTED' ? 'face_ci_enrol' : step === 'REVERIFY' ? 'face_ci_reverify' : null
     return (
         <section className="glass" style={box}>
-            <p style={{ margin: 0, ...(step === 'READY' ? soft : {}) }}>
+            <p style={{ margin: 0, ...(step === 'READY' || step === 'IDLE' ? soft : {}) }}>
                 {t(text[step])}{step === 'NEEDS_APP' && active ? ` ${t('face_ci_needs_app_flagged')}` : ''}
             </p>
             {action && <button className="btn btn-primary" disabled={busy} onClick={onEnrol}>{working ? '…' : t(action)}</button>}

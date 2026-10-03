@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { answerKey, thisPhone, faceStep, type FaceStatus } from "./screen"
+import { answerKey, thisPhone, faceStep, reverifyFirst, shouldReconcileTemplates, type FaceStatus } from "./screen"
 
 /** What the check-in screen tells the person (lib/mobile/screen.ts). */
 
@@ -45,9 +45,11 @@ describe("faceStep", () => {
     })
     const here = { phoneActive: true, verifier: true }
 
-    it("asks nothing when face verification isn't asked of the person, or is paused", () => {
+    it("asks nothing when face verification isn't asked of the person, but keeps consent withdrawable (review on #27)", () => {
         expect(faceStep(undefined, here)).toBeNull()
-        expect(faceStep(status({ required: false }), here)).toBeNull()
+        expect(faceStep(status({ required: false, consent: null }), here)).toBeNull()
+        // Paused, or no longer offered or asked: consent given can still be withdrawn in one tap.
+        expect(faceStep(status({ required: false }), { phoneActive: false, verifier: false })).toBe("IDLE")
     })
 
     it("asks for consent first, even before the phone is approved", () => {
@@ -67,5 +69,28 @@ describe("faceStep", () => {
         expect(faceStep(status({ active: true, phone: { faceStatus: "APPROVED" }, reverifyDue: true }), here)).toBe("REVERIFY")
         // Re-verification sent: waiting for it outranks asking again.
         expect(faceStep(status({ active: true, phone: { faceStatus: "APPROVED" }, reverifyDue: true, pendingReview: true }), here)).toBe("WAITING")
+    })
+})
+
+describe("face templates and re-verification on this phone", () => {
+    const status = (over: Partial<FaceStatus> = {}): FaceStatus => ({
+        active: true, required: true, consent: { acceptedAt: "2026-10-03T08:00:00Z" }, consentVersion: "v", phone: { faceStatus: "APPROVED" }, pendingReview: false, reverifyDue: false, ...over,
+    })
+
+    it("asks about templates it holds once face verification isn't in use for the person (review on #27)", () => {
+        const here = { phoneActive: true, enrolled: true }
+        expect(shouldReconcileTemplates(status(), here)).toBe(false)
+        expect(shouldReconcileTemplates(status({ active: false, phone: { faceStatus: "PENDING" }, pendingReview: true }), here)).toBe(false)
+        expect(shouldReconcileTemplates(status({ active: false, required: false }), here)).toBe(true)
+        expect(shouldReconcileTemplates(status({ active: false, consent: null }), here)).toBe(true)
+        expect(shouldReconcileTemplates(status({ active: false, required: false }), { phoneActive: true, enrolled: false })).toBe(false)
+        expect(shouldReconcileTemplates(status({ active: false, required: false }), { phoneActive: false, enrolled: true })).toBe(false)
+    })
+
+    it("starts the next check-in with re-verification when it is due and none is waiting", () => {
+        expect(reverifyFirst(status())).toBe(false)
+        expect(reverifyFirst(status({ reverifyDue: true }))).toBe(true)
+        expect(reverifyFirst(status({ reverifyDue: true, pendingReview: true }))).toBe(false)
+        expect(reverifyFirst(status({ reverifyDue: true, active: false }))).toBe(false)
     })
 })
