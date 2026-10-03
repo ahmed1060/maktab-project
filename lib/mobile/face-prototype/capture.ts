@@ -43,6 +43,8 @@ export async function capture(api: FaceApi, camera: Camera, random: () => number
         let photo: string | null = null
         let frame: string | null = null
         const readings: number[] = []
+        // A new attempt starts with nothing ticked: the last attempt's steps and timer would mislead (review on #30).
+        camera.show?.(null)
         // Looking straight at the camera first: the photo and descriptor from the first good look, the eye level from a few.
         while (!stop && readings.length < BASELINE_LOOKS) {
             const l = await look(api, camera.video, descriptors.length === 0)

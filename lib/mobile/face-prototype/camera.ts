@@ -8,8 +8,8 @@ import type { Cue, Progress, Prompt } from "./liveness"
 export interface Camera {
     video: HTMLVideoElement
     say(prompt: Prompt | "LOADING" | "WORKING"): void
-    /** The steps, the time left on this one and the live readings, during the challenge. */
-    show?(progress: Progress): void
+    /** The steps, the time left on this one and the live readings, during the challenge; null clears them. */
+    show?(progress: Progress | null): void
     /** A step half or wholly done, or started again: felt and heard, not only read. */
     cue?(cue: Cue): void
     close(): void

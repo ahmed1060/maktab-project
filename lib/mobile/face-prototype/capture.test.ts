@@ -37,9 +37,10 @@ const { capture } = await import("./capture")
 
 function camera() {
     const cues: string[] = []
-    const cam: Camera & { cues: string[] } = {
+    const shown: unknown[] = []
+    const cam: Camera & { cues: string[]; shown: unknown[] } = {
         video: {} as HTMLVideoElement, cancelled: new Promise<never>(() => {}),
-        say: () => {}, close: () => {}, show: () => {}, cue: c => { cues.push(c) }, cues,
+        say: () => {}, close: () => {}, show: p => { shown.push(p) }, cue: c => { cues.push(c) }, cues, shown,
     }
     return cam
 }
@@ -74,5 +75,20 @@ describe("a whole capture", () => {
         const cam = camera()
         await capture({} as never, cam, () => 0.1)
         expect(cam.cues).toEqual(["HALF", "STEP", "HALF", "STEP"])
+    })
+
+    it("starts each attempt with no progress left from the last one (review on #30)", async () => {
+        script.i = 0
+        script.frames = [() => face(0)]
+        let cancel: (e: Error) => void = () => {}
+        const cancelled = new Promise<never>((_, reject) => { cancel = reject })
+        cancelled.catch(() => {})
+        const cam = { ...camera(), cancelled }
+        cam.shown.push({ steps: [{ challenge: "TURN", done: true, current: false }] }) // the last attempt's
+        const attempt = capture({} as never, cam, () => 0.1)
+        await new Promise(r => setTimeout(r, 0))
+        expect(cam.shown[1]).toBeNull()
+        cancel(new Error("FACE_CANCELLED"))
+        await expect(attempt).rejects.toThrow("FACE_CANCELLED")
     })
 })
