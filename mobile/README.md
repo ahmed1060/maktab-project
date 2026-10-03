@@ -68,6 +68,58 @@ On an emulator, set its location to the work location's address in the
 emulator's own location controls first. A fake-location app on a real phone
 is what the check-in refuses.
 
+### Testing before there are developer accounts
+
+Everything that needs a Google Play or Apple developer account is in
+[RELEASE_PLAN.md](RELEASE_PLAN.md), for later. Until then:
+
+- `NIZMO_URL` must be a site the phone can open without logging in to
+  Vercel: the production domain, or a preview with Deployment Protection
+  turned off.
+- Every check-in is flagged for the Super Admin with the reason
+  `NOT_CONFIGURED` or `MISSING`. That is expected: nothing is refused for it
+  while `ATTENDANCE_ATTESTATION` is unset.
+- There are no pushes unless the optional Firebase steps are done (Android
+  only). The app then simply doesn't ask for notifications.
+
+**Android: an APK anyone can install**
+1. `cd mobile && npm install`, then
+   `NIZMO_URL=https://your-nizmo-domain npm run android`. Android Studio opens.
+2. In Android Studio, choose Build → Build App Bundle(s) / APK(s) →
+   Build APK(s). The file is
+   `android/app/build/outputs/apk/debug/app-debug.apk`.
+3. Send the file to the testers. On their phones, allow "Install unknown
+   apps" for the app they open it with (Files, Chrome, WhatsApp…), then
+   install.
+4. To ship a new build, raise `versionCode` in `android/app/build.gradle` so
+   the phone accepts it as an update. You only need a new APK when native
+   code or `NIZMO_URL` changes. Everything else is the website and updates
+   when you deploy it.
+
+Optional: Firebase is free and needs no Play account. With the Firebase
+steps under [Push notifications](#push-notifications) done, the APK gets
+pushes too.
+
+**iPhone: only your own, from a Mac**
+
+Without the paid Apple Developer Program there is no `.ipa` you can hand to
+other people. Apple signs builds for distribution (TestFlight, Ad Hoc) only
+for paid accounts. With a free Apple ID you can still run the app on your
+own iPhone:
+1. `NIZMO_URL=https://your-nizmo-domain npm run ios`. Xcode opens.
+2. In Xcode, go to Settings → Accounts → + and add your Apple ID.
+3. Select the App target, open Signing & Capabilities, and choose your
+   "(Personal Team)". Then remove the **Push Notifications** and
+   **App Attest** capabilities (the × beside each): a free team can't sign
+   them. Don't commit that change.
+4. Connect the iPhone by cable, pick it as the run destination, and press
+   Run ▶.
+5. The first time, on the iPhone, go to Settings → General → VPN & Device
+   Management and trust your Apple ID. Also turn on Settings → Privacy &
+   Security → Developer Mode.
+
+A free-account install stops opening after 7 days; run it from Xcode again.
+
 ## Push notifications
 
 The app asks once for permission, then sends the server the token its push
