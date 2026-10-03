@@ -163,7 +163,7 @@ describe.skipIf(!ADMIN_URL)("attestation at registration and check-in, in Postgr
         let counter = 0
         const device: CheckInDevice = {
             platform: "IOS",
-            info: async () => ({ model: "iPhone 15", appVersion: "1.0.0" }),
+            info: async () => ({ model: "iPhone 15", appVersion: "1.0.0", pushReady: true }),
             publicKey: async () => key.publicKey,
             createKey: async () => key.publicKey,
             sign: async text => key.sign(text),
