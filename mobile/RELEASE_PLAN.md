@@ -9,6 +9,36 @@ Keys and secrets go straight into the server's environment (Vercel → Project
 → Settings → Environment Variables, then redeploy). Never into the
 repository or a chat.
 
+## Right after the production merge (no accounts needed)
+
+Do these as soon as the attendance PRs (#24–#26 and below) are merged to
+`main` and deployed. Before that, production has no check-in, push or
+reminder endpoints.
+
+1. [ ] **Reminder scheduler.** This is a different job from the daily ones in
+       `vercel.json`, which Vercel already runs. The check-in reminder needs
+       every 5 minutes, which the Hobby plan can't do. On cron-job.org (free),
+       create a job that calls
+       `https://<production-domain>/api/cron/check-in-reminder` every 5
+       minutes. Add the header `Authorization: Bearer <CRON_SECRET>`, using
+       the same `CRON_SECRET` the other crons use. After a few minutes, System
+       Health should show "Check-in reminders" as on time.
+2. [ ] **Firebase (optional, free), for Android pushes:** README.md, Push
+       notifications. That means `google-services.json` in
+       `android/app/` and `FCM_SERVICE_ACCOUNT` on the server.
+3. [ ] **Test APK** built with `NIZMO_URL=https://<production-domain>`
+       (README.md, "Testing before there are developer accounts"), sent to
+       the testers.
+4. [ ] **iPhone** from Xcode with a free Apple ID, on your own phone.
+5. [ ] **Test company:**
+       - give it a package with the **Attendance – Mobile App** add-on;
+       - add a work location and assign testers;
+       - register and approve phones;
+       - check in.
+       Expect every check-in to be flagged `NOT_CONFIGURED` or `MISSING`
+       until the store accounts exist.
+6. [ ] Leave `ATTENDANCE_ATTESTATION` unset.
+
 ## 0. Decide before anything is uploaded
 
 - [ ] **The app ID.** Today it is `com.shsd.nizmo`. Both stores fix it for
