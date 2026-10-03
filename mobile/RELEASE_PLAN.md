@@ -162,6 +162,25 @@ reminder endpoints.
       registration and per check-in. Ask Google for more before a large
       rollout.
 
+## Face verification, once its SDK is in the app
+
+Only when face verification will actually be used (mobile/README.md, Face
+verification).
+
+- [ ] **The SDK**: an on-device one, licensed. Its `NizmoFace` plugin is
+      written and in a new store release.
+- [ ] **`FACE_PHOTO_KEY`** on the server: 32 random bytes in base64 (for
+      example `openssl rand -base64 32`). It encrypts the stored photos.
+      Keep a copy somewhere safe: without it they can't be read.
+- [ ] **Store declarations** must change before that release:
+      - Play Data safety: add photos (the verification photo) and say the
+        face data is processed on the device.
+      - Apple privacy labels: add photos.
+      - Both privacy policies must cover face data.
+- [ ] **Legal**: each company confirms its own readiness in Company
+      Settings → Attendance. The protected Super Admin turns the system
+      switch on only after that.
+
 ## 5. Every later release
 
 - Most changes need **no store release**: the app shows the website, so

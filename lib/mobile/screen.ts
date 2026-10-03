@@ -36,3 +36,34 @@ export function thisPhone<P extends Phone>(
         : fingerprint && phones.pending?.keyFingerprint === fingerprint ? "PENDING" : null
     return { mine, other: mine ? null : phones.pending ?? phones.active, keyFailed: key.failed }
 }
+
+/** Where face verification stands for oneself, as GET /api/attendance/face gives it. */
+export type FaceStatus = {
+    active: boolean
+    required: boolean
+    consent: { acceptedAt: string } | null
+    consentVersion: string
+    phone: { faceStatus: "NONE" | "PENDING" | "APPROVED" | "REJECTED" } | null
+    pendingReview: boolean
+    reverifyDue: boolean
+}
+
+/**
+ * What the check-in screen asks of the person about face verification
+ * (§9.5), one step at a time: nothing when it isn't asked of them; their
+ * consent first; then, from their phone in use, setting it up, waiting for
+ * the photo's approval, or doing it again. An app without the face SDK can't
+ * set it up, and says so; once it is in use there, check-ins without a face
+ * check wait for a review, which the person should know.
+ */
+export function faceStep(status: FaceStatus | undefined, here: { phoneActive: boolean; verifier: boolean }):
+    null | "CONSENT" | "WAITING" | "NEEDS_APP" | "ENROL" | "REJECTED" | "REVERIFY" | "READY" {
+    if (!status?.required) return null
+    if (!status.consent) return "CONSENT"
+    if (!here.phoneActive) return null
+    if (status.pendingReview) return "WAITING"
+    if (!here.verifier) return "NEEDS_APP"
+    const face = status.phone?.faceStatus
+    if (face === "APPROVED") return status.reverifyDue ? "REVERIFY" : "READY"
+    return face === "REJECTED" ? "REJECTED" : "ENROL"
+}

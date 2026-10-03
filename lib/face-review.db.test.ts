@@ -6,7 +6,8 @@ import { parsePhoneKey } from "@/lib/attendance/phone-keys"
 import { AttendanceChallengeService as Challenges } from "@/lib/services/attendance-challenge.service"
 import { AttendancePolicyService as Policy } from "@/lib/services/attendance-policy.service"
 import { FaceVerificationService as Face, FACE_CONSENT_VERSION } from "@/lib/services/face-verification.service"
-import { FaceReviewService as Reviews, faceText } from "@/lib/services/face-review.service"
+import { FaceReviewService as Reviews } from "@/lib/services/face-review.service"
+import { faceText } from "@/lib/attendance/signed-text"
 import { STANDARD_OFFICE } from "@/lib/attendance/policy"
 
 /**

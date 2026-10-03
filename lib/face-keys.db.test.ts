@@ -11,7 +11,8 @@ import { AttendanceCheckInService as CheckIns } from "@/lib/services/attendance-
 import { AttendanceFlagService as Flags } from "@/lib/services/attendance-flag.service"
 import { FaceVerificationService as Face, FACE_CONSENT_VERSION } from "@/lib/services/face-verification.service"
 import { FaceReviewService as Reviews } from "@/lib/services/face-review.service"
-import { FaceKeyService as Keys, keyText } from "@/lib/services/face-key.service"
+import { FaceKeyService as Keys } from "@/lib/services/face-key.service"
+import { faceKeyText as keyText } from "@/lib/attendance/signed-text"
 import { encryptFacePhoto } from "@/lib/face-photo-crypto"
 import { STANDARD_OFFICE } from "@/lib/attendance/policy"
 

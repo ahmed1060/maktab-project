@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { answerKey, thisPhone } from "./screen"
+import { answerKey, thisPhone, faceStep, type FaceStatus } from "./screen"
 
 /** What the check-in screen tells the person (lib/mobile/screen.ts). */
 
@@ -36,5 +36,36 @@ describe("which phone this is", () => {
         expect(thisPhone({ active, pending }, { fingerprint: pending.keyFingerprint, failed: false })).toMatchObject({ mine: "PENDING", other: null })
         expect(thisPhone({ active, pending }, { fingerprint: null, failed: false })).toMatchObject({ mine: null, other: pending })
         expect(thisPhone({ active: null, pending: null }, { fingerprint: null, failed: false })).toEqual({ mine: null, other: null, keyFailed: false })
+    })
+})
+
+describe("faceStep", () => {
+    const status = (over: Partial<FaceStatus> = {}): FaceStatus => ({
+        active: false, required: true, consent: { acceptedAt: "2026-10-03T08:00:00Z" }, consentVersion: "v", phone: { faceStatus: "NONE" }, pendingReview: false, reverifyDue: false, ...over,
+    })
+    const here = { phoneActive: true, verifier: true }
+
+    it("asks nothing when face verification isn't asked of the person, or is paused", () => {
+        expect(faceStep(undefined, here)).toBeNull()
+        expect(faceStep(status({ required: false }), here)).toBeNull()
+    })
+
+    it("asks for consent first, even before the phone is approved", () => {
+        expect(faceStep(status({ consent: null }), { phoneActive: false, verifier: false })).toBe("CONSENT")
+    })
+
+    it("sets up only from the phone in use, and only with an app that has the face SDK", () => {
+        expect(faceStep(status(), { phoneActive: false, verifier: true })).toBeNull()
+        expect(faceStep(status(), { phoneActive: true, verifier: false })).toBe("NEEDS_APP")
+        expect(faceStep(status(), here)).toBe("ENROL")
+        expect(faceStep(status({ phone: { faceStatus: "REJECTED" } }), here)).toBe("REJECTED")
+    })
+
+    it("waits for the photo's approval, then is in use, or asks to verify again", () => {
+        expect(faceStep(status({ pendingReview: true, phone: { faceStatus: "PENDING" } }), here)).toBe("WAITING")
+        expect(faceStep(status({ active: true, phone: { faceStatus: "APPROVED" } }), here)).toBe("READY")
+        expect(faceStep(status({ active: true, phone: { faceStatus: "APPROVED" }, reverifyDue: true }), here)).toBe("REVERIFY")
+        // Re-verification sent: waiting for it outranks asking again.
+        expect(faceStep(status({ active: true, phone: { faceStatus: "APPROVED" }, reverifyDue: true, pendingReview: true }), here)).toBe("WAITING")
     })
 })

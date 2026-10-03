@@ -1,7 +1,8 @@
 import { randomBytes } from "node:crypto"
 import { prisma } from "@/lib/prisma"
 import type { Prisma } from "@prisma/client"
-import { parsePhoneKey, signatureValid, signedText } from "@/lib/attendance/phone-keys"
+import { parsePhoneKey, signatureValid } from "@/lib/attendance/phone-keys"
+import { faceKeyText } from "@/lib/attendance/signed-text"
 import { assertRecentStepUp } from "@/lib/step-up"
 import { AuditLogService } from "./audit-log.service"
 import { AttendanceChallengeService } from "./attendance-challenge.service"
@@ -27,11 +28,6 @@ function fail(code: string): never {
     throw new Error(code)
 }
 
-/** What the phone signs to fetch its key: the number and which key it is. */
-export function keyText(nonce: string, keyFingerprint: string): string {
-    return signedText("FACE", nonce, [keyFingerprint, "WRAPPING_KEY"])
-}
-
 type Actor = { id: string; role: string; isProtected?: boolean; mfaEnabled?: boolean | null; stepUpAt?: number | null }
 
 export class FaceKeyService {
@@ -46,7 +42,7 @@ export class FaceKeyService {
         const phone = await prisma.checkInPhone.findFirst({ where: { userId, companyId, keyFingerprint: input.keyFingerprint, status: "ACTIVE" }, select: { id: true, publicKey: true } })
         if (!phone) fail("FACE_PHONE_NOT_ACTIVE")
         const key = parsePhoneKey(phone.publicKey)
-        if (!key || !signatureValid(key.key, keyText(input.nonce, input.keyFingerprint), input.signature)) fail("PHONE_SIGNATURE_INVALID")
+        if (!key || !signatureValid(key.key, faceKeyText(input.nonce, input.keyFingerprint), input.signature)) fail("PHONE_SIGNATURE_INVALID")
         const status = await FaceVerificationService.statusFor(userId)
         const person = await prisma.user.findUnique({ where: { id: userId }, select: { faceVerificationRequired: true } })
         return prisma.$transaction(async tx => {

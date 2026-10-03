@@ -1,7 +1,8 @@
 import { createHash } from "node:crypto"
 import { prisma } from "@/lib/prisma"
 import type { Prisma } from "@prisma/client"
-import { parsePhoneKey, signatureValid, signedText } from "@/lib/attendance/phone-keys"
+import { parsePhoneKey, signatureValid } from "@/lib/attendance/phone-keys"
+import { faceText } from "@/lib/attendance/signed-text"
 import { attestationMode, verifyAttestation, type AttestationResult } from "@/lib/attendance/attestation"
 import { encryptFacePhoto, decryptFacePhoto, isJpeg } from "@/lib/face-photo-crypto"
 import { holdersOf } from "@/lib/permissions/holders"
@@ -51,11 +52,6 @@ export type SubmitInput = {
     /** The face model on the phone, so the server knows what was enrolled with what. */
     modelVersion: string
     attestation?: string | null
-}
-
-/** What the phone signs for a verification photo: the number, its key, the photo's hash, the model. */
-export function faceText(input: { nonce: string; keyFingerprint: string; photoSha256: string; modelVersion: string }): string {
-    return signedText("FACE", input.nonce, [input.keyFingerprint, input.photoSha256, input.modelVersion])
 }
 
 type Reviewer = { id: string; isSuperAdmin: boolean }

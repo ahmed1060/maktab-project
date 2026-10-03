@@ -12,7 +12,8 @@ import { fetcher } from '@/lib/swr-fetcher'
 import type { TranslationKey } from '@/lib/translations'
 import { checkInDevice, inNativeApp } from '@/lib/mobile/native'
 import { checkIn, deviceFingerprint, registerPhone, type CheckInAnswer } from '@/lib/mobile/check-in-flow'
-import { answerKey, thisPhone } from '@/lib/mobile/screen'
+import { answerKey, faceStep, thisPhone, type FaceStatus } from '@/lib/mobile/screen'
+import { enrolFace, faceVerifier, wrappingKey } from '@/lib/mobile/face'
 import { enablePush, pushPlugin } from '@/lib/mobile/push'
 import { send, json } from '../attendance/send'
 import { AskPermissionModal } from '../attendance/RequestsTab'
@@ -25,7 +26,8 @@ import { AskPermissionModal } from '../attendance/RequestsTab'
  * browser can't prove where it is (§9.1).
  *
  * A late check-in offers to ask for permission hours on the spot, with the
- * month's balance (§13.6).
+ * month's balance (§13.6). Where face verification is asked of the person,
+ * this is where they consent, set it up, and are checked (§9.5).
  */
 
 type Phone = { model: string | null; platform: string; keyFingerprint: string }
@@ -42,6 +44,9 @@ const DEVICE_ERRORS: Record<string, TranslationKey> = {
     LOCATION_UNAVAILABLE: 'ci_location_unavailable',
     KEY_UNAVAILABLE: 'ci_key_failed',
     NO_PHONE_KEY: 'ci_key_failed',
+    FACE_CANCELLED: 'face_ci_cancelled',
+    CAMERA_DENIED: 'face_ci_camera_denied',
+    FACE_NOT_AVAILABLE: 'face_ci_not_available',
 }
 
 export default function CheckInPage() {
@@ -54,10 +59,14 @@ export default function CheckInPage() {
     const device = useMemo(() => (native ? checkInDevice() : null), [native])
     const { data: phoneBody, error: phoneError, mutate: refreshPhone } = useSWR(device ? '/api/attendance/phone' : null, fetcher)
     const { data: fingerprint, error: keyError, mutate: refreshFingerprint } = useSWR(device ? 'this-phone-key' : null, () => deviceFingerprint(device!))
-    const [busy, setBusy] = useState<null | 'register' | 'IN' | 'OUT'>(null)
+    const face = useMemo(() => (native ? faceVerifier() : null), [native])
+    const { data: faceBody, mutate: refreshFace } = useSWR(device ? '/api/attendance/face' : null, fetcher)
+    const faceStatus = faceBody?.data as FaceStatus | undefined
+    const [busy, setBusy] = useState<null | 'register' | 'IN' | 'OUT' | 'face'>(null)
     const [answer, setAnswer] = useState<CheckInAnswer | null>(null)
     const [switching, setSwitching] = useState(false)
     const [asking, setAsking] = useState(false)
+    const [withdrawing, setWithdrawing] = useState(false)
     const late = answer && answer.outcome !== 'REFUSED' ? answer.late : null
     const { data: balanceBody } = useSWR(late && answer?.outcome !== 'REFUSED' ? `/api/attendance/permissions/balance?date=${answer!.at.slice(0, 10)}` : null, fetcher)
 
@@ -92,7 +101,29 @@ export default function CheckInPage() {
         setBusy(direction)
         setAnswer(null)
         try {
-            setAnswer(await checkIn(device!, post, direction))
+            setAnswer(await checkIn(device!, post, direction, faceStatus?.active ? face : null))
+        } catch (e) { problem(e) } finally { setBusy(null) }
+    }
+
+    const enrol = async () => {
+        setBusy('face')
+        try {
+            await enrolFace(device!, face!, post)
+            showToast(t('face_ci_sent'), 'success')
+            await refreshFace()
+        } catch (e) { problem(e) } finally { setBusy(null) }
+    }
+    const consent = async (accept: boolean) => {
+        setBusy('face')
+        try {
+            const r = await send('/api/attendance/face/consent', accept ? json('POST', { version: faceStatus!.consentVersion }) : { method: 'DELETE' }, t('error_generic'))
+            if (!r.ok) throw new Error(r.error)
+            if (!accept) {
+                showToast(t('face_ci_withdrawn'), 'success')
+                // The key is gone already; the phone deletes what it can no longer read.
+                if (face && which?.mine === 'ACTIVE') await wrappingKey(device!, face, post).catch(() => null)
+            }
+            await refreshFace()
         } catch (e) { problem(e) } finally { setBusy(null) }
     }
 
@@ -106,8 +137,10 @@ export default function CheckInPage() {
     if (phoneError) return <section className="glass" style={box}><p style={{ margin: 0 }}>{phoneError.status === 403 ? t('ci_not_available') : t('error_generic')}</p></section>
     const which = thisPhone(phoneBody?.data as { active: Phone | null; pending: Phone | null } | undefined, { fingerprint, failed: !!keyError })
     if (!which) return <LoadingSpinner />
+    const step = faceStep(faceStatus, { phoneActive: which.mine === 'ACTIVE', verifier: !!face })
     const { mine, other, keyFailed } = which
     const label = (ph: Phone) => ph.model || t(`audit_value_${ph.platform}` as TranslationKey)
+    const working = faceStatus?.active && face ? t('face_ci_checking') : t('ci_locating')
 
     return (
         <div style={{ display: 'grid', gap: '1rem', maxWidth: '36rem' }}>
@@ -125,10 +158,15 @@ export default function CheckInPage() {
                 <section className="glass" style={box}>
                     {mine === 'PENDING' && <p style={{ margin: 0, ...soft }}>{t('ci_waiting')}</p>}
                     <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-                        <button className="btn btn-primary" style={big} disabled={!!busy} onClick={() => punch('IN')}>{busy === 'IN' ? t('ci_locating') : t('ci_in')}</button>
-                        <button className="btn btn-secondary" style={big} disabled={!!busy} onClick={() => punch('OUT')}>{busy === 'OUT' ? t('ci_locating') : t('ci_out')}</button>
+                        <button className="btn btn-primary" style={big} disabled={!!busy} onClick={() => punch('IN')}>{busy === 'IN' ? working : t('ci_in')}</button>
+                        <button className="btn btn-secondary" style={big} disabled={!!busy} onClick={() => punch('OUT')}>{busy === 'OUT' ? working : t('ci_out')}</button>
                     </div>
                 </section>
+            )}
+
+            {step && (
+                <FaceCard step={step} active={!!faceStatus?.active} busy={!!busy} working={busy === 'face'}
+                    onConsent={() => consent(true)} onWithdraw={() => setWithdrawing(true)} onEnrol={enrol} />
             )}
 
             {answer && <Answer answer={answer} />}
@@ -160,6 +198,15 @@ export default function CheckInPage() {
                 onConfirm={register}
                 onCancel={() => setSwitching(false)}
             />
+
+            <ConfirmModal
+                isOpen={withdrawing}
+                title={t('face_ci_withdraw')}
+                message={t('face_ci_withdraw_confirm')}
+                confirmText={t('face_ci_withdraw')}
+                onConfirm={() => { setWithdrawing(false); void consent(false) }}
+                onCancel={() => setWithdrawing(false)}
+            />
         </div>
     )
 }
@@ -180,6 +227,36 @@ function Answer({ answer }: { answer: CheckInAnswer }) {
         <section className="glass" role="status" style={{ ...box, color: answer.outcome === 'ACCEPTED' ? 'var(--ok-fg)' : undefined }}>
             <p style={{ margin: 0 }}>{answer.outcome === 'ACCEPTED' ? '✅ ' : '🕒 '}{fill(key)}</p>
             <p style={{ margin: 0, ...soft }}>{t('ci_distance').replace('{n}', String(answer.distanceMeters))}</p>
+        </section>
+    )
+}
+
+/** Face verification, one step at a time (§9.5): consent, set-up, approval, re-verification. */
+function FaceCard({ step, active, busy, working, onConsent, onWithdraw, onEnrol }: {
+    step: NonNullable<ReturnType<typeof faceStep>>; active: boolean; busy: boolean; working: boolean
+    onConsent: () => void; onWithdraw: () => void; onEnrol: () => void
+}) {
+    const { t } = useLanguage()
+    const withdraw = <button className="btn btn-secondary" style={{ justifySelf: 'start', fontSize: '0.85rem' }} disabled={busy} onClick={onWithdraw}>{t('face_ci_withdraw')}</button>
+    if (step === 'CONSENT') return (
+        <section className="glass" style={box}>
+            <h2 style={{ margin: 0, fontSize: '1.05rem' }}>{t('face_consent_title')}</h2>
+            <p style={{ margin: 0, whiteSpace: 'pre-line', fontSize: '0.9rem' }}>{t('face_consent_body')}</p>
+            <button className="btn btn-primary" disabled={busy} onClick={onConsent}>{working ? '…' : t('face_ci_consent_accept')}</button>
+        </section>
+    )
+    const text: Record<Exclude<typeof step, 'CONSENT'>, TranslationKey> = {
+        WAITING: 'face_ci_waiting', NEEDS_APP: 'face_ci_needs_app', ENROL: 'face_ci_enrol_hint',
+        REJECTED: 'face_ci_rejected', REVERIFY: 'face_ci_reverify_hint', READY: 'face_ci_on',
+    }
+    const action = step === 'ENROL' || step === 'REJECTED' ? 'face_ci_enrol' : step === 'REVERIFY' ? 'face_ci_reverify' : null
+    return (
+        <section className="glass" style={box}>
+            <p style={{ margin: 0, ...(step === 'READY' ? soft : {}) }}>
+                {t(text[step])}{step === 'NEEDS_APP' && active ? ` ${t('face_ci_needs_app_flagged')}` : ''}
+            </p>
+            {action && <button className="btn btn-primary" disabled={busy} onClick={onEnrol}>{working ? '…' : t(action)}</button>}
+            {withdraw}
         </section>
     )
 }

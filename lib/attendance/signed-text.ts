@@ -35,6 +35,16 @@ export function checkInText(input: {
 
 const face0 = (verified: boolean) => (verified ? "face:1" : "face:0")
 
+/** What a phone signs to send its verification photo (§9.5): which key, the photo's hash, the model. */
+export function faceText(input: { nonce: string; keyFingerprint: string; photoSha256: string; modelVersion: string }): string {
+    return signedText("FACE", input.nonce, [input.keyFingerprint, input.photoSha256, input.modelVersion])
+}
+
+/** What a phone signs to fetch the wrapping key for its face templates (§10.4). */
+export function faceKeyText(nonce: string, keyFingerprint: string): string {
+    return signedText("FACE", nonce, [keyFingerprint, "WRAPPING_KEY"])
+}
+
 /**
  * What the phone's face check found at a check-in (§9.5): the result only,
  * never the face. When it failed, the hash of the last frame, which is sent

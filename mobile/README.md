@@ -213,14 +213,60 @@ check-in. Ask Google for more before a large rollout.
 A phone registered before App Attest was set up has no attested key; its
 check-ins say `NO_ATTESTED_KEY`. Registering it again fixes that.
 
-## Not yet
+## Face verification
 
-- **Face verification** (Phase 3b).
+The server side and the check-in page are done (ATTENDANCE_PLAN.md §9.5,
+§10.4): consent, set-up with a verification photo a person approves, the
+face check at each check-in, and crypto-shredding. **The face SDK itself is
+not in the app yet**, so a second plugin, `NizmoFace`, still has to be
+written around it. Until it exists the page says "this version of the app
+can't do the face check", nobody can set it up, and so it is in use for
+nobody.
+
+### Choosing the SDK
+
+It must match **on the phone**: no face image or template may go to the
+SDK's maker, or to any cloud service. A cloud face API (AWS Rekognition,
+Azure Face and the like) does not fit, because it sends the face to the
+provider. Look for a commercial on-device SDK for Android and iOS with:
+
+- 1:1 matching (this face against the enrolled one), not identification;
+- passive liveness (a photo or screen held up to the camera fails), ideally
+  tested to ISO 30107-3;
+- templates the app can encrypt itself, or that the SDK stores only through
+  a key the app gives it;
+- a licence that permits the use, and no network calls during matching.
+
+### The plugin's methods
+
+The page side is `lib/mobile/face.ts`. The plugin must give exactly this:
+
+| Method | What it does |
+| --- | --- |
+| `getInfo()` | `{ modelVersion, enrolled }`: the SDK's model name and version (up to 60 characters), and whether templates are stored on this phone |
+| `enrol({ wrappingKey })` | Shows the camera with a liveness check, makes the templates, and stores them encrypted with a key derived from **both** a key in the secure hardware (Keystore or Secure Enclave) and `wrappingKey` (32 bytes in base64, from the server). Deletes the set-up photos. Gives `{ photo }`: one frontal JPEG in base64, at most 400 KB, which a person approves |
+| `verify({ wrappingKey })` | Up to three tries against the stored templates, decrypted with the same two halves. Gives `{ verified, score, liveness, attempts, frame }`: scores from 0 to 1; `frame` is the last camera frame as a JPEG in base64 (at most 400 KB) when it never matched, else `null` |
+| `deleteTemplates()` | Deletes the stored templates |
+
+Errors reject with `FACE_CANCELLED` (the person closed the camera; nothing
+is sent), `CAMERA_DENIED`, or anything else. Any other error means the check
+couldn't be done, and the check-in waits for a review.
+
+The wrapping key is never stored on the phone: it is fetched for each use
+and forgotten. When the server destroys it, the templates can no longer be
+decrypted, even on a phone that is off or lost. The server then tells the
+phone to call `deleteTemplates()`, and the phone confirms.
+
+Register the plugin next to `NizmoCheckIn`: in `MainActivity.java` on
+Android, and in `NizmoViewController.swift` on iOS. Add the camera
+permission (`android.permission.CAMERA`, and `NSCameraUsageDescription` in
+`Info.plist`).
 
 ## How it was checked
 
 The site's side runs against the real server in the test suite
-(`lib/mobile-check-in.db.test.ts`), and the check-in page was driven in a
+(`lib/mobile-check-in.db.test.ts`; face verification in
+`lib/mobile-face.db.test.ts`, with a stand-in for the face SDK), and the check-in page was driven in a
 browser with a stand-in for the plugin. The Android plugin was compiled
 against the Android framework, Capacitor's real method signatures and the
 Play Integrity API's; the
