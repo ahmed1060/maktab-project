@@ -97,16 +97,24 @@ describe("face templates and re-verification on this phone", () => {
 
 describe("templates waiting on their photo (§9.5)", () => {
     const status = (over: Partial<FaceStatus> = {}): FaceStatus => ({
-        active: true, required: true, consent: { acceptedAt: "2026-10-03T08:00:00Z" }, consentVersion: "v", phone: { faceStatus: "APPROVED" }, pendingReview: false, reverifyDue: false, ...over,
+        active: true, required: true, consent: { acceptedAt: "2026-10-03T08:00:00Z" }, consentVersion: "v", phone: { faceStatus: "APPROVED" },
+        pendingReview: false, reverifyDue: false, lastReview: { id: "r2", status: "APPROVED" }, ...over,
+    })
+    const waiting = { pending: true }
+
+    it("promotes them only once the review they were sent with is approved", () => {
+        expect(pendingTemplatesAction(status({ pendingReview: true, lastReview: { id: "r2", status: "PENDING" } }), waiting, "r2")).toBeNull()
+        expect(pendingTemplatesAction(status(), { pending: false }, "r2")).toBeNull()
+        expect(pendingTemplatesAction(status(), waiting, "r2")).toBe("PROMOTE")
+        // Approved while paused still promotes: the decision is the reviewer's.
+        expect(pendingTemplatesAction(status({ required: false, active: false }), waiting, "r2")).toBe("PROMOTE")
     })
 
-    it("keeps them aside while the photo waits, promotes them once approved, drops them otherwise", () => {
-        expect(pendingTemplatesAction(status({ pendingReview: true }), { pending: true })).toBeNull()
-        expect(pendingTemplatesAction(status(), { pending: false })).toBeNull()
-        expect(pendingTemplatesAction(status(), { pending: true })).toBe("PROMOTE")
-        // Approved while paused still promotes: the decision is the reviewer's.
-        expect(pendingTemplatesAction(status({ required: false, active: false }), { pending: true })).toBe("PROMOTE")
-        expect(pendingTemplatesAction(status({ phone: { faceStatus: "REJECTED" }, active: false }), { pending: true })).toBe("DISCARD")
-        expect(pendingTemplatesAction(status({ phone: { faceStatus: "NONE" }, consent: null, active: false }), { pending: true })).toBe("DISCARD")
+    it("drops them when their review was rejected or withdrawn, or when they never reached a reviewer (review on #28)", () => {
+        expect(pendingTemplatesAction(status({ phone: { faceStatus: "REJECTED" }, lastReview: { id: "r2", status: "REJECTED" } }), waiting, "r2")).toBe("DISCARD")
+        expect(pendingTemplatesAction(status({ lastReview: { id: "r2", status: "WITHDRAWN" } }), waiting, "r2")).toBe("DISCARD")
+        // The upload failed, or the app stopped first: the phone still looks approved, from an older review.
+        expect(pendingTemplatesAction(status({ lastReview: { id: "r1", status: "APPROVED" } }), waiting, null)).toBe("DISCARD")
+        expect(pendingTemplatesAction(status({ lastReview: { id: "r1", status: "APPROVED" } }), waiting, "r2")).toBe("DISCARD")
     })
 })

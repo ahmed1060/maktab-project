@@ -127,10 +127,24 @@ export async function wrappingKey(device: CheckInDevice, face: FaceVerifier, pos
  * re-verify: the SDK enrols with the wrapping key, and its verification
  * photo goes to a person to approve, signed by the phone with its hash.
  */
-export async function enrolFace(device: CheckInDevice, face: FaceVerifier, post: Post) {
+export async function enrolFace(device: CheckInDevice, face: FaceVerifier, post: Post, sent: SentRecord = sentRecord()) {
     const key = await wrappingKey(device, face, post)
     if (!key) throw new Error("FACE_NOT_AVAILABLE")
     const [{ modelVersion }, { photo }] = [await face.info(), await face.enrol(key)]
+    try {
+        const review = await sendPhoto(device, post, photo, modelVersion)
+        // The waiting templates belong to this review, and are promoted only once it is approved.
+        sent.set(review.id)
+        return review
+    } catch (e) {
+        // Never reached a reviewer: the templates made for it go with it.
+        sent.set(null)
+        await face.discardPending().catch(() => {})
+        throw e
+    }
+}
+
+async function sendPhoto(device: CheckInDevice, post: Post, photo: string, modelVersion: string) {
     const fingerprint = await keyFingerprint(device)
     const photoSha256 = await sha256OfBase64(photo)
     // After the photo: the number lasts five minutes, and enrolling takes a while.
@@ -168,9 +182,32 @@ const clamp = (n: number) => (Number.isFinite(n) ? Math.min(1, Math.max(0, n)) :
  * approved, they become the ones matched against; rejected or withdrawn,
  * they go. Nothing while the photo still waits.
  */
-export async function settleTemplates(face: FaceVerifier, status: FaceStatus): Promise<"PROMOTED" | "DISCARDED" | null> {
-    const action = pendingTemplatesAction(status, await face.info())
+export async function settleTemplates(face: FaceVerifier, status: FaceStatus, sent: SentRecord = sentRecord()): Promise<"PROMOTED" | "DISCARDED" | null> {
+    const action = pendingTemplatesAction(status, await face.info(), sent.get())
     if (action === "PROMOTE") await face.promote()
     if (action === "DISCARD") await face.discardPending()
+    if (action) sent.set(null)
     return action === "PROMOTE" ? "PROMOTED" : action === "DISCARD" ? "DISCARDED" : null
+}
+
+/** Which review this phone's waiting templates were sent with, kept beside them. */
+export type SentRecord = { get(): string | null; set(reviewId: string | null): void }
+
+const SENT_KEY = "nizmo-face-sent-review"
+let sentInMemory: string | null = null
+
+/** The record in the app's storage, or in memory where there is none. */
+export function sentRecord(): SentRecord {
+    return {
+        get: () => {
+            try { return globalThis.localStorage?.getItem(SENT_KEY) ?? sentInMemory } catch { return sentInMemory }
+        },
+        set: id => {
+            sentInMemory = id
+            try {
+                if (id) globalThis.localStorage?.setItem(SENT_KEY, id)
+                else globalThis.localStorage?.removeItem(SENT_KEY)
+            } catch { /* in memory only */ }
+        },
+    }
 }
