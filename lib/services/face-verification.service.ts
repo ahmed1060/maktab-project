@@ -228,14 +228,16 @@ export class FaceVerificationService {
     static async statusFor(userId: string) {
         const person = await prisma.user.findUnique({ where: { id: userId }, select: { companyId: true, faceVerificationRequired: true, faceReverifyRequestedAt: true } })
         if (!person?.companyId) {
-            return { active: false, required: false, company: { allowed: false, reason: "SYSTEM_OFF" as const }, consent: null, consentVersion: FACE_CONSENT_VERSION, phone: null, pendingReview: false, reverifyDue: false }
+            return { active: false, required: false, company: { allowed: false, reason: "SYSTEM_OFF" as const }, consent: null, consentVersion: FACE_CONSENT_VERSION, phone: null, pendingReview: false, reverifyDue: false, lastReview: null }
         }
-        const [company, consent, phone, pending, reference] = await Promise.all([
+        const [company, consent, phone, pending, reference, lastReview] = await Promise.all([
             this.companyStatus(person.companyId),
             this.currentConsent(userId),
             prisma.checkInPhone.findFirst({ where: { userId, status: "ACTIVE" }, select: { faceStatus: true, faceEnrolledAt: true } }),
             prisma.faceReview.count({ where: { userId, status: "PENDING" } }),
             prisma.faceReview.findFirst({ where: { companyId: person.companyId, userId, status: "APPROVED", photo: { not: null } }, select: { decidedAt: true } }),
+            // The app promotes the templates it sent with this review only once it is approved (lib/mobile/face.ts).
+            prisma.faceReview.findFirst({ where: { companyId: person.companyId, userId }, orderBy: { createdAt: "desc" }, select: { id: true, status: true } }),
         ])
         const required = company.allowed && person.faceVerificationRequired
         const enrolled = phone?.faceStatus === "APPROVED"
@@ -250,6 +252,7 @@ export class FaceVerificationService {
             phone: phone ? { faceStatus: phone.faceStatus, enrolledAt: phone.faceEnrolledAt } : null,
             pendingReview: pending > 0,
             reverifyDue: required && enrolled && (!!person.faceReverifyRequestedAt || dueBySchedule),
+            lastReview,
         }
     }
 }

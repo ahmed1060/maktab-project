@@ -188,6 +188,20 @@ describe.skipIf(!ADMIN_URL)("the app's face verification, against the server", (
         await db.query(`UPDATE "CheckInPhone" SET "faceStatus" = 'APPROVED' WHERE id = 'p1'`)
     })
 
+    it("drops new templates whose photo never reached a reviewer, instead of promoting them (review on #28)", async () => {
+        const approved = face.lockedWith
+        const failing = Object.assign(async (url: string, body: unknown) => {
+            if (url === "/api/attendance/face/photo") throw new Error("Network down")
+            return serverFor("e1")(url, body)
+        }, { sent: [] as string[] })
+        await expect(enrolFace(phone, face, failing)).rejects.toThrow("Network down")
+        expect(face.pendingWith).toBeNull()
+        // Even had they stayed (the app stopped before sending), no review of them means they go.
+        face.pendingWith = "something"
+        expect(await settleTemplates(face, await status())).toBe("DISCARDED")
+        expect(face.lockedWith).toBe(approved)
+    })
+
     it("checks in without the face check when the SDK fails, flagged; not at all when the person cancels (review on #27)", async () => {
         const verify = face.verify
         try {

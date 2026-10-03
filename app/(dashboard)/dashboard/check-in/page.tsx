@@ -75,7 +75,8 @@ export default function CheckInPage() {
     // would ever ask (review on #27). It says whether to delete or keep them.
     const phoneActive = !!fingerprint && (phoneBody?.data as { active: Phone | null } | undefined)?.active?.keyFingerprint === fingerprint
     useEffect(() => {
-        if (!device || !face || !faceStatus || !phoneActive) return
+        // Not while a capture or check-in runs: its templates may not have reached the server yet.
+        if (!device || !face || !faceStatus || !phoneActive || busy) return
         const quiet = async (url: string, body: unknown) => {
             const r = await send(url, json('POST', body), '')
             if (!r.ok) throw new Error(r.error)
@@ -86,7 +87,7 @@ export default function CheckInPage() {
             .then(() => face.info())
             .then(i => (shouldReconcileTemplates(faceStatus, { phoneActive, enrolled: i.enrolled || i.pending }) ? wrappingKey(device, face, quiet) : null))
             .catch(() => {})
-    }, [device, face, faceStatus, phoneActive])
+    }, [device, face, faceStatus, phoneActive, busy])
 
     useEffect(() => {
         setTitle(t('ci_title'))

@@ -46,6 +46,8 @@ export type FaceStatus = {
     phone: { faceStatus: "NONE" | "PENDING" | "APPROVED" | "REJECTED" } | null
     pendingReview: boolean
     reverifyDue: boolean
+    /** The person's latest verification photo and where it stands. */
+    lastReview?: { id: string; status: "PENDING" | "APPROVED" | "REJECTED" | "WITHDRAWN" } | null
 }
 
 /**
@@ -88,13 +90,17 @@ export function reverifyFirst(status: FaceStatus | undefined): boolean {
 }
 
 /**
- * What becomes of templates waiting on this phone once their photo is
- * decided (§9.5): approved (the phone's face status is APPROVED and nothing
- * waits), they replace the approved ones; otherwise they go. Nothing while
- * the photo waits, or with nothing waiting.
+ * What becomes of templates waiting on this phone (§9.5). They are promoted
+ * only once the very review they were sent with is approved: the app
+ * records that review's id when the photo reaches the server. Waiting
+ * templates with no such record were never sent (the upload failed, or the
+ * app stopped first), so nobody saw that face: they go (review on #28).
+ * Nothing while their photo waits.
  */
-export function pendingTemplatesAction(status: FaceStatus | undefined, info: { pending: boolean }): "PROMOTE" | "DISCARD" | null {
-    if (!status || !info.pending || status.pendingReview) return null
-    // Approval leaves the phone APPROVED; rejection leaves it REJECTED, and withdrawal NONE.
-    return status.phone?.faceStatus === "APPROVED" ? "PROMOTE" : "DISCARD"
+export function pendingTemplatesAction(status: FaceStatus | undefined, info: { pending: boolean }, sentWith: string | null): "PROMOTE" | "DISCARD" | null {
+    if (!status || !info.pending) return null
+    const last = status.lastReview
+    if (!sentWith || !last || last.id !== sentWith) return status.pendingReview && sentWith ? null : "DISCARD"
+    if (last.status === "PENDING") return null
+    return last.status === "APPROVED" && status.phone?.faceStatus === "APPROVED" ? "PROMOTE" : "DISCARD"
 }
